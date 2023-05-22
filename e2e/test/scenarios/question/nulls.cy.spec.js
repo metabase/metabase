@@ -2,9 +2,11 @@ import {
   restore,
   openOrdersTable,
   popover,
-  sidebar,
   summarize,
   visitDashboard,
+  rightSidebar,
+  updateDashboardCards,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -32,6 +34,7 @@ describe("scenarios > question > null", () => {
 
     // find and open previously created question
     cy.visit("/collection/root");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("13571").click();
 
     cy.log("'No Results since at least v0.34.3");
@@ -49,83 +52,68 @@ describe("scenarios > question > null", () => {
   it.skip("pie chart should handle `0`/`null` values (metabase#13626)", () => {
     // Preparation for the test: "Arrange and Act phase" - see repro steps in #13626
 
-    cy.createQuestion({
-      name: "13626",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["expression", "NewDiscount"]]],
-        breakout: [["field", ORDERS.ID, null]],
-        expressions: {
-          NewDiscount: [
-            "case",
-            [[["=", ["field", ORDERS.ID, null], 2], 0]],
-            { default: ["field", ORDERS.DISCOUNT, null] },
+    cy.createQuestionAndDashboard({
+      questionDetails: {
+        name: "13626",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["expression", "NewDiscount"]]],
+          breakout: [["field", ORDERS.ID, null]],
+          expressions: {
+            NewDiscount: [
+              "case",
+              [[["=", ["field", ORDERS.ID, null], 2], 0]],
+              { default: ["field", ORDERS.DISCOUNT, null] },
+            ],
+          },
+          filter: ["=", ["field", ORDERS.ID, null], 1, 2, 3],
+        },
+        display: "pie",
+      },
+      dashboardDetails: {
+        name: "13626D",
+        parameters: [
+          {
+            id: "1f97c149",
+            name: "ID",
+            slug: "id",
+            type: "id",
+          },
+        ],
+      },
+      cardDetails: {
+        size_x: 8,
+        size_y: 6,
+      },
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      addOrUpdateDashboardCard({
+        card_id,
+        dashboard_id,
+        card: {
+          parameter_mappings: [
+            {
+              parameter_id: "1f97c149",
+              card_id,
+              target: ["dimension", ["field", ORDERS.ID, null]],
+            },
           ],
         },
-        filter: ["=", ["field", ORDERS.ID, null], 1, 2, 3],
-      },
+      });
 
-      display: "pie",
-    }).then(({ body: { id: questionId } }) => {
-      cy.createDashboard({ name: "13626D" }).then(
-        ({ body: { id: dashboardId } }) => {
-          // add filter (ID) to the dashboard
-          cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-            parameters: [
-              {
-                id: "1f97c149",
-                name: "ID",
-                slug: "id",
-                type: "id",
-              },
-            ],
-          });
+      // NOTE: The actual "Assertion" phase begins here
+      cy.visit(`/dashboard/${dashboard_id}?id=1`);
+      cy.findByText("13626D");
 
-          // add previously created question to the dashboard
-          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-            cardId: questionId,
-            row: 0,
-            col: 0,
-            size_x: 8,
-            size_y: 6,
-          }).then(({ body: { id: dashCardId } }) => {
-            // connect filter to that question
-            cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-              cards: [
-                {
-                  id: dashCardId,
-                  card_id: questionId,
-                  row: 0,
-                  col: 0,
-                  size_x: 8,
-                  size_y: 6,
-                  parameter_mappings: [
-                    {
-                      parameter_id: "1f97c149",
-                      card_id: questionId,
-                      target: ["dimension", ["field", ORDERS.ID, null]],
-                    },
-                  ],
-                },
-              ],
-            });
-          });
-          // NOTE: The actual "Assertion" phase begins here
-          cy.visit(`/dashboard/${dashboardId}?id=1`);
-          cy.findByText("13626D");
-
-          cy.log("Reported failing in v0.37.0.2");
-          cy.get(".DashCard").within(() => {
-            cy.findByTestId("loading-spinner").should("not.exist");
-            cy.findByText("13626");
-            // [quarantine]: flaking in CircleCI, passing locally
-            // TODO: figure out the cause of the failed test in CI after #13721 is merged
-            // cy.get("svg[class*=PieChart__Donut]");
-            // cy.get("[class*=PieChart__Value]").contains("0");
-            // cy.get("[class*=PieChart__Title]").contains(/total/i);
-          });
-        },
-      );
+      cy.log("Reported failing in v0.37.0.2");
+      cy.get(".DashCard").within(() => {
+        cy.findByTestId("loading-spinner").should("not.exist");
+        cy.findByText("13626");
+        // [quarantine]: flaking in CircleCI, passing locally
+        // TODO: figure out the cause of the failed test in CI after #13721 is merged
+        // cy.get("svg[class*=PieChart__Donut]");
+        // cy.get("[class*=PieChart__Value]").contains("0");
+        // cy.get("[class*=PieChart__Title]").contains(/total/i);
+      });
     });
   });
 
@@ -143,31 +131,12 @@ describe("scenarios > question > null", () => {
         cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
           cy.log("Add both previously created questions to the dashboard");
 
-          [Q1_ID, Q2_ID].forEach((questionId, index) => {
-            const cardSizeX = 6;
-            const col = index === 0 ? 0 : cardSizeX; // making sure the second card doesn't overlap the first one
-
-            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cardId: questionId,
-              row: 0,
-              col: col,
-              size_x: cardSizeX,
-              size_y: 4,
-            }).then(({ body: { id: DASHCARD_ID } }) => {
-              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cards: [
-                  {
-                    id: DASHCARD_ID,
-                    card_id: questionId,
-                    row: 0,
-                    col: col,
-                    size_x: cardSizeX,
-                    size_y: 4,
-                    parameter_mappings: [],
-                  },
-                ],
-              });
-            });
+          updateDashboardCards({
+            dashboard_id: DASHBOARD_ID,
+            cards: [
+              { card_id: Q1_ID, row: 0, col: 0, size_x: 6, size_y: 4 },
+              { card_id: Q2_ID, row: 0, col: 6, size_x: 6, size_y: 4 },
+            ],
           });
 
           visitDashboard(DASHBOARD_ID);
@@ -185,6 +154,7 @@ describe("scenarios > question > null", () => {
     openOrdersTable();
 
     // Total of "39.72", and the next cell is the `discount` (which is empty)
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72")
       .closest(".TableInteractive-cellWrapper")
       .next()
@@ -195,8 +165,10 @@ describe("scenarios > question > null", () => {
 
     popover().contains("=").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72");
     // This row ([id] 3) had the `discount` column value and should be filtered out now
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("49.21").should("not.exist");
   });
 
@@ -205,10 +177,11 @@ describe("scenarios > question > null", () => {
       openOrdersTable();
 
       summarize();
-      sidebar().within(() => {
+      rightSidebar().within(() => {
         // remove pre-selected "Count"
         cy.icon("close").click();
       });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add a metric").click();
       // dropdown immediately opens with the new set of metrics to choose from
       popover().within(() => {
@@ -216,9 +189,12 @@ describe("scenarios > question > null", () => {
         cy.findByText("Discount").click();
       });
       // Group by
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Created At").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Cumulative sum of Discount by Created At: Month");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("There was a problem with your question").should(
         "not.exist",
       );

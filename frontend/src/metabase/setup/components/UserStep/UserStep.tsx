@@ -63,4 +63,5 @@ const getStepTitle = (user: UserInfo | undefined, isStepCompleted: boolean) => {
     : t`What should we call you?`;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default UserStep;

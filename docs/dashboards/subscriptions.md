@@ -47,6 +47,8 @@ For Slack subscriptions, you can set up a subscription for a channel (like #gene
 
 ![slack subscription options](./images/slack-subscription-options.png)
 
+> If you rename the subscribed channel in Slack, you'll need to update the subscription to point to the new Slack channel name.
+
 You can specify how often Metabase sends a Slack message (hourly, daily, weekly, or monthly), and whether to send a message if the dashboard fails to return results.
 
 ## Adding multiple subscriptions
@@ -86,7 +88,6 @@ See [Notification permissions](../permissions/notifications.md).
 ## Further reading
 
 - [Alerts](../questions/sharing/alerts.md)
-- [Notification permissions](../permissions/notifications.md)
 - [Setting up email](../configuring-metabase/email.md)
 - [Setting up Slack](../configuring-metabase/slack.md)
 - [Auditing Metabase](../usage-and-performance-tools/audit.md)

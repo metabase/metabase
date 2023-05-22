@@ -23,6 +23,7 @@ interface Group {
   first_name: string;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function UserAvatar({
   user,
   ...props

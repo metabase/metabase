@@ -56,6 +56,7 @@ export default class PieChart extends Component {
   static iconName = "pie";
 
   static minSize = { width: 4, height: 4 };
+  static defaultSize = { width: 4, height: 4 };
 
   static isSensible({ cols, rows }) {
     return cols.length === 2;
@@ -118,6 +119,14 @@ export default class PieChart extends Component {
     "pie.show_legend": {
       section: t`Display`,
       title: t`Show legend`,
+      widget: "toggle",
+      default: true,
+      inline: true,
+      marginBottom: "1rem",
+    },
+    "pie.show_total": {
+      section: t`Display`,
+      title: t`Show total`,
       widget: "toggle",
       default: true,
       inline: true,
@@ -258,7 +267,16 @@ export default class PieChart extends Component {
     requestAnimationFrame(() => {
       const groupElement = this.chartGroup.current;
       const detailElement = this.chartDetail.current;
-      if (groupElement.getBoundingClientRect().width < 120) {
+      const { settings } = this.props;
+
+      if (!groupElement || !detailElement) {
+        return;
+      }
+
+      if (
+        groupElement.getBoundingClientRect().width < 120 ||
+        !settings["pie.show_total"]
+      ) {
         detailElement.classList.add("hide");
       } else {
         detailElement.classList.remove("hide");

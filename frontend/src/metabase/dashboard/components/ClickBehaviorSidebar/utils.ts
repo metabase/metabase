@@ -26,7 +26,7 @@ export function getClickBehaviorOptionName(
 ) {
   if (value === "menu") {
     return hasActionsMenu(dashcard)
-      ? t`Open the Metabase actions menu`
+      ? t`Open the Metabase drill-through menu`
       : t`Do nothing`;
   }
   if (value === "link") {

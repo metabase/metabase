@@ -38,6 +38,7 @@ const ColorRangeSelector = forwardRef(function ColorRangeSelector(
           colors={value}
           isQuantile={isQuantile}
           onClick={onClick}
+          role="button"
         />
       )}
       popoverContent={({ closePopover }) => (
@@ -55,4 +56,5 @@ const ColorRangeSelector = forwardRef(function ColorRangeSelector(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorRangeSelector;

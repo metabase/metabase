@@ -1,5 +1,6 @@
 import { UserId } from "./user";
 import { CardDisplayType } from "./card";
+import { DatabaseId } from "./database";
 
 export type RegularCollectionId = number;
 
@@ -48,8 +49,10 @@ type CollectionItemModel =
   | "pulse"
   | "collection";
 
+export type CollectionItemId = number;
+
 export interface CollectionItem<T = CollectionItemModel> {
-  id: number;
+  id: CollectionItemId;
   model: T;
   name: string;
   description: string | null;
@@ -60,6 +63,8 @@ export interface CollectionItem<T = CollectionItemModel> {
   collection?: Collection;
   display?: CardDisplayType;
   personal_owner_id?: UserId;
+  database_id?: DatabaseId;
+  moderated_status?: string;
   getIcon: () => { name: string };
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;

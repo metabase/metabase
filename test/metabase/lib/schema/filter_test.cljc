@@ -1,18 +1,20 @@
 (ns metabase.lib.schema.filter-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
    [malli.core :as mc]
-   malli.registry
-   ;; expression and filter recursively depend on each other
-   metabase.lib.schema.expression
-   [metabase.lib.schema.filter :as filter]
-   [metabase.util.malli.registry :as mr]))
+   [malli.error :as me]
+   [metabase.lib.schema]
+   [metabase.lib.schema.expression :as expression]))
+
+(comment metabase.lib.schema/keep-me)
 
 (defn- ensure-uuids [filter-expr]
   (walk/postwalk
    (fn [f]
-     (if (and (vector? f) (not (map-entry? f)))
+     (if (and (vector? f)
+              (keyword? (first f))
+              (not (map-entry? f)))
        (let [[op & args] f]
          (cond
            (and (map? (first args)) (not (:lib/uuid (first args))))
@@ -24,16 +26,6 @@
            :else f))
        f))
    filter-expr))
-
-(defn- known-filter-ops
-  "Return all registered filter operators."
-  []
-  (into #{}
-        (comp (filter #(and (qualified-keyword? %)
-                            (not= % ::filter/filter)
-                            (= (namespace %) (namespace ::filter/filter))))
-              (map (comp keyword name)))
-        (keys (malli.registry/schemas @#'mr/registry))))
 
 (defn- filter-ops
   "Return the set of filter operators in `filter-expr`."
@@ -51,9 +43,11 @@
 
 (deftest ^:parallel filter-test
   (testing "valid filters"
-    (let [field [:field 1 {:lib/uuid (str (random-uuid))}]
-          boolean-field [:field 2 {:lib/uuid (str (random-uuid))
-                                   :base-type :type/Boolean}]
+    (let [field         [:field {:lib/uuid (str (random-uuid))} 1]
+          boolean-field [:field
+                         {:lib/uuid  (str (random-uuid))
+                          :base-type :type/Boolean}
+                         2]
           filter-expr
           [:and
            boolean-field
@@ -76,14 +70,28 @@
            [:does-not-contain {:case-sensitive false} "abc" "a"]
            [:time-interval field :last :hour]
            [:time-interval field 4 :hour]
-           [:time-interval {:include-current true} field :next :default]
+           [:time-interval {:include-current true} field :next :day]
            [:segment 1]
-           [:segment "segment-id"]
-           [:case [:= 1 1] true [:not-null field] [:< 0 1]]]]
-      (is (= (known-filter-ops) (filter-ops filter-expr)))
-      (is (true? (mc/validate ::filter/filter (ensure-uuids filter-expr))))))
+           [:segment "segment-id"]]]
+      (doseq [op (filter-ops filter-expr)]
+        (testing (str op " is a registered MBQL clause (a type-of* method is registered for it)")
+          (is (not (identical? (get-method expression/type-of* op)
+                               (get-method expression/type-of* :default))))))
+      ;; test all the subclauses of `filter-expr` above individually. If something gets broken this is easier to debug
+      (doseq [filter-clause (rest filter-expr)
+              :let          [filter-clause (ensure-uuids filter-clause)]]
+        (testing (pr-str filter-clause)
+          (is (= (expression/type-of filter-clause) :type/Boolean))
+          (is (not (me/humanize (mc/explain ::expression/boolean filter-clause))))))
+      ;; now test the entire thing
+      (is (mc/validate ::expression/boolean (ensure-uuids filter-expr))))))
 
-  (testing "invalid filter"
-    (is (false? (mc/validate
-                 ::filter/filter
-                 (ensure-uuids [:xor 13 [:field 1 {:lib/uuid (str (random-uuid))}]]))))))
+(deftest ^:parallel invalid-filter-test
+  (testing "invalid filters"
+    (are [clause] (mc/explain
+                   ::expression/boolean
+                   (ensure-uuids clause))
+      ;; xor doesn't exist
+      [:xor 13 [:field 1 {:lib/uuid (str (random-uuid))}]]
+      ;; 1 is not a valid <string> arg
+      [:contains "abc" 1])))

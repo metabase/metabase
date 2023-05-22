@@ -1,13 +1,14 @@
 import React, { useEffect } from "react";
 import { isSmallScreen } from "metabase/lib/dom";
-import HomeLayout from "../../containers/HomeLayout";
+import HomeLayout from "../HomeLayout";
 import HomeContent from "../../containers/HomeContent";
 
 export interface HomePageProps {
+  hasMetabot: boolean;
   onOpenNavbar: () => void;
 }
 
-const HomePage = ({ onOpenNavbar }: HomePageProps): JSX.Element => {
+const HomePage = ({ hasMetabot, onOpenNavbar }: HomePageProps): JSX.Element => {
   useEffect(() => {
     if (!isSmallScreen()) {
       onOpenNavbar();
@@ -15,10 +16,11 @@ const HomePage = ({ onOpenNavbar }: HomePageProps): JSX.Element => {
   }, [onOpenNavbar]);
 
   return (
-    <HomeLayout>
+    <HomeLayout hasMetabot={hasMetabot}>
       <HomeContent />
     </HomeLayout>
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default HomePage;

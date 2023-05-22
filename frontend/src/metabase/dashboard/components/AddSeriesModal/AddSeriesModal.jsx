@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import { connect } from "react-redux";
-import { createSelector } from "reselect";
 import _ from "underscore";
 
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -13,19 +12,11 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 
 import Questions from "metabase/entities/questions";
-import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 
 import { getVisualizationRaw } from "metabase/visualizations";
-import Question from "metabase-lib/Question";
 
 import { QuestionList } from "./QuestionList";
-
-const getQuestions = createSelector(
-  [getMetadataWithHiddenTables, (_state, props) => props.questions],
-  (metadata, questions) =>
-    questions && questions.map(card => new Question(card, metadata)),
-);
 
 // TODO: rework this so we don't have to load all cards up front
 
@@ -239,11 +230,9 @@ class AddSeriesModal extends Component {
 }
 
 export default _.compose(
-  Questions.loadList({ query: { f: "all" } }),
-  connect(
-    (state, ownProps) => ({
-      questions: getQuestions(state, ownProps),
-    }),
-    { loadMetadataForQueries },
-  ),
+  Questions.loadList({
+    query: { f: "all" },
+    selectorName: "getListUnfiltered",
+  }),
+  connect(null, { loadMetadataForQueries }),
 )(AddSeriesModal);

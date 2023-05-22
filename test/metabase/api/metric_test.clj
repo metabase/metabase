@@ -3,18 +3,15 @@
   (:require
    [clojure.test :refer :all]
    [metabase.http-client :as client]
-   [metabase.models.database :refer [Database]]
+   [metabase.models :refer [Database Revision Segment Table]]
    [metabase.models.metric :as metric :refer [Metric]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.revision :refer [Revision]]
-   [metabase.models.table :refer [Table]]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
-   [metabase.test.data :as data]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;; ## Helper Fns
 
@@ -169,7 +166,7 @@
                   :crowberto :put 200 (str "metric/" id)
                   {:archived true, :revision_message "Archive the Metric"})))
       (is (= true
-             (db/select-one-field :archived Metric :id id))))))
+             (t2/select-one-fn :archived Metric :id id))))))
 
 (deftest unarchive-test
   (testing "Can we unarchive a Metric with the PUT endpoint?"
@@ -177,7 +174,7 @@
       (is (some? (mt/user-http-request
                   :crowberto :put 200 (str "metric/" id)
                   {:archived false, :revision_message "Unarchive the Metric"})))
-      (is (= false (db/select-one-field :archived Metric :id id))))))
+      (is (= false (t2/select-one-fn :archived Metric :id id))))))
 
 (deftest delete-test
   (testing "DELETE /api/metric/:id"
@@ -393,18 +390,32 @@
 
 (deftest list-metrics-test
   (testing "GET /api/metric/"
-    (mt/with-temp* [Metric [metric-1 {:name "Metric A"}]
-                    Metric [metric-2 {:name "Metric B"}]
-                    ;; inactive metrics shouldn't show up
-                    Metric [_        {:archived true}]]
-      (is (= (mt/derecordize (hydrate [(assoc metric-1 :database_id (data/id))
-                                       (assoc metric-2 :database_id (data/id))]
-                                      :creator))
-             (map #(dissoc % :query_description) (mt/user-http-request
-                                                  :rasta :get 200 "metric/"))))))
-
-  (is (= []
-         (mt/user-http-request :rasta :get 200 "metric/"))))
+    (t2.with-temp/with-temp [Segment {segment-id :id} {:name       "Segment"
+                                                       :table_id   (mt/id :checkins)
+                                                       :definition (:query (mt/mbql-query checkins
+                                                                             {:filter [:= $id 1]}))}
+                             Metric {id-1 :id} {:name     "Metric A"
+                                                :table_id (mt/id :users)}
+                             Metric {id-2 :id} {:name       "Metric B"
+                                                :definition (:query (mt/mbql-query venues
+                                                                      {:aggregation [[:sum $category_id->categories.name]]
+                                                                       :filter      [:and
+                                                                                     [:= $price 4]
+                                                                                     [:segment segment-id]]}))
+                                                :table_id   (mt/id :venues)}
+                             ;; inactive metrics shouldn't show up
+                             Metric {id-3 :id} {:archived true}]
+      (is (=? [{:name                   "Metric A"
+                :id                     id-1
+                :creator                {}
+                :definition_description nil}
+               {:name                   "Metric B"
+                :id                     id-2
+                :creator                {}
+                :definition_description "Venues, Sum of Categories → Name, Filtered by Price equals 4 and Segment"}]
+              (filter (fn [{metric-id :id}]
+                        (contains? #{id-1 id-2 id-3} metric-id))
+                      (mt/user-http-request :rasta :get 200 "metric/")))))))
 
 (deftest metric-related-entities-test
   (testing "Test related/recommended entities"

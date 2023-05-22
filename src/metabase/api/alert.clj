@@ -18,10 +18,11 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,10 +40,10 @@
     (filter mi/can-read? <>)
     (hydrate <> :can_write)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch an alert by ID"
   [id]
+  {id ms/PositiveInt}
   (-> (api/read-check (pulse/retrieve-alert id))
       (hydrate :can_write)))
 
@@ -243,17 +244,17 @@
       ;; Finally, return the updated Alert
       updated-alert)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:id/subscription"
+(api/defendpoint DELETE "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
   [id]
+  {id ms/PositiveInt}
   (validation/check-has-application-permission :subscription false)
   (let [alert (pulse/retrieve-alert id)]
     (api/read-check alert)
     (api/let-404 [alert-id (u/the-id alert)
-                  pc-id    (db/select-one-id PulseChannel :pulse_id alert-id :channel_type "email")
-                  pcr-id   (db/select-one-id PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
-      (db/delete! PulseChannelRecipient :id pcr-id))
+                  pc-id    (t2/select-one-pk PulseChannel :pulse_id alert-id :channel_type "email")
+                  pcr-id   (t2/select-one-pk PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
+      (t2/delete! PulseChannelRecipient :id pcr-id))
     ;; Send emails letting people know they have been unsubscribe
     (when (email/email-configured?)
       (messages/send-you-unsubscribed-alert-email! alert @api/*current-user*))

@@ -43,6 +43,6 @@
         (#'v-info/generate-version-info!)
         (let [actual (-> (#'v-info/tmp-version-info-filename)
                          (slurp)
-                         (json/read-json true))
+                         (json/read-str :key-fn keyword))
               expected (make-version-info edition test-versions)]
           (is (= expected actual)))))))

@@ -10,6 +10,7 @@ import Ellipsified from "metabase/core/components/Ellipsified";
 import EntityItem from "metabase/components/EntityItem";
 import DateTime from "metabase/components/DateTime";
 import Tooltip from "metabase/core/components/Tooltip";
+import Markdown from "metabase/core/components/Markdown";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 
 import { color } from "metabase/lib/colors";
@@ -27,6 +28,7 @@ import {
 } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
+  databases: PropTypes.arrayOf(PropTypes.object),
   bookmarks: PropTypes.arrayOf(PropTypes.object),
   createBookmark: PropTypes.func,
   deleteBookmark: PropTypes.func,
@@ -44,6 +46,7 @@ BaseTableItem.propTypes = {
 };
 
 export function BaseTableItem({
+  databases,
   bookmarks,
   createBookmark,
   deleteBookmark,
@@ -125,7 +128,11 @@ export function BaseTableItem({
               <DescriptionIcon
                 name="info"
                 size={16}
-                tooltip={item.description}
+                tooltip={
+                  <Markdown disallowHeading unstyleLinks>
+                    {item.description}
+                  </Markdown>
+                }
               />
             )}
           </ItemLink>
@@ -143,13 +150,14 @@ export function BaseTableItem({
         <ItemCell>
           <RowActionsContainer>
             <ActionMenu
-              createBookmark={createBookmark}
-              deleteBookmark={deleteBookmark}
-              bookmarks={bookmarks}
               item={item}
               collection={collection}
+              databases={databases}
+              bookmarks={bookmarks}
               onCopy={onCopy}
               onMove={onMove}
+              createBookmark={createBookmark}
+              deleteBookmark={deleteBookmark}
             />
             {item.model === "dataset" && <ModelDetailLink model={item} />}
           </RowActionsContainer>
@@ -157,6 +165,7 @@ export function BaseTableItem({
       </tr>
     );
   }, [
+    databases,
     bookmarks,
     createBookmark,
     deleteBookmark,

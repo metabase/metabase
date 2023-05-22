@@ -29,27 +29,7 @@ describe("scenarios > visualizations > scalar", () => {
     cy.log("Bug: showing blank visualization");
 
     cy.get(".ScalarValue").contains("100");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Nothing to compare for the previous month.");
-  });
-
-  it.skip("should display correct trend percentage (metabase#20488)", () => {
-    const questionDetails = {
-      native: {
-        query:
-          "SELECT parsedatetime('2020-12-31', 'yyyy-MM-dd'), 1000\nUNION ALL\nSELECT parsedatetime('2021-12-31', 'yyyy-MM-dd'), 1",
-        "template-tags": {},
-      },
-      display: "smartscalar",
-    };
-
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
-
-    cy.get(".ScalarValue").invoke("text").should("eq", "1");
-
-    cy.icon("arrow_down");
-
-    cy.get(".SmartWrapper")
-      .should("contain", "99,900%")
-      .and("contain", "was 1,000 last year");
   });
 });

@@ -87,4 +87,4 @@ dev/src/dev/nocommit/
 .calva/
 
 # malli + clj-kondo: ignore malli-types
-.clj-kondo/metosin/malli-types
+.clj-kondo/metosin/malli-types-clj

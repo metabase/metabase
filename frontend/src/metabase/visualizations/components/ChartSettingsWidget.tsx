@@ -15,7 +15,7 @@ type Props = {
   hint?: string;
   hidden?: boolean;
   disabled?: boolean;
-  widget?: React.ComponentType;
+  widget?: React.ComponentType<{ id: string }>;
   inline?: boolean;
   marginBottom?: string;
   props?: Record<string, unknown>;
@@ -23,6 +23,7 @@ type Props = {
   variant?: "default" | "form-field";
   borderBottom?: boolean;
   dataTestId?: string;
+  id: string;
 };
 
 const ChartSettingsWidget = ({
@@ -58,7 +59,11 @@ const ChartSettingsWidget = ({
       borderBottom={borderBottom}
     >
       {title && (
-        <Title variant={variant} className={cx({ "Form-label": isFormField })}>
+        <Title
+          variant={variant}
+          className={cx({ "Form-label": isFormField })}
+          id={extraWidgetProps.id}
+        >
           {title}
           {hint && (
             <InfoIconContainer>
@@ -78,4 +83,5 @@ const ChartSettingsWidget = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartSettingsWidget;

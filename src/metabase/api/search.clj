@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
@@ -80,14 +81,14 @@
    :updated_at          :timestamp
    ;; returned for Card only
    :dashboardcard_count :integer
-   :dataset_query       :text
    :moderated_status    :text
    ;; returned for Metric and Segment
    :table_id            :integer
-   :database_id         :integer
    :table_schema        :text
    :table_name          :text
    :table_description   :text
+   ;; returned for Metric, Segment, and Action
+   :database_id         :integer
    ;; returned for Database and Table
    :initial_sync_status :text
    ;; returned for Action
@@ -188,26 +189,19 @@
   (str "%" s "%"))
 
 (defn- search-string-clause
-  [model query searchable-columns]
+  [query searchable-columns]
   (when query
     (into [:or]
           (for [column searchable-columns
                 token (search-util/tokenize (search-util/normalize query))]
-            (if (and (= model "card") (= column (keyword (name (model->alias model)) "dataset_query")))
-              [:and
-               [:= (keyword (name (model->alias model)) "query_type") "native"]
-               [:like
-                [:lower column]
-                (wildcard-match token)]]
-              [:like
-               [:lower column]
-               (wildcard-match token)])))))
+            [:like
+             [:lower column]
+             (wildcard-match token)]))))
 
 (s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and := :inline) "type") s/Any]
   [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
   (let [archived-clause (archived-where-clause model archived?)
-        search-clause   (search-string-clause model
-                                              search-string
+        search-clause   (search-string-clause search-string
                                               (map (let [model-alias (name (model->alias model))]
                                                      (fn [column]
                                                        (keyword model-alias (name column))))
@@ -282,6 +276,8 @@
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/left-join [:report_card :model]
                              [:= :model.id :action.model_id])
+      (sql.helpers/left-join :query_action
+                             [:= :query_action.action_id :action.id])
       (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
 
 (s/defmethod search-query-for-model "card"
@@ -475,6 +471,7 @@
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
   [q archived-string table-db-id]
+  {table-db-id [:maybe ms/PositiveInt]}
   (query-model-set (search-context q archived-string table-db-id nil nil nil)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

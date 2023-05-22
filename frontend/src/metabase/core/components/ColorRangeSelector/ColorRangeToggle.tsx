@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React from "react";
 import {
   ToggleButton,
   ToggleColorRange,
@@ -8,34 +8,21 @@ import {
 export interface ColorRangeToggleProps {
   value: string[];
   isQuantile?: boolean;
-  onChange?: (newValue: string[]) => void;
+  onClick?: () => void;
 }
 
 const ColorRangeToggle = ({
   value,
   isQuantile,
-  onChange,
+  onClick,
 }: ColorRangeToggleProps) => {
-  const [isInverted, setIsInverted] = useState(false);
-
-  const displayValue = useMemo(() => {
-    return isInverted ? Array.from(value).reverse() : value;
-  }, [value, isInverted]);
-
-  const handleButtonClick = useCallback(() => {
-    setIsInverted(isInverted => !isInverted);
-  }, []);
-
   return (
     <ToggleRoot>
-      <ToggleColorRange
-        colors={displayValue}
-        isQuantile={isQuantile}
-        onSelect={onChange}
-      />
-      <ToggleButton icon="compare" small onClick={handleButtonClick} />
+      <ToggleColorRange colors={value} isQuantile={isQuantile} />
+      <ToggleButton icon="compare" small onClick={onClick} />
     </ToggleRoot>
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorRangeToggle;

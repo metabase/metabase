@@ -1,13 +1,13 @@
 (ns metabase.models.interface
   (:require
    [buddy.core.codecs :as codecs]
-   [camel-snake-kebab.core :as csk]
    [cheshire.core :as json]
    [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
    [clojure.walk :as walk]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.util :as mdb.u]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
@@ -22,9 +22,10 @@
    [potemkin :as p]
    [schema.core :as schema]
    [taoensso.nippy :as nippy]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]
+   [toucan2.model :as t2.model]
+   [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.util :as t2.u])
@@ -145,9 +146,10 @@
   :in  (comp json-in normalize-metric-segment-definition)
   :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization))
 
-(defn- normalize-visualization-settings [viz-settings]
-  ;; frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`; we need to normalize them
-  ;; to modern MBQL clauses so things work correctly
+(defn normalize-visualization-settings
+  "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
+   to modern MBQL clauses so things work correctly."
+  [viz-settings]
   (letfn [(normalize-column-settings-key [k]
             (some-> k u/qualified-name json/parse-string mbql.normalize/normalize json/generate-string))
           (normalize-column-settings [column-settings]
@@ -225,10 +227,6 @@
   (if (instance? Blob v)
     (blob->bytes v)
     v))
-
-(models/add-type! :secret-value
-  :in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
-  :out (comp encryption/maybe-decrypt maybe-blob->bytes))
 
 (defn decompress
   "Decompress `compressed-bytes`."
@@ -372,6 +370,133 @@
   :args ::define-hydration-method
   :ret  any?)
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Toucan 2 Extensions                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; --- transforms methods
+(def transform-metabase-query
+  "Transform for metabase-query."
+  {:in  (comp json-in maybe-normalize)
+   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization)})
+
+(defn- result-metadata-out
+  "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
+  [metadata]
+  (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
+    (seq (map mbql.normalize/normalize-source-metadata metadata))))
+
+(def transform-result-metadata
+  "Transform for card.result_metadata like columns."
+  {:in  json-in
+   :out result-metadata-out})
+
+(def transform-keyword
+  "Transform for keywords."
+  {:in  u/qualified-name
+   :out keyword})
+
+(def transform-json
+  "Transform for json."
+  {:in  json-in
+   :out json-out-with-keywordization})
+
+(def transform-json-no-keywordization
+  "Transform for json-no-keywordization"
+  {:in  json-in
+   :out json-out-without-keywordization})
+
+(def transform-encrypted-json
+  "Transform for encrypted json."
+  {:in  encrypted-json-in
+   :out cached-encrypted-json-out})
+
+(def transform-visualization-settings
+  "Transform for viz-settings."
+  {:in  (comp json-in migrate-viz-settings)
+   :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
+
+(def transform-parameters-list
+  "Transform for parameters list."
+  {:in  (comp json-in normalize-parameters-list)
+   :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
+
+(def transform-secret-value
+  "Transform for secret value."
+  {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
+   :out (comp encryption/maybe-decrypt maybe-blob->bytes)})
+
+(def transform-encrypted-text
+  "Transform for encrypted text."
+  {:in  encryption/maybe-encrypt
+   :out encryption/maybe-decrypt})
+
+(def transform-cron-string
+  "Transform for encrypted json."
+  {:in  validate-cron-string
+   :out identity})
+
+;; --- predefined hooks
+
+(t2/define-before-insert :hook/timestamped?
+  [instance]
+  (-> instance
+      add-updated-at-timestamp
+      add-created-at-timestamp))
+
+(t2/define-before-update :hook/timestamped?
+  [instance]
+  (-> instance
+      add-updated-at-timestamp))
+
+(t2/define-before-insert :hook/created-at-timestamped?
+  [instance]
+  (-> instance
+      add-created-at-timestamp))
+
+(t2/define-before-insert :hook/updated-at-timestamped?
+  [instance]
+  (-> instance
+      add-updated-at-timestamp))
+
+(t2/define-before-insert :hook/entity-id
+  [instance]
+  (-> instance
+      add-entity-id))
+
+;; --- helper fns
+(defn pre-update-changes
+  "Returns the changes used for pre-update hooks.
+  This is to match the input of pre-update for toucan1 methods"
+  [row]
+  (t2.protocols/with-current row (merge (t2.model/primary-key-values-map row)
+                                        (t2.protocols/changes row))))
+
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
+
+(methodical/defmethod t2.model/resolve-model :before :default
+  "Ensure the namespace for given model is loaded.
+  This is a safety mechanism as we moving to toucan2 and we don't need to require the model namespaces in order to use it."
+  [x]
+  (when (and (keyword? x)
+             (= (namespace x) "model")
+             ;; don't try to require if it's already registered as a :metabase/model; this way ones defined in EE
+             ;; namespaces won't break if they are loaded in some other way.
+             (not (isa? x :metabase/model)))
+    (let [model-namespace (str "metabase.models." (u/->kebab-case-en (name x)))]
+      ;; use `classloader/require` which is thread-safe and plays nice with our plugins system
+      (classloader/require model-namespace)))
+  x)
+
+(methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
+  "Handle models deriving from :metabase/model."
+  [symb]
+  (or
+    (when (simple-symbol? symb)
+      (let [metabase-models-keyword (keyword "model" (name symb))]
+        (when (isa? metabase-models-keyword :metabase/model)
+          metabase-models-keyword)))
+    (next-method symb)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
@@ -448,7 +573,7 @@
   "NEW! Check whether or not the current user is allowed to update an object and by updating properties to values in
    the `changes` map. This is equivalent to checking whether you're allowed to perform
 
-    (toucan.db/update! model id changes)
+    (toucan2.core/update! model id changes)
 
   This method is appropriate for powering `PUT` API endpoints. Like [[can-create?]] this method was added YEARS after
   most of the current API endpoints were written, so it is used in very few places, and this logic is determined ad-hoc
@@ -478,7 +603,7 @@
 (defn- check-perms-with-fn
   ([fn-symb read-or-write a-model object-id]
    (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (db/select-one a-model (models/primary-key a-model) object-id))))
+       (check-perms-with-fn fn-symb read-or-write (t2/select-one a-model (mdb.u/primary-key a-model) object-id))))
 
   ([fn-symb read-or-write object]
    (and object
@@ -589,6 +714,6 @@
 (reset! t2.hydrate/global-error-on-unknown-key true)
 
 (methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration :default
-  "In Metabase the FK key used for automagic hydration should use underscores (work around unstream Toucan 2 issue)."
+  "In Metabase the FK key used for automagic hydration should use underscores (work around upstream Toucan 2 issue)."
   [_original-model dest-key _hydrated-key]
-  [(csk/->snake_case (keyword (str (name dest-key) "_id")))])
+  [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])

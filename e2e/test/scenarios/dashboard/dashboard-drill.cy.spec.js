@@ -5,6 +5,12 @@ import {
   filterWidget,
   showDashboardCardActions,
   visitDashboard,
+  addOrUpdateDashboardCard,
+  getDashboardCardMenu,
+  getDashboardCard,
+  appBar,
+  summarize,
+  visualize,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -35,11 +41,15 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     // configure a URL click through on the  "MY_NUMBER" column
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("On-click behavior for each column")
       .parent()
       .parent()
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("MY_NUMBER").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Go to a custom destination").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("URL").click();
 
     // set the url and text template
@@ -53,11 +63,13 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.findByText("Done").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     setParamValue("My Param", "param-value");
 
     // click value and confirm url updates
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("column value: 111").click();
     cy.location("pathname").should("eq", "/foo/111/param-value");
   });
@@ -108,6 +120,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Click to find out which state does Rye belong to.").click();
 
     cy.log("Reported failing on v0.37.2");
@@ -157,16 +170,25 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     // configure a dashboard target for the "MY_NUMBER" column
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("On-click behavior for each column")
       .parent()
       .parent()
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("MY_NUMBER").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Go to a custom destination").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Saved question").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders → User ID").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("MY_NUMBER").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Products → Category").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("My Param").click());
 
     // set the text template
@@ -174,19 +196,25 @@ describe("scenarios > dashboard > dashboard drill", () => {
       "num: {{my_number}}",
       { parseSpecialCharSequences: false },
     );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     // wait to leave editing mode and set a param value
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You're editing this dashboard.").should("not.exist");
     setParamValue("My Param", "Widget");
 
     // click on table value
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("num: 111").click();
 
     // show filtered question
     cy.findAllByText("Orders");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User ID is 111");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Category is Widget");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 5 rows");
   });
 
@@ -211,18 +239,27 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     // configure clicks on "MY_NUMBER to update the param
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("On-click behavior for each column")
       .parent()
       .parent()
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("MY_NUMBER").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Go to a custom destination").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Link to")
       .parent()
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("Dashboard").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     modal().within(() => cy.findByText("end dash").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Available filters")
       .parent()
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("My Param").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("MY_STRING").click());
 
     // set the text template
@@ -230,13 +267,16 @@ describe("scenarios > dashboard > dashboard drill", () => {
       "text: {{my_string}}",
       { parseSpecialCharSequences: false },
     );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     // click on table value
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("text: foo").click();
 
     // check that param was set to "foo"
     cy.location("search").should("eq", "?my_param=foo");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("My Param")
       .parent()
       .within(() => {
@@ -252,11 +292,15 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.icon("click").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("On-click behavior for each column")
       .parent()
       .parent()
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("MY_NUMBER").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Go to a custom destination").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("URL").click();
 
     modal().within(() => {
@@ -265,8 +309,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.findByText("Done").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Click behavior").click();
 
     cy.location("pathname").should("eq", "/dashboard/2");
@@ -283,24 +329,34 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     // configure clicks on "MY_NUMBER to update the param
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("On-click behavior for each column")
       .parent()
       .parent()
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("MY_NUMBER").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Update a dashboard filter").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick one or more filters to update")
       .parent()
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("My Param").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("MY_STRING").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     // click on table value
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("111").click();
 
     // check that param was set to "foo"
     cy.location("search").should("eq", "?my_param=foo");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("My Param")
       .parent()
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("foo"));
   });
 
@@ -361,17 +417,25 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     it("when clicking on the field value (metabase#13062-1)", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("xavier").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("=").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Reviewer is xavier");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Rating is 2 selections");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Reprehenderit non error"); // xavier's review
     });
 
     it("when clicking on the card title (metabase#13062-2)", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(questionDetails.name).click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Rating is 2 selections");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Ad perspiciatis quis et consectetur."); // 5 star review
     });
   });
@@ -486,7 +550,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     visitDashboard(1);
     // Product ID in the first row (query fails for User ID as well)
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("105").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("View details").click();
 
     cy.log("Reported on v0.29.3");
@@ -521,58 +587,41 @@ describe("scenarios > dashboard > dashboard drill", () => {
             },
           ],
         });
+
         cy.log("Add question to the dashboard");
-
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-          row: 0,
-          col: 0,
-          size_x: 14,
-          size_y: 10,
-        }).then(({ body: { id: DASH_CARD_ID } }) => {
-          cy.log("Connect dashboard filter to the question");
-
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cards: [
-              {
-                id: DASH_CARD_ID,
-                card_id: QUESTION_ID,
-                row: 0,
-                col: 0,
-                size_x: 14,
-                size_y: 10,
-                series: [],
-                // Set "Click behavior"
-                visualization_settings: {
-                  click_behavior: {
-                    type: "crossfilter",
-                    parameterMapping: {
-                      "4ff53514": {
-                        source: {
-                          type: "column",
-                          id: "CREATED_AT",
-                          name: "Created At",
-                        },
-                        target: {
-                          type: "parameter",
-                          id: "4ff53514",
-                        },
-                        id: "4ff53514",
-                      },
+        addOrUpdateDashboardCard({
+          card_id: QUESTION_ID,
+          dashboard_id: DASHBOARD_ID,
+          card: {
+            // Set "Click behavior"
+            visualization_settings: {
+              click_behavior: {
+                type: "crossfilter",
+                parameterMapping: {
+                  "4ff53514": {
+                    source: {
+                      type: "column",
+                      id: "CREATED_AT",
+                      name: "Created At",
                     },
+                    target: {
+                      type: "parameter",
+                      id: "4ff53514",
+                    },
+                    id: "4ff53514",
                   },
                 },
-                // Connect filter and card
-                parameter_mappings: [
-                  {
-                    parameter_id: "4ff53514",
-                    card_id: QUESTION_ID,
-                    target: ["dimension", ["field", REVIEWS.CREATED_AT, null]],
-                  },
-                ],
+              },
+            },
+            // Connect filter and card
+            parameter_mappings: [
+              {
+                parameter_id: "4ff53514",
+                card_id: QUESTION_ID,
+                target: ["dimension", ["field", REVIEWS.CREATED_AT, null]],
               },
             ],
-          });
+          },
         });
 
         visitDashboard(DASHBOARD_ID);
@@ -627,6 +676,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     // formatting works, so we see "USD" in the table
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("USD 111.00").click();
     cy.location("pathname").should("eq", "/it/worked");
   });
@@ -640,40 +690,24 @@ describe("scenarios > dashboard > dashboard drill", () => {
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         // Add previously added question to the dashboard
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-          row: 0,
-          col: 0,
-          size_x: 10,
-          size_y: 6,
-        }).then(({ body: { id: DASH_CARD_ID } }) => {
-          // Add click through behavior to that question
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cards: [
-              {
-                id: DASH_CARD_ID,
-                card_id: QUESTION_ID,
-                row: 0,
-                col: 0,
-                size_x: 10,
-                size_y: 6,
-                series: [],
-                visualization_settings: {
-                  column_settings: {
-                    [`["ref",["field-id",${PRODUCTS.CATEGORY}]]`]: {
-                      click_behavior: {
-                        type: "link",
-                        linkType: "url",
-                        linkTemplate: "/",
-                        linkTextTemplate: LINK_NAME,
-                      },
-                    },
+        addOrUpdateDashboardCard({
+          card_id: QUESTION_ID,
+          dashboard_id: DASHBOARD_ID,
+          card: {
+            // Add click through behavior to that question
+            visualization_settings: {
+              column_settings: {
+                [`["ref",["field-id",${PRODUCTS.CATEGORY}]]`]: {
+                  click_behavior: {
+                    type: "link",
+                    linkType: "url",
+                    linkTemplate: "/",
+                    linkTextTemplate: LINK_NAME,
                   },
                 },
-                parameter_mappings: [],
               },
-            ],
-          });
+            },
+          },
         });
 
         visitDashboard(DASHBOARD_ID);
@@ -728,43 +762,30 @@ describe("scenarios > dashboard > dashboard drill", () => {
           ],
         });
         // Add question to the dashboard
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-          row: 0,
-          col: 0,
-          size_x: 14,
-          size_y: 10,
-        }).then(({ body: { id: DASH_CARD_ID } }) => {
-          // Connect dashboard filter to the question
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cards: [
+        addOrUpdateDashboardCard({
+          card_id: QUESTION_ID,
+          dashboard_id: DASHBOARD_ID,
+          card: {
+            size_x: 14,
+            size_y: 10,
+            // Connect dashboard filter to the question
+            parameter_mappings: [
               {
-                id: DASH_CARD_ID,
+                parameter_id: "354cb21f",
                 card_id: QUESTION_ID,
-                row: 0,
-                col: 0,
-                size_x: 14,
-                size_y: 10,
-                series: [],
-                visualization_settings: {},
-                parameter_mappings: [
-                  {
-                    parameter_id: "354cb21f",
-                    card_id: QUESTION_ID,
-                    target: [
-                      "dimension",
-                      [
-                        "joined-field",
-                        "Products",
-                        ["field-id", PRODUCTS.CREATED_AT],
-                      ],
-                    ],
-                  },
+                target: [
+                  "dimension",
+                  [
+                    "joined-field",
+                    "Products",
+                    ["field-id", PRODUCTS.CREATED_AT],
+                  ],
                 ],
               },
             ],
-          });
+          },
         });
+
         // Set the filter to `previous 30 years` directly through the url
         cy.visit(`/dashboard/${DASHBOARD_ID}?date_filter=past30years`);
       });
@@ -804,32 +825,16 @@ describe("scenarios > dashboard > dashboard drill", () => {
       }).then(({ body: { id: QUESTION2_ID } }) => {
         cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
           // Add the first question to the dashboard
-          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cardId: QUESTION1_ID,
-            row: 0,
-            col: 0,
-            size_x: 12,
-            size_y: 8,
-          }).then(({ body: { id: DASH_CARD1_ID } }) => {
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cards: [
+          addOrUpdateDashboardCard({
+            card_id: QUESTION1_ID,
+            dashboard_id: DASHBOARD_ID,
+            card: {
+              series: [
                 {
-                  id: DASH_CARD1_ID,
-                  card_id: QUESTION1_ID,
-                  row: 0,
-                  col: 0,
-                  size_x: 12,
-                  size_y: 8,
-                  series: [
-                    {
-                      id: QUESTION2_ID,
-                    },
-                  ],
-                  visualization_settings: {},
-                  parameter_mappings: [],
+                  id: QUESTION2_ID,
                 },
               ],
-            });
+            },
           });
 
           visitDashboard(DASHBOARD_ID);
@@ -922,9 +927,13 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
       drillThroughCardTitle("Orders");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("37.65");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("110.93");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("52.72").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 2 rows");
 
       postDrillAssertion();
@@ -935,8 +944,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
       drillThroughCardTitle("Orders");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("37.65").should("not.exist");
       cy.findAllByText("105.12");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 191 rows");
 
       postDrillAssertion();
@@ -959,6 +970,42 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.findByText("Update filter");
       });
     }
+  });
+
+  it("should display a back button to the dashboard when navigating to a question", () => {
+    const dashboardName = "Orders in a dashboard";
+    const buttonLabel = `Back to ${dashboardName}`;
+    cy.intercept("/api/dashboard/*").as("dashboard");
+    cy.intercept("/api/card/*/query").as("cardQuery");
+
+    visitDashboard(1);
+    cy.wait("@dashboard");
+    cy.findByTestId("dashcard").findByText("Orders").click();
+    cy.wait("@cardQuery");
+    cy.findByLabelText(buttonLabel).should("be.visible");
+    cy.icon("notebook").click();
+    summarize({ mode: "notebook" });
+    popover().findByText("Count of rows").click();
+    cy.findByLabelText(buttonLabel).should("be.visible");
+    visualize();
+    cy.findByLabelText(buttonLabel).click();
+    cy.wait("@dashboard");
+    cy.findByTestId("dashboard-header")
+      .findByText(dashboardName)
+      .should("be.visible");
+
+    getDashboardCard().realHover();
+    getDashboardCardMenu().click();
+    popover().findByText("Edit question").click();
+    cy.findByLabelText(buttonLabel).click();
+    cy.wait("@dashboard");
+    cy.findByTestId("dashboard-header")
+      .findByText(dashboardName)
+      .should("be.visible");
+
+    appBar().findByText("Our analytics").click();
+    cy.findByTestId("collection-table").findByText("Orders").click();
+    cy.findByLabelText(buttonLabel).should("not.exist");
   });
 });
 
@@ -1006,39 +1053,23 @@ function createDashboard(
         ],
       });
 
-      cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-        cardId: questionId,
-        row: 0,
-        col: 0,
-        size_x: 6,
-        size_y: 6,
-      }).then(({ body: { id: dashCardId } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-          cards: [
+      addOrUpdateDashboardCard({
+        card_id: questionId,
+        dashboard_id: dashboardId,
+        card: {
+          parameter_mappings: [
             {
-              id: dashCardId,
+              parameter_id: "e8f79be9",
               card_id: questionId,
-              row: 0,
-              col: 0,
-              size_x: 6,
-              size_y: 6,
-              parameter_mappings: [
-                {
-                  parameter_id: "e8f79be9",
-                  card_id: questionId,
-                  target: [
-                    "dimension",
-                    ["field", PEOPLE.NAME, { "source-field": ORDERS.USER_ID }],
-                  ],
-                },
+              target: [
+                "dimension",
+                ["field", PEOPLE.NAME, { "source-field": ORDERS.USER_ID }],
               ],
-              visualization_settings,
             },
           ],
-        });
-
-        callback(dashboardId);
-      });
+          visualization_settings,
+        },
+      }).then(() => callback(dashboardId));
     },
   );
 }

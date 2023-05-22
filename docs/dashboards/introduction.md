@@ -153,13 +153,11 @@ Enabling auto refresh will re-run all the queries on the dashboard at the interv
 
 Combining fullscreen mode and auto refresh is a great way to keep your team in sync with your data throughout the day.
 
-## Caching dashboards
+## Caching dashboard results
 
-{% include plans-blockquote.html feature="Caching dashboards" %}
+{% include plans-blockquote.html feature="Caching dashboard results" %}
 
-If your results don't change frequently, you may want to cache your results, that is: store your results in Metabase so that the next time you visit the dashboard, Metabase can retrieve the stored results rather than query the database(s) again. For example, if your data only updates once a day, there's no point in querying the database more than once a day, as they data won't have changed. Returning cached results can be significantly faster, as the database won't have to redo the work to answer your query.
-
-You can set cache duration for a dashboard by clicking on the _..._ > **Edit dashboard details** > **More options**.
+See [Caching per dashboard](../configuring-metabase/caching.md#caching-per-dashboard).
 
 ## Sharing dashboards with public links
 

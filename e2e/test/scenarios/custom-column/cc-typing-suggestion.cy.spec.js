@@ -10,6 +10,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     cy.signInAsAdmin();
 
     openProductsTable({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
   });
 
@@ -28,6 +29,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
     // if the replacement is correct -> "[Rating]"
     // if the replacement is wrong -> "[Rating] ng"
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("[Rating] ng").should("not.exist");
   });
 
@@ -40,12 +42,36 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     // accept the first suggested function, i.e. "length"
     cy.get("@formula").type("{enter}");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("length([Title])");
   });
 
   it("should correctly insert function suggestion with the opening parenthesis", () => {
     enterCustomColumnDetails({ formula: "LOW{enter}" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("lower(");
+  });
+
+  it("should show expression function helper if a proper function is typed", () => {
+    enterCustomColumnDetails({ formula: "lower(" });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains("lower(text)");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Returns the string of text in all lower case.").should(
+      "be.visible",
+    );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("lower([Status])").should("be.visible");
+
+    cy.findByTestId("expression-helper-popover-arguments")
+      .findByText("text")
+      .realHover();
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("The column with values to convert to lower case.").should(
+      "be.visible",
+    );
   });
 });

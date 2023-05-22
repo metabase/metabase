@@ -111,7 +111,7 @@ jobs:
           if [[ $(hub pr list -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -s "open") ]]; then
               echo "PR already exists"
           else
-              BACKPORT_PR_URL=$(hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "auto-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
+              BACKPORT_PR_URL=$(hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "was-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
 
               #${ORIGINAL_PULL_REQUEST_NUMBER}")
 

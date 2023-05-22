@@ -276,11 +276,6 @@
   (with-api-error-message (s/pred #(isa? (keyword %) :Semantic/*) (deferred-tru "Valid field semantic type (keyword or string)"))
     (deferred-tru "value must be a valid field semantic type (keyword or string).")))
 
-(def FieldRelationTypeKeywordOrString
-  "Like `FieldRelationType` but accepts either a keyword or string."
-  (with-api-error-message (s/pred #(isa? (keyword %) :Relation/*) (deferred-tru "Valid field relation type (keyword or string)"))
-    (deferred-tru "value must be a valid field relation type (keyword or string).")))
-
 (def FieldSemanticOrRelationTypeKeywordOrString
   "Like `FieldSemanticOrRelationType` but accepts either a keyword or string."
   (with-api-error-message (s/pred (fn [k]
@@ -333,12 +328,6 @@
    Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (< 0 (Integer/parseInt %))))
     (deferred-tru "value must be a valid integer greater than zero.")))
-
-(def IntStringGreaterThanOrEqualToZero
-  "Schema for a string that can be parsed as an integer, and is greater than or equal to zero.
-   Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
-  (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (<= 0 (Integer/parseInt %))))
-    (deferred-tru "value must be a valid integer greater than or equal to zero.")))
 
 (defn- boolean-string? ^Boolean [s]
   (boolean (when (string? s)

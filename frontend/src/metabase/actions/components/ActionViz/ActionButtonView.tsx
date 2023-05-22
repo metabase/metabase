@@ -1,10 +1,10 @@
 import React from "react";
 import { t } from "ttag";
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-
-import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/core/components/Ellipsified";
+import Icon from "metabase/components/Icon";
+import type { VisualizationProps } from "metabase/visualizations/types";
+
 import { StyledButton, StyledButtonContent } from "./ActionButton.styled";
 
 interface ActionButtonViewProps extends Pick<VisualizationProps, "settings"> {
@@ -51,4 +51,5 @@ function ActionButtonView({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionButtonView;

@@ -2,12 +2,24 @@ import React, { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { ORDERS } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/core/utils/types";
+
+import {
+  ORDERS,
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 import Filter from "metabase-lib/queries/structured/Filter";
 
 import DatePicker from "./DatePicker";
 
-const ordersQuery = ORDERS.query();
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
+const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
+const ordersQuery = ordersTable.query();
 
 // this component does not manage its own filter state, so we need a wrapper to test
 // any state updates because the component's behavior is based on the filter state
@@ -33,7 +45,7 @@ const DatePickerStateWrapper = ({
   );
 };
 
-const CREATED_AT_FIELD = ORDERS.CREATED_AT.reference();
+const CREATED_AT_FIELD = ["field", ORDERS.CREATED_AT, null];
 
 const createDateFilter = (operator: null | string = null, ...args: any[]) =>
   new Filter([operator, CREATED_AT_FIELD, ...(args ?? [])], null, ordersQuery);
@@ -323,7 +335,7 @@ describe("DatePicker", () => {
 
             expect(changeSpy).toHaveBeenLastCalledWith([
               "time-interval",
-              ["field", ORDERS.CREATED_AT.id, null],
+              ["field", ORDERS.CREATED_AT, null],
               (direction === "past" ? -1 : 1) * relativeTimeValue,
               unit.slice(0, -1), // without the 's'
             ]);
@@ -354,6 +366,35 @@ describe("DatePicker", () => {
             unit,
           ]);
         });
+      });
+    });
+
+    describe("Exclude", () => {
+      it("should correctly update exclude filter when value is 0 even though it is falsy", async () => {
+        const onChangeMock = jest.fn();
+
+        render(
+          <DatePickerStateWrapper filter={filter} onChange={onChangeMock} />,
+        );
+
+        userEvent.click(screen.getByText("Exclude..."));
+        userEvent.click(screen.getByText("Hours of the day..."));
+
+        const midnightCheckbox = screen.getByRole("checkbox", {
+          name: /12 AM/i,
+        });
+
+        expect(midnightCheckbox).toBeChecked();
+
+        userEvent.click(midnightCheckbox);
+
+        expect(onChangeMock).toHaveBeenCalledWith([
+          "!=",
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+          0,
+        ]);
+
+        expect(midnightCheckbox).not.toBeChecked();
       });
     });
   });

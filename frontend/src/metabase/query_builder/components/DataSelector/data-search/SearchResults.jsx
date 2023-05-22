@@ -10,8 +10,8 @@ import Search from "metabase/entities/search";
 
 const propTypes = {
   databaseId: PropTypes.string,
-  searchQuery: PropTypes.string.required,
-  onSelect: PropTypes.func.required,
+  searchQuery: PropTypes.string.isRequired,
+  onSelect: PropTypes.func.isRequired,
   searchModels: PropTypes.arrayOf(
     PropTypes.oneOf(["card", "dataset", "table"]),
   ),

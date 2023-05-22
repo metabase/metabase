@@ -43,6 +43,7 @@ interface ActionCreatorProps extends ActionCreatorUIProps {
 
 const DEFAULT_SIDE_VIEW: SideView = "actionForm";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ActionCreatorView({
   action,
   formSettings,
@@ -120,7 +121,7 @@ export default function ActionCreatorView({
         <ModalRight>
           {activeSideView === "actionForm" ? (
             <FormCreator
-              params={action.parameters ?? []}
+              parameters={action.parameters ?? []}
               formSettings={formSettings}
               isEditable={isEditable && canChangeFieldSettings}
               onChange={onChangeFormSettings}

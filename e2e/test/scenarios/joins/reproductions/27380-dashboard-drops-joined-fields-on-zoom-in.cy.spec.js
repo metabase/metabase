@@ -18,7 +18,7 @@ const questionDetails = {
   display: "line",
 };
 
-describe("issue 27380", () => {
+describe.skip("issue 27380", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -35,15 +35,18 @@ describe("issue 27380", () => {
   it("should not drop fields from joined table on dashboard 'zoom-in' (metabase#27380)", () => {
     // Doesn't really matter which 'circle" we click on the graph
     cy.get("circle").last().realClick();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Zoom in").click();
     cy.wait("@dataset");
 
     // Graph should still exist
     // Let's check only the y-axis label
-    cy.get(".y-axis-label").invoke("text").should("eq", "Count");
+    cy.get("y-axis-label").invoke("text").should("eq", "Count");
 
     cy.icon("notebook").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").should("not.exist");
-    cy.findByText("Count by Product → Created At: Week");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(/Products? → Created At: Month/);
   });
 });

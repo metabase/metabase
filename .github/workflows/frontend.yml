@@ -19,6 +19,7 @@ jobs:
     timeout-minutes: 3
     outputs:
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
+      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
     steps:
       - uses: actions/checkout@v3
       - name: Test which files changed
@@ -30,7 +31,7 @@ jobs:
 
   fe-linter-prettier:
     needs: files-changed
-    if: needs.files-changed.outputs.frontend_all == 'true'
+    if: needs.files-changed.outputs.frontend_all == 'true' || needs.files-changed.outputs.e2e_specs == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
@@ -42,7 +43,7 @@ jobs:
 
   fe-linter-eslint:
     needs: files-changed
-    if: needs.files-changed.outputs.frontend_all == 'true'
+    if: needs.files-changed.outputs.frontend_all == 'true' || needs.files-changed.outputs.e2e_specs == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -69,7 +70,7 @@ jobs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: 'cljs'
-    - run: yarn build-quick:cljs
+    - run: yarn build:cljs
       name: Compile CLJS
     - run: yarn type-check
       name: Check types
@@ -99,7 +100,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 14
+    timeout-minutes: 20
     steps:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
@@ -130,6 +131,7 @@ jobs:
         uses: chromaui/action@v1
         env:
           PUBLISH_CHROMATIC: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          STORYBOOK_BUILD_TIMEOUT: 900000
         if: env.PUBLISH_CHROMATIC != null
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

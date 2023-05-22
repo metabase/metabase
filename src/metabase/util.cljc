@@ -1,7 +1,7 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
   (:require
-   [camel-snake-kebab.core :as csk]
+   [camel-snake-kebab.internals.macros :as csk.macros]
    [clojure.pprint :as pprint]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -24,7 +24,8 @@
            (java.text Normalizer Normalizer$Form)
            (java.util Locale)
            (org.apache.commons.validator.routines RegexValidator UrlValidator)))
-  #?(:cljs (:require-macros [metabase.util])))
+  #?(:cljs (:require-macros [camel-snake-kebab.internals.macros :as csk.macros]
+                            [metabase.util])))
 
 (u.ns/import-fns
   [u.format colorize format-bytes format-color format-milliseconds format-nanoseconds format-seconds])
@@ -125,30 +126,6 @@
   [m]
   (m/filter-vals some? m))
 
-(defn normalize-map
-  "Given any map-like object, return it as a Clojure map with :kebab-case keyword keys.
-  The input map can be a:
-  - Clojure map with string or keyword keys,
-  - JS object (with string keys)
-  The keys are converted to `kebab-case` from `camelCase` or `snake_case` as necessary, and turned into keywords.
-  Namespaces keywords are rejected with an exception.
-
-  Returns an empty map if nil is input (like [[update-keys]])."
-  [m]
-  (let [base #?(:clj  m
-                ;; If we're running in CLJS, convert to a ClojureScript map as needed.
-                :cljs (if (object? m)
-                        (js->clj m)
-                        m))]
-    (update-keys base csk/->kebab-case-keyword)))
-
-(defn snake-key
-  "Convert a keyword or string `k` from `lisp-case` to `snake-case`."
-  [k]
-  (if (keyword? k)
-    (keyword (snake-key (name k)))
-    (str/replace k #"-" "_")))
-
 (defn recursive-map-keys
   "Recursively replace the keys in a map with the value of `(f key)`."
   [f m]
@@ -157,11 +134,6 @@
       (m/map-keys f %)
       %)
    m))
-
-(defn snake-keys
-  "Convert the keys in a map from `lisp-case` to `snake_case`."
-  [m]
-  (recursive-map-keys snake-key m))
 
 (defn add-period
   "Fixes strings that don't terminate in a period; also accounts for strings
@@ -176,11 +148,9 @@
         (str text ".")))))
 
 (defn lower-case-en
-  "Locale-agnostic version of `clojure.string/lower-case`.
-  `clojure.string/lower-case` uses the default locale in conversions, turning
-  `ID` into `ıd`, in the Turkish locale. This function always uses the
-  `en-US` locale."
-  [^CharSequence s]
+  "Locale-agnostic version of [[clojure.string/lower-case]]. [[clojure.string/lower-case]] uses the default locale in
+  conversions, turning `ID` into `ıd`, in the Turkish locale. This function always uses the `en-US` locale."
+  ^String [^CharSequence s]
   #?(:clj  (.. s toString (toLowerCase (Locale/US)))
      :cljs (.toLowerCase s)))
 
@@ -189,14 +159,61 @@
   `clojure.string/upper-case` uses the default locale in conversions, turning
   `id` into `İD`, in the Turkish locale. This function always uses the
   `en-US` locale."
-  [^CharSequence s]
+  ^String [^CharSequence s]
   #?(:clj  (.. s toString (toUpperCase (Locale/US)))
      :cljs (.toUpperCase s)))
 
-(defn screaming-snake-case
-  "Turns `strings-that-look-like-deafening-vipers` into `STRINGS_THAT_LOOK_LIKE_DEAFENING_VIPERS`."
-  [s]
-  (upper-case-en (str/replace s "-" "_")))
+(defn capitalize-en
+  "Locale-agnostic version of [[clojure.string/capitalize]]."
+  ^String [^CharSequence s]
+  (when-let [s (some-> s str)]
+    (if (< (count s) 2)
+      (upper-case-en s)
+      (str (upper-case-en (subs s 0 1))
+           (lower-case-en (subs s 1))))))
+
+;;; define custom CSK conversion functions so we don't run into problems if the system locale is Turkish
+
+;; so Kondo doesn't complain
+(declare ^:private ->kebab-case-en*)
+(declare ^:private ->camelCaseEn*)
+(declare ^:private ->snake_case_en*)
+(declare ^:private ->SCREAMING_SNAKE_CASE_EN*)
+
+(csk.macros/defconversion "kebab-case-en*"           lower-case-en lower-case-en "-")
+(csk.macros/defconversion "camelCaseEn*"             lower-case-en capitalize-en "")
+(csk.macros/defconversion "snake_case_en*"           lower-case-en lower-case-en "_")
+(csk.macros/defconversion "SCREAMING_SNAKE_CASE_EN*" upper-case-en upper-case-en "_")
+
+(defn- wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords
+  "Wrap a CSK defconversion function so that it handles nil and namespaced keywords, which it doesn't support out of the
+  box for whatever reason."
+  [f]
+  (fn [x]
+    (when x
+      (if (qualified-keyword? x)
+        (keyword (f (namespace x)) (f (name x)))
+        (f x)))))
+
+(def ^{:arglists '([x])} ->kebab-case-en
+  "Like [[camel-snake-kebab.core/->kebab-case]], but always uses English for lower-casing, supports keywords with
+  namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->kebab-case-en*))
+
+(def ^{:arglists '([x])} ->snake_case_en
+  "Like [[camel-snake-kebab.core/->snake_case]], but always uses English for lower-casing, supports keywords with
+  namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->snake_case_en*))
+
+(def ^{:arglists '([x])} ->camelCaseEn
+  "Like [[camel-snake-kebab.core/->camelCase]], but always uses English for upper- and lower-casing, supports keywords
+  with namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->camelCaseEn*))
+
+(def ^{:arglists '([x])} ->SCREAMING_SNAKE_CASE_EN
+  "Like [[camel-snake-kebab.core/->SCREAMING_SNAKE_CASE]], but always uses English for upper- and lower-casing, supports
+  keywords with namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->SCREAMING_SNAKE_CASE_EN*))
 
 (defn capitalize-first-char
   "Like string/capitalize, only it ignores the rest of the string
@@ -206,6 +223,27 @@
     (upper-case-en s)
     (str (upper-case-en (subs s 0 1))
          (subs s 1))))
+
+(defn snake-keys
+  "Convert the keys in a map from `kebab-case` to `snake_case`."
+  [m]
+  (recursive-map-keys ->snake_case_en m))
+
+(defn normalize-map
+  "Given any map-like object, return it as a Clojure map with :kebab-case keyword keys.
+  The input map can be a:
+  - Clojure map with string or keyword keys,
+  - JS object (with string keys)
+  The keys are converted to `kebab-case` from `camelCase` or `snake_case` as necessary, and turned into keywords.
+
+  Returns an empty map if nil is input (like [[update-keys]])."
+  [m]
+  (let [base #?(:clj  m
+                ;; If we're running in CLJS, convert to a ClojureScript map as needed.
+                :cljs (if (object? m)
+                        (js->clj m)
+                        m))]
+    (update-keys base (comp keyword ->kebab-case-en))))
 
 ;; Log the maximum memory available to the JVM at launch time as well since it is very handy for debugging things
 #?(:clj
@@ -550,8 +588,7 @@
 (defn lower-case-map-keys
   "Changes the keys of a given map to lower case."
   [m]
-  (into {} (for [[k v] m]
-             [(-> k name lower-case-en keyword) v])))
+  (update-keys m #(-> % name lower-case-en keyword)))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing `x` as a string.
@@ -694,17 +731,18 @@
 #?(:clj (defn- regexp? [x]
           (instance? java.util.regex.Pattern x)))
 
-(derive :dispatch-type/nil      :dispatch-type/*)
-(derive :dispatch-type/string   :dispatch-type/*)
-(derive :dispatch-type/keyword  :dispatch-type/*)
-(derive :dispatch-type/integer  :dispatch-type/*)
-(derive :dispatch-type/number   :dispatch-type/*)
-(derive :dispatch-type/map      :dispatch-type/*)
-(derive :dispatch-type/sequence :dispatch-type/*)
-(derive :dispatch-type/set      :dispatch-type/*)
-(derive :dispatch-type/symbol   :dispatch-type/*)
-(derive :dispatch-type/fn       :dispatch-type/*)
-(derive :dispatch-type/regex    :dispatch-type/*)
+(derive :dispatch-type/nil        :dispatch-type/*)
+(derive :dispatch-type/boolean    :dispatch-type/*)
+(derive :dispatch-type/string     :dispatch-type/*)
+(derive :dispatch-type/keyword    :dispatch-type/*)
+(derive :dispatch-type/number     :dispatch-type/*)
+(derive :dispatch-type/integer    :dispatch-type/number)
+(derive :dispatch-type/map        :dispatch-type/*)
+(derive :dispatch-type/sequential :dispatch-type/*)
+(derive :dispatch-type/set        :dispatch-type/*)
+(derive :dispatch-type/symbol     :dispatch-type/*)
+(derive :dispatch-type/fn         :dispatch-type/*)
+(derive :dispatch-type/regex      :dispatch-type/*)
 
 (defn dispatch-type-keyword
   "In Cljs `(type 1) is `js/Number`, but `(isa? 1 js/Number)` isn't truthy, so dispatching off of [[clojure.core/type]]
@@ -722,6 +760,7 @@
   [x]
   (cond
     (nil? x)        :dispatch-type/nil
+    (boolean? x)    :dispatch-type/boolean
     (string? x)     :dispatch-type/string
     (keyword? x)    :dispatch-type/keyword
     (integer? x)    :dispatch-type/integer
@@ -734,3 +773,14 @@
     (regexp? x)     :dispatch-type/regex
     ;; we should add more mappings here as needed
     :else           :dispatch-type/*))
+
+(defn assoc-dissoc
+  "Called like `(assoc m k v)`, this does [[assoc]] if `(some? v)`, and [[dissoc]] if not.
+
+  Put another way: `k` will either be set to `v`, or removed.
+
+  Note that if `v` is `false`, it will be handled with [[assoc]]; only `nil` causes a [[dissoc]]."
+  [m k v]
+  (if (some? v)
+    (assoc m k v)
+    (dissoc m k)))

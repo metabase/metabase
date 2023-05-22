@@ -167,7 +167,6 @@
                       "ORDER BY ATTEMPTS.DATE ASC")
                  (some-> (qp/compile query) :query pretty-sql))))))))
 
-
 (deftest check-action-commands-test
   (mt/test-driver :h2
     (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
@@ -183,12 +182,15 @@
       "truncate table venues"
       "insert into venues values (1, 'Chicken Chow')"
       "merge into venues key(1) values (1, 'Chicken Chow')"
-      "merge into venues using (select 1 as id) as source on (venues.id = source.id) when matched then update set name = 'Chicken Chow';")
+      "merge into venues using (select 1 as id) as source on (venues.id = source.id) when matched then update set name = 'Chicken Chow';"
+      "create table venues (id int, name varchar(255))"
+      "drop table venues"
+      "update venues set name = 'bill'"
+      "insert into venues (name) values ('bill')"
+      "create table venues"
+      "alter table venues add column address varchar(255)")
 
     (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
-      "create table venues (id int, name varchar(255))"
-      "alter table venues add column address varchar(255)"
-      "drop table venues"
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
        EXEC ('open -a Calculator.app')"
@@ -272,3 +274,10 @@
                     (mt/user-http-request :crowberto
                                           :post 200
                                           (format "action/%s/execute" action-id))))))))))
+
+(deftest syncable-schemas-test
+  (mt/test-driver :h2
+    (testing "`syncable-schemas` should return schemas that should be synced"
+      (mt/with-empty-db
+        (is (= #{"PUBLIC"}
+               (driver/syncable-schemas driver/*driver* (mt/id))))))))

@@ -1,61 +1,52 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { createMockPopularItem } from "metabase-types/api/mocks";
-import HomePopularSection, {
-  HomePopularSectionProps,
-} from "./HomePopularSection";
+import { renderWithProviders } from "__support__/ui";
+import { setupPopularItemsEndpoints } from "__support__/server-mocks";
+import { PopularItem } from "metabase-types/api";
+import HomePopularSection from "./HomePopularSection";
+
+const setup = (items: PopularItem[]) => {
+  setupPopularItemsEndpoints(items);
+  renderWithProviders(<HomePopularSection />);
+};
 
 describe("HomePopularSection", () => {
-  it("should render a list of items of the same type", () => {
-    const props = getProps({
-      popularItems: [
-        createMockPopularItem({
-          model: "dashboard",
-          model_object: {
-            name: "Metrics",
-          },
-        }),
-        createMockPopularItem({
-          model: "dashboard",
-          model_object: {
-            name: "Revenue",
-          },
-        }),
-      ],
-    });
+  it("should render a list of items of the same type", async () => {
+    setup([
+      createMockPopularItem({
+        model: "dashboard",
+        model_object: {
+          name: "Metrics",
+        },
+      }),
+      createMockPopularItem({
+        model: "dashboard",
+        model_object: {
+          name: "Revenue",
+        },
+      }),
+    ]);
 
-    render(<HomePopularSection {...props} />);
-
-    expect(screen.getByText(/popular dashboards/)).toBeInTheDocument();
+    expect(await screen.findByText(/popular dashboards/)).toBeInTheDocument();
   });
 
-  it("should render a list of items of different types", () => {
-    const props = getProps({
-      popularItems: [
-        createMockPopularItem({
-          model: "dashboard",
-          model_object: {
-            name: "Metrics",
-          },
-        }),
-        createMockPopularItem({
-          model: "card",
-          model_object: {
-            name: "Revenue",
-          },
-        }),
-      ],
-    });
+  it("should render a list of items of different types", async () => {
+    setup([
+      createMockPopularItem({
+        model: "dashboard",
+        model_object: {
+          name: "Metrics",
+        },
+      }),
+      createMockPopularItem({
+        model: "card",
+        model_object: {
+          name: "Revenue",
+        },
+      }),
+    ]);
 
-    render(<HomePopularSection {...props} />);
-
-    expect(screen.getByText(/popular items/)).toBeInTheDocument();
+    expect(await screen.findByText(/popular items/)).toBeInTheDocument();
   });
-});
-
-const getProps = (
-  opts?: Partial<HomePopularSectionProps>,
-): HomePopularSectionProps => ({
-  popularItems: [],
-  ...opts,
 });

@@ -8,7 +8,7 @@
     :as sql.params.substitution]
    [metabase.models :refer [Field]]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel honeysql->replacement-snippet-info-test
   (testing "make sure we handle quotes inside names correctly!"
@@ -23,7 +23,7 @@
               :prepared-statement-args ["Doohickey"]}
              (#'sql.params.substitution/field-filter->replacement-snippet-info
               :h2
-              {:field (db/select-one Field :id (mt/id :venues :name))
+              {:field (t2/select-one Field :id (mt/id :venues :name))
                :value {:type  :string/=
                        :value ["Doohickey"]}})))))
   (testing "Compound filters should be wrapped in parens"
@@ -34,10 +34,10 @@
                (#'sql.params.substitution/field-filter->replacement-snippet-info
                 :h2
                 (params/map->FieldFilter
-                 {:field (db/select-one Field :id (mt/id :people :state))
+                 {:field (t2/select-one Field :id (mt/id :people :state))
                   :value {:type :string/!=, :slug "state", :value ["OR"]}}))))))))
 
-(deftest ^:paralel card-with-params->replacement-snippet-test
+(deftest ^:parallel card-with-params->replacement-snippet-test
   (testing "Make sure Card params are preserved when expanding a Card reference (#12236)"
     (is (= {:replacement-snippet     "(SELECT * FROM table WHERE x LIKE ?)"
             :prepared-statement-args ["G%"]}

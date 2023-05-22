@@ -39,7 +39,7 @@ const DatabaseSyncScheduleField = ({
       <SchedulePicker
         schedule={value ?? DEFAULT_SCHEDULE}
         scheduleOptions={SCHEDULE_OPTIONS}
-        textBeforeInterval={t`Scan`}
+        textBeforeInterval={t`Sync`}
         minutesOnHourPicker
         onScheduleChange={handleScheduleChange}
       />
@@ -47,4 +47,5 @@ const DatabaseSyncScheduleField = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseSyncScheduleField;

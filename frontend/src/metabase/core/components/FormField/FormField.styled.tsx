@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import React from "react";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import { FieldAlignment, FieldOrientation } from "./types";
@@ -7,9 +6,12 @@ import { FieldAlignment, FieldOrientation } from "./types";
 export interface FormCaptionProps {
   alignment: FieldAlignment;
   orientation: FieldOrientation;
+  hasDescription: boolean;
 }
 
 export const FieldCaption = styled.div<FormCaptionProps>`
+  align-self: ${props =>
+    props.orientation !== "vertical" && !props.hasDescription ? "center" : ""};
   margin-left: ${props =>
     props.orientation === "horizontal" &&
     props.alignment === "start" &&
@@ -38,10 +40,16 @@ export const OptionalTag = styled.span`
   margin-left: 0.25rem;
 `;
 
-export const FieldLabelContainer = styled.div`
+interface FieldLabelContainerProps {
+  orientation: FieldOrientation;
+  hasDescription: boolean;
+}
+
+export const FieldLabelContainer = styled.div<FieldLabelContainerProps>`
   display: flex;
   align-items: center;
-  margin-bottom: 0.5em;
+  margin-bottom: ${props =>
+    props.orientation === "vertical" || props.hasDescription ? "0.5em" : ""};
 `;
 
 export const FieldLabelError = styled.span`
@@ -94,13 +102,3 @@ export const FieldRoot = styled.div<FieldRootProps>`
     }
   }
 `;
-
-export const FieldLabelWithContainer = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => (
-  <FieldLabelContainer>
-    <FieldLabel hasError={false}>{children}</FieldLabel>
-  </FieldLabelContainer>
-);

@@ -27,7 +27,7 @@
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -242,7 +242,7 @@
 
 (defmethod metabase-instance FieldDefinition
   [this table]
-  (db/select-one Field
+  (t2/select-one Field
                  :table_id    (u/the-id table)
                  :%lower.name (u/lower-case-en (:field-name this))
                  {:order-by [[:id :asc]]}))
@@ -252,7 +252,7 @@
   ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them
   ;; like Oracle
   (letfn [(table-with-name [table-name]
-            (db/select-one Table
+            (t2/select-one Table
                            :db_id       (:id database)
                            :%lower.name table-name
                            {:order-by [[:id :asc]]}))]
@@ -264,7 +264,7 @@
   (assert (string? database-name))
   (assert (keyword? driver))
   (mdb/setup-db!)
-  (db/select-one Database
+  (t2/select-one Database
                  :name    database-name
                  :engine (u/qualified-name driver)
                  {:order-by [[:id :asc]]}))
@@ -330,17 +330,6 @@
 
 (defmethod ddl.i/format-name ::test-extensions [_ table-or-field-name] table-or-field-name)
 
-(defmulti has-questionable-timezone-support?
-  "Does this driver have \"questionable\" timezone support? (i.e., does it group things by UTC instead of the
-  `US/Pacific` when we're testing?). Defaults to `(not (driver/supports? driver) :set-timezone)`."
-  {:arglists '([driver])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod has-questionable-timezone-support? ::test-extensions [driver]
-  (not (driver/supports? driver :set-timezone)))
-
-
 (defmulti id-field-type
   "Return the `base_type` of the `id` Field (e.g. `:type/Integer` or `:type/BigInteger`). Defaults to `:type/Integer`."
   {:arglists '([driver])}
@@ -397,7 +386,7 @@
 
   ([_driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}
-   (first (qp/query->expected-cols {:database (db/select-one-field :db_id Table :id table-id)
+   (first (qp/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
                                     :type     :query
                                     :query    {:source-table table-id
                                                :aggregation  [[aggregation-type [:field-id field-id]]]}}))))

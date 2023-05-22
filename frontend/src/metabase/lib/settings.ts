@@ -162,6 +162,10 @@ class MetabaseSettings {
     return this.get("anon-tracking-enabled") || false;
   }
 
+  uploadsEnabled() {
+    return !!(this.get("uploads-enabled") && this.get("uploads-database-id"));
+  }
+
   googleAnalyticsEnabled() {
     return this.get("ga-enabled") || false;
   }
@@ -287,6 +291,10 @@ class MetabaseSettings {
     return this.isHosted() || this.isEnterprise();
   }
 
+  isMetabotEnabled() {
+    return this.get("is-metabot-enabled");
+  }
+
   passwordComplexityRequirements(): PasswordComplexity {
     return this.get("password-complexity") || {};
   }
@@ -334,4 +342,5 @@ function makeRegexTest(property: string, regex: RegExp) {
 const initValues =
   typeof window !== "undefined" ? _.clone(window.MetabaseBootstrap) : null;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default new MetabaseSettings(initValues);

@@ -45,6 +45,7 @@ describe("scenarios > question > joined questions", () => {
     popover().contains("Product ID").click();
 
     visualize();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
 
     cy.findByTestId("question-table-badges").within(() => {
@@ -62,29 +63,36 @@ describe("scenarios > question > joined questions", () => {
       cy.wait("@dataset");
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rating is equal to 2");
 
     // Post-join aggregation (metabase#11452):
     cy.icon("notebook").click();
     summarize({ mode: "notebook" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Average of ...").click();
     popover().contains(joinedTable).click();
     popover().contains("Rating").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     popover().contains(joinedTable).click();
     popover().contains("Reviewer").click();
 
     visualize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rating is equal to 2");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 89 rows");
 
     // Make sure UI overlay doesn't obstruct viewing results after we save this question (metabase#13468)
     saveQuestion();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rating is equal to 2");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 89 rows");
 
     function saveQuestion() {
@@ -110,20 +118,23 @@ describe("scenarios > question > joined questions", () => {
 
     // start a custom question with question a
     startNewQuestion();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Saved Questions").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("question a").click();
 
     // join to question b
     cy.icon("join_left_outer").click();
 
     popover().within(() => {
-      cy.findByTextEnsureVisible("Sample Database").click({ force: true });
       cy.findByTextEnsureVisible("Saved Questions").click();
       cy.findByText("question b").click();
     });
 
     // select the join columns
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("A_COLUMN").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("B_COLUMN").click());
 
     visualize();
@@ -134,12 +145,19 @@ describe("scenarios > question > joined questions", () => {
       cy.findByText("question a");
       cy.findByText("question b");
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A_COLUMN");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question 5 → B Column");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 1 row");
   });
 
   it("should allow joins based on saved questions (metabase#13000, metabase#13649, metabase#13744)", () => {
+    cy.intercept("GET", `/api/table/${PRODUCTS_ID}/query_metadata`).as(
+      "metadata",
+    );
+
     cy.createQuestion({
       name: "Q1",
       query: {
@@ -165,6 +183,8 @@ describe("scenarios > question > joined questions", () => {
       cy.findByText("Saved Questions").click();
       cy.findByText("Q1").click();
     });
+
+    cy.wait("@metadata");
 
     cy.icon("join_left_outer").click();
 
@@ -196,6 +216,7 @@ describe("scenarios > question > joined questions", () => {
 
     visualize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sum Divide");
   });
 
@@ -263,21 +284,24 @@ describe("scenarios > question > joined questions", () => {
 
     // Join two previously saved questions
     startNewQuestion();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Saved Questions").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("12928_Q1").click();
     cy.wait("@cardQueryMetadata");
 
     cy.icon("join_left_outer").click();
 
     popover().within(() => {
-      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Saved Questions").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("12928_Q2").click();
     cy.wait("@cardQueryMetadata");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(/Products? → Category/).click();
 
     popover()
@@ -332,6 +356,7 @@ describe("scenarios > question > joined questions", () => {
     });
 
     cy.get(".dot").eq(2).click({ force: true });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("X-ray").click();
 
     cy.wait("@xray").then(xhr => {
@@ -347,6 +372,7 @@ describe("scenarios > question > joined questions", () => {
       "How this metric is distributed across different numbers",
     );
     // Main title
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(/^A closer look at/);
     // Make sure at least one card is rendered
     cy.get(".DashCard");
@@ -371,7 +397,9 @@ describe("scenarios > question > joined questions", () => {
     cy.icon("join_left_outer").click();
 
     popover().findByText("Sample Database").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Saved Questions").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("15578").click();
 
     popover().findByText("ID").click();
@@ -403,6 +431,7 @@ describe("scenarios > question > joined questions", () => {
 
     // 415 rows mean the join is done correctly,
     // (join on product's FK + join on the same "created_at" field)
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 415 rows");
   });
 
@@ -449,9 +478,11 @@ describe("scenarios > question > joined questions", () => {
     summarize({ mode: "notebook" });
     selectFromDropdown("Count of rows");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     selectFromDropdown("Created At");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
     selectFromDropdown("Products");
     selectFromDropdown("Count");

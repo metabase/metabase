@@ -32,76 +32,73 @@ const dashboardFilter = {
   type: "category",
 };
 
+const dashboardDetails = {
+  parameters: [dashboardFilter],
+};
+
 ["nodata+nosql", "nosql"].forEach(test => {
-  describe.skip("issue 15163", () => {
+  describe("issue 15163", () => {
     beforeEach(() => {
-      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
       restore();
       cy.signInAsAdmin();
 
-      cy.createNativeQuestion(nativeQuery).then(({ body: { id: card_id } }) => {
-        cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
-          cy.addFilterToDashboard({ filter: dashboardFilter, dashboard_id });
-
-          // Add previously created question to the dashboard
-          cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
-            cardId: card_id,
-            row: 0,
-            col: 0,
-            size_x: 10,
-            size_y: 8,
-          }).then(({ body: { id } }) => {
-            // Connect filter to that question
-            cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-              cards: [
+      cy.createNativeQuestionAndDashboard({
+        questionDetails: nativeQuery,
+        dashboardDetails,
+      }).then(({ body: { id, card_id, dashboard_id } }) => {
+        // Connect filter to the dashboard card
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 10,
+              size_y: 8,
+              series: [],
+              visualization_settings: {
+                "card.title": "New Title",
+              },
+              parameter_mappings: [
                 {
-                  id,
+                  parameter_id: dashboardFilter.id,
                   card_id,
-                  row: 0,
-                  col: 0,
-                  size_x: 10,
-                  size_y: 8,
-                  series: [],
-                  visualization_settings: {
-                    "card.title": "New Title",
-                  },
-                  parameter_mappings: [
-                    {
-                      parameter_id: dashboardFilter.id,
-                      card_id,
-                      target: ["dimension", ["template-tag", "cat"]],
-                    },
-                  ],
+                  target: ["dimension", ["template-tag", "cat"]],
                 },
               ],
-            });
-          });
-
-          if (test === "nosql") {
-            cy.updatePermissionsGraph({
-              [COLLECTION_GROUP]: {
-                1: { data: { schemas: "all", native: "none" } },
-              },
-            });
-          }
-
-          cy.signIn("nodata");
-
-          // Visit dashboard and set the filter through URL
-          cy.visit(`/dashboard/${dashboard_id}?category=Gizmo`);
+            },
+          ],
         });
+
+        if (test === "nosql") {
+          cy.updatePermissionsGraph({
+            [COLLECTION_GROUP]: {
+              1: { data: { schemas: "all", native: "none" } },
+            },
+          });
+        }
+
+        cy.signIn("nodata");
+
+        // Visit dashboard and set the filter through URL
+        cy.visit(`/dashboard/${dashboard_id}?category=Gizmo`);
       });
     });
 
     it(`${test.toUpperCase()} version:\n should be able to view SQL question when accessing via dashboard with filters connected to modified card without SQL permissions (metabase#15163)`, () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New Title").click();
 
-      cy.wait("@dataset", { timeout: 5000 }).then(xhr => {
+      cy.wait("@cardQuery", { timeout: 5000 }).then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
 
-      cy.get(".ace_content").should("not.exist");
+      cy.get(".ace_content").should("not.be.visible");
+      cy.get(".cellData").should("contain", "51");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row");
     });
   });

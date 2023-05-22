@@ -2,12 +2,11 @@
 // @ts-nocheck
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
-import {
+import type {
   Filter as FilterObject,
   FieldFilter,
-  Field,
-} from "metabase-types/types/Query";
-import { FilterOperator } from "metabase-types/types/Metadata";
+  FieldReference,
+} from "metabase-types/api";
 import { isExpression } from "metabase-lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase-lib/operators/utils";
 import {
@@ -24,15 +23,17 @@ import {
   getFilterOptions,
   setFilterOptions,
 } from "metabase-lib/queries/utils/filter";
+import type { FilterOperator } from "../../deprecated-types";
 import Dimension from "../../Dimension";
 import StructuredQuery from "../StructuredQuery";
 import MBQLClause from "./MBQLClause";
 
-export interface FilterDisplayNameOpts {
+interface FilterDisplayNameOpts {
   includeDimension?: boolean;
   includeOperator?: boolean;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Filter extends MBQLClause {
   /**
    * Replaces the filter in the parent query and returns the new StructuredQuery
@@ -254,7 +255,7 @@ export default class Filter extends MBQLClause {
   }
 
   setDimension(
-    fieldRef: Field | null | undefined,
+    fieldRef: FieldReference | null | undefined,
     {
       useDefaultOperator = false,
     }: {

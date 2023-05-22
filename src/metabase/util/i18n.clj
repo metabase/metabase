@@ -167,7 +167,7 @@
   (validate-number-of-args format-string args)
   `(SiteLocalizedString. ~format-string ~(vec args) {}))
 
-(def ^String ^{:arglists '([& args])} str*
+(def ^String ^{:arglists '([& args]) :redef true} str*
   "Ensures that `trs`/`tru` isn't called prematurely, during compilation."
   (if *compile-files*
     (fn [& _]

@@ -294,8 +294,8 @@ describe("getRevisionDescription | dashboards", () => {
   it("handles added card revision", () => {
     const revision = getSimpleRevision({
       field: "cards",
-      before: [1, 2],
-      after: [1, 2, 3],
+      before: [{ id: 1 }, { id: 2 }],
+      after: [{ id: 1 }, { id: 2 }, { id: 3 }],
     });
     expect(getRevisionDescription(revision)).toBe("added a card");
   });
@@ -303,8 +303,8 @@ describe("getRevisionDescription | dashboards", () => {
   it("handles added multiple cards revision", () => {
     const revision = getSimpleRevision({
       field: "cards",
-      before: [1, 2],
-      after: [1, 2, 3, 4, 5],
+      before: [{ id: 1 }, { id: 2 }],
+      after: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }],
     });
     expect(getRevisionDescription(revision)).toBe("added 3 cards");
   });
@@ -313,7 +313,7 @@ describe("getRevisionDescription | dashboards", () => {
     const revision = getRevision({
       before: null,
       after: {
-        cards: [null, null, 1],
+        cards: [null, null, { id: 1 }],
       },
     });
     expect(getRevisionDescription(revision)).toBe("added a card");
@@ -323,7 +323,7 @@ describe("getRevisionDescription | dashboards", () => {
     const revision = getRevision({
       before: null,
       after: {
-        cards: [1],
+        cards: [{ id: 1 }],
       },
     });
     expect(getRevisionDescription(revision)).toBe("added a card");
@@ -332,8 +332,8 @@ describe("getRevisionDescription | dashboards", () => {
   it("handles removed card revision", () => {
     const revision = getSimpleRevision({
       field: "cards",
-      before: [1, 2],
-      after: [1],
+      before: [{ id: 1 }, { id: 2 }],
+      after: [{ id: 1 }],
     });
     expect(getRevisionDescription(revision)).toBe("removed a card");
   });
@@ -341,8 +341,8 @@ describe("getRevisionDescription | dashboards", () => {
   it("filters null card values for removed card revision", () => {
     const revision = getSimpleRevision({
       field: "cards",
-      before: [null, 1, 2],
-      after: [null, 1],
+      before: [null, { id: 1 }, { id: 2 }],
+      after: [null, { id: 1 }],
     });
     expect(getRevisionDescription(revision)).toBe("removed a card");
   });
@@ -350,8 +350,8 @@ describe("getRevisionDescription | dashboards", () => {
   it("handles removed cards revision", () => {
     const revision = getSimpleRevision({
       field: "cards",
-      before: [1, 2, 3],
-      after: [1],
+      before: [{ id: 1 }, { id: 2 }, { id: 3 }],
+      after: [{ id: 1 }],
     });
     expect(getRevisionDescription(revision)).toBe("removed 2 cards");
   });
@@ -359,7 +359,7 @@ describe("getRevisionDescription | dashboards", () => {
   it("handles all cards removed revision", () => {
     const revision = getRevision({
       before: {
-        cards: [1, 2, 3],
+        cards: [{ id: 1 }, { id: 2 }, { id: 3 }],
       },
       after: null,
     });
@@ -369,8 +369,8 @@ describe("getRevisionDescription | dashboards", () => {
   it("handles rearranged cards revision", () => {
     const revision = getSimpleRevision({
       field: "cards",
-      before: [1, 2, 3],
-      after: [2, 1, 3],
+      before: [{ id: 1 }, { id: 2 }, { id: 3 }],
+      after: [{ id: 2 }, { id: 1 }, { id: 3 }],
     });
     expect(getRevisionDescription(revision)).toBe("rearranged the cards");
   });
@@ -449,16 +449,19 @@ describe("getRevisionEvents", () => {
             message="reverted to an earlier revision"
           />
         ),
+        titleText: "Bar reverted to an earlier revision",
         isRevertable: false,
         revision: latestRevisionEvent,
       }),
       getExpectedEvent({
         title: <RevisionTitle username="Foo" message="added a description" />,
+        titleText: "Foo added a description",
         isRevertable: false,
         revision: changeEvent,
       }),
       getExpectedEvent({
         title: <RevisionTitle username="Foo" message="created this" />,
+        titleText: "Foo created this",
         isRevertable: false,
         revision: creationEvent,
       }),
@@ -496,6 +499,7 @@ describe("getRevisionEvents", () => {
     expect(timelineEvents).toEqual([
       getExpectedEvent({
         title: <RevisionTitle username="Foo" message="added a description" />,
+        titleText: "Foo added a description",
         isRevertable: false,
         revision: changeEvent,
       }),
@@ -518,6 +522,7 @@ describe("getRevisionEvents", () => {
     expect(timelineEvents).toEqual([
       getExpectedEvent({
         title: <RevisionTitle username="Foo" message="added a description" />,
+        titleText: "Foo added a description",
         isRevertable: false,
         revision: changeEvent,
       }),
@@ -537,6 +542,7 @@ describe("getRevisionEvents", () => {
     expect(timelineEvents).toEqual([
       getExpectedEvent({
         title: <RevisionTitle username="You" message="created this" />,
+        titleText: "You created this",
         isRevertable: false,
         revision: event,
       }),

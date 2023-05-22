@@ -10,7 +10,7 @@
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest permissions-group-apis-test
   (testing "/api/permissions/group"
@@ -37,9 +37,9 @@
                       [PermissionsGroup           [{group-id :id} {:name "Test delete group"}]
                        PermissionsGroupMembership [_ {:group_id group-id, :user_id user-id}]]
                       (when group-manager?
-                        (db/update-where! PermissionsGroupMembership {:user_id  user-id
-                                                                      :group_id group-id}
-                                          :is_group_manager true))
+                        (t2/update! PermissionsGroupMembership {:user_id  user-id
+                                                                :group_id group-id}
+                                    {:is_group_manager true}))
                       (mt/user-http-request user
                                             :delete status
                                             (format "permissions/group/%d" group-id))))))]
@@ -68,9 +68,9 @@
               (delete-group :crowberto 204 false))
 
             (testing "succeed if users access group that they are manager of"
-              (db/update-where! PermissionsGroupMembership {:user_id  (:id user)
-                                                            :group_id (:id group)}
-                                :is_group_manager true)
+              (t2/update! PermissionsGroupMembership {:user_id  (:id user)
+                                                      :group_id (:id group)}
+                          {:is_group_manager true})
               (testing "non-admin user can only view groups that are manager of"
                 (is (= #{(:id group)}
                        (set (map :id (get-groups user 200))))))
@@ -80,7 +80,7 @@
               (delete-group user 204 true)
 
               (testing "admins could view all groups"
-                (is (= (db/select-field :name PermissionsGroup)
+                (is (= (t2/select-fn-set :name PermissionsGroup)
                        (set (map :name (get-groups :crowberto 200)))))))))))))
 
 (deftest memebership-apis-test
@@ -168,9 +168,9 @@
                 [group-2  {:name "New Group 2"}
                  user-2   [group-2]]
                 (testing "succeed if users access group that they are manager of"
-                  (db/update-where! PermissionsGroupMembership {:user_id  (:id user-2)
-                                                                :group_id (:id group-2)}
-                                    :is_group_manager true)
+                  (t2/update! PermissionsGroupMembership {:user_id  (:id user-2)
+                                                          :group_id (:id group-2)}
+                              {:is_group_manager true})
                   (get-membership user-2 200)
                   (add-membership user-2 200 group-2 false)
                   (update-membership user-2 200 group-2 false)
@@ -190,9 +190,9 @@
           (testing "if advanced-permissions is enabled, "
             (premium-features-test/with-premium-features #{:advanced-permissions}
               (testing "succeed if users access group that they are manager of,"
-                (db/update-where! PermissionsGroupMembership {:user_id  (:id user)
-                                                              :group_id (:id group)}
-                                  :is_group_manager true)
+                (t2/update! PermissionsGroupMembership {:user_id  (:id user)
+                                                        :group_id (:id group)}
+                            {:is_group_manager true})
                 (testing "can set is_group_manager=true"
                   (add-membership :crowberto 200 group true)
                   (add-membership user 200 group true))
@@ -212,7 +212,7 @@
                                                 :is_group_manager true})))))
 
               (testing "Admin can could view all groups"
-                (is (= (db/select-field :id PermissionsGroup)
+                (is (= (t2/select-fn-set :id PermissionsGroup)
                        (membership->groups-ids (get-membership :crowberto 200))))))))))))
 
 (deftest get-users-api-test
@@ -234,9 +234,9 @@
               (get-users user 403)
               (get-users :crowberto 200))
             (testing "succeed if users is a group manager and returns additional fields"
-              (db/update-where! PermissionsGroupMembership {:user_id  (:id user)
-                                                            :group_id (:id group)}
-                                :is_group_manager true)
+              (t2/update! PermissionsGroupMembership {:user_id  (:id user)
+                                                      :group_id (:id group)}
+                          {:is_group_manager true})
               (is (subset? (set user/group-manager-visible-columns)
                            (-> (:data (get-users user 200))
                                first
@@ -290,9 +290,9 @@
               (get-user :crowberto 200))
 
             (testing "succeed if users is a group manager and returns additional fields"
-              (db/update-where! PermissionsGroupMembership {:user_id  (:id user)
-                                                            :group_id (:id group)}
-                                :is_group_manager true)
+              (t2/update! PermissionsGroupMembership {:user_id  (:id user)
+                                                      :group_id (:id group)}
+                          {:is_group_manager true})
               (is (= [{:id               (:id (perms-group/all-users))
                        :is_group_manager false}]
                      (:user_group_memberships (get-user user 200)))))))))))
@@ -310,7 +310,7 @@
 
                 (add-user-to-group [req-user status group-to-add]
                   ;; ensure `user-to-update` is not in `group-to-add`
-                  (db/delete! PermissionsGroupMembership
+                  (t2/delete! PermissionsGroupMembership
                               :user_id (:id user-to-update)
                               :group_id (:id group-to-add))
                   (let [current-user-group-membership (gm/user-group-memberships user-to-update)
@@ -324,7 +324,7 @@
                 (remove-user-from-group [req-user status group-to-remove]
                   (u/ignore-exceptions
                    ;; ensure `user-to-update` is in `group-to-remove`
-                   (db/insert! PermissionsGroupMembership
+                   (t2/insert! PermissionsGroupMembership
                                :user_id (:id user-to-update)
                                :group_id (:id group-to-remove)))
                   (let [current-user-group-membership (gm/user-group-memberships user-to-update)
@@ -348,16 +348,16 @@
           (testing "if `advanced-permissions` is enabled"
             (premium-features-test/with-premium-features #{:advanced-permissions}
               (testing "Group Managers"
-                (db/update-where! PermissionsGroupMembership {:user_id  (:id user)
-                                                              :group_id (:id group)}
-                                  :is_group_manager true)
+                (t2/update! PermissionsGroupMembership {:user_id  (:id user)
+                                                        :group_id (:id group)}
+                            {:is_group_manager true})
 
                 (testing "Can't edit users' info"
-                  (let [current-user-first-name (db/select-one-field :first_name User :id (:id user))]
+                  (let [current-user-first-name (t2/select-one-fn :first_name User :id (:id user))]
                     (update-user-firstname user 200)
                     ;; call still success but first name won't get updated
                     (is (= current-user-first-name
-                           (db/select-one-field :first_name User :id (:id user))))))
+                           (t2/select-one-fn :first_name User :id (:id user))))))
 
                 (testing "Can add/remove user to groups they're manager of"
                   (is (= (set [{:id               (:id (perms-group/all-users))

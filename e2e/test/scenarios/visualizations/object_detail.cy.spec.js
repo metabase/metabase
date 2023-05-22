@@ -4,11 +4,20 @@ import {
   openOrdersTable,
   openPeopleTable,
   openProductsTable,
+  visitQuestionAdhoc,
+  resetTestTable,
+  resyncDatabase,
+  getTableId,
+  visitPublicQuestion,
+  visitPublicDashboard,
 } from "e2e/support/helpers";
+
+import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 const FIRST_ORDER_ID = 9676;
 const SECOND_ORDER_ID = 10874;
@@ -23,6 +32,12 @@ const TEST_QUESTION = {
       [">", ["field", ORDERS.TAX, null], 10],
       ["not-null", ["field", ORDERS.DISCOUNT, null]],
     ],
+  },
+};
+
+const TEST_PEOPLE_QUESTION = {
+  query: {
+    "source-table": PEOPLE_ID,
   },
 };
 
@@ -110,7 +125,25 @@ describe("scenarios > question > object details", () => {
     cy.createQuestion(TEST_QUESTION).then(({ body: { id } }) => {
       cy.visit(`/question/${id}/${FILTERED_OUT_ID}`);
       cy.wait("@cardQuery");
-      cy.findByText("The page you asked for couldn't be found.");
+      cy.findByRole("dialog").within(() => {
+        cy.findByText(/We're a little lost/i);
+      });
+    });
+  });
+
+  it("can view details of an out-of-range record", () => {
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    // since we only fetch 2000 rows, this ID is out of range
+    // and has to be fetched separately
+    const OUT_OF_RANGE_ID = 2150;
+
+    cy.createQuestion(TEST_PEOPLE_QUESTION).then(({ body: { id } }) => {
+      cy.visit(`/question/${id}/${OUT_OF_RANGE_ID}`);
+      cy.wait("@cardQuery");
+      cy.findByTestId("object-detail").within(() => {
+        // should appear in header and body of the modal
+        cy.findAllByText(/Marcelina Kuhn/i).should("have.length", 2);
+      });
     });
   });
 
@@ -144,6 +177,7 @@ describe("scenarios > question > object details", () => {
     cy.findByTestId("qb-filters-panel").findByText(
       `Product ID is ${PRODUCT_ID}`,
     );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`Showing ${EXPECTED_LINKED_ORDERS_COUNT} rows`);
   });
 
@@ -173,10 +207,57 @@ describe("scenarios > question > object details", () => {
 
     openProductsTable({ limit: 5 });
 
-    cy.findByTextEnsureVisible("Rustic Paper Wallet").click();
+    cy.findByTestId("TableInteractive-root")
+      .findByTextEnsureVisible("Rustic Paper Wallet")
+      .click();
 
     cy.location("search").should("eq", "?objectId=Rustic%20Paper%20Wallet");
     cy.findByTestId("object-detail").contains("Rustic Paper Wallet");
+  });
+
+  it("should work as a viz display type", () => {
+    const questionDetails = {
+      display: "object",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+
+          joins: [
+            {
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+              ],
+              alias: "Products",
+            },
+            {
+              fields: "all",
+              "source-table": PEOPLE_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.USER_ID, null],
+                ["field", PEOPLE.ID, { "join-alias": "People" }],
+              ],
+              alias: "People",
+            },
+          ],
+        },
+        type: "query",
+      },
+    };
+    visitQuestionAdhoc(questionDetails);
+
+    cy.findByTestId("object-detail");
+
+    cy.log("metabase(#29023)");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("People → Name").scrollIntoView().should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(/Item 1 of/i).should("be.visible");
   });
 });
 
@@ -223,3 +304,107 @@ function changeSorting(columnName, direction) {
   });
   cy.wait("@dataset");
 }
+
+["postgres", "mysql"].forEach(dialect => {
+  describe(
+    `Object Detail > composite keys (${dialect})`,
+    { tags: ["@external"] },
+    () => {
+      const TEST_TABLE = "composite_pk_table";
+
+      beforeEach(() => {
+        resetTestTable({ type: dialect, table: TEST_TABLE });
+        restore(`${dialect}-writable`);
+        cy.signInAsAdmin();
+        resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+      });
+
+      it("can show object detail modal for items with composite keys", () => {
+        getTableId({ name: TEST_TABLE }).then(tableId => {
+          cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
+        });
+
+        cy.icon("expand").first().click();
+
+        cy.findByRole("dialog").within(() => {
+          cy.findAllByText("Duck").should("have.length", 2);
+          cy.icon("chevrondown").click();
+          cy.findAllByText("Horse").should("have.length", 2);
+        });
+      });
+    },
+  );
+
+  describe(
+    `Object Detail > no primary keys (${dialect})`,
+    { tags: ["@external"] },
+    () => {
+      const TEST_TABLE = "no_pk_table";
+
+      beforeEach(() => {
+        resetTestTable({ type: dialect, table: TEST_TABLE });
+        restore(`${dialect}-writable`);
+        cy.signInAsAdmin();
+        resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+      });
+
+      it("can show object detail modal for items with no primary key", () => {
+        getTableId({ name: TEST_TABLE }).then(tableId => {
+          cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
+        });
+
+        cy.icon("expand").first().click();
+
+        cy.findByRole("dialog").within(() => {
+          cy.findAllByText("Duck").should("have.length", 2);
+          cy.icon("chevrondown").click();
+          cy.findAllByText("Horse").should("have.length", 2);
+        });
+      });
+    },
+  );
+});
+
+describe(`Object Detail > public`, () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("can view a public object detail question", () => {
+    cy.createQuestion({ ...TEST_QUESTION, display: "object" }).then(
+      ({ body: { id: questionId } }) => {
+        visitPublicQuestion(questionId);
+      },
+    );
+    cy.icon("warning").should("not.exist");
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("User ID").should("be.visible");
+      cy.findByText("1283").should("be.visible");
+    });
+
+    cy.findByTestId("pagination-footer").within(() => {
+      cy.findByText("Item 1 of 3").should("be.visible");
+    });
+  });
+
+  it("can view an object detail question on a public dashboard", () => {
+    cy.createQuestionAndDashboard({
+      questionDetails: { ...TEST_QUESTION, display: "object" },
+    }).then(({ body: { dashboard_id } }) => {
+      visitPublicDashboard(dashboard_id);
+    });
+
+    cy.icon("warning").should("not.exist");
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("User ID").should("be.visible");
+      cy.findByText("1283").should("be.visible");
+    });
+
+    cy.findByTestId("pagination-footer").within(() => {
+      cy.findByText("Item 1 of 3").should("be.visible");
+    });
+  });
+});

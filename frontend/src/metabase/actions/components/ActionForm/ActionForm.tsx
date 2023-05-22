@@ -1,12 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
-import type {
-  DraggableProvided,
-  OnDragEndResponder,
-  DroppableProvided,
-} from "react-beautiful-dnd";
 import type { FormikHelpers } from "formik";
 
 import Button from "metabase/core/components/Button";
@@ -15,176 +9,99 @@ import FormProvider from "metabase/core/components/FormProvider";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 
+import useActionForm from "metabase/actions/hooks/use-action-form";
+import {
+  getSubmitButtonColor,
+  getSubmitButtonLabel,
+} from "metabase/actions/utils";
+
 import type {
   ActionFormInitialValues,
-  ActionFormSettings,
-  FieldSettings,
-  WritebackParameter,
-  Parameter,
+  ParameterId,
   ParametersForActionExecution,
+  WritebackAction,
 } from "metabase-types/api";
 
-import { reorderFields } from "metabase/actions/containers/ActionCreator/FormCreator";
-import { FormFieldWidget } from "./ActionFormFieldWidget";
-import FormFieldEditor from "./FormFieldEditor";
-import {
-  ActionFormButtonContainer,
-  FormFieldEditorDragContainer,
-} from "./ActionForm.styled";
+import ActionFormFieldWidget from "../ActionFormFieldWidget";
 
-import { getForm, getFormValidationSchema } from "./utils";
+import { ActionFormButtonContainer } from "./ActionForm.styled";
 
-export interface ActionFormComponentProps {
-  parameters: WritebackParameter[] | Parameter[];
+interface ActionFormProps {
+  action: WritebackAction;
   initialValues?: ActionFormInitialValues;
-  isEditable?: boolean;
-  onClose?: () => void;
-  onSubmit?: (
-    params: ParametersForActionExecution,
+
+  // Parameters that shouldn't be displayed in the form
+  // Can be used to "lock" certain parameter values.
+  // E.g. when a value is coming from a dashboard filter.
+  // Hidden field values should still be included in initialValues,
+  // and they will be submitted together in batch.
+  hiddenFields?: ParameterId[];
+
+  onSubmit: (
+    parameters: ParametersForActionExecution,
     actions: FormikHelpers<ParametersForActionExecution>,
   ) => void;
-  submitTitle?: string;
-  submitButtonColor?: string;
-  formSettings?: ActionFormSettings;
-  setFormSettings?: (formSettings: ActionFormSettings) => void;
+  onClose?: () => void;
 }
 
-export const ActionForm = ({
-  parameters,
-  initialValues = {},
-  isEditable = false,
-  onClose,
+function ActionForm({
+  action,
+  initialValues: rawInitialValues = {},
+  hiddenFields = [],
   onSubmit,
-  submitTitle,
-  submitButtonColor = "primary",
-  formSettings,
-  setFormSettings,
-}: ActionFormComponentProps): JSX.Element => {
-  // allow us to change the color of the submit button
-  const submitButtonVariant = { [submitButtonColor]: true };
+  onClose,
+}: ActionFormProps): JSX.Element {
+  const { initialValues, form, validationSchema, getCleanValues } =
+    useActionForm({
+      action,
+      initialValues: rawInitialValues,
+    });
 
-  const isSettings = !!(formSettings && setFormSettings);
-
-  const form = useMemo(
-    () => getForm(parameters, formSettings?.fields),
-    [parameters, formSettings?.fields],
+  const editableFields = useMemo(
+    () => form.fields.filter(field => !hiddenFields.includes(field.name)),
+    [form, hiddenFields],
   );
 
-  const formValidationSchema = useMemo(
-    () => getFormValidationSchema(parameters, formSettings?.fields),
-    [parameters, formSettings?.fields],
+  const submitButtonProps = useMemo(() => {
+    const variant = getSubmitButtonColor(action);
+    return {
+      title: getSubmitButtonLabel(action),
+      [variant]: true,
+    };
+  }, [action]);
+
+  const handleSubmit = useCallback(
+    (
+      values: ParametersForActionExecution,
+      actions: FormikHelpers<ParametersForActionExecution>,
+    ) => onSubmit(getCleanValues(values), actions),
+    [getCleanValues, onSubmit],
   );
-
-  const handleDragEnd: OnDragEndResponder = ({ source, destination }) => {
-    if (!isSettings) {
-      return;
-    }
-
-    const oldOrder = source.index;
-    const newOrder = destination?.index ?? source.index;
-
-    const reorderedFields = reorderFields(
-      formSettings.fields ?? {},
-      oldOrder,
-      newOrder,
-    );
-    setFormSettings({
-      ...formSettings,
-      fields: reorderedFields,
-    });
-  };
-
-  const handleChangeFieldSettings = (newFieldSettings: FieldSettings) => {
-    if (!isSettings || !newFieldSettings?.id) {
-      return;
-    }
-
-    setFormSettings({
-      ...formSettings,
-      fields: {
-        ...formSettings.fields,
-        [newFieldSettings.id]: newFieldSettings,
-      },
-    });
-  };
-
-  const handleSubmit = (
-    values: ParametersForActionExecution,
-    actions: FormikHelpers<ParametersForActionExecution>,
-  ) => onSubmit?.(formValidationSchema.cast(values), actions);
-
-  if (isSettings) {
-    const fieldSettings = formSettings.fields || {};
-    return (
-      <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
-        <Form role="form" data-testid="action-form-editor">
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <Droppable droppableId="action-form-droppable">
-              {(provided: DroppableProvided) => (
-                <div {...provided.droppableProps} ref={provided.innerRef}>
-                  {form.fields.map((field, index) => (
-                    <Draggable
-                      key={`draggable-${field.name}`}
-                      draggableId={field.name}
-                      isDragDisabled={!isEditable}
-                      index={index}
-                    >
-                      {(provided: DraggableProvided) => (
-                        <FormFieldEditorDragContainer
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                        >
-                          <FormFieldEditor
-                            field={field}
-                            fieldSettings={fieldSettings[field.name]}
-                            isEditable={isEditable}
-                            onChange={handleChangeFieldSettings}
-                          />
-                        </FormFieldEditorDragContainer>
-                      )}
-                    </Draggable>
-                  ))}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
-        </Form>
-      </FormProvider>
-    );
-  }
-
-  const hasFormFields = !!form.fields.length;
 
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={formValidationSchema}
+      validationSchema={validationSchema}
       onSubmit={handleSubmit}
       enableReinitialize
     >
-      {({ dirty }) => (
-        <Form
-          disabled={!dirty && hasFormFields}
-          role="form"
-          data-testid="action-form"
-        >
-          {form.fields.map(field => (
-            <FormFieldWidget key={field.name} formField={field} />
-          ))}
+      <Form role="form" data-testid="action-form">
+        {editableFields.map(field => (
+          <ActionFormFieldWidget key={field.name} formField={field} />
+        ))}
 
-          <ActionFormButtonContainer>
-            {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
-            <FormSubmitButton
-              disabled={!dirty && hasFormFields}
-              title={submitTitle ?? t`Submit`}
-              {...submitButtonVariant}
-            />
-          </ActionFormButtonContainer>
+        <ActionFormButtonContainer>
+          {onClose && (
+            <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
+          )}
+          <FormSubmitButton {...submitButtonProps} />
+        </ActionFormButtonContainer>
 
-          <FormErrorMessage />
-        </Form>
-      )}
+        <FormErrorMessage />
+      </Form>
     </FormProvider>
   );
-};
+}
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default ActionForm;

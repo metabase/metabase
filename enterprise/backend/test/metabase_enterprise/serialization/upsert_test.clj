@@ -3,13 +3,13 @@
    [clojure.data :as data]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.upsert :as upsert]
+   [metabase.db.util :as mdb.u]
    [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric NativeQuerySnippet
                             Pulse Segment Table User]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan2.core :as t2]))
 
 (def ^:private same? (comp nil? second data/diff))
 
@@ -44,8 +44,8 @@
 ;; the new style. Feel free to give them better names - Cam
 (deftest maybe-upsert-many!-skip-test
   (mt/with-model-cleanup [Card]
-    (let [existing-ids (mapv (comp u/the-id (partial db/insert! Card)) @cards)
-          inserted-ids (vec (upsert/maybe-upsert-many! {:mode :skip} Card @cards))]
+    (let [existing-ids (sort (t2/insert-returning-pks! Card @cards))
+          inserted-ids (sort (vec (upsert/maybe-upsert-many! {:mode :skip} Card @cards)))]
       (is (= existing-ids inserted-ids)))))
 
 (deftest maybe-upsert-many!-same-objects-test
@@ -55,22 +55,22 @@
                 (let [[e1 e2]   @cards
                       [id1 id2] (upsert/maybe-upsert-many! {:mode mode} Card @cards)]
                   (is (every? (partial apply same?)
-                              [[(db/select-one Card :id id1) e1] [(db/select-one Card :id id2) e2]])))))]
+                              [[(t2/select-one Card :id id1) e1] [(t2/select-one Card :id id2) e2]])))))]
       (doseq [mode [:skip :update]]
         (test-mode mode)))))
 
 (deftest maybe-upsert-many!-update-test
   (mt/with-model-cleanup [Card]
     (let [[e1 e2]           @cards
-          id1               (u/the-id (db/insert! Card e1))
+          id1               (first (t2/insert-returning-pks! Card e1))
           e1-mutated        (mutate Card e1)
           [id1-mutated id2] (upsert/maybe-upsert-many! {:mode :update} Card [e1-mutated e2])]
       (testing "Card 1 ID"
         (is (= id1 id1-mutated)))
       (testing "Card 1"
-        (is (same? (db/select-one Card :id id1-mutated) e1-mutated)))
+        (is (same? (t2/select-one Card :id id1-mutated) e1-mutated)))
       (testing "Card 2"
-        (is (same? (db/select-one Card :id id2) e2))))))
+        (is (same? (t2/select-one Card :id id2) e2))))))
 
 (defn- dummy-entity [dummy-dashboard model entity instance-num]
   (cond
@@ -94,7 +94,7 @@
                       ;; create an additional entity so we're sure whe get the right one
                       model     [_ (dummy-entity dashboard model e1 1)]
                       model     [{id :id} (dummy-entity dashboard model e2 2)]]
-        (let [e (db/select-one model (models/primary-key model) id)]
+        (let [e (t2/select-one model (mdb.u/primary-key model) id)]
           ;; make sure that all columns in identity-condition actually exist in the model
           (is (= (set id-cond) (-> e
                                    (select-keys id-cond)

@@ -19,7 +19,7 @@ import {
   getPermissionWarningModal,
   getControlledDatabaseWarningModal,
 } from "../confirmations";
-import { SchemaEntityId } from "../../types";
+import { SchemaEntityId, PermissionSectionConfig } from "../../types";
 import { getGroupFocusPermissionsUrl } from "../../utils/urls";
 
 const buildAccessPermission = (
@@ -104,7 +104,7 @@ export const buildTablesPermissions = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   defaultGroup: Group,
-) => {
+): PermissionSectionConfig[] => {
   const accessPermission = buildAccessPermission(
     entityId,
     groupId,

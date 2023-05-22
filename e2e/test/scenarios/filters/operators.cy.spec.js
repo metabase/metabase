@@ -66,8 +66,11 @@ describe("operators in questions", () => {
   describe("fields have proper operators", () => {
     it("text operators", () => {
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Products").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filters to narrow your answer").click();
 
       popover().within(() => {
@@ -75,7 +78,7 @@ describe("operators in questions", () => {
         cy.findByText("Is").click();
       });
 
-      popover().within(() => {
+      cy.findByTestId("operator-select-list").within(() => {
         expected.text.expected.map(e => cy.contains(e).should("exist"));
         expected.text.unexpected.map(e => cy.contains(e).should("not.exist"));
       });
@@ -83,8 +86,11 @@ describe("operators in questions", () => {
 
     it("number operators", () => {
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Products").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filters to narrow your answer").click();
 
       popover().within(() => {
@@ -92,7 +98,7 @@ describe("operators in questions", () => {
         cy.findByText("Equal to").click();
       });
 
-      popover().within(() => {
+      cy.findByTestId("operator-select-list").within(() => {
         expected.number.expected.map(e => cy.contains(e).should("exist"));
         expected.number.unexpected.map(e => cy.contains(e).should("not.exist"));
       });
@@ -100,8 +106,11 @@ describe("operators in questions", () => {
 
     it("relative date operators", () => {
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Products").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filters to narrow your answer").click();
 
       popover().within(() => {
@@ -128,8 +137,11 @@ describe("operators in questions", () => {
 
     it("specific date operators", () => {
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Products").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filters to narrow your answer").click();
 
       popover().within(() => {
@@ -156,8 +168,11 @@ describe("operators in questions", () => {
 
     it("exclude date operators", () => {
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Products").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filters to narrow your answer").click();
 
       popover().within(() => {
@@ -181,8 +196,11 @@ describe("operators in questions", () => {
 
     it("id operators", () => {
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Products").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filters to narrow your answer").click();
 
       popover().within(() => {
@@ -190,7 +208,7 @@ describe("operators in questions", () => {
         cy.findByText("Is").click();
       });
 
-      popover().within(() => {
+      cy.findByTestId("operator-select-list").within(() => {
         expected.id.expected.map(e => cy.contains(e).should("exist"));
         expected.id.unexpected.map(e => cy.contains(e).should("not.exist"));
       });
@@ -198,8 +216,11 @@ describe("operators in questions", () => {
 
     it("geo operators", () => {
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("People").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filters to narrow your answer").click();
 
       popover().within(() => {
@@ -207,7 +228,7 @@ describe("operators in questions", () => {
         cy.findByText("Is").click();
       });
 
-      popover().within(() => {
+      cy.findByTestId("operator-select-list").within(() => {
         expected.geo.expected.map(e => cy.contains(e).should("exist"));
         expected.geo.unexpected.map(e => cy.contains(e).should("not.exist"));
       });

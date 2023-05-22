@@ -28,10 +28,12 @@ describe("issue 16918", () => {
     });
   });
 
-  it(`should load question binned by "Month of Year" or similar granularity (metabase#16918)`, () => {
+  it(`should load question binned by "Month of year" or similar granularity (metabase#16918)`, () => {
     cy.visit("/pulse/create");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select a question").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("16918").click();
 
     cy.wait("@cardPreview").then(xhr => {
@@ -39,6 +41,7 @@ describe("issue 16918", () => {
     });
 
     // Cypress should be able to find question title in the card preview
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("16918");
   });
 });

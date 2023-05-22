@@ -114,7 +114,10 @@ export const VisualizationEmptyState = ({ className }) => (
   </div>
 );
 
-export const VisualizationRunningState = ({ className, loadingMessage }) => (
+export const VisualizationRunningState = ({
+  className = "",
+  loadingMessage,
+}) => (
   <div
     className={cx(
       className,

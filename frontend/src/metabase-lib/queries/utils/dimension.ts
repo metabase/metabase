@@ -1,13 +1,15 @@
-import type { ConcreteField } from "metabase-types/types/Query";
-import type { VariableTarget } from "metabase-types/types/Parameter";
+import type {
+  ConcreteFieldReference,
+  VariableTarget,
+} from "metabase-types/api";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 
 import Dimension from "metabase-lib/Dimension";
 
-export function getDimension(
-  fieldRef: ConcreteField | VariableTarget,
+function getDimension(
+  fieldRef: ConcreteFieldReference | VariableTarget,
   metadata: Metadata,
   query?: StructuredQuery | NativeQuery | null | undefined,
 ) {
@@ -30,6 +32,6 @@ export function getFilterDimension(
   metadata: Metadata,
   query?: StructuredQuery | NativeQuery | null | undefined,
 ) {
-  const fieldRef = filterClause[1] as ConcreteField;
+  const fieldRef = filterClause[1] as ConcreteFieldReference;
   return getDimension(fieldRef, metadata, query);
 }

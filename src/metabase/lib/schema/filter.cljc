@@ -1,118 +1,99 @@
 (ns metabase.lib.schema.filter
-  "Schemas for the various types of filter clauses that you'd pass to `:filter` or use inside something else that takes
+  "Schemas for the various types of filter clauses that you'd pass to `:filters` or use inside something else that takes
   a boolean expression."
   (:require
    [metabase.lib.schema.common :as common]
-   [metabase.lib.schema.ref :as ref]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.lib.schema.expression :as expression]
+   [metabase.lib.schema.mbql-clause :as mbql-clause]
+   [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]))
 
-(def ^:private eq-comparable
-  ;; avoid circular refs between these namespaces.
-  [:schema [:ref :metabase.lib.schema.expression/equality-comparable]])
+(doseq [op [:and :or]]
+  (mbql-clause/define-catn-mbql-clause op :- :type/Boolean
+    [:args [:repeat {:min 2} [:schema [:ref ::expression/boolean]]]]))
 
-(def ^:private orderable
-  ;; avoid circular refs between these namespaces.
-  [:schema [:ref :metabase.lib.schema.expression/orderable]])
+(mbql-clause/define-tuple-mbql-clause :not :- :type/Boolean
+  [:ref ::expression/boolean])
 
-(defn- defclause
-  [sch & args]
-  {:pre [(qualified-keyword? sch)]}
-  (mr/def sch
-    [:catn
-     [:clause [:= (keyword (name sch))]]
-     [:options ::common/options]
-     (into [:args] args)]))
+(doseq [op [:= :!=]]
+  (mbql-clause/define-catn-mbql-clause op :- :type/Boolean
+    [:args [:repeat {:min 2} [:schema [:ref ::expression/equality-comparable]]]]))
 
-(doseq [op [::and ::or]]
-  (defclause op [:repeat {:min 2} [:schema [:ref ::filter]]]))
+(doseq [op [:< :<= :> :>=]]
+  (mbql-clause/define-tuple-mbql-clause op :- :type/Boolean
+    #_x [:ref ::expression/orderable]
+    #_y [:ref ::expression/orderable]))
 
-(defclause ::not
-  [:schema [:ref ::filter]])
-
-(doseq [op [::= ::!=]]
-  (defclause op
-    [:repeat {:min 2} eq-comparable]))
-
-(doseq [op [::< ::<= ::> ::>=]]
-  (defclause op
-    [:cat orderable orderable]))
-
-(defclause ::between
-  [:catn [:field orderable] [:min orderable] [:max orderable]])
+(mbql-clause/define-tuple-mbql-clause :between :- :type/Boolean
+  ;; TODO -- we should probably enforce additional constraints that the various arg types have to agree, e.g. it makes
+  ;; no sense to say something like `[:between {} <date> <[:ref ::expression/string]> <integer>]`
+  #_expr [:ref ::expression/orderable]
+  #_min  [:ref ::expression/orderable]
+  #_max  [:ref ::expression/orderable])
 
 ;; sugar: a pair of `:between` clauses
-(defclause ::inside
-  [:catn
-   [:lat-field orderable]
-   [:lon-field orderable]
-   [:lat-max   orderable]
-   [:lon-min   orderable]
-   [:lat-min   orderable]
-   [:lon-max   orderable]])
+(mbql-clause/define-tuple-mbql-clause :inside :- :type/Boolean
+  #_lat-expr [:ref ::expression/orderable]
+  #_lon-expr [:ref ::expression/orderable]
+  #_lat-max  [:ref ::expression/orderable]
+  #_lon-min  [:ref ::expression/orderable]
+  #_lat-min  [:ref ::expression/orderable]
+  #_lon-max  [:ref ::expression/orderable])
 
-;; [:= ... nil], [:!= ... nil], [:or [:= ... nil] [:= ... ""]], [:and [:!= ... nil] [:!= ... ""]]
-(doseq [op [::is-null ::not-null ::is-empty ::not-empty]]
-  (defclause op
-    ::ref/field))
+;;; null checking expressions
+;;;
+;;; these are sugar for [:= ... nil] and [:!= ... nil] respectively
+(doseq [op [:is-null :not-null]]
+  (mbql-clause/define-tuple-mbql-clause op :- :type/Boolean
+    [:ref ::expression/expression]))
+
+;;; one-arg [:ref ::expression/string] filter clauses
+;;;
+;;; :is-empty is sugar for [:or [:= ... nil] [:= ... ""]]
+;;;
+;;; :not-empty is sugar for [:and [:!= ... nil] [:!= ... ""]]
+(doseq [op [:is-empty :not-empty]]
+  (mbql-clause/define-tuple-mbql-clause op :- :type/Boolean
+    [:ref ::expression/string]))
 
 (def ^:private string-filter-options
   [:map [:case-sensitive {:optional true} :boolean]]) ; default true
 
-(def ^:private string
-  [:schema [:ref :metabase.lib.schema.expression/string]])
-
+;; binary [:ref ::expression/string] filter clauses. These also accept a `:case-sensitive` option
+;;
+;; `:does-not-contain` is sugar for `[:not [:contains ...]]`:
+;;
 ;; [:does-not-contain ...] = [:not [:contains ...]]
-(doseq [op [::starts-with ::ends-with ::contains ::does-not-contain]]
-  (mr/def op
-    [:catn
-     [:clause [:= (keyword (name op))]]
-     [:options [:merge ::common/options string-filter-options]]
-     [:args [:catn [:whole string] [:part string]]]]))
+(doseq [op [:starts-with :ends-with :contains :does-not-contain]]
+  (mbql-clause/define-mbql-clause op :- :type/Boolean
+    [:tuple
+     [:= op]
+     [:merge ::common/options string-filter-options]
+     #_whole [:ref ::expression/string]
+     #_part  [:ref ::expression/string]]))
 
 (def ^:private time-interval-options
   [:map [:include-current {:optional true} :boolean]]) ; default false
 
-(def ^:private relative-datetime-unit
-  [:enum :default :minute :hour :day :week :month :quarter :year])
-
 ;; SUGAR: rewritten as a filter clause with a relative-datetime value
-(mr/def ::time-interval
-  [:catn
-   [:clause [:= :time-interval]]
-   [:options [:merge ::common/options time-interval-options]]
-   [:args [:catn
-           [:field ::ref/field]
-           [:n [:or :int [:enum :current :last :next]]]
-           [:unit relative-datetime-unit]]]])
+(mbql-clause/define-mbql-clause :time-interval :- :type/Boolean
+  ;; TODO -- we should probably further constrain this so you can't do weird stuff like
+  ;;
+  ;;    [:time-interval {} <time> :current :year]
+  ;;
+  ;; using units that don't agree with the expr type
+  [:tuple
+   [:= :time-interval]
+   [:merge ::common/options time-interval-options]
+   #_expr [:ref ::expression/temporal]
+   #_n    [:or
+           [:enum :current :last :next]
+           ;; I guess there's no reason you shouldn't be able to do something like 1 + 2 in here
+           [:ref ::expression/integer]]
+   #_unit [:ref ::temporal-bucketing/unit.date-time.interval]])
 
-(defclause ::segment
-  [:catn [:segment-id [:or ::common/int-greater-than-zero ::common/non-blank-string]]])
-
-(defclause ::case
-  [:+ [:catn
-       [:pred [:schema [:ref ::filter]]]
-       [:expr [:schema [:ref :metabase.lib.schema.expression/boolean]]]]])
-
-;; Boolean literals are not included here because they are not very portable
-;; across different databases. In places where they should also be allowed
-;; the :metabase.lib.schema.expression/boolean schema can be used.
-(mr/def ::filter
-  [:or
-   [:ref ::ref/field]
-   ;; primitive clauses
-   ::and
-   ::or
-   ::not
-   ::= ::!=
-   ::< ::<=
-   ::> ::>=
-   ::between
-   ::starts-with ::ends-with ::contains
-   ::case
-   ;; sugar clauses
-   ::inside
-   ::is-null ::not-null
-   ::is-empty ::not-empty
-   ::does-not-contain
-   ::time-interval
-   ::segment])
+;; segments are guaranteed to return valid filter clauses and thus booleans, right?
+(mbql-clause/define-mbql-clause :segment :- :type/Boolean
+  [:tuple
+   [:= :segment]
+   ::common/options
+   [:or ::common/int-greater-than-zero ::common/non-blank-string]])

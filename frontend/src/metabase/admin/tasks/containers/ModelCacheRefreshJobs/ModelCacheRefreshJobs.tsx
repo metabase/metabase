@@ -25,7 +25,6 @@ import {
   ErrorBox,
   IconButtonContainer,
   PaginationControlsContainer,
-  StyledLink,
 } from "./ModelCacheRefreshJobs.styled";
 
 type JobTableItemProps = {
@@ -69,10 +68,13 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
     <tr key={job.id}>
       <th>
         <span>
-          <StyledLink to={modelUrl}>{job.card_name}</StyledLink> {t`in`}{" "}
-          <StyledLink to={collectionUrl}>
+          <Link variant="brand" to={modelUrl}>
+            {job.card_name}
+          </Link>{" "}
+          {t`in`}{" "}
+          <Link variant="brand" to={collectionUrl}>
             {job.collection_name || t`Our analytics`}
-          </StyledLink>
+          </Link>
         </span>
       </th>
       <th>{renderStatus()}</th>
@@ -196,4 +198,5 @@ function ModelCacheRefreshJobs({ children, onRefresh }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(ModelCacheRefreshJobs);

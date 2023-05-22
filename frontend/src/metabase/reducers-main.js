@@ -1,6 +1,6 @@
 // Reducers needed for main application
 
-import { combineReducers } from "redux";
+import { combineReducers } from "@reduxjs/toolkit";
 
 import { PLUGIN_REDUCERS } from "metabase/plugins";
 
@@ -31,6 +31,9 @@ import alert from "metabase/alert/alert";
 /* pulses */
 import * as pulse from "metabase/pulse/reducers";
 
+/* metabot */
+import * as metabot from "metabase/metabot/reducers";
+
 import commonReducers from "./reducers-common";
 
 export default {
@@ -40,6 +43,7 @@ export default {
   alert,
   dashboard,
   parameters: combineReducers(parameters),
+  metabot: combineReducers(metabot),
   pulse: combineReducers(pulse),
   qb: combineReducers(qb),
   reference,

@@ -5,10 +5,10 @@
    [metabase.models.interface :as mi]
    [metabase.models.user :as user :refer [User]]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- a-user []
-  (db/select-one User :id (mt/user->id :rasta)))
+  (t2/select-one User :id (mt/user->id :rasta)))
 
 (deftest toucan-instance?-test
   (is (models.dispatch/toucan-instance? (a-user)))

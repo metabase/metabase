@@ -1,11 +1,68 @@
 import _ from "underscore";
-import { metadata, PRODUCTS } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
 import * as dateFormatUtils from "metabase/lib/formatting/date";
+import { createMockCard, createMockField } from "metabase-types/api/mocks";
+import {
+  createOrdersTable,
+  createPeopleTable,
+  createProductsTable,
+  createProductsIdField,
+  createProductsEanField,
+  createProductsTitleField,
+  createProductsCategoryField,
+  createProductsVendorField,
+  createProductsPriceField,
+  createProductsRatingField,
+  createProductsCreatedAtField,
+  createSampleDatabase,
+  PRODUCTS,
+  PRODUCTS_ID,
+} from "metabase-types/api/mocks/presets";
 import {
   getDataFromClicked,
   getTargetsWithSourceFilters,
   formatSourceForTarget,
 } from "metabase-lib/parameters/utils/click-behavior";
+import Question from "metabase-lib/Question";
+
+const FLOAT_CATEGORY_FIELD = createMockField({
+  id: 100,
+  table_id: PRODUCTS_ID,
+  base_type: "type/Float",
+  effective_type: "type/Float",
+  semantic_type: "type/Category",
+  name: "FLOAT_CATEGORY",
+  display_name: "Float Category",
+});
+
+const metadata = createMockMetadata({
+  databases: [
+    createSampleDatabase({
+      tables: [
+        createOrdersTable(),
+        createProductsTable({
+          fields: [
+            createProductsIdField(),
+            createProductsEanField(),
+            createProductsTitleField(),
+            createProductsCategoryField(),
+            createProductsVendorField(),
+            createProductsPriceField(),
+            createProductsRatingField(),
+            createProductsCreatedAtField(),
+            FLOAT_CATEGORY_FIELD,
+          ],
+        }),
+        createPeopleTable(),
+      ],
+    }),
+  ],
+});
+
+const productId = metadata.field(PRODUCTS.ID);
+const productTitle = metadata.field(PRODUCTS.TITLE);
+const productFloatCategory = metadata.field(FLOAT_CATEGORY_FIELD.id);
+const productCreatedAt = metadata.field(PRODUCTS.CREATED_AT);
 
 describe("metabase/lib/click-behavior", () => {
   describe("getDataFromClicked", () => {
@@ -78,22 +135,25 @@ describe("metabase/lib/click-behavior", () => {
     it("should produce a template tag target", () => {
       const [{ id, name, target }] = getTargetsWithSourceFilters({
         isDash: false,
-        object: {
-          dataset_query: {
-            type: "native",
-            native: {
-              query: "{{foo}}",
-              "template-tags": {
-                my_variable: {
-                  "display-name": "My Variable",
-                  id: "foo123",
-                  name: "my_variable",
-                  type: "text",
+        object: new Question(
+          createMockCard({
+            dataset_query: {
+              type: "native",
+              native: {
+                query: "{{foo}}",
+                "template-tags": {
+                  my_variable: {
+                    "display-name": "My Variable",
+                    id: "foo123",
+                    name: "my_variable",
+                    type: "text",
+                  },
                 },
               },
             },
-          },
-        },
+          }),
+          metadata,
+        ),
         metadata: {},
       });
       expect(id).toEqual("foo123");
@@ -104,25 +164,28 @@ describe("metabase/lib/click-behavior", () => {
     it("should produce a template tag dimension target", () => {
       const [{ id, name, target }] = getTargetsWithSourceFilters({
         isDash: false,
-        object: {
-          dataset_query: {
-            type: "native",
-            native: {
-              query: "{{my_field_filter}}",
-              "template-tags": {
-                my_field_filter: {
-                  default: null,
-                  dimension: ["field", PRODUCTS.CATEGORY.id, null],
-                  "display-name": "My Field Filter",
-                  id: "foo123",
-                  name: "my_field_filter",
-                  type: "dimension",
-                  "widget-type": "category",
+        object: new Question(
+          createMockCard({
+            dataset_query: {
+              type: "native",
+              native: {
+                query: "{{my_field_filter}}",
+                "template-tags": {
+                  my_field_filter: {
+                    default: null,
+                    dimension: ["field", PRODUCTS.CATEGORY, null],
+                    "display-name": "My Field Filter",
+                    id: "foo123",
+                    name: "my_field_filter",
+                    type: "dimension",
+                    "widget-type": "category",
+                  },
                 },
               },
             },
-          },
-        },
+          }),
+          metadata,
+        ),
         metadata,
       });
       expect(id).toEqual("foo123");
@@ -279,22 +342,25 @@ describe("metabase/lib/click-behavior", () => {
         it(`should filter sources for a ${targetVariableType} variable target`, () => {
           const [{ sourceFilters }] = getTargetsWithSourceFilters({
             isDash: false,
-            object: {
-              dataset_query: {
-                type: "native",
-                native: {
-                  query: "{{foo}}",
-                  "template-tags": {
-                    my_variable: {
-                      "display-name": "My Variable",
-                      id: "foo123",
-                      name: "my_variable",
-                      type: targetVariableType,
+            object: new Question(
+              createMockCard({
+                dataset_query: {
+                  type: "native",
+                  native: {
+                    query: "{{foo}}",
+                    "template-tags": {
+                      my_variable: {
+                        "display-name": "My Variable",
+                        id: "foo123",
+                        name: "my_variable",
+                        type: targetVariableType,
+                      },
                     },
                   },
                 },
-              },
-            },
+              }),
+              metadata,
+            ),
             metadata,
           });
 
@@ -308,7 +374,7 @@ describe("metabase/lib/click-behavior", () => {
 
       for (const [field, expectedSources] of [
         [
-          PRODUCTS.TITLE,
+          productTitle,
           {
             column: [{ base_type: "type/Text" }],
             parameter: [{ type: "category" }],
@@ -316,7 +382,7 @@ describe("metabase/lib/click-behavior", () => {
           },
         ],
         [
-          PRODUCTS.PRICE,
+          productFloatCategory,
           {
             column: [
               { base_type: "type/Integer" },
@@ -327,7 +393,7 @@ describe("metabase/lib/click-behavior", () => {
           },
         ],
         [
-          PRODUCTS.ID,
+          productId,
           {
             column: [
               { base_type: "type/Integer" },
@@ -338,7 +404,7 @@ describe("metabase/lib/click-behavior", () => {
           },
         ],
         [
-          PRODUCTS.CREATED_AT,
+          productCreatedAt,
           {
             column: [
               { base_type: "type/Time" },
@@ -359,25 +425,28 @@ describe("metabase/lib/click-behavior", () => {
         it(`should filter sources for a ${field.base_type} dimension target`, () => {
           const [{ sourceFilters }] = getTargetsWithSourceFilters({
             isDash: false,
-            object: {
-              dataset_query: {
-                type: "native",
-                native: {
-                  query: "{{my_field_filter}}",
-                  "template-tags": {
-                    my_field_filter: {
-                      default: null,
-                      dimension: ["field", field.id, null],
-                      "display-name": "My Field Filter",
-                      id: "foo123",
-                      name: "my_field_filter",
-                      type: "dimension",
-                      "widget-type": "category",
+            object: new Question(
+              createMockCard({
+                dataset_query: {
+                  type: "native",
+                  native: {
+                    query: "{{my_field_filter}}",
+                    "template-tags": {
+                      my_field_filter: {
+                        default: null,
+                        dimension: ["field", field.id, null],
+                        "display-name": "My Field Filter",
+                        id: "foo123",
+                        name: "my_field_filter",
+                        type: "dimension",
+                        "widget-type": "category",
+                      },
                     },
                   },
                 },
-              },
-            },
+              }),
+              metadata,
+            ),
             metadata,
           });
           const filteredSources = _.mapObject(sources, (sources, sourceType) =>

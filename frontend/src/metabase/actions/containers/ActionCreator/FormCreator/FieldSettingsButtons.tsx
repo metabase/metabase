@@ -32,6 +32,7 @@ export function FieldSettingsButtons({
     <FieldSettingsButtonsContainer>
       {hasOptions && (
         <OptionPopover
+          fieldType={fieldSettings.fieldType}
           options={fieldSettings.valueOptions ?? []}
           onChange={updateOptions}
         />

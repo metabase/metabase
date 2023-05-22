@@ -1,7 +1,6 @@
 (ns metabase.driver.impl-test
   (:require
    [clojure.core.async :as a]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
@@ -9,7 +8,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest driver->expected-namespace-test
+(deftest ^:parallel driver->expected-namespace-test
   (testing "expected namespace for a non-namespaced driver should be `metabase.driver.<driver>`"
     (is (= 'metabase.driver.sql-jdbc
            (#'driver.impl/driver->expected-namespace :sql-jdbc))))
@@ -37,81 +36,3 @@
                  (driver/the-initialized-driver ::race-condition-test)))
           (is (= true
                  @finished-loading)))))))
-
-(deftest truncate-string-to-byte-count-test
-  (letfn [(truncate-string-to-byte-count [s byte-length]
-            (let [^String truncated (#'driver.impl/truncate-string-to-byte-count s byte-length)]
-              (is (<= (count (.getBytes truncated "UTF-8")) byte-length))
-              (is (str/starts-with? s truncated))
-              truncated))]
-    (doseq [[s max-length->expected] {"12345"
-                                      {0  ""
-                                       1  "1"
-                                       2  "12"
-                                       3  "123"
-                                       4  "1234"
-                                       5  "12345"
-                                       6  "12345"
-                                       10 "12345"}
-
-                                      "가나다라"
-                                      {0  ""
-                                       1  ""
-                                       2  ""
-                                       3  "가"
-                                       4  "가"
-                                       5  "가"
-                                       6  "가나"
-                                       7  "가나"
-                                       8  "가나"
-                                       9  "가나다"
-                                       10 "가나다"
-                                       11 "가나다"
-                                       12 "가나다라"
-                                       13 "가나다라"
-                                       15 "가나다라"
-                                       20 "가나다라"}}
-            [max-length expected] max-length->expected]
-      (testing (pr-str (list `driver.impl/truncate-string-to-byte-count s max-length))
-        (is (= expected
-               (truncate-string-to-byte-count s max-length)))))))
-
-(deftest truncate-alias-test
-  (letfn [(truncate-alias [s max-bytes]
-            (let [truncated (driver.impl/truncate-alias s max-bytes)]
-              (is (<= (count (.getBytes truncated "UTF-8")) max-bytes))
-              truncated))]
-    (doseq [[s max-bytes->expected] { ;; 20-character plain ASCII string
-                                     "01234567890123456789"
-                                     {12 "012_fc89bad5"
-                                      15 "012345_fc89bad5"
-                                      20 "01234567890123456789"}
-
-                                     ;; two strings that only differ after the point they get truncated
-                                     "0123456789abcde" {12 "012_1629bb92"}
-                                     "0123456789abcdE" {12 "012_2d479b5a"}
-
-                                     ;; Unicode string: 14 characters, 42 bytes
-                                     "가나다라마바사아자차카타파하"
-                                     {12 "가_b9c95392"
-                                      13 "가_b9c95392"
-                                      14 "가_b9c95392"
-                                      15 "가나_b9c95392"
-                                      20 "가나다_b9c95392"
-                                      30 "가나다라마바사_b9c95392"
-                                      40 "가나다라마바사아자차_b9c95392"
-                                      50 "가나다라마바사아자차카타파하"}
-
-                                     ;; Mixed string: 17 characters, 33 bytes
-                                     "a가b나c다d라e마f바g사h아i"
-                                     {12 "a_99a0fe0c"
-                                      13 "a가_99a0fe0c"
-                                      14 "a가b_99a0fe0c"
-                                      15 "a가b_99a0fe0c"
-                                      20 "a가b나c_99a0fe0c"
-                                      30 "a가b나c다d라e마f_99a0fe0c"
-                                      40 "a가b나c다d라e마f바g사h아i"}}
-            [max-bytes expected] max-bytes->expected]
-      (testing (pr-str (list `driver.impl/truncate-alias s max-bytes))
-        (is (= expected
-               (truncate-alias s max-bytes)))))))

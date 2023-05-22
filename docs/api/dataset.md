@@ -46,6 +46,10 @@ Fetch a native version of an MBQL query.
 
 ### PARAMS:
 
+*  **`database`** value must be an integer greater than zero.
+
+*  **`pretty`** nullable boolean
+
 *  **`query`**
 
 ## `POST /api/dataset/parameter/search/:query`

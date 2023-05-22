@@ -244,6 +244,4 @@ convertTimezone(convertTimezone([Source Time], "UTC"), "Canada/Eastern", "UTC")
 
 - [Custom expressions documentation](../expressions.md)
 - [Custom expressions tutorial](https://www.metabase.com/learn/questions/custom-expressions)
-- [Time series comparisons](https://www.metabase.com/learn/questions/time-series-comparisons)
-- [How to compare one time period to another](https://www.metabase.com/learn/dashboards/compare-times)
-- [Working with dates in SQL](https://www.metabase.com/learn/sql-questions/dates-in-sql)
+- [Time series analysis](https://www.metabase.com/learn/time-series/start)

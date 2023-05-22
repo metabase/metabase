@@ -6,7 +6,7 @@ export function getJoins(joins) {
 }
 
 // turns a list of Joins into the canonical JoinClause
-export function getJoinClause(joins) {
+function getJoinClause(joins) {
   joins = getJoins(joins);
   if (joins.length === 0) {
     return undefined;

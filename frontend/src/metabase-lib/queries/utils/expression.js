@@ -1,15 +1,8 @@
 import _ from "underscore";
-import {
-  expressions_list,
-  unique_expression_name,
-} from "cljs/metabase.domain_entities.queries.util";
+import { unique_expression_name } from "cljs/metabase.domain_entities.queries.util";
 
 export function getExpressions(expressions = {}) {
   return expressions;
-}
-
-export function getExpressionsList(expressions = {}) {
-  return expressions_list(expressions);
 }
 
 export function addExpression(expressions = {}, name, expression) {

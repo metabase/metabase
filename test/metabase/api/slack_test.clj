@@ -45,16 +45,22 @@
           (mt/user-http-request :crowberto :put 200 "slack/settings" {:slack-files-channel "#fake-channel"})
           (is (= "fake-channel" (slack/slack-files-channel))))))
 
-    (testing "An error is returned if the Slack files channel cannot be found"
-      (with-redefs [slack/channel-exists? (constantly nil)]
+    (testing "An error is returned if the Slack files channel cannot be found, and the integration is not enabled"
+      (with-redefs [slack/channel-exists?                             (constantly nil)
+                    slack/valid-token?                                (constantly true)
+                    slack/refresh-channels-and-usernames!             (constantly nil)
+                    slack/refresh-channels-and-usernames-when-needed! (constantly nil)]
         (let [response (mt/user-http-request :crowberto :put 400 "slack/settings"
-                                             {:slack-files-channel "fake-channel"})]
-          (is (= {:slack-files-channel "channel not found"} (:errors response))))))
+                                             {:slack-files-channel "fake-channel"
+                                              :slack-app-token     "fake-token"})]
+          (is (= {:slack-files-channel "channel not found"} (:errors response)))
+          (is (nil? (slack/slack-app-token)))
+          (is (= "metabase_files" (slack/slack-files-channel))))))
 
     (testing "The Slack app token or files channel settings are cleared if no value is sent in the request"
-      (mt/with-temporary-setting-values [slack-app-token "fake-token"
-                                         slack-files-channel "fake-channel"
-                                         slack/slack-cached-channels-and-usernames ["fake_channel"]
+      (mt/with-temporary-setting-values [slack-app-token                                 "fake-token"
+                                         slack-files-channel                             "fake-channel"
+                                         slack/slack-cached-channels-and-usernames       ["fake_channel"]
                                          slack/slack-channels-and-usernames-last-updated (t/zoned-date-time)]
         (mt/user-http-request :crowberto :put 200 "slack/settings" {})
         (is (= nil (slack/slack-app-token)))

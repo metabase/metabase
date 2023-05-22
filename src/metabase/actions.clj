@@ -13,7 +13,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [schema.core :as schema]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (setting/defsetting database-enable-actions
@@ -156,7 +155,7 @@
     (when (s/invalid? (s/conform spec arg-map))
       (throw (ex-info (format "Invalid Action arg map for %s: %s" action (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))
-    (let [{driver :engine :as db} (api/check-404 (db/select-one Database :id (:database arg-map)))]
+    (let [{driver :engine :as db} (api/check-404 (t2/select-one Database :id (:database arg-map)))]
       (check-actions-enabled-for-database! db)
       (binding [*misc-value-cache* (atom {})]
         (qp.perms/check-query-action-permissions* arg-map)

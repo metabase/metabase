@@ -14,6 +14,7 @@ import {
 
 interface TableFooterProps {
   className?: string;
+  "data-testid"?: string;
   start: number;
   end: number;
   total: number;
@@ -27,6 +28,7 @@ const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
   function TableFooter(
     {
       className,
+      "data-testid": dataTestId = "TableFooter",
       start,
       end,
       limit,
@@ -73,6 +75,7 @@ const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
           className,
           "fullscreen-normal-text fullscreen-night-text",
         )}
+        data-testid={dataTestId}
         ref={ref}
       >
         <PaginationMessage>{paginateMessage}</PaginationMessage>
@@ -95,4 +98,5 @@ const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
   },
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TableFooter;

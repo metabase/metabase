@@ -25,7 +25,7 @@ describe("scenarios > collection items listing", () => {
   const PAGE_SIZE = 25;
 
   describe("pagination", () => {
-    const SUBCOLLECTIONS = 2;
+    const SUBCOLLECTIONS = 1;
     const ADDED_QUESTIONS = 15;
     const ADDED_DASHBOARDS = 14;
 
@@ -59,6 +59,7 @@ describe("scenarios > collection items listing", () => {
       visitRootCollection();
 
       // First page
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
       cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
@@ -67,6 +68,7 @@ describe("scenarios > collection items listing", () => {
       cy.wait("@getCollectionItems");
 
       // Second page
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
       cy.findAllByTestId("collection-entry").should(
@@ -78,6 +80,7 @@ describe("scenarios > collection items listing", () => {
       cy.findByTestId("previous-page-btn").click();
 
       // First page
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
       cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
@@ -224,6 +227,7 @@ describe("scenarios > collection items listing", () => {
 
       visitRootCollection();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
 
       cy.findByTestId("next-page-btn").click();
@@ -232,6 +236,7 @@ describe("scenarios > collection items listing", () => {
       toggleSortingFor(/Last edited at/i);
       cy.wait("@getCollectionItems");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
     });
   });

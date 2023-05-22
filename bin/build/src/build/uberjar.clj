@@ -80,10 +80,11 @@
           ns-decls (u/step "Determine compilation order for Metabase files"
                      (metabase-namespaces-in-topo-order basis))]
       (with-duration-ms [duration-ms]
-        (b/compile-clj {:basis      basis
-                        :src-dirs   paths
-                        :class-dir  class-dir
-                        :ns-compile ns-decls})
+        (b/compile-clj {:basis        basis
+                        :src-dirs     paths
+                        :class-dir    class-dir
+                        :ns-compile   ns-decls
+                        :compile-opts {:direct-linking true}})
         (u/announce "Finished compilation in %.1f seconds." (/ duration-ms 1000.0))))))
 
 (defn copy-resources! [edition basis]
@@ -96,9 +97,10 @@
 (defn create-uberjar! [basis]
   (u/step "Create uberjar"
     (with-duration-ms [duration-ms]
-      (depstar/uber {:class-dir class-dir
-                     :uber-file uberjar-filename
-                     :basis     basis})
+      (depstar/uber {:class-dir    class-dir
+                     :uber-file    uberjar-filename
+                     :basis        basis
+                     :compile-opts {:direct-linking true}})
       (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
 
 (def manifest-entries

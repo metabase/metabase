@@ -211,6 +211,31 @@
                                             {:id tag-name, :name tag-name, :display-name tag-name,
                                              :type "card", :card card-id}}}})))))))
 
+(deftest query-action-permissions-test
+  (testing "Query action permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+        (let [query  (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})
+              check! qp.perms/check-query-action-permissions*]
+          (mt/with-temp Collection [collection]
+            (mt/with-temp Card [{model-id :id} {:collection_id (u/the-id collection)
+                                                :dataset_query query}]
+              (testing "are granted by default"
+                (check! query))
+              (testing "are revoked without access to the model"
+                (binding [qp.perms/*card-id* model-id]
+                  (is (thrown-with-msg?
+                       ExceptionInfo
+                       #"You do not have permissions to view Card [\d,]+"
+                       (check! query)))))
+              ;; Are revoked with DB access blocked: requires EE, see test in
+              ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj
+              (testing "are granted with access to the model"
+                (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path (u/the-id collection))})
+                          qp.perms/*card-id* model-id]
+                  (check! query))))))))))
+
 (deftest end-to-end-test
   (testing (str "Make sure it works end-to-end: make sure bound `*current-user-id*` and `*current-user-permissions-set*` "
                 "are used to permissions check queries")

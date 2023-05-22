@@ -18,6 +18,7 @@ const propTypes = {
   settings: PropTypes.shape({
     metric: PropTypes.object,
     percent_visibility: PropTypes.oneOf(["off", "legend", "inside"]),
+    show_total: PropTypes.bool,
   }),
 };
 
@@ -60,6 +61,7 @@ const CategoricalDonutChart = ({
   const totalLabel = t`Total`.toUpperCase();
 
   const shouldShowLabels = settings?.percent_visibility === "inside";
+  const shouldShowTotal = settings?.show_total ?? true;
 
   return (
     <svg width={layout.width} height={layout.height}>
@@ -105,26 +107,31 @@ const CategoricalDonutChart = ({
             })
           }
         </Pie>
-        <Group fontFamily={layout.font.family} fontWeight={layout.font.weight}>
-          <Text
-            y={-textCenter}
-            fill={layout.colors.textDark}
-            fontSize={layout.valueFontSize}
-            textAnchor="middle"
-            dominantBaseline="middle"
+        {shouldShowTotal && (
+          <Group
+            fontFamily={layout.font.family}
+            fontWeight={layout.font.weight}
           >
-            {formatNumber(totalValue, settings?.metric)}
-          </Text>
-          <Text
-            y={textCenter}
-            fill={layout.colors.textLight}
-            fontSize={layout.labelFontSize}
-            textAnchor="middle"
-            dominantBaseline="middle"
-          >
-            {totalLabel}
-          </Text>
-        </Group>
+            <Text
+              y={-textCenter}
+              fill={layout.colors.textDark}
+              fontSize={layout.valueFontSize}
+              textAnchor="middle"
+              dominantBaseline="middle"
+            >
+              {formatNumber(totalValue, settings?.metric)}
+            </Text>
+            <Text
+              y={textCenter}
+              fill={layout.colors.textLight}
+              fontSize={layout.labelFontSize}
+              textAnchor="middle"
+              dominantBaseline="middle"
+            >
+              {totalLabel}
+            </Text>
+          </Group>
+        )}
       </Group>
     </svg>
   );

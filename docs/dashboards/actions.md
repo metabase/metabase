@@ -32,11 +32,20 @@ You can select from a variety of handsome buttons:
 
 ## Connecting an action to a dashboard filter
 
-Many types of actions rely on knowing the entity IDs for the model to determine which records to update or delete. You can add a filter to the dashboard to filter on ID, and wire up that filter to the action button.
+For most actions, when people click on a button, they'll be prompted to input values in the fields defined by that action.
 
-![Wiring up an action button to a dashboard filter](./images/filter-to-action-button.png)
 
-If you also wire that filter up to the model cards on the dashboard, you can filter for individual records, view them in the model cards, and update them with action buttons with the ID already filled in:
+Many types of actions rely on knowing the entity IDs for the model to determine which records to update or delete. To have people select the ID for the action, you'll need to:
+
+1. Click on the pencil icon to edit the dashboard.
+2. Add an action to the dashboard (if you haven't already).
+2. [Add a filter](./filters.md) to a dashboard, wire it up to any cards that you want to, and click **Done** in the bottom of the sidebar.
+3. Hover over the action button and click on the **gear** icon, and select **Change action**.
+4. Click on the field's dropdown to select where the action should get it's value. Here you can select "Ask the user" or have it automatically populated by a dashboard filter. In this case, we'll select our "ID" filter.
+
+![Wiring up an action button to a dashboard filter](./images/id-value.png)
+
+If you also wire that filter up to a card with a model on the dashboard, you can filter for individual records in that model, view them in the model's card, and have the action buttons auto-populate the id.
 
 ![Button form](./images/button-form.png)
 
@@ -45,3 +54,4 @@ You can add as many buttons as you want, and wire them up to one or more filters
 ## Further reading
 
 - [Actions](../actions/start.md)
+

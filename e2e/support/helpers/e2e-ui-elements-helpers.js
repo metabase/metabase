@@ -14,12 +14,12 @@ export function sidebar() {
   return cy.get("main aside");
 }
 
-export function appbar() {
-  return cy.findByTestId("app-bar");
-}
-
 export function rightSidebar() {
   return cy.findAllByTestId("sidebar-right");
+}
+
+export function leftSidebar() {
+  return cy.findByTestId("sidebar-left");
 }
 
 export function navigationSidebar() {
@@ -27,7 +27,7 @@ export function navigationSidebar() {
 }
 
 export function appBar() {
-  return cy.get("#root header").first();
+  return cy.findByLabelText("Navigation bar");
 }
 
 export function openNavigationSidebar() {
@@ -95,3 +95,23 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mousemove", 0, distance * 50, { force: true })
     .trigger("mouseup", 0, distance * 50, { force: true });
 };
+
+export const queryBuilderMain = () => {
+  return cy.findByTestId("query-builder-main");
+};
+
+export const dashboardHeader = () => {
+  return cy.get("main header");
+};
+
+export const dashboardParametersContainer = () => {
+  return cy.findByTestId("dashboard-parameters-widget-container");
+};
+
+export const undoToast = () => {
+  return cy.findByTestId("toast-undo");
+};
+
+export function dashboardCards() {
+  return cy.get("#Dashboard-Cards-Container");
+}

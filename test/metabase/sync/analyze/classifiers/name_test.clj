@@ -6,7 +6,7 @@
    [metabase.models.table :as table :refer [Table]]
    [metabase.sync.analyze.classifiers.name :as classifiers.name]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest semantic-type-for-name-and-base-type-test
   (doseq [[input expected] {["id"      :type/Integer] :type/PK
@@ -43,14 +43,14 @@
                                              :semantic_type :type/FK
                                              :name          "City"
                                              :base_type     :type/Text}]]
-        (is (nil? (-> (db/select-one Field :id field-id) (classifiers.name/infer-and-assoc-semantic-type nil) :semantic_type)))))
+        (is (nil? (-> (t2/select-one Field :id field-id) (classifiers.name/infer-and-assoc-semantic-type nil) :semantic_type)))))
     (testing "but does infer on non-PK/FK fields"
       (mt/with-temp* [Table [{table-id :id}]
                       Field [{field-id :id} {:table_id      table-id
                                              :semantic_type :type/Category
                                              :name          "City"
                                              :base_type     :type/Text}]]
-        (-> (db/select-one Field :id field-id) (classifiers.name/infer-and-assoc-semantic-type nil) :semantic_type)))))
+        (-> (t2/select-one Field :id field-id) (classifiers.name/infer-and-assoc-semantic-type nil) :semantic_type)))))
 
 (deftest infer-semantic-type-test
   (let [infer (fn infer [column-name & [base-type]]

@@ -328,6 +328,7 @@ RowChartVisualization.noun = t`row chart`;
 
 RowChartVisualization.noHeader = true;
 RowChartVisualization.minSize = { width: 5, height: 4 };
+RowChartVisualization.defaultSize = { width: 5, height: 4 };
 
 RowChartVisualization.settings = {
   ...ROW_CHART_SETTINGS,
@@ -427,4 +428,5 @@ RowChartVisualization.placeholderSeries = [
   },
 ];
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default RowChartVisualization;

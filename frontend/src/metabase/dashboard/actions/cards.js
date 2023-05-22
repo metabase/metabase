@@ -1,7 +1,6 @@
 import _ from "underscore";
 import { t } from "ttag";
 import { createAction } from "metabase/lib/redux";
-import { measureText } from "metabase/lib/measure-text";
 
 import Questions from "metabase/entities/questions";
 
@@ -19,32 +18,46 @@ import { loadMetadataForDashboard } from "./metadata";
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 
+let tempId = -1;
 function generateTemporaryDashcardId() {
-  return Math.random();
+  return tempId--;
+}
+
+function getExistingDashCards(state, dashId, tabId) {
+  const { dashboards, dashcards } = state.dashboard;
+  const dashboard = dashboards[dashId];
+  return dashboard.ordered_cards
+    .map(id => dashcards[id])
+    .filter(dc => {
+      if (dc.isRemoved) {
+        return false;
+      }
+      if (tabId != null) {
+        return dc.dashboard_tab_id === tabId;
+      }
+      return true;
+    });
 }
 
 export const addCardToDashboard =
-  ({ dashId, cardId }) =>
+  ({ dashId, cardId, tabId }) =>
   async (dispatch, getState) => {
     await dispatch(Questions.actions.fetch({ id: cardId }));
-    const card = Questions.selectors.getObject(getState(), {
-      entityId: cardId,
-    });
-    const { dashboards, dashcards } = getState().dashboard;
-    const dashboard = dashboards[dashId];
-    const existingCards = dashboard.ordered_cards
-      .map(id => dashcards[id])
-      .filter(dc => !dc.isRemoved);
+    const card = Questions.selectors
+      .getObject(getState(), { entityId: cardId })
+      .card();
     const { visualization } = getVisualizationRaw([{ card }]);
-    const createdCardSize = visualization.minSize || DEFAULT_CARD_SIZE;
+    const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
+
     const dashcard = {
       id: generateTemporaryDashcardId(),
       dashboard_id: dashId,
+      dashboard_tab_id: tabId ?? null,
       card_id: card.id,
       card: card,
       series: [],
       ...getPositionForNewDashCard(
-        existingCards,
+        getExistingDashCards(getState(), dashId, tabId),
         createdCardSize.width,
         createdCardSize.height,
       ),
@@ -57,20 +70,27 @@ export const addCardToDashboard =
     dispatch(loadMetadataForDashboard([dashcard]));
   };
 
-export const addDashCardToDashboard = function ({ dashId, dashcardOverrides }) {
+export const addDashCardToDashboard = function ({
+  dashId,
+  dashcardOverrides,
+  tabId,
+}) {
   return function (dispatch, getState) {
-    const { dashboards, dashcards } = getState().dashboard;
-    const dashboard = dashboards[dashId];
-    const existingCards = dashboard.ordered_cards
-      .map(id => dashcards[id])
-      .filter(dc => !dc.isRemoved);
+    const { visualization } = getVisualizationRaw([dashcardOverrides]);
+    const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
+
     const dashcard = {
       id: generateTemporaryDashcardId(),
       card_id: null,
       card: null,
       dashboard_id: dashId,
+      dashboard_tab_id: tabId ?? null,
       series: [],
-      ...getPositionForNewDashCard(existingCards),
+      ...getPositionForNewDashCard(
+        getExistingDashCards(getState(), dashId, tabId),
+        createdCardSize.width,
+        createdCardSize.height,
+      ),
       parameter_mappings: [],
       visualization_settings: {},
     };
@@ -79,7 +99,7 @@ export const addDashCardToDashboard = function ({ dashId, dashcardOverrides }) {
   };
 };
 
-export const addTextDashCardToDashboard = function ({ dashId }) {
+export const addTextDashCardToDashboard = function ({ dashId, tabId }) {
   const virtualTextCard = createCard();
   virtualTextCard.display = "text";
   virtualTextCard.archived = false;
@@ -93,13 +113,11 @@ export const addTextDashCardToDashboard = function ({ dashId }) {
   return addDashCardToDashboard({
     dashId: dashId,
     dashcardOverrides: dashcardOverrides,
+    tabId,
   });
 };
 
-export const addLinkDashCardToDashboard = function ({ dashId }) {
-  const DEFAULT_HEIGHT = 1;
-  const DEFAULT_WIDTH = 3;
-
+export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
   const virtualLinkCard = {
     ...createCard(),
     display: "link",
@@ -108,8 +126,6 @@ export const addLinkDashCardToDashboard = function ({ dashId }) {
 
   const dashcardOverrides = {
     card: virtualLinkCard,
-    size_x: DEFAULT_WIDTH,
-    size_y: DEFAULT_HEIGHT,
     visualization_settings: {
       virtual_card: virtualLinkCard,
     },
@@ -117,42 +133,12 @@ export const addLinkDashCardToDashboard = function ({ dashId }) {
   return addDashCardToDashboard({
     dashId: dashId,
     dashcardOverrides: dashcardOverrides,
+    tabId,
   });
 };
 
-const estimateCardSize = (displayType, action, buttonLabel) => {
-  const BASE_HEIGHT = 3;
-  const HEIGHT_PER_FIELD = 1.5;
-
-  const PIXELS_PER_BLOCK = 49;
-  const MAX_BUTTON_BLOCK_WIDTH = 18;
-
-  if (displayType === "button") {
-    const textWidth = measureText(buttonLabel, {
-      family: "Lato",
-      size: 14,
-      weight: 700,
-    });
-
-    return {
-      size_x: Math.min(
-        Math.ceil((textWidth + PIXELS_PER_BLOCK) / PIXELS_PER_BLOCK),
-        MAX_BUTTON_BLOCK_WIDTH,
-      ),
-      size_y: 1,
-    };
-  }
-
-  return {
-    size_x: 6,
-    size_y: Math.round(
-      BASE_HEIGHT + action.parameters.length * HEIGHT_PER_FIELD,
-    ),
-  };
-};
-
 export const addActionToDashboard =
-  async ({ dashId, action, displayType }) =>
+  async ({ dashId, tabId, action, displayType }) =>
   dispatch => {
     const virtualActionsCard = {
       ...createCard(),
@@ -168,7 +154,6 @@ export const addActionToDashboard =
       action_id: action.id,
       card_id: action.model_id,
       card: virtualActionsCard,
-      ...estimateCardSize(displayType, action, buttonLabel),
       visualization_settings: {
         actionDisplayType: displayType ?? "button",
         virtual_card: virtualActionsCard,
@@ -180,6 +165,7 @@ export const addActionToDashboard =
       addDashCardToDashboard({
         dashId: dashId,
         dashcardOverrides: dashcardOverrides,
+        tabId,
       }),
     );
   };

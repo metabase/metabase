@@ -29,26 +29,46 @@ function hasSeriesChange(cards) {
   return cards.some(hasSeries);
 }
 
-function getDashboardCardsChangeType(_prevCards, _cards) {
-  const prevCards = getCardsArraySafe(_prevCards);
-  const cards = getCardsArraySafe(_cards);
-  if (prevCards.length === cards.length) {
-    return CHANGE_TYPE.UPDATE;
-  }
-  return cards.length > prevCards.length ? CHANGE_TYPE.ADD : CHANGE_TYPE.REMOVE;
+function getAddedRemovedCardIds(_prevCards, _cards) {
+  const prevCardIds = getCardsArraySafe(_prevCards).map(c => c.id);
+  const cardIds = getCardsArraySafe(_cards).map(c => c.id);
+
+  const addedCardIds = cardIds.filter(id => !prevCardIds.includes(id));
+  const removedCardIds = prevCardIds.filter(id => !cardIds.includes(id));
+
+  return { addedCardIds, removedCardIds };
 }
 
-function getChangeType(field, before, after) {
+function getDashboardCardsChangeType(_prevCards, _cards) {
+  const { addedCardIds, removedCardIds } = getAddedRemovedCardIds(
+    _prevCards,
+    _cards,
+  );
+
+  const types = [];
+  if (addedCardIds.length > 0) {
+    types.push(CHANGE_TYPE.ADD);
+  }
+  if (removedCardIds.length > 0) {
+    types.push(CHANGE_TYPE.REMOVE);
+  }
+  if (addedCardIds.length === 0 && removedCardIds.length === 0) {
+    types.push(CHANGE_TYPE.UPDATE);
+  }
+  return types;
+}
+
+function getChangeTypes(field, before, after) {
   if (field === "cards") {
     return getDashboardCardsChangeType(before, after);
   }
   if (before == null && after != null) {
-    return CHANGE_TYPE.ADD;
+    return [CHANGE_TYPE.ADD];
   }
   if (before != null && after == null) {
-    return CHANGE_TYPE.REMOVE;
+    return [CHANGE_TYPE.REMOVE];
   }
-  return CHANGE_TYPE.UPDATE;
+  return [CHANGE_TYPE.UPDATE];
 }
 
 function getSeriesChangeDescription(prevCards, cards) {
@@ -125,9 +145,8 @@ const CHANGE_DESCRIPTIONS = {
   // Dashboards
   cards: {
     [CHANGE_TYPE.ADD]: (_prevCards, _cards) => {
-      const prevCards = getCardsArraySafe(_prevCards);
-      const cards = getCardsArraySafe(_cards);
-      const count = cards.length - prevCards.length;
+      const { addedCardIds } = getAddedRemovedCardIds(_prevCards, _cards);
+      const count = addedCardIds.length;
       return ngettext(msgid`added a card`, `added ${count} cards`, count);
     },
     [CHANGE_TYPE.UPDATE]: (_prevCards, _cards) => {
@@ -139,9 +158,8 @@ const CHANGE_DESCRIPTIONS = {
       return t`rearranged the cards`;
     },
     [CHANGE_TYPE.REMOVE]: (_prevCards, _cards) => {
-      const prevCards = getCardsArraySafe(_prevCards);
-      const cards = getCardsArraySafe(_cards);
-      const count = prevCards.length - cards.length;
+      const { removedCardIds } = getAddedRemovedCardIds(_prevCards, _cards);
+      const count = removedCardIds.length;
       return ngettext(msgid`removed a card`, `removed ${count} cards`, count);
     },
   },
@@ -166,6 +184,10 @@ export function getChangedFields(revision) {
   return fields.filter(field => registeredFields.includes(field));
 }
 
+export function getRevisionTitleText(username, message) {
+  return `${username} ${message}`;
+}
+
 export function getRevisionDescription(revision) {
   const { diff, is_creation, is_reversion } = revision;
   if (is_creation) {
@@ -176,17 +198,21 @@ export function getRevisionDescription(revision) {
   }
 
   const { before, after } = diff;
-  const changes = getChangedFields(revision)
-    .map(fieldName => {
-      const valueBefore = before?.[fieldName];
-      const valueAfter = after?.[fieldName];
-      const changeType = getChangeType(fieldName, valueBefore, valueAfter);
+  let changes = [];
+  getChangedFields(revision).forEach(fieldName => {
+    const valueBefore = before?.[fieldName];
+    const valueAfter = after?.[fieldName];
+    const changeTypes = getChangeTypes(fieldName, valueBefore, valueAfter);
+    changeTypes.forEach(changeType => {
       const description = CHANGE_DESCRIPTIONS[fieldName]?.[changeType];
-      return typeof description === "function"
-        ? description(valueBefore, valueAfter)
-        : description;
-    })
-    .filter(Boolean);
+      changes.push(
+        typeof description === "function"
+          ? description(valueBefore, valueAfter)
+          : description,
+      );
+    });
+  });
+  changes = changes.filter(Boolean);
 
   return changes.length === 1 ? changes[0] : changes;
 }
@@ -245,10 +271,10 @@ export function getRevisionEventsForTimeline(
       // we want to show the changelog in a description and set a title to just "User edited this"
       // If only one field is changed, we just show everything in the title
       // like "John added a description"
+      let message;
       if (isChangeEvent && isMultipleFieldsChange) {
-        event.title = (
-          <RevisionTitle username={username} message={t`edited this`} />
-        );
+        message = t`edited this`;
+        event.title = <RevisionTitle username={username} message={message} />;
         event.description = (
           <RevisionBatchedDescription
             changes={changes}
@@ -256,8 +282,10 @@ export function getRevisionEventsForTimeline(
           />
         );
       } else {
-        event.title = <RevisionTitle username={username} message={changes} />;
+        message = changes;
+        event.title = <RevisionTitle username={username} message={message} />;
       }
+      event.titleText = getRevisionTitleText(username, message);
 
       return event;
     })

@@ -17,8 +17,8 @@
   (:refer-clojure :exclude [load import])
   (:require
    [clojure.string :as str]
+   [clojure.tools.cli :as cli]
    [environ.core :as env]
-   [medley.core :as m]
    [metabase.config :as config]
    [metabase.mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
@@ -28,10 +28,35 @@
 
 (set! *warn-on-reflection* true)
 
+;; Command processing and option parsing utilities, etc.
+
 (defn- system-exit!
   "Proxy function to System/exit to enable the use of `with-redefs`."
   [return-code]
   (System/exit return-code))
+
+(defn- cmd->var
+  "Looks up a command var by name"
+  [command-name]
+  (ns-resolve 'metabase.cmd (symbol command-name)))
+
+(defn- call-enterprise
+  "Resolves enterprise command by symbol and calls with args, or else throws error if not EE"
+  [symb & args]
+  (let [f (try
+            (classloader/require (symbol (namespace symb)))
+            (resolve symb)
+            (catch Throwable e
+              (throw (ex-info (trs "The ''{0}'' command is only available in Metabase Enterprise Edition." (name symb))
+                              {:command symb}
+                              e))))]
+    (apply f args)))
+
+(defn- get-parsed-options
+  [iref options]
+  (:options (cli/parse-opts options (:arg-spec (meta iref)))))
+
+;; Command implementations
 
 (defn ^:command migrate
   "Run database migrations. Valid options for `direction` are `up`, `force`, `down`, `print`, or `release-locks`."
@@ -48,14 +73,17 @@
    ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string)))
 
 (defn ^:command dump-to-h2
-  "Transfer data from existing database to newly created H2 DB with specified filename.
+  {:doc "Transfer data from existing database to newly created H2 DB with specified filename.
 
-  Target H2 file is deleted before dump, unless the --keep-existing flag is given."
+         Target H2 file is deleted before dump, unless the --keep-existing flag is given."
+   :arg-spec [["-k" "--keep-existing" "Do not delete target H2 file if it exists."
+               :id :keep-existing?]
+              ["-p" "--dump-plaintext" "Do not encrypt dumped contents."
+               :id :dump-plaintext?]]}
   [h2-filename & opts]
   (classloader/require 'metabase.cmd.dump-to-h2)
   (try
-    (let [options        {:keep-existing? (boolean (some #{"--keep-existing"} opts))
-                          :dump-plaintext? (boolean (some #{"--dump-plaintext"} opts))}]
+    (let [options (get-parsed-options #'dump-to-h2 opts)]
       ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename options)
       (println "Dump complete")
       (system-exit! 0))
@@ -78,16 +106,26 @@
 
 (defn ^:command help
   "Show this help message listing valid Metabase commands."
-  []
-  (println "Valid commands are:")
-  (doseq [[symb varr] (sort (ns-interns 'metabase.cmd))
-          :when       (:command (meta varr))]
-    (println symb (str/join " " (:arglists (meta varr))))
-    (println "\t" (when-let [dox (:doc (meta varr))]
-                    (str/replace dox #"\s+" " ")))) ; replace newlines or multiple spaces with single spaces
-  (println "\nSome other commands you might find useful:\n")
-  (println "java -cp metabase.jar org.h2.tools.Shell -url jdbc:h2:/path/to/metabase.db")
-  (println "\tOpen an SQL shell for the Metabase H2 DB"))
+  ([command-name]
+   (let [{:keys [doc arg-spec arglists]} (meta (cmd->var command-name))]
+     (doseq [arglist arglists]
+       (apply println command-name arglist))
+     (when doc
+       (doseq [doc-line (str/split doc #"\n\s+")]
+         (println "\t" doc-line)))
+     (when arg-spec
+       (println "\t" "Options:")
+       (doseq [opt-line (str/split (:summary (cli/parse-opts [] arg-spec)) #"\n")]
+         (println "\t" opt-line)))))
+  ([]
+   (println "Valid commands are:")
+   (doseq [[symb varr] (sort (ns-interns 'metabase.cmd))
+           :when       (:command (meta varr))]
+     (help symb)
+     (println))
+   (println "\nSome other commands you might find useful:\n")
+   (println "java -cp metabase.jar org.h2.tools.Shell -url jdbc:h2:/path/to/metabase.db")
+   (println "\tOpen an SQL shell for the Metabase H2 DB")))
 
 (defn ^:command version
   "Print version information about Metabase and the current system."
@@ -127,77 +165,60 @@
    (classloader/require 'metabase.cmd.driver-methods)
    ((resolve 'metabase.cmd.driver-methods/print-available-multimethods) true)))
 
-(defn- cmd-args->map
-  "Returns a map of keywords parsed from command-line argument flags and values. Handles
-   boolean flags as well as explicit values."
-  [args]
-  (m/map-keys #(keyword (str/replace-first % "--" ""))
-              (loop [parsed {}
-                     [arg & [maybe-val :as more]] args]
-                (if arg
-                  (if (or (nil? maybe-val) (str/starts-with? maybe-val "--"))
-                    (recur (assoc parsed arg true) more)
-                    (recur (assoc parsed arg maybe-val) (rest more)))
-                  parsed))))
-
-(defn- call-enterprise
-  "Resolves enterprise command by symbol and calls with args, or else throws error if not EE"
-  [symb & args]
-  (let [f (try
-            (classloader/require (symbol (namespace symb)))
-            (resolve symb)
-            (catch Throwable e
-              (throw (ex-info (trs "The ''{0}'' command is only available in Metabase Enterprise Edition." (name symb))
-                              {:command symb}
-                              e))))]
-    (apply f args)))
-
-(defn ^:command ^:deprecated load
-  "Deprecated: prefer [[import]] instead.
-
-  Load serialized metabase instance as created by [[dump]] command from directory `path`.
-
-  `--mode` can be one of `:update` or `:skip` (default). `--on-error` can be `:abort` or `:continue` (default)."
+(defn ^:command load
+  {:doc "Note: this command is deprecated. Use `import` instead.
+         Load serialized Metabase instance as created by [[dump]] command from directory `path`."
+   :arg-spec [["-m" "--mode (skip|update)" "Update or skip on conflicts."
+               :default      :skip
+               :default-desc "skip"
+               :parse-fn     mbql.u/normalize-token
+               :validate     [#{:skip :update} "Must be 'skip' or 'update'"]]
+              ["-e" "--on-error (continue|abort)"  "Abort or continue on error."
+               :default      :continue
+               :default-desc "continue"
+               :parse-fn     mbql.u/normalize-token
+               :validate     [#{:continue :abort} "Must be 'continue' or 'abort'"]]]}
   [path & options]
   (log/warn (u/colorize :red (trs "''load'' is deprecated and will be removed in a future release. Please migrate to ''import''.")))
-  (let [opts (merge {:mode     :skip
-                     :on-error :continue}
-                    (m/map-vals mbql.u/normalize-token (cmd-args->map options)))]
-    (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load path opts)))
+  (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load path (get-parsed-options #'load options)))
 
 (defn ^:command import
-  "Load serialized Metabase instance as created by the [[export]] command from directory `path`."
+  {:doc "Load serialized Metabase instance as created by the [[export]] command from directory `path`."
+   :arg-spec [["-e" "--abort-on-error" "Stops import on any errors, default is to continue."]]}
   [path & options]
-  (let [opts {:abort-on-error (boolean (some #{"--abort-on-error"} options))}]
-    (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load path opts)))
+  (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load path (get-parsed-options #'import options)))
 
-(defn ^:command ^:deprecated dump
-  "Deprecated: prefer [[export]] instead.
-
-  Serialized metabase instance into directory `path`. `args` options may contain --state option with one of
-  `active` (default), `all`. With `active` option, do not dump archived entities."
+(defn ^:command dump
+  {:doc "Note: this command is deprecated. Use `export` instead.
+         Serializes Metabase instance into directory `path`."
+   :arg-spec [["-u" "--user EMAIL"         "Export collections owned by the specified user"]
+              ["-s" "--state (active|all)" "When set to `active`, do not dump archived entities. Default behavior is `all`."
+               :default      :all
+               :default-desc "all"
+               :parse-fn     mbql.u/normalize-token
+               :validate     [#{:active :all} "Must be 'active' or 'all'"]]]}
   [path & options]
   (log/warn (u/colorize :red (trs "''dump'' is deprecated and will be removed in a future release. Please migrate to ''export''.")))
-  (let [options (merge {:mode     :skip
-                        :on-error :continue}
-                       (cmd-args->map options))]
-    (call-enterprise 'metabase-enterprise.serialization.cmd/v1-dump path options)))
-
-(defn- parse-int-list
-  [s]
-  (when-not (str/blank? s)
-    (map #(Integer/parseInt %) (str/split s #","))))
+  (call-enterprise 'metabase-enterprise.serialization.cmd/v1-dump path (get-parsed-options #'dump options)))
 
 (defn ^:command export
-  "Serialize a Metabase into directory `path`. Replaces the [[dump]] command..
-
-  Options:
-
-   --collections [collection-id-list] - a comma-separated list of IDs of collection to export
-   --include-field-values             - flag, default false, controls export of field values"
+  {:doc "Serialize Metabase instance into directory at `path`."
+   :arg-spec [["-u" "--user EMAIL"               "Include collections owned by the specified user"
+               :id :user-email]
+              ["-c" "--collection ID"            "Export only specified ID; may occur multiple times."
+               :id        :collections
+               :multi     true
+               :parse-fn  #(Integer/parseInt %)
+               :update-fn (fnil conj [])]
+              [nil "--collections ID_LIST"       "(Legacy-style) Export collections in comma-separated list of IDs, e.g. '123,456'."
+               :parse-fn  (fn [s] (map #(Integer/parseInt %) (str/split s #"\s*,\s*")))]
+              ["-C" "--no-collections"           "Do not export any content in collections."]
+              ["-S" "--no-settings"              "Do not export settings.yaml"]
+              ["-D" "--no-data-model"            "Do not export any data model entities; useful for subsequent exports."]
+              ["-f" "--include-field-values"     "Include field values along with field metadata."]
+              ["-s" "--include-database-secrets" "Include database connection details (in plain text; use caution)."]]}
   [path & options]
-  (let [opts (-> options cmd-args->map (update :collections parse-int-list))]
-    (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump path opts)))
+  (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump path (get-parsed-options #'export options)))
 
 (defn ^:command seed-entity-ids
   "Add entity IDs for instances of serializable models that don't already have them."
@@ -220,9 +241,6 @@
 
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------
 
-(defn- cmd->var [command-name]
-  (ns-resolve 'metabase.cmd (symbol command-name)))
-
 (defn- arg-list-count-ok? [arg-list arg-count]
   (if (some #{'&} arg-list)
     ;; subtract 1 for the & and 1 for the symbol after &
@@ -230,48 +248,54 @@
     (>= arg-count (- (count arg-list) 2))
     (= arg-count (count arg-list))))
 
-(defn- arg-count-good? [command-name args]
-  (let [arg-lists (-> command-name cmd->var meta :arglists)
-        arg-count-matches (mapv #(arg-list-count-ok? % (count args)) arg-lists)]
-    (if (some true? arg-count-matches)
-      [true]
-      [false (str "The '" command-name "' command requires "
-                  (when (> 1 (count arg-lists)) "one of ")
-                  "the following arguments: "
-                  (str/join " | " (map pr-str arg-lists))
-                  ", but received: " (pr-str (vec args)) ".")])))
+(defn- arg-count-errors
+  [command-name args]
+  (let [arg-lists (-> command-name cmd->var meta :arglists)]
+    (when-not (some #(arg-list-count-ok? % (count args)) arg-lists)
+      (str "The '" command-name "' command requires "
+           (when (> 1 (count arg-lists)) "one of ")
+           "the following arguments: "
+           (str/join " | " (map pr-str arg-lists))
+           ", but received: " (pr-str (vec args)) "."))))
 
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------
 
-(defn- cmd->fn
+(defn- validate
   "Returns [error-message] if there is an error, otherwise [nil command-fn]"
   [command-name args]
-  (cond
-    (not (seq command-name))
-    ["No command given."]
+  (let [varr (cmd->var command-name)
+        {:keys [command arg-spec]} (meta varr)
+        err  (arg-count-errors command-name args)]
+    (cond
+      (not command)
+      [(str "Unrecognized command: '" command-name "'")
+       (str "Valid commands: " (str/join ", " (map key (filter (comp :command meta val) (ns-interns 'metabase.cmd)))))]
 
-    (nil? (:command (meta (cmd->var command-name))))
-    [(str "Unrecognized command: '" command-name "'")]
+      err
+      [err]
 
-    (let [[ok? _message] (arg-count-good? command-name args)]
-      (not ok?))
-    [(second (arg-count-good? command-name args))]
+      arg-spec
+      (:errors (cli/parse-opts args arg-spec)))))
 
-    :else
-    [nil @(cmd->var command-name)]))
+(defn- fail!
+  [& messages]
+  (doseq [msg messages]
+    (println (u/format-color 'red msg)))
+  (System/exit 1))
 
 (defn run-cmd
   "Run `cmd` with `args`. This is a function above. e.g. `clojure -M:run metabase migrate force` becomes
   `(migrate \"force\")`."
-  [cmd args]
-  (let [[error-msg command-fn] (cmd->fn cmd args)]
-    (if error-msg
-      (do
-        (println (u/format-color 'red error-msg))
-        (System/exit 1))
-      (try (apply command-fn args)
-           (catch Throwable e
-             (.printStackTrace e)
-             (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
-             (System/exit 1)))))
+  [command-name args]
+  (if-let [errors (validate command-name args)]
+    (do
+      (when (cmd->var command-name)
+        (println "Usage:")
+        (help command-name))
+      (apply fail! errors))
+    (try
+      (apply @(cmd->var command-name) args)
+      (catch Throwable e
+        (.printStackTrace e)
+        (fail! (str "Command failed with exception: " (.getMessage e))))))
   (System/exit 0))

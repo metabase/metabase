@@ -2,34 +2,36 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import MetabotToggleWidget from "./MetabotToggleWidget";
-import { MetabotSetting } from "./types";
 
-const TOGGLE_LABEL = "Display our little friend on the homepage";
+const TOGGLE_LABEL = "Display welcome message on the homepage";
+
+interface SetupOpts {
+  value?: boolean | null;
+}
+
+const setup = ({ value = null }: SetupOpts = {}) => {
+  const setting = { value, default: true };
+  const onChange = jest.fn();
+
+  render(<MetabotToggleWidget setting={setting} onChange={onChange} />);
+
+  return { onChange };
+};
 
 describe("MetabotToggleWidget", () => {
   it("should disable Metabot", () => {
-    const setting = getSetting();
-    const onChange = jest.fn();
+    const { onChange } = setup();
 
-    render(<MetabotToggleWidget setting={setting} onChange={onChange} />);
     userEvent.click(screen.getByText(TOGGLE_LABEL));
 
     expect(onChange).toHaveBeenCalledWith(false);
   });
 
   it("should enable Metabot", () => {
-    const setting = getSetting({ value: false });
-    const onChange = jest.fn();
+    const { onChange } = setup({ value: false });
 
-    render(<MetabotToggleWidget setting={setting} onChange={onChange} />);
     userEvent.click(screen.getByText(TOGGLE_LABEL));
 
     expect(onChange).toHaveBeenCalledWith(true);
   });
-});
-
-const getSetting = (opts?: Partial<MetabotSetting>): MetabotSetting => ({
-  value: null,
-  default: true,
-  ...opts,
 });

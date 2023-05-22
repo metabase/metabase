@@ -1,16 +1,13 @@
-import { TemplateTag } from "metabase-types/types/Query";
 import {
+  Card,
   DatasetColumn,
-  Field,
   FieldReference,
   ModelCacheRefreshStatus,
   TableColumnOrderSetting,
-} from "metabase-types/api";
-import {
-  Card as CardObject,
-  CardId,
+  TemplateTag,
   StructuredDatasetQuery,
-} from "metabase-types/types/Card";
+  FieldId,
+} from "metabase-types/api";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import Database from "metabase-lib/metadata/Database";
 import Question from "metabase-lib/Question";
@@ -18,8 +15,8 @@ import NativeQuery from "metabase-lib/queries/NativeQuery";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
 import { isStructured } from "metabase-lib/queries/utils";
 
-export type FieldMetadata = {
-  id?: number;
+type FieldMetadata = {
+  id?: FieldId | FieldReference;
   name: string;
   display_name: string;
   description?: string | null;
@@ -87,11 +84,11 @@ export function getDatasetMetadataCompletenessPercentage(
   return Math.round(percent * 100) / 100;
 }
 
-export function isSupportedTemplateTagForModel(tag: TemplateTag) {
+function isSupportedTemplateTagForModel(tag: TemplateTag) {
   return ["card", "snippet"].includes(tag.type);
 }
 
-export function checkDatabaseSupportsModels(database?: Database | null) {
+function checkDatabaseSupportsModels(database?: Database | null) {
   return database && database.hasFeature("nested-queries");
 }
 
@@ -114,11 +111,6 @@ export function checkCanBeModel(question: Question) {
     .templateTags()
     .every(isSupportedTemplateTagForModel);
 }
-
-export type Card = CardObject & {
-  id?: CardId;
-  dataset?: boolean;
-};
 
 export function isAdHocModelQuestionCard(card: Card, originalCard?: Card) {
   if (!originalCard || !isStructured(card.dataset_query)) {
@@ -164,7 +156,7 @@ export function getModelCacheSchemaName(databaseId: number, siteUUID: string) {
   return `metabase_cache_${firstLetters}_${databaseId}`;
 }
 
-type QueryField = Field & { field_ref: FieldReference };
+type QueryField = FieldReference & { field_ref: FieldReference };
 
 function getFieldFromColumnVizSetting(
   columnVizSetting: TableColumnOrderSetting,

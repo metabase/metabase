@@ -7,7 +7,7 @@ const questions = {
   2: "Orders, Count",
 };
 
-describe.skip("issue 24660", () => {
+describe("issue 24660", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -18,13 +18,16 @@ describe.skip("issue 24660", () => {
 
   it("should properly show contents of different collections with the same name (metabase#24660)", () => {
     startNewQuestion();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Saved Questions").click();
     cy.findAllByTestId("tree-item-name")
       .contains(collectionName)
       .first()
       .click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(questions[1]);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(questions[2]).should("not.exist");
   });
 });

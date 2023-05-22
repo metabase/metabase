@@ -91,14 +91,14 @@
   {{env user-dir}}
   ```"
   (:require
-   [camel-snake-kebab.core :as csk]
    [clojure.edn :as edn]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [environ.core :as env]
    [metabase-enterprise.advanced-config.file.databases]
-   [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
+   [metabase-enterprise.advanced-config.file.interface
+    :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
    [metabase.driver.common.parameters]
@@ -108,7 +108,7 @@
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [yaml.core :as yaml]))
+   [metabase.util.yaml :as yaml]))
 
 (comment
   ;; for parameter parsing
@@ -183,7 +183,7 @@
 
 (defmethod expand-parsed-template-form 'env
   [[_template-type env-var-name]]
-  (get *env* (csk/->kebab-case-keyword env-var-name)))
+  (get *env* (keyword (u/->kebab-case-en env-var-name))))
 
 (defmulti ^:private expand-template-str-part
   {:arglists '([part])}
@@ -233,7 +233,7 @@
   "Contents of the config file if it exists, otherwise `nil`. If config exists, it will be returned as a map."
   []
   (when-let [m (or *config*
-                   (yaml/from-file (str (path)) true))]
+                   (yaml/from-file (str (path))))]
     (s/assert* ::config m)
     (expand-templates m)))
 

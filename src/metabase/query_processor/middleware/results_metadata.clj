@@ -5,10 +5,11 @@
   (:require
    [metabase.driver :as driver]
    [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.store :as qp.store]
    [metabase.sync.analyze.query-results :as qr]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
@@ -27,10 +28,10 @@
     ;; if its DB doesn't support nested queries in the first place
     (when (and metadata
                driver/*driver*
-               (driver/supports? driver/*driver* :nested-queries)
+               (driver/database-supports? driver/*driver* :nested-queries (qp.store/database))
                card-id
                (not source-card-id))
-      (db/update! 'Card card-id :result_metadata metadata))
+      (t2/update! 'Card card-id {:result_metadata metadata}))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e

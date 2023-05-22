@@ -14,6 +14,7 @@ const FormInput = forwardRef(function FormInput(
   return (
     <FormInputRoot
       {...props}
+      value={props.value ?? ""}
       ref={ref}
       className={cx("input", className)}
       type="text"
@@ -23,4 +24,5 @@ const FormInput = forwardRef(function FormInput(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormInput;

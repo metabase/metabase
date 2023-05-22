@@ -13,7 +13,7 @@ describe("issue 25537", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/database/*/datasets/*").as("getSchemas");
+    cy.intercept("GET", "/api/collection/*/items?*").as("getCollectionContent");
   });
 
   it("should be able to pick a saved model when using a non-english locale (metabase#25537)", () => {
@@ -22,8 +22,9 @@ describe("issue 25537", () => {
 
     startNewQuestion();
     cy.icon("model").click();
-    cy.wait("@getSchemas");
+    cy.wait("@getCollectionContent");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(questionDetails.name).should("exist");
   });
 });

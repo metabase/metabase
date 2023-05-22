@@ -16,7 +16,9 @@ describe("issue 19603", () => {
   it("archived subcollection should not show up in permissions (metabase#19603)", () => {
     cy.visit("/admin/permissions/collections");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("First collection").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Second collection").should("not.exist");
   });
 });

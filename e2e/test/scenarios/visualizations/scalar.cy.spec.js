@@ -29,40 +29,24 @@ describe("scenarios > visualizations > scalar", () => {
       cy.skipOn(size === "mobile");
 
       cy.viewport(width, height);
-      cy.createQuestion({
-        name: "12629",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["*", 1000000, ["sum", ["field", ORDERS.TOTAL, null]]]],
+      cy.createQuestionAndDashboard({
+        questionDetails: {
+          name: "12629",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["*", 1000000, ["sum", ["field", ORDERS.TOTAL, null]]],
+            ],
+          },
+          display: "scalar",
         },
-        display: "scalar",
-      }).then(({ body: { id: questionId } }) => {
-        cy.createDashboard().then(({ body: { id: dashboardId } }) => {
-          // Add previously created question to the dashboard
-          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-            cardId: questionId,
-            row: 0,
-            col: 0,
-            size_x: 4,
-            size_y: 4,
-          }).then(({ body: { id: dashCardId } }) => {
-            cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-              cards: [
-                {
-                  id: dashCardId,
-                  card_id: questionId,
-                  row: 0,
-                  col: 0,
-                  size_x: 4,
-                  size_y: 4,
-                  parameter_mappings: [],
-                },
-              ],
-            });
-          });
-          visitDashboard(dashboardId);
-          cy.findByText("1.5T");
-        });
+        cardDetails: {
+          size_x: 4,
+          size_y: 4,
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        visitDashboard(dashboard_id);
+        cy.findByText("1.5T");
       });
     });
   });
@@ -80,10 +64,13 @@ describe("scenarios > visualizations > scalar", () => {
       display: "scalar",
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("April 30, 2018");
     cy.findByTestId("viz-settings-button").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show the time").should("be.hidden");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Time style").should("be.hidden");
   });
 });

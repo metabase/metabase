@@ -10,7 +10,7 @@ import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItem
 import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
 import PinDropZone from "metabase/collections/components/PinDropZone";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
-import Metadata from "metabase-lib/metadata/Metadata";
+import Database from "metabase-lib/metadata/Database";
 
 import {
   Container,
@@ -20,23 +20,23 @@ import {
 } from "./PinnedItemOverview.styled";
 
 type Props = {
+  databases?: Database[];
   bookmarks?: Bookmark[];
   createBookmark: (id: string, collection: string) => void;
   deleteBookmark: (id: string, collection: string) => void;
   items: CollectionItem[];
   collection: Collection;
-  metadata: Metadata;
   onCopy: (items: CollectionItem[]) => void;
   onMove: (items: CollectionItem[]) => void;
 };
 
 function PinnedItemOverview({
+  databases,
   bookmarks,
   createBookmark,
   deleteBookmark,
   items,
   collection,
-  metadata,
   onCopy,
   onMove,
 }: Props) {
@@ -71,8 +71,8 @@ function PinnedItemOverview({
                     <div>
                       <PinnedQuestionCard
                         item={item}
-                        metadata={metadata}
                         collection={collection}
+                        databases={databases}
                         bookmarks={bookmarks}
                         onCopy={onCopy}
                         onMove={onMove}
@@ -110,6 +110,7 @@ function PinnedItemOverview({
                 <ItemDragSource item={item} collection={collection}>
                   <div>
                     <PinnedItemCard
+                      databases={databases}
                       bookmarks={bookmarks}
                       createBookmark={createBookmark}
                       deleteBookmark={deleteBookmark}
@@ -156,6 +157,7 @@ function PinnedItemOverview({
                 <ItemDragSource item={item} collection={collection}>
                   <div>
                     <PinnedItemCard
+                      databases={databases}
                       bookmarks={bookmarks}
                       createBookmark={createBookmark}
                       deleteBookmark={deleteBookmark}
@@ -181,4 +183,5 @@ function PinnedItemOverview({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default PinnedItemOverview;

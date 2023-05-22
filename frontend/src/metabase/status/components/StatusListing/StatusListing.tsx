@@ -1,13 +1,38 @@
 import React from "react";
+import { t } from "ttag";
+import { useBeforeUnload } from "react-use";
+
+import { useSelector } from "metabase/lib/redux";
+
+import { getUserIsAdmin, getUser } from "metabase/selectors/user";
+import { hasActiveUploads } from "metabase/redux/uploads";
+
 import DatabaseStatus from "../../containers/DatabaseStatus";
+import FileUploadStatus from "../FileUploadStatus";
 import { StatusListingRoot } from "./StatusListing.styled";
 
-export interface StatusListingProps {
-  isAdmin: boolean;
-}
+const StatusListingView = () => {
+  const isLoggedIn = !!useSelector(getUser);
+  const isAdmin = useSelector(getUserIsAdmin);
 
-const StatusListing = ({ isAdmin }: StatusListingProps): JSX.Element => {
-  return <StatusListingRoot>{isAdmin && <DatabaseStatus />}</StatusListingRoot>;
+  const uploadInProgress = useSelector(hasActiveUploads);
+
+  useBeforeUnload(
+    uploadInProgress,
+    t`CSV Upload in progress. Are you sure you want to leave?`,
+  );
+
+  if (!isLoggedIn) {
+    return null;
+  }
+
+  return (
+    <StatusListingRoot>
+      {isAdmin && <DatabaseStatus />}
+      <FileUploadStatus />
+    </StatusListingRoot>
+  );
 };
 
-export default StatusListing;
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default StatusListingView;

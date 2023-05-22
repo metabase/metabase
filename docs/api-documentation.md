@@ -26,6 +26,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 
 - [Action](api/action.md)
 - [Activity](api/activity.md)
+- [Advanced config logs*](api/ee/advanced-config-logs.md)
 - [Advanced permissions application*](api/ee/advanced-permissions-application.md)
 - [Alert](api/alert.md)
 - [Audit app user*](api/ee/audit-app-user.md)
@@ -44,6 +45,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Google](api/google.md)
 - [LDAP](api/ldap.md)
 - [Login history](api/login-history.md)
+- [Metabot](api/metabot.md)
 - [Metric](api/metric.md)
 - [Native query snippet](api/native-query-snippet.md)
 - [Notify](api/notify.md)

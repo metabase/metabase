@@ -128,6 +128,15 @@ export interface TokenStatus {
   status?: TokenStatusStatus;
 }
 
+export type DayOfWeekId =
+  | "sunday"
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday";
+
 export interface TokenFeatures {
   advanced_config: boolean;
   advanced_permissions: boolean;
@@ -150,6 +159,11 @@ export interface SettingDefinition {
   env_name?: string;
   is_env_setting: boolean;
   value?: unknown;
+}
+
+export interface OpenAiModel {
+  id: string;
+  owned_by: string;
 }
 
 export interface Settings {
@@ -182,16 +196,22 @@ export interface Settings {
   "has-user-setup": boolean;
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
+  "is-metabot-enabled": boolean;
   "jwt-enabled"?: boolean;
   "jwt-configured"?: boolean;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
+  "openai-api-key": string | null;
+  "openai-organization": string | null;
+  "openai-model": string | null;
+  "openai-available-models"?: OpenAiModel[];
   "other-sso-enabled?": boolean | null;
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
   "premium-embedding-token": string | null;
   "report-timezone-short": string;
+  "report-timezone-long": string;
   "saml-configured"?: boolean;
   "saml-enabled"?: boolean;
   "search-typeahead-enabled": boolean;
@@ -212,6 +232,7 @@ export interface Settings {
   "slack-files-channel": string | null;
   "slack-token": string | null;
   "slack-token-valid?": boolean;
+  "start-of-week"?: DayOfWeekId;
   "subscription-allowed-domains": string | null;
   "token-features": TokenFeatures;
   "token-status": TokenStatus | null;
@@ -219,6 +240,10 @@ export interface Settings {
   version: Version;
   "version-info": VersionInfo | null;
   "version-info-last-checked": string | null;
+  "uploads-enabled": boolean;
+  "uploads-database-id": number | null;
+  "uploads-schema-name": string | null;
+  "uploads-table-prefix": string | null;
 }
 
 export type SettingKey = keyof Settings;

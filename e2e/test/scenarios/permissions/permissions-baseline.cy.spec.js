@@ -35,7 +35,7 @@ describe("scenarios > permissions", () => {
       { autorun: false },
     );
 
-    cy.findAllByRole("button", { name: "refresh icon" }).should("be.disabled");
+    cy.findAllByLabelText("Refresh").should("be.disabled");
   });
 
   it("should display the permissions screen for pulses", () => {
@@ -49,6 +49,7 @@ describe("scenarios > permissions", () => {
   it("should let a user with no data permissions view questions", () => {
     cy.signIn("nodata");
     visitQuestion(1);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("February 11, 2019, 9:40 PM"); // check that the data loads
   });
 });

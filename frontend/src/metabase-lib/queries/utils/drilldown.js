@@ -449,9 +449,7 @@ function columnToFieldDimension(column, metadata) {
     return;
   }
 
-  const dimension = column.field_ref
-    ? FieldDimension.parseMBQL(column.field_ref, metadata)
-    : new FieldDimension(column.id, null, metadata);
+  const dimension = new FieldDimension(column.id, null, metadata);
 
   if (column.unit) {
     return dimension.withTemporalUnit(column.unit);

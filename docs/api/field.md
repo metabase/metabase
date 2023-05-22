@@ -72,7 +72,7 @@ If a Field's value of `has_field_values` is `:list`, return a list of all the di
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/field/field%2C:field-name%2C:options/values`
 

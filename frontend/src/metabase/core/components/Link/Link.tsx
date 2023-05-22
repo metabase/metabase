@@ -1,24 +1,14 @@
-import React, { AnchorHTMLAttributes, CSSProperties, ReactNode } from "react";
+import React from "react";
 import Tooltip from "metabase/core/components/Tooltip";
-import { TooltipProps } from "metabase/core/components/Tooltip/Tooltip";
 import { LinkRoot } from "./Link.styled";
-
-export interface LinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
-  to: string;
-  disabled?: boolean;
-  className?: string;
-  children?: ReactNode;
-  tooltip?: string | TooltipProps;
-  activeClassName?: string;
-  activeStyle?: CSSProperties;
-  onlyActiveOnIndex?: boolean;
-}
+import type { LinkProps } from "./types";
 
 const Link = ({
   to,
   children,
   disabled,
   tooltip,
+  variant,
   ...props
 }: LinkProps): JSX.Element => {
   const link = (
@@ -28,6 +18,7 @@ const Link = ({
       disabled={disabled}
       tabIndex={disabled ? -1 : undefined}
       aria-disabled={disabled}
+      variant={variant}
     >
       {children}
     </LinkRoot>
@@ -49,6 +40,7 @@ const Link = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(Link, {
   Root: LinkRoot,
 });

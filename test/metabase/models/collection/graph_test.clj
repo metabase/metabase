@@ -18,7 +18,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))
 
@@ -43,7 +42,7 @@
                                                                        collection-id))))))))
 
 (defn- clear-graph-revisions! []
-  (db/delete! CollectionPermissionGraphRevision))
+  (t2/delete! CollectionPermissionGraphRevision))
 
 (defn- only-groups
   "Remove entries for non-'magic' groups from a fetched perms `graph`."
@@ -345,7 +344,7 @@
                                 :user_id    (s/eq (mt/user->id :crowberto))
                                 :created_at java.time.temporal.Temporal
                                 s/Keyword   s/Any}
-                               (db/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
+                               (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
 
             (testing "Should be able to update the graph for a non-default namespace.\n"
               (let [before (graph/graph :currency)]
@@ -364,7 +363,7 @@
                                 :user_id    (s/eq (mt/user->id :crowberto))
                                 :created_at java.time.temporal.Temporal
                                 s/Keyword   s/Any}
-                               (db/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
+                               (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
 
             (testing "should be able to update permissions for the Root Collection in the default namespace via the graph"
               (graph/update-graph! (assoc (graph/graph) :groups {group-id {:root :read}}))
@@ -383,7 +382,7 @@
                                          s/Keyword  s/Any}
                               :after    {(keyword (str group-id)) {:root (s/eq "read")}}
                               s/Keyword s/Any}
-                             (db/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))
+                             (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))
 
             (testing "should be able to update permissions for Root Collection in non-default namespace"
               (graph/update-graph! :currency (assoc (graph/graph :currency) :groups {group-id {:root :write}}))
@@ -402,14 +401,14 @@
                                          s/Keyword  s/Any}
                               :after    {(keyword (str group-id)) {:root (s/eq "write")}}
                               s/Keyword s/Any}
-                             (db/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))))))))
+                             (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))))))))
 
 (defn- do-with-n-temp-users-with-personal-collections! [num-users thunk]
   (mt/with-model-cleanup [User Collection]
     ;; insert all the users
     (t2/query {:insert-into (t2/table-name User)
                :values      (repeatedly num-users #(assoc (tt/with-temp-defaults User) :date_joined :%now))})
-    (let [max-id   (:max-id (db/select-one [User [:%max.id :max-id]]))
+    (let [max-id   (:max-id (t2/select-one [User [:%max.id :max-id]]))
           ;; determine the range of IDs we inserted -- MySQL doesn't support INSERT INTO ... RETURNING like Postgres
           ;; so this is the fastest way to do this
           user-ids (range (inc (- max-id num-users)) (inc max-id))]
@@ -430,5 +429,5 @@
 (deftest mega-graph-test
   (testing "A truly insane amount of Personal Collections shouldn't cause a Stack Overflow (#13211)"
     (with-n-temp-users-with-personal-collections 2000
-      (is (>= (db/count Collection :personal_owner_id [:not= nil]) 2000))
+      (is (>= (t2/count Collection :personal_owner_id [:not= nil]) 2000))
       (is (map? (graph/graph))))))

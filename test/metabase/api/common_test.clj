@@ -7,7 +7,8 @@
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.security :as mw.security]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [ring.middleware.multipart-params :as mp]))
 
 ;;; TESTS FOR CHECK (ETC)
 
@@ -101,20 +102,45 @@
 (deftest ^:parallel defendpoint-test
   ;; replace regex `#"[0-9]+"` with str `"#[0-9]+" so expectations doesn't barf
   (binding [api.internal/*auto-parse-types* (update-in api.internal/*auto-parse-types* [:int :route-param-regex] (partial str "#"))]
-    (is (=? '(def
-               GET_:id
-               (compojure.core/make-route
-                :get
-                {:source "/:id", :re #"/(#[0-9]+)", :keys [:id], :absolute? false}
-                (clojure.core/fn
-                  [#"request__\d+__auto__"]
-                  (metabase.api.common/validate-param-values #"request__\d+__auto__" '(id))
-                  (compojure.core/let-request
-                   [[id] #"request__\d+__auto__"]
-                   (metabase.api.common.internal/auto-parse
-                       [id]
-                       (metabase.api.common.internal/validate-param 'id id metabase.util.schema/IntGreaterThanZero)
-                       (metabase.api.common.internal/wrap-response-if-needed (do (select-one Card :id id))))))))
-            (macroexpand '(metabase.api.common/defendpoint-schema compojure.core/GET "/:id" [id]
-                            {id metabase.util.schema/IntGreaterThanZero}
-                            (select-one Card :id id)))))))
+    (testing "Standard defendpoint"
+      ;; Can't quasi-quote here since that would fully qualify symbols like GET_:id
+      (is (=? (list
+               'def
+               'GET_:id
+               (list 'compojure.core/make-route
+                     :get
+                     {:source "/:id", :re #"/(#[0-9]+)", :keys [:id], :absolute? false}
+                     (list identity
+                           '(clojure.core/fn
+                              [#"request__\d+__auto__"]
+                              (metabase.api.common/validate-param-values #"request__\d+__auto__" '(id))
+                              (compojure.core/let-request
+                               [[id] #"request__\d+__auto__"]
+                               (metabase.api.common.internal/auto-parse
+                                   [id]
+                                 (metabase.api.common.internal/validate-param 'id id metabase.util.schema/IntGreaterThanZero)
+                                 (metabase.api.common.internal/wrap-response-if-needed (do (select-one Card :id id)))))))))
+              (macroexpand '(metabase.api.common/defendpoint-schema compojure.core/GET "/:id" [id]
+                              {id metabase.util.schema/IntGreaterThanZero}
+                              (select-one Card :id id))))))
+    (testing "Multipart"
+      ;; Can't quasi-quote here since that would fully qualify symbols like GET_:id
+      (is (=? (list
+               'def
+               'GET_:id
+               (list 'compojure.core/make-route
+                     :get
+                     {:source "/:id", :re #"/(#[0-9]+)", :keys [:id], :absolute? false}
+                     (list mp/wrap-multipart-params
+                           '(clojure.core/fn
+                              [#"request__\d+__auto__"]
+                              (metabase.api.common/validate-param-values #"request__\d+__auto__" '(id))
+                              (compojure.core/let-request
+                               [[id] #"request__\d+__auto__"]
+                               (metabase.api.common.internal/auto-parse
+                                   [id]
+                                 (metabase.api.common.internal/validate-param 'id id metabase.util.schema/IntGreaterThanZero)
+                                 (metabase.api.common.internal/wrap-response-if-needed (do (select-one Card :id id)))))))))
+              (macroexpand '(metabase.api.common/defendpoint-schema ^:multipart compojure.core/GET "/:id" [id]
+                              {id metabase.util.schema/IntGreaterThanZero}
+                              (select-one Card :id id))))))))

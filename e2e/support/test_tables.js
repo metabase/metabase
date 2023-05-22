@@ -101,3 +101,50 @@ export const many_data_types = async dbClient => {
   await dbClient(tableName).insert(many_data_types_rows);
   return null;
 };
+
+export const composite_pk_table = async dbClient => {
+  const tableName = "composite_pk_table";
+
+  await dbClient.schema.dropTableIfExists(tableName);
+
+  await dbClient.schema.createTable(tableName, table => {
+    table.integer("id1");
+    table.string("id2");
+    table.string("name");
+    table.integer("score");
+    table.primary(["id1", "id2"]);
+  });
+
+  await dbClient(tableName).insert([
+    { id1: 1, id2: "alpha", name: "Duck", score: 10 },
+    { id1: 1, id2: "beta", name: "Horse", score: 20 },
+    { id1: 2, id2: "alpha", name: "Cow", score: 30 },
+    { id1: 2, id2: "beta", name: "Pig", score: 40 },
+    { id1: 3, id2: "alpha", name: "Chicken", score: 50 },
+    { id1: 3, id2: "beta", name: "Rabbit", score: 60 },
+  ]);
+
+  return null;
+};
+
+export const no_pk_table = async dbClient => {
+  const tableName = "no_pk_table";
+
+  await dbClient.schema.dropTableIfExists(tableName);
+
+  await dbClient.schema.createTable(tableName, table => {
+    table.string("name");
+    table.integer("score");
+  });
+
+  await dbClient(tableName).insert([
+    { name: "Duck", score: 10 },
+    { name: "Horse", score: 20 },
+    { name: "Cow", score: 30 },
+    { name: "Pig", score: 40 },
+    { name: "Chicken", score: 50 },
+    { name: "Rabbit", score: 60 },
+  ]);
+
+  return null;
+};

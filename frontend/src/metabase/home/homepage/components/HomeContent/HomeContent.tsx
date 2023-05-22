@@ -1,9 +1,10 @@
 import React from "react";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { Database, PopularItem, RecentItem, User } from "metabase-types/api";
-import HomePopularSection from "../../containers/HomePopularSection";
-import HomeRecentSection from "../../containers/HomeRecentSection";
+import { PopularItem, RecentItem, User } from "metabase-types/api";
+import Database from "metabase-lib/metadata/Database";
+import HomePopularSection from "../HomePopularSection";
+import HomeRecentSection from "../HomeRecentSection";
 import HomeXraySection from "../../containers/HomeXraySection";
 import { isWithinWeeks } from "../../utils";
 
@@ -77,4 +78,5 @@ const isXraySection = ({
   return databases.some(isSyncCompleted) && isXrayEnabled;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default HomeContent;

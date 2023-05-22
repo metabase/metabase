@@ -10,7 +10,7 @@
    [metabase.models :refer [Table]]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest load-from-h2-test
   ;; enable this test in the REPL with something like (mt/set-test-drivers! #{:postgres})
@@ -26,5 +26,5 @@
       (binding [mdb.connection/*application-db* (mdb.connection/application-db target-db-type target-data-source)]
         (load-from-h2/load-from-h2! h2-filename)
         (is (= 4
-               (db/count Table)))))))
+               (t2/count Table)))))))
         ;; TODO -- better/more complete validation

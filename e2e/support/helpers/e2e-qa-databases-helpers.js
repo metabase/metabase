@@ -185,25 +185,56 @@ export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
     });
 }
 
-export function waitForSyncToFinish(iteration = 0, databaseId = 2) {
+export const createModelFromTableName = ({
+  tableName,
+  modelName = "Test Action Model",
+  idAlias = "modelId",
+}) => {
+  getTableId({ name: tableName }).then(tableId => {
+    cy.createQuestion(
+      {
+        database: WRITABLE_DB_ID,
+        name: modelName,
+        query: {
+          "source-table": tableId,
+        },
+        dataset: true,
+      },
+      {
+        wrapId: true,
+        idAlias,
+      },
+    );
+  });
+};
+
+export function waitForSyncToFinish({
+  iteration = 0,
+  dbId = 2,
+  tableName = "",
+}) {
   // 100 x 100ms should be plenty of time for the sync to finish.
   if (iteration === 100) {
     return;
   }
 
-  cy.request("GET", `/api/database/${databaseId}/metadata`).then(({ body }) => {
-    if (!body.tables.length) {
-      cy.wait(100);
-      waitForSyncToFinish(++iteration, databaseId);
-    }
+  cy.wait(100);
 
-    return;
+  cy.request("GET", `/api/database/${dbId}/metadata`).then(({ body }) => {
+    if (!body.tables.length) {
+      waitForSyncToFinish({ iteration: ++iteration, dbId, tableName });
+    } else if (tableName) {
+      const hasTable = body.tables.some(table => table.name === tableName);
+      if (!hasTable) {
+        waitForSyncToFinish({ iteration: ++iteration, dbId, tableName });
+      }
+    }
   });
 }
 
-export function resyncDatabase(DB_ID = 2) {
+export function resyncDatabase({ dbId = 2, tableName = "" }) {
   // must be signed in as admin to sync
-  cy.request("POST", `/api/database/${DB_ID}/sync_schema`);
-  cy.request("POST", `/api/database/${DB_ID}/rescan_values`);
-  waitForSyncToFinish(0, DB_ID);
+  cy.request("POST", `/api/database/${dbId}/sync_schema`);
+  cy.request("POST", `/api/database/${dbId}/rescan_values`);
+  waitForSyncToFinish({ iteration: 0, dbId, tableName });
 }

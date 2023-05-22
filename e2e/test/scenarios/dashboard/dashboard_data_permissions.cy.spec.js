@@ -47,8 +47,11 @@ describe("support > permissions (metabase#8472)", () => {
     // Filter the first card by User Address
     selectDashboardFilter(cy.get(".DashCard").first(), "Address");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Done").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Orders in a dashboard").click();
   });
 
@@ -62,11 +65,6 @@ describe("support > permissions (metabase#8472)", () => {
   });
 
   it("should not allow a nocollection user to visit the page, hence cannot see the filter", () => {
-    cy.server();
-    cy.route("GET", "/api/dashboard/1/params/search/100 Main Street").as(
-      "search",
-    );
-
     cy.signIn("nocollection");
     cy.request({
       method: "GET",

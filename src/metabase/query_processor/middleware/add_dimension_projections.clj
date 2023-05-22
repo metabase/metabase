@@ -35,8 +35,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (def ^:private ExternalRemappingDimensionInitialInfo
   "External remapping dimensions when they're first fetched from the app DB. We'll add extra info to this."
@@ -60,7 +60,7 @@
   [fields :- [mbql.s/Field]]
   (when-let [field-ids (not-empty (set (mbql.u/match fields [:field (id :guard integer?) _] id)))]
     (letfn [(thunk []
-              (m/index-by :field_id (db/select [Dimension :id :field_id :name :human_readable_field_id]
+              (m/index-by :field_id (t2/select [Dimension :id :field_id :name :human_readable_field_id]
                                       :field_id [:in field-ids]
                                       :type     "external")))]
       (if (qp.store/initialized?)

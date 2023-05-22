@@ -10,6 +10,12 @@ export interface ButtonRootProps {
 export const ButtonRoot = styled.button<ButtonRootProps>`
   transition: all 200ms linear;
   flex-shrink: 0;
+  @media (prefers-reduced-motion) {
+    &,
+    &:hover {
+      transition: none;
+    }
+  }
 
   ${({ purple }) =>
     purple &&
