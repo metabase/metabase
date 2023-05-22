@@ -46,6 +46,7 @@ export function TextOptionsButton({
           <Tooltip tooltip={t`Add a heading or text`}>
             <DashboardHeaderButton
               key="add-text"
+              aria-label={t`Add a text box`}
               onClick={showAddTextPopover}
               data-metabase-event="Dashboard;Add Heading or Text Box"
             >
