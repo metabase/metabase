@@ -30,33 +30,55 @@
 ;; ## Dashboard Revisions
 
 (deftest serialize-dashboard-test
-  (tt/with-temp* [Dashboard           [{dashboard-id :id :as dashboard} {:name "Test Dashboard"}]
-                  Card                [{card-id :id}]
-                  Card                [{series-id-1 :id}]
-                  Card                [{series-id-2 :id}]
-                  DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                  DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
-                  DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
-    (is (= {:name               "Test Dashboard"
-            :auto_apply_filters true
-            :collection_id      nil
-            :description        nil
-            :cache_ttl          nil
-            :cards              [{:size_x  4
-                                  :size_y  4
-                                  :row     0
-                                  :col     0
-                                  :id      true
-                                  :card_id true
-                                  :series  true}]}
-           (update (revision/serialize-instance Dashboard (:id dashboard) dashboard)
-                   :cards
-                   (fn [[{:keys [id card_id series], :as card}]]
-                     [(assoc card
-                             :id      (= dashcard-id id)
-                             :card_id (= card-id card_id)
-                             :series  (= [series-id-1 series-id-2] series))]))))))
+  (testing "without tabs"
+    (tt/with-temp* [Dashboard           [{dashboard-id :id :as dashboard} {:name "Test Dashboard"}]
+                    Card                [{card-id :id}]
+                    Card                [{series-id-1 :id}]
+                    Card                [{series-id-2 :id}]
+                    DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
+                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
+      (is (= {:name               "Test Dashboard"
+              :auto_apply_filters true
+              :collection_id      nil
+              :description        nil
+              :cache_ttl          nil
+              :cards              [{:size_x           4
+                                    :size_y           4
+                                    :row              0
+                                    :col              0
+                                    :id               true
+                                    :card_id          true
+                                    :series           true
+                                    :dashboard_tab_id nil}]
+              :tabs               []}
+             (update (revision/serialize-instance Dashboard (:id dashboard) dashboard)
+                     :cards
+                     (fn [[{:keys [id card_id series], :as card}]]
+                       [(assoc card
+                               :id      (= dashcard-id id)
+                               :card_id (= card-id card_id)
+                               :series  (= [series-id-1 series-id-2] series))]))))))
 
+  (testing "with tabs"
+    (mt/with-temp* [Dashboard           [{dashboard-id :id :as dashboard} {:name "Test Dashboard"}]
+                    :model/DashboardTab [{tab-id :id} {:dashboard_id dashboard-id :name "Test Tab" :position 0}]
+                    DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id :dashboard_tab_id tab-id}]]
+      (is (=? {:name               "Test Dashboard"
+               :auto_apply_filters true
+               :collection_id      nil
+               :description        nil
+               :cache_ttl          nil
+               :cards              [{:size_x           4
+                                     :size_y           4
+                                     :row              0
+                                     :col              0
+                                     :id               dashcard-id
+                                     :dashboard_tab_id tab-id}]
+               :tabs               [{:id      tab-id
+                                     :name    "Test Tab"
+                                     :position 0}]}
+             (revision/serialize-instance Dashboard (:id dashboard) dashboard))))))
 
 (deftest diff-dashboards-str-test
   (testing "update general info ---"
@@ -225,7 +247,8 @@
                                 :auto_apply_filters true
                                 :collection_id      nil
                                 :cache_ttl          nil
-                                :cards              []}
+                                :cards              []
+                                :tabs               []}
           serialized-dashboard (revision/serialize-instance Dashboard (:id dashboard) dashboard)]
       (testing "original state"
         (is (= {:name               "Test Dashboard"
@@ -233,13 +256,15 @@
                 :cache_ttl          nil
                 :auto_apply_filters true
                 :collection_id      nil
-                :cards              [{:size_x  4
-                                      :size_y  4
-                                      :row     0
-                                      :col     0
-                                      :id      true
-                                      :card_id true
-                                      :series  true}]}
+                :cards              [{:size_x           4
+                                      :size_y           4
+                                      :row              0
+                                      :col              0
+                                      :id               true
+                                      :card_id          true
+                                      :series           true
+                                      :dashboard_tab_id nil}]
+                :tabs               []}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
         (dashboard-card/delete-dashboard-cards! [(:id dashboard-card)])
@@ -258,13 +283,15 @@
                 :cache_ttl          nil
                 :auto_apply_filters true
                 :collection_id      nil
-                :cards              [{:size_x  4
-                                      :size_y  4
-                                      :row     0
-                                      :col     0
-                                      :id      false
-                                      :card_id true
-                                      :series  true}]}
+                :cards              [{:size_x           4
+                                      :size_y           4
+                                      :row              0
+                                      :col              0
+                                      :id               false
+                                      :card_id          true
+                                      :series           true
+                                      :dashboard_tab_id nil}]
+                :tabs               []}
                (update (revision/serialize-instance Dashboard dashboard-id (t2/select-one Dashboard :id dashboard-id))
                        :cards check-ids))))
       (testing "revert back to the empty state"

@@ -195,13 +195,13 @@
         serialized-tab-ids                 (set (map :id serialized-tabs))
         [delete-ids create-ids update-ids] (diff current-tab-ids serialized-tab-ids)
         _                                  (when (seq delete-ids) (dashboard-tab/delete-tabs! (seq delete-ids)))
-        _                                  (t2/select :model/DashboardTab :id [:in create-ids])
         to-create-tabs                     (filter #(contains? create-ids (:id %)) serialized-tabs)
         new-tab-ids                        (when (seq to-create-tabs)
                                              (t2/insert-returning-pks! :model/DashboardTab to-create-tabs))
         id->serialized-tab                 (zipmap (map :id serialized-tabs) serialized-tabs)
         id->current-tab                    (zipmap (map :id current-tabs) current-tabs)]
-       (dashboard-tab/update-tabs! (map id->current-tab update-ids) (map id->serialized-tab update-ids))
+       (when (seq update-ids)
+         (dashboard-tab/update-tabs! (map id->current-tab update-ids) (map id->serialized-tab update-ids)))
    {:old-id->new-id  (zipmap (map :id to-create-tabs) new-tab-ids)}))
 
 (defn- revert-dashcards
