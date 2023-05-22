@@ -181,7 +181,7 @@ export const getDocumentTitle = state =>
   state.dashboard.loadingControls.documentTitle;
 
 export const getIsNavigatingToDashboard = state =>
-  state.dashboard.isNavigatingToDashboard;
+  state.dashboard.isNavigatingWithinDashboard;
 
 export const getIsBookmarked = (state, props) =>
   props.bookmarks.some(

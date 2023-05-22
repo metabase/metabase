@@ -6,7 +6,7 @@ export const initialize = createThunkAction(
   INITIALIZE,
   () => (dispatch, getState) => {
     return {
-      isNavigatingToDashboard: getIsNavigatingToDashboard(getState()),
+      isNavigatingWithinDashboard: getIsNavigatingToDashboard(getState()),
     };
   },
 );
@@ -14,7 +14,7 @@ export const initialize = createThunkAction(
 export const RESET = "metabase/dashboard/RESET";
 export const reset = createThunkAction(RESET, () => (dispatch, getState) => {
   return {
-    isNavigatingToDashboard: getIsNavigatingToDashboard(getState()),
+    isNavigatingWithinDashboard: getIsNavigatingToDashboard(getState()),
   };
 });
 

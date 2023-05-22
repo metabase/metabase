@@ -25,7 +25,7 @@ const mapStateToProps = (state, props) => {
     slowCards: getSlowCards(state, props),
     parameters: getParameters(state, props),
     parameterValues: getParameterValues(state, props),
-    isNavigatingToDashboard: getIsNavigatingToDashboard(state),
+    isNavigatingWithinDashboard: getIsNavigatingToDashboard(state),
   };
 };
 

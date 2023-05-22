@@ -244,22 +244,22 @@ const isAddParameterPopoverOpen = handleActions(
   INITIAL_DASHBOARD_STATE.isAddParameterPopoverOpen,
 );
 
-const isNavigatingToDashboard = handleActions(
+const isNavigatingWithinDashboard = handleActions(
   {
     [INITIALIZE]: () => false,
     [NAVIGATE_TO_NEW_CARD]: () => true,
     [NAVIGATE_TO_DASHBOARD]: () => true,
     [RESET]: () => false,
   },
-  INITIAL_DASHBOARD_STATE.isNavigatingToDashboard,
+  INITIAL_DASHBOARD_STATE.isNavigatingWithinDashboard,
 );
 
 const dashcardData = handleActions(
   {
     // clear existing dashboard data when loading a dashboard
     [INITIALIZE]: {
-      next: (state, { payload: { isNavigatingToDashboard } }) =>
-        isNavigatingToDashboard ? state : {},
+      next: (state, { payload: { isNavigatingWithinDashboard } }) =>
+        isNavigatingWithinDashboard ? state : {},
     },
     [FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id, card_id, result } }) =>
@@ -270,8 +270,8 @@ const dashcardData = handleActions(
         assocIn(state, [dashcardId, cardId]),
     },
     [RESET]: {
-      next: (state, { payload: { isNavigatingToDashboard } }) =>
-        isNavigatingToDashboard ? state : {},
+      next: (state, { payload: { isNavigatingWithinDashboard } }) =>
+        isNavigatingWithinDashboard ? state : {},
     },
   },
   INITIAL_DASHBOARD_STATE.dashcardData,
@@ -469,7 +469,7 @@ export default reduceReducers(
     draftParameterValues,
     loadingDashCards,
     isAddParameterPopoverOpen,
-    isNavigatingToDashboard,
+    isNavigatingWithinDashboard,
     sidebar,
     missingActionParameters,
     autoApplyFilters,
