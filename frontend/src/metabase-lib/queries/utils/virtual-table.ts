@@ -1,3 +1,4 @@
+import { TableId } from "metabase-types/api";
 import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
 import type Database from "metabase-lib/metadata/Database";
@@ -6,10 +7,13 @@ import type StructuredQuery from "../StructuredQuery";
 import type NativeQuery from "../NativeQuery";
 
 type VirtualTableProps = {
+  id: TableId;
+  name: string;
+  display_name: string;
   metadata: Metadata;
+  db?: Database;
   fields?: Field[];
-  db?: Database | null;
-} & Partial<Table>;
+};
 
 type VirtualFieldProps = {
   metadata: Metadata;
@@ -18,17 +22,24 @@ type VirtualFieldProps = {
 
 // For when you have no Table
 export function createVirtualTable({
+  id,
+  name,
+  display_name,
   metadata,
-  fields,
   db,
-  ...rest
+  fields,
 }: VirtualTableProps): Table {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   const table = new Table({
-    name: "",
-    display_name: "",
-    ...rest,
+    id,
+    db_id: Number(db?.id),
+    name,
+    display_name,
+    schema: "",
+    description: null,
+    active: true,
+    visibility_type: null,
+    field_order: "database",
+    initial_sync_status: "complete",
   });
 
   Object.assign(table, {

@@ -15,9 +15,10 @@ const TABLE_ID = 1;
 
 const TABLE_FK = createMockForeignKey({
   origin: createMockField({
+    id: 1,
+    table_id: 2,
     table: createMockTable({
-      id: 111,
-      db_id: 222,
+      id: 2,
       display_name: "Connected Table",
     }),
   }),

@@ -292,17 +292,17 @@
             (-> (assoc :parameters implicit-params)
                 (update-in [:visualization_settings :fields]
                            (fn [fields]
-                             (let [param-ids (map :id implicit-params)]
-                               (let [fields (->> (or fields {})
-                                                 ;; remove entries that don't match params
-                                                 (m/filter-keys (set param-ids)))]
-                                 ;; add default entries for params that don't have an entry
-                                 (reduce (fn [acc param-id]
-                                           (if (get acc param-id)
-                                             acc
-                                             (assoc acc param-id {:id param-id, :hidden false})))
-                                         fields
-                                         param-ids))))))))
+                             (let [param-ids (map :id implicit-params)
+                                   fields    (->> (or fields {})
+                                                  ;; remove entries that don't match params (in case of deleted columns)
+                                                  (m/filter-keys (set param-ids)))]
+                               ;; add default entries for params that don't have an entry
+                               (reduce (fn [acc param-id]
+                                         (if (contains? acc param-id)
+                                           acc
+                                           (assoc acc param-id {:id param-id, :hidden false})))
+                                       fields
+                                       param-ids)))))))
         action))))
 
 (defn select-action
