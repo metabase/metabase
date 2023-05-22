@@ -12,7 +12,7 @@ import {
 
 interface HeadingProps {
   isEditing: boolean;
-  onUpdateVisualizationSettings: (text: string) => void;
+  onUpdateVisualizationSettings: ({ text }: { text: string }) => void;
   dashcard: { justAdded?: boolean };
   settings: { text: string };
 }
@@ -30,7 +30,7 @@ export function Heading({
   const isPreviewing = !isFocused && !isHovering;
 
   const handleTextChange = (text: string) =>
-    onUpdateVisualizationSettings({ text }); // ! FIX TYPESCRIPT ERROR?
+    onUpdateVisualizationSettings({ text });
   const preventDragging = (e: MouseEvent<HTMLInputElement>) =>
     e.stopPropagation();
 
