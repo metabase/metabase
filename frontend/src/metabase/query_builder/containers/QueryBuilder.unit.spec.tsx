@@ -118,6 +118,7 @@ const setup = async ({
   initialRoute = `/question/${card.id}`,
 }: SetupOpts = {}) => {
   setupDatabasesEndpoints([TEST_DB]);
+  setupCardDataset(dataset);
   setupCardEndpoints(card);
   setupCardQueryEndpoints(card, dataset);
   setupSearchEndpoints([]);
@@ -299,10 +300,9 @@ describe("QueryBuilder", () => {
       createMockCard({ ...TEST_CARD_VISUALIZATION, display: "line" }),
     ];
 
-    for (const card of cards) {
-      it(`renders the row count in "${card.display}" visualization`, async () => {
-        setupCardDataset(dataset);
-
+    it.each(cards)(
+      `renders the row count in "$display" visualization`,
+      async card => {
         await setup({
           card,
           dataset,
@@ -316,7 +316,7 @@ describe("QueryBuilder", () => {
 
         const element = screen.getByTestId("question-row-count");
         expect(element).toBeVisible();
-      });
-    }
+      },
+    );
   });
 });
