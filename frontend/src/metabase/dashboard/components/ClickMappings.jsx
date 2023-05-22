@@ -13,7 +13,6 @@ import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { GTAPApi } from "metabase/services";
 
 import { loadMetadataForQuery } from "metabase/redux/metadata";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getParameters } from "metabase/dashboard/selectors";
 import { getTargetsWithSourceFilters } from "metabase-lib/parameters/utils/click-behavior";
 import Question from "metabase-lib/Question";
@@ -120,7 +119,6 @@ const ClickMappings = _.compose(
   withUserAttributes,
   connect((state, props) => {
     const { object, isDash, dashcard, clickBehavior } = props;
-    const metadata = getMetadata(state, props);
     let parameters = getParameters(state, props);
 
     if (props.excludeParametersSources) {
@@ -142,7 +140,6 @@ const ClickMappings = _.compose(
         isDash,
         dashcard,
         object,
-        metadata,
       }),
       ({ id }) =>
         getIn(clickBehavior, ["parameterMapping", id, "source"]) != null,
@@ -286,9 +283,9 @@ function loadQuestionMetadata(getQuestion) {
       }
 
       fetch() {
-        const { question, metadata, loadMetadataForQuery } = this.props;
+        const { question, loadMetadataForQuery } = this.props;
         if (question) {
-          loadMetadataForQuery(new Question(question, metadata).query());
+          loadMetadataForQuery(question.query());
         }
       }
 
@@ -301,7 +298,6 @@ function loadQuestionMetadata(getQuestion) {
 
     return connect(
       (state, props) => ({
-        metadata: getMetadata(state),
         question: getQuestion && getQuestion(state, props),
       }),
       { loadMetadataForQuery },
@@ -335,9 +331,9 @@ export function isMappableColumn(column) {
 }
 
 export function clickTargetObjectType(object) {
-  if (!object.dataset_query) {
+  if (!(object instanceof Question)) {
     return "dashboard";
-  } else if (new Question(object).isNative()) {
+  } else if (object.isNative()) {
     return "native";
   } else {
     return "gui";

@@ -27,6 +27,7 @@ const TEST_PUBLIC_ID = "test-public-id";
 const SIZE_PARAMETER = createMockActionParameter({
   id: "size",
   name: "Size",
+  "display-name": "Size",
   type: "number/=",
   slug: "size",
   target: ["variable", ["template-tag", "size"]],
@@ -35,6 +36,7 @@ const SIZE_PARAMETER = createMockActionParameter({
 const COLOR_PARAMETER = createMockActionParameter({
   id: "color",
   name: "Color",
+  "display-name": "Color",
   type: "string/=",
   slug: "color",
   target: ["variable", ["template-tag", "color"]],

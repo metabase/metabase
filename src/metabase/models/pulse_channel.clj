@@ -136,11 +136,19 @@
                  [:= :u.is_active true]]
      :order-by [[:u.id :asc]]})))
 
-(defn- pre-delete [pulse-channel]
-  ;; Call [[metabase.models.pulse/will-delete-channel]] to let it know we're about to delete a PulseChannel; that
-  ;; function will decide whether or not to automatically archive the Pulse as well.
-  (classloader/require 'metabase.models.pulse)
-  ((resolve 'metabase.models.pulse/will-delete-channel) pulse-channel))
+(def ^:dynamic *archive-parent-pulse-when-last-channel-is-deleted*
+  "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
+  in [[update-notification-channels!]] which creates/deletes/updates several channels sequentially."
+  true)
+
+(defn- pre-delete
+  "This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to be
+  deleted. Archives `Pulse` if the channel being deleted is its last channel."
+  [{pulse-id :pulse_id, pulse-channel-id :id}]
+  (when *archive-parent-pulse-when-last-channel-is-deleted*
+    (let [other-channels-count (t2/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
+      (when (zero? other-channels-count)
+        (t2/update! :metabase.models.pulse/Pulse pulse-id {:archived true})))))
 
 ;; we want to load this at the top level so the Setting the namespace defines gets loaded
 (def ^:private ^{:arglists '([email-addresses])} validate-email-domains*
@@ -201,22 +209,6 @@
 (defmethod serdes/hash-fields PulseChannel
   [_pulse-channel]
   [(serdes/hydrated-hash :pulse) :channel_type :details :created_at])
-
-(defn will-delete-recipient
-  "This function is called by [[metabase.models.pulse-channel-recipient/pre-delete]] when a `PulseChannelRecipient` is
-  about to be deleted. Deletes `PulseChannel` if the recipient being deleted is its last recipient. (This only applies
-  to PulseChannels with User subscriptions; Slack PulseChannels and ones with email address subscriptions are not
-  automatically deleted.)"
-  [{channel-id :pulse_channel_id, pulse-channel-recipient-id :id}]
-  (let [other-recipients-count (t2/count PulseChannelRecipient :pulse_channel_id channel-id, :id [:not= pulse-channel-recipient-id])
-        last-recipient?        (zero? other-recipients-count)]
-    (when last-recipient?
-      ;; make sure this channel doesn't have any email-address (non-User) recipients.
-      (let [details              (t2/select-one-fn :details PulseChannel :id channel-id)
-            has-email-addresses? (seq (:emails details))]
-        (when-not has-email-addresses?
-          (t2/delete! PulseChannel :id channel-id))))))
-
 
 ;; ## Persistence Functions
 

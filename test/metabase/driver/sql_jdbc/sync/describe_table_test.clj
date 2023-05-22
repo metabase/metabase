@@ -27,12 +27,12 @@
 (deftest describe-table-test
   (is (= {:name "VENUES",
           :fields
-          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true :database-required false :database-is-auto-increment true}
-            {:name "NAME", :database-type "CHARACTER VARYING", :base-type :type/Text, :database-position 1 :database-required false :database-is-auto-increment false}
-            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2 :database-required false :database-is-auto-increment false}
-            {:name "LATITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 3 :database-required false :database-is-auto-increment false}
-            {:name "LONGITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 4 :database-required false :database-is-auto-increment false}
-            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5 :database-required false :database-is-auto-increment false}}}
+          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true :database-required false :database-is-auto-increment true :json-unfolding false}
+            {:name "NAME", :database-type "CHARACTER VARYING", :base-type :type/Text, :database-position 1 :database-required false :database-is-auto-increment false :json-unfolding false}
+            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2 :database-required false :database-is-auto-increment false :json-unfolding false}
+            {:name "LATITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 3 :database-required false :database-is-auto-increment false :json-unfolding false}
+            {:name "LONGITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 4 :database-required false :database-is-auto-increment false :json-unfolding false}
+            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5 :database-required false :database-is-auto-increment false :json-unfolding false}}}
          (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
 
 (deftest describe-auto-increment-on-non-pk-field-test
@@ -54,19 +54,22 @@
                          :database-required         false
                          :database-type             "INTEGER"
                          :name                      "id"
-                         :pk?                       true}
+                         :pk?                       true
+                         :json-unfolding            false}
                         {:base-type                 :type/Integer
                          :database-is-auto-increment true
                          :database-position         1
                          :database-required         false
                          :database-type             "INTEGER"
-                         :name                      "count"}
+                         :name                      "count"
+                         :json-unfolding            false}
                         {:base-type                 :type/Integer
                          :database-is-auto-increment false
                          :database-position         2
                          :database-required         true
                          :database-type             "INTEGER"
-                         :name                      "rank"}}
+                         :name                      "rank"
+                         :json-unfolding            false}}
               :name "employee_counter"}
              (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "employee_counter"}))))))
 
@@ -174,12 +177,13 @@
       (is (= types (#'sql-jdbc.describe-table/row->types row)))))
   (testing "JSON row->types handles bigint that comes in and gets interpreted as Java bigint OK (#22732)"
     (let [int-row   {:zlob {"blob" (java.math.BigInteger. "123124124312134235234235345344324352")}}]
-      (is (= #{{:name "zlob → blob",
-                :database-type "decimal",
-                :base-type :type/BigInteger,
+      (is (= #{{:name              "zlob → blob",
+                :database-type     "decimal",
+                :base-type         :type/BigInteger,
                 :database-position 0,
-                :visibility-type :normal,
-                :nfc-path [:zlob "blob"]}}
+                :json-unfolding    false
+                :visibility-type   :normal,
+                :nfc-path          [:zlob "blob"]}}
              (-> int-row
                  (#'sql-jdbc.describe-table/row->types)
                  (#'sql-jdbc.describe-table/field-types->fields)))))))

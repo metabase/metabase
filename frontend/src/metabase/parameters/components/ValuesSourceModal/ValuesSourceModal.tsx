@@ -76,4 +76,5 @@ const getInitialSourceType = (parameter: ParameterWithTemplateTagTarget) => {
     : sourceType;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ValuesSourceModal;

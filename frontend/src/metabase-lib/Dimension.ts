@@ -5,20 +5,17 @@ import _ from "underscore";
 import { isa } from "cljs/metabase.types";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import {
-  Field as AbstractField,
-  ConcreteField,
+  FieldReference as AbstractField,
+  ConcreteFieldReference,
   LocalFieldReference,
   ExpressionReference,
   DatetimeUnit,
-} from "metabase-types/types/Query";
-import { VariableTarget } from "metabase-types/types/Parameter";
-import { IconName } from "metabase-types/types";
+  VariableTarget,
+} from "metabase-types/api";
+import * as Lib from "metabase-lib";
 import { infer, MONOTYPE } from "metabase-lib/expressions/typeinferencer";
 import { TYPE } from "metabase-lib/types/constants";
-import {
-  DATETIME_UNITS,
-  formatBucketing,
-} from "metabase-lib/queries/utils/query-time";
+import { DATETIME_UNITS } from "metabase-lib/queries/utils/query-time";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import Field from "metabase-lib/metadata/Field";
 import {
@@ -69,6 +66,7 @@ type DimensionOption = {
  * @abstract
  */
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Dimension {
   _parent: Dimension | null | undefined;
   _args: any;
@@ -101,7 +99,7 @@ export default class Dimension {
    * Metadata should be provided if you intend to use the display name or render methods.
    */
   static parseMBQL(
-    mbql: ConcreteField | VariableTarget,
+    mbql: ConcreteFieldReference | VariableTarget,
     metadata?: Metadata,
     query?: StructuredQuery | NativeQuery | null | undefined,
   ): Dimension | null | undefined {
@@ -116,7 +114,7 @@ export default class Dimension {
     return null;
   }
 
-  parseMBQL(mbql: ConcreteField): Dimension | null | undefined {
+  parseMBQL(mbql: ConcreteFieldReference): Dimension | null | undefined {
     return Dimension.parseMBQL(mbql, this._metadata, this._query);
   }
 
@@ -124,7 +122,7 @@ export default class Dimension {
    * Returns true if these two dimensions are identical to one another.
    */
   static isEqual(
-    a: Dimension | null | undefined | ConcreteField,
+    a: Dimension | null | undefined | ConcreteFieldReference,
     b: Dimension | null | undefined,
   ): boolean {
     const dimensionA: Dimension | null | undefined =
@@ -233,7 +231,9 @@ export default class Dimension {
   /**
    * Is this dimension idential to another dimension or MBQL clause
    */
-  isEqual(other: Dimension | null | undefined | ConcreteField): boolean {
+  isEqual(
+    other: Dimension | null | undefined | ConcreteFieldReference,
+  ): boolean {
     if (other == null) {
       return false;
     }
@@ -253,7 +253,7 @@ export default class Dimension {
    * Does this dimension have the same underlying base dimension, typically a field
    */
   isSameBaseDimension(
-    other: Dimension | null | undefined | ConcreteField,
+    other: Dimension | null | undefined | ConcreteFieldReference,
   ): boolean {
     if (other == null) {
       return false;
@@ -383,7 +383,7 @@ export default class Dimension {
    * An icon name representing this dimension's type, to be used in the <Icon> component.
    * @abstract
    */
-  icon(): IconName | null | undefined {
+  icon(): string | null | undefined {
     return null;
   }
 
@@ -563,7 +563,7 @@ export default class Dimension {
     }
 
     if (this.temporalUnit()) {
-      return formatBucketing(this.temporalUnit());
+      return Lib.describeTemporalUnit(this.temporalUnit());
     }
 
     if (this.binningStrategy()) {
@@ -595,7 +595,9 @@ export default class Dimension {
 
     // temporal bucketed field
     if (this.temporalUnit()) {
-      return t`by ${formatBucketing(this.temporalUnit()).toLowerCase()}`;
+      return t`by ${Lib.describeTemporalUnit(
+        this.temporalUnit(),
+      ).toLowerCase()}`;
     }
 
     // if the field is a binnable number, we should return 'Unbinned' here
@@ -1051,7 +1053,9 @@ export class FieldDimension extends Dimension {
     }
 
     if (this.temporalUnit()) {
-      displayName = `${displayName}: ${formatBucketing(this.temporalUnit())}`;
+      displayName = `${displayName}: ${Lib.describeTemporalUnit(
+        this.temporalUnit(),
+      )}`;
     }
 
     if (this.binningOptions()) {
@@ -1288,7 +1292,7 @@ export class ExpressionDimension extends Dimension {
     });
   }
 
-  icon(): IconName {
+  icon(): string {
     const field = this.field();
     return field ? field.icon() : "unknown";
   }
@@ -1354,7 +1358,9 @@ export class ExpressionDimension extends Dimension {
     let displayName = this.displayName();
 
     if (this.temporalUnit()) {
-      displayName = `${displayName}: ${formatBucketing(this.temporalUnit())}`;
+      displayName = `${displayName}: ${Lib.describeTemporalUnit(
+        this.temporalUnit(),
+      )}`;
     }
 
     if (this.binningOptions()) {
@@ -1711,49 +1717,49 @@ const DATETIME_SUBDIMENSIONS = [
     },
   },
   {
-    name: t`Minute of Hour`,
+    name: t`Minute of hour`,
     options: {
       "temporal-unit": "minute-of-hour",
     },
   },
   {
-    name: t`Hour of Day`,
+    name: t`Hour of day`,
     options: {
       "temporal-unit": "hour-of-day",
     },
   },
   {
-    name: t`Day of Week`,
+    name: t`Day of week`,
     options: {
       "temporal-unit": "day-of-week",
     },
   },
   {
-    name: t`Day of Month`,
+    name: t`Day of month`,
     options: {
       "temporal-unit": "day-of-month",
     },
   },
   {
-    name: t`Day of Year`,
+    name: t`Day of year`,
     options: {
       "temporal-unit": "day-of-year",
     },
   },
   {
-    name: t`Week of Year`,
+    name: t`Week of year`,
     options: {
       "temporal-unit": "week-of-year",
     },
   },
   {
-    name: t`Month of Year`,
+    name: t`Month of year`,
     options: {
       "temporal-unit": "month-of-year",
     },
   },
   {
-    name: t`Quarter of Year`,
+    name: t`Quarter of year`,
     options: {
       "temporal-unit": "quarter-of-year",
     },

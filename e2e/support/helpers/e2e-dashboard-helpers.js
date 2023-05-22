@@ -37,7 +37,7 @@ export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
     })
     .then(response => ({
       ...response,
-      body: response.body[0],
+      body: response.body.cards[0],
     }));
 }
 /**
@@ -45,8 +45,9 @@ export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
  * Can be used to remove cards (exclude from array), or add/update them.
  */
 export function updateDashboardCards({ dashboard_id, cards }) {
+  let id = -1;
   return cy.request("PUT", getDashCardApiUrl(dashboard_id), {
-    cards: cards.map(card => ({ ...DEFAULT_CARD, ...card })),
+    cards: cards.map(card => ({ ...DEFAULT_CARD, id: id--, ...card })),
   });
 }
 
@@ -98,4 +99,8 @@ export function addTextBox(string, options = {}) {
   cy.findByPlaceholderText(
     "You can use Markdown here, and include variables {{like_this}}",
   ).type(string, options);
+}
+
+export function openQuestionsSidebar() {
+  cy.findByLabelText("Add questions").click();
 }

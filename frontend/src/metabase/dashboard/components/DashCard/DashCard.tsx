@@ -5,17 +5,15 @@ import type { LocationDescriptor } from "history";
 import { useMount } from "react-use";
 import { IconProps } from "metabase/components/Icon";
 
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import Utils from "metabase/lib/utils";
 
-import {
-  getGenericErrorMessage,
-  getPermissionErrorMessage,
-} from "metabase/visualizations/lib/errors";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 
-import { isVirtualDashCard } from "metabase/dashboard/utils";
+import {
+  getDashcardResultsError,
+  isDashcardLoading,
+  isVirtualDashCard,
+} from "metabase/dashboard/utils";
 
 import { isActionCard } from "metabase/actions/utils";
 
@@ -27,15 +25,13 @@ import type {
   Dashboard,
   DashboardOrderedCard,
   DashCardId,
-  VisualizationSettings,
-} from "metabase-types/api";
-import type { DatasetData } from "metabase-types/types/Dataset";
-import type {
   ParameterId,
   ParameterValueOrArray,
-} from "metabase-types/types/Parameter";
-import type { Series } from "metabase-types/types/Visualization";
+  VisualizationSettings,
+  Dataset,
+} from "metabase-types/api";
 
+import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 
 import type Mode from "metabase-lib/Mode";
@@ -50,39 +46,8 @@ import DashCardActionButtons from "./DashCardActionButtons";
 import DashCardVisualization from "./DashCardVisualization";
 import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
 
-const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
-
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
-}
-
-function getSeriesError(series: Series) {
-  const isAccessRestricted = series.some(
-    s =>
-      s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
-      s.error?.status === 403,
-  );
-
-  if (isAccessRestricted) {
-    return {
-      message: getPermissionErrorMessage(),
-      icon: "key",
-    };
-  }
-
-  const errors = series.map(s => s.error).filter(Boolean);
-  if (errors.length > 0) {
-    if (IS_EMBED_PREVIEW) {
-      const message = errors[0]?.data || getGenericErrorMessage();
-      return { message, icon: "warning" };
-    }
-    return {
-      message: getGenericErrorMessage(),
-      icon: "warning",
-    };
-  }
-
-  return;
 }
 
 interface DashCardProps {
@@ -90,7 +55,7 @@ interface DashCardProps {
   dashcard: DashboardOrderedCard & { justAdded?: boolean };
   gridItemWidth: number;
   totalNumGridCols: number;
-  dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
+  dashcardData: Record<DashCardId, Record<CardId, Dataset>>;
   slowCards: Record<CardId, boolean>;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   metadata: Metadata;
@@ -187,17 +152,14 @@ function DashCard({
       isSlow: slowCards[card.id],
       isUsuallyFast:
         card.query_average_duration &&
-        card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD,
+        card.query_average_duration < DASHBOARD_SLOW_TIMEOUT,
     }));
   }, [cards, dashcard.id, dashcardData, slowCards]);
 
-  const isLoading = useMemo(() => {
-    if (isVirtualDashCard(dashcard)) {
-      return false;
-    }
-    const hasSeries = series.length > 0 && series.every(s => s.data);
-    return !hasSeries;
-  }, [dashcard, series]);
+  const isLoading = useMemo(
+    () => isDashcardLoading(dashcard, dashcardData),
+    [dashcard, dashcardData],
+  );
 
   const isAction = isActionCard(mainCard);
   const isEmbed = Utils.isJWT(dashcard.dashboard_id);
@@ -214,7 +176,7 @@ function DashCard({
     return { expectedDuration, isSlow };
   }, [series, isLoading]);
 
-  const error = useMemo(() => getSeriesError(series), [series]);
+  const error = useMemo(() => getDashcardResultsError(series), [series]);
   const hasError = !!error;
 
   const parameterValuesBySlug = useMemo(
@@ -363,4 +325,7 @@ function DashCard({
   );
 }
 
-export default DashCard;
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Object.assign(DashCard, {
+  root: DashCardRoot,
+});

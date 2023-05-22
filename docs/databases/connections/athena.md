@@ -110,6 +110,116 @@ Options are:
 
 If you are on a paid plan, you can also set cache duration per questions. See [Advanced caching controls](../../configuring-metabase/caching.md#advanced-caching-controls).
 
+## Example IAM Policy
+
+This policy provides read-only permissions for data in S3. You'll need to specify any S3 buckets that you want Metabase to be able to query from _as well as_ the S3 bucket provided as part of the configuration where results are written to.
+
+There may be additional permissions required for other Athena functionality, like federated queries. For details, check out the [Athena docs](https://docs.aws.amazon.com/athena/latest/ug/security-iam-athena).
+
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Athena",
+      "Effect": "Allow",
+      "Action": [
+        "athena:BatchGetNamedQuery",
+        "athena:BatchGetQueryExecution",
+        "athena:GetNamedQuery",
+        "athena:GetQueryExecution",
+        "athena:GetQueryResults",
+        "athena:GetQueryResultsStream",
+        "athena:GetWorkGroup",
+        "athena:ListDatabases",
+        "athena:ListDataCatalogs",
+        "athena:ListNamedQueries",
+        "athena:ListQueryExecutions",
+        "athena:ListTagsForResource",
+        "athena:ListWorkGroups",
+        "athena:ListTableMetadata",
+        "athena:StartQueryExecution",
+        "athena:StopQueryExecution",
+        "athena:CreatePreparedStatement",
+        "athena:DeletePreparedStatement",
+        "athena:GetPreparedStatement"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Glue",
+      "Effect": "Allow",
+      "Action": [
+        "glue:BatchGetPartition",
+        "glue:GetDatabase",
+        "glue:GetDatabases",
+        "glue:GetPartition",
+        "glue:GetPartitions",
+        "glue:GetTable",
+        "glue:GetTables",
+        "glue:GetTableVersion",
+        "glue:GetTableVersions"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "S3ReadAccess",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:ListBucket", "s3:GetBucketLocation"],
+      "Resource": [
+        "arn:aws:s3:::bucket1",
+        "arn:aws:s3:::bucket1/*",
+        "arn:aws:s3:::bucket2",
+        "arn:aws:s3:::bucket2/*"
+      ]
+    },
+    {
+      "Sid": "AthenaResultsBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:AbortMultipartUpload",
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": ["arn:aws:s3:::bucket2", "arn:aws:s3:::bucket2/*"]
+    }
+  ]
+}
+```
+
+If Metabase also needs to create tables, you'll need additional AWS Glue permissions. The `"Resource": "*"` key-value pair gives the account Delete and Update permissions to any table:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "VisualEditor0",
+      "Effect": "Allow",
+      "Action": [
+        "glue:BatchCreatePartition",
+        "glue:UpdateDatabase",
+        "glue:DeleteDatabase",
+        "glue:CreateTable",
+        "glue:CreateDatabase",
+        "glue:UpdateTable",
+        "glue:BatchDeletePartition",
+        "glue:BatchDeleteTable",
+        "glue:DeleteTable",
+        "glue:CreatePartition",
+        "glue:DeletePartition",
+        "glue:UpdatePartition"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+
 ## Further reading
 
 - [Managing databases](../../databases/connecting.md)

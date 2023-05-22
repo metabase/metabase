@@ -394,11 +394,6 @@
       (throw (ex-info "Unclassified data path!!" {:data-path data-path :result result})))
     (first result)))
 
-(def segmented-perm-regex
-  "Regex that matches a segmented permission. Used internally for some EE stuff
-  e.g. [[metabase-enterprise.sandbox.api.util/segmented-user?]]."
-  (re-pattern (str #"^/db/\d+/schema/" path-char "*" #"/table/\d+/query/segmented/$")))
-
 (defn- escape-path-component
   "Escape slashes in something that might be passed as a string part of a permissions path (e.g. DB schema name or
   Collection name).
@@ -532,12 +527,6 @@
 
   ([database-or-id schema-name table-or-id]
    (str (data-perms-path (u/the-id database-or-id) schema-name (u/the-id table-or-id)) "query/segmented/")))
-
-(s/defn execute-query-perms-path :- PathSchema
-  "Return the execute query action permissions path for a database.
-   This grants you permissions to run arbitary query actions."
-  [database-or-id :- MapOrID]
-  (str "/execute" (data-perms-path database-or-id)))
 
 (s/defn database-block-perms-path :- PathSchema
   "Return the permissions path for the Block 'anti-permissions'. Block anti-permissions means a User cannot run a query

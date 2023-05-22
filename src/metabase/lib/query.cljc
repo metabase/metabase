@@ -11,6 +11,8 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (defmethod lib.normalize/normalize :mbql/query
@@ -29,49 +31,55 @@
   [query stage-number x style]
   (lib.metadata.calculation/display-name query stage-number (lib.util/query-stage x stage-number) style))
 
-(defn query-with-stages
+(mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
-  ([metadata-provider stages]
-   (query-with-stages (:id (lib.metadata/database metadata-provider)) metadata-provider stages))
+  ([metadata-providerable stages]
+   (query-with-stages (:id (lib.metadata/database metadata-providerable)) metadata-providerable stages))
 
-  ([database-id metadata-provider stages]
+  ([database-id           :- ::lib.schema.id/database
+    metadata-providerable :- lib.metadata/MetadataProviderable
+    stages]
    {:lib/type     :mbql/query
-    :lib/metadata metadata-provider
+    :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
     :database     database-id
-    :stages       (mapv lib.options/ensure-uuid stages)}))
+    :stages       stages}))
 
-(defn query-with-stage
+(mu/defn query-with-stage
   "Create a query from a specific stage."
-  ([metadata-provider stage]
-   (query-with-stages metadata-provider [stage]))
+  ([metadata-providerable stage]
+   (query-with-stages metadata-providerable [stage]))
 
-  ([database-id metadata-provider stage]
-   (query-with-stages database-id metadata-provider [stage])))
+  ([database-id           :- ::lib.schema.id/database
+    metadata-providerable :- lib.metadata/MetadataProviderable
+    stage]
+   (query-with-stages database-id metadata-providerable [stage])))
 
-(defn- query-from-existing [metadata-provider query]
+(mu/defn ^:private query-from-existing :- ::lib.schema/query
+  [metadata-providerable :- lib.metadata/MetadataProviderable
+   query                 :- lib.util/LegacyOrPMBQLQuery]
   (let [query (lib.util/pipeline query)]
-    (query-with-stages metadata-provider (:stages query))))
+    (query-with-stages metadata-providerable (:stages query))))
 
 (defmulti ^:private ->query
   "Implementation for [[query]]."
-  {:arglists '([metadata-provider x])}
-  (fn [_metadata-provider x]
+  {:arglists '([metadata-providerable x])}
+  (fn [_metadata-providerable x]
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod ->query :dispatch-type/map
-  [metadata-provider query]
-  (query-from-existing metadata-provider query))
+  [metadata-providerable query]
+  (query-from-existing metadata-providerable query))
 
 ;;; this should already be a query in the shape we want, but let's make sure it has the database metadata that was
 ;;; passed in
 (defmethod ->query :mbql/query
-  [metadata-provider query]
-  (assoc query :lib/metadata metadata-provider))
+  [metadata-providerable query]
+  (assoc query :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)))
 
 (defmethod ->query :metadata/table
-  [metadata-provider table-metadata]
-  (query-with-stages metadata-provider
+  [metadata-providerable table-metadata]
+  (query-with-stages metadata-providerable
                      [{:lib/type     :mbql.stage/mbql
                        :source-table (:id table-metadata)}]))
 
@@ -79,23 +87,25 @@
   "Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
-  [metadata-provider :- lib.metadata/MetadataProvider
+  [metadata-providerable :- lib.metadata/MetadataProviderable
    x]
-  (->query metadata-provider x))
+  (->query metadata-providerable x))
 
 ;;; TODO -- the stuff below will probably change in the near future, please don't read too much in to it.
 (mu/defn native-query :- ::lib.schema/query
   "Create a new native query.
 
   Native in this sense means a pMBQL query with a first stage that is a native query."
-  ([metadata-provider :- lib.metadata/MetadataProvider
+  ([metadata-providerable :- lib.metadata/MetadataProviderable
     inner-query]
-   (native-query metadata-provider nil inner-query))
+   (native-query metadata-providerable nil inner-query))
 
-  ([metadata-provider :- lib.metadata/MetadataProvider
-    results-metadata  :- lib.metadata/StageMetadata
+  ;; TODO not sure if `results-metadata` should be StageMetadata (i.e., a map roughly matching the shape you get from
+  ;; the QP) or a sequence of ColumnMetadatas, like what would be saved in Card `result_metadata`.
+  ([metadata-providerable :- lib.metadata/MetadataProviderable
+    results-metadata      :- lib.metadata/StageMetadata
     inner-query]
-   (query-with-stages metadata-provider
+   (query-with-stages metadata-providerable
                       [(-> {:lib/type           :mbql.stage/native
                             :lib/stage-metadata results-metadata
                             :native             inner-query}
@@ -103,19 +113,24 @@
 
 (mu/defn saved-question-query :- ::lib.schema/query
   "Convenience for creating a query from a Saved Question (i.e., a Card)."
-  [metadata-provider :- lib.metadata/MetadataProvider
-   {mbql-query :dataset_query, metadata :result_metadata}]
+  [metadata-providerable :- lib.metadata/MetadataProviderable
+   {mbql-query :dataset-query, metadata :result-metadata, :as saved-question}]
+  (assert mbql-query (i18n/tru "Saved Question is missing query"))
+  (when-not metadata
+    (log/warn (i18n/trs "Saved Question {0} {1} is missing result metadata"
+                        (:id saved-question)
+                        (pr-str (:name saved-question-query)))))
   (let [mbql-query (cond-> (assoc (lib.convert/->pMBQL mbql-query)
-                                  :lib/metadata metadata-provider)
+                                  :lib/metadata (lib.metadata/->metadata-provider metadata-providerable))
                      metadata
-                     (lib.util/update-query-stage -1 assoc :lib/stage-metadata metadata))]
-    (query metadata-provider mbql-query)))
+                     (lib.util/update-query-stage -1 assoc :lib/stage-metadata (lib.util/->stage-metadata metadata)))]
+    (query metadata-providerable mbql-query)))
 
 (mu/defn query-from-legacy-inner-query :- ::lib.schema/query
   "Create a pMBQL query from a legacy inner query."
-  [metadata-provider :- lib.metadata/MetadataProvider
-   database-id       :- ::lib.schema.id/database
-   inner-query       :- :map]
+  [metadata-providerable :- lib.metadata/MetadataProviderable
+   database-id           :- ::lib.schema.id/database
+   inner-query           :- :map]
   (->> (lib.convert/legacy-query-from-inner-query database-id inner-query)
        lib.convert/->pMBQL
-       (query metadata-provider)))
+       (query metadata-providerable)))

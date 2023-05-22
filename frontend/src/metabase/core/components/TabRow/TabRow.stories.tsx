@@ -2,13 +2,15 @@ import React, { useState } from "react";
 import type { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
 
-import TabButton, {
+import {
+  TabButton,
   TabButtonMenuItem,
   TabButtonMenuAction,
 } from "../TabButton";
 import TabLink from "../TabLink";
-import TabRow from "./TabRow";
+import { TabRow } from "./TabRow";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/TabRow",
   component: TabRow,
@@ -21,6 +23,7 @@ const sampleStyle = {
   width: "100%",
   padding: "10px",
   border: "1px solid #ccc",
+  backgroundColor: "white",
 };
 
 const Template: ComponentStory<typeof TabRow> = args => {
@@ -28,12 +31,15 @@ const Template: ComponentStory<typeof TabRow> = args => {
   const handleChange = (value: unknown) => updateArgs({ value });
   const [message, setMessage] = useState("");
 
-  const action: TabButtonMenuAction = ({ value: selectedValue }, value) =>
+  const action: TabButtonMenuAction<unknown> = (
+    { value: selectedValue },
+    value,
+  ) =>
     setMessage(
       `Clicked ${value}, currently selected value is ${selectedValue}`,
     );
 
-  const menuItems: TabButtonMenuItem[] = [
+  const menuItems: TabButtonMenuItem<unknown>[] = [
     {
       label: "Click me!",
       action,
@@ -64,6 +70,11 @@ const Template: ComponentStory<typeof TabRow> = args => {
         <TabButton label="Tab 5" value={5} menuItems={menuItems} />
         <TabButton label="Tab 6" value={6} disabled />
         <TabButton label="Tab 7" value={7} menuItems={menuItems} disabled />
+        <TabButton
+          label="Tab 8 with a very long name"
+          value={8}
+          menuItems={menuItems}
+        />
       </TabRow>
       {message}
     </div>

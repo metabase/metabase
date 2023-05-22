@@ -96,3 +96,12 @@
                              "/databases/Fingerprint test-data copy/schemas/public/tables/users/fields/id"} fq-name))
             (is (map? ctx))
             (is (some? (:table ctx)))))))))
+
+(deftest name-for-logging-test
+  (testing "serialization logging name generation from Toucan 2 records (#29322)"
+    (mt/with-temp* [Collection [{collection-id :id} {:name         "A Collection"}]
+                    Card       [{card-id :id}       {:name         "A Card"
+                                                     :collection_id collection-id}]]
+      (are [model s id] (= (format s id) (names/name-for-logging (t2/select-one model :id id)))
+        'Collection ":metabase.models.collection/Collection \"A Collection\" (ID %d)" collection-id
+        'Card       ":model/Card \"A Card\" (ID %d)" card-id))))

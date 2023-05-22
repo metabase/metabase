@@ -966,7 +966,7 @@
 
 (defmethod serdes/load-xform "Collection" [{:keys [parent_id] :as contents}]
   (let [loc        (if parent_id
-                     (let [{:keys [id location]} (serdes/*lookup-by-id* Collection parent_id)]
+                     (let [{:keys [id location]} (serdes/lookup-by-id Collection parent_id)]
                        (str location id "/"))
                      "/")]
     (-> contents

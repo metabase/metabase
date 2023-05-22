@@ -1,6 +1,7 @@
-import { ForeignKey } from "./foreign-key";
-import { Database, InitialSyncStatus } from "./database";
-import { Field } from "./field";
+import type { Database, DatabaseId, InitialSyncStatus } from "./database";
+import type { Field, FieldDimensionOption, FieldId } from "./field";
+import type { Metric } from "./metric";
+import type { Segment } from "./segment";
 
 export type ConcreteTableId = number;
 export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
@@ -17,22 +18,68 @@ export type TableVisibilityType =
   | "technical"
   | "cruft";
 
+export type TableFieldOrder = "database" | "alphabetical" | "custom" | "smart";
+
 export interface Table {
   id: TableId;
-  db_id: number;
-  db?: Database;
+
   name: string;
-  description: string | null;
   display_name: string;
+  description: string | null;
+
+  db_id: DatabaseId;
+  db?: Database;
+
   schema: string;
+
   fks?: ForeignKey[];
-  schema_name?: string;
-  visibility_type: TableVisibilityType;
   fields?: Field[];
+  metrics?: Metric[];
+  segments?: Segment[];
+  dimension_options?: Record<string, FieldDimensionOption>;
+  field_order: TableFieldOrder;
+
+  active: boolean;
+  visibility_type: TableVisibilityType;
   initial_sync_status: InitialSyncStatus;
+  caveats?: string;
+  points_of_interest?: string;
 }
+
+export type SchemaName = string;
 
 export interface Schema {
   id: SchemaId;
-  name: string;
+  name: SchemaName;
+}
+
+export interface SchemaListQuery {
+  dbId: DatabaseId;
+  include_hidden?: boolean;
+  include_editable_data_model?: boolean;
+}
+
+export interface TableQuery {
+  include_editable_data_model?: boolean;
+}
+
+export interface TableMetadataQuery {
+  include_sensitive_fields?: boolean;
+  include_hidden_fields?: boolean;
+  include_editable_data_model?: boolean;
+}
+
+export interface TableListQuery {
+  dbId?: DatabaseId;
+  schemaName?: string;
+  include_hidden?: boolean;
+  include_editable_data_model?: boolean;
+}
+
+export interface ForeignKey {
+  origin?: Field;
+  origin_id: FieldId;
+  destination?: Field;
+  destination_id: FieldId;
+  relationship: string; // enum?
 }

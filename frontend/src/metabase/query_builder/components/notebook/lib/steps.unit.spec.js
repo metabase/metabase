@@ -1,25 +1,33 @@
+import { createMockMetadata } from "__support__/metadata";
 import { getQuestionSteps } from "metabase/query_builder/components/notebook/lib/steps";
 import {
-  SAMPLE_DATABASE,
+  createSampleDatabase,
   ORDERS,
+  ORDERS_ID,
   PRODUCTS,
-} from "__support__/sample_database_fixture";
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 const rawDataQuery = {
-  "source-table": ORDERS.id,
+  "source-table": ORDERS_ID,
 };
 
 const summarizedQuery = {
   ...rawDataQuery,
   aggregation: [["count"]],
   breakout: [
-    ["field", PRODUCTS.CATEGORY.id, { "source-field": ORDERS.PRODUCT_ID.id }],
+    ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
   ],
 };
 
 const filteredQuery = {
   ...rawDataQuery,
-  filter: ["=", ["field", ORDERS.USER_ID.id, null], 1],
+  filter: ["=", ["field", ORDERS.USER_ID, null], 1],
 };
 
 const filteredAndSummarizedQuery = {
@@ -34,7 +42,12 @@ const postAggregationFilterQuery = {
 
 const getQuestionStepsForMBQLQuery = query =>
   getQuestionSteps(
-    SAMPLE_DATABASE.question().query().setQuery(query).question(),
+    metadata
+      .database(SAMPLE_DB_ID)
+      .question()
+      .query()
+      .setQuery(query)
+      .question(),
   );
 
 describe("new query", () => {
@@ -90,9 +103,9 @@ describe("filtered and summarized query", () => {
   describe("update", () => {
     it("should remove all steps when changing the table", () => {
       const newQuery = steps[0].update(
-        steps[0].query.setTableId(PRODUCTS.id).datasetQuery(),
+        steps[0].query.setTableId(PRODUCTS_ID).datasetQuery(),
       );
-      expect(newQuery.query()).toEqual({ "source-table": PRODUCTS.id });
+      expect(newQuery.query()).toEqual({ "source-table": PRODUCTS_ID });
     });
     it("shouldn't remove summarize when removing filter", () => {
       const newQuery = steps[1].update(
@@ -136,10 +149,10 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     });
   });
   describe("previewQuery", () => {
-    it("shouldn't include filter, summarize, or post-aggregrationfilter for data step", () => {
+    it("shouldn't include filter, summarize, or post-aggregation filter for data step", () => {
       expect(steps[0].previewQuery.query()).toEqual(rawDataQuery);
     });
-    it("shouldn't include summarize or post-aggregrationfilter filter step", () => {
+    it("shouldn't include summarize or post-aggregation filter filter step", () => {
       expect(steps[1].previewQuery.query()).toEqual(filteredQuery);
     });
     it("should be the original query for post-aggregation filter step", () => {
@@ -149,11 +162,11 @@ describe("filtered and summarized query with post-aggregation filter", () => {
   describe("update", () => {
     it("should remove all steps when changing the table", () => {
       const newQuery = steps[0].update(
-        steps[0].query.setTableId(PRODUCTS.id).datasetQuery(),
+        steps[0].query.setTableId(PRODUCTS_ID).datasetQuery(),
       );
-      expect(newQuery.query()).toEqual({ "source-table": PRODUCTS.id });
+      expect(newQuery.query()).toEqual({ "source-table": PRODUCTS_ID });
     });
-    it("shouldn't remove summarize or post-aggregrationfilter when removing filter", () => {
+    it("shouldn't remove summarize or post-aggregation filter when removing filter", () => {
       const newQuery = steps[1].update(
         steps[1].revert(steps[1].query).datasetQuery(),
       );
@@ -162,7 +175,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
         "source-query": summarizedQuery,
       });
     });
-    it("should remove post-aggregration filter when removing summarize", () => {
+    it("should remove post-aggregation filter when removing summarize", () => {
       const newQuery = steps[2].update(
         steps[2].revert(steps[2].query).datasetQuery(),
       );

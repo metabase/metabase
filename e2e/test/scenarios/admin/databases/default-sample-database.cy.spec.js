@@ -17,6 +17,7 @@ describe("scenarios > admin > databases > sample database", () => {
   it("database settings", () => {
     visitDatabase(SAMPLE_DB_ID);
     // should not display a setup help card
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Need help connecting?").should("not.exist");
 
     cy.log(
@@ -33,6 +34,7 @@ describe("scenarios > admin > databases > sample database", () => {
       .and("contain", "sample-database.db");
 
     cy.log("should be possible to modify the connection settings");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show advanced options").click();
     // `auto_run_queries` toggle should be ON by default
     cy.findByLabelText("Rerun queries for simple explorations")
@@ -50,6 +52,7 @@ describe("scenarios > admin > databases > sample database", () => {
 
     cy.log("change the metadata_sync period");
     cy.findByLabelText("Choose when syncs and scans happen").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Hourly").click();
     popover().within(() => {
       cy.findByText("Daily").click({ force: true });
@@ -139,14 +142,18 @@ describe("scenarios > admin > databases > sample database", () => {
     // lets you trigger the manual database schema sync
     cy.button("Sync database schema now").click();
     cy.wait("@sync_schema");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sync triggered!");
 
     // lets you trigger the manual rescan of field values
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Re-scan field values now").click();
     cy.wait("@rescan_values");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Scan triggered!");
 
     // lets you discard saved field values
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Danger Zone")
       .parent()
       .as("danger")
@@ -206,6 +213,7 @@ describe("scenarios > admin > databases > sample database", () => {
 
     cy.location("pathname").should("eq", "/admin/databases/"); // FIXME why the trailing slash?
     cy.intercept("POST", "/api/database/sample_database").as("sample_database");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Bring the sample database back", {
       timeout: 10000,
     }).click();
@@ -219,6 +227,69 @@ describe("scenarios > admin > databases > sample database", () => {
     );
   });
 
+  it("updates databases list in Database Browser after bringing sample database back", () => {
+    cy.intercept("GET", "/api/database").as("loadDatabases");
+    cy.intercept("POST", "/api/database/sample_database").as(
+      "restoreSampleDatabase",
+    );
+    cy.intercept("GET", "/api/database/*/usage_info").as(
+      "loadDatabaseUsageInfo",
+    );
+    cy.intercept("GET", "/api/database/*").as("loadDatabase");
+    cy.intercept("DELETE", "/api/database/*").as("deleteDatabase");
+
+    cy.visit("/admin/databases");
+    cy.wait("@loadDatabases");
+    cy.findByTestId("database-list").within(() => {
+      cy.findByText("Sample Database").click();
+    });
+    cy.wait("@loadDatabase");
+
+    cy.button("Remove this database").click();
+    cy.wait("@loadDatabaseUsageInfo");
+    modal().within(() => {
+      cy.findByLabelText(/Delete \d+ saved questions?/).click();
+      cy.findByTestId("database-name-confirmation-input").type(
+        "Sample Database",
+      );
+      cy.findByText("Delete this content and the DB connection").click();
+      cy.wait("@deleteDatabase");
+    });
+
+    cy.findByTestId("database-list").within(() => {
+      cy.findByText("Sample Database").should("not.exist");
+    });
+
+    cy.findByTestId("exit-admin").click();
+
+    cy.wait("@loadDatabases");
+    cy.findByTestId("main-navbar-root").within(() => {
+      cy.findByText("Browse data").should("not.exist");
+    });
+
+    cy.visit("/admin/databases");
+    cy.findByTestId("database-list").within(() => {
+      cy.findByText("Bring the sample database back").click();
+      cy.wait("@restoreSampleDatabase");
+    });
+
+    cy.findByTestId("database-list").within(() => {
+      cy.findByText("Sample Database").should("exist");
+    });
+
+    cy.findByTestId("exit-admin").click();
+
+    cy.wait("@loadDatabases");
+    cy.findByTestId("main-navbar-root").within(() => {
+      cy.findByText("Browse data").should("exist");
+      cy.findByText("Browse data").click();
+    });
+
+    cy.findByTestId("database-browser").within(() => {
+      cy.findByText("Sample Database").should("exist");
+    });
+  });
+
   describeEE("custom caching", () => {
     it("should set custom cache ttl", () => {
       cy.request("PUT", "api/setting/enable-query-caching", { value: true });
@@ -227,6 +298,7 @@ describe("scenarios > admin > databases > sample database", () => {
         expect(body.cache_ttl).to.be.null;
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Show advanced options").click();
 
       setCustomCacheTTLValue("48");

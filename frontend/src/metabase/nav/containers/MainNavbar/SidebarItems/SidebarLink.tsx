@@ -103,6 +103,7 @@ function SidebarLink({
 
 export type { SidebarLinkProps };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(SidebarLink, {
   NameContainers: [ItemName, TreeNode.NameContainer],
   Icon: SidebarIcon,

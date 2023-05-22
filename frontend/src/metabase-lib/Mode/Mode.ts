@@ -1,10 +1,11 @@
-import {
+import Question from "metabase-lib/Question";
+import type {
   ClickAction,
   ClickObject,
   QueryMode,
-} from "metabase-types/types/Visualization";
-import Question from "metabase-lib/Question";
+} from "metabase-lib/queries/drills/types";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Mode {
   _question: Question;
   _queryMode: QueryMode;

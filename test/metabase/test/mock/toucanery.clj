@@ -9,62 +9,76 @@
 (def toucanery-tables
   {"transactions" {:name   "transactions"
                    :schema nil
-                   :fields #{{:name          "id"
-                              :pk?           true
-                              :database-type "SERIAL"
-                              :base-type     :type/Integer
+                   :fields #{{:name                       "id"
+                              :pk?                        true
+                              :database-type              "SERIAL"
+                              :base-type                  :type/Integer
+                              :json-unfolding             false
                               :database-is-auto-increment true}
-                             {:name          "ts"
-                              :database-type "BIGINT"
-                              :base-type     :type/BigInteger
-                              :effective-type :type/DateTime
-                              :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
+                             {:name                       "ts"
+                              :database-type              "BIGINT"
+                              :base-type                  :type/BigInteger
+                              :effective-type             :type/DateTime
+                              :coercion-strategy          :Coercion/UNIXMilliSeconds->DateTime
+                              :json-unfolding             false
                               :database-is-auto-increment false}
-                             {:name          "toucan"
-                              :database-type "OBJECT"
-                              :base-type     :type/Dictionary
+                             {:name                       "toucan"
+                              :database-type              "OBJECT"
+                              :base-type                  :type/Dictionary
+                              :json-unfolding             false
                               :database-is-auto-increment false
-                              :nested-fields #{{:name          "name"
-                                                :database-type "VARCHAR"
-                                                :base-type     :type/Text
-                                                :database-is-auto-increment false}
-                                               {:name          "details"
-                                                :database-type "OBJECT"
-                                                :base-type     :type/Dictionary
-                                                :database-is-auto-increment false
-                                                :nested-fields #{{:name          "age"
-                                                                  :database-type "INT"
-                                                                  :database-is-auto-increment false
-                                                                  :base-type     :type/Integer}
-                                                                 {:name          "weight"
-                                                                  :database-type "DECIMAL"
-                                                                  :database-is-auto-increment false
-                                                                  :semantic-type :type/Category
-                                                                  :base-type     :type/Decimal}}}}}
-                             {:name          "buyer"
-                              :database-type "OBJECT"
+                              :nested-fields              #{{:name                       "name"
+                                                             :database-type              "VARCHAR"
+                                                             :base-type                  :type/Text
+                                                             :json-unfolding             false
+                                                             :database-is-auto-increment false}
+                                                            {:name                       "details"
+                                                             :database-type              "OBJECT"
+                                                             :base-type                  :type/Dictionary
+                                                             :json-unfolding             false
+                                                             :database-is-auto-increment false
+                                                             :nested-fields              #{{:name                       "age"
+                                                                                            :database-type              "INT"
+                                                                                            :database-is-auto-increment false
+                                                                                            :json-unfolding             false
+                                                                                            :base-type                  :type/Integer}
+                                                                                           {:name                       "weight"
+                                                                                            :database-type              "DECIMAL"
+                                                                                            :database-is-auto-increment false
+                                                                                            :json-unfolding             false
+                                                                                            :semantic-type              :type/Category
+                                                                                            :base-type                  :type/Decimal}}}}}
+                             {:name           "buyer"
+                              :database-type  "OBJECT"
                               :database-is-auto-increment false
-                              :base-type     :type/Dictionary
-                              :nested-fields #{{:name          "name"
-                                                :database-type "VARCHAR"
-                                                :database-is-auto-increment false
-                                                :base-type     :type/Text}
-                                               {:name          "cc"
-                                                :database-type "VARCHAR"
-                                                :database-is-auto-increment false
-                                                :base-type     :type/Text}}}}}
+                              :json-unfolding false
+                              :base-type      :type/Dictionary
+                              :nested-fields  #{{:name                       "name"
+                                                 :database-type              "VARCHAR"
+                                                 :json-unfolding             false
+                                                 :base-type                  :type/Text
+                                                 :database-is-auto-increment false}
+                                                {:name                       "cc"
+                                                 :database-type              "VARCHAR"
+                                                 :json-unfolding             false
+                                                 :base-type                  :type/Text
+                                                 :database-is-auto-increment false}}}}}
    "employees"    {:name   "employees"
                    :schema nil
-                   :fields #{{:name          "id"
-                              :database-type "SERIAL"
+                   :fields #{{:name                       "id"
+                              :database-type              "SERIAL"
+                              :json-unfolding             false
                               :database-is-auto-increment true
-                              :base-type     :type/Integer}
-                             {:name          "name"
-                              :database-type "VARCHAR"
+                              :base-type                  :type/Integer}
+                             {:name                       "name"
+                              :database-type              "VARCHAR"
+                              :json-unfolding             false
                               :database-is-auto-increment false
-                              :base-type     :type/Text}}}})
+                              :base-type                  :type/Text}}}})
 
 (driver/register! ::toucanery, :abstract? true)
+
+(defmethod driver/database-supports? [::toucanery :nested-fields] [_driver _feature _database] true)
 
 (defmethod driver/describe-database ::toucanery
   [_ {:keys [exclude-tables]}]
@@ -90,10 +104,6 @@
   (when (= (:name table) "_metabase_metadata")
     [{:keypath "movies.filming.description", :value "If the movie is currently being filmed."}
      {:keypath "movies.description", :value "A cinematic adventure."}]))
-
-(defmethod driver/supports? [::toucanery :nested-fields]
-  [_ _]
-  true)
 
 (defmethod driver/mbql->native ::toucanery
   [_ query]

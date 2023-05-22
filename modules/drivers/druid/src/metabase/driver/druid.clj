@@ -12,11 +12,18 @@
 
 (driver/register! :druid)
 
+(doseq [[feature supported?] {:set-timezone            true
+                              :expression-aggregations true}]
+  (defmethod driver/database-supports? [:druid feature] [_driver _feature _db] supported?))
+
 (defmethod driver/can-connect? :druid
   [_ details]
   {:pre [(map? details)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
-    (= 200 (:status (http/get (druid.client/details->url details-with-tunnel "/status"))))))
+    (let [{:keys [auth-enabled auth-username auth-token-value]} details]
+      (= 200 (:status (http/get (druid.client/details->url details-with-tunnel "/status")
+                                (cond-> {}
+                                  auth-enabled (assoc :basic-auth (str auth-username ":" auth-token-value)))))))))
 
 (defmethod driver/describe-table :druid
   [_ database table]
@@ -46,10 +53,6 @@
     (partial druid.client/do-query-with-cancellation (qp.context/canceled-chan context))
     (update-in query [:native :query] add-timeout-to-query (qp.context/timeout context))
     respond))
-
-(doseq [[feature supported?] {:set-timezone            true
-                              :expression-aggregations true}]
-  (defmethod driver/supports? [:druid feature] [_ _] supported?))
 
 (defmethod driver/db-start-of-week :druid
   [_]

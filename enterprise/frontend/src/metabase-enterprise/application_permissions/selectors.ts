@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { t } from "ttag";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { Group } from "metabase-types/api";
 import { isAdminGroup } from "metabase/lib/groups";
@@ -42,7 +42,7 @@ const getApplicationPermission = (
 export const getIsDirty = createSelector(
   (state: ApplicationPermissionsState) =>
     state.plugins.applicationPermissionsPlugin?.applicationPermissions,
-  state =>
+  (state: ApplicationPermissionsState) =>
     state.plugins.applicationPermissionsPlugin?.originalApplicationPermissions,
   (permissions, originalPermissions) =>
     !_.isEqual(permissions, originalPermissions),

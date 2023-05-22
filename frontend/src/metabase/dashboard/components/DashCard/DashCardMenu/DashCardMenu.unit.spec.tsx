@@ -17,7 +17,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import DashCardMenu from "./DashCardMenu";
 
@@ -50,7 +50,10 @@ const TEST_CARD_UNAUTHORIZED = createMockCard({
 const TEST_RESULT = createMockDataset();
 
 const TEST_RESULT_ERROR = createMockDataset({
-  error: "An error occurred",
+  error: {
+    status: 500,
+    data: "An error occurred",
+  },
 });
 
 interface SetupOpts {
@@ -60,7 +63,7 @@ interface SetupOpts {
 
 const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
   const storeInitialState = createMockState({
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
       questions: [card],
     }),

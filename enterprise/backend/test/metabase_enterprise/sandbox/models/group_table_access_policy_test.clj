@@ -1,9 +1,12 @@
 (ns metabase-enterprise.sandbox.models.group-table-access-policy-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy
+    :refer [GroupTableAccessPolicy]]
    [metabase.models :refer [Card]]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -83,41 +86,42 @@
 
 (deftest disallow-queries-that-change-types-test
   (testing "Don't allow saving a Sandboxing query that changes the type of a column vs. the type in the Table it replaces (#13715)"
-    (doseq [[msg f] {"Create a new GTAP"
-                     (fn [metadata]
-                       (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query venues)
-                                                                     :result_metadata metadata}]
-                                       GroupTableAccessPolicy [_    {:table_id (mt/id :venues)
-                                                                     :group_id (u/the-id (perms-group/all-users))
-                                                                     :card_id  (:id card)}]]
-                         :ok))
+    (premium-features-test/with-premium-features #{:sandboxes}
+      (doseq [[msg f] {"Create a new GTAP"
+                       (fn [metadata]
+                         (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query venues)
+                                                                       :result_metadata metadata}]
+                                         GroupTableAccessPolicy [_    {:table_id (mt/id :venues)
+                                                                       :group_id (u/the-id (perms-group/all-users))
+                                                                       :card_id  (:id card)}]]
+                           :ok))
 
-                     "Update an existing GTAP"
-                     (fn [metadata]
-                       (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query venues)
-                                                                     :result_metadata metadata}]
-                                       GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
-                                                                     :group_id (u/the-id (perms-group/all-users))}]]
-                         (t2/update! GroupTableAccessPolicy (:id gtap) {:card_id (:id card)})
-                         :ok))
+                       "Update an existing GTAP"
+                       (fn [metadata]
+                         (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query venues)
+                                                                       :result_metadata metadata}]
+                                         GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
+                                                                       :group_id (u/the-id (perms-group/all-users))}]]
+                           (t2/update! GroupTableAccessPolicy (:id gtap) {:card_id (:id card)})
+                           :ok))
 
-                     "Update query for Card associated with an existing GTAP"
-                     (fn [metadata]
-                       (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query venues)
-                                                                     :result_metadata (qp/query->expected-cols (mt/mbql-query venues))}]
-                                       GroupTableAccessPolicy [_    {:table_id (mt/id :venues)
-                                                                     :group_id (u/the-id (perms-group/all-users))
-                                                                     :card_id  (:id card)}]]
-                         (t2/update! Card (:id card) {:result_metadata metadata})
-                         :ok))}]
-      (testing (str "\n" msg "\n")
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Sandbox Questions can't return columns that have different types than the Table they are sandboxing"
-             (f (-> (vec (qp/query->expected-cols (mt/mbql-query venues)))
-                    (assoc-in [0 :base_type] :type/Text)))))
-        (testing "type changes to a descendant type = ok"
-          (is (= :ok
-                 (f
-                  (-> (vec (qp/query->expected-cols (mt/mbql-query venues)))
-                      (assoc-in [0 :base_type] :type/BigInteger))))))))))
+                       "Update query for Card associated with an existing GTAP"
+                       (fn [metadata]
+                         (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query venues)
+                                                                       :result_metadata (qp/query->expected-cols (mt/mbql-query venues))}]
+                                         GroupTableAccessPolicy [_    {:table_id (mt/id :venues)
+                                                                       :group_id (u/the-id (perms-group/all-users))
+                                                                       :card_id  (:id card)}]]
+                           (t2/update! Card (:id card) {:result_metadata metadata})
+                           :ok))}]
+        (testing (str "\n" msg "\n")
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Sandbox Questions can't return columns that have different types than the Table they are sandboxing"
+               (f (-> (vec (qp/query->expected-cols (mt/mbql-query venues)))
+                      (assoc-in [0 :base_type] :type/Text)))))
+          (testing "type changes to a descendant type = ok"
+            (is (= :ok
+                   (f
+                    (-> (vec (qp/query->expected-cols (mt/mbql-query venues)))
+                        (assoc-in [0 :base_type] :type/BigInteger)))))))))))

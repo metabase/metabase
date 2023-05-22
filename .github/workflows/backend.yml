@@ -73,30 +73,32 @@ jobs:
         /work/enterprise/backend/test
         /work/shared/src
         /work/shared/test
-        /work/modules/drivers/sparksql/src
-        /work/modules/drivers/sparksql/test
-        /work/modules/drivers/vertica/src
-        /work/modules/drivers/vertica/test
+        /work/modules/drivers/athena/src
+        /work/modules/drivers/athena/test
+        /work/modules/drivers/bigquery-cloud-sdk/src
+        /work/modules/drivers/bigquery-cloud-sdk/test
+        /work/modules/drivers/druid/src
+        /work/modules/drivers/druid/test
+        /work/modules/drivers/googleanalytics/src
+        /work/modules/drivers/googleanalytics/test
         /work/modules/drivers/mongo/src
         /work/modules/drivers/mongo/test
         /work/modules/drivers/oracle/src
         /work/modules/drivers/oracle/test
-        /work/modules/drivers/sqlite/src
-        /work/modules/drivers/sqlite/test
-        /work/modules/drivers/bigquery-cloud-sdk/src
-        /work/modules/drivers/bigquery-cloud-sdk/test
+        /work/modules/drivers/presto-jdbc/src
+        /work/modules/drivers/presto-jdbc/test
         /work/modules/drivers/redshift/src
         /work/modules/drivers/redshift/test
         /work/modules/drivers/snowflake/src
         /work/modules/drivers/snowflake/test
-        /work/modules/drivers/googleanalytics/src
-        /work/modules/drivers/googleanalytics/test
-        /work/modules/drivers/druid/src
-        /work/modules/drivers/druid/test
+        /work/modules/drivers/sparksql/src
+        /work/modules/drivers/sparksql/test
+        /work/modules/drivers/sqlite/src
+        /work/modules/drivers/sqlite/test
         /work/modules/drivers/sqlserver/src
         /work/modules/drivers/sqlserver/test
-        /work/modules/drivers/presto-jdbc/src
-        /work/modules/drivers/presto-jdbc/test
+        /work/modules/drivers/vertica/src
+        /work/modules/drivers/vertica/test
 
   be-linter-eastwood:
     needs: files-changed

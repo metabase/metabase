@@ -1,5 +1,8 @@
 import { createAction } from "redux-actions";
-import { MetabotApi } from "metabase/services";
+import {
+  MetabotApi,
+  runQuestionQuery as apiRunQuestionQuery,
+} from "metabase/services";
 import { closeNavbar } from "metabase/redux/app";
 import { MetabotFeedbackType } from "metabase-types/api";
 import {
@@ -7,6 +10,7 @@ import {
   GetState,
   MetabotEntityId,
   MetabotEntityType,
+  State,
 } from "metabase-types/store";
 import { defer, Deferred } from "metabase/lib/promise";
 import Question from "metabase-lib/Question";
@@ -19,8 +23,32 @@ import {
   getNativeQueryText,
   getPrompt,
   getPromptTemplateVersions,
+  getQueryResultsError,
   getQuestion,
 } from "./selectors";
+import {
+  MetabotQueryRunResult,
+  trackMetabotFeedbackReceived,
+  trackMetabotQueryRun,
+} from "./analytics";
+
+const trackQueryRun = (
+  state: State,
+  result: MetabotQueryRunResult,
+  isRerun: boolean,
+) => {
+  const entityType = getEntityType(state);
+  const promptTemplateVersions = getPromptTemplateVersions(state);
+  const visualizationType = getQuestion(state)?.display() ?? null;
+
+  trackMetabotQueryRun(
+    entityType,
+    promptTemplateVersions,
+    result,
+    visualizationType,
+    isRerun,
+  );
+};
 
 export interface InitPayload {
   entityId: MetabotEntityId;
@@ -68,15 +96,24 @@ export const RUN_PROMPT_QUERY_FULFILLED =
 export const RUN_PROMPT_QUERY_REJECTED =
   "metabase/metabot/RUN_PROMPT_QUERY_REJECTED";
 export const runPromptQuery =
-  () => async (dispatch: Dispatch, getState: GetState) => {
+  (isRerun = false) =>
+  async (dispatch: Dispatch, getState: GetState) => {
     try {
       const cancelQueryDeferred = defer();
       dispatch({ type: RUN_PROMPT_QUERY, payload: cancelQueryDeferred });
       await dispatch(fetchQuestion(cancelQueryDeferred));
       await dispatch(fetchQueryResults(cancelQueryDeferred));
       dispatch({ type: RUN_PROMPT_QUERY_FULFILLED });
+
+      const queryResultsError = getQueryResultsError(getState());
+      trackQueryRun(
+        getState(),
+        queryResultsError ? "bad-sql" : "success",
+        isRerun,
+      );
     } catch (error) {
       if (getIsQueryRunning(getState())) {
+        trackQueryRun(getState(), "failure", isRerun);
         dispatch({ type: RUN_PROMPT_QUERY_REJECTED, payload: error });
       }
     }
@@ -128,7 +165,7 @@ export const fetchQueryResults =
   (cancelQueryDeferred: Deferred) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
-    const payload = await question?.apiGetResults({
+    const payload = await apiRunQuestionQuery(question, {
       cancelDeferred: cancelQueryDeferred,
     });
     dispatch({ type: FETCH_QUERY_RESULTS, payload });
@@ -157,6 +194,12 @@ export const submitFeedback =
       feedback_type: feedbackType,
       prompt_template_versions,
     });
+
+    trackMetabotFeedbackReceived(
+      entityType,
+      prompt_template_versions,
+      feedbackType,
+    );
 
     dispatch({ type: SUBMIT_FEEDBACK });
   };

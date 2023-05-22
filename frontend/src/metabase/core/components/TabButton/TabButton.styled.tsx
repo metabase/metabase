@@ -9,15 +9,31 @@ export interface TabButtonProps {
   disabled?: boolean;
 }
 
+// Wrapper and Resizer are needed to auto-grow the input with its content
+// https://css-tricks.com/auto-growing-inputs-textareas/#aa-resizing-actual-input-elements
+export const TabButtonInputWrapper = styled.span`
+  position: relative;
+`;
+
+export const TabButtonInputResizer = styled.span`
+  visibility: hidden;
+  white-space: pre;
+  padding-right: 2px;
+`;
+
 export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
-  width: ${props => `${props.value.length}ch`};
+  position: absolute;
+  width: 100%;
+  left: 0;
   padding: 0;
 
-  border: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
   outline: none;
   background-color: transparent;
 
   color: ${props => (props.isSelected ? color("brand") : color("text-dark"))};
+  font-size: inherit;
   font-weight: bold;
   text-align: center;
 
@@ -26,6 +42,15 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
     css`
       pointer-events: none;
     `}
+
+  &:hover,
+  :focus {
+    ${props =>
+      (props.isSelected || !props.disabled) &&
+      css`
+        border: 1px solid ${color("border")};
+      `}
+  }
 `;
 
 export const TabButtonRoot = styled.div<TabButtonProps>`

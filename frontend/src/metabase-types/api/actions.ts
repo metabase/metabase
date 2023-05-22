@@ -1,5 +1,4 @@
-import type { ParameterTarget } from "metabase-types/types/Parameter";
-import type { Parameter, ParameterId } from "./parameters";
+import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
 import type { NativeDatasetQuery } from "./query";
 import type { ClickBehavior } from "./click-behavior";
 import type {

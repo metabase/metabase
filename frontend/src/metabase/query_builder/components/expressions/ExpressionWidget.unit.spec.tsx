@@ -1,14 +1,15 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
+import { checkNotNull } from "metabase/core/utils/types";
 import { getIcon, render, screen } from "__support__/ui";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 import { getMetadata } from "metabase/selectors/metadata";
+import type { Expression } from "metabase-types/api";
 import { createMockState } from "metabase-types/store/mocks";
 import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import { Expression } from "metabase-types/types/Query";
 import ExpressionWidgetHeader from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import ExpressionWidget, { ExpressionWidgetProps } from "./ExpressionWidget";
 
@@ -125,13 +126,13 @@ describe("ExpressionWidget", () => {
 
 const createMockQueryForExpressions = () => {
   const state = createMockState({
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
     }),
   });
 
   const metadata = getMetadata(state);
-  const query = metadata.table(ORDERS_ID)?.query();
+  const query = checkNotNull(metadata.table(ORDERS_ID)).query();
 
   return query;
 };

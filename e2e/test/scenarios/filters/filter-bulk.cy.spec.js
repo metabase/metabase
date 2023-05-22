@@ -105,7 +105,9 @@ describe("scenarios > filters > bulk filtering", () => {
 
     applyFilters();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 20").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 4 rows").should("be.visible");
   });
 
@@ -124,7 +126,9 @@ describe("scenarios > filters > bulk filtering", () => {
 
     applyFilters();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count is greater than or equal to 500").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 21 rows").should("be.visible");
   });
 
@@ -140,7 +144,9 @@ describe("scenarios > filters > bulk filtering", () => {
 
     applyFilters();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Category is Gadget").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing first 2,000 rows").should("be.visible");
   });
 
@@ -152,8 +158,11 @@ describe("scenarios > filters > bulk filtering", () => {
 
     applyFilters();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is greater than 20").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is less than 25").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 17 rows").should("be.visible");
   });
 
@@ -165,8 +174,11 @@ describe("scenarios > filters > bulk filtering", () => {
 
     applyFilters();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is greater than 20").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is less than 30").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 138 rows").should("be.visible");
   });
 
@@ -216,6 +228,7 @@ describe("scenarios > filters > bulk filtering", () => {
       applyFilters();
 
       cy.findByTestId("qb-filters-panel").findByText(SEGMENT_2_NAME);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1,915 rows");
 
       filter();
@@ -233,6 +246,7 @@ describe("scenarios > filters > bulk filtering", () => {
       applyFilters();
 
       cy.findByTestId("qb-filters-panel").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing first 2,000 rows");
     });
 
@@ -272,6 +286,7 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 2 rows").should("be.visible");
     });
 
@@ -281,6 +296,7 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 2 rows").should("be.visible");
 
       filter();
@@ -290,6 +306,7 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row").should("be.visible");
     });
 
@@ -299,6 +316,7 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 2 rows").should("be.visible");
 
       filter();
@@ -308,6 +326,7 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 4 rows").should("be.visible");
     });
   });
@@ -324,13 +343,16 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At Today").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 0 rows").should("be.visible");
     });
 
     it("can add a date shortcut filter from the popover", () => {
       filterField("Created At").findByLabelText("more options").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Last 3 Months").click();
 
       modal().within(() => {
@@ -338,7 +360,9 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At Previous 3 Months").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 0 rows").should("be.visible");
     });
 
@@ -349,7 +373,9 @@ describe("scenarios > filters > bulk filtering", () => {
           cy.findByLabelText("more options").click();
         });
       });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Specific dates...").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Before").click();
 
       popover().within(() => {
@@ -365,15 +391,18 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At is before January 1, 2017").should(
         "be.visible",
       );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 744 rows").should("be.visible");
     });
 
     it("Can cancel adding date filter", () => {
       filterField("Created At").findByLabelText("more options").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Discount").click();
 
       filterField("Created At").within(() => {
@@ -395,7 +424,9 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Source is Affiliate").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 506 rows").should("be.visible");
     });
 
@@ -405,7 +436,9 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("State is AZ").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 20 rows").should("be.visible");
     });
   });
@@ -423,8 +456,11 @@ describe("scenarios > filters > bulk filtering", () => {
 
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 2 rows").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("131.68").should("be.visible"); // total for order id 17
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("123.99").should("be.visible"); // total for order id 18
     });
 
@@ -435,6 +471,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 107 rows").should("be.visible");
     });
   });
@@ -453,6 +490,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 5 rows").should("be.visible");
     });
 
@@ -464,6 +502,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 8 rows").should("be.visible");
     });
 
@@ -475,7 +514,9 @@ describe("scenarios > filters > bulk filtering", () => {
 
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("City is 2 selections").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row").should("be.visible");
     });
   });
@@ -499,7 +540,9 @@ describe("scenarios > filters > bulk filtering", () => {
 
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Price between 50 80").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 72 rows").should("be.visible");
     });
 
@@ -511,7 +554,9 @@ describe("scenarios > filters > bulk filtering", () => {
 
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Price is greater than 50").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 106 rows").should("be.visible");
     });
 
@@ -523,7 +568,9 @@ describe("scenarios > filters > bulk filtering", () => {
 
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Price is less than or equal to 50").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 94 rows").should("be.visible");
     });
   });
@@ -569,7 +616,9 @@ describe("scenarios > filters > bulk filtering", () => {
 
       applyFilters();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Price is greater than 90").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 10 rows").should("be.visible");
     });
   });

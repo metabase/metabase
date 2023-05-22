@@ -1,5 +1,6 @@
 import { RowValue } from "./dataset";
-import { TableId } from "./table";
+import { FieldReference } from "./query";
+import { Table, TableId } from "./table";
 
 export type FieldId = number;
 
@@ -45,7 +46,8 @@ export type FieldVisibilityType =
   | "details-only"
   | "hidden"
   | "normal"
-  | "retired";
+  | "retired"
+  | "sensitive";
 
 type HumanReadableFieldValue = string;
 export type FieldValue = [RowValue] | [RowValue, HumanReadableFieldValue];
@@ -54,11 +56,20 @@ export type FieldValuesType = "list" | "search" | "none";
 
 export type FieldDimension = {
   name: string;
+  human_readable_field_id?: FieldId;
+  human_readable_field?: Field;
 };
 
-export interface ConcreteField {
-  id: FieldId;
+export type FieldDimensionOption = {
+  name: string;
+  mbql: unknown[] | null;
+  type: string;
+};
+
+export interface Field {
+  id: FieldId | FieldReference;
   table_id: TableId;
+  table?: Table;
 
   name: string;
   display_name: string;
@@ -74,10 +85,16 @@ export interface ConcreteField {
   position: number;
 
   parent_id?: FieldId;
-  fk_target_field_id?: FieldId;
+  fk_target_field_id: FieldId | null;
   target?: Field;
   values?: FieldValue[];
+  remappings?: FieldValue[];
+  settings?: FieldFormattingSettings;
+
   dimensions?: FieldDimension[];
+  default_dimension_option?: FieldDimensionOption;
+  dimension_options?: FieldDimensionOption[];
+  name_field?: Field;
 
   max_value?: number;
   min_value?: number;
@@ -87,6 +104,8 @@ export interface ConcreteField {
   points_of_interest?: string;
 
   nfc_path: string[] | null;
+  json_unfolding: boolean | null;
+  coercion_strategy: string | null;
   fingerprint: FieldFingerprint | null;
 
   last_analyzed: string;
@@ -100,6 +119,6 @@ export interface FieldValues {
   has_more_values: boolean;
 }
 
-export type Field = Omit<ConcreteField, "id"> & {
-  id?: FieldId;
-};
+export interface FieldFormattingSettings {
+  currency?: string;
+}

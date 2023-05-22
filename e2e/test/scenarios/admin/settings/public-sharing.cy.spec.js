@@ -97,7 +97,9 @@ describe("scenarios > admin > settings > public sharing", () => {
 
     cy.visit("/admin/settings/public-sharing");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Shared Dashboards").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(expectedDashboardName).should("be.visible");
     cy.get("@dashboardUuid").then(dashboardUuid => {
       cy.findByText(
@@ -123,6 +125,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.findByText("Disable this link?").should("be.visible");
       cy.button("Yes").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No dashboards have been publicly shared yet.").should(
       "be.visible",
     );
@@ -148,7 +151,9 @@ describe("scenarios > admin > settings > public sharing", () => {
 
     cy.visit("/admin/settings/public-sharing");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Shared Questions").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(expectedQuestionName).should("be.visible");
     cy.get("@questionUuid").then(questionUuid => {
       cy.findByText(
@@ -174,6 +179,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.findByText("Disable this link?").should("be.visible");
       cy.button("Yes").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No questions have been publicly shared yet.").should(
       "be.visible",
     );
@@ -215,7 +221,9 @@ describe("scenarios > admin > settings > public sharing", () => {
 
     cy.visit("/admin/settings/public-sharing");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Shared Action Forms").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(expectedActionName).should("be.visible");
     cy.get("@actionUuid").then(actionUuid => {
       cy.findByText(`${location.origin}/public/action/${actionUuid}`).click();
@@ -242,6 +250,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.findByText("Disable this link?").should("be.visible");
       cy.button("Yes").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No actions have been publicly shared yet.").should(
       "be.visible",
     );

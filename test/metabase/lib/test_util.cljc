@@ -3,13 +3,18 @@
   (:require
    [clojure.core.protocols]
    [clojure.datafy :as datafy]
-   [clojure.test :refer [is]]
+   [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs
+   (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def venues-query
   {:lib/type     :mbql/query
@@ -28,7 +33,7 @@
    (field-clause table field nil))
   ([table field options]
    [:field
-    (merge {:base-type (:base_type (meta/field-metadata table field))
+    (merge {:base-type (:base-type (meta/field-metadata table field))
             :lib/uuid  (str (random-uuid))}
            options)
     (meta/id table field)]))
@@ -82,12 +87,28 @@
     (card     [_this card-id]    (some #(metadata.protocols/card    % card-id)    metadata-providers))
     (metric   [_this metric-id]  (some #(metadata.protocols/metric  % metric-id)  metadata-providers))
     (segment  [_this segment-id] (some #(metadata.protocols/segment % segment-id) metadata-providers))
-    (tables   [_this]            (some metadata.protocols/tables                  metadata-providers))
-    (fields   [_this table-id]   (some #(metadata.protocols/fields  % table-id)   metadata-providers))
+    (tables   [_this]            (m/distinct-by :id (mapcat metadata.protocols/tables               metadata-providers)))
+    (fields   [_this table-id]   (m/distinct-by :id (mapcat #(metadata.protocols/fields % table-id) metadata-providers)))
 
     clojure.core.protocols/Datafiable
     (datafy [_this]
       (cons `composed-metadata-provider (map datafy/datafy metadata-providers)))))
+
+(deftest ^:parallel composed-metadata-provider-test
+  (testing "Return things preferentially from earlier metadata providers"
+    (let [time-field        (assoc (meta/field-metadata :people :birth-date)
+                                   :base-type      :type/Time
+                                   :effective-type :type/Time)
+          metadata-provider (composed-metadata-provider
+                             (mock-metadata-provider
+                              {:fields [time-field]})
+                             meta/metadata-provider)]
+      (is (=? {:name           "BIRTH_DATE"
+               :base-type      :type/Time
+               :effective-type :type/Time}
+              (lib.metadata/field
+               metadata-provider
+               (meta/id :people :birth-date)))))))
 
 (def metadata-provider-with-card
   "[[meta/metadata-provider]], but with a Card with ID 1."
@@ -96,7 +117,7 @@
    (mock-metadata-provider
     {:cards [{:name          "My Card"
               :id            1
-              :dataset_query {:database (meta/id)
+              :dataset-query {:database (meta/id)
                               :type     :query
                               :query    {:source-table (meta/id :checkins)
                                          :aggregation  [[:count]]
@@ -119,13 +140,15 @@
    (mock-metadata-provider
     {:cards [{:name            "My Card"
               :id              1
-              :dataset_query   {:database (meta/id)
+              ;; THIS IS A LEGACY STYLE QUERY!
+              :dataset-query   {:database (meta/id)
                                 :type     :query
                                 :query    {:source-table (meta/id :checkins)
                                            :aggregation  [[:count]]
                                            :breakout     [[:field (meta/id :checkins :user-id) nil]]}}
-              ;; this is copied directly from a QP response
-              :result_metadata [{:description       nil
+              ;; this is copied directly from a QP response. NOT CONVERTED TO KEBAB-CASE YET, BECAUSE THIS IS HOW IT
+              ;; LOOKS IN LEGACY QUERIES!
+              :result-metadata [{:description       nil
                                  :semantic_type     :type/FK
                                  :table_id          (meta/id :checkins)
                                  :coercion_strategy nil
@@ -187,12 +210,12 @@
                    :lib/stage-metadata {:lib/type :metadata/results
                                         :columns  [{:lib/type      :metadata/field
                                                     :name          "abc"
-                                                    :display_name  "another Field"
-                                                    :base_type     :type/Integer
-                                                    :semantic_type :type/FK}
+                                                    :display-name  "another Field"
+                                                    :base-type     :type/Integer
+                                                    :semantic-type :type/FK}
                                                    {:lib/type      :metadata/field
                                                     :name          "sum"
-                                                    :display_name  "sum of User ID"
-                                                    :base_type     :type/Integer
-                                                    :semantic_type :type/FK}]}
+                                                    :display-name  "sum of User ID"
+                                                    :base-type     :type/Integer
+                                                    :semantic-type :type/FK}]}
                    :native             "SELECT whatever"}]})

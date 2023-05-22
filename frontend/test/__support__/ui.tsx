@@ -1,19 +1,16 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import type { ByRoleMatcher } from "@testing-library/react";
-import { merge } from "icepick";
 import _ from "underscore";
 import { createMemoryHistory, History } from "history";
 import { Router } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
-import type { Reducer } from "@reduxjs/toolkit";
+import type { Store, Reducer } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "@emotion/react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import type { MatcherFunction } from "@testing-library/dom";
-
-import { state as sampleDatabaseReduxState } from "__support__/sample_database_fixture";
 
 import type { State } from "metabase-types/store";
 
@@ -33,7 +30,6 @@ export interface RenderWithProvidersOptions {
   mode?: "default" | "public";
   initialRoute?: string;
   storeInitialState?: Partial<State>;
-  withSampleDatabase?: boolean;
   withRouter?: boolean;
   withDND?: boolean;
   customReducers?: ReducerObject;
@@ -50,18 +46,13 @@ export function renderWithProviders(
     mode = "default",
     initialRoute = "/",
     storeInitialState = {},
-    withSampleDatabase,
     withRouter = false,
     withDND = false,
     customReducers,
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  let initialState = createMockState(
-    withSampleDatabase
-      ? merge(sampleDatabaseReduxState, storeInitialState)
-      : storeInitialState,
-  );
+  let initialState = createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
@@ -85,7 +76,7 @@ export function renderWithProviders(
     reducers,
     initialState,
     history ? [routerMiddleware(history)] : [],
-  );
+  ) as unknown as Store<State>;
 
   const wrapper = (props: any) => (
     <Wrapper

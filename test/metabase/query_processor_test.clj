@@ -7,7 +7,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [hawk.init]
-   [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
    [metabase.models.field :refer [Field]]
@@ -169,23 +168,6 @@
   ([table-kw field-kw]
    (field-literal-col (col table-kw field-kw))))
 
-(defn field-literal-col-keep-extra-cols
-  "Return expected `:cols` info for a Field that was referred to as a `:field-literal`. This differs from
-  `field-literal-col` in that it doesn't remove columns like `:description` -- in some cases metadata will come back
-  with these cols, and in some it won't -- I think it has to do with whether the Card had `:source_metadata` saved for
-  it.
-
-    (field-literal-col-keep-extra-cols :venues :price)
-    (field-literal-col-keep-extra-cols (aggregate-col :count))"
-  {:arglists '([col] [table-kw field-kw])}
-  ([{field-name :name, base-type :base_type, :as col}]
-   (assoc col
-          :field_ref [:field field-name {:base-type base-type}]
-          :source    :fields))
-
-  ([table-kw field-kw]
-   (field-literal-col-keep-extra-cols (col table-kw field-kw))))
-
 (defn fk-col
   "Return expected `:cols` info for a Field that came in via an implicit join (i.e, via an `fk->` clause)."
   [source-table-kw source-field-kw, dest-table-kw dest-field-kw]
@@ -219,18 +201,6 @@
   "Return expected `:cols` info for a Field from a native query or native source query."
   [table-kw field-kw]
   (native-query-col* (data/id) (data/id table-kw) (data/id table-kw field-kw)))
-
-(defn ^:deprecated booleanize-native-form
-  "Convert `:native_form` attribute to a boolean to make test results comparisons easier. Remove `data.results_metadata`
-  as well since it just takes a lot of space and the checksum can vary based on whether encryption is enabled.
-
-  DEPRECATED: Just use `qp.test/rows`, `qp.test/row-and-cols`, or `qp.test/rows+column-names` instead, combined with
-  functions like `col` as needed."
-  [m]
-  (-> m
-      (update-in [:data :native_form] boolean)
-      (m/dissoc-in [:data :results_metadata])
-      (m/dissoc-in [:data :insights])))
 
 (defmulti format-rows-fns
   "Return vector of functions (or floating-point numbers, for rounding; see `format-rows-by`) to use to format result
@@ -367,7 +337,7 @@
 (defn supports-report-timezone?
   "Returns truthy if `driver` supports setting a timezone"
   [driver]
-  (driver/supports? driver :set-timezone))
+  (driver/database-supports? driver :set-timezone (data/db)))
 
 (defn cols
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
@@ -439,12 +409,12 @@
               (= driver driver-or-drivers)))]
     (if-not (add-fks? driver/*driver*)
       (thunk)
-      (let [supports? driver/supports?]
-        (with-redefs [driver/supports? (fn [driver feature]
-                                         (if (and (add-fks? driver)
-                                                  (= feature :foreign-keys))
-                                           true
-                                           (supports? driver feature)))]
+      (let [database-supports? driver/database-supports?]
+        (with-redefs [driver/database-supports? (fn [driver feature db]
+                                                  (if (and (add-fks? driver)
+                                                           (= feature :foreign-keys))
+                                                    true
+                                                    (database-supports? driver feature db)))]
           (let [thunk (reduce
                        (fn [thunk [source dest]]
                          (fn []

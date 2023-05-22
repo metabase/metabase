@@ -79,6 +79,12 @@
 (defmulti ^:private normalize-mbql-clause-tokens
   (comp maybe-normalize-token first))
 
+(defmethod normalize-mbql-clause-tokens :aggregation
+  ;; nil options should be removed from aggregation references (`[:aggregation 0]`).
+  [[_ aggregation-index option]]
+  (cond-> [:aggregation aggregation-index]
+    (some? option) (conj option)))
+
 (defmethod normalize-mbql-clause-tokens :expression
   ;; For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string.
   [[_ expression-name]]

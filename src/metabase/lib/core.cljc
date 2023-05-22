@@ -5,6 +5,7 @@
                             + - * / time abs concat replace ref var])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.card :as lib.card]
    [metabase.lib.column-group :as lib.column-group]
@@ -29,6 +30,7 @@
    [metabase.shared.util.namespaces :as shared.ns]))
 
 (comment lib.aggregation/keep-me
+         lib.binning/keep-me
          lib.breakout/keep-me
          lib.card/keep-me
          lib.column-group/keep-me
@@ -52,8 +54,12 @@
 
 (shared.ns/import-fns
   [lib.aggregation
-   aggregations
    aggregate
+   aggregation-clause
+   aggregation-operator-columns
+   aggregations
+   aggregations-metadata
+   available-aggregation-operators
    count
    avg
    count-where
@@ -67,9 +73,14 @@
    sum
    sum-where
    var]
+  [lib.binning
+   available-binning-strategies
+   binning
+   with-binning]
   [lib.breakout
    breakout
-   current-breakouts]
+   breakoutable-columns
+   breakouts]
   [lib.column-group
    columns-group-columns
    group-columns]
@@ -81,6 +92,7 @@
   [lib.expression
    expression
    expressions
+   expressions-metadata
    +
    -
    *
@@ -144,6 +156,8 @@
   [lib.join
    join
    join-clause
+   join-conditions
+   join-fields
    joins
    with-join-alias
    with-join-fields]
@@ -184,4 +198,9 @@
    append-stage
    drop-stage]
   [lib.temporal-bucket
-   temporal-bucket])
+   describe-temporal-unit
+   describe-temporal-interval
+   describe-relative-datetime
+   available-temporal-buckets
+   temporal-bucket
+   with-temporal-bucket])

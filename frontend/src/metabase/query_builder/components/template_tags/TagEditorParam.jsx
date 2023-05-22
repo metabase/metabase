@@ -65,7 +65,7 @@ export class TagEditorParam extends Component {
         type: type,
         default: undefined,
         dimension: undefined,
-        "widget-type": undefined,
+        "widget-type": type === "dimension" ? "none" : undefined,
       });
     }
   }
@@ -233,11 +233,7 @@ export class TagEditorParam extends Component {
             <Select
               className="block"
               value={this.getFilterWidgetTypeValue(tag, widgetOptions)}
-              onChange={e =>
-                this.setWidgetType(
-                  e.target.value === "none" ? undefined : e.target.value,
-                )
-              }
+              onChange={e => this.setWidgetType(e.target.value)}
               isInitiallyOpen={!tag["widget-type"] && hasWidgetOptions}
               placeholder={t`Select…`}
             >
@@ -307,7 +303,7 @@ export class TagEditorParam extends Component {
 
         {((tag.type !== "dimension" && tag.required) ||
           tag.type === "dimension" ||
-          tag["widget-type"]) && (
+          (tag["widget-type"] && tag["widget-type"] !== "none")) && (
           <InputContainer lessBottomPadding>
             <ContainerLabel>{t`Default filter widget value`}</ContainerLabel>
             <DefaultParameterValueWidget

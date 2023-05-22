@@ -9,7 +9,7 @@ import Icon from "metabase/components/Icon";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
 import ExpressionWidgetHeader from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
-import { Expression } from "metabase-types/types/Query";
+import type { Expression } from "metabase-types/api";
 import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
 import { FieldDimension } from "metabase-lib/Dimension";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -51,6 +51,7 @@ type Props = {
   checkedColor?: string;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function FilterPopover({
   isNew: isNewProp,
   filter: filterProp,

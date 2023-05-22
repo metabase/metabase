@@ -38,7 +38,7 @@ const SingleSelectListField = ({
     createOptionsFromValuesWithoutOptions(value, options),
   );
 
-  const augmentedOptions = useMemo(() => {
+  const augmentedOptions = useMemo<Option[]>(() => {
     return [...options.filter(option => option[0] != null), ...addedOptions];
   }, [addedOptions, options]);
 
@@ -147,4 +147,5 @@ const SingleSelectListField = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SingleSelectListField;

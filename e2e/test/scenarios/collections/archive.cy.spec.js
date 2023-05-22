@@ -34,6 +34,7 @@ describe("scenarios > collections > archive", () => {
     cy.visit("/archive");
 
     cy.get("main").scrollTo("bottom");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Item 40");
   });
 

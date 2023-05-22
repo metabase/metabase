@@ -1,5 +1,6 @@
 (ns metabase.lib.js.metadata
   (:require
+   [clojure.core.protocols]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [goog]
@@ -82,9 +83,9 @@
   (let [excluded-keys-set (excluded-keys object-type)
         parse-field       (parse-field-fn object-type)]
     (comp
-     ;; convert keys to keywords
+     ;; convert keys to kebab-case keywords
      (map (fn [[k v]]
-            [(keyword k) v]))
+            [(keyword (u/->kebab-case-en k)) v]))
      ;; remove [[excluded-keys]]
      (if (empty? excluded-keys-set)
        identity
@@ -138,9 +139,9 @@
   [_object-type]
   (fn [k v]
     (case k
-      :dbms_version       (js->clj v :keywordize-keys true)
+      :dbms-version       (js->clj v :keywordize-keys true)
       :features           (into #{} (map keyword) v)
-      :native_permissions (keyword v)
+      :native-permissions (keyword v)
       v)))
 
 (defmethod parse-objects-default-key :database
@@ -153,16 +154,16 @@
 
 (defmethod excluded-keys :table
   [_object-type]
-  #{:database :fields :segments :metrics :dimension_options})
+  #{:database :fields :segments :metrics :dimension-options})
 
 (defmethod parse-field-fn :table
   [_object-type]
   (fn [k v]
     (case k
-      :entity_type         (keyword v)
-      :field_order         (keyword v)
-      :initial_sync_status (keyword v)
-      :visibility_type     (keyword v)
+      :entity-type         (keyword v)
+      :field-order         (keyword v)
+      :initial-sync-status (keyword v)
+      :visibility-type     (keyword v)
       v)))
 
 (defmethod parse-objects :table
@@ -182,8 +183,8 @@
   [_object-type]
   #{:_comesFromEndpoint
     :database
-    :default_dimension_option
-    :dimension_options
+    :default-dimension-option
+    :dimension-options
     :dimensions
     :metrics
     :table})
@@ -192,13 +193,13 @@
   [_object-type]
   (fn [k v]
     (case k
-      :base_type         (keyword v)
-      :coercion_strategy (keyword v)
-      :effective_type    (keyword v)
+      :base-type         (keyword v)
+      :coercion-strategy (keyword v)
+      :effective-type    (keyword v)
       :fingerprint       (walk/keywordize-keys v)
-      :has_field_values  (keyword v)
-      :semantic_type     (keyword v)
-      :visibility_type   (keyword v)
+      :has-field-values  (keyword v)
+      :semantic-type     (keyword v)
+      :visibility-type   (keyword v)
       v)))
 
 (defmethod parse-objects-default-key :field
@@ -222,12 +223,12 @@
   [_object-type]
   (fn [k v]
     (case k
-      :result_metadata (if ((some-fn sequential? array?) v)
+      :result-metadata (if ((some-fn sequential? array?) v)
                          (parse-fields v)
                          (js->clj v :keywordize-keys true))
       :fields          (parse-fields v)
-      :visibility_type (keyword v)
-      :dataset_query   (js->clj v :keywordize-keys true)
+      :visibility-type (keyword v)
+      :dataset-query   (js->clj v :keywordize-keys true)
       ;; this is not complete, add more stuff as needed.
       v)))
 
@@ -323,19 +324,19 @@
 (defn- tables [metadata database-id]
   (for [[_id table-delay]  (some-> metadata :tables deref)
         :let               [a-table (some-> table-delay deref)]
-        :when              (and a-table (= (:db_id a-table) database-id))]
+        :when              (and a-table (= (:db-id a-table) database-id))]
     a-table))
 
 (defn- fields [metadata table-id]
   (for [[_id field-delay]  (some-> metadata :fields deref)
         :let               [a-field (some-> field-delay deref)]
-        :when              (and a-field (= (:table_id a-field) table-id))]
+        :when              (and a-field (= (:table-id a-field) table-id))]
     a-field))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
-  [database-id metadata]
-  (let [metadata (parse-metadata metadata)]
+  [database-id unparsed-metadata]
+  (let [metadata (parse-metadata unparsed-metadata)]
     (log/debug "Created metadata provider for metadata")
     (reify lib.metadata.protocols/MetadataProvider
       (database [_this]            (database metadata database-id))
@@ -345,4 +346,15 @@
       (segment  [_this segment-id] (segment  metadata segment-id))
       (card     [_this card-id]    (card     metadata card-id))
       (tables   [_this]            (tables   metadata database-id))
-      (fields   [_this table-id]   (fields   metadata table-id)))))
+      (fields   [_this table-id]   (fields   metadata table-id))
+
+      ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
+      ;; thing at once.
+      clojure.core.protocols/Datafiable
+      (datafy [_this]
+        (walk/postwalk
+         (fn [form]
+           (if (delay? form)
+             (deref form)
+             form))
+         metadata)))))

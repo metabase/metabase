@@ -460,11 +460,6 @@
       (compare (.addTo (period-duration d1) t)
                (.addTo (period-duration d2) t)))))
 
-(defn less-than-period-duration?
-  "True if period/duration `d1` is shorter than period/duration `d2`."
-  [d1 d2]
-  (neg? (compare-period-durations d1 d2)))
-
 (defn greater-than-period-duration?
   "True if period/duration `d1` is longer than period/duration `d2`."
   [d1 d2]

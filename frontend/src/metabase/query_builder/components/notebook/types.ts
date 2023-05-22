@@ -1,4 +1,4 @@
-import type { DatasetQuery } from "metabase-types/types/Card";
+import type { DatasetQuery } from "metabase-types/api";
 import type { Query } from "metabase-lib/types";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Question from "metabase-lib/Question";
@@ -31,6 +31,7 @@ export interface NotebookStep {
   valid: boolean;
   active: boolean;
   visible: boolean;
+  testID: string;
   revert: NotebookStepFn<StructuredQuery | null> | null;
   clean: NotebookStepFn<StructuredQuery>;
   update: (datasetQuery: DatasetQuery) => StructuredQuery;

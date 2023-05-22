@@ -17,6 +17,7 @@
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.sample-data :as sample-data]
    [metabase.server :as server]
    [metabase.server.handler :as handler]
@@ -89,6 +90,12 @@
   (prometheus/shutdown!)
   (log/info (trs "Metabase Shutdown COMPLETE")))
 
+(defenterprise ensure-audit-db-installed!
+  "OSS implementation of `audit-db/ensure-db-installed!`, which is an enterprise feature, so does nothing in the OSS
+  version."
+  metabase-enterprise.audit-db
+  [])
+
 (defn- init!*
   "General application initialization function which should be run once at application startup."
   []
@@ -133,6 +140,7 @@
       ;; otherwise update if appropriate
       (sample-data/update-sample-database-if-needed!))
     (init-status/set-progress! 0.9))
+  (ensure-audit-db-installed!)
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   (init-status/set-complete!)

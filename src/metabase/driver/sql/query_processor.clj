@@ -106,6 +106,13 @@
     2
     1))
 
+(defmacro with-driver-honey-sql-version
+  "Evaluates body with the appropriate driver version of honey sql bound"
+  {:style/indent 1}
+  [driver & body]
+  `(binding [hx/*honey-sql-version* (honey-sql-version ~driver)]
+     ~@body))
+
 (defn inline-num
   "Wrap number `n` in `:inline` when targeting Honey SQL 2."
   {:added "0.46.0"}

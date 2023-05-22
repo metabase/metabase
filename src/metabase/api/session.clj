@@ -1,6 +1,8 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require
+   [buddy.core.codecs :as codecs]
+   [cheshire.core :as json]
    [compojure.core :refer [DELETE GET POST]]
    [java-time :as t]
    [metabase.analytics.snowplow :as snowplow]
@@ -11,6 +13,7 @@
    [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.integrations.ldap :as ldap]
+   [metabase.models :refer [PulseChannel]]
    [metabase.models.login-history :refer [LoginHistory]]
    [metabase.models.session :refer [Session]]
    [metabase.models.setting :as setting]
@@ -19,8 +22,10 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as s]
@@ -203,20 +208,18 @@
   [email]
   (future
     (when-let [{user-id      :id
-                google-auth? :google_auth
-                ldap-auth?   :ldap_auth
                 sso-source   :sso_source
                 is-active?   :is_active}
-               (t2/select-one [User :id :google_auth :ldap_auth :sso_source :is_active]
+               (t2/select-one [User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
-      (if (or google-auth? ldap-auth? sso-source)
+      (if (some? sso-source)
         ;; If user uses any SSO method to log in, no need to generate a reset token
-        (messages/send-password-reset-email! email google-auth? (boolean (or ldap-auth? sso-source)) nil is-active?)
+        (messages/send-password-reset-email! email sso-source nil is-active?)
         (let [reset-token        (user/set-password-reset-token! user-id)
               password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
           (log/info password-reset-url)
-          (messages/send-password-reset-email! email false false password-reset-url is-active?))))))
+          (messages/send-password-reset-email! email nil password-reset-url is-active?))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/forgot_password"
@@ -314,5 +317,58 @@
       (catch Throwable e
         (log/error e (trs "Authentication endpoint error"))
         (throw e)))))
+
+;;; ----------------------------------------------------- Unsubscribe non-users from pulses -----------------------------------------------
+
+(def ^:private unsubscribe-throttler (throttle/make-throttler :unsubscribe, :attempts-threshold 50))
+
+(defn generate-hash
+  "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions."
+  [pulse-id email]
+  (codecs/bytes->hex
+   (encryption/validate-and-hash-secret-key
+    (json/generate-string {:salt public-settings/site-uuid-for-unsubscribing-url
+                           :email email
+                           :pulse-id pulse-id}))))
+
+(defn- check-hash [pulse-id email hash ip-address]
+  (throttle-check unsubscribe-throttler ip-address)
+  (when (not= hash (generate-hash pulse-id email))
+    (throw (ex-info (tru "Invalid hash.")
+                    {:type        type
+                     :status-code 400}))))
+
+(api/defendpoint POST "/pulse/unsubscribe"
+  "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."
+  [:as {{:keys [email hash pulse-id]} :body, :as request}]
+  {pulse-id ms/PositiveInt
+   email    :string
+   hash     :string}
+  (check-hash pulse-id email hash (request.u/ip-address request))
+  (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
+    (let [emails (get-in pulse-channel [:details :emails])]
+      (if (some #{email} emails)
+        (t2/update! PulseChannel (:id pulse-channel) (assoc-in pulse-channel [:details :emails] (remove #{email} emails)))
+        (throw (ex-info (tru "Email for pulse-id doesn't exist.")
+                        {:type        type
+                         :status-code 400}))))
+               {:status :success}))
+
+(api/defendpoint POST "/pulse/unsubscribe/undo"
+  "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
+  [:as {{:keys [email hash pulse-id]} :body, :as request}]
+  {pulse-id ms/PositiveInt
+   email    :string
+   hash     :string}
+  (check-hash pulse-id email hash (request.u/ip-address request))
+  (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
+    (let [emails       (get-in pulse-channel [:details :emails])
+          given-email? #(= % email)]
+      (if (some given-email? emails)
+        (throw (ex-info (tru "Email for pulse-id already exists.")
+                        {:type        type
+                         :status-code 400}))
+        (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email)))))
+  {:status :success})
 
 (api/define-routes +log-all-request-failures)

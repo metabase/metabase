@@ -47,3 +47,12 @@
     (let [steps (or (seq (map u/parse-as-keyword steps))
                     (keys steps*))]
       (do-steps! steps))))
+
+(defn publish-ebs [args]
+  (u/exit-when-finished-nonzero-on-exception
+    (let [version (:version args)]
+      (c/set-version! version)
+      (c/set-edition! (if (str/starts-with? (c/version) "0") :oss :ee))
+      (c/set-branch! "release-x.y.z") ;; FIXME: branch is irrelevant for CD run
+      (u/announce (format "Preparing Elastic Beanstalk artifacts for version %s" (c/version)))
+      (do-steps! [:publish-elastic-beanstalk-artifacts]))))

@@ -18,12 +18,14 @@ describe("scenarios > visualizations > table", () => {
   it("should allow to display any column as link with extrapolated url and text", () => {
     openPeopleTable({ limit: 2 });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("City").click();
 
     popover().within(() => {
       cy.icon("gear").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Link").click();
 
     cy.findByTestId("link_text").type("{{C");
@@ -43,6 +45,7 @@ describe("scenarios > visualizations > table", () => {
       })
       .blur();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Wood River 1 fixed text").should(
       "have.attr",
       "href",
@@ -173,6 +176,7 @@ describe("scenarios > visualizations > table", () => {
   it("should show the field metadata popover for a foreign key field (metabase#19577)", () => {
     openOrdersTable({ limit: 2 });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID").trigger("mouseenter");
 
     popover().within(() => {
@@ -195,6 +199,7 @@ describe("scenarios > visualizations > table", () => {
   it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
     openPeopleTable({ limit: 2 });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("City").click();
     popover().within(() => {
       cy.icon("arrow_up");
@@ -205,6 +210,7 @@ describe("scenarios > visualizations > table", () => {
       cy.findByText("Distinct values");
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("City").click();
     // Although arbitrary waiting is considered an anti-pattern and a really bad practice, I couldn't find any other way to reproduce this issue.
     // Cypress is too fast and is doing the assertions in that split second while popover is reloading which results in a false positive result.

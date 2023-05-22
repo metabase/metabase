@@ -145,12 +145,12 @@
   "Get metrics based on user records.
   TODO: get activity in terms of created questions, pulses and dashboards"
   []
-  {:users (merge-count-maps (for [user (t2/select [User :is_active :is_superuser :last_login :google_auth])]
+  {:users (merge-count-maps (for [user (t2/select [User :is_active :is_superuser :last_login :sso_source])]
                               {:total     1
                                :active    (:is_active    user)
                                :admin     (:is_superuser user)
                                :logged_in (:last_login   user)
-                               :sso       (:google_auth  user)}))})
+                               :sso       (= :google (:sso_source  user))}))})
 
 (defn- group-metrics
   "Get metrics based on groups:

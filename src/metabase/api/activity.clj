@@ -3,10 +3,9 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [compojure.core :refer [GET]]
-   [java-time :as t]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.events.view-log :as view-log]
    [metabase.models.activity :refer [Activity]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -86,8 +85,7 @@
                                 (or (existing-dataset? (:card_id dashcard))
                                     (existing-card? (:card_id dashcard))))))))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Get recent activity."
   []
   (filter mi/can-read? (-> (t2/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
@@ -191,86 +189,35 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-(defn- bookmarks-query
-  [user-id]
-  (let [as-null (when (= (mdb.connection/db-type) :postgres) (h2x/->integer nil))]
-    {:select [[:type :model] [:item_id :model_id]]
-     :from   [[{:union-all [{:select [:card_id
-                                      [as-null :dashboard_id]
-                                      [as-null :collection_id]
-                                      [:card_id :item_id]
-                                      [(h2x/literal "card") :type]
-                                      :created_at]
-                             :from   [:card_bookmark]
-                             :where  [:= :user_id [:inline user-id]]}
-                            {:select [[as-null :card_id]
-                                      :dashboard_id
-                                      [as-null :collection_id]
-                                      [:dashboard_id :item_id]
-                                      [(h2x/literal "dashboard") :type]
-                                      :created_at]
-                             :from   [:dashboard_bookmark]
-                             :where  [:= :user_id [:inline user-id]]}]}
-               :bookmarks]]}))
-
-(defn- recent-views-for-user
-  [user-id]
-  (let [bookmarks (bookmarks-query user-id)
-        qe        {:select [[(h2x/literal "qe") :source]
-                            [:executor_id :user_id]
-                            :context
-                            [:started_at :timestamp]
-                            [(h2x/literal "card") :model]
-                            [:card_id :model_id]
-                            [false :dataset]]
-                   :from   :query_execution}
-        vl        {:select    [[(h2x/literal "vl") :source]
-                               :user_id
-                               [(h2x/literal "question") :context]
-                               :timestamp
-                               :model
-                               :model_id
-                               [:report_card.dataset :dataset]]
-                   :from      [:view_log]
-                   :left-join [:report_card
-                               [:and
-                                [:= :view_log.model (h2x/literal "card")]
-                                [:= :view_log.model_id :report_card.id]]]}
-        views     {:union-all [qe vl]}]
-    (t2/query
-     {:select   [[[:max :timestamp] :timestamp]
-                 :model
-                 :model_id]
-      :from     [[views :views]]
-      :where    [[:and
-                  [:= :user_id [:inline user-id]]
-                  [:>= :timestamp (t/minus (t/offset-date-time) (t/days 30))]
-                  [:not= :context (h2x/literal "pulse")]
-                  [:not= :context (h2x/literal "collection")]
-                  [:not= :context (h2x/literal "ad-hoc")]
-                  [:not= [:composite :context :model] [:composite (h2x/literal "dashboard") (h2x/literal "card")]]
-                  [:not= [:composite :source :model :dataset] [:composite (h2x/literal "vl") (h2x/literal "card") [:inline false]]]
-                  [:not-in [:composite :model :model_id] bookmarks]]]
-      :group-by [:model :model_id]
-      :order-by [[:timestamp :desc]]
-      :limit    [:inline 8]})))
-
 (api/defendpoint GET "/recent_views"
   "Get a list of 5 things the current user has been viewing most recently."
   []
-  (let [views (recent-views-for-user *current-user-id*)
+  (let [views            (view-log/user-recent-views)
         model->id->items (models-for-views views)]
     (->> (for [{:keys [model model_id] :as view-log} views
-               :let [model-object (-> (get-in model->id->items [model model_id])
-                                      (dissoc :dataset_query))]
-               :when (and model-object
-                          (mi/can-read? model-object)
-                          ;; hidden tables, archived cards/dashboards
-                          (not (or (:archived model-object)
-                                   (= (:visibility_type model-object) :hidden))))]
+               :let
+               [model-object (-> (get-in model->id->items [model model_id])
+                                 (dissoc :dataset_query))]
+               :when
+               (and model-object
+                    (mi/can-read? model-object)
+                    ;; hidden tables, archived cards/dashboards
+                    (not (or (:archived model-object)
+                             (= (:visibility_type model-object) :hidden))))]
            (cond-> (assoc view-log :model_object model-object)
              (:dataset model-object) (assoc :model "dataset")))
          (take 5))))
+
+(api/defendpoint GET "/most_recently_viewed_dashboard"
+  "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
+   in the last 24 hours."
+  []
+  (if-let [dashboard-id (view-log/most-recently-viewed-dashboard)]
+    (let [dashboard (t2/select-one Dashboard :id dashboard-id)]
+      (if (mi/can-read? dashboard)
+        dashboard
+        api/generic-204-no-content))
+    api/generic-204-no-content))
 
 (defn- official?
   "Returns true if the item belongs to an official collection. False otherwise. Assumes that `:authority_level` exists
@@ -317,8 +264,7 @@
       (let [groups (group-by :model items)]
         (mapcat #(get groups %) model-precedence))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/popular_items"
+(api/defendpoint GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
   finds anything archived, deleted, etc it can hopefully still get 5."
   []
