@@ -41,7 +41,7 @@ describe("ChartClickActionsView", () => {
       setup("REVIEWER", "christ");
 
       const sections = screen.getAllByTestId("drill-through-section");
-      expect(sections[2]).toHaveTextContent("Filter by this text");
+      expect(sections[2]).toHaveTextContent("Filter by Reviewer");
     });
 
     it("should render text filters for text column", () => {
