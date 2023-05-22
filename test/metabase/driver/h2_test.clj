@@ -10,6 +10,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models :refer [Database]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -288,11 +289,28 @@
                (driver/syncable-schemas driver/*driver* (mt/id))))))))
 
 
+
+(defenterprise ^:private ensure-audit-db-installed!
+  "A test implementation of `audit-db/ensure-db-installed!`, used to setup the audit-db for testing."
+  metabase-enterprise.audit-db
+  [])
+
+(def ^:private audit-db-expected-id 13371337)
+
 (deftest syncable-audit-db-test
   (mt/test-driver :h2
     (when config/ee-available?
-      (testing "spec obtained from audit db has no connection string, and that works OK."
-        (is (= {:something "good"}
-               (->> (t2/select-one-fn :id 'Database :is_audit true)
-                    metabase.driver.sql-jdbc.connection/db->pooled-connection-spec
-                    (sql-jdbc.conn/connection-details->spec :h2))))))))
+      (let [original-audit-db (t2/select-one 'Database :is_audit true)]
+        (ensure-audit-db-installed!)
+        (try
+          (testing "spec obtained from audit db has no connection string, and that works OK."
+            (let [audit-db-id (t2/select-one-fn :id 'Database :is_audit true)]
+              (is (= audit-db-expected-id audit-db-id))
+              (let [audit-db-pooled-spec (metabase.driver.sql-jdbc.connection/db->pooled-connection-spec audit-db-id)]
+                (is (= "com.mchange.v2.c3p0.PoolBackedDataSource" (pr-str (type (:datasource audit-db-pooled-spec)))))
+                (let [spec (sql-jdbc.conn/connection-details->spec :h2 audit-db-pooled-spec)]
+                  (is (= #{:classname :subprotocol :subname :datasource}
+                         (set (keys spec))))))))
+          (finally
+            (t2/delete! Database :is_audit true)
+            (when original-audit-db (ensure-audit-db-installed!))))))))
