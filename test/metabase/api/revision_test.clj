@@ -370,17 +370,17 @@
       (create-dashboard-revision! dashboard-id true :crowberto)
 
       ;; 1. add 2 cards
-      (let [dashcard-ids (t2/insert-returning-pks! DashboardCard [{:dashboard_id dashboard-id
+      (t2/insert-returning-pks! DashboardCard [{:dashboard_id dashboard-id
                                                                    :size_x       4
                                                                    :size_y       4
                                                                    :col          1
                                                                    :row          1}
-                                                                  {:dashboard_id dashboard-id
-                                                                   :size_x       4
-                                                                   :size_y       4
-                                                                   :col          1
-                                                                   :row          1}])]
-        (create-dashboard-revision! dashboard-id false :crowberto))
+                                               {:dashboard_id dashboard-id
+                                                :size_x       4
+                                                :size_y       4
+                                                :col          1
+                                                :row          1}])
+      (create-dashboard-revision! dashboard-id false :crowberto)
 
       (let [earlier-revision-id (t2/select-one-pk Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
         (revision/revert! :entity Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id))
