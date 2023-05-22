@@ -14,8 +14,11 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]))
+
+;; TODO: remove hx from this test
+#_{:clj-kondo/ignore [:discouraged-namespace]}
+(require '[metabase.util.honeysql-extensions :as hx])
 
 (set! *warn-on-reflection* true)
 
