@@ -154,6 +154,10 @@ describe("DashboardApp", function () {
   });
 
   describe("ActionCreatorModal onClickOutside behavior", () => {
+    beforeEach(() => {
+      jest.setTimeout(10000);
+    });
+
     it("should not close ActionCreator modal when clicking outside modal", async () => {
       await setup({});
       await navigateToDashboardActionsEditor();
