@@ -1,6 +1,7 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 import type { Draft } from "@reduxjs/toolkit";
 import { t } from "ttag";
+import { arrayMove } from "@dnd-kit/sortable";
 
 import {
   DashCardId,
@@ -21,8 +22,12 @@ type DeleteTabPayload = {
 type UndoDeleteTabPayload = {
   tabDeletionId: TabDeletionId;
 };
-type SelectTabPayload = { tabId: DashboardTabId | null };
 type RenameTabPayload = { tabId: DashboardTabId | null; name: string };
+type MoveTabPayload = {
+  sourceTabId: DashboardTabId;
+  destTabId: DashboardTabId;
+};
+type SelectTabPayload = { tabId: DashboardTabId | null };
 type SaveCardsAndTabsPayload = {
   cards: DashboardOrderedCard[];
   ordered_tabs: DashboardOrderedTab[];
@@ -32,6 +37,7 @@ const CREATE_NEW_TAB = "metabase/dashboard/CREATE_NEW_TAB";
 const DELETE_TAB = "metabase/dashboard/DELETE_TAB";
 const UNDO_DELETE_TAB = "metabase/dashboard/UNDO_DELETE_TAB";
 const RENAME_TAB = "metabase/dashboard/RENAME_TAB";
+const MOVE_TAB = "metabase/dashboard/MOVE_TAB";
 const SELECT_TAB = "metabase/dashboard/SELECT_TAB";
 const SAVE_CARDS_AND_TABS = "metabase/dashboard/SAVE_CARDS_AND_TABS";
 const INIT_TABS = "metabase/dashboard/INIT_TABS";
@@ -52,9 +58,11 @@ export const deleteTab = createAction<DeleteTabPayload>(DELETE_TAB);
 export const undoDeleteTab =
   createAction<UndoDeleteTabPayload>(UNDO_DELETE_TAB);
 
-export const selectTab = createAction<SelectTabPayload>(SELECT_TAB);
-
 export const renameTab = createAction<RenameTabPayload>(RENAME_TAB);
+
+export const moveTab = createAction<MoveTabPayload>(MOVE_TAB);
+
+export const selectTab = createAction<SelectTabPayload>(SELECT_TAB);
 
 export const saveCardsAndTabs =
   createAction<SaveCardsAndTabsPayload>(SAVE_CARDS_AND_TABS);
@@ -144,11 +152,11 @@ export const tabsReducer = createReducer<DashboardState>(
     builder.addCase(
       deleteTab,
       (state, { payload: { tabId, tabDeletionId } }) => {
-        const { dashId, prevDash, prevTabs } = getPrevDashAndTabs(state);
+        const { prevDash, prevTabs } = getPrevDashAndTabs(state);
         const tabToRemove = prevTabs.find(({ id }) => id === tabId);
-        if (!dashId || !prevDash || !tabToRemove) {
+        if (!prevDash || !tabToRemove) {
           throw Error(
-            `DELETE_TAB was dispatched but either dashId (${dashId}), prevDash (${prevDash}), or tabToRemove (${tabToRemove}) is null/undefined`,
+            `DELETE_TAB was dispatched but either prevDash (${prevDash}), or tabToRemove (${tabToRemove}) is null/undefined`,
           );
         }
 
@@ -207,18 +215,42 @@ export const tabsReducer = createReducer<DashboardState>(
     });
 
     builder.addCase(renameTab, (state, { payload: { tabId, name } }) => {
-      const { dashId, prevDash, prevTabs } = getPrevDashAndTabs(state);
+      const { prevTabs } = getPrevDashAndTabs(state);
       const tabToRenameIndex = prevTabs.findIndex(({ id }) => id === tabId);
-      if (!dashId || !prevDash || tabToRenameIndex === -1) {
+
+      if (tabToRenameIndex === -1) {
         throw Error(
-          `RENAME_TAB was dispatched but either dashId (${dashId}), prevDash (${JSON.stringify(
-            prevDash,
-          )}), or tabToRenameIndex (${tabToRenameIndex}) is invalid`,
+          `RENAME_TAB was dispatched but tabToRenameIndex (${tabToRenameIndex}) is invalid`,
         );
       }
 
       prevTabs[tabToRenameIndex].name = name;
     });
+
+    builder.addCase(
+      moveTab,
+      (state, { payload: { sourceTabId, destTabId } }) => {
+        const { prevDash, prevTabs } = getPrevDashAndTabs(state);
+        const sourceTabIndex = prevTabs.findIndex(
+          ({ id }) => id === sourceTabId,
+        );
+        const destTabIndex = prevTabs.findIndex(({ id }) => id === destTabId);
+
+        if (!prevDash || sourceTabIndex === -1 || destTabIndex === -1) {
+          throw Error(
+            `MOVE_TAB was dispatched but either prevDash (${JSON.stringify(
+              prevDash,
+            )}), sourceTabIndex (${sourceTabIndex}) or destTabIndex (${destTabIndex}) is invalid`,
+          );
+        }
+
+        prevDash.ordered_tabs = arrayMove(
+          prevTabs,
+          sourceTabIndex,
+          destTabIndex,
+        );
+      },
+    );
 
     builder.addCase(selectTab, (state, { payload: { tabId } }) => {
       state.selectedTabId = tabId;
