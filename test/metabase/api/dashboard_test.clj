@@ -1268,12 +1268,6 @@
   [id]
   (t2/hydrate (t2/select-one DashboardCard :id id) :series))
 
-(defn- current-tabs
-  "Returns the current ordered tabs of a dashboard."
-  [dashboard-id]
-  (-> dashboard-id
-      dashboard/ordered-tabs))
-
 (defn- current-cards
   "Returns the current ordered cards of a dashboard."
   [dashboard-id]
@@ -1629,7 +1623,7 @@
     (testing "send nothing if tabs are unchanged"
       (snowplow-test/with-fake-snowplow-collector
         (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                              {:ordered_tabs  (current-tabs dashboard-id)
+                              {:ordered_tabs  (dashboard/ordered-tabs dashboard-id)
                                :cards         []})
         (is (= 0 (count (snowplow-test/pop-event-data-and-user-id!))))))))
 

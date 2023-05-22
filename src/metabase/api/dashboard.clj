@@ -702,7 +702,7 @@
                                                      card))))]
             (do-update-dashcards! dashboard current-cards new-cards)
             (reset! tabs-stats-atom (select-keys tab-stats [:num-tabs-created :num-tabs-deleted :total-num-tabs]))))
-        (when-let [{:keys [num-tabs-created num-tabs-deleted total-num-tabs]} @tabs-stats-atom]
+        (let [{:keys [num-tabs-created num-tabs-deleted total-num-tabs]} @tabs-stats-atom]
           (when (pos-int? num-tabs-created)
             (snowplow/track-event! ::snowplow/dashboard-tabs-created
                                    api/*current-user-id*
