@@ -72,6 +72,10 @@ export const openQuestionActions = () => {
   });
 };
 
+export const collectionTable = () => {
+  return cy.findByTestId("collection-table");
+};
+
 export const queryBuilderHeader = () => {
   return cy.findByTestId("qb-header");
 };

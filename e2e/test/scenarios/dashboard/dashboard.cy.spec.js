@@ -16,6 +16,7 @@ import {
   openQuestionsSidebar,
   getDashboardCard,
   queryBuilderHeader,
+  collectionTable,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -713,6 +714,17 @@ describe("scenarios > dashboard", () => {
       // raw data
       cy.findByText("101.04").should("be.visible");
       cy.get("@dashcardQuery.all").should("have.length", 1);
+    });
+
+    appBar().within(() => {
+      cy.findByText("Our analytics").click();
+    });
+
+    collectionTable().within(() => {
+      cy.findByText("Orders in a dashboard").click();
+      cy.wait("@dashboard");
+      cy.wait("@dashcardQuery");
+      cy.get("@dashcardQuery.all").should("have.length", 2);
     });
   });
 
