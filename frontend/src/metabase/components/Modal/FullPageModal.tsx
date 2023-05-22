@@ -10,7 +10,7 @@ import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnCli
 
 export type FullPageModalProps = BaseModalProps & {
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   fullPageModal?: boolean;
 };
 

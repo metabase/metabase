@@ -15,6 +15,8 @@ export type BaseModalProps = {
   noBackdrop?: boolean;
   noCloseOnBackdrop?: boolean;
   form?: unknown;
+  title?: string;
+  footer?: string;
 };
 
 export function getModalContent(props: any) {
