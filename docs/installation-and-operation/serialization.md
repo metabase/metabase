@@ -19,7 +19,7 @@ To help you out in situations like this, Metabase has a serialization feature wh
 
 ## What gets exported
 
-Metabase only includes some artifacts its exports.
+Metabase only includes some artifacts in its exports.
 
 - Collections (except for personal collections, unless specified by the `--user` flag)
 - Dashboards
