@@ -161,7 +161,7 @@ You cannot add a column to a custom sandbox.
 5. Click on the dropdown under **Data access** for that group.
 6. Select "Sandboxed".
 7. Select "Use a saved question to create a custom view for this table".
-8. Select your saved question.
+8. Select your saved question. The question should be written in SQL. If the question contains parameters, those parameters must be required (they cannot be optional). 
 9. Optional: [restrict rows based on people's user attributes](#restricting-rows-in-an-custom-sandbox-with-user-attributes).
 
 > If you have saved SQL questions that use sandboxed data, make sure to move all of those questions to admin-only collections. For more info, see [Permissions conflicts: saved SQL questions](#saved-sql-questions).
@@ -202,11 +202,19 @@ In step 2 of the [row restriction setup](#restricting-rows-in-an-custom-sandbox-
 WHERE plan = {%raw%}{{ plan_variable }}{%endraw%}
 ```
 
-In steps 9-10 of the [row restriction setup](#restricting-rows-in-an-custom-sandbox-with-user-attributes) above, you're telling Metabase to map the SQL variable `plan_variable` to a **user attribute key** (such as "User's Plan"). Metabase will user the key to look up the specific **user attribute value** (such as "Basic") associated with a person's Metabase account. When that person logs into Metabase and uses the sandboxed table, they'll see the query result that is filtered on:
+In steps 9-10 of the [row restriction setup](#restricting-rows-in-an-custom-sandbox-with-user-attributes) above, you're telling Metabase to map the SQL variable `plan_variable` to a **user attribute key** (such as "User's Plan"). Metabase will use the key to look up the specific **user attribute value** (such as "Basic") associated with a person's Metabase account. When that person logs into Metabase and uses the sandboxed table, they'll see the query result that is filtered on:
 
 ```
 WHERE plan = "Basic"
 ```
+
+Note that the parameters must be required for SQL questions used to create a custom sandbox. E.g., you cannot use an optional parameter; the following won't work:
+
+```
+[[WHERE plan = {%raw%}{{ plan_variable }}{%endraw%}]]
+```
+
+Learn more about [SQL parameters](../questions/native-editor/sql-parameters.md)
 
 ## Preventing data sandbox permissions conflicts
 
