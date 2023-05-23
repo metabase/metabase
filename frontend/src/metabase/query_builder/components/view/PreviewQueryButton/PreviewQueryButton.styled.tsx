@@ -5,6 +5,7 @@ import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export const PreviewButton = styled(IconButtonWrapper)`
   margin-top: 1.5rem;
+  color: ${color("text-dark")};
 
   &:hover {
     color: ${color("brand")};

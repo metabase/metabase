@@ -26,7 +26,7 @@ import Search from "metabase/entities/search";
 import SnippetRow from "./snippet-sidebar/SnippetRow";
 
 const ICON_SIZE = 16;
-const HEADER_ICON_SIZE = 18;
+const HEADER_ICON_SIZE = 16;
 const MIN_SNIPPETS_FOR_SEARCH = 15;
 
 class SnippetSidebar extends React.Component {
@@ -58,12 +58,12 @@ class SnippetSidebar extends React.Component {
     >
       <Icon
         className="mr1 text-light hover-child--hidden"
-        name="archive"
+        name="view_archive"
         size={ICON_SIZE}
       />
       <Icon
         className="mr1 text-brand hover-child"
-        name="archive"
+        name="view_archive"
         size={ICON_SIZE}
       />
       {t`Archived snippets`}
