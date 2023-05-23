@@ -3,7 +3,7 @@ import { assocIn } from "icepick";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
 
-import { Dataset, Series, VisualizationSettings } from "metabase-types/api";
+import { Dataset, Series } from "metabase-types/api";
 import { Dispatch, GetState, QueryBuilderMode } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
@@ -100,7 +100,6 @@ export type UpdateQuestionOpts = {
   run?: boolean | "auto";
   shouldUpdateUrl?: boolean;
   shouldStartAdHocQuestion?: boolean;
-  onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
 };
 
 /**
@@ -113,7 +112,6 @@ export const updateQuestion = (
     run = false,
     shouldStartAdHocQuestion = true,
     shouldUpdateUrl = false,
-    onDisplayUpdate,
   }: UpdateQuestionOpts = {},
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
@@ -203,11 +201,6 @@ export const updateQuestion = (
     if (newQuestion.isNative()) {
       const parameters = getTemplateTagParametersFromCard(newQuestion.card());
       newQuestion = newQuestion.setParameters(parameters);
-    }
-
-    if (onDisplayUpdate) {
-      const newSettings = onDisplayUpdate(newQuestion.settings());
-      newQuestion.updateSettings(newSettings);
     }
 
     await dispatch({

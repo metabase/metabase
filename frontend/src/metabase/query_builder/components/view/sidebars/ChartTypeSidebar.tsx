@@ -99,10 +99,17 @@ const ChartTypeSidebar = ({
       if (display === question.display()) {
         openChartSettings(e);
       } else {
-        const newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
+        let newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
+        const visualization = visualizations.get(display);
+        if (visualization.onDisplayUpdate) {
+          const updatedSettings = visualization.onDisplayUpdate(
+            newQuestion.settings(),
+          );
+          newQuestion = newQuestion.updateSettings(updatedSettings);
+        }
+
         updateQuestion(newQuestion, {
           shouldUpdateUrl: question.query().isEditable(),
-          onDisplayUpdate: visualizations.get(display).onDisplayUpdate,
         });
         setUIControls({ isShowingRawTable: false });
       }
