@@ -3,6 +3,9 @@ import reduceReducers from "reduce-reducers";
 
 import { handleActions, combineReducers } from "metabase/lib/redux";
 import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
+
+import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 
 import {
   INITIALIZE,
@@ -40,7 +43,6 @@ import {
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   tabsReducer,
 } from "./actions";
-
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 
@@ -242,10 +244,20 @@ const isAddParameterPopoverOpen = handleActions(
   INITIAL_DASHBOARD_STATE.isAddParameterPopoverOpen,
 );
 
+const isNavigatingBackToDashboard = handleActions(
+  {
+    [NAVIGATE_BACK_TO_DASHBOARD]: () => true,
+    [RESET]: () => false,
+  },
+  INITIAL_DASHBOARD_STATE.isNavigatingBackToDashboard,
+);
+
 const dashcardData = handleActions(
   {
     // clear existing dashboard data when loading a dashboard
-    [INITIALIZE]: { next: state => ({}) },
+    [INITIALIZE]: {
+      next: (state, { payload: { clear = true } = {} }) => (clear ? {} : state),
+    },
     [FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id, card_id, result } }) =>
         assocIn(state, [dashcard_id, card_id], result),
@@ -254,7 +266,7 @@ const dashcardData = handleActions(
       next: (state, { payload: { cardId, dashcardId } }) =>
         assocIn(state, [dashcardId, cardId]),
     },
-    [RESET]: { next: state => ({}) },
+    [Questions.actionTypes.UPDATE]: () => ({}),
   },
   INITIAL_DASHBOARD_STATE.dashcardData,
 );
@@ -451,6 +463,7 @@ export default reduceReducers(
     draftParameterValues,
     loadingDashCards,
     isAddParameterPopoverOpen,
+    isNavigatingBackToDashboard,
     sidebar,
     missingActionParameters,
     autoApplyFilters,
