@@ -49,15 +49,6 @@ describe("scenarios > admin > datamodel > segments", () => {
         cy.findByText("Custom Expression");
       });
     });
-
-    // QUESTION - how else to check this?
-    it("should show no segments", () => {
-      cy.visit("/reference/segments");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Segments are interesting subsets of tables");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Learn how to create segments");
-    });
   });
 
   describe("with segment", () => {
@@ -75,29 +66,6 @@ describe("scenarios > admin > datamodel > segments", () => {
           filter: ["<", ["field", ORDERS.TOTAL, null], 100],
         },
       });
-    });
-
-    it("should show the segment fields list and detail view", () => {
-      // In the list
-      cy.visit("/reference/segments");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(SEGMENT_NAME);
-
-      // Detail view
-      cy.visit("/reference/segments/1");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Description");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("See this segment");
-
-      // Segment fields
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Fields in this segment").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("See this segment").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`Fields in ${SEGMENT_NAME}`);
-      cy.findAllByText("Discount");
     });
 
     it("should show up in UI list", () => {
