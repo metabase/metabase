@@ -145,7 +145,7 @@
  [view-log ViewLog])
 
 (defenterprise resolve-enterprise-model
-  "TODO"
+  "OSS version; no-op."
   metabase-enterprise.models
   [x]
   x)
