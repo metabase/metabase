@@ -1,5 +1,8 @@
 import { popover } from "./e2e-ui-elements-helpers";
 
+const REVISION_HISTORY_INTERVAL = 200;
+const REVISION_HISTORY_TIMEOUT = 2000;
+
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(selection, filterName) {
   selection.contains("Select…").click();
@@ -104,3 +107,37 @@ export function addTextBox(string, options = {}) {
 export function openQuestionsSidebar() {
   cy.findByLabelText("Add questions").click();
 }
+
+export const expectGoodRevisionEvents = ({ url, count }) => {
+  retryRevisionRequest({ url, condition: ({ body }) => body.length >= count })
+    .its("body")
+    .should("have.length", count);
+};
+
+// BE adds revision events async, so sometimes we need to wait for event to be added
+const retryRevisionRequest = ({
+  url,
+  condition,
+  timeout = REVISION_HISTORY_TIMEOUT,
+  interval = REVISION_HISTORY_INTERVAL,
+}) => {
+  return cy
+    .request({
+      url,
+      json: true,
+    })
+    .then(response => {
+      if (condition(response)) {
+        return cy.wrap(response);
+      } else if (timeout > 0) {
+        cy.wait(interval);
+        return retryRevisionRequest({
+          url,
+          condition,
+          timeout: timeout - REVISION_HISTORY_INTERVAL,
+        });
+      } else {
+        throw new Error("Revision retry timeout");
+      }
+    });
+};

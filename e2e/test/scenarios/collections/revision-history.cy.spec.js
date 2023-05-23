@@ -7,6 +7,7 @@ import {
   questionInfoButton,
   rightSidebar,
   openQuestionsSidebar,
+  expectGoodRevisionEvents,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -82,8 +83,11 @@ describe("revision history", () => {
               cy.findByText(/rearranged the cards/).should("not.exist");
             });
 
-            // skipped because it's super flaky in CI
-            it.skip("should be able to revert a dashboard (metabase#15237)", () => {
+            it("should be able to revert a dashboard (metabase#15237)", () => {
+              expectGoodRevisionEvents({
+                url: "/api/revision?entity=dashboard&id=1",
+                count: 2,
+              });
               visitDashboard(1);
               openRevisionHistory();
               clickRevert(/created this/);
@@ -190,7 +194,6 @@ function openRevisionHistory() {
   cy.get("main header").within(() => {
     cy.icon("info").click();
   });
-  cy.wait("@revisionHistory");
 
   rightSidebar().within(() => {
     cy.findByText("History");
