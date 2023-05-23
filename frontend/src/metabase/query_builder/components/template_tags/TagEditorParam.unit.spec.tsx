@@ -122,6 +122,7 @@ describe("TagEditorParam", () => {
         ...tag,
         dimension: ["field", PEOPLE.SOURCE, null],
         "widget-type": "string/=",
+        options: undefined,
       });
     });
 
@@ -140,6 +141,7 @@ describe("TagEditorParam", () => {
         ...tag,
         dimension: ["field", PEOPLE.NAME, null],
         "widget-type": "string/contains",
+        options: { "case-sensitive": false },
       });
     });
 
@@ -158,6 +160,7 @@ describe("TagEditorParam", () => {
         ...tag,
         dimension: ["field", ORDERS.QUANTITY, null],
         "widget-type": "number/=",
+        options: undefined,
       });
     });
 
@@ -180,20 +183,40 @@ describe("TagEditorParam", () => {
   });
 
   describe("tag widget type", () => {
-    it("should be able to change the widget type", () => {
+    it("should be able to set the widget type with options", () => {
       const tag = createMockTemplateTag({
         type: "dimension",
         dimension: ["field", PEOPLE.NAME, null],
-        "widget-type": "string/starts-with",
+        "widget-type": "string/=",
       });
       const { setTemplateTag } = setup({ tag });
 
-      userEvent.click(screen.getByText("String starts with"));
+      userEvent.click(screen.getByText("String"));
       userEvent.click(screen.getByText("String contains"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
         "widget-type": "string/contains",
+        options: { "case-sensitive": false },
+      });
+    });
+
+    it("should be able to set the widget type without options", () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PEOPLE.NAME, null],
+        "widget-type": "string/starts-with",
+        options: { "case-sensitive": false },
+      });
+      const { setTemplateTag } = setup({ tag });
+
+      userEvent.click(screen.getByText("String starts with"));
+      userEvent.click(screen.getByText("String"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        "widget-type": "string/=",
+        options: undefined,
       });
     });
 
