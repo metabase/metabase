@@ -5,7 +5,7 @@
    [java-time :as t]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
-   [metabase.events.view-log :as view-log]
+   [metabase.db.connection :as mdb.connection]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]

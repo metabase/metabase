@@ -12,7 +12,6 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
    [toucan.db :as db]))
 
 (set! *warn-on-reflection* true)
@@ -65,6 +64,35 @@
             (mt/with-non-admin-groups-no-root-collection-perms
               (is (nil? (mt/user-http-request :rasta :get 204
                                               "activity/most_recently_viewed_dashboard"))))))))))
+
+;;; GET /recent_views
+
+;; Things we are testing for:
+;;  1. ordering is sorted by most recent
+;;  2. results are filtered to current user
+;;  3. `:model_object` is hydrated in each result
+;;  4. we filter out entries where `:model_object` is nil (object doesn't exist)
+
+(defn- create-views!
+  "Insert views [user-id model model-id]. Views are entered a second apart with last view as most recent."
+  [views]
+  (let [start-time (t/offset-date-time)
+        views (->> (map (fn [[user model model-id] seconds-ago]
+                          (case model
+                            "card" {:executor_id user :card_id model-id
+                                    :context :question
+                                    :hash (qp.util/query-hash {})
+                                    :running_time 1
+                                    :result_rows 1
+                                    :native false
+                                    :started_at (t/plus start-time (t/seconds (- seconds-ago)))}
+                            {:user_id user, :model model, :model_id model-id
+                             :timestamp (t/plus start-time (t/seconds (- seconds-ago)))}))
+                        (reverse views)
+                        (range))
+                   (group-by #(if (:card_id %) :card :other)))]
+    (db/insert-many! ViewLog (:other views))
+    (db/insert-many! QueryExecution (:card views))))
 
 (deftest recent-views-test
   (mt/with-temp* [Card      [card1 {:name                   "rand-name"
