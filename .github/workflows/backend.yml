@@ -174,8 +174,8 @@ jobs:
     - name: Build static viz frontend
       run: yarn build-static-viz
 
-    - name: Setup upterm session
-      uses: lhotari/action-upterm@v1
+        #- name: Setup upterm session
+        #  uses: lhotari/action-upterm@v1
 
     - name: Run tests
       run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev :only metabase-enterprise.advanced-config.api.logs-test/fetch-logs-test
