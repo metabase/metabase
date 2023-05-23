@@ -25,7 +25,7 @@ function EditBar({
   className,
 }: Props) {
   return (
-    <Root className={className} admin={admin}>
+    <Root data-testid="edit-bar" className={className} admin={admin}>
       <div>
         <EditIcon name="pencil" size={12} />
         <Title>{title}</Title>
