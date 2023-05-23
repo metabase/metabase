@@ -78,19 +78,21 @@
 (defn breakout-results [& {:keys [has-source-metadata? native-source?]
                             :or   {has-source-metadata? true
                                    native-source?       false}}]
-  {:rows [[1 22]
-          [2 59]
-          [3 13]
-          [4  6]]
-   :cols [(cond-> (qp.test/breakout-col (qp.test/col :venues :price))
-            native-source?
-            (-> (assoc :field_ref [:field (mt/format-name "price") {:base-type :type/Integer}]
-                       :effective_type :type/Integer)
-                (dissoc :description :parent_id :nfc_path :visibility_type))
+  ;; Oracle driver returns base and effective type as Decimal, other drivers as Integer.
+  (let [field-type (case driver/*driver* :oracle :type/Decimal :type/Integer)]
+    {:rows [[1 22]
+            [2 59]
+            [3 13]
+            [4  6]]
+     :cols [(cond-> (qp.test/breakout-col (qp.test/col :venues :price))
+              native-source?
+              (-> (assoc :field_ref [:field (mt/format-name "price") {:base-type field-type}]
+                         :effective_type field-type)
+                  (dissoc :description :parent_id :nfc_path :visibility_type))
 
-            (not has-source-metadata?)
-            (dissoc :id :semantic_type :settings :fingerprint :table_id :coercion_strategy))
-          (qp.test/aggregate-col :count)]})
+              (not has-source-metadata?)
+              (dissoc :id :semantic_type :settings :fingerprint :table_id :coercion_strategy))
+            (qp.test/aggregate-col :count)]}))
 
 (deftest mbql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
