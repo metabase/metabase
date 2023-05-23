@@ -199,16 +199,20 @@
              (tru "Values can only be fetched for actions that require a Primary Key."))
   (let [implicit-action (keyword (:kind action))
         {:keys [prefetch-parameters]} (build-implicit-query action implicit-action request-parameters)
-        info {:executed-by api/*current-user-id*
-              :context :question
-              :dashboard-id dashboard-id}
-        card (t2/select-one Card :id (:model_id action))
+        info             {:executed-by api/*current-user-id*
+                          :context :question
+                          :dashboard-id dashboard-id}
+        card             (t2/select-one Card :id (:model_id action))
         ;; prefilling a form with day old data would be bad
-        result (binding [persisted-info/*allow-persisted-substitution* false]
-                 (qp/process-query-and-save-execution!
-                   (qp.card/query-for-card card prefetch-parameters nil nil)
-                   info))
-        exposed-params (set (map :id (:parameters action)))]
+        result           (binding [persisted-info/*allow-persisted-substitution* false]
+                           (qp/process-query-and-save-execution!
+                            (qp.card/query-for-card card prefetch-parameters nil nil)
+                            info))
+        ;; only expose values for fields that are not hidden
+        hidden-param-ids (keep #(when (:hidden %) (:id %))
+                               (vals (get-in action [:visualization_settings :fields])))
+        exposed-params   (-> (set (map :id (:parameters action)))
+                             (set/difference (set hidden-param-ids)))]
     (m/filter-keys
       #(contains? exposed-params %)
       (zipmap
