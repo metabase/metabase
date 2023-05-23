@@ -590,7 +590,10 @@
         _                                       (when (seq to-update)
                                                   (update-tabs! dashboard to-update))]
     {:temp->real-tab-ids temp-tab-id->tab-id
-     :deleted-tab-ids    to-delete-ids}))
+     :deleted-tab-ids    to-delete-ids
+     :num-tabs-created   (count to-create)
+     :num-tabs-deleted   (count to-delete)
+     :total-num-tabs     (+ (count to-create) (count to-update))}))
 
 (defn- create-dashcards!
   [dashboard dashcards]
@@ -681,21 +684,37 @@
       (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
                       {:status-code 400})))
     (api/check-500
-      (t2/with-transaction [_conn]
-        (let [{:keys [temp->real-tab-ids
-                      deleted-tab-ids]} (do-update-tabs! dashboard (:ordered_tabs dashboard) new-tabs)
-              current-cards             (cond->> (:ordered_cards dashboard)
-                                          (seq deleted-tab-ids)
-                                          (remove (fn [card]
-                                                   (contains? deleted-tab-ids (:dashboard_tab_id card)))))
-              new-cards                 (cond->> cards
-                                          ;; fixup the temporary tab ids with the real ones
-                                          (seq temp->real-tab-ids)
-                                          (map (fn [card]
-                                                 (if-let [real-tab-id (get temp->real-tab-ids (:dashboard_tab_id card))]
-                                                   (assoc card :dashboard_tab_id real-tab-id)
-                                                   card))))]
-          (do-update-dashcards! dashboard current-cards new-cards))
+      (let [tabs-stats-atom (atom nil)]
+        (t2/with-transaction [_conn]
+          (let [{:keys [temp->real-tab-ids
+                        deleted-tab-ids]
+                 :as tab-stats}           (do-update-tabs! dashboard (:ordered_tabs dashboard) new-tabs)
+                current-cards             (cond->> (:ordered_cards dashboard)
+                                            (seq deleted-tab-ids)
+                                            (remove (fn [card]
+                                                      (contains? deleted-tab-ids (:dashboard_tab_id card)))))
+                new-cards                 (cond->> cards
+                                            ;; fixup the temporary tab ids with the real ones
+                                            (seq temp->real-tab-ids)
+                                            (map (fn [card]
+                                                   (if-let [real-tab-id (get temp->real-tab-ids (:dashboard_tab_id card))]
+                                                     (assoc card :dashboard_tab_id real-tab-id)
+                                                     card))))]
+            (do-update-dashcards! dashboard current-cards new-cards)
+            (reset! tabs-stats-atom (select-keys tab-stats [:num-tabs-created :num-tabs-deleted :total-num-tabs]))))
+        (let [{:keys [num-tabs-created num-tabs-deleted total-num-tabs]} @tabs-stats-atom]
+          (when (pos-int? num-tabs-created)
+            (snowplow/track-event! ::snowplow/dashboard-tabs-created
+                                   api/*current-user-id*
+                                   {:dashboard-id  (:id dashboard)
+                                    :num-tabs       num-tabs-created
+                                    :total-num-tabs total-num-tabs}))
+          (when (pos-int? num-tabs-deleted)
+            (snowplow/track-event! ::snowplow/dashboard-tabs-deleted
+                                   api/*current-user-id*
+                                   {:dashboard-id  (:id dashboard)
+                                    :num-tabs       num-tabs-deleted
+                                    :total-num-tabs total-num-tabs})))
         true))
     {:cards        (t2/hydrate (dashboard/ordered-cards id) :series)
      :ordered_tabs (dashboard/ordered-tabs id)}))
