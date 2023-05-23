@@ -56,6 +56,6 @@
 
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`."
-  :feature :any
+  :feature :none
   []
   (ensure-db-installed!))
