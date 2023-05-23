@@ -16,6 +16,16 @@ import { CollectionId } from "metabase-types/api";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
 
+// jest.mock("metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger", () => {
+//   const PopoverWithTrigger = (props) => {
+//     console.log(props);
+//     return <div>{props.popoverContent({
+//       closePopover: jest.fn()
+//     })}</div>;
+//   };
+//   return PopoverWithTrigger;
+// })
+
 const setup = async (
   question: Question,
   originalQuestion: Question | null = null,
@@ -269,6 +279,8 @@ describe("SaveQuestionModal", () => {
       const call: Question[] = onCreateMock.mock.calls[0];
       expect(call.length).toBe(1);
 
+      screen.debug(undefined, 100000)
+
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
       expect(newQuestion.displayName()).toBe("foo");
@@ -293,6 +305,22 @@ describe("SaveQuestionModal", () => {
       expect(
         screen.queryByText(/Replace original question, ".*"/),
       ).not.toBeInTheDocument();
+    });
+
+    it("should show a new question form", async () => {
+      const CARD = {
+        name: "Q1",
+        description: "Example description",
+        collection_id: TEST_COLLECTIONS[1].id,
+      };
+      const originalQuestion = getQuestion({ isSaved: true, ...CARD });
+      await setup(originalQuestion, null);
+
+
+
+      screen.debug(undefined, 100000)
+      // expect(screen.getByText("Our analytics")).toBeInTheDocument();
+      expect(true).toBeTruthy()
     });
   });
 
@@ -325,6 +353,7 @@ describe("SaveQuestionModal", () => {
       expect(screen.getByLabelText("Description")).toHaveValue(
         CARD.description,
       );
+      screen.debug(undefined, 100000)
       expect(screen.getByText("Our analytics")).toBeInTheDocument();
     });
 

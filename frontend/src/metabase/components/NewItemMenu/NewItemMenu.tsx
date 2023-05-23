@@ -32,6 +32,15 @@ export interface NewItemMenuProps {
   onChangeLocation: (nextLocation: LocationDescriptor) => void;
 }
 
+type NewMenuItem = {
+  title: string;
+  icon: string;
+  link?: LocationDescriptor;
+  event?: string;
+  action?: () => void;
+  onClose?: () => void;
+}
+
 const NewItemMenu = ({
   className,
   collectionId,
@@ -62,7 +71,7 @@ const NewItemMenu = ({
   );
 
   const menuItems = useMemo(() => {
-    const items = [];
+    const items: NewMenuItem[] = [];
 
     if (hasDataAccess) {
       items.push({
