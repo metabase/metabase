@@ -47,7 +47,7 @@
                                             :user_id          (mt/user->id :rasta)}]]
     (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
       (mt/with-fake-inbox
-        (with-redefs [messages/render-pulse-email (fn [_ _ _ [{:keys [result]}]]
+        (with-redefs [messages/render-pulse-email (fn [_ _ _ [{:keys [result]}] _]
                                                     [{:result result}])]
           (mt/with-test-user nil
             (metabase.pulse/send-pulse! pulse)))
