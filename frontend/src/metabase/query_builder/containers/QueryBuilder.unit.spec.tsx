@@ -1,6 +1,6 @@
+import userEvent from "@testing-library/user-event";
 import React, { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
-import userEvent from "@testing-library/user-event";
 import { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
@@ -18,6 +18,7 @@ import {
 import {
   setupAlertsEndpoints,
   setupBookmarksEndpoints,
+  setupCardDataset,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupDatabasesEndpoints,
@@ -38,6 +39,13 @@ import QueryBuilder from "./QueryBuilder";
 const TEST_DB = createSampleDatabase();
 
 const TEST_CARD = createMockCard({
+  id: 1,
+  name: "Test card",
+  dataset: true,
+});
+
+const TEST_CARD_VISUALIZATION = createMockCard({
+  ...TEST_CARD,
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
@@ -74,13 +82,13 @@ const TEST_MODEL_DATASET_COLUMN = createMockColumn({
   description: "test",
   field_ref: ["field", ORDERS.ID, null],
 });
+
 const TEST_MODEL_DATASET = createMockDataset({
   data: {
     rows: [["1"]],
     cols: [TEST_MODEL_DATASET_COLUMN],
   },
   database_id: SAMPLE_DB_ID,
-
   status: "completed",
   context: "question",
   row_count: 1,
@@ -110,6 +118,7 @@ const setup = async ({
   initialRoute = `/question/${card.id}`,
 }: SetupOpts = {}) => {
   setupDatabasesEndpoints([TEST_DB]);
+  setupCardDataset(dataset);
   setupCardEndpoints(card);
   setupCardQueryEndpoints(card, dataset);
   setupSearchEndpoints([]);
@@ -282,5 +291,32 @@ describe("QueryBuilder", () => {
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
       expect(mockEvent.returnValue).not.toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
     });
+  });
+
+  describe("renders the row count regardless of visualization type", () => {
+    const dataset = TEST_MODEL_DATASET;
+    const cards = [
+      createMockCard({ ...TEST_CARD_VISUALIZATION, display: "table" }),
+      createMockCard({ ...TEST_CARD_VISUALIZATION, display: "line" }),
+    ];
+
+    it.each(cards)(
+      `renders the row count in "$display" visualization`,
+      async card => {
+        await setup({
+          card,
+          dataset,
+          initialRoute: `/question/${card.id}`,
+        });
+
+        await waitFor(() => {
+          const element = screen.getByTestId("question-row-count");
+          expect(element).toBeInTheDocument();
+        });
+
+        const element = screen.getByTestId("question-row-count");
+        expect(element).toBeVisible();
+      },
+    );
   });
 });

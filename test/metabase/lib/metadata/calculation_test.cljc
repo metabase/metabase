@@ -14,3 +14,11 @@
                                    "TOTAL"]))]
       (is (= "Venues, Sorted by Total ascending"
              (lib.metadata.calculation/suggested-name query))))))
+
+(deftest ^:parallel long-display-name-test
+  (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
+        results (->> query
+                     lib.metadata.calculation/visible-columns
+                     (map (comp :long-display-name #(lib/display-info query 0 %))))]
+    (is (= ["ID" "Name" "Category ID" "Latitude" "Longitude" "Price" "Categories → ID" "Categories → Name"]
+           results))))

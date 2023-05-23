@@ -59,7 +59,11 @@ export interface Dataset {
   row_count: number;
   running_time: number;
   json_query?: JsonQuery;
-  error?: string;
+  error_type?: string;
+  error?: {
+    status: number; // HTTP status code
+    data?: string;
+  };
   context?: string;
   status?: string;
 }
@@ -70,13 +74,7 @@ export interface NativeQueryForm {
 
 export type SingleSeries = {
   card: Card;
-  data: DatasetData;
-  error_type?: string;
-  error?: {
-    status: number; // HTTP status code
-    data?: string;
-  };
-};
+} & Dataset;
 
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };

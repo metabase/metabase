@@ -83,6 +83,7 @@ const DataSourceSelectors = ({
 
   return (
     <PopulatedDataSourceSelectors
+      isNativeEditorOpen={isNativeEditorOpen}
       database={database}
       databases={databases}
       query={query}
