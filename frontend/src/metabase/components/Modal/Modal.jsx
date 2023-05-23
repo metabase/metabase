@@ -10,8 +10,8 @@ import { getScrollX, getScrollY } from "metabase/lib/dom";
 
 import SandboxedPortal from "metabase/components/SandboxedPortal";
 import routeless from "metabase/hoc/Routeless";
-import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import ModalContent from "metabase/components/ModalContent";
+import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
 
 function getModalContent(props) {
   if (
@@ -30,6 +30,7 @@ export class WindowModal extends Component {
     isOpen: PropTypes.bool,
     enableMouseEvents: PropTypes.bool,
     enableTransition: PropTypes.bool,
+    closeOnClickOutside: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -64,7 +65,8 @@ export class WindowModal extends Component {
         .map(type => `Modal--${type}`),
     );
     return (
-      <OnClickOutsideWrapper
+      <MaybeOnClickOutsideWrapper
+        closeOnClickOutside={this.props.closeOnClickOutside}
         backdropElement={this._modalElement}
         handleDismissal={this.handleDismissal}
       >
@@ -80,7 +82,7 @@ export class WindowModal extends Component {
             formModal: !!this.props.form || this.props.formModal,
           })}
         </div>
-      </OnClickOutsideWrapper>
+      </MaybeOnClickOutsideWrapper>
     );
   }
 
@@ -195,7 +197,10 @@ export class FullPageModal extends Component {
               occupies the entire screen. We do this to put this modal on top of
               the OnClickOutsideWrapper popover stack.  Otherwise, clicks within
               this modal might be seen as clicks outside another popover. */}
-              <OnClickOutsideWrapper handleDismissal={this.handleDismissal}>
+              <MaybeOnClickOutsideWrapper
+                closeOnClickOutside={this.props.closeOnClickOutside}
+                handleDismissal={this.handleDismissal}
+              >
                 <div
                   className="full-height relative scroll-y"
                   style={motionStyle}
@@ -207,7 +212,7 @@ export class FullPageModal extends Component {
                     onClose: this.handleDismissal,
                   })}
                 </div>
-              </OnClickOutsideWrapper>
+              </MaybeOnClickOutsideWrapper>
             </div>
           </SandboxedPortal>
         )}
