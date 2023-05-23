@@ -140,10 +140,11 @@
                  :stages   [{:lib/type     :mbql.stage/mbql
                              :source-table 1
                              :aggregation  [[:sum {:lib/uuid ag-uuid}
-                                             [:field {:lib/uuid string?} 1]]]
+                                             [:field {:lib/uuid string?
+                                                      :effective-type :type/Integer} 1]]]
                              :breakout     [[:aggregation
                                              {:display-name   "Revenue"
-                                              :effective_type :type/Integer}
+                                              :effective-type :type/Integer}
                                              ag-uuid]]}]}))))))
 
 (deftest ^:parallel round-trip-test
@@ -184,6 +185,13 @@
     [:value nil {:base_type :type/Number}]
 
     [:expression "expr" {:display-name "Iambic Diameter"}]
+
+    ;; (#29950)
+    [:starts-with [:field 133751 nil] "CHE" {:case-sensitive true}]
+
+    ;; (#29938)
+    {"First int"  [:case [[[:= [:field 133751 nil] 1] 1]]    {:default 0}]
+     "First bool" [:case [[[:= [:field 133751 nil] 1] true]] {:default false}]}
 
     [:case [[[:< [:field 1 nil] 10] [:value nil {:base_type :type/Number}]] [[:> [:field 2 nil] 2] 10]]]
 

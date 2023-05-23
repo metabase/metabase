@@ -21,7 +21,9 @@ describe("scenarios > question > view", () => {
       cy.visit("/admin/permissions/collections/root");
       cy.icon("close").first().click();
       cy.findAllByRole("option").contains("View").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save changes").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Yes").click();
 
       // Native query saved in dasbhoard
@@ -71,6 +73,7 @@ describe("scenarios > question > view", () => {
 
       // Filter by category and vendor
       // TODO: this should show values and allow searching
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
       popover().within(() => {
@@ -93,10 +96,12 @@ describe("scenarios > question > view", () => {
       // Navigate to Q from Dashboard
       cy.signIn("nodata");
       visitDashboard(2);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").click();
 
       // Filter by category and vendor
       // TODO: this should show values and allow searching
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
       popover().within(() => {

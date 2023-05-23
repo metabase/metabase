@@ -11,7 +11,9 @@ describe.skip("Cloud settings section", () => {
     setupMetabaseCloud();
     cy.visit("/admin");
     cy.get(".AdminList-items").findByText("Cloud").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Cloud Settings/i);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Go to the Metabase Store").should(
       "have.attr",
       "href",
@@ -23,6 +25,7 @@ describe.skip("Cloud settings section", () => {
     cy.visit("/admin");
     cy.get(".AdminList-items").findByText("Cloud").should("not.exist");
     cy.visit("/admin/settings/cloud");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Cloud Settings/i).should("not.exist");
   });
 });

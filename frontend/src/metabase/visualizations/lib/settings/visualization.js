@@ -1,5 +1,6 @@
 import { t } from "ttag";
 import { getVisualizationRaw } from "metabase/visualizations";
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { normalizeFieldRef } from "metabase-lib/queries/utils/dataset";
 import {
   getComputedSettings,
@@ -22,6 +23,13 @@ const COMMON_SETTINGS = {
       series.length === 1 ? series[0].card.description : null,
     dashboard: true,
     useRawSeries: true,
+  },
+  "card.hide_empty": {
+    title: t`Hide this card if there are no results`,
+    widget: "toggle",
+    inline: true,
+    dashboard: true,
+    getHidden: ([{ card }]) => isVirtualDashCard(card),
   },
   click_behavior: {},
 };

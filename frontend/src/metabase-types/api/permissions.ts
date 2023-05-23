@@ -1,5 +1,4 @@
-import { DatabaseId } from "metabase-types/types/Database";
-import { SchemaName, TableId } from "metabase-types/types/Table";
+import type { DatabaseId, TableId, SchemaName } from "metabase-types/api";
 import { GroupId } from "./group";
 import { UserAttribute } from "./user";
 
@@ -19,6 +18,7 @@ export type GroupPermissions = {
 export type DownloadPermission = "full" | "limited" | "none";
 
 export type DownloadAccessPermission = {
+  native?: DownloadSchemasPermission;
   schemas: DownloadSchemasPermission;
 };
 
@@ -38,9 +38,9 @@ export type DownloadTablePermission =
 
 export type DatabasePermissions = {
   data: DatabaseAccessPermissions;
-  "data-model": DataModelPermissions;
+  "data-model"?: DataModelPermissions;
   download: DownloadAccessPermission;
-  details: DetailsPermissions;
+  details?: DetailsPermissions;
 };
 
 export type DataModelPermissions = {

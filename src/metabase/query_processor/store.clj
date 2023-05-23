@@ -59,7 +59,8 @@
    :name
    :dbms_version
    :details
-   :settings])
+   :settings
+   :is_audit])
 
 (def ^:private DatabaseInstanceWithRequiredStoreKeys
   (s/both

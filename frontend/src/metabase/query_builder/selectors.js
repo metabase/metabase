@@ -25,6 +25,7 @@ import { parseTimestamp } from "metabase/lib/time";
 import { getMode as getQuestionMode } from "metabase/modes/lib/modes";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { getSetting } from "metabase/selectors/settings";
+import { getDashboardById } from "metabase/dashboard/selectors";
 import {
   getXValues,
   isTimeseries,
@@ -225,7 +226,7 @@ export const getTableMetadata = createSelector(
 
 export const getTableForeignKeys = createSelector(
   [getTableMetadata],
-  table => table && table.fks,
+  table => table?.fks ?? [],
 );
 
 export const getSampleDatabaseId = createSelector(
@@ -939,3 +940,11 @@ export const getNativeQueryFn = createSelector(
     };
   },
 );
+
+export const getDashboardId = state => {
+  return state.qb.dashboardId;
+};
+
+export const getDashboard = state => {
+  return getDashboardById(state, getDashboardId(state));
+};

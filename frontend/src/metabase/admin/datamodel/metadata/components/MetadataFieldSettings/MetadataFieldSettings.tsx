@@ -12,9 +12,9 @@ import AdminLayout from "metabase/components/AdminLayout";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
-import { Schema } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Database from "metabase-lib/metadata/Database";
+import Schema from "metabase-lib/metadata/Schema";
 import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
 import MetadataBackButton from "../MetadataBackButton";
@@ -202,6 +202,7 @@ const FieldBreadcrumbs = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Databases.load({
     id: (_: State, { params }: RouterProps) =>

@@ -26,9 +26,12 @@ describe("scenarios > question > trendline", () => {
 
   it("displays trendline when there are multiple numeric outputs (for simple question) (metabase#12781)", () => {
     // Change settings to trendline
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
     cy.findByTestId("viz-settings-button").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Display").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Trend line").parent().children().last().click();
 
     // Check graph is still there

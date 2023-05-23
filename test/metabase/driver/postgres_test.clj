@@ -54,13 +54,14 @@
 (deftest ^:parallel interval-test
   (is (= ["INTERVAL '2 day'"]
          (sql/format-expr [::postgres/interval 2 :day])))
+  (is (= ["INTERVAL '-2.5 year'"]
+         (sql/format-expr [::postgres/interval -2.5 :year])))
   (are [amount unit msg] (thrown-with-msg?
                           AssertionError
                           msg
                           (sql/format-expr [::postgres/interval amount unit]))
-    2.0  :day  #"\QAssert failed: (int? amount)\E"
-    "2"  :day  #"\QAssert failed: (int? amount)\E"
-    :day 2     #"\QAssert failed: (int? amount)\E"
+    "2"  :day  #"\QAssert failed: (number? amount)\E"
+    :day 2     #"\QAssert failed: (number? amount)\E"
     2    "day" #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"
     2    2     #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"
     2    :can  #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"))
@@ -1165,3 +1166,23 @@
               :sslkey
               absolute-path
               (str/ends-with? ".p12"))))))
+
+(deftest syncable-schemas-test
+  (mt/test-driver :postgres
+    (testing "`syncable-schemas` should return schemas that should be synced"
+      (mt/with-empty-db
+        (is (= #{"public"}
+               (driver/syncable-schemas driver/*driver* (mt/id))))))
+    (testing "metabase_cache schemas should be excluded"
+      (mt/dataset test-data
+        (mt/with-persistence-enabled [persist-models!]
+          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+            (mt/with-temp* [:model/Card [_ {:name "model"
+                                            :dataset true
+                                            :dataset_query (mt/mbql-query categories)
+                                            :database_id (mt/id)}]]
+              (persist-models!)
+              (is (some (partial re-matches #"metabase_cache(.*)")
+                        (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
+              (is (nil? (some (partial re-matches #"metabase_cache(.*)")
+                              (driver/syncable-schemas driver/*driver* (mt/id))))))))))))

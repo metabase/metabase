@@ -151,7 +151,7 @@
 (deftest ^:parallel metadata-with-fields-only-include-expressions-in-fields-test
   (testing "If query includes :fields, only return expressions that are in :fields"
     (let [query     (query-with-expressions)
-          id-plus-1 (first (lib/expressions query))]
+          id-plus-1 (first (lib/expressions-metadata query))]
       (is (=? {:lib/type     :metadata/field
                :base-type    :type/Integer
                :name         "ID + 1"
@@ -224,3 +224,43 @@
                  (not (:temporal-unit opts))))
               "DATE"]]
             (map lib/ref cols)))))
+
+(deftest ^:parallel fields-should-not-hide-joined-fields
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/with-fields [(lib/field (meta/id :venues :id))
+                                    (lib/field (meta/id :venues :name))])
+                  (lib/join (-> (lib/join-clause (lib/table (meta/id :categories)))
+                                (lib/with-join-alias "Cat")
+                                (lib/with-join-fields :all))
+                            [(lib/= (lib/field "VENUES" "CATEGORY_ID")
+                                    (lib/field "CATEGORIES" "ID"))])
+                  (lib/append-stage))]
+    (is (=? [{:base-type :type/BigInteger,
+              :semantic-type :type/PK,
+              :name "ID",
+              :lib/source :source/previous-stage
+              :effective-type :type/BigInteger,
+              :lib/desired-column-alias "ID",
+              :display-name "ID"}
+             {:base-type :type/Text,
+              :semantic-type :type/Name,
+              :name "NAME",
+              :lib/source :source/previous-stage,
+              :effective-type :type/Text,
+              :lib/desired-column-alias "NAME",
+              :display-name "Name"}
+             {:base-type :type/BigInteger,
+              :semantic-type :type/PK,
+              :name "ID",
+              :lib/source :source/previous-stage
+              :effective-type :type/BigInteger,
+              :lib/desired-column-alias "Cat__ID",
+              :display-name "ID"}
+             {:base-type :type/Text,
+              :semantic-type :type/Name,
+              :name "NAME",
+              :lib/source :source/previous-stage
+              :effective-type :type/Text,
+              :lib/desired-column-alias "Cat__NAME",
+              :display-name "Name"}]
+            (lib.metadata.calculation/visible-columns query)))))

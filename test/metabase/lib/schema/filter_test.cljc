@@ -74,9 +74,9 @@
            [:segment 1]
            [:segment "segment-id"]]]
       (doseq [op (filter-ops filter-expr)]
-        (testing (str op " is a registered MBQL clause (a type-of* method is registered for it)")
-          (is (not (identical? (get-method expression/type-of* op)
-                               (get-method expression/type-of* :default))))))
+          (is (not (identical? (get-method expression/type-of-method op)
+        (testing (str op " is a registered MBQL clause (a type-of-method method is registered for it)")
+                               (get-method expression/type-of-method :default))))))
       ;; test all the subclauses of `filter-expr` above individually. If something gets broken this is easier to debug
       (doseq [filter-clause (rest filter-expr)
               :let          [filter-clause (ensure-uuids filter-clause)]]

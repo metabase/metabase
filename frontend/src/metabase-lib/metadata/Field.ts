@@ -7,14 +7,13 @@ import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
 import { formatField, stripId } from "metabase/lib/formatting";
 import type {
   DatasetColumn,
-  Field as IField,
+  FieldReference,
   FieldFingerprint,
   FieldId,
   FieldFormattingSettings,
   FieldVisibilityType,
   FieldValuesType,
 } from "metabase-types/api";
-import type { Field as FieldRef } from "metabase-types/types/Query";
 import { TYPE } from "metabase-lib/types/constants";
 import {
   isa,
@@ -70,7 +69,7 @@ const LONG_TEXT_MIN = 80;
  */
 
 class FieldInner extends Base {
-  id: number | FieldRef;
+  id: FieldId | FieldReference;
   name: string;
   display_name: string;
   description: string | null;
@@ -81,7 +80,7 @@ class FieldInner extends Base {
   table_id?: Table["id"];
   target?: Field;
   fk_target_field_id?: Field["id"] | null;
-  name_field?: Field["id"];
+  name_field?: Field;
   remapping?: unknown;
   has_field_values?: FieldValuesType;
   has_more_values?: boolean;
@@ -141,12 +140,14 @@ class FieldInner extends Base {
 
   displayName({
     includeSchema = false,
-    includeTable,
+    includeTable = false,
     includePath = true,
   } = {}) {
     let displayName = "";
 
-    if (includeTable && this.table) {
+    // It is possible that the table doesn't exist or
+    // that it does, but its `displayName` resolves to an empty string.
+    if (includeTable && this.table?.displayName?.()) {
       displayName +=
         this.table.displayName({
           includeSchema,
@@ -590,6 +591,7 @@ class FieldInner extends Base {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Field extends memoizeClass<FieldInner>(
   "filterOperators",
   "filterOperatorsLookup",

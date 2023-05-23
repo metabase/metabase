@@ -20,7 +20,10 @@
   [_ details]
   {:pre [(map? details)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
-    (= 200 (:status (http/get (druid.client/details->url details-with-tunnel "/status"))))))
+    (let [{:keys [auth-enabled auth-username auth-token-value]} details]
+      (= 200 (:status (http/get (druid.client/details->url details-with-tunnel "/status")
+                                (cond-> {}
+                                  auth-enabled (assoc :basic-auth (str auth-username ":" auth-token-value)))))))))
 
 (defmethod driver/describe-table :druid
   [_ database table]

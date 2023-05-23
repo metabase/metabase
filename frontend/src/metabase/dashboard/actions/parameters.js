@@ -1,7 +1,9 @@
 import { assoc } from "icepick";
 import _ from "underscore";
+import { t } from "ttag";
 
 import { createAction, createThunkAction } from "metabase/lib/redux";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 
 import {
   createParameter,
@@ -12,12 +14,15 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { isActionDashCard } from "metabase/actions/utils";
+import { saveDashboardAndCards } from "metabase/dashboard/actions/save";
 import {
   getDashboard,
   getDraftParameterValues,
   getIsAutoApplyFilters,
   getParameterValues,
   getParameters,
+  getDashboardId,
+  getAutoApplyFiltersToastId,
 } from "../selectors";
 
 import { isVirtualDashCard } from "../utils";
@@ -321,3 +326,56 @@ export const setParameterValuesFromQueryParams =
 
     dispatch(setParameterValues(parameterValues));
   };
+
+export const TOGGLE_AUTO_APPLY_FILTERS =
+  "metabase/dashboard/TOGGLE_AUTO_APPLY_FILTERS";
+export const toggleAutoApplyFilters = createThunkAction(
+  TOGGLE_AUTO_APPLY_FILTERS,
+  isEnabled => (dispatch, getState) => {
+    const dashboardId = getDashboardId(getState());
+
+    dispatch(
+      setDashboardAttributes({
+        id: dashboardId,
+        attributes: { auto_apply_filters: isEnabled },
+      }),
+    );
+    dispatch(saveDashboardAndCards(true));
+  },
+);
+
+export const SHOW_AUTO_APPLY_FILTERS_TOAST =
+  "metabase/dashboard/SHOW_AUTO_APPLY_FILTERS_TOAST";
+export const showAutoApplyFiltersToast = createThunkAction(
+  SHOW_AUTO_APPLY_FILTERS_TOAST,
+  () => (dispatch, getState) => {
+    const action = toggleAutoApplyFilters(false);
+    const toastId = _.uniqueId();
+    const dashboardId = getDashboardId(getState());
+
+    dispatch(
+      addUndo({
+        id: toastId,
+        icon: null,
+        timeout: null,
+        message: t`You can make this dashboard snappier by turning off auto-applying filters.`,
+        action,
+        actionLabel: t`Turn off`,
+      }),
+    );
+
+    return { toastId, dashboardId };
+  },
+);
+
+export const CLOSE_AUTO_APPLY_FILTERS_TOAST =
+  "metabase/dashboard/CLOSE_AUTO_APPLY_FILTERS_TOAST";
+export const closeAutoApplyFiltersToast = createThunkAction(
+  CLOSE_AUTO_APPLY_FILTERS_TOAST,
+  () => (dispatch, getState) => {
+    const toastId = getAutoApplyFiltersToastId(getState());
+    if (toastId) {
+      dispatch(dismissUndo(toastId, false));
+    }
+  },
+);

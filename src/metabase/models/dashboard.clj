@@ -32,69 +32,50 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
-;;; --------------------------------------------------- Hydration ----------------------------------------------------
+(def Dashboard
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+   We'll keep this till we replace all the Dashboard symbol in our codebase."
+  :model/Dashboard)
 
-(mi/define-simple-hydration-method ordered-cards
-  :ordered_cards
-  "Return the DashboardCards associated with `dashboard`, in the order they were created."
-  [dashboard-or-id]
-  (t2/select DashboardCard
-             {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
-              :from      [[:report_dashboardcard :dashcard]]
-              :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
-                          [:collection :collection] [:= :collection.id :card.collection_id]]
-              :where     [:and
-                          [:= :dashcard.dashboard_id (u/the-id dashboard-or-id)]
-                          [:or
-                           [:= :card.archived false]
-                           [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
-              :order-by  [[:dashcard.created_at :asc]]}))
+(methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
 
-(mi/define-batched-hydration-method collections-authority-level
-  :collection_authority_level
-  "Efficiently hydrate the `:collection_authority_level` of a sequence of dashboards."
-  [dashboards]
-  (when (seq dashboards)
-    (let [coll-id->level (into {}
-                               (map (juxt :id :authority_level))
-                               (mdb.query/query {:select    [:dashboard.id :collection.authority_level]
-                                                 :from      [[:report_dashboard :dashboard]]
-                                                 :left-join [[:collection :collection] [:= :collection.id :dashboard.collection_id]]
-                                                 :where     [:in :dashboard.id (into #{} (map u/the-id) dashboards)]}))]
-      (for [dashboard dashboards]
-        (assoc dashboard :collection_authority_level (get coll-id->level (u/the-id dashboard)))))))
 
-(comment moderation/keep-me)
+(doto :model/Dashboard
+  (derive :metabase/model)
+  (derive ::perms/use-parent-collection-perms)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id))
 
-(models/defmodel Dashboard :report_dashboard)
+(t2/deftransforms :model/Dashboard
+  {:parameters       mi/transform-parameters-list
+   :embedding_params mi/transform-json})
 
-(derive Dashboard ::perms/use-parent-collection-perms)
-
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
-
-(defn- pre-delete [dashboard]
+(t2/define-before-delete :model/Dashboard
+  [dashboard]
   (let [dashboard-id (u/the-id dashboard)]
     (parameter-card/delete-all-for-parameterized-object! "dashboard" dashboard-id)
     (t2/delete! 'Revision :model "Dashboard" :model_id dashboard-id)))
 
-(defn- pre-insert [dashboard]
+(t2/define-before-insert :model/Dashboard
+  [dashboard]
   (let [defaults  {:parameters []}
         dashboard (merge defaults dashboard)]
     (u/prog1 dashboard
       (params/assert-valid-parameters dashboard)
       (collection/check-collection-namespace Dashboard (:collection_id dashboard)))))
 
-(defn- post-insert
+(t2/define-after-insert :model/Dashboard
   [dashboard]
   (u/prog1 dashboard
     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))))
 
-(defn- pre-update [dashboard]
+(t2/define-before-update :model/Dashboard
+  [dashboard]
   (u/prog1 dashboard
     (params/assert-valid-parameters dashboard)
     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
@@ -142,30 +123,62 @@
                          :collection_id (:collection_id dashboard)})
             (pulse-card/bulk-create! new-pulse-cards)))))))
 
-(defn- post-update
+(t2/define-after-update :model/Dashboard
   [dashboard]
   (update-dashboard-subscription-pulses! dashboard))
 
-(mi/define-methods
- Dashboard
- {:properties  (constantly {::mi/timestamped? true
-                            ::mi/entity-id    true})
-  :types       (constantly {:parameters :parameters-list, :embedding_params :json})
-  :pre-delete  pre-delete
-  :pre-insert  pre-insert
-  :post-insert post-insert
-  :pre-update  pre-update
-  :post-update post-update
-  :post-select (comp public-settings/remove-public-uuid-if-public-sharing-is-disabled)})
+(t2/define-after-select :model/Dashboard
+  [dashboard]
+  (-> dashboard
+      public-settings/remove-public-uuid-if-public-sharing-is-disabled))
 
-(defmethod serdes/hash-fields Dashboard
+(defmethod serdes/hash-fields :model/Dashboard
   [_dashboard]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
+
+(mi/define-simple-hydration-method ordered-tabs
+  :ordered_tabs
+  "Return the ordered DashboardTabs associated with `dashboard-or-id`, sorted by tab position."
+  [dashboard-or-id]
+  (t2/select :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id) {:order-by [[:position :asc]]}))
+
+(mi/define-simple-hydration-method ordered-cards
+  :ordered_cards
+  "Return the DashboardCards associated with `dashboard`, in the order they were created."
+  [dashboard-or-id]
+  (t2/select DashboardCard
+             {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
+              :from      [[:report_dashboardcard :dashcard]]
+              :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
+                          [:collection :collection] [:= :collection.id :card.collection_id]]
+              :where     [:and
+                          [:= :dashcard.dashboard_id (u/the-id dashboard-or-id)]
+                          [:or
+                           [:= :card.archived false]
+                           [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
+              :order-by  [[:dashcard.created_at :asc]]}))
+
+(mi/define-batched-hydration-method collections-authority-level
+  :collection_authority_level
+  "Efficiently hydrate the `:collection_authority_level` of a sequence of dashboards."
+  [dashboards]
+  (when (seq dashboards)
+    (let [coll-id->level (into {}
+                               (map (juxt :id :authority_level))
+                               (mdb.query/query {:select    [:dashboard.id :collection.authority_level]
+                                                 :from      [[:report_dashboard :dashboard]]
+                                                 :left-join [[:collection :collection] [:= :collection.id :dashboard.collection_id]]
+                                                 :where     [:in :dashboard.id (into #{} (map u/the-id) dashboards)]}))]
+      (for [dashboard dashboards]
+        (assoc dashboard :collection_authority_level (get coll-id->level (u/the-id dashboard)))))))
+
+(comment moderation/keep-me)
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defmethod revision/serialize-instance Dashboard
+(defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
   (-> dashboard
       (select-keys [:description :name :cache_ttl :auto_apply_filters])
@@ -173,10 +186,10 @@
                            (-> (select-keys dashboard-card [:size_x :size_y :row :col :id :card_id])
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))))
 
-(defmethod revision/revert-to-revision! Dashboard
+(defmethod revision/revert-to-revision! :model/Dashboard
   [_model dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
-  (t2/update! Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
+  (t2/update! :model/Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
   ;; Now update the cards as needed
   (let [serialized-cards    (:cards serialized-dashboard)
         id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)
@@ -202,7 +215,7 @@
 
   serialized-dashboard)
 
-(defmethod revision/diff-str Dashboard
+(defmethod revision/diff-str :model/Dashboard
   [_model dashboard1 dashboard2]
   (let [[removals changes]  (diff dashboard1 dashboard2)
         check-series-change (fn [idx card-changes]
@@ -247,6 +260,10 @@
         (->> (filter identity)
              build-sentence))))
 
+(defn has-tabs?
+  "Check if a dashboard has tabs."
+  [dashboard-or-id]
+  (t2/exists? :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
@@ -376,7 +393,7 @@
                     "Automatically generated cards."
                     parent-collection-id)
         dashboard  (first (t2/insert-returning-instances!
-                            Dashboard
+                            :model/Dashboard
                             (-> dashboard
                                 (dissoc :ordered_cards :rule :related :transient_name
                                         :transient_filters :param_fields :more)
@@ -457,16 +474,24 @@
       (dissoc :id :collection_authority_level :dashboard_id :updated_at)
       (update :card_id                serdes/*export-fk* 'Card)
       (update :action_id              serdes/*export-fk* 'Action)
+      (update :dashboard_tab_id       serdes/*export-fk* :model/DashboardTab)
       (update :parameter_mappings     serdes/export-parameter-mappings)
       (update :visualization_settings serdes/export-visualization-settings)))
 
+(defn- extract-dashtab
+  [dashtab]
+  (dissoc dashtab :id :dashboard_id :updated_at))
+
 (defmethod serdes/extract-one "Dashboard"
   [_model-name _opts dash]
-  (let [dash (if (contains? dash :ordered_cards)
-               dash
-               (hydrate dash :ordered_cards))]
+  (let [dash (cond-> dash
+               (nil? (:ordered_cards dash))
+               (hydrate :ordered_cards)
+               (nil? (:ordered_tabs dash))
+               (hydrate :ordered_tabs))]
     (-> (serdes/extract-one-basics "Dashboard" dash)
         (update :ordered_cards     #(mapv extract-dashcard %))
+        (update :ordered_tabs      #(mapv extract-dashtab %))
         (update :parameters        serdes/export-parameters)
         (update :collection_id     serdes/*export-fk* Collection)
         (update :creator_id        serdes/*export-user*)
@@ -485,12 +510,24 @@
 (defn- dashcard-for [dashcard dashboard]
   (assoc dashcard
          :dashboard_id (:entity_id dashboard)
-         :serdes/meta [{:model "Dashboard"     :id (:entity_id dashboard)}
-                       {:model "DashboardCard" :id (:entity_id dashcard)}]))
+         :serdes/meta  (remove nil?
+                               [{:model "Dashboard"     :id (:entity_id dashboard)}
+                                (when-let [dashtab-eeid (last (:dashboard_tab_id dashcard))]
+                                  {:model "DashboardTab" :id dashtab-eeid})
+                                {:model "DashboardCard" :id (:entity_id dashcard)}])))
+
+(defn- dashtab-for [tab dashboard]
+  (assoc tab
+         :dashboard_id (:entity_id dashboard)
+         :serdes/meta  [{:model "Dashboard"    :id (:entity_id dashboard)}
+                        {:model "DashboardTab" :id (:entity_id tab)}]))
 
 ;; Call the default load-one! for the Dashboard, then for each DashboardCard.
 (defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
-  (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :ordered_cards) maybe-local)]
+  (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :ordered_cards :ordered_tabs) maybe-local)]
+    (doseq [tab (:ordered_tabs ingested)]
+      (serdes/load-one! (dashtab-for tab dashboard)
+                        (t2/select-one :model/DashboardTab :entity_id (:entity_id tab))))
     (doseq [dashcard (:ordered_cards ingested)]
       (serdes/load-one! (dashcard-for dashcard dashboard)
                         (t2/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))

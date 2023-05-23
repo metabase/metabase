@@ -1,7 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { DatasetQuery } from "metabase-types/types/Card";
-import { DependentMetadataItem } from "metabase-types/types/Query";
+import type { DependentMetadataItem, DatasetQuery } from "metabase-types/api";
 import Metadata from "metabase-lib/metadata/Metadata";
 import Question from "metabase-lib/Question";
 import Dimension from "metabase-lib/Dimension";
@@ -123,6 +122,7 @@ class QueryInner {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Query extends memoizeClass<QueryInner>("question")(
   QueryInner,
 ) {}

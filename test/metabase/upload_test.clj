@@ -26,23 +26,21 @@
 (def text-type      :metabase.upload/text)
 
 (deftest type-detection-and-parse-test
-  (doseq [[string-value  expected-value expected-type]
-          [["0"          false          bool-type]
-           ["1"          true           bool-type]
-           ["t"          true           bool-type]
-           ["T"          true           bool-type]
-           ["tRuE"       true           bool-type]
-           ["f"          false          bool-type]
-           ["F"          false          bool-type]
-           ["FAlse"      false          bool-type]
-           ["Y"          true           bool-type]
-           ["n"          false          bool-type]
-           ["yes"        true           bool-type]
-           ["NO"         false          bool-type]
+  (doseq [[string-value  expected-value expected-type seps]
+          [["0.0"        0              float-type "."]
+           ["0.0"        0              float-type ".,"]
+           ["0,0"        0              float-type ",."]
+           ["0,0"        0              float-type ", "]
+           ["0.0"        0              float-type ".’"]
            ["$2"         2              int-type]
            ["$ 3"        3              int-type]
            ["-43€"       -43            int-type]
            ["£1000"      1000           int-type]
+           ["£1000"      1000           int-type "."]
+           ["£1000"      1000           int-type ".,"]
+           ["£1000"      1000           int-type ",."]
+           ["£1000"      1000           int-type ", "]
+           ["£1000"      1000           int-type ".’"]
            ["-¥9"        -9             int-type]
            ["₹ -13"      -13            int-type]
            ["₪13"        13             int-type]
@@ -52,23 +50,36 @@
            ["2"          2              int-type]
            ["-86"        -86            int-type]
            ["9,986,000"  9986000        int-type]
-           [",,,"        nil            int-type]   ;; TODO: this should be a vchar in the future
-           ["9.986.000"  "9.986.000"    vchar-type] ;; TODO: this should be an integer in the future
+           ["9,986,000"  9986000        int-type "."]
+           ["9,986,000"  9986000        int-type ".,"]
+           ["9.986.000"  9986000        int-type ",."]
+           ["9’986’000"  9986000        int-type ".’"]
+           ["9.986.000"  "9.986.000"    vchar-type ".,"]
            ["3.14"       3.14           float-type]
-           [".14"        0.14           float-type]
-           ["0.14"       0.14           float-type]
-           ["-9986.567"  -9986.567      float-type]
-           ["$2.0"       2.0            float-type]
-           ["$ 3.50"     3.50           float-type]
-           ["-4300.23€"  -4300.23       float-type]
+           ["3.14"       3.14           float-type "."]
+           ["3.14"       3.14           float-type ".,"]
+           ["3,14"       3.14           float-type ",."]
+           ["3,14"       3.14           float-type ", "]
+           ["3.14"       3.14           float-type ".’"]
+           [".14"        ".14"          vchar-type ".,"] ;; TODO: this should be a float type
+           ["0.14"       0.14           float-type ".,"]
+           ["-9986.567"  -9986.567      float-type ".,"]
+           ["$2.0"       2              float-type ".,"]
+           ["$ 3.50"     3.50           float-type ".,"]
+           ["-4300.23€"  -4300.23       float-type ".,"]
            ["£1,000.23"  1000.23        float-type]
-           ["£1.000,23"  "£1.000,23"    vchar-type] ;; TODO: this should be a float in the future
-           ["-¥9.99"     -9.99          float-type]
-           ["₹ -13.23"   -13.23         float-type]
-           ["₪13.01"     13.01          float-type]
-           ["₩13.33"     13.33          float-type]
-           ["₿42.243646" 42.243646      float-type]
-           ["-99.99¢"    -99.99         float-type]
+           ["£1,000.23"  1000.23        float-type "."]
+           ["£1,000.23"  1000.23        float-type ".,"]
+           ["£1.000,23"  1000.23        float-type ",."]
+           ["£1 000,23"  1000.23        float-type ", "]
+           ["£1’000.23"  1000.23        float-type ".’"]
+           ["-¥9.99"     -9.99          float-type ".,"]
+           ["₹ -13.23"   -13.23         float-type ".,"]
+           ["₪13.01"     13.01          float-type ".,"]
+           ["₩13.33"     13.33          float-type ".,"]
+           ["₿42.243646" 42.243646      float-type ".,"]
+           ["-99.99¢"    -99.99         float-type ".,"]
+           ["."          "."            vchar-type]
            [(apply str (repeat 255 "x")) (apply str (repeat 255 "x")) vchar-type]
            [(apply str (repeat 256 "x")) (apply str (repeat 256 "x")) text-type]
            ["86 is my favorite number"   "86 is my favorite number"   vchar-type]
@@ -77,14 +88,15 @@
            ["2022-01-01T01:00:00"           #t "2022-01-01T01:00" datetime-type]
            ["2022-01-01T01:00:00.00"        #t "2022-01-01T01:00" datetime-type]
            ["2022-01-01T01:00:00.000000000" #t "2022-01-01T01:00" datetime-type]]]
-    (let [type   (upload/value->type string-value)
-          parser (#'upload/upload-type->parser type)]
-      (testing (format "\"%s\" is a %s" string-value type)
-        (is (= expected-type
-               type)))
-      (testing (format "\"%s\" is parsed into %s" string-value expected-value)
-        (is (= expected-value
-               (parser string-value)))))))
+    (mt/with-temporary-setting-values [custom-formatting (when seps {:type/Number {:number_separators seps}})]
+      (let [type   (upload/value->type string-value)
+            parser (#'upload/upload-type->parser type)]
+        (testing (format "\"%s\" is a %s" string-value type)
+          (is (= expected-type
+                 type)))
+        (testing (format "\"%s\" is parsed into %s" string-value expected-value)
+          (is (= expected-value
+                 (parser string-value))))))))
 
 (deftest type-coalescing-test
   (doseq [[type-a type-b expected] [[bool-type     bool-type     bool-type]
@@ -411,7 +423,7 @@
          driver/*driver*
          (mt/id)
          "upload_test"
-         (csv-file-with ["true,false,group"
+         (csv-file-with ["id,ship,captain"
                          "1,Serenity,Malcolm Reynolds"
                          "2,Millennium Falcon, Han Solo"]))
         (testing "Table and Fields exist after sync"
@@ -419,7 +431,7 @@
           (let [table (t2/select-one Table :db_id (mt/id))]
             (is (=? {:name #"(?i)upload_test"} table))
             (testing "Check the data was uploaded into the table correctly"
-              (is (= ["true", "false", "group"]
+              (is (= ["id", "ship", "captain"]
                      (column-names-for-table table))))))))))
 
 (deftest load-from-csv-failed-test
@@ -427,7 +439,9 @@
     (mt/with-empty-db
       (testing "Can't upload a CSV with missing values"
         (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo #"Error executing write query: "
+             clojure.lang.ExceptionInfo (if (= driver/*driver* :postgres)
+                                          #"ERROR: missing data for column \"column_that_doesnt_have_a_value\""
+                                          #"Error executing write query: ")
              (upload/load-from-csv
               driver/*driver*
               (mt/id)
@@ -436,6 +450,50 @@
       (testing "Check that the table isn't created if the upload fails"
         (sync/sync-database! (mt/db))
         (is (nil? (t2/select-one Table :db_id (mt/id))))))))
+
+(deftest load-from-csv-tab-test
+  (testing "Upload a CSV file with tabs in the values"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["id,ship,captain"
+                         "1,Serenity,Malcolm\tReynolds"
+                         "2,Millennium\tFalcon,Han\tSolo"]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["id", "ship", "captain"]
+                     (column-names-for-table table)))
+              (is (= [[1 "Serenity" "Malcolm\tReynolds"]
+                      [2 "Millennium\tFalcon" "Han\tSolo"]]
+                     (rows-for-table table))))))))))
+
+(deftest load-from-csv-carriage-return-test
+  (testing "Upload a CSV file with carriage returns in the values"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["id,ship,captain"
+                         "1,Serenity,\"Malcolm\rReynolds\""
+                         "2,\"Millennium\rFalcon\",\"Han\rSolo\""]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["id", "ship", "captain"]
+                     (column-names-for-table table)))
+              (is (= [[1 "Serenity" "Malcolm\rReynolds"]
+                      [2 "Millennium\rFalcon" "Han\rSolo"]]
+                     (rows-for-table table))))))))))
 
 (deftest load-from-csv-BOM-test
   (testing "Upload a CSV file with a byte-order mark (BOM)"
@@ -457,3 +515,46 @@
             (testing "Check the data was uploaded into the table correctly"
               (is (= ["id", "ship", "captain"]
                      (column-names-for-table table))))))))))
+
+(deftest load-from-csv-injection-test
+  (testing "Upload a CSV file with very rude values"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["id integer); --,ship,captain"
+                         "1,Serenity,--Malcolm Reynolds"
+                         "2,;Millennium Falcon,Han Solo\""]
+                        "\"; -- Very rude filename"))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["id_integer_____", "ship", "captain"]
+                     (column-names-for-table table)))
+              (is (= [[1   "Serenity"           "--Malcolm Reynolds"]
+                      [2   ";Millennium Falcon" "Han Solo\""]]
+                     (rows-for-table table))))))))))
+
+(deftest load-from-csv-eof-marker-test
+  (testing "Upload a CSV file with Postgres's 'end of input' marker"
+    (mt/test-drivers [:postgres]
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["name"
+                         "Malcolm"
+                         "\\."
+                         "Han"]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= [["Malcolm"] ["\\."] ["Han"]]
+                     (rows-for-table table))))))))))

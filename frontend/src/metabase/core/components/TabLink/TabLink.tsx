@@ -36,6 +36,7 @@ function TabLink<T>({ value, children, onClick, ...props }: TabLinkProps<T>) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(TabLink, {
   Root: TabLinkRoot,
 });

@@ -41,6 +41,7 @@ describe("scenarios > models query editor", () => {
       cy.findByTestId("data-step-cell").contains("Orders");
       cy.button("Save changes").should("be.disabled");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row limit").click();
       cy.findByPlaceholderText("Enter a limit").type("2");
 
@@ -74,6 +75,7 @@ describe("scenarios > models query editor", () => {
         cy.findByText("Edit query definition").click();
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row limit").click();
       cy.findByPlaceholderText("Enter a limit").type("2");
 
@@ -205,22 +207,27 @@ describe("scenarios > models query editor", () => {
         cy.findByText("Edit metadata").click();
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("be.visible");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Query").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("be.visible");
 
       cy.get(".ace_content").type("{backspace}".repeat(" FROM".length));
       runNativeQuery();
 
       cy.get(".cellData").contains(1);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("not.exist");
 
       cy.button("Save changes").click();
       cy.wait("@updateCard");
 
       cy.get(".cellData").contains(1);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("not.exist");
     });
   });

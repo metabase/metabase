@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [malli.core :as mc]
+   [malli.error :as me]
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -51,7 +52,10 @@
       (let [new-stage (clean-location almost-stage error-type error-location)]
         (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"
                    (u/colorize :yellow (pr-str error-location))
-                   (u/colorize :yellow (pr-str error-type))
+                   (u/colorize :yellow (pr-str (or error-type
+                                                   ;; if `error-type` is missing, which seems to happen sometimes,
+                                                   ;; fall back to humanizing the entire error.
+                                                   (me/humanize (mc/explain ::lib.schema/stage.mbql almost-stage)))))
                    (u/colorize :red (u/pprint-to-str (first (data/diff almost-stage new-stage)))))
         (if (= new-stage almost-stage)
           almost-stage
@@ -162,7 +166,7 @@
   (let [default (:default options)]
     (cond-> [:case (dissoc options :default) (mapv ->pMBQL pred-expr-pairs)]
       :always lib.options/ensure-uuid
-      default (conj (->pMBQL default)))))
+      (some? default) (conj (->pMBQL default)))))
 
 (defmethod ->pMBQL :expression
   [[tag value opts]]
@@ -326,7 +330,7 @@
                     [id opts])]
     [:field
      (->legacy-MBQL id)
-     (not-empty (disqualify opts))]))
+     (options->legacy-MBQL opts)]))
 
 (defmethod ->legacy-MBQL :value
   [[_tag opts value]]

@@ -255,6 +255,7 @@
 (mr/register! ::display-info
   [:map
    [:display-name :string]
+   [:long-display-name {:optional true} :string]
    ;; for things that have a Table, e.g. a Field
    [:table {:optional true} [:maybe [:ref ::display-info]]]
    ;; these are derived from the `:lib/source`/`:metabase.lib.metadata/column-source`, but instead of using that value
@@ -271,7 +272,14 @@
    ;; already joined, but could implicitly join against?
    [:is-implicitly-joinable {:optional true} [:maybe :boolean]]
    ;; For the `:table` field of a Column, is this the source table, or a joined table?
-   [:is-source-table {:optional true} [:maybe :boolean]]])
+   [:is-source-table {:optional true} [:maybe :boolean]]
+   ;; does this column occur in the breakout clause?
+   [:is-breakout-column {:optional true} [:maybe :boolean]]
+   ;; does this column occur in the order-by clause?
+   [:is-order-by-column {:optional true} [:maybe :boolean]]
+   ;; for aggregation operators
+   [:column-name {:optional true} :string]
+   [:description {:optional true} :string]])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
@@ -301,6 +309,8 @@
      ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display-name`
      ;; everywhere? Determine whether or not this is the case.
      (select-keys x-metadata [:name :display-name :semantic-type])
+     (when-let [long-display-name (display-name query stage-number x :long)]
+       {:long-display-name long-display-name})
      ;; don't return `:base-type`, FE should just use `:effective-type` everywhere and not even need to know
      ;; `:base-type` exists.
      (when-let [effective-type ((some-fn :effective-type :base-type) x-metadata)]
@@ -311,7 +321,8 @@
        {:is-from-previous-stage (= source :source/previous-stage)
         :is-from-join           (= source :source/joins)
         :is-calculated          (= source :source/expressions)
-        :is-implicitly-joinable (= source :source/implicitly-joinable)}))))
+        :is-implicitly-joinable (= source :source/implicitly-joinable)})
+     (select-keys x-metadata [:breakout-position :order-by-position]))))
 
 (defmethod display-info-method :default
   [query stage-number x]

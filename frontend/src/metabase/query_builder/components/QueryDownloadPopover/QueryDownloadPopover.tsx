@@ -8,7 +8,6 @@ import { Dataset } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import {
-  DownloadButtonIcon,
   DownloadButtonRoot,
   DownloadButtonText,
   DownloadPopoverHeader,
@@ -82,10 +81,10 @@ const DownloadButton = ({ format, onDownload }: DownloadButtonProps) => {
 
   return (
     <DownloadButtonRoot onClick={handleClick}>
-      <DownloadButtonIcon name={format} format={format} />
       <DownloadButtonText>.{format}</DownloadButtonText>
     </DownloadButtonRoot>
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(QueryDownloadPopover);

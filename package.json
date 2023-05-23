@@ -7,7 +7,7 @@
   "license": "private",
   "engines": {
     "node": ">=16",
-    "yarn": ">=1.12.3"
+    "yarn": "^1.12.3"
   },
   "dependencies": {
     "@emotion/react": "^11.7.1",
@@ -52,6 +52,7 @@
     "iframe-resizer": "^4.3.2",
     "inflection": "^1.7.1",
     "js-cookie": "^2.1.2",
+    "jspdf": "^2.5.1",
     "jsrsasign": "^10.5.25",
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.9",
@@ -90,6 +91,7 @@
     "react-transition-group": "^4.4.5",
     "react-use": "^17.4.0",
     "react-virtualized": "^9.22.3",
+    "reduce-reducers": "^1.0.4",
     "redux-actions": "^2.0.1",
     "redux-auth-wrapper": "^1.0.0",
     "redux-promise": "^0.5.0",
@@ -224,7 +226,7 @@
     "eslint-plugin-jest-dom": "^4.0.3",
     "eslint-plugin-no-only-tests": "^2.4.0",
     "eslint-plugin-react": "^7.22.0",
-    "eslint-plugin-react-hooks": "^4.2.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-testing-library": "^5.9.1",
     "fetch-mock": "^9.11.0",
     "glob": "^7.1.1",
@@ -266,7 +268,7 @@
     "webpack-cli": "^5.0.2",
     "webpack-dev-server": "^4.13.3",
     "webpack-notifier": "1.15.0",
-    "xlsx": "0.18.3",
+    "xlsx": "^0.18.5",
     "yaml-lint": "~1.6.0"
   },
   "resolutions": {

@@ -23,9 +23,22 @@
       [user :- (ms/InstanceOf User)]
       ...)"
   [model]
-  (mc/schema
-   [:fn {:error/fn (fn [_ _] (deferred-tru "value must be an instance of {0}" (name model)))}
-    #(models.dispatch/instance-of? model %)]))
+  (mu/with-api-error-message
+   [:fn #(models.dispatch/instance-of? model %)]
+   (deferred-tru "value must be an instance of {0}" (name model))))
+
+(defn maps-with-unique-key
+  "Given a schema of a sequence of maps, returns as chema that do an additional unique check on key `k`."
+  [maps-schema k]
+  (mu/with-api-error-message
+    [:and
+     [:fn (fn [maps]
+            (= (count maps)
+               (-> (map #(get % k) maps)
+                   distinct
+                   count)))]
+     maps-schema]
+    (deferred-tru "value must be seq of maps in which {0}s are unique" (name k))))
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
@@ -42,6 +55,12 @@
     [:int {:min 0}]
     ;; FIXME: greater than _or equal to_ zero.
     (deferred-tru "value must be an integer greater than zero.")))
+
+(def Int
+  "Schema representing an integer."
+  (mu/with-api-error-message
+    int?
+    (deferred-tru "value must be an integer.")))
 
 (def PositiveInt
   "Schema representing an integer than must also be greater than zero."
@@ -199,7 +218,7 @@
 
 (def BooleanString
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
-  Something that adheres to this schema is guaranteed to to work with `Boolean/parseBoolean`."
+   Defendpoint uses this to coerce the value for this schema to a boolean."
   (mu/with-api-error-message
     [:enum "true" "false"]
     (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
@@ -227,6 +246,16 @@
 (def ^:private keyword-or-non-blank-str-malli
   (mc/schema
     [:or :keyword NonBlankString]))
+
+(def BooleanValue
+  "Schema for a valid representation of a boolean
+  (one of `\"true\"` or `true` or `\"false\"` or `false`.).
+  Used by [[metabase.api.common/defendpoint]] to coerce the value for this schema to a boolean.
+   Garanteed to evaluate to `true` or `false` when passed through a json decoder."
+  (-> [:enum {:decode/json (fn [b] (contains? #{"true" true} b))}
+       "true" "false" true false]
+      (mu/with-api-error-message
+        (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
 
 (def ValuesSourceConfig
   "Schema for valid source_options within a Parameter"

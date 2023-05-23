@@ -49,6 +49,7 @@ describe.skip("issue 27768", () => {
     editDashboard();
     getFilterOptions(filter.name);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     popover().contains("CCategory").click();
     saveDashboard();
@@ -63,7 +64,9 @@ describe.skip("issue 27768", () => {
     editDashboard();
     getFilterOptions(filter.name);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column to filter on").parent().contains("Product.CCategory");
   });
 });

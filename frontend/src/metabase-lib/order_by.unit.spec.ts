@@ -1,7 +1,11 @@
-import { createMetadata } from "__support__/sample_database_fixture";
-import { createMockTable } from "metabase-types/api/mocks";
-import { createProductsTitleField } from "metabase-types/api/mocks/presets";
-import { createQuery, columnFinder } from "./test-helpers";
+import { createMockMetadata } from "__support__/metadata";
+import { createMockCard } from "metabase-types/api/mocks";
+import {
+  createProductsTitleField,
+  createSampleDatabase,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
+import { columnFinder, createQuery } from "./test-helpers";
 import * as ML from "./v2";
 
 describe("order by", () => {
@@ -16,6 +20,7 @@ describe("order by", () => {
         expect.objectContaining({
           name: "ID",
           displayName: "ID",
+          longDisplayName: "ID",
           effectiveType: "type/BigInteger",
           semanticType: "type/PK",
           isCalculated: false,
@@ -25,6 +30,7 @@ describe("order by", () => {
           table: {
             name: "ORDERS",
             displayName: "Orders",
+            longDisplayName: "Orders",
             isSourceTable: true,
           },
         }),
@@ -38,8 +44,9 @@ describe("order by", () => {
         expect.objectContaining({
           name: "TITLE",
           displayName: "Title",
+          longDisplayName: "Products → Title",
           effectiveType: "type/Text",
-          semanticType: "type/Category",
+          semanticType: "type/Title",
           isCalculated: false,
           isFromJoin: false,
           isFromPreviousStage: false,
@@ -47,6 +54,7 @@ describe("order by", () => {
           table: {
             name: "PRODUCTS",
             displayName: "Products",
+            longDisplayName: "Products",
             isSourceTable: false,
           },
         }),
@@ -54,25 +62,23 @@ describe("order by", () => {
     });
 
     it("returns metadata for columns in source question/model", () => {
-      const table_id = "card__1";
-      const field = createProductsTitleField({ table_id });
-      const table = createMockTable({
-        id: table_id,
+      const field = createProductsTitleField();
+      const card = createMockCard({
         name: "Product Model",
-        display_name: "Product Model",
-        fields: [field],
+        result_metadata: [field],
       });
-      const metadata = createMetadata(state =>
-        state.assocIn(["entities", "tables", table.id], table),
-      );
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        questions: [card],
+      });
 
       const query = createQuery({
-        databaseId: table.db_id,
+        databaseId: SAMPLE_DB_ID,
         metadata,
         query: {
           type: "query",
-          database: table.db_id,
-          query: { "source-table": table_id },
+          database: SAMPLE_DB_ID,
+          query: { "source-table": `card__${card.id}` },
         },
       });
 
@@ -96,6 +102,32 @@ describe("order by", () => {
           table: { name: "Product Model", displayName: "Product Model" },
         }),
       );
+    });
+
+    it("should preserve order-by positions between v1-v2 roundtrip", () => {
+      const query = createQuery();
+      const taxColumn = findOrderableColumn("ORDERS", "TAX");
+      const nextQuery = ML.orderBy(query, taxColumn);
+      const nextQueryColumns = ML.orderableColumns(nextQuery);
+      const nextTaxColumn = columnFinder(nextQuery, nextQueryColumns)(
+        "ORDERS",
+        "TAX",
+      );
+
+      expect(ML.displayInfo(nextQuery, nextTaxColumn).orderByPosition).toBe(0);
+
+      const roundtripQuery = createQuery({
+        query: ML.toLegacyQuery(nextQuery),
+      });
+      const roundtripQueryColumns = ML.orderableColumns(roundtripQuery);
+      const roundtripTaxColumn = columnFinder(
+        roundtripQuery,
+        roundtripQueryColumns,
+      )("ORDERS", "TAX");
+
+      expect(
+        ML.displayInfo(roundtripQuery, roundtripTaxColumn).orderByPosition,
+      ).toBe(0);
     });
   });
 

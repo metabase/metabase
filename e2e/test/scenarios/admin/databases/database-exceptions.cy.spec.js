@@ -21,6 +21,7 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.get("nav").should("contain", "Metabase Admin");
     // The response still contains the database name,
     // so there's no reason we can't display it.
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(/Sample Database/i);
     // This seems like a reasonable CTA if the database is beyond repair.
     cy.button("Remove this database").should("not.be.disabled");
@@ -43,6 +44,7 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.button("Save").click();
     cy.wait("@createDatabase");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("DATABASE CONNECTION ERROR").should("exist");
   });
 
@@ -52,6 +54,7 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.wait("@loadDatabase").then(({ response }) => {
       expect(response.statusCode).to.eq(404);
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not found.");
     cy.findByRole("table").should("not.exist");
   });
@@ -81,12 +84,16 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.wait("@failedGet");
 
     cy.findByRole("heading", { name: "Something's gone wrong" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "We've run into an error. You can try refreshing the page, or just go back.",
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(errorMessage).should("not.be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show error details").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(errorMessage).should("be.visible");
   });
 });

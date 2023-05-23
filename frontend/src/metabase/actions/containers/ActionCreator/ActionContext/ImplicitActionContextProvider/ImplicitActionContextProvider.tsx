@@ -11,7 +11,7 @@ import type {
 
 import { getDefaultFormSettings } from "../../../../utils";
 import type { ActionContextProviderProps } from "../types";
-import { ActionContext } from "../ActionContext";
+import { ActionContext, ActionContextType } from "../ActionContext";
 import {
   EditorBodyRoot,
   EditorTitle,
@@ -64,11 +64,12 @@ function ImplicitActionContextProvider({
   }, [formSettings, initialAction?.visualization_settings]);
 
   const value = useMemo(
-    () => ({
+    (): ActionContextType => ({
       action: initialAction,
       formSettings,
       isNew: false,
       canSave,
+      isDirty: canSave,
       ui: {
         canRename: false,
         canChangeFieldSettings: false,
@@ -85,4 +86,5 @@ function ImplicitActionContextProvider({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ImplicitActionContextProvider;
