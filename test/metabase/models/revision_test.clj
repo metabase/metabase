@@ -317,7 +317,7 @@
                                                       :is_creation  false}))))
 
      (testing "multiple changes"
-       {:description          "changed the display from :table to :bar and turned this into a model."
+       {:description          "changed the display from table to bar and turned this into a model."
         :has_multiple_changes true}
        (#'revision/revision-description-info model
                                               {:object       {:dataset false

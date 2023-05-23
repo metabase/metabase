@@ -312,7 +312,7 @@
                :has_multiple_changes false}
               {:description          "added a description."
                :has_multiple_changes false}
-              {:description          "changed the display from :table to :scalar, modified the query and edited the metadata."
+              {:description          "changed the display from table to scalar, modified the query and edited the metadata."
                :has_multiple_changes true}
               {:description          "turned this into a model and edited the metadata."
                :has_multiple_changes true}
