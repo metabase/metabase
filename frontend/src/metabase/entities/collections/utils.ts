@@ -6,6 +6,7 @@ import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import {
   isRootCollection,
   isPersonalCollection,
+  isInstanceAnalyticsCollection,
 } from "metabase/collections/utils";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -29,6 +30,11 @@ export function getCollectionIcon(
   if (isPersonalCollection(collection)) {
     return { name: "person" };
   }
+
+  if (isInstanceAnalyticsCollection(collection)) {
+    return { name: "beaker" };
+  }
+
   const authorityLevel =
     PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level as string];
 
