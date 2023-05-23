@@ -12,6 +12,7 @@
    [metabase.models :refer [Database]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
+   [metabase.core :as mbc]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -288,18 +289,14 @@
         (is (= #{"PUBLIC"}
                (driver/syncable-schemas driver/*driver* (mt/id))))))))
 
-(defenterprise ^:private ensure-audit-db-installed!
-  "A test implementation of `audit-db/ensure-db-installed!`, used to setup the audit-db for testing."
-  metabase-enterprise.audit-db
-  [] ::noop)
-
 (def ^:private audit-db-expected-id 13371337)
 
 (deftest syncable-audit-db-test
   (mt/test-driver :h2
     (when config/ee-available?
       (let [original-audit-db (t2/select-one 'Database :is_audit true)]
-        (is (not= ::noop (ensure-audit-db-installed!)) "Make sure we call the right ensure-audit-db-installed! impl")
+        (is (not= ::mbc/noop (mbc/ensure-audit-db-installed!))
+            "Make sure we call the right ensure-audit-db-installed! impl")
         (try
           (testing "spec obtained from audit db has no connection string, and that works OK."
             (let [audit-db-id (t2/select-one-fn :id 'Database :is_audit true)]
@@ -311,4 +308,4 @@
                          (set (keys spec))))))))
           (finally
             (t2/delete! Database :is_audit true)
-            (when original-audit-db (ensure-audit-db-installed!))))))))
+            (when original-audit-db (mbc/ensure-audit-db-installed!))))))))
