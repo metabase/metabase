@@ -2,7 +2,7 @@ import React from "react";
 import { RoutelessFullPageModal } from "metabase/components/Modal/RoutelessFullPageModal";
 import {
   WindowModal,
-  type WindowModalProps,
+  WindowModalProps,
 } from "metabase/components/Modal/WindowModal";
 import type { FullPageModalProps } from "metabase/components/Modal/FullPageModal";
 
