@@ -159,26 +159,30 @@
       (catch Exception e
         (handle-action-execution-error e)))))
 
+(defn- check-no-extra-parameters
+  "Check that the given request parameters do not contain any parameters that are not in the given set of destination parameter ids"
+  [request-parameters destination-param-ids]
+  (doseq [[parameter-id _value] request-parameters]
+    (when-not (contains? destination-param-ids parameter-id)
+      (throw (ex-info (tru "No destination parameter found for id {0}. Found: {1}"
+                           (pr-str parameter-id)
+                           (pr-str destination-param-ids))
+                      {:status-code            400
+                       :type                   qp.error-type/invalid-parameter
+                       :parameters             request-parameters
+                       :destination-parameters destination-param-ids})))))
+
 (defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
   [action request-parameters]
-  (let [; if a value is supplied for a hidden parameter, it should raise an error
-        ; this is to prevent users from supplying a value for a hidden parameter
+  (let [;; if a value is supplied for a hidden parameter, it should raise an error
         field-settings         (get-in action [:visualization_settings :fields])
         hidden-param-ids       (->> (vals field-settings)
                                     (filter :hidden)
                                     (map :id))
         destination-param-ids  (set/difference (set (map :id (:parameters action))) (set hidden-param-ids))
-        _ (doseq [[parameter-id _value] request-parameters]
-            (when-not (contains? destination-param-ids parameter-id)
-              (throw (ex-info (tru "No destination parameter found for id {0}. Found: {1}"
-                                   (pr-str parameter-id)
-                                   (pr-str destination-param-ids))
-                              {:status-code            400
-                               :type                   qp.error-type/invalid-parameter
-                               :parameters             request-parameters
-                               :destination-parameters (:parameters action)}))))
-        ; add default values for missing parameters (including hidden ones)
+        _ (check-no-extra-parameters request-parameters destination-param-ids)
+        ;; add default values for missing parameters (including hidden ones)
         all-param-ids          (set (map :id (:parameters action)))
         provided-param-ids     (set (keys request-parameters))
         missing-param-ids      (set/difference all-param-ids provided-param-ids)
