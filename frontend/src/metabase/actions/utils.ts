@@ -246,7 +246,7 @@ export const getForm = (
   parameters: WritebackParameter[] | Parameter[],
   fieldSettings: Record<string, FieldSettings> = {},
 ): ActionFormProps => {
-  const sortedParams = parameters.sort(
+  const sortedParams = [...parameters].sort(
     sortActionParams({ fields: fieldSettings } as ActionFormSettings),
   );
   return {

@@ -51,13 +51,6 @@ export default class Scalar extends Component {
     // scalar can always be rendered, nothing needed here
   }
 
-  static seriesAreCompatible(initialSeries, newSeries) {
-    if (newSeries.data.cols && newSeries.data.cols.length === 1) {
-      return true;
-    }
-    return false;
-  }
-
   static transformSeries(series) {
     if (series.length > 1) {
       return series.map((s, seriesIndex) => ({
