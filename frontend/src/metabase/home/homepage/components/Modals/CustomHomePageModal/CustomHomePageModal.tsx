@@ -23,7 +23,7 @@ export const CustomHomePageModal = ({
   isOpen,
   onClose,
 }: CustomHomePageModalProps) => {
-  const [dashboard, setDashboard] = useState<number | undefined>();
+  const [dashboard, setDashboard] = useState<number>();
   const dispatch = useDispatch();
 
   const handleSave = async () => {

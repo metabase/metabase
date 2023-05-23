@@ -164,10 +164,20 @@ describe("scenarios > home > custom homepage", () => {
 
       popover().findByText("Orders in a dashboard").click();
 
-      cy.get("main").findByText("Saved");
+      cy.findByRole("status").findByText("Saved");
 
       cy.findByRole("navigation").findByText("Exit admin").click();
       cy.location("pathname").should("equal", "/dashboard/1");
+
+      // Do a page refresh and test dashboard header
+      cy.visit("/");
+
+      cy.location("pathname").should("equal", "/dashboard/1");
+
+      dashboardHeader().within(() => {
+        cy.icon("pencil").click();
+        cy.findByText(/Remember that this dashboard is set as homepage/);
+      });
     });
 
     it("should give you the option to set a custom home page using home page CTA", () => {
@@ -195,17 +205,6 @@ describe("scenarios > home > custom homepage", () => {
       cy.visit("/");
 
       cy.location("pathname").should("equal", "/");
-    });
-
-    it("should not redirect you if you do have permissions for set dashboard", () => {
-      cy.visit("/");
-
-      cy.location("pathname").should("equal", "/dashboard/1");
-
-      dashboardHeader().within(() => {
-        cy.icon("pencil").click();
-        cy.findByText(/Remember that this dashboard is set as homepage/);
-      });
     });
   });
 });
