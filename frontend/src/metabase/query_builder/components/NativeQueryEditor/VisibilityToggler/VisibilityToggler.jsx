@@ -36,7 +36,7 @@ const VisibilityToggler = ({
         data-testid="visibility-toggler"
       >
         <Span>{text}</Span>
-        <Icon name={icon} size={18} />
+        <Icon name={icon} />
       </a>
     </Container>
   );
