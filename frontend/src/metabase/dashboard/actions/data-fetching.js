@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 
 import { t } from "ttag";
 
-import { normalize, schema } from "normalizr";
+import { denormalize, normalize, schema } from "normalizr";
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import { defer } from "metabase/lib/promise";
 
@@ -32,6 +32,8 @@ import {
   getParameterValues,
   getLoadingDashCards,
   getCanShowAutoApplyFiltersToast,
+  getDashboardById,
+  getDashCardById,
 } from "../selectors";
 
 import {
@@ -131,11 +133,28 @@ const loadingComplete = createThunkAction(
 
 export const fetchDashboard = createThunkAction(
   FETCH_DASHBOARD,
-  function (dashId, queryParams, preserveParameters) {
+  function (
+    dashId,
+    queryParams,
+    { preserveParameters = false, preserveDashboard = false } = {},
+  ) {
     let result;
     return async function (dispatch, getState) {
       const dashboardType = getDashboardType(dashId);
-      if (dashboardType === "public") {
+
+      if (preserveDashboard) {
+        const entity = getDashboardById(getState(), dashId);
+        const entities = {
+          dashboard: { [dashId]: entity },
+          dashcard: Object.fromEntries(
+            entity.ordered_cards.map(id => [
+              id,
+              getDashCardById(getState(), id),
+            ]),
+          ),
+        };
+        result = denormalize(dashId, dashboard, entities);
+      } else if (dashboardType === "public") {
         result = await PublicApi.dashboard({ uuid: dashId });
         result = {
           ...result,

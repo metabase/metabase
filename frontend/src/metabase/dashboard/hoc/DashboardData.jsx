@@ -56,7 +56,9 @@ export default ComposedComponent =>
         initialize({ clear: !isNavigatingBackToDashboard });
 
         try {
-          await fetchDashboard(dashboardId, location && location.query);
+          await fetchDashboard(dashboardId, location && location.query, {
+            preserveDashboard: isNavigatingBackToDashboard,
+          });
           await fetchDashboardCardData({
             reload: false,
             clear: !isNavigatingBackToDashboard,
