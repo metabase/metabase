@@ -9,11 +9,12 @@ import type {
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Field from "metabase-lib/metadata/Field";
 import Metadata from "metabase-lib/metadata/Metadata";
+import { isSameField } from "metabase-lib/queries/utils";
 
 export type ObjectDetailDrillType = "pk" | "fk" | "zoom" | "dashboard";
 
 export function objectDetailDrill({ question, clicked }: DrillProps) {
-  if (!clicked || !clicked.column || !clicked.value) {
+  if (!clicked || !clicked.column) {
     return null;
   }
 
@@ -77,7 +78,7 @@ function objectDetailDrillType({
 }: {
   question: Question;
   column: DatasetColumn;
-  value: RowValue;
+  value: RowValue | undefined;
   extraData: ClickObject["extraData"];
   data?: ClickObject["data"];
 }): {
@@ -87,29 +88,29 @@ function objectDetailDrillType({
 } | null {
   const query = question.query() as StructuredQuery;
 
-  if (column == null || value === undefined || !query.isEditable()) {
+  if (column == null || !query.isEditable()) {
     return null;
   }
 
-  if (isPK(column) && hasManyPKColumns(question)) {
+  if (isPK(column) && hasManyPKColumns(question) && value != null) {
     return {
       type: "pk",
       column,
       objectId: value,
     };
-  } else if (isPK(column) && extraData?.dashboard != null) {
+  } else if (isPK(column) && extraData?.dashboard != null && value != null) {
     return {
       type: "dashboard",
       column,
       objectId: value,
     };
-  } else if (isPK(column)) {
+  } else if (isPK(column) && value != null) {
     return {
       type: "zoom",
       column,
       objectId: value,
     };
-  } else if (isFK(column)) {
+  } else if (isFK(column) && value != null) {
     return {
       type: "fk",
       column,
@@ -118,10 +119,12 @@ function objectDetailDrillType({
   } else {
     const isAggregated = query.aggregations().length > 0;
     if (!isAggregated) {
-      const pkDimension = data?.find(({ col }) => isPK(col));
+      const pkColumn = data?.find(
+        ({ col: item }) => isPK(item) && !isSameField(item, column),
+      );
 
-      if (pkDimension) {
-        const { col: column, value } = pkDimension;
+      if (pkColumn) {
+        const { col: column, value } = pkColumn;
 
         return objectDetailDrillType({ question, column, value, extraData });
       }
