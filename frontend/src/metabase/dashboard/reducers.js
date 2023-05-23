@@ -1,5 +1,6 @@
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
 import reduceReducers from "reduce-reducers";
+import _ from "underscore";
 
 import { handleActions, combineReducers } from "metabase/lib/redux";
 import Dashboards from "metabase/entities/dashboards";
@@ -230,6 +231,12 @@ const dashcards = handleActions(
       ...state,
       [dashcardId]: { ...state[dashcardId], justAdded: false },
     }),
+    [Questions.actionTypes.UPDATE]: (state, { payload: { object } }) =>
+      _.mapObject(state, dashcard =>
+        dashcard.card?.id === object?.id
+          ? assocIn(dashcard, ["card"], object)
+          : dashcard,
+      ),
   },
   INITIAL_DASHBOARD_STATE.dashcards,
 );
@@ -266,7 +273,8 @@ const dashcardData = handleActions(
       next: (state, { payload: { cardId, dashcardId } }) =>
         assocIn(state, [dashcardId, cardId]),
     },
-    [Questions.actionTypes.UPDATE]: () => ({}),
+    [Questions.actionTypes.UPDATE]: (state, { payload: { object } }) =>
+      _.mapObject(state, data => dissoc(data, object.id)),
   },
   INITIAL_DASHBOARD_STATE.dashcardData,
 );

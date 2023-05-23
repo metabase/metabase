@@ -759,8 +759,8 @@ describe("scenarios > dashboard", () => {
 
     queryBuilderHeader().within(() => {
       cy.findByLabelText("Back to Orders in a dashboard").click();
-      cy.wait("@dashboard");
       cy.wait("@dashcardQuery");
+      cy.get("@dashboard.all").should("have.length", 1);
     });
 
     getDashboardCard().within(() => {
