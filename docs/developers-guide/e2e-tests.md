@@ -140,8 +140,7 @@ Please follow these steps:
 ### Obtain the artifact ID
 - Go to the latest successful commit on `master` branch
 - Click on the green checkmark next to that commit
-- Choose either "E2E Tests / build (ee)" job or "
-Build + Docker Uberjar / Build MB ee" job and click on the _Details_ link next to it (it will take you to that job's summary page within a related workflow)
+- Choose either "E2E Tests / build (ee)" job or "Build + Docker Uberjar / Build MB ee" job and click on the _Details_ link next to it (it will take you to that job's summary page within a related workflow)
 - Click on the workflow _Summary_
 - Scroll to the bottom of the page where you'll find the _Artifacts_ section that contains `metabase-oss-uberjar` and `metabase-ee-uberjar` artifacts
 - Right click on any of the two (but prefer EE one, unless you specifically need to test OSS changes) and copy its link
