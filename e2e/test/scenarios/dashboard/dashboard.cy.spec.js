@@ -707,12 +707,12 @@ describe("scenarios > dashboard", () => {
 
     queryBuilderHeader().within(() => {
       cy.findByLabelText("Back to Orders in a dashboard").click();
-      cy.wait("@dashboard");
     });
 
     getDashboardCard().within(() => {
       // cached data
       cy.findByText("101.04").should("be.visible");
+      cy.get("@dashboard.all").should("have.length", 1);
       cy.get("@dashcardQuery.all").should("have.length", 1);
     });
 
