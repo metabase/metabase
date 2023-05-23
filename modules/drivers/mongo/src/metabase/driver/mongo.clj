@@ -183,9 +183,14 @@
 (defmethod driver/dbms-version :mongo
   [_ database]
   (with-mongo-connection [^com.mongodb.DB conn database]
-    (let [build-info (mg/command conn {:buildInfo 1})]
+    (let [build-info (mg/command conn {:buildInfo 1})
+          version-array (get build-info "versionArray")
+          sanitized-version-array (into [] (take-while nat-int?) version-array)]
+      (when (not= (take 3 version-array) (take 3 sanitized-version-array))
+        (log/warnf "sanitizing versionArray %s results in %s, losing information"
+                   version-array sanitized-version-array))
       {:version (get build-info "version")
-       :semantic-version (get build-info "versionArray")})))
+       :semantic-version sanitized-version-array})))
 
 (defmethod driver/describe-database :mongo
   [_ database]

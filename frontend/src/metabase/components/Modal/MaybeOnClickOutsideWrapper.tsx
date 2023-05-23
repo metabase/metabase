@@ -3,13 +3,13 @@ import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
 export function MaybeOnClickOutsideWrapper({
   children,
-  noOnClickOutsideWrapper = false,
+  closeOnClickOutside = false,
   ...props
 }: {
   children: React.ReactNode;
-  noOnClickOutsideWrapper?: boolean;
+  closeOnClickOutside?: boolean;
 } & React.ComponentProps<typeof OnClickOutsideWrapper>) {
-  return noOnClickOutsideWrapper ? (
+  return closeOnClickOutside ? (
     <>{children}</>
   ) : (
     <OnClickOutsideWrapper {...props}>{children}</OnClickOutsideWrapper>

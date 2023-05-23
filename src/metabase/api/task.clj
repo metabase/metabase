@@ -26,8 +26,7 @@
   [id]
   (api/check-404 (api/read-check TaskHistory id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/info"
+(api/defendpoint GET "/info"
   "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
   []
   (validation/check-has-application-permission :monitoring)

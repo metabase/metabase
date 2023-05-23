@@ -1,7 +1,12 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { Card, Collection, Dashboard } from "metabase-types/api";
+import {
+  Card,
+  Collection,
+  CollectionItem,
+  Dashboard,
+} from "metabase-types/api";
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaName,
@@ -60,6 +65,30 @@ export function setupCollectionVirtualSchemaEndpoints(
   fetchMock.get(urls.models, modelVirtualTables);
 }
 
+export function setupCollectionItemsEndpoint(
+  collection: Collection,
+  collectionItems: CollectionItem[] = [],
+) {
+  fetchMock.get(`path:/api/collection/${collection.id}/items`, uri => {
+    const url = new URL(uri);
+    const models = url.searchParams.getAll("models");
+    const matchedItems = collectionItems.filter(({ model }) =>
+      models.includes(model),
+    );
+
+    const limit = Number(url.searchParams.get("limit")) || matchedItems.length;
+    const offset = Number(url.searchParams.get("offset")) || 0;
+
+    return {
+      data: matchedItems.slice(offset, offset + limit),
+      total: matchedItems.length,
+      models,
+      limit,
+      offset,
+    };
+  });
+}
+
 export function setupUnauthorizedCollectionEndpoints(collection: Collection) {
   fetchMock.get(`path:/api/collection/${collection.id}`, {
     status: 403,
@@ -110,7 +139,7 @@ function setupCollectionWithErrorById({
   });
 }
 
-export function setupCollectionItemsEndpoint(dashboards: Dashboard[]) {
+export function setupDashboardCollectionItemsEndpoint(dashboards: Dashboard[]) {
   fetchMock.get(/api\/collection\/(\d+|root)\/items/, url => {
     const collectionIdParam = url.split("/")[5];
     const collectionId =

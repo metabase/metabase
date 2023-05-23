@@ -11,7 +11,7 @@ export type BaseModalProps = {
   backdropClassName?: string;
   enableMouseEvents?: boolean;
   enableTransition?: boolean;
-  noOnClickOutsideWrapper?: boolean;
+  closeOnClickOutside?: boolean;
   noBackdrop?: boolean;
   noCloseOnBackdrop?: boolean;
   form?: unknown;

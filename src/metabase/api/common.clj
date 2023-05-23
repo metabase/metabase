@@ -352,10 +352,8 @@
   "Define an API function.
    This automatically does several things:
 
-   -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
-      `Integer/parseInt`
-
-   -  converts `route` from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
+   -  converts `route` from a simple form like `\"/:id\"` to a regex-typed one like `[\"/:id\" :id #\"[0-9]+\"]` based
+      on its malli schema
 
    -  sequentially applies specified annotation functions on args to validate them.
 

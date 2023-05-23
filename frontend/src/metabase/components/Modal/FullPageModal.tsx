@@ -95,7 +95,7 @@ export class FullPageModal extends Component<
               this modal might be seen as clicks outside another popover. */}
               <MaybeOnClickOutsideWrapper
                 handleDismissal={this.handleDismissal}
-                noOnClickOutsideWrapper={this.props.noOnClickOutsideWrapper}
+                closeOnClickOutside={this.props.closeOnClickOutside}
               >
                 <div
                   className="full-height relative scroll-y"

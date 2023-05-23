@@ -61,7 +61,7 @@ export class WindowModal extends Component<WindowModalProps> {
       <MaybeOnClickOutsideWrapper
         backdropElement={this._modalElement}
         handleDismissal={this.handleDismissal}
-        noOnClickOutsideWrapper={this.props.noOnClickOutsideWrapper}
+        closeOnClickOutside={this.props.closeOnClickOutside}
       >
         <div
           className={cx(className, "relative bg-white rounded")}

@@ -193,5 +193,6 @@ function openRevisionHistory() {
 
   rightSidebar().within(() => {
     cy.findByText("History");
+    cy.findByTestId("dashboard-history-list").should("be.visible");
   });
 }

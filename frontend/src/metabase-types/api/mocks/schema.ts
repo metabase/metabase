@@ -41,6 +41,7 @@ export const createMockNormalizedTable = ({
   db,
   schema,
   fields,
+  fks,
   segments,
   metrics,
   ...opts
@@ -49,6 +50,7 @@ export const createMockNormalizedTable = ({
   db,
   schema,
   fields,
+  fks,
   segments,
   metrics,
 });
