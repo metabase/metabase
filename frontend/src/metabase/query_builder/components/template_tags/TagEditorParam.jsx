@@ -74,9 +74,16 @@ export class TagEditorParam extends Component {
     const { tag, setTemplateTag, setParameterValue } = this.props;
 
     if (tag["widget-type"] !== widgetType) {
-      const newTag = { ...this.props.tag, "widget-type": widgetType };
-      const options = getDefaultParameterOptions(newTag);
-      setTemplateTag({ ...newTag, options });
+      const newTag = {
+        ...tag,
+        "widget-type": widgetType,
+      };
+
+      setTemplateTag({
+        ...newTag,
+        options: getDefaultParameterOptions(newTag),
+      });
+
       setParameterValue(tag.id, null);
     }
   }
@@ -126,10 +133,16 @@ export class TagEditorParam extends Component {
       if (!field) {
         return;
       }
-      setTemplateTag({
+
+      const newTag = {
         ...tag,
         dimension,
         "widget-type": getDefaultParameterWidgetType(tag, field),
+      };
+
+      setTemplateTag({
+        ...newTag,
+        options: getDefaultParameterOptions(newTag),
       });
     }
   }
