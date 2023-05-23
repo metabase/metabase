@@ -99,7 +99,7 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --spec '${{ github.event.inputs.spec }}' \
-          --env burn=${{ github.event.inputs.burn_in }}
+          --env burn=${{ github.event.inputs.burn_in }} \
           --config-file e2e/support/cypress-stress-test.config.js
         env:
           TERM: xterm
