@@ -40,6 +40,11 @@
   (let [remove-refresh-job (requiring-resolve 'metabase.task.index-values/remove-indexing-job)]
     (remove-refresh-job model-index)))
 
+(def max-indexed-values
+  "Maximum number of values we will index. Actually take one more than this to test if there are more than the
+  threshold."
+  5000)
+
 ;;;; indexing functions
 
 (defn valid-tuples?
@@ -55,8 +60,8 @@
                      :query    {:source-table (format "card__%d" (:id model))
                                 :fields       [(:pk_ref model-index) (:value_ref model-index)]
                                 :order-by     [[:desc (:value_ref model-index)]]
-                                :limit        5001
-                                :breakout   [(:pk_ref model-index) (:value_ref model-index)]}})
+                                :limit        (inc max-indexed-values)
+                                :breakout     [(:pk_ref model-index) (:value_ref model-index)]}})
                    :data :rows (filter valid-tuples?))]
          (catch Exception e
            (log/warn (trs "Error fetching indexed values for model {0}" (:id model)) e)
@@ -127,7 +132,9 @@
           (t2/update! ModelIndex (:id model-index)
                       {:generation      (inc (:generation model-index))
                        :state_change_at :%now
-                       :state           (if (> (count index-values) 5000) "overflow" "indexed")}))
+                       :state           (if (> (count index-values) max-indexed-values)
+                                          "overflow"
+                                          "indexed")}))
         (catch Exception e
           (t2/update! ModelIndex (:id model-index)
                       {:state           "error"
