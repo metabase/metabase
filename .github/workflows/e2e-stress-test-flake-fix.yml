@@ -11,8 +11,8 @@ on:
         description: 'Relative path of the target spec'
         type: string
         required: true
-      burn_rate:
-        description: 'Burn through the test how many times? (e.g. 20)'
+      burn_in:
+        description: 'Number of times to run the test (e.g. 20)'
         type: string
         required: true
 
@@ -95,11 +95,11 @@ jobs:
         run: |
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
-      - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_rate }} times
+      - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         run: |
           yarn run test-cypress-run \
           --spec '${{ github.event.inputs.spec }}' \
-          --env burn=${{ github.event.inputs.burn_rate }}
+          --env burn=${{ github.event.inputs.burn_in }}
           --config-file e2e/support/cypress-stress-test.config.js
         env:
           TERM: xterm

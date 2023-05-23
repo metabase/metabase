@@ -155,5 +155,5 @@ Build + Docker Uberjar / Build MB ee" job and click on the _Details_ link next t
 1. Choose your own branch in the first field "Use workflow from" (this part is crucial!)
 2. Provide previously obtained artifact id to the related field
 3. Copy and paste the relative path of the spec you want to test (e.g. e2e/test/scenarios/onboarding/urls.cy.spec.js) - you don't have to wrap it in quotes
-4. Set the desired "Burn rate", which tells Cypress how many times to run the same test
+4. Set the desired number of times to run the test
 5. Click the green "Run workflow" button and wait for the results
