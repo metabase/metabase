@@ -4,9 +4,7 @@
    [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
-   [metabase.db.connection :as mdb.connection]
    [metabase.events.view-log :as view-log]
-   [metabase.models.activity :refer [Activity]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
@@ -15,8 +13,7 @@
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2]))
+   [toucan.hydrate :refer [hydrate]]))
 
 (defn- models-query
   [model ids]

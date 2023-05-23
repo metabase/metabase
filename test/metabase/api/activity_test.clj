@@ -12,6 +12,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan.db :as db]))
 
 (set! *warn-on-reflection* true)

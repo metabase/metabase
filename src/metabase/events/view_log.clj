@@ -4,6 +4,7 @@
    [java-time :as t]
    [metabase.api.common :as api]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.view-log :refer [ViewLog]]
@@ -74,7 +75,7 @@
                                 [:= :view_log.model (h2x/literal "card")]
                                 [:= :view_log.model_id :report_card.id]]]}
         views     {:union-all [qe vl]}]
-    (db/query
+    (mdb.query/query
      {:select   [[[:max :timestamp] :timestamp]
                  :model
                  :model_id]
