@@ -32,9 +32,6 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should allow joins on tables (metabase#11452, metabase#12221, metabase#13468, metabase#15570)", () => {
-    // Pluralization isn't reliable so we have to guard against it
-    const joinedTable = new RegExp(/Reviews? - Products?/);
-
     openOrdersTable({ mode: "notebook" });
 
     // join to Reviews on orders.product_id = reviews.product_id
@@ -57,7 +54,13 @@ describe("scenarios > question > joined questions", () => {
     filter();
 
     cy.get(".Modal").within(() => {
+      // Temporal compat between MLv1 and MLv2
+      // MLv2 does a better job naming joined tables,
+      // but simple mode's summarization sidebar still uses MLv1
+      // Once it's ported, we should just look for "Review"
+      const joinedTable = new RegExp(/Reviews? - Products?/);
       cy.findByText(joinedTable).click();
+
       cy.findByTestId("filter-field-Rating").contains("2").click();
       cy.button("Apply Filters").click();
       cy.wait("@dataset");
@@ -72,12 +75,12 @@ describe("scenarios > question > joined questions", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Average of ...").click();
-    popover().contains(joinedTable).click();
+    popover().contains("Review").click();
     popover().contains("Rating").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
-    popover().contains(joinedTable).click();
+    popover().contains("Review").click();
     popover().contains("Reviewer").click();
 
     visualize();
