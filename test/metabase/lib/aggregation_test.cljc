@@ -225,7 +225,7 @@
       (testing (str \newline (pr-str clause))
         (is (= (condp = (first arg)
                  :field :metabase.lib.schema.expression/type.unknown
-                 :type/*)
+                 :type/Number)
                (lib.schema.expression/type-of clause)))
         (is (= (condp = (first arg)
                  :field :type/BigInteger
