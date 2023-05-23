@@ -59,6 +59,7 @@
                      :type     :query
                      :query    {:source-table (format "card__%d" (:id model))
                                 :fields       [(:pk_ref model-index) (:value_ref model-index)]
+                                :breakout     [(:pk_ref model-index) (:value_ref model-index)]
                                 :order-by     [[:desc (:value_ref model-index)]]
                                 :limit        (inc max-indexed-values)}})
                    :data :rows (filter valid-tuples?))]
@@ -95,9 +96,9 @@
                                     values)
                :on-conflict   [:model_index_id :model_pk]
                :do-update-set {:generation new-generation}})
-   (t2/delete! ModelIndexValue
-               :model_index_id (:id model-index)
-               :generation     [:< new-generation])))
+    (t2/delete! ModelIndexValue
+                :model_index_id (:id model-index)
+                :generation     [:< new-generation])))
 
 (defmethod add-values* :mysql
   [model-index values]
