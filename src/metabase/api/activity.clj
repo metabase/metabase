@@ -1,13 +1,11 @@
 (ns metabase.api.activity
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [compojure.core :refer [GET]]
    [java-time :as t]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.models.activity :refer [Activity]]
+   [metabase.events.view-log :as view-log]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
@@ -18,81 +16,6 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
-
-(defn- dashcard-activity? [activity]
-  (#{:dashboard-add-cards :dashboard-remove-cards}
-   (:topic activity)))
-
-(defn- activities->referenced-objects
-  "Get a map of model name to a set of referenced IDs in these `activities`.
-
-     (activities->referenced-objects <some-activities>) -> {\"dashboard\" #{41 42 43}, \"card\" #{100 101}, ...}"
-  [activities]
-  (apply merge-with set/union (for [{:keys [model model_id], :as activity} activities
-                                    :when                                  model]
-                                (merge {model #{model_id}}
-                                       ;; pull the referenced card IDs out of the dashcards for dashboard activites
-                                       ;; that involve adding/removing cards
-                                       (when (dashcard-activity? activity)
-                                         {"card" (set (for [dashcard (get-in activity [:details :dashcards])]
-                                                        (:card_id dashcard)))})))))
-
-(defn- referenced-objects->existing-objects
-  "Given a map of existing objects like the one returned by `activities->referenced-objects`, return a similar map of
-   models to IDs of objects *that exist*.
-
-     (referenced-objects->existing-objects {\"dashboard\" #{41 42 43}, \"card\" #{100 101}, ...})
-     ;; -> {\"dashboard\" #{41 43}, \"card\" #{101}, ...}"
-  [referenced-objects]
-  (merge
-   (when-let [card-ids (get referenced-objects "card")]
-     (let [id->dataset?                       (db/select-id->field :dataset Card
-                                                                   :id [:in card-ids])
-           {dataset-ids true card-ids' false} (group-by (comp boolean id->dataset?)
-                                                        ;; only existing ids go back
-                                                        (keys id->dataset?))]
-       (cond-> {}
-         (seq dataset-ids) (assoc "dataset" (set dataset-ids))
-         (seq card-ids')   (assoc "card" (set card-ids')))))
-   (into {} (for [[model ids] (dissoc referenced-objects "card")
-                  :when       (seq ids)]
-              [model (case model
-                       "dashboard" (db/select-ids 'Dashboard, :id [:in ids])
-                       "metric"    (db/select-ids 'Metric,    :id [:in ids], :archived false)
-                       "pulse"     (db/select-ids 'Pulse,     :id [:in ids])
-                       "segment"   (db/select-ids 'Segment,   :id [:in ids], :archived false)
-                       nil)])))) ; don't care about other models
-
-(defn- add-model-exists-info
-  "Add `:model_exists` keys to `activities`, and `:exists` keys to nested dashcards where appropriate."
-  [activities]
-  (let [existing-objects (-> activities activities->referenced-objects referenced-objects->existing-objects)
-        model-exists? (fn [model id] (contains? (get existing-objects model) id))
-        existing-dataset? (partial model-exists? "dataset")
-        existing-card? (partial model-exists? "card")]
-    (for [{:keys [model_id], :as activity} activities]
-      (let [model (if (and (= (:model activity) "card")
-                           (existing-dataset? (:model_id activity)))
-                    "dataset"
-                    (:model activity))]
-        (cond-> (assoc activity
-                       :model_exists (model-exists? model model_id)
-                       :model model)
-          (dashcard-activity? activity)
-          (update-in [:details :dashcards]
-                     (fn [dashcards]
-                       (for [dashcard dashcards]
-                         (assoc dashcard :exists
-                                (or (existing-dataset? (:card_id dashcard))
-                                    (existing-card? (:card_id dashcard))))))))))))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
-  "Get recent activity."
-  []
-  (filter mi/can-read? (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
-                           (hydrate :user :table :database)
-                           add-model-exists-info)))
 
 (defn- models-query
   [model ids]
@@ -320,7 +243,7 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
-  finds anything archived, deleted, etc it can hopefully still get 5."
+  finds anything archived, deleted, etc it can usually still get 5."
   []
   ;; we can do a weighted score which incorporates:
   ;; total count -> higher = higher score
