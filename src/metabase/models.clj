@@ -45,7 +45,12 @@
    [metabase.models.timeline-event :as timeline-event]
    [metabase.models.user :as user]
    [metabase.models.view-log :as view-log]
-   [potemkin :as p]))
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.util :as u]
+   [methodical.core :as methodical]
+   [potemkin :as p]
+   [toucan2.model :as t2.model]))
 
 ;; Fool the linter
 (comment action/keep-me
@@ -138,3 +143,33 @@
  [timeline-event TimelineEvent]
  [user User]
  [view-log ViewLog])
+
+(defenterprise resolve-enterprise-model
+  "TODO"
+  metabase-enterprise.models
+  [x]
+  x)
+
+(methodical/defmethod t2.model/resolve-model :before :default
+  "Ensure the namespace for given model is loaded.
+  This is a safety mechanism as we moving to toucan2 and we don't need to require the model namespaces in order to use it."
+  [x]
+  (when (and (keyword? x)
+             (= (namespace x) "model"))
+    (try
+      (let [model-namespace (str "metabase.models." (u/->kebab-case-en (name x)))]
+        ;; use `classloader/require` which is thread-safe and plays nice with our plugins system
+        (classloader/require model-namespace))
+      (catch clojure.lang.ExceptionInfo _
+        (resolve-enterprise-model x))))
+  x)
+
+(methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
+  "Handle models deriving from :metabase/model."
+  [symb]
+  (or
+    (when (simple-symbol? symb)
+      (let [metabase-models-keyword (keyword "model" (name symb))]
+        (when (isa? metabase-models-keyword :metabase/model)
+          metabase-models-keyword)))
+    (next-method symb)))

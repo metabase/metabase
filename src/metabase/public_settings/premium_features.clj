@@ -248,6 +248,10 @@
     (and config/ee-available?
          (has-feature? feature))))
 
+(def premium-features
+  "Set of defined premium feature keywords."
+  (atom #{}))
+
 (defmacro ^:private define-premium-feature
   "Convenience for generating a [[metabase.models.setting/defsetting]] form for a premium token feature. (The Settings
   definitions for Premium token features all look more or less the same, so this prevents a lot of code duplication.)"
@@ -257,9 +261,11 @@
                         :setter     :none
                         :getter     `(default-premium-feature-getter ~(some-> feature name))}
                        options)]
-    `(defsetting ~setting-name
-       ~docstring
-       ~@(mapcat identity options))))
+    `(do
+      (swap! premium-features conj ~feature)
+      (defsetting ~setting-name
+        ~docstring
+        ~@(mapcat identity options)))))
 
 (define-premium-feature hide-embed-branding?
   "Logo Removal and Full App Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
@@ -323,7 +329,7 @@
 ;; 'enhancements'.
 (define-premium-feature ^:deprecated enable-enhancements?
   "Should we various other enhancements, e.g. NativeQuerySnippet collection permissions?"
-  nil
+  :enhancements
   :getter #(and config/ee-available? (has-any-features?)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
