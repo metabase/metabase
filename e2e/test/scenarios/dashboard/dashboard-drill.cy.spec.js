@@ -996,7 +996,6 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByLabelText(buttonLabel).should("be.visible");
     visualize();
     cy.findByLabelText(buttonLabel).click();
-    cy.wait("@dashboard");
     cy.findByTestId("dashboard-header")
       .findByText(dashboardName)
       .should("be.visible");
