@@ -984,8 +984,6 @@ describe("scenarios > dashboard > dashboard drill", () => {
   it("should display a back button to the dashboard when navigating to a question", () => {
     const dashboardName = "Orders in a dashboard";
     const buttonLabel = `Back to ${dashboardName}`;
-    cy.intercept("/api/dashboard/*").as("dashboard");
-    cy.intercept("/api/card/*/query").as("cardQuery");
 
     visitDashboard(1);
     cy.wait("@dashboard");
