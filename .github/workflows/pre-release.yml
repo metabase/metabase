@@ -7,7 +7,7 @@ on:
         description: 'A full-length commit SHA-1 hash'
         required: true
       version:
-        description: 'Intended version for the release'
+        description: 'Intended version (e.g. v0.46.3)'
         required: true
 
 env:
@@ -21,7 +21,13 @@ jobs:
     steps:
     - name: Ensure that the intended version (${{ github.event.inputs.version }}) was never released before
       run: |
-        echo "Checking if ${{ github.event.inputs.version }} conflicts with a past release..."
+        if [[ "${{ github.event.inputs.version }}" = v* ]]; then
+          echo "Checking if ${{ github.event.inputs.version }} conflicts with a past release..."
+        else
+          echo "ERROR: the intended version must start with 'v', e.g. 'v0.46.3."
+          echo "ABORT!"
+          exit -1
+        fi
         CANONICAL_REFS=https://github.com/metabase/metabase/archive/refs
         URL=${CANONICAL_REFS}/tags/${{ github.event.inputs.version }}.zip
         HTTP_CODE=$(curl -s -L -o /dev/null --head -w "%{HTTP_CODE}" ${URL})
