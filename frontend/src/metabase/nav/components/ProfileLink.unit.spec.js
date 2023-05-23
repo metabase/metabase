@@ -14,7 +14,6 @@ import ProfileLink from "metabase/nav/components/ProfileLink";
 
 const REGULAR_ITEMS = [
   "Account settings",
-  "Activity",
   "Help",
   "About Metabase",
   "Sign out",
