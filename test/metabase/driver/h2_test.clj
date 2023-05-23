@@ -4,15 +4,14 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
+   [metabase.core :as mbc]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models :refer [Database]]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
-   [metabase.core :as mbc]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -25,6 +24,7 @@
 
 (use-fixtures :each (fn [thunk]
                       ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these tests.
+                      #_{:clj-kondo/ignore [:unresolved-var]}
                       (binding [hx/*honey-sql-version* 2]
                         (thunk))))
 
@@ -289,12 +289,11 @@
         (is (= #{"PUBLIC"}
                (driver/syncable-schemas driver/*driver* (mt/id))))))))
 
-(def ^:private audit-db-expected-id 13371337)
-
 (deftest syncable-audit-db-test
   (mt/test-driver :h2
     (when config/ee-available?
-      (let [original-audit-db (t2/select-one 'Database :is_audit true)]
+      (let [audit-db-expected-id 13371337
+            original-audit-db    (t2/select-one 'Database :is_audit true)]
         (is (not= ::mbc/noop (mbc/ensure-audit-db-installed!))
             "Make sure we call the right ensure-audit-db-installed! impl")
         (try
