@@ -138,13 +138,14 @@ export const fetchDashboard = createThunkAction(
     queryParams,
     { preserveParameters = false, preserveDashboard = false } = {},
   ) {
+    let entities;
     let result;
     return async function (dispatch, getState) {
       const dashboardType = getDashboardType(dashId);
       const loadedDashboard = getDashboardById(getState(), dashId);
 
       if (preserveDashboard && loadedDashboard) {
-        const entities = {
+        entities = {
           dashboard: { [dashId]: loadedDashboard },
           dashcard: Object.fromEntries(
             loadedDashboard.ordered_cards.map(id => [
@@ -230,8 +231,10 @@ export const fetchDashboard = createThunkAction(
             },
           );
 
+      entities = entities ?? normalize(result, dashboard).entities;
+
       return {
-        ...normalize(result, dashboard), // includes `result` and `entities`
+        entities,
         dashboard: result,
         dashboardId: dashId,
         parameterValues: parameterValuesById,
