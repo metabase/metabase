@@ -699,8 +699,7 @@ describe("scenarios > dashboard", () => {
     cy.wait("@dashcardQuery");
 
     getDashboardCard().within(() => {
-      // table data
-      cy.findByText("101.04").should("be.visible");
+      cy.findByText("101.04").should("be.visible"); // table data
       cy.findByText("Orders").click();
       cy.wait("@cardQuery");
     });
@@ -710,8 +709,7 @@ describe("scenarios > dashboard", () => {
     });
 
     getDashboardCard().within(() => {
-      // cached data
-      cy.findByText("101.04").should("be.visible");
+      cy.findByText("101.04").should("be.visible"); // cached data
       cy.get("@dashboard.all").should("have.length", 1);
       cy.get("@dashcardQuery.all").should("have.length", 1);
     });
@@ -734,13 +732,14 @@ describe("scenarios > dashboard", () => {
     cy.wait("@dashcardQuery");
 
     getDashboardCard().within(() => {
-      // table data
-      cy.findByText("101.04").should("be.visible");
+      cy.findByText("101.04").should("be.visible"); // table data
       cy.findByText("Orders").click();
       cy.wait("@cardQuery");
     });
 
     queryBuilderHeader().within(() => {
+      cy.findByDisplayValue("Orders").clear().type("Orders question").blur();
+      cy.wait("@updateCard");
       cy.button("Summarize").click();
     });
 
@@ -764,8 +763,8 @@ describe("scenarios > dashboard", () => {
     });
 
     getDashboardCard().within(() => {
-      // aggregated data
-      cy.findByText("140 – 160").should("be.visible");
+      cy.findByText("Orders question").should("be.visible");
+      cy.findByText("Count").should("be.visible"); // aggregated data
     });
   });
 });
