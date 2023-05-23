@@ -4,9 +4,16 @@ import { createMockModelIndex } from "metabase-types/api/mocks";
 
 export function setupModelIndexEndpoints(
   modelId: CardId,
-  indexes: ModelIndex[],
+  indexes: ModelIndex[] = [],
 ) {
-  fetchMock.get(`path:/api/model-index?model-id=${modelId}`, indexes);
+  fetchMock.get(
+    {
+      url: `path:/api/model-index`,
+      query: { model_id: modelId },
+      overwriteRoutes: false,
+    },
+    indexes,
+  );
 
   indexes.forEach(index => {
     fetchMock.delete(`path:/api/model-index/${index.id}`, 200);
