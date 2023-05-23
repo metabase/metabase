@@ -5,7 +5,7 @@ import SandboxedPortal from "metabase/components/SandboxedPortal";
 import {
   BaseModalProps,
   getModalContent,
-} from "metabase/components/Modal/common";
+} from "metabase/components/Modal/utils";
 import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
 
 export type FullPageModalProps = BaseModalProps & {

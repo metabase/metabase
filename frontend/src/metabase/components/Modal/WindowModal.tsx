@@ -6,7 +6,7 @@ import {
   ModalSize,
   modalSizes,
   BaseModalProps,
-} from "metabase/components/Modal/common";
+} from "metabase/components/Modal/utils";
 
 import SandboxedPortal from "metabase/components/SandboxedPortal";
 import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
