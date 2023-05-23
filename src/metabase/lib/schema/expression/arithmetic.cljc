@@ -39,8 +39,14 @@
   looks ok."
   [[_tag _opts & exprs]]
   (let [{non-intervals false, intervals true} (group-by #(isa? (expression/type-of %) :type/Interval) exprs)]
-    (if-not (= (count non-intervals) 1)
-      "Clause must have exactly one non-interval expression"
+    (cond
+      (not= (count non-intervals) 1)
+      "Temporal arithmetic expression must contain exactly one non-interval value"
+
+      (< (count intervals) 1)
+      "Temporal arithmetic expression must contain at least one :interval"
+
+      :else
       (let [expr-type (expression/type-of (first non-intervals))]
         (some (fn [[_tag _opts _n unit :as interval]]
                 (when-not (valid-interval-for-type? interval expr-type)
@@ -55,11 +61,9 @@
    [:cat
     [:= tag]
     [:schema [:ref ::common/options]]
-    [:repeat
-     {:min 2}
-     [:or
-      [:schema [:ref ::expression/temporal]]
-      [:schema [:ref :mbql.clause/interval]]]]]
+    [:repeat [:schema [:ref :mbql.clause/interval]]]
+    [:schema [:ref ::expression/temporal]]
+    [:repeat [:schema [:ref :mbql.clause/interval]]]]
    [:fn
     {:error/fn (fn [{:keys [value]} _]
                  (str "Invalid " tag " clause: " (validate-plus-minus-temporal-arithmetic-expression value)))}

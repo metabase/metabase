@@ -115,7 +115,7 @@
                 [:field {:temporal-unit :default, :lib/uuid "00000000-0000-0000-0000-000000000002"} 1]
                 [:interval {:lib/uuid "00000000-0000-0000-0000-000000000003"} 3 :day]])))))
   (testing "Should error if there are no non-interval clauses"
-    (is (= ["Invalid :+ clause: Clause must have exactly one non-interval expression"]
+    (is (= ["Invalid :+ clause: Temporal arithmetic expression must contain exactly one non-interval value"]
            (me/humanize
             (mc/explain
              :mbql.clause/+
@@ -123,8 +123,17 @@
               {:lib/uuid "00000000-0000-0000-0000-000000000000"}
               [:interval {:lib/uuid "00000000-0000-0000-0000-000000000001"} 3 :day]
               [:interval {:lib/uuid "00000000-0000-0000-0000-000000000002"} 3 :day]])))))
+  (testing "Should error if there are no intervals"
+    (is (= ["Invalid :+ clause: Temporal arithmetic expression must contain at least one :interval"]
+           (me/humanize
+            (mc/explain
+             :mbql.clause/+
+             [:+
+              {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+              [:field {:temporal-unit :default, :lib/uuid "00000000-0000-0000-0000-000000000001"} 1]])))))
   (testing "Should error if there is more than one non-interval clause"
-    (is (= ["Invalid :+ clause: Clause must have exactly one non-interval expression"]
+    ;; this error message is not super useful =(
+    (is (= [nil nil nil ["expression returning a number"] ["Valid :interval clause" "input remaining"]]
            (me/humanize
             (mc/explain
              :mbql.clause/+
