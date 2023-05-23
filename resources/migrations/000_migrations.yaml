@@ -14739,28 +14739,12 @@ databaseChangeLog:
       changes:
         - addUniqueConstraint:
             tableName: model_index_value
-            constraintName: unique_model_index_value_index_id_model_pk
-            columnNames: model_pk, model_index_id
+            constraintName: unique_model_index_value_model_index_id_model_pk
+            columnNames: model_index_id, model_pk
       rollback:
         - dropUniqueConstraint:
             tableName: model_index_value
-            constraintName: unique_model_index_value_index_id_model_pk
-
-  - changeSet:
-      id: v47.00-022
-      author: dpsutton
-      comment: Added 0.47.0 -- model_index_value index
-      changes:
-        - createIndex:
-            tableName: model_index_value
-            columns:
-              - column:
-                  name: model_index_id
-            indexName: idx_model_index_value_model_index_id
-      rollback:
-        - dropIndex:
-            tableName: model_index_value
-            indexName: idx_model_index_value_model_index_id
+            constraintName: unique_model_index_value_model_index_id_model_pk
 
   - changeSet:
       id: v47.00-023
