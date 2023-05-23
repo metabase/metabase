@@ -5,7 +5,7 @@ import { handleActions, combineReducers } from "metabase/lib/redux";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 
-import { NAVIGATE_TO_DASHBOARD } from "metabase/query_builder/actions";
+import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 
 import {
   INITIALIZE,
@@ -244,12 +244,12 @@ const isAddParameterPopoverOpen = handleActions(
   INITIAL_DASHBOARD_STATE.isAddParameterPopoverOpen,
 );
 
-const isNavigatingToDashboard = handleActions(
+const isNavigatingBackToDashboard = handleActions(
   {
-    [NAVIGATE_TO_DASHBOARD]: () => true,
+    [NAVIGATE_BACK_TO_DASHBOARD]: () => true,
     [RESET]: () => false,
   },
-  INITIAL_DASHBOARD_STATE.isNavigatingToDashboard,
+  INITIAL_DASHBOARD_STATE.isNavigatingBackToDashboard,
 );
 
 const dashcardData = handleActions(
@@ -463,7 +463,7 @@ export default reduceReducers(
     draftParameterValues,
     loadingDashCards,
     isAddParameterPopoverOpen,
-    isNavigatingToDashboard,
+    isNavigatingBackToDashboard,
     sidebar,
     missingActionParameters,
     autoApplyFilters,

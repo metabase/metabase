@@ -15,7 +15,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 
-import { navigateToDashboard } from "metabase/query_builder/actions";
+import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
@@ -167,7 +167,7 @@ function DashboardBackButton() {
   const dispatch = useDispatch();
 
   const handleClick = () => {
-    dispatch(navigateToDashboard(dashboard.id));
+    dispatch(navigateBackToDashboard(dashboard.id));
   };
 
   if (!dashboard) {

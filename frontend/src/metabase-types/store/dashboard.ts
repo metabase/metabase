@@ -69,7 +69,7 @@ export interface DashboardState {
 
   isEditing: Dashboard | null;
   isAddParameterPopoverOpen: boolean;
-  isNavigatingToDashboard: boolean;
+  isNavigatingBackToDashboard: boolean;
 
   slowCards: Record<DashCardId, unknown>;
 
