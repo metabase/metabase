@@ -1,16 +1,18 @@
 import type React from "react";
-import type { Dispatch, ReduxAction } from "metabase-types/store";
+import type { Dispatch, GetState } from "metabase-types/store";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
-import type { ClickActionProps } from "metabase-lib/queries/drills/types";
-import { OnChangeCardAndRun } from "metabase-lib/queries/drills/types";
+import type {
+  ClickActionProps,
+  OnChangeCardAndRun,
+} from "metabase-lib/queries/drills/types";
 
 export type {
   ClickActionProps,
   ClickObject,
 } from "metabase-lib/queries/drills/types";
 
-type Dispatcher = (dispatch: Dispatch) => void;
+type Dispatcher = (dispatch: Dispatch, getState: GetState) => void;
 
 export type ClickActionButtonType =
   | "formatting"
@@ -47,10 +49,10 @@ export type ClickActionBase = {
 };
 
 type ReduxClickActionBase = {
-  action: () => ReduxAction | Dispatcher;
+  action: () => Dispatcher;
 };
 
-type ReduxClickAction = ClickActionBase & ReduxClickActionBase;
+export type ReduxClickAction = ClickActionBase & ReduxClickActionBase;
 
 export type QuestionChangeClickAction = ClickActionBase & {
   question: () => Question;

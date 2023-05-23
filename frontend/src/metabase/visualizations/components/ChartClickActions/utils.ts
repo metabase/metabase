@@ -15,9 +15,6 @@ export const SECTIONS: Record<ClickActionSection, Section> = {
   zoom: {
     icon: "zoom_in",
   },
-  details: {
-    icon: "document",
-  },
   sort: {
     icon: "sort",
   },
@@ -49,6 +46,9 @@ export const SECTIONS: Record<ClickActionSection, Section> = {
   },
   filter: {
     icon: "funnel_outline",
+  },
+  details: {
+    icon: "document",
   },
 };
 Object.values(SECTIONS).map((section, index) => {
