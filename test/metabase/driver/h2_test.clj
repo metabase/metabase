@@ -288,12 +288,10 @@
         (is (= #{"PUBLIC"}
                (driver/syncable-schemas driver/*driver* (mt/id))))))))
 
-
-
 (defenterprise ^:private ensure-audit-db-installed!
   "A test implementation of `audit-db/ensure-db-installed!`, used to setup the audit-db for testing."
   metabase-enterprise.audit-db
-  [])
+  [] ::noop)
 
 (def ^:private audit-db-expected-id 13371337)
 
@@ -301,7 +299,7 @@
   (mt/test-driver :h2
     (when config/ee-available?
       (let [original-audit-db (t2/select-one 'Database :is_audit true)]
-        (ensure-audit-db-installed!)
+        (is (not= ::noop (ensure-audit-db-installed!)) "Make sure we call the right ensure-audit-db-installed! impl")
         (try
           (testing "spec obtained from audit db has no connection string, and that works OK."
             (let [audit-db-id (t2/select-one-fn :id 'Database :is_audit true)]
