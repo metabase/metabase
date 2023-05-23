@@ -11,9 +11,8 @@
 
 (comment metabase.types/keep-me)
 
-;;; TODO -- rename to `type-of-method`
-(defmulti type-of*
-  "Impl for [[type-of]]. Use [[type-of]], but implement [[type-of*]].
+(defmulti type-of-method
+  "Impl for [[type-of]]. Use [[type-of]], but implement [[type-of-method]].
 
   For MBQL clauses, try really hard not return an ambiguous set of possible types! Calculate things and determine what
   the result type will be!
@@ -48,22 +47,22 @@
   possible types."
   [expr]
   (or
-   ;; for MBQL clauses with `:effective-type` or `:base-type` in their options: ignore their dumb [[type-of*]] methods
+   ;; for MBQL clauses with `:effective-type` or `:base-type` in their options: ignore their dumb [[type-of-method]] methods
    ;; and return that type directly. Ignore everything else! Life hack!
    (and (mbql-clause? expr)
         (map? (second expr))
         (or (:effective-type (second expr))
             (:base-type (second expr))))
-   (type-of* expr)))
+   (type-of-method expr)))
 
-(defmethod type-of* :default
+(defmethod type-of-method :default
   [expr]
   (throw (ex-info (i18n/tru "Don''t know how to determine the type of {0}" (pr-str expr))
                   {:expr expr})))
 
 ;;; for MBQL clauses whose type is the same as the type of the first arg. Also used
 ;;; for [[metabase.lib.metadata.calculation/type-of-method]].
-(defmethod type-of* :lib.type-of/type-is-type-of-first-arg
+(defmethod type-of-method :lib.type-of/type-is-type-of-first-arg
   [[_tag _opts expr]]
   (type-of expr))
 
