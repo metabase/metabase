@@ -109,6 +109,7 @@ const defaultConfig = {
 
 const mainConfig = {
   ...defaultConfig,
+  experimentalStudio: true,
   // New `specPattern` is the combination of the old:
   //   1. testFiles and
   //   2. integrationFolder

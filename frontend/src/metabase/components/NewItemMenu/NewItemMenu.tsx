@@ -12,7 +12,6 @@ import CreateCollectionModal from "metabase/collections/containers/CreateCollect
 import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
 
 import type { CollectionId, WritebackAction } from "metabase-types/api";
-import { utf8_to_b64 } from "metabase/lib/encoding";
 
 type ModalType = "new-action" | "new-dashboard" | "new-collection";
 
@@ -39,7 +38,7 @@ type NewMenuItem = {
   event?: string;
   action?: () => void;
   onClose?: () => void;
-}
+};
 
 const NewItemMenu = ({
   className,
@@ -116,14 +115,14 @@ const NewItemMenu = ({
       },
     );
     if (hasNativeWrite) {
-      const collectionIdHash =
-        (collectionId && `#${utf8_to_b64(JSON.stringify({ collectionId }))}`) ||
-        "";
+      const collectionQuery = collectionId
+        ? `?collectionId=${collectionId}`
+        : "";
 
       items.push({
         title: t`Model`,
         icon: "model",
-        link: `/model/new${collectionIdHash}`,
+        link: `/model/new${collectionQuery}`,
         event: `${analyticsContext};New Model Click;`,
         onClose: onCloseNavbar,
       });

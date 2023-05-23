@@ -1,9 +1,7 @@
-import React, { useMemo } from "react";
-import { push } from "react-router-redux";
+import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useMount } from "react-use";
 import { Location } from "history";
 import { Grid } from "metabase/components/Grid";
 import NewModelOption from "metabase/models/components/NewModelOption";
@@ -15,8 +13,8 @@ import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 
 import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { deserializeCardFromUrl } from "metabase/lib/card";
+import { useSelector } from "metabase/lib/redux";
+import { parseSearchOptions } from "metabase/lib/browser";
 import Database from "metabase-lib/metadata/Database";
 import {
   OptionsGridItem,
@@ -39,33 +37,11 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
     getHasNativeWrite(props.databases ?? []),
   );
 
-  const dispatch = useDispatch();
+  const options = parseSearchOptions(location.search);
+  const collectionId = options.collectionId
+    ? Number(options.collectionId)
+    : undefined;
 
-  const collectionId = useMemo(() => {
-    if (location.hash) {
-      const decodedCollectionHash = deserializeCardFromUrl(
-        location.hash.replace(/^#/, ""),
-      );
-      return decodedCollectionHash.collectionId;
-    }
-    return null;
-  }, []);
-
-  useMount(() => {
-    const { location } = props;
-    if (location.search.length > 0) {
-      const { database, table, ...options } = location.query;
-      dispatch(
-        push(
-          Urls.newQuestion({
-            ...options,
-            databaseId: database ? Number(database) : undefined,
-            tableId: table ? Number(table) : undefined,
-          }),
-        ),
-      );
-    }
-  });
   if (!hasDataAccess && !hasNativeWrite) {
     return (
       <div className="full-height flex align-center justify-center">
