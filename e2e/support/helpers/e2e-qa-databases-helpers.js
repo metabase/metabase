@@ -188,7 +188,7 @@ export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
 export const createModelFromTableName = ({
   tableName,
   modelName = "Test Action Model",
-  idAlias = 'modelId'
+  idAlias = "modelId",
 }) => {
   getTableId({ name: tableName }).then(tableId => {
     cy.createQuestion(
@@ -208,7 +208,11 @@ export const createModelFromTableName = ({
   });
 };
 
-export function waitForSyncToFinish({ iteration = 0, dbId = 2, tableName = '' }) {
+export function waitForSyncToFinish({
+  iteration = 0,
+  dbId = 2,
+  tableName = "",
+}) {
   // 100 x 100ms should be plenty of time for the sync to finish.
   if (iteration === 100) {
     return;
@@ -228,7 +232,7 @@ export function waitForSyncToFinish({ iteration = 0, dbId = 2, tableName = '' })
   });
 }
 
-export function resyncDatabase({ dbId = 2, tableName = '' }) {
+export function resyncDatabase({ dbId = 2, tableName = "" }) {
   // must be signed in as admin to sync
   cy.request("POST", `/api/database/${dbId}/sync_schema`);
   cy.request("POST", `/api/database/${dbId}/rescan_values`);

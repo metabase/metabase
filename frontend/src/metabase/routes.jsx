@@ -1,5 +1,5 @@
 import React from "react";
-import { Redirect, IndexRedirect, IndexRoute } from "react-router";
+import { IndexRedirect, IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
 import { Route } from "metabase/hoc/Title";
@@ -10,7 +10,6 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.tsx";
 
-import ActivityApp from "metabase/home/containers/ActivityApp";
 import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
 import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
 
@@ -71,6 +70,7 @@ import FieldDetailContainer from "metabase/reference/databases/FieldDetailContai
 import getAccountRoutes from "metabase/account/routes";
 import getAdminRoutes from "metabase/admin/routes";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
+import { getRoutes as getModelRoutes } from "metabase/models/routes";
 
 import PublicQuestion from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
@@ -85,15 +85,12 @@ import CollectionLanding from "metabase/collections/components/CollectionLanding
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
-
-import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal";
-import ModelDetailPage from "metabase/models/containers/ModelDetailPage";
 import {
   CanAccessMetabot,
-  IsNotAuthenticated,
-  IsAuthenticated,
-  IsAdmin,
   CanAccessSettings,
+  IsAdmin,
+  IsAuthenticated,
+  IsNotAuthenticated,
 } from "./route-guards";
 
 export const getRoutes = store => (
@@ -170,8 +167,6 @@ export const getRoutes = store => (
           {getCollectionTimelineRoutes()}
         </Route>
 
-        <Route path="activity" component={ActivityApp} />
-
         <Route
           path="dashboard/:slug"
           title={t`Dashboard`}
@@ -191,29 +186,13 @@ export const getRoutes = store => (
           <Route path=":slug/:objectId" component={QueryBuilder} />
         </Route>
 
-        <Route path="/model/:slug/detail">
-          <IndexRedirect to="usage" />
-          <Route path="usage" component={ModelDetailPage} />
-          <Route path="schema" component={ModelDetailPage} />
-          <Route path="actions" component={ModelDetailPage}>
-            <ModalRoute
-              path="new"
-              modal={ActionCreatorModal}
-              modalProps={{ wide: true, enableTransition: false }}
-            />
-            <ModalRoute
-              path=":actionId"
-              modal={ActionCreatorModal}
-              modalProps={{ wide: true, enableTransition: false }}
-            />
-          </Route>
-          <Redirect from="*" to="usage" />
-        </Route>
-
         <Route path="/metabot" component={CanAccessMetabot}>
           <Route path="database/:databaseId" component={DatabaseMetabotApp} />
           <Route path="model/:slug" component={ModelMetabotApp} />
         </Route>
+
+        {/* MODELS */}
+        {getModelRoutes()}
 
         <Route path="/model">
           <IndexRoute component={QueryBuilder} />
