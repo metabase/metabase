@@ -214,9 +214,9 @@
       (is (= true
              (card-returned? :database (mt/id) card-1)))
       (is (= false
-             (card-returned? :database db        card-1)))
+             (card-returned? :database db      card-1)))
       (is (= true
-             (card-returned? :database db        card-2))))))
+             (card-returned? :database db      card-2))))))
 
 
 (deftest authentication-test

@@ -150,13 +150,18 @@
       (hydrate :creator :collection)))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
+(def ^:private card-filter-options
+  "a valid card filter option."
+  (map name (keys (methods cards-for-filter-option*))))
 
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, :using_model
-  and `archived`. See corresponding implementation functions above for the specific behavior of each filter
+  and `archived`. See corresponditng implementation functions above for the specific behavior of each filter
   option. :card_index:"
   [f model_id]
+  {f        [:maybe (into [:enum] card-filter-options)]
+   model_id [:maybe ms/PositiveInt]}
   (let [f (or (keyword f) :all)]
     (when (contains? #{:database :table :using_model} f)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
