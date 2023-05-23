@@ -141,13 +141,13 @@ export const fetchDashboard = createThunkAction(
     let result;
     return async function (dispatch, getState) {
       const dashboardType = getDashboardType(dashId);
+      const loadedDashboard = getDashboardById(getState(), dashId);
 
-      if (preserveDashboard) {
-        const entity = getDashboardById(getState(), dashId);
+      if (preserveDashboard && loadedDashboard) {
         const entities = {
-          dashboard: { [dashId]: entity },
+          dashboard: { [dashId]: loadedDashboard },
           dashcard: Object.fromEntries(
-            entity.ordered_cards.map(id => [
+            loadedDashboard.ordered_cards.map(id => [
               id,
               getDashCardById(getState(), id),
             ]),
