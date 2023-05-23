@@ -3439,7 +3439,7 @@
               (testing "Prefetch should only return non-hidden fields"
                 (is (= {:id 1 :name "Red Medicine"} ; price is hidden
                        (mt/user-http-request :crowberto :get 200 (str execute-path "?parameters=" (json/encode {:id 1}))))))
-              #_(testing "Update should only allow name"
+              (testing "Update should only allow name"
                 (is (= {:rows-updated [1]}
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
