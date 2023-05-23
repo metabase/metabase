@@ -266,7 +266,7 @@ const dashcardData = handleActions(
       next: (state, { payload: { cardId, dashcardId } }) =>
         assocIn(state, [dashcardId, cardId]),
     },
-    [Questions.actionTypes.UPDATE]: { next: () => ({}) },
+    [Questions.actionTypes.UPDATE]: () => ({}),
   },
   INITIAL_DASHBOARD_STATE.dashcardData,
 );
