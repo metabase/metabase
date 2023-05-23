@@ -9,14 +9,9 @@
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
 
-(mbql-clause/define-tuple-mbql-clause :interval
+(mbql-clause/define-tuple-mbql-clause :interval :- :type/Interval
   :int
   ::temporal-bucketing/unit.date-time.interval)
-
-;; FIXME Interval produces a fixed type but we have no :type/Interval
-(defmethod expression/type-of* :interval
-  [[_tag _opts n _unit]]
-  (expression/type-of n))
 
 ;;; TODO -- we should constrain this so that you can only use a Date unit if expr is a date, etc.
 (doseq [op [:datetime-add :datetime-subtract]]
@@ -101,7 +96,7 @@
                [:= :default]
                [:ref ::temporal-bucketing/unit.date-time]]]]]])
 
-(defmethod expression/type-of* :absolute-datetime
+(defmethod expression/type-of-method :absolute-datetime
   [[_tag _opts value unit]]
   (or
    ;; if value is `:current`, then infer the type based on the unit. Date unit = `:type/Date`. Anything else =

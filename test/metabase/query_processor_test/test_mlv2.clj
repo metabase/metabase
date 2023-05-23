@@ -35,14 +35,6 @@
   [legacy-query]
   (or
    *skip-conversion-tests*
-   ;; #29946: nested arithmetic expressions wrapping a `:field` clause
-   (mbql.u/match-one legacy-query
-     #{:+ :- :*}
-     (mbql.u/match-one &match
-       #{:+ :- :*}
-       (mbql.u/match-one &match
-         :field
-         "#29946")))
    ;; #29949: missing schema
    (mbql.u/match-one legacy-query
      :regex-match-first

@@ -113,7 +113,7 @@
   (testing "new operators"
     (testing "string operators"
       (let [query ["select * from venues where " (param "param")]]
-        (doseq [[operator {:keys [field value expected]}]
+        (doseq [[operator {:keys [field value expected options]}]
                 (partition-all
                  2
                  [:string/contains         {:field    :name
@@ -125,6 +125,16 @@
                                                         "where"
                                                         "  (\"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?)"]
                                                        ["%foo%"]]}
+                  :string/contains         {:field    :name
+                                            :value    ["FOO"]
+                                            :options  {:case-sensitive false}
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  (LOWER(\"PUBLIC\".\"VENUES\".\"NAME\") LIKE ?)"]
+                                                       ["%foo%"]]}
                   :string/does-not-contain {:field    :name
                                             :value    ["foo"]
                                             :expected [["select"
@@ -134,6 +144,19 @@
                                                         "where"
                                                         "  ("
                                                         "    NOT (\"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?)"
+                                                        "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
+                                                        "  )"]
+                                                       ["%foo%"]]}
+                  :string/does-not-contain {:field    :name
+                                            :value    ["FOO"]
+                                            :options  {:case-sensitive false}
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  ("
+                                                        "    NOT (LOWER(\"PUBLIC\".\"VENUES\".\"NAME\") LIKE ?)"
                                                         "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
                                                         "  )"]
                                                        ["%foo%"]]}
@@ -265,7 +288,8 @@
                    (-> (substitute query {"param" (params/map->FieldFilter
                                                    {:field (t2/select-one Field :id (mt/id :venues field))
                                                     :value {:type  operator
-                                                            :value value}})})
+                                                            :value value
+                                                            :options options}})})
                        vec
                        (update 0 mdb.query/format-sql :h2)
                        (update 0 str/split-lines))))))))))
