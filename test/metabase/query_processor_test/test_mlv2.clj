@@ -69,14 +69,7 @@
      {:aggregation aggregations}
      (mbql.u/match-one aggregations
        :metric
-       "#29936"))
-   ;; #29941 : metadata resolution for query with a `card__` source-table does not work correctly for `:field` <name>
-   ;; #clauses
-   (mbql.u/match-one legacy-query
-     {:source-table (_id :guard #(str/starts-with? % "card__"))}
-     (mbql.u/match-one &match
-       [:field (_field-name :guard string?) _opts]
-       "#29941"))))
+       "#29936"))))
 
 (defn- test-mlv2-metadata [original-query _qp-metadata]
   {:pre [(map? original-query)]}
