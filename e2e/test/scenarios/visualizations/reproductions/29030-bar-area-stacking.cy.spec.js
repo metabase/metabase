@@ -33,7 +33,7 @@ describe("issue 29030", () => {
     visitQuestionAdhoc(questionDetails);
   });
 
-  it("pivot table should show standalone values when collapsed to the sub-level grouping (metabase#25250)", () => {
+  it("stacking type should update when transitioning between area and bar charts (29030)", () => {
     cy.findByTestId("viz-type-button").click();
     cy.findByTestId("Area-button").click().click();
     cy.findByTestId("sidebar-content").findByText("Display").click();
