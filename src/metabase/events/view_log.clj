@@ -74,7 +74,7 @@
                                 [:= :view_log.model (h2x/literal "card")]
                                 [:= :view_log.model_id :report_card.id]]]}
         views     {:union-all [qe vl]}]
-    (t2/query
+    (db/query
      {:select   [[[:max :timestamp] :timestamp]
                  :model
                  :model_id]
