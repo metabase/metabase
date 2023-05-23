@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       artifact:
-        description: 'artifact id'
+        description: 'Artifact ID'
         type: string
         required: true
       spec:
