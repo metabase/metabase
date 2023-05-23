@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time :as t]
-   [metabase.events.view-log :as view-log]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.query-execution :refer [QueryExecution]]
