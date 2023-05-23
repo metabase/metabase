@@ -1,4 +1,5 @@
 import type { MantineThemeOverride } from "@mantine/core";
+import { ColorBaseOrion800 } from "../../../../styles/ts/styles";
 
 const colors = {
   ocean: [
@@ -40,7 +41,7 @@ const colors = {
 };
 export const theme: MantineThemeOverride = {
   colors: colors,
-  black: colors.orion[8],
+  black: ColorBaseOrion800,
   fontFamily: "Lato, sans-serif",
   primaryColor: "ocean",
   primaryShade: 4,
