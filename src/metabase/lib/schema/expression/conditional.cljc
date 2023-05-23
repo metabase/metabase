@@ -64,7 +64,7 @@
     :type/*
     expr-type))
 
-(defmethod expression/type-of* :case
+(defmethod expression/type-of-method :case
   [[_tag _opts pred-expr-pairs default]]
   (-> (reduce
        (fn [best-guess [_pred expr]]
@@ -80,7 +80,7 @@
   #_expr       [:ref :metabase.lib.schema.expression/expression]
   #_null-value [:ref :metabase.lib.schema.expression/expression])
 
-(defmethod expression/type-of* :coalesce
+(defmethod expression/type-of-method :coalesce
   [[_tag _opts expr null-value]]
   (-> (best-return-type (expression/type-of expr) (expression/type-of null-value))
       allow-unkown-type))
