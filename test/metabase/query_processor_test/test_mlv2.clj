@@ -1,6 +1,5 @@
 (ns metabase.query-processor-test.test-mlv2
   (:require
-   [clojure.string :as str]
    [clojure.test :as t :refer :all]
    [malli.core :as mc]
    [malli.error :as me]
