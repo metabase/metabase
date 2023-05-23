@@ -136,7 +136,6 @@ Please follow these steps:
 ### Prepare
 - Create a new branch with your proposed fix and push it to the remote
 - Either skip opening a PR altogether or open a **draft** pull request
-- Ideally, isolate only the offending test within the spec using `it.only` or `describe.only`
 
 ### Obtain the artifact ID
 - Go to the latest successful commit on `master` branch
