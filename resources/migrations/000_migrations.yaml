@@ -14631,6 +14631,20 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.DowngradeDashboardTab"
 
+  - changeSet:
+      id: v47.00-030
+      author: escherize
+      comment: Added 0.47.0 - Type column for collections for instance-analytics
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: type
+                  type: varchar(256)
+                  defaultValue: null
+                  remarks: 'This is used to differentiate instance-analytics collections from all other collections.'
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
