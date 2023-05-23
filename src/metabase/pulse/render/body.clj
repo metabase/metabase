@@ -214,9 +214,8 @@
   (fn [chart-type _ _ _ _ _] chart-type))
 
 (s/defmethod render :table :- common/RenderedPulseCard
-  [_ render-type timezone-id :- (s/maybe s/Str) card dashcard {:keys [rows viz-settings] :as data}]
-  (let [viz-settings (merge viz-settings (:visualization_settings dashcard))
-        table-body   [:div
+  [_ render-type timezone-id :- (s/maybe s/Str) card _dashcard {:keys [rows viz-settings] :as data}]
+  (let [table-body   [:div
                       (table/render-table
                        (color/make-color-selector data viz-settings)
                        (mapv :name (:cols data))
@@ -453,9 +452,8 @@
                          (split-at (/ (count legend-entries) 2) legend-entries)))])))
 
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
-  [_ render-type timezone-id :- (s/maybe s/Str) card dashcard {:keys [rows cols viz-settings] :as data}]
-  (let [viz-settings                (merge viz-settings (:visualization_settings dashcard))
-        [x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
+  [_ render-type timezone-id :- (s/maybe s/Str) card _dashcard {:keys [rows cols viz-settings] :as data}]
+  (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (map (juxt (comp str x-axis-rowfn) y-axis-rowfn)
                                          (common/row-preprocess x-axis-rowfn y-axis-rowfn rows))
         slice-threshold             (or (get viz-settings :pie.slice_threshold)
@@ -492,9 +490,8 @@
              rows))]}))
 
 (s/defmethod render :progress :- common/RenderedPulseCard
-  [_ render-type _timezone-id _card dashcard {:keys [cols rows viz-settings] :as _data}]
-  (let [viz-settings (merge viz-settings (:visualization_settings dashcard))
-        value        (ffirst rows)
+  [_ render-type _timezone-id _card _dashcard {:keys [cols rows viz-settings] :as _data}]
+  (let [value        (ffirst rows)
         goal         (:progress.goal viz-settings)
         color        (:progress.color viz-settings)
         settings     (assoc
@@ -632,8 +629,7 @@
 (defn- render-multiple-scalars
   "When multiple scalar cards are combined, they render as a bar chart"
   [render-type card dashcard {:keys [viz-settings] :as data}]
-  (let [viz-settings (merge viz-settings (:visualization_settings dashcard))
-        multi-res    (pu/execute-multi-card card dashcard)
+  (let [multi-res    (pu/execute-multi-card card dashcard)
         cards        (cons card (map :card multi-res))
         multi-data   (cons data (map #(get-in % [:result :data]) multi-res))
         x-rows       (map :name cards) ;; Bar labels
@@ -771,10 +767,8 @@
 
 (defn- render-multiple-lab-chart
   "When multiple non-scalar cards are combined, render them as a line, area, or bar chart"
-  [render-type card dashcard {:keys [viz-settings]
-                              :as   data}]
-  (let [viz-settings      (merge viz-settings (:visualization_settings dashcard))
-        multi-res         (pu/execute-multi-card card dashcard)
+  [render-type card dashcard {:keys [viz-settings] :as data}]
+  (let [multi-res         (pu/execute-multi-card card dashcard)
         ;; multi-res gets the other results from the set of multis.
         ;; we shove cards and data here all together below for uniformity's sake
         viz-settings      (set-default-stacked viz-settings card)
@@ -791,9 +785,8 @@
   "Generate an image-bundle for a Line Area Bar chart (LAB)
 
   Use the combo charts for every chart-type in line area bar because we get multiple chart series for cheaper this way."
-  [chart-type render-type _timezone-id card dashcard {:keys [cols rows viz-settings] :as data}]
-  (let [viz-settings    (merge viz-settings (:visualization_settings dashcard))
-        x-axis-rowfn    (or (ui-logic/mult-x-axis-rowfn card data) #(vector (first %)))
+  [chart-type render-type _timezone-id card {:keys [cols rows viz-settings] :as data}]
+  (let [x-axis-rowfn    (or (ui-logic/mult-x-axis-rowfn card data) #(vector (first %)))
         y-axis-rowfn    (or (ui-logic/mult-y-axis-rowfn card data) #(vector (second %)))
         x-rows          (filter some? (map x-axis-rowfn rows))
         y-rows          (filter some? (map y-axis-rowfn rows))
@@ -822,20 +815,20 @@
    render-type card dashcard data))
 
 (s/defmethod render :line :- common/RenderedPulseCard
-  [_ render-type timezone-id card dashcard data]
-  (attach-image-bundle (lab-image-bundle :line render-type timezone-id card dashcard data)))
+  [_ render-type timezone-id card _dashcard data]
+  (attach-image-bundle (lab-image-bundle :line render-type timezone-id card data)))
 
 (s/defmethod render :area :- common/RenderedPulseCard
-  [_ render-type timezone-id card dashcard data]
-  (attach-image-bundle (lab-image-bundle :area render-type timezone-id card dashcard data)))
+  [_ render-type timezone-id card _dashcard data]
+  (attach-image-bundle (lab-image-bundle :area render-type timezone-id card data)))
 
 (s/defmethod render :bar :- common/RenderedPulseCard
-  [_chart-type render-type timezone-id :- (s/maybe s/Str) card dashcard data]
-  (attach-image-bundle (lab-image-bundle :bar render-type timezone-id card dashcard data)))
+  [_chart-type render-type timezone-id :- (s/maybe s/Str) card _dashcard data]
+  (attach-image-bundle (lab-image-bundle :bar render-type timezone-id card data)))
 
 (s/defmethod render :combo :- common/RenderedPulseCard
-  [_chart-type render-type timezone-id :- (s/maybe s/Str) card dashcard data]
-  (attach-image-bundle (lab-image-bundle :combo render-type timezone-id card dashcard data)))
+  [_chart-type render-type timezone-id :- (s/maybe s/Str) card _dashcard data]
+  (attach-image-bundle (lab-image-bundle :combo render-type timezone-id card data)))
 
 (s/defmethod render :gauge :- common/RenderedPulseCard
   [_chart-type render-type _timezone-id :- (s/maybe s/Str) card _dashcard data]
@@ -869,9 +862,8 @@
              :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
-  [_chart-type _render-type timezone-id _card dashcard {:keys [cols rows viz-settings]}]
-  (let [viz-settings (merge viz-settings (:visualization_settings dashcard))
-        value        (format-cell timezone-id (ffirst rows) (first cols) viz-settings)]
+  [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
+  (let [value        (format-cell timezone-id (ffirst rows) (first cols) viz-settings)]
     {:attachments
      nil
 
@@ -881,7 +873,7 @@
      :render/text (str value)}))
 
 (s/defmethod render :smartscalar :- common/RenderedPulseCard
-  [_chart-type _render-type timezone-id _card dashcard {:keys [cols insights viz-settings]}]
+  [_chart-type _render-type timezone-id _card _dashcard {:keys [cols insights viz-settings]}]
   (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
                                  ;; computed and agg columns don't have an effective type
                                  (isa? (:base_type c) t)))
@@ -890,8 +882,7 @@
                               (format-percentage arg)
                               " - "))
           (format-unit [unit] (str/replace (name unit) "-" " "))]
-    (let [viz-settings           (merge viz-settings (:visualization_settings dashcard))
-          [_time-col metric-col] (if (col-of-type :type/Temporal (first cols)) cols (reverse cols))
+    (let [[_time-col metric-col] (if (col-of-type :type/Temporal (first cols)) cols (reverse cols))
 
           {:keys [last-value previous-value unit last-change] :as _insight}
           (where (comp #{(:name metric-col)} :col) insights)]
@@ -929,9 +920,8 @@
                            "\n" (trs "Nothing to compare to."))}))))
 
 (s/defmethod render :waterfall :- common/RenderedPulseCard
-  [_ render-type _timezone-id card dashcard {:keys [rows cols viz-settings] :as data}]
-  (let [viz-settings   (merge viz-settings (:visualization_settings dashcard))
-        [x-axis-rowfn
+  [_ render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
+  (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
         [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
         rows           (map (juxt x-axis-rowfn y-axis-rowfn)
@@ -966,9 +956,8 @@
              :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :funnel :- common/RenderedPulseCard
-  [_ render-type _timezone-id card dashcard {:keys [rows cols viz-settings] :as data}]
-  (let [viz-settings   (merge viz-settings (:visualization_settings dashcard))
-        [x-axis-rowfn
+  [_ render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
+  (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows           (map (juxt x-axis-rowfn y-axis-rowfn)
                             (common/row-preprocess x-axis-rowfn y-axis-rowfn rows))
