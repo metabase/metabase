@@ -264,6 +264,7 @@
     "react-refresh": "^0.13.0",
     "shadow-cljs": "2.19.6",
     "source-map-loader": "^4.0.1",
+    "style-dictionary": "^3.8.0",
     "style-loader": "3.3.1",
     "typescript": "^4.7.2",
     "webpack": "^5.82.0",

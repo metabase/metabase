@@ -9,8 +9,6 @@ import { Menu } from "@ui/overlay/Menu";
 
 import { theme } from "@ui/theme";
 import { TreePreview } from "@ui/tree/Tree/preview";
-import { TreeNodeList } from "metabase/components/tree/TreeNodeList";
-import { TreeList } from "./tree/Tree";
 
 const data = [
   {
@@ -59,9 +57,6 @@ const fieldData = [
 ];
 
 export function Preview() {
-
-
-
   return (
     <MantineProvider theme={theme}>
       <Box ml="auto" mr="auto" style={{ width: 900 }}>
