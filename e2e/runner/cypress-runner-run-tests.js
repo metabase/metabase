@@ -6,7 +6,7 @@ const {
   args,
 } = require("./cypress-runner-utils");
 
-const isCI = process.env["CI"];
+const runWithReplay = process.env["REPLAYIO_ENABLED"];
 
 const folder = args["--folder"];
 const isFolder = !!folder;
@@ -24,7 +24,7 @@ const runCypress = async (baseUrl, exitFunction) => {
   });
 
   const defaultConfig = {
-    browser: isCI ? "replay-chromium" : "chrome",
+    browser: runWithReplay ? "replay-chromium" : "chrome",
     configFile: "e2e/support/cypress.config.js",
     config: {
       baseUrl,

@@ -11,8 +11,13 @@ import "@cypress/skip-test/support";
 import "@percy/cypress";
 import "./commands";
 
-require("@replayio/cypress/support");
 require("cy-verify-downloads").addCustomCommand();
+
+const runWithReplay = process.env["REPLAYIO_ENABLED"];
+
+if (runWithReplay) {
+  require("@replayio/cypress/support");
+}
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
 

@@ -1,9 +1,10 @@
 import * as dbTasks from "./db_tasks";
-const replay = require("@replayio/cypress");
 const { verifyDownloadTasks } = require("cy-verify-downloads");
 const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
+
+const runWithReplay = process.env["REPLAYIO_ENABLED"];
 
 /**
  * This env var provides the token to the backend.
@@ -99,7 +100,9 @@ const defaultConfig = {
     config.env.TARGET_VERSION = targetVersion;
 
     require("@cypress/grep/src/plugin")(config);
-    replay.default(on, config);
+    if (runWithReplay) {
+      require("@replayio/cypress").default(on, config);
+    }
 
     return config;
   },

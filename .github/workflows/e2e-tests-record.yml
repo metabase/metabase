@@ -4,15 +4,25 @@ on:
   push:
     branches:
       - "master"
-      - 'release-**'
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
 
+env:
+  REPLAYIO_ENABLED: 1
+  RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
+  RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
+  RECORD_REPLAY_DISABLE_ASSERTS: 1
+
 jobs:
+  test-run-id:
+    runs-on: ubuntu-latest
+    outputs:
+      testRunId: ${{ steps.testRunId.outputs.testRunId }}
+    steps:
+      - id: testRunId
+        run: echo testRunId=$(npx uuid) >> "$GITHUB_OUTPUT"
   files-changed:
     name: Check which files changed
     runs-on: ubuntu-22.04
@@ -55,7 +65,7 @@ jobs:
         uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    needs: [build, files-changed]
+    needs: [build, files-changed, test-run-id]
     if: |
       always() &&
       needs.files-changed.outputs.e2e_all == 'true' &&
@@ -155,6 +165,8 @@ jobs:
         uses: ./.github/actions/prepare-cypress
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
+      - name: Install Replay.io browser
+        run: npx @replayio/cypress install
 
       - uses: actions/download-artifact@v3
         name: Retrieve uberjar artifact for ${{ matrix.edition }}
@@ -183,6 +195,13 @@ jobs:
         env:
           TERM: xterm
 
+      - name: Upload Replay.io recordings
+        if: always()
+        uses: replayio/action-upload@v0.4.7
+        with:
+          api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ
+          public: true
+
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v3
         if: failure()
@@ -192,91 +211,3 @@ jobs:
             ./cypress
             ./logs/test.log
           if-no-files-found: ignore
-
-  e2e-tests-skipped-stub:
-    needs: [build, files-changed]
-    if: |
-      always() &&
-      needs.files-changed.outputs.e2e_all == 'false' &&
-      needs.build.result == 'skipped'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 5
-    name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
-    strategy:
-      fail-fast: false
-      matrix:
-        java-version: [11]
-        edition: [ee]
-        folder:
-          - "admin"
-          - "binning"
-          - "collections"
-          - "custom-column"
-          - "dashboard"
-          - "dashboard-filters"
-          - "downloads"
-          - "embedding"
-          - "filters"
-          - "joins"
-          - "models"
-          - "native"
-          - "native-filters"
-          - "onboarding"
-          - "organization"
-          - "permissions"
-          - "question"
-          - "sharing"
-          - "visualizations"
-        include:
-          - edition: oss
-            context: grep
-            java-version: 11
-    steps:
-      - run: |
-          echo "Didn't run due to conditional filtering"
-
-  visual-regression-tests:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 45
-    needs: build
-    name: percy-visual-regression-tests
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-    services:
-      maildev:
-        image: maildev/maildev:2.0.5
-        ports:
-          - "1080:1080"
-          - "1025:1025"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Enable Percy recording on master only
-        if: github.ref == 'refs/heads/master'
-        run: |
-          echo "PERCY_TOKEN=${{ secrets.PERCY_TOKEN }}" >> $GITHUB_ENV
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare JDK 11
-        uses: actions/setup-java@v3
-        with:
-          java-version: 11
-          distribution: 'temurin'
-      - name: Prepare Cypress environment
-        uses: ./.github/actions/prepare-cypress
-
-      - uses: actions/download-artifact@v3
-        name: Retrieve uberjar artifact for ee
-        with:
-          name: metabase-ee-uberjar
-      - name: Get the version info
-        run: |
-          jar xf target/uberjar/metabase.jar version.properties
-          mv version.properties resources/
-      - name: Percy Test
-        run: yarn run test-visual-run
-        env:
-          PERCY_TOKEN: ${{ env.PERCY_TOKEN }}
