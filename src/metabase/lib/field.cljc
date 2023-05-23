@@ -20,6 +20,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
@@ -151,10 +152,11 @@
 (defmethod lib.metadata.calculation/metadata-method :field
   [query
    stage-number
-   [_tag {:keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
+   [_tag {source-uuid :lib/uuid :keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
         metadata       (merge
-                        {:lib/type :metadata/field}
+                        {:lib/type :metadata/field
+                         :lib/source-uuid source-uuid}
                         field-metadata
                         {:display-name (or (:display-name opts)
                                            (lib.metadata.calculation/display-name query stage-number field-ref))}
@@ -179,7 +181,7 @@
   [query stage-number {field-display-name :display-name
                        field-name         :name
                        temporal-unit      :unit
-                       binning            :binning
+                       binning            ::binning
                        join-alias         :source_alias
                        fk-field-id        :fk-field-id
                        table-id           :table-id
@@ -212,7 +214,7 @@
   (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
                             join-alias    (assoc :source_alias join-alias)
                             temporal-unit (assoc :unit temporal-unit)
-                            binning       (assoc :binning binning)
+                            binning       (assoc ::binning binning)
                             source-field  (assoc :fk-field-id source-field))]
     (lib.metadata.calculation/display-name query stage-number field-metadata style)
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
@@ -286,23 +288,52 @@
   [query stage-number field-ref]
   (lib.temporal-bucket/available-temporal-buckets query stage-number (resolve-field-metadata query stage-number field-ref)))
 
+(defn- fingerprint-based-default-unit [fingerprint]
+  (u/ignore-exceptions
+    (when-let [{:keys [earliest latest]} (-> fingerprint :type :type/DateTime)]
+      (let [days (shared.ut/day-diff (shared.ut/coerce-to-timestamp earliest)
+                                     (shared.ut/coerce-to-timestamp latest))]
+        (when-not (NaN? days)
+          (condp > days
+            1 :minute
+            31 :day
+            365 :week
+            :month))))))
+
+(defn- mark-default-unit [options unit]
+  (cond->> options
+    (some #(= (:unit %) unit) options)
+    (mapv (fn [option]
+            (cond-> (dissoc option :default)
+              (= (:unit option) unit) (assoc :default true))))))
+
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/field
   [_query _stage-number field-metadata]
-  (let [effective-type ((some-fn :effective-type :base-type) field-metadata)]
-    (cond
-      (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
-      (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
-      (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
-      :else                                [])))
+  (let [effective-type ((some-fn :effective-type :base-type) field-metadata)
+        fingerprint-default (some-> field-metadata :fingerprint fingerprint-based-default-unit)]
+    (cond-> (cond
+              (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
+              (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
+              (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
+              :else                                [])
+      fingerprint-default (mark-default-unit fingerprint-default))))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
 (defmethod lib.binning/binning-method :field
   [field-clause]
-  (-> field-clause lib.options/options :binning))
+  (some-> field-clause
+          lib.options/options
+          :binning
+          (assoc :lib/type    ::lib.binning/binning
+                 :metadata-fn (fn [query stage-number]
+                                (resolve-field-metadata query stage-number field-clause)))))
 
 (defmethod lib.binning/binning-method :metadata/field
   [metadata]
-  (::binning metadata))
+  (some-> metadata
+          ::binning
+          (assoc :lib/type    ::lib.binning/binning
+                 :metadata-fn (constantly metadata))))
 
 (defmethod lib.binning/with-binning-method :field
   [field-clause binning]

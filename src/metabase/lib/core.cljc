@@ -54,8 +54,12 @@
 
 (shared.ns/import-fns
   [lib.aggregation
-   aggregations
    aggregate
+   aggregation-clause
+   aggregation-operator-columns
+   aggregations
+   aggregations-metadata
+   available-aggregation-operators
    count
    avg
    count-where
@@ -88,6 +92,7 @@
   [lib.expression
    expression
    expressions
+   expressions-metadata
    +
    -
    *
@@ -198,5 +203,4 @@
    describe-relative-datetime
    available-temporal-buckets
    temporal-bucket
-   temporal-bucket-option
    with-temporal-bucket])

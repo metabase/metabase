@@ -6,6 +6,7 @@ import {
   TableColumnOrderSetting,
   TemplateTag,
   StructuredDatasetQuery,
+  FieldId,
 } from "metabase-types/api";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import Database from "metabase-lib/metadata/Database";
@@ -15,7 +16,7 @@ import { isSameField } from "metabase-lib/queries/utils/field-ref";
 import { isStructured } from "metabase-lib/queries/utils";
 
 type FieldMetadata = {
-  id?: number;
+  id?: FieldId | FieldReference;
   name: string;
   display_name: string;
   description?: string | null;

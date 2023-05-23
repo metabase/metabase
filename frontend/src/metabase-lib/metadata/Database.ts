@@ -1,86 +1,62 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
+import _ from "underscore";
 import {
-  Database as IDatabase,
-  DatabaseFeature,
-  DatabaseSettings,
-  NativePermissions,
+  NativeQuery,
+  NormalizedDatabase,
   StructuredQuery,
 } from "metabase-types/api";
 import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
-import { createLookupByProperty, memoizeClass } from "metabase-lib/utils";
 import Question from "../Question";
-import Base from "./Base";
 import Table from "./Table";
 import Schema from "./Schema";
 import Metadata from "./Metadata";
 
-/**
- * @typedef { import("./Metadata").SchemaName } SchemaName
- */
+interface Database extends Omit<NormalizedDatabase, "tables" | "schemas"> {
+  tables?: Table[];
+  schemas?: Schema[];
+  metadata?: Metadata;
+}
 
-/**
- * Wrapper class for database metadata objects. Contains {@link Schema}s, {@link Table}s, {@link Metric}s, {@link Segment}s.
- *
- * Backed by types/Database data structure which matches the backend API contract
- */
+class Database {
+  private readonly _plainObject: NormalizedDatabase;
 
-class DatabaseInner extends Base {
-  id: number;
-  name: string;
-  engine: string;
-  description: string;
-  creator_id?: number;
-  is_sample: boolean;
-  is_saved_questions: boolean;
-  tables: Table[];
-  schemas: Schema[];
-  metadata: Metadata;
-  features: DatabaseFeature[];
-  details: Record<string, unknown>;
-  settings?: DatabaseSettings;
-  native_permissions: NativePermissions;
+  constructor(database: NormalizedDatabase) {
+    this._plainObject = database;
+    this.tablesLookup = _.memoize(this.tablesLookup);
+    Object.assign(this, database);
+  }
 
-  // Only appears in  GET /api/database/:id
-  "can-manage"?: boolean;
-
-  getPlainObject(): IDatabase {
+  getPlainObject(): NormalizedDatabase {
     return this._plainObject;
   }
 
-  // TODO Atte Keinänen 6/11/17: List all fields here (currently only in types/Database)
   displayName() {
     return this.name;
   }
 
-  // SCHEMAS
-
-  /**
-   * @param {SchemaName} [schemaName]
-   */
-  schema(schemaName) {
-    return this.metadata.schema(generateSchemaId(this.id, schemaName));
+  schema(schemaName: string | undefined) {
+    return this.metadata?.schema(generateSchemaId(this.id, schemaName));
   }
 
   schemaNames() {
-    return this.schemas.map(s => s.name).sort((a, b) => a.localeCompare(b));
+    return this.getSchemas()
+      .map(s => s.name)
+      .sort((a, b) => a.localeCompare(b));
   }
 
   getSchemas() {
-    return this.schemas;
+    return this.schemas ?? [];
   }
 
   schemasCount() {
-    return this.schemas.length;
+    return this.getSchemas().length;
   }
 
   getTables() {
-    return this.tables;
+    return this.tables ?? [];
   }
 
-  // TABLES
   tablesLookup() {
-    return createLookupByProperty(this.tables, "id");
+    return Object.fromEntries(this.getTables().map(table => [table.id, table]));
   }
 
   // @deprecated: use tablesLookup
@@ -88,19 +64,12 @@ class DatabaseInner extends Base {
     return this.tablesLookup();
   }
 
-  // FEATURES
-
-  /**
-   * @typedef {import("./Metadata").DatabaseFeature} DatabaseFeature
-   * @typedef {"join"} VirtualDatabaseFeature
-   * @param {DatabaseFeature | VirtualDatabaseFeature} [feature]
-   */
-  hasFeature(feature) {
+  hasFeature(feature: string | null | undefined) {
     if (!feature) {
       return true;
     }
 
-    const set = new Set(this.features);
+    const set = new Set<string>(this.features);
 
     if (feature === "join") {
       return (
@@ -142,14 +111,13 @@ class DatabaseInner extends Base {
     return Boolean(this.settings?.["database-enable-actions"]);
   }
 
-  // QUESTIONS
   newQuestion() {
     return this.question().setDefaultQuery().setDefaultDisplay();
   }
 
   question(
     query: StructuredQuery = {
-      "source-table": null,
+      "source-table": undefined,
     },
   ) {
     return Question.create({
@@ -162,7 +130,7 @@ class DatabaseInner extends Base {
     });
   }
 
-  nativeQuestion(native = {}) {
+  nativeQuestion(native: Partial<NativeQuery> = {}) {
     return Question.create({
       metadata: this.metadata,
       dataset_query: {
@@ -177,17 +145,14 @@ class DatabaseInner extends Base {
     });
   }
 
-  nativeQuery(native) {
+  nativeQuery(native: Partial<NativeQuery>) {
     return this.nativeQuestion(native).query();
   }
 
-  /** Returns a database containing only the saved questions from the same database, if any */
   savedQuestionsDatabase() {
-    return this.metadata.databasesList().find(db => db.is_saved_questions);
+    return this.metadata?.databasesList().find(db => db.is_saved_questions);
   }
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class Database extends memoizeClass<DatabaseInner>(
-  "tablesLookup",
-)(DatabaseInner) {}
+export default Database;

@@ -243,7 +243,7 @@ export function createEntity(def) {
       (entityObject, updatedObject = null, { notify } = {}) =>
         async (dispatch, getState) => {
           // save the original object for undo
-          const originalObject = entity.selectors.getObject(getState(), {
+          const originalObject = getObject(getState(), {
             entityId: entityObject.id,
           });
           // If a second object is provided just take the id from the first and

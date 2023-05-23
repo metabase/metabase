@@ -175,7 +175,12 @@ const NewItemMenu = ({
               />
             </Modal>
           ) : modal === "new-action" ? (
-            <Modal wide enableTransition={false} onClose={handleModalClose}>
+            <Modal
+              wide
+              enableTransition={false}
+              onClose={handleModalClose}
+              closeOnClickOutside
+            >
               <ActionCreator
                 onSubmit={handleActionCreated}
                 onClose={handleModalClose}

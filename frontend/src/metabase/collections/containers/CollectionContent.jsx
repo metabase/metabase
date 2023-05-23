@@ -10,7 +10,6 @@ import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getIsBookmarked } from "metabase/collections/selectors";
 import { getSetting } from "metabase/selectors/settings";
 import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
@@ -33,6 +32,7 @@ import { isSmallScreen } from "metabase/lib/dom";
 import Databases from "metabase/entities/databases";
 
 import UploadOverlay from "../components/UploadOverlay";
+import { getComposedDragProps } from "./utils";
 
 import {
   CollectionEmptyContent,
@@ -66,7 +66,6 @@ function mapStateToProps(state, props) {
   return {
     isAdmin: getUserIsAdmin(state),
     isBookmarked: getIsBookmarked(state, props),
-    metadata: getMetadata(state),
     isNavbarOpen: getIsNavbarOpen(state),
     uploadsEnabled: canAccessUploadsDb,
   };
@@ -88,7 +87,6 @@ function CollectionContent({
   createBookmark,
   deleteBookmark,
   isAdmin,
-  metadata,
   isNavbarOpen,
   openNavbar,
   uploadFile,
@@ -204,7 +202,7 @@ function CollectionContent({
 
   const canUpload = uploadsEnabled && collection.can_write;
 
-  const dropzoneProps = canUpload ? getRootProps() : {};
+  const dropzoneProps = canUpload ? getComposedDragProps(getRootProps()) : {};
 
   const unpinnedQuery = {
     collection: collectionId,
@@ -263,7 +261,6 @@ function CollectionContent({
                   deleteBookmark={deleteBookmark}
                   items={pinnedItems}
                   collection={collection}
-                  metadata={metadata}
                   onMove={handleMove}
                   onCopy={handleCopy}
                   onToggleSelected={toggleItem}
@@ -283,10 +280,9 @@ function CollectionContent({
                   }) => {
                     const hasPagination = metadata.total > PAGE_SIZE;
 
-                    const unselected = [
-                      ...pinnedItems,
-                      ...unpinnedItems,
-                    ].filter(item => !getIsSelected(item));
+                    const unselected = unpinnedItems.filter(
+                      item => !getIsSelected(item),
+                    );
                     const hasUnselected = unselected.length > 0;
 
                     const handleSelectAll = () => {

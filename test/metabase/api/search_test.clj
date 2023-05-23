@@ -51,7 +51,6 @@
    :context                    nil
    :dashboardcard_count        nil
    :database_id                false
-   :dataset_query              nil
    :description                nil
    :id                         true
    :initial_sync_status        nil
@@ -100,10 +99,9 @@
   (sorted-results
    [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false)
     test-collection
-    (make-result "card test card", :model "card", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
-    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
-    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
-                 :dataset_query (update (mt/query venues) :type name), :database_id true)
+    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0)
+    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0)
+    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true, :database_id true)
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
      (table-search-results))
@@ -233,7 +231,6 @@
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
-             [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
              :else [:inline 1]]]
            (api.search/order-clause "Foo")))))
 
@@ -296,7 +293,7 @@
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card", :bookmark false, :dataset_query nil))]
+                         :model "card", :bookmark false))]
     (set [(make-card 5)
           (make-card 3)
           (make-card 0)])))
@@ -649,21 +646,6 @@
             (mt/with-temp* [Dashboard [dashboard]]
               (t2/update! Pulse (:id pulse) {:dashboard_id (:id dashboard)})
               (is (= nil (search-for-pulses pulse))))))))))
-
-(deftest card-dataset-query-test
-  (testing "Search results should match a native query's dataset_query column, but not an MBQL query's one."
-    ;; https://github.com/metabase/metabase/issues/24132
-    (let [native-card {:name          "Another SQL query"
-                       :query_type    "native"
-                       :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]
-      (mt/with-temp* [Card [_mbql-card   {:name          "Venues Count"
-                                          :query_type    "query"
-                                          :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-                      Card [_native-card native-card]
-                      Card [_dataset     (assoc native-card :name "Dataset" :dataset true)]]
-        (is (= ["Another SQL query" "Dataset"]
-               (->> (search-request-data :rasta :q "aggregation")
-                    (map :name))))))))
 
 (deftest search-db-call-count-test
   (t2.with-temp/with-temp

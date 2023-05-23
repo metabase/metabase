@@ -44,6 +44,7 @@
 
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
 
+
 (doto :model/Dashboard
   (derive :metabase/model)
   (derive ::perms/use-parent-collection-perms)
@@ -259,6 +260,10 @@
         (->> (filter identity)
              build-sentence))))
 
+(defn has-tabs?
+  "Check if a dashboard has tabs."
+  [dashboard-or-id]
+  (t2/exists? :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
@@ -469,16 +474,24 @@
       (dissoc :id :collection_authority_level :dashboard_id :updated_at)
       (update :card_id                serdes/*export-fk* 'Card)
       (update :action_id              serdes/*export-fk* 'Action)
+      (update :dashboard_tab_id       serdes/*export-fk* :model/DashboardTab)
       (update :parameter_mappings     serdes/export-parameter-mappings)
       (update :visualization_settings serdes/export-visualization-settings)))
 
+(defn- extract-dashtab
+  [dashtab]
+  (dissoc dashtab :id :dashboard_id :updated_at))
+
 (defmethod serdes/extract-one "Dashboard"
   [_model-name _opts dash]
-  (let [dash (if (contains? dash :ordered_cards)
-               dash
-               (hydrate dash :ordered_cards))]
+  (let [dash (cond-> dash
+               (nil? (:ordered_cards dash))
+               (hydrate :ordered_cards)
+               (nil? (:ordered_tabs dash))
+               (hydrate :ordered_tabs))]
     (-> (serdes/extract-one-basics "Dashboard" dash)
         (update :ordered_cards     #(mapv extract-dashcard %))
+        (update :ordered_tabs      #(mapv extract-dashtab %))
         (update :parameters        serdes/export-parameters)
         (update :collection_id     serdes/*export-fk* Collection)
         (update :creator_id        serdes/*export-user*)
@@ -497,12 +510,24 @@
 (defn- dashcard-for [dashcard dashboard]
   (assoc dashcard
          :dashboard_id (:entity_id dashboard)
-         :serdes/meta [{:model "Dashboard"     :id (:entity_id dashboard)}
-                       {:model "DashboardCard" :id (:entity_id dashcard)}]))
+         :serdes/meta  (remove nil?
+                               [{:model "Dashboard"     :id (:entity_id dashboard)}
+                                (when-let [dashtab-eeid (last (:dashboard_tab_id dashcard))]
+                                  {:model "DashboardTab" :id dashtab-eeid})
+                                {:model "DashboardCard" :id (:entity_id dashcard)}])))
+
+(defn- dashtab-for [tab dashboard]
+  (assoc tab
+         :dashboard_id (:entity_id dashboard)
+         :serdes/meta  [{:model "Dashboard"    :id (:entity_id dashboard)}
+                        {:model "DashboardTab" :id (:entity_id tab)}]))
 
 ;; Call the default load-one! for the Dashboard, then for each DashboardCard.
 (defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
-  (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :ordered_cards) maybe-local)]
+  (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :ordered_cards :ordered_tabs) maybe-local)]
+    (doseq [tab (:ordered_tabs ingested)]
+      (serdes/load-one! (dashtab-for tab dashboard)
+                        (t2/select-one :model/DashboardTab :entity_id (:entity_id tab))))
     (doseq [dashcard (:ordered_cards ingested)]
       (serdes/load-one! (dashcard-for dashcard dashboard)
                         (t2/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))

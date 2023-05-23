@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import _ from "underscore";
 import { CreateQueryActionParams } from "metabase/entities/actions";
 
 import type {
@@ -19,7 +20,7 @@ import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/
 
 import { getDefaultFormSettings } from "../../../../utils";
 
-import { ActionContext } from "../ActionContext";
+import { ActionContext, ActionContextType } from "../ActionContext";
 import type { ActionContextProviderProps, EditorBodyProps } from "../types";
 
 import {
@@ -185,12 +186,17 @@ function QueryActionContextProvider({
     [query, handleQueryChange],
   );
 
+  const isDirty = useMemo(() => {
+    return canSave && !_.isEqual(action, initialAction);
+  }, [action, canSave, initialAction]);
+
   const value = useMemo(
-    () => ({
+    (): ActionContextType => ({
       action,
       formSettings,
       isNew,
       canSave,
+      isDirty,
       ui: {
         canRename: true,
         canChangeFieldSettings: true,
@@ -204,8 +210,8 @@ function QueryActionContextProvider({
       formSettings,
       isNew,
       canSave,
+      isDirty,
       handleActionChange,
-      setFormSettings,
       renderEditorBody,
     ],
   );
