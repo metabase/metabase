@@ -82,7 +82,7 @@
    stage-number   :- :int
    unique-name-fn :- fn?]
   (not-empty
-   (for [ag (lib.aggregation/aggregations query stage-number)]
+   (for [ag (lib.aggregation/aggregations-metadata query stage-number)]
      (assoc ag
             :lib/source               :source/aggregations
             :lib/source-column-alias  (:name ag)
@@ -153,11 +153,15 @@
    stage-number    :- :int
    unique-name-fn  :- fn?]
   (not-empty
-   (for [expression (lib.expression/expressions query stage-number)]
-     (assoc expression
-            :lib/source               :source/expressions
-            :lib/source-column-alias  (:name expression)
-            :lib/desired-column-alias (unique-name-fn (:name expression))))))
+   (for [expression (lib.expression/expressions-metadata query stage-number)]
+     (let [base-type (:base-type expression)]
+       (cond-> (assoc expression
+                      :lib/source               :source/expressions
+                      :lib/source-column-alias  (:name expression)
+                      :lib/desired-column-alias (unique-name-fn (:name expression)))
+         (and (not (:effective-type expression))
+              base-type)
+         (assoc :effective-type base-type))))))
 
 ;;; Calculate the columns to return if `:aggregations`/`:breakout`/`:fields` are unspecified.
 ;;;
@@ -232,7 +236,7 @@
         field-cols
         (do (doall field-cols)          ; force generation of unique names before join columns
             (into []
-                  (m/distinct-by #(dissoc % :source_alias :lib/source :lib/desired-column-alias))
+                  (m/distinct-by #(dissoc % :source_alias :lib/source :lib/source-uuid :lib/desired-column-alias))
                   (concat field-cols
                           (lib.join/all-joins-default-columns query stage-number unique-name-fn))))
 

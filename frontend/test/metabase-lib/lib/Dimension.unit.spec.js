@@ -942,14 +942,10 @@ describe("Dimension", () => {
     describe("field", () => {
       it("should return the cached Field instance", () => {
         const category = metadata.field(PRODUCTS.CATEGORY);
-        const fieldFromEndpoint = new Field({
-          ...category.getPlainObject(),
-          _comesFromEndpoint: true,
-        });
 
-        const fieldDimension = fieldFromEndpoint.dimension();
-        expect(fieldDimension._fieldInstance).toBe(fieldFromEndpoint);
-        expect(fieldDimension.field()).toBe(fieldFromEndpoint);
+        const fieldDimension = category.dimension();
+        expect(fieldDimension._fieldInstance).toBe(category);
+        expect(fieldDimension.field()).toBe(category);
       });
     });
   });

@@ -30,36 +30,36 @@ export const TIME_OPTIONS = {
     selected: "by year",
     representativeValues: ["2016", "2017", "2018", "2019", "2020"],
   },
-  "Minute of Hour": {
+  "Minute of hour": {
     selected: "by minute of hour",
     representativeValues: ["0", "5", "8", "13"],
     type: "extended",
   },
-  "Hour of Day": {
+  "Hour of day": {
     selected: "by hour of day",
     representativeValues: ["12:00 AM", "2:00 AM", "12:00 PM", "8:00 PM"],
   },
-  "Day of Week": {
+  "Day of week": {
     selected: "by day of week",
     representativeValues: ["Saturday", "Tuesday", "Friday", "Sunday"],
   },
-  "Day of Month": {
+  "Day of month": {
     selected: "by day of month",
     representativeValues: ["5", "10", "15", "30"],
   },
-  "Day of Year": {
+  "Day of year": {
     selected: "by day of year",
     representativeValues: ["1", "10", "12"],
   },
-  "Week of Year": {
+  "Week of year": {
     selected: "by week of year",
     representativeValues: ["1st", "2nd", "3rd", "10th"],
   },
-  "Month of Year": {
+  "Month of year": {
     selected: "by month of year",
     representativeValues: ["January", "June", "December"],
   },
-  "Quarter of Year": {
+  "Quarter of year": {
     selected: "by quarter of year",
     representativeValues: ["Q1", "Q2", "Q3", "Q4"],
   },

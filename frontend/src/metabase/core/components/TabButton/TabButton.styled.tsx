@@ -18,6 +18,7 @@ export const TabButtonInputWrapper = styled.span`
 export const TabButtonInputResizer = styled.span`
   visibility: hidden;
   white-space: pre;
+  padding-right: 2px;
 `;
 
 export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
@@ -26,7 +27,8 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
   left: 0;
   padding: 0;
 
-  border: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
   outline: none;
   background-color: transparent;
 
@@ -40,6 +42,15 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
     css`
       pointer-events: none;
     `}
+
+  &:hover,
+  :focus {
+    ${props =>
+      (props.isSelected || !props.disabled) &&
+      css`
+        border: 1px solid ${color("border")};
+      `}
+  }
 `;
 
 export const TabButtonRoot = styled.div<TabButtonProps>`

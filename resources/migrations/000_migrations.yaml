@@ -14624,14 +14624,22 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.MigrateLegacyResultMetadataFieldRefs"
 
   - changeSet:
-      id: v47.00-029
+      id: v47.00-028
       author: calherres
       comment: Added 0.47.0 - Add join-alias to the report_card.visualization_settings.column_settings field refs
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.AddJoinAliasToVisualizationSettingsFieldRefs"
 
-# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+  - changeSet:
+      id: v47.00-029
+      author: qnkhuat
+      comment: Added 0.47.0 - Stack cards vertically for dashboard with tabs on downgrade
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DowngradeDashboardTab"
+
+  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
 #

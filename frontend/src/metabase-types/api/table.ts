@@ -30,7 +30,6 @@ export interface Table {
   db_id: DatabaseId;
   db?: Database;
 
-  schema_name?: string;
   schema: string;
 
   fks?: ForeignKey[];
@@ -78,9 +77,9 @@ export interface TableListQuery {
 }
 
 export interface ForeignKey {
-  origin: Field;
+  origin?: Field;
   origin_id: FieldId;
-  destination: Field;
+  destination?: Field;
   destination_id: FieldId;
   relationship: string; // enum?
 }

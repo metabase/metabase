@@ -255,6 +255,7 @@
 (mr/register! ::display-info
   [:map
    [:display-name :string]
+   [:long-display-name {:optional true} :string]
    ;; for things that have a Table, e.g. a Field
    [:table {:optional true} [:maybe [:ref ::display-info]]]
    ;; these are derived from the `:lib/source`/`:metabase.lib.metadata/column-source`, but instead of using that value
@@ -275,7 +276,10 @@
    ;; does this column occur in the breakout clause?
    [:is-breakout-column {:optional true} [:maybe :boolean]]
    ;; does this column occur in the order-by clause?
-   [:is-order-by-column {:optional true} [:maybe :boolean]]])
+   [:is-order-by-column {:optional true} [:maybe :boolean]]
+   ;; for aggregation operators
+   [:column-name {:optional true} :string]
+   [:description {:optional true} :string]])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
@@ -305,6 +309,8 @@
      ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display-name`
      ;; everywhere? Determine whether or not this is the case.
      (select-keys x-metadata [:name :display-name :semantic-type])
+     (when-let [long-display-name (display-name query stage-number x :long)]
+       {:long-display-name long-display-name})
      ;; don't return `:base-type`, FE should just use `:effective-type` everywhere and not even need to know
      ;; `:base-type` exists.
      (when-let [effective-type ((some-fn :effective-type :base-type) x-metadata)]

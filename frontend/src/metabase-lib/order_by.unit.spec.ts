@@ -20,6 +20,7 @@ describe("order by", () => {
         expect.objectContaining({
           name: "ID",
           displayName: "ID",
+          longDisplayName: "ID",
           effectiveType: "type/BigInteger",
           semanticType: "type/PK",
           isCalculated: false,
@@ -29,6 +30,7 @@ describe("order by", () => {
           table: {
             name: "ORDERS",
             displayName: "Orders",
+            longDisplayName: "Orders",
             isSourceTable: true,
           },
         }),
@@ -42,6 +44,7 @@ describe("order by", () => {
         expect.objectContaining({
           name: "TITLE",
           displayName: "Title",
+          longDisplayName: "Products → Title",
           effectiveType: "type/Text",
           semanticType: "type/Title",
           isCalculated: false,
@@ -51,6 +54,7 @@ describe("order by", () => {
           table: {
             name: "PRODUCTS",
             displayName: "Products",
+            longDisplayName: "Products",
             isSourceTable: false,
           },
         }),
