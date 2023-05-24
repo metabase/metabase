@@ -65,7 +65,7 @@
     ;; If we're adding a user to the admin group, set the `:is_superuser` flag for the user to whom membership was
     ;; granted
     (when (= group_id (:id (perms-group/admin)))
-      (t2/update! 'User user_id {:is_superuser true}))))
+      (t2/update! :core_user user_id {:is_superuser true}))))
 
 (mi/define-methods
  PermissionsGroupMembership
