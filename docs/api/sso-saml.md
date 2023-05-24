@@ -1,10 +1,10 @@
 ---
-title: "SSO saml"
+title: "SSO SAML"
 summary: |
   `/api/saml` endpoints.
 ---
 
-# SSO saml
+# SSO SAML
 
 `/api/saml` endpoints.
 
