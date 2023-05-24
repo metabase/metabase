@@ -152,7 +152,7 @@
 
 (methodical/defmethod t2.model/resolve-model :before :default
   "Ensure the namespace for given model is loaded.
-  This is a safety mechanism as we moving to toucan2 and we don't need to require the model namespaces in order to use it."
+  This is a safety mechanism as we are moving to toucan2 and we don't need to require the model namespaces in order to use it."
   [x]
   (when (and (keyword? x)
              (= (namespace x) "model")
