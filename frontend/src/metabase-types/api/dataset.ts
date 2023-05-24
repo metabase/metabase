@@ -4,6 +4,7 @@ import { DatabaseId } from "./database";
 import { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
 import { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import { DownloadPermission } from "./permissions";
+import { ParameterOptions } from "./parameters";
 import { TableId } from "./table";
 
 export type RowValue = string | number | null | boolean;
@@ -102,6 +103,7 @@ export interface TemplateTag {
   "widget-type"?: string;
   required?: boolean;
   default?: string;
+  options?: ParameterOptions;
 
   // Card template specific
   "card-id"?: number;
