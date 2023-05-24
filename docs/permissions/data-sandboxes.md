@@ -174,7 +174,7 @@ You can set up an custom sandbox to restrict different rows for each person depe
 
 1. Make sure you've done all the [prerequisites for custom sandboxes](#prerequisites-for-custom-sandboxes).
 2. Go to the saved SQL question that will be displayed to the people in the custom sandbox.
-3. Add a [parameterized](../questions/native-editor/sql-parameters.md) `WHERE` clause to your SQL query, such as `{%raw%}[[ WHERE plan = {{ plan_variable }} ]]{%endraw%}`.
+3. Add a [parameterized](../questions/native-editor/sql-parameters.md) `WHERE` clause to your SQL query, such as `{%raw%}WHERE plan = {{ plan_variable }} {%endraw%}`.
 4. Save the SQL question.
 5. Go to **Admin settings** > **Permissions**.
 6. Find the group and table for your custom sandbox.
