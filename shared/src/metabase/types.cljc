@@ -239,6 +239,7 @@
 (derive :type/Birthdate :Semantic/*)
 (derive :type/Birthdate :type/Date)
 
+(derive :type/Interval :type/Temporal)
 
 ;;; Other
 
