@@ -1,15 +1,19 @@
 import { connect } from "react-redux";
 import Settings from "metabase/lib/settings";
-import { State, Locale } from "metabase-types/store";
+import { Locale, State } from "metabase-types/store";
 import LanguageStep from "../../components/LanguageStep";
-import { setLocale, setStep } from "../../actions";
-import { LANGUAGE_STEP, USER_STEP } from "../../constants";
+import {
+  selectLanguageStep,
+  submitLanguageInfo,
+  updateLocale,
+} from "../../actions";
+import { LANGUAGE_STEP } from "../../constants";
 import {
   getLocale,
+  isLocaleLoaded,
+  isSetupCompleted,
   isStepActive,
   isStepCompleted,
-  isSetupCompleted,
-  isLocaleLoaded,
 } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
@@ -23,13 +27,13 @@ const mapStateToProps = (state: State) => ({
 
 const mapDispatchToProps = (dispatch: any) => ({
   onLocaleChange: (locale: Locale) => {
-    dispatch(setLocale(locale));
+    dispatch(updateLocale(locale));
   },
   onStepSelect: () => {
-    dispatch(setStep(LANGUAGE_STEP));
+    dispatch(selectLanguageStep());
   },
   onStepSubmit: () => {
-    dispatch(setStep(USER_STEP));
+    dispatch(submitLanguageInfo());
   },
 });
 

@@ -1,20 +1,18 @@
 import { connect } from "react-redux";
-import Settings from "metabase/lib/settings";
 import { State } from "metabase-types/store";
 import PreferencesStep from "../../components/PreferencesStep";
-import { setTracking, submitSetup, setStep } from "../../actions";
 import {
-  trackTrackingChanged,
-  trackSetupCompleted,
-  trackPreferencesStepCompleted,
-} from "../../analytics";
-import { PREFERENCES_STEP, COMPLETED_STEP } from "../../constants";
+  selectPreferencesStep,
+  submitPreferencesStep,
+  updateTracking,
+} from "../../actions";
+import { PREFERENCES_STEP } from "../../constants";
 import {
-  isTrackingAllowed,
+  isLocaleLoaded,
+  isSetupCompleted,
   isStepActive,
   isStepCompleted,
-  isSetupCompleted,
-  isLocaleLoaded,
+  isTrackingAllowed,
 } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
@@ -27,19 +25,13 @@ const mapStateToProps = (state: State) => ({
 
 const mapDispatchToProps = (dispatch: any) => ({
   onTrackingChange: (isTrackingAllowed: boolean) => {
-    dispatch(setTracking(isTrackingAllowed));
-    trackTrackingChanged(isTrackingAllowed);
-    Settings.set("anon-tracking-enabled", isTrackingAllowed);
-    trackTrackingChanged(isTrackingAllowed);
+    dispatch(updateTracking(isTrackingAllowed));
   },
   onStepSelect: () => {
-    dispatch(setStep(PREFERENCES_STEP));
+    dispatch(selectPreferencesStep());
   },
   onStepSubmit: async (isTrackingAllowed: boolean) => {
-    await dispatch(submitSetup());
-    dispatch(setStep(COMPLETED_STEP));
-    trackPreferencesStepCompleted(isTrackingAllowed);
-    trackSetupCompleted();
+    await dispatch(submitPreferencesStep(isTrackingAllowed));
   },
 });
 

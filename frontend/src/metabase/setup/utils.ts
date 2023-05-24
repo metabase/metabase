@@ -1,5 +1,8 @@
+import { getIn } from "icepick";
 import _ from "underscore";
-import { LocaleData } from "metabase-types/api";
+import { SetupApi, UtilApi } from "metabase/services";
+import MetabaseSettings from "metabase/lib/settings";
+import { DatabaseData, LocaleData } from "metabase-types/api";
 import { Locale } from "metabase-types/store";
 
 export const getLocales = (
@@ -26,6 +29,26 @@ export const getDefaultLocale = (
 
 export const getUserToken = (hash = window.location.hash): string => {
   return hash.replace(/^#/, "");
+};
+
+export const validatePassword = async (password: string) => {
+  const error = MetabaseSettings.passwordComplexityDescription(password);
+  if (error) {
+    return error;
+  }
+
+  try {
+    await UtilApi.password_check({ password });
+  } catch (error) {
+    return getIn(error, ["data", "errors", "password"]);
+  }
+};
+
+export const validateDatabase = async (database: DatabaseData) => {
+  await SetupApi.validate_db({
+    token: MetabaseSettings.get("setup-token"),
+    details: database,
+  });
 };
 
 const SUBSCRIBE_URL =

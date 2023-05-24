@@ -1,81 +1,97 @@
-import { handleActions } from "redux-actions";
+import { createReducer } from "@reduxjs/toolkit";
+import { SetupState } from "metabase-types/store";
 import {
-  SET_LOCALE,
-  SET_STEP,
-  SET_USER,
-  SET_DATABASE_ENGINE,
-  SET_DATABASE,
-  SET_TRACKING,
-  SET_INVITE,
-  SET_LOCALE_LOADED,
+  loadUserDefaults,
+  loadLocaleDefaults,
+  submitWelcomeStep,
+  selectUserStep,
+  submitUserInfo,
+  updateLocale,
+  selectLanguageStep,
+  submitLanguageInfo,
+  updateTracking,
+  selectPreferencesStep,
+  submitPreferencesStep,
+  cancelDatabaseStep,
+  submitInviteInfo,
+  selectDatabaseStep,
+  updateEngine,
 } from "./actions";
-import { WELCOME_STEP } from "./constants";
-
-export const step = handleActions(
-  {
-    [SET_STEP]: { next: (state, { payload }) => payload },
-  },
+import {
+  COMPLETED_STEP,
+  DATABASE_STEP,
+  LANGUAGE_STEP,
+  PREFERENCES_STEP,
+  USER_STEP,
   WELCOME_STEP,
-);
+} from "./constants";
 
-export const locale = handleActions(
-  {
-    [SET_LOCALE]: { next: (state, { payload }) => payload },
-  },
-  null,
-);
-
-export const user = handleActions(
-  {
-    [SET_USER]: { next: (state, { payload }) => payload },
-  },
-  null,
-);
-
-export const databaseEngine = handleActions(
-  {
-    [SET_DATABASE_ENGINE]: { next: (state, { payload }) => payload },
-  },
-  null,
-);
-
-export const database = handleActions(
-  {
-    [SET_DATABASE]: { next: (state, { payload }) => payload },
-  },
-  null,
-);
-
-export const invite = handleActions(
-  {
-    [SET_INVITE]: { next: (state, { payload }) => payload },
-  },
-  null,
-);
-
-export const isLocaleLoaded = handleActions(
-  {
-    [SET_LOCALE]: { next: () => false },
-    [SET_LOCALE_LOADED]: { next: () => true },
-  },
-  false,
-);
-
-export const isTrackingAllowed = handleActions(
-  {
-    [SET_TRACKING]: { next: (state, { payload }) => payload },
-  },
-  true,
-);
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default {
-  step,
-  locale,
-  user,
-  database,
-  databaseEngine,
-  invite,
-  isLocaleLoaded,
-  isTrackingAllowed,
+const initialState: SetupState = {
+  step: WELCOME_STEP,
+  isLocaleLoaded: false,
+  isTrackingAllowed: false,
 };
+
+export const reducer = createReducer(initialState, builder => {
+  builder.addCase(loadUserDefaults.fulfilled, (state, { payload: user }) => {
+    state.user = user;
+  });
+  builder.addCase(
+    loadLocaleDefaults.fulfilled,
+    (state, { payload: locale }) => {
+      state.locale = locale;
+      state.isLocaleLoaded = true;
+    },
+  );
+  builder.addCase(submitWelcomeStep.fulfilled, state => {
+    state.step = LANGUAGE_STEP;
+  });
+
+  builder.addCase(updateLocale, (state, { payload: locale }) => {
+    state.locale = locale;
+  });
+  builder.addCase(selectLanguageStep, state => {
+    state.step = LANGUAGE_STEP;
+  });
+  builder.addCase(submitLanguageInfo, state => {
+    state.step = USER_STEP;
+  });
+
+  builder.addCase(selectUserStep, state => {
+    state.step = USER_STEP;
+  });
+  builder.addCase(submitUserInfo.fulfilled, (state, { payload: user }) => {
+    state.user = user;
+    state.step = DATABASE_STEP;
+  });
+
+  builder.addCase(selectDatabaseStep, state => {
+    state.step = DATABASE_STEP;
+  });
+  builder.addCase(updateEngine.fulfilled, (state, { payload: engine }) => {
+    state.databaseEngine = engine;
+  });
+  builder.addCase(submitInviteInfo.fulfilled, (state, { payload: invite }) => {
+    state.database = undefined;
+    state.invite = invite;
+    state.step = PREFERENCES_STEP;
+  });
+  builder.addCase(cancelDatabaseStep.fulfilled, state => {
+    state.database = undefined;
+    state.invite = undefined;
+    state.step = PREFERENCES_STEP;
+  });
+
+  builder.addCase(
+    updateTracking.fulfilled,
+    (state, { payload: isTrackingEnabled }) => {
+      state.isTrackingAllowed = isTrackingEnabled;
+    },
+  );
+  builder.addCase(selectPreferencesStep, state => {
+    state.step = PREFERENCES_STEP;
+  });
+  builder.addCase(submitPreferencesStep.fulfilled, state => {
+    state.step = COMPLETED_STEP;
+  });
+});

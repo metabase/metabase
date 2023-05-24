@@ -2,16 +2,16 @@ import { connect } from "react-redux";
 import Settings from "metabase/lib/settings";
 import { State, UserInfo } from "metabase-types/store";
 import UserStep from "../../components/UserStep";
-import { setUser, validatePassword, setStep } from "../../actions";
-import { trackUserStepCompleted } from "../../analytics";
-import { USER_STEP, DATABASE_STEP } from "../../constants";
+import { selectUserStep, submitUserInfo } from "../../actions";
+import { USER_STEP } from "../../constants";
 import {
   getUser,
+  isLocaleLoaded,
+  isSetupCompleted,
   isStepActive,
   isStepCompleted,
-  isSetupCompleted,
-  isLocaleLoaded,
 } from "../../selectors";
+import { validatePassword } from "../../utils";
 
 const mapStateToProps = (state: State) => ({
   user: getUser(state),
@@ -25,12 +25,10 @@ const mapStateToProps = (state: State) => ({
 
 const mapDispatchToProps = (dispatch: any) => ({
   onStepSelect: () => {
-    dispatch(setStep(USER_STEP));
+    dispatch(selectUserStep());
   },
   onStepSubmit: (user: UserInfo) => {
-    dispatch(setUser(user));
-    dispatch(setStep(DATABASE_STEP));
-    trackUserStepCompleted();
+    dispatch(submitUserInfo(user));
   },
 });
 

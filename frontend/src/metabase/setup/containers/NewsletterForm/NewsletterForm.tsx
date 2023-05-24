@@ -6,11 +6,8 @@ import { getUserEmail, isLocaleLoaded } from "../../selectors";
 const mapStateToProps = (state: any) => ({
   initialEmail: getUserEmail(state),
   isLocaleLoaded: isLocaleLoaded(state),
-});
-
-const mapDispatchToProps = () => ({
   onSubscribe: subscribeToNewsletter,
 });
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(NewsletterForm);
+export default connect(mapStateToProps)(NewsletterForm);
