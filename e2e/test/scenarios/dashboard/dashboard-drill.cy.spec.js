@@ -983,19 +983,19 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
   it("should display a back button to the dashboard when navigating to a question", () => {
     const dashboardName = "Orders in a dashboard";
-    const buttonLabel = `Back to ${dashboardName}`;
+    const backButtonLabel = `Back to ${dashboardName}`;
 
     visitDashboard(1);
     cy.wait("@dashboard");
     cy.findByTestId("dashcard").findByText("Orders").click();
     cy.wait("@cardQuery");
-    cy.findByLabelText(buttonLabel).should("be.visible");
+    cy.findByLabelText(backButtonLabel).should("be.visible");
     cy.icon("notebook").click();
     summarize({ mode: "notebook" });
     popover().findByText("Count of rows").click();
-    cy.findByLabelText(buttonLabel).should("be.visible");
+    cy.findByLabelText(backButtonLabel).should("be.visible");
     visualize();
-    cy.findByLabelText(buttonLabel).click();
+    cy.findByLabelText(backButtonLabel).click();
     cy.findByTestId("dashboard-header")
       .findByText(dashboardName)
       .should("be.visible");
@@ -1003,14 +1003,14 @@ describe("scenarios > dashboard > dashboard drill", () => {
     getDashboardCard().realHover();
     getDashboardCardMenu().click();
     popover().findByText("Edit question").click();
-    cy.findByLabelText(buttonLabel).click();
+    cy.findByLabelText(backButtonLabel).click();
     cy.findByTestId("dashboard-header")
       .findByText(dashboardName)
       .should("be.visible");
 
     appBar().findByText("Our analytics").click();
     cy.findByTestId("collection-table").findByText("Orders").click();
-    cy.findByLabelText(buttonLabel).should("not.exist");
+    cy.findByLabelText(backButtonLabel).should("not.exist");
   });
 
   it("should preserve query results when navigating between the dashboard and the query builder", () => {
