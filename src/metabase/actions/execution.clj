@@ -85,6 +85,21 @@
       (catch Exception e
         (handle-action-execution-error e)))))
 
+(defn- check-no-extra-parameters
+  "Check that the given request parameters do not contain any parameters that are not in the given set of destination parameter ids"
+  [request-parameters destination-param-ids]
+  (let [extra-parameters (set/difference (set (keys request-parameters))
+                                         (set destination-param-ids))]
+    (api/check (empty? extra-parameters)
+               400
+               {:status-code            400
+                :message                (tru "No destination parameter found for {0}. Found: {1}"
+                                             (pr-str extra-parameters)
+                                             (pr-str destination-param-ids))
+                :type                   qp.error-type/invalid-parameter
+                :parameters             request-parameters
+                :destination-parameters destination-param-ids})))
+
 (defn- build-implicit-query
   [{:keys [model_id parameters] :as _action} implicit-action request-parameters]
   (let [{database-id :db_id
@@ -101,8 +116,7 @@
         _                        (api/check (= (count pk-fields) 1)
                                    400
                                    (tru "Must execute implicit action on a table with a single primary key."))
-        extra-parameters         (set/difference (set (keys request-parameters))
-                                                 (set (keys slug->field-name)))
+        _                        (check-no-extra-parameters request-parameters (keys slug->field-name))
         pk-field                 (first pk-fields)
         ;; Ignore params with nil values; the client doesn't reliably omit blank, optional parameters from the
         ;; request. See discussion at #29049
@@ -118,13 +132,6 @@
                400
                (tru "Missing primary key parameter: {0}"
                     (pr-str (u/slugify (:name pk-field)))))
-    (api/check (empty? extra-parameters)
-               400
-               {:message (tru "No destination parameter found for {0}. Found: {1}"
-                              (pr-str extra-parameters)
-                              (pr-str (set (keys slug->field-name))))
-                :parameters request-parameters
-                :destination-parameters (keys slug->field-name)})
     (cond->
       {:query {:database database-id,
                :type :query,
@@ -158,20 +165,6 @@
         (actions/perform-action! implicit-action arg-map))
       (catch Exception e
         (handle-action-execution-error e)))))
-
-(defn- check-no-extra-parameters
-  "Check that the given request parameters do not contain any parameters that are not in the given set of destination parameter ids"
-  [request-parameters destination-param-ids]
-  (doseq [[parameter-id _value] request-parameters]
-    (api/check (not (contains? destination-param-ids parameter-id))
-               400
-               {:status-code            400
-                :message                (tru "No destination parameter found for id {0}. Found: {1}"
-                                             (pr-str parameter-id)
-                                             (pr-str destination-param-ids))
-                :type                   qp.error-type/invalid-parameter
-                :parameters             request-parameters
-                :destination-parameters destination-param-ids})))
 
 (defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
