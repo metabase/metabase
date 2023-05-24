@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
 import SelectButton from "metabase/core/components/SelectButton";
-import Triggerable from "metabase/components/Triggerable";
+import { Triggerable } from "metabase/components/Triggerable";
 import ChartSettingColorPicker from "./ChartSettingColorPicker";
 
 interface ChartSettingFieldPickerRootProps {

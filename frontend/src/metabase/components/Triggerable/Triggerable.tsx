@@ -1,40 +1,79 @@
-/* eslint-disable react/prop-types */
-import React, { Component } from "react";
-
-import cx from "classnames";
 import styled from "@emotion/styled";
-import { isObscured } from "metabase/lib/dom";
+import cx from "classnames";
+import React, {
+  CSSProperties,
+  Children,
+  Component,
+  ComponentType,
+  ElementType,
+  ReactNode,
+  SyntheticEvent,
+  cloneElement,
+  createRef,
+} from "react";
 
 import Tooltip from "metabase/core/components/Tooltip";
+import { isObscured } from "metabase/lib/dom";
+
+import { RenderProp } from "./types";
+import { isChildrenRenderProp, isReactElement } from "./utils";
 
 const Trigger = styled.a``;
 
+type TriggerableComponent = ComponentType<{
+  isOpen: boolean;
+  onClose?: (event: SyntheticEvent) => void;
+  sizeToFit?: boolean;
+  target?: Props["target"];
+}>;
+
+interface Props {
+  as?: ElementType | ComponentType;
+  children:
+    | ReactNode
+    | RenderProp<{ onClose: (event: SyntheticEvent) => void }>;
+  closeOnObscuredTrigger?: boolean;
+  disabled?: boolean;
+  isInitiallyOpen?: boolean;
+  isOpen?: boolean;
+  target?: () => EventTarget | null;
+  triggerClasses?: string;
+  triggerClassesClose?: string;
+  triggerClassesOpen?: string;
+  triggerElement?: ReactNode | RenderTriggerElement;
+  triggerId?: string;
+  triggerStyle?: CSSProperties;
+  onClose?: (event: SyntheticEvent) => void;
+}
+
+type RenderTriggerElement = (props: {
+  isTriggeredComponentOpen: boolean;
+  open: () => void;
+  close: () => void;
+}) => ReactNode;
+
+interface State {
+  isOpen: boolean;
+}
+
 // higher order component that takes a component which takes props "isOpen" and optionally "onClose"
 // and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
+const _Triggerable = (ComposedComponent: TriggerableComponent) => {
+  const name = ComposedComponent.displayName || ComposedComponent.name;
 
-const Triggerable = ComposedComponent =>
-  class extends Component {
-    static displayName =
-      "Triggerable[" +
-      (ComposedComponent.displayName || ComposedComponent.name) +
-      "]";
-
-    constructor(props, context) {
-      super(props, context);
-
-      this.state = {
-        isOpen: props.isInitiallyOpen || false,
-      };
-
-      this._startCheckObscured = this._startCheckObscured.bind(this);
-      this._stopCheckObscured = this._stopCheckObscured.bind(this);
-      this.onClose = this.onClose.bind(this);
-      this.trigger = React.createRef();
-    }
-
+  return class extends Component<Props, State> {
     static defaultProps = {
       as: "a",
-      closeOnObscuredTrigger: false,
+    };
+
+    static displayName = `Triggerable[${name}]`;
+
+    public trigger = createRef<HTMLAnchorElement>();
+
+    private _offscreenTimer: number | null = null;
+
+    state = {
+      isOpen: this.props.isInitiallyOpen || false,
     };
 
     open = () => {
@@ -49,18 +88,22 @@ const Triggerable = ComposedComponent =>
       this.setState({ isOpen });
     };
 
-    onClose(e) {
+    onClose = (event: SyntheticEvent) => {
       // don't close if clicked the actual trigger, it will toggle
-      if (e && e.target && this.trigger.current.contains(e.target)) {
+      if (
+        event &&
+        event.target instanceof Node &&
+        this.trigger.current?.contains(event.target)
+      ) {
         return;
       }
 
       if (this.props.onClose) {
-        this.props.onClose(e);
+        this.props.onClose(event);
       }
 
       this.close();
-    }
+    };
 
     target() {
       if (this.props.target) {
@@ -86,22 +129,22 @@ const Triggerable = ComposedComponent =>
       this._stopCheckObscured();
     }
 
-    _startCheckObscured() {
+    _startCheckObscured = () => {
       if (this._offscreenTimer == null) {
-        this._offscreenTimer = setInterval(() => {
+        this._offscreenTimer = window.setInterval(() => {
           const trigger = this.trigger.current;
           if (isObscured(trigger)) {
             this.close();
           }
         }, 250);
       }
-    }
-    _stopCheckObscured() {
+    };
+    _stopCheckObscured = () => {
       if (this._offscreenTimer != null) {
-        clearInterval(this._offscreenTimer);
+        window.clearInterval(this._offscreenTimer);
         this._offscreenTimer = null;
       }
-    }
+    };
 
     render() {
       const {
@@ -117,24 +160,28 @@ const Triggerable = ComposedComponent =>
         this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
 
       let { triggerElement } = this.props;
-      if (triggerElement && triggerElement.type === Tooltip) {
+      if (isReactElement(triggerElement) && triggerElement.type === Tooltip) {
         // Disables tooltip when open:
-        triggerElement = React.cloneElement(triggerElement, {
+        triggerElement = cloneElement(triggerElement, {
           isEnabled: triggerElement.props.isEnabled && !isOpen,
         });
       }
 
       let { children } = this.props;
-      if (typeof children === "function" && isOpen) {
-        // if children is a render prop, pass onClose to it
+
+      if (isChildrenRenderProp(children)) {
         children = children({ onClose: this.onClose });
-      } else if (
-        React.Children.count(children) === 1 &&
-        React.Children.only(children).props.onClose === undefined &&
-        typeof React.Children.only(children).type !== "string"
-      ) {
-        // if we have a single child which isn't an HTML element and doesn't have an onClose prop go ahead and inject it directly
-        children = React.cloneElement(children, { onClose: this.onClose });
+      } else if (Children.count(children) === 1) {
+        const child = Children.only(children);
+
+        if (isReactElement(child)) {
+          const isHtmlElement = child.type === "string";
+          const hasOnCloseProp = typeof child.props.onClose !== "undefined";
+
+          if (!isHtmlElement && !hasOnCloseProp) {
+            children = cloneElement(child, { onClose: this.onClose });
+          }
+        }
       }
 
       return (
@@ -167,6 +214,7 @@ const Triggerable = ComposedComponent =>
                 })
               : triggerElement}
           </Trigger>
+
           <ComposedComponent
             {...this.props}
             isOpen={isOpen}
@@ -180,7 +228,8 @@ const Triggerable = ComposedComponent =>
       );
     }
   };
+};
 
-export default Object.assign(Triggerable, {
+export const Triggerable = Object.assign(_Triggerable, {
   Trigger,
 });
