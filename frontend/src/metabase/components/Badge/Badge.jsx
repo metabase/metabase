@@ -20,7 +20,7 @@ const propTypes = {
   children: PropTypes.node,
 };
 
-const DEFAULT_ICON_SIZE = 12;
+const DEFAULT_ICON_SIZE = 16;
 
 function getIconProps(iconProp) {
   if (!iconProp) {
