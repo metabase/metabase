@@ -134,7 +134,7 @@ const retryRevisionRequest = ({
         return retryRevisionRequest({
           url,
           condition,
-          timeout: timeout - REVISION_HISTORY_INTERVAL,
+          timeout: timeout - interval,
         });
       } else {
         throw new Error("Revision retry timeout");
