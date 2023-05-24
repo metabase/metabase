@@ -1,13 +1,14 @@
 import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { SetupApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
-import { Locale, UserInfo } from "metabase-types/store";
+import { Locale, State, UserInfo } from "metabase-types/store";
 import {
-  trackStepSeen,
+  trackPreferencesStepCompleted,
+  trackSetupCompleted,
+  trackTrackingChanged,
   trackUserStepCompleted,
   trackWelcomeStepCompleted,
 } from "./analytics";
-import { WELCOME_STEP } from "./constants";
 import { getDefaultLocale, getLocales, getUserToken } from "./utils";
 
 export const loadUserDefaults = createAsyncThunk(
@@ -29,12 +30,33 @@ export const loadLocaleDefaults = createAsyncThunk(
   },
 );
 
+export const submitSetup = createAsyncThunk(
+  "metabase/setup/SUBMIT_SETUP",
+  async (_, thunkAPI) => {
+    const { setup } = thunkAPI.getState() as State;
+    const { locale, user, database, invite, isTrackingAllowed } = setup;
+
+    await SetupApi.create({
+      token: MetabaseSettings.get("setup-token"),
+      user,
+      database,
+      invite,
+      prefs: {
+        site_name: user?.site_name,
+        site_locale: locale?.code,
+        allow_tracking: isTrackingAllowed.toString(),
+      },
+    });
+
+    MetabaseSettings.set("setup-token", null);
+  },
+);
+
 export const loadWelcomeStep = createAsyncThunk(
   "metabase/setup/LOAD_WELCOME_STEP",
   (_, thunkAPI) => {
     thunkAPI.dispatch(loadUserDefaults());
     thunkAPI.dispatch(loadLocaleDefaults());
-    trackStepSeen(WELCOME_STEP);
   },
 );
 
@@ -63,5 +85,27 @@ export const submitUserStep = createAsyncThunk(
   "metabase/setup/SUBMIT_USER_STEP",
   (_: UserInfo) => {
     trackUserStepCompleted();
+  },
+);
+
+export const changeTracking = createAsyncThunk(
+  "metabase/setup/CHANGE_TRACKING",
+  (isTrackingAllowed: boolean) => {
+    trackTrackingChanged(isTrackingAllowed);
+    MetabaseSettings.set("anon-tracking-enabled", isTrackingAllowed);
+    trackTrackingChanged(isTrackingAllowed);
+  },
+);
+
+export const selectPreferencesStep = createAction(
+  "metabase/setup/SELECT_PREFERENCES_STEP",
+);
+
+export const submitPreferencesStep = createAsyncThunk(
+  "metabase/setup/SUBMIT_PREFERENCES_STEP",
+  async (isTrackingAllowed: boolean, thunkAPI) => {
+    await thunkAPI.dispatch(submitSetup());
+    trackPreferencesStepCompleted(isTrackingAllowed);
+    trackSetupCompleted();
   },
 );
