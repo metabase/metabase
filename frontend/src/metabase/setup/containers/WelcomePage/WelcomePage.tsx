@@ -1,7 +1,8 @@
 import { connect } from "react-redux";
 import { State } from "metabase-types/store";
 import WelcomePage from "../../components/WelcomePage";
-import { loadWelcomeStep, submitWelcomeStep } from "../../actions";
+import { loadDefaults, selectStep } from "../../actions";
+import { LANGUAGE_STEP } from "../../constants";
 import { isLocaleLoaded } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
@@ -10,10 +11,10 @@ const mapStateToProps = (state: State) => ({
 
 const mapDispatchToProps = (dispatch: any) => ({
   onStepShow: () => {
-    dispatch(loadWelcomeStep());
+    dispatch(loadDefaults());
   },
   onStepSubmit: () => {
-    dispatch(submitWelcomeStep());
+    dispatch(selectStep(LANGUAGE_STEP));
   },
 });
 

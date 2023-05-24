@@ -1,28 +1,22 @@
 import { createReducer } from "@reduxjs/toolkit";
 import { SetupState } from "metabase-types/store";
 import {
-  loadUserDefaults,
-  loadLocaleDefaults,
-  submitWelcomeStep,
-  selectUserStep,
-  submitUserInfo,
-  updateLocale,
-  selectLanguageStep,
-  submitLanguageInfo,
-  updateTracking,
-  selectPreferencesStep,
-  submitPreferencesStep,
   cancelDatabaseStep,
-  submitInviteInfo,
-  selectDatabaseStep,
-  updateEngine,
+  loadLocaleDefaults,
+  loadUserDefaults,
+  selectStep,
+  submitDatabase,
+  submitPreferencesStep,
+  submitUser,
+  submitUserInvite,
+  updateDatabaseEngine,
+  updateLocale,
+  updateTracking,
 } from "./actions";
 import {
   COMPLETED_STEP,
   DATABASE_STEP,
-  LANGUAGE_STEP,
   PREFERENCES_STEP,
-  USER_STEP,
   WELCOME_STEP,
 } from "./constants";
 
@@ -43,35 +37,27 @@ export const reducer = createReducer(initialState, builder => {
       state.isLocaleLoaded = true;
     },
   );
-  builder.addCase(submitWelcomeStep.fulfilled, state => {
-    state.step = LANGUAGE_STEP;
-  });
-
   builder.addCase(updateLocale, (state, { payload: locale }) => {
     state.locale = locale;
   });
-  builder.addCase(selectLanguageStep, state => {
-    state.step = LANGUAGE_STEP;
+  builder.addCase(selectStep, (state, { payload: step }) => {
+    state.step = step;
   });
-  builder.addCase(submitLanguageInfo, state => {
-    state.step = USER_STEP;
-  });
-
-  builder.addCase(selectUserStep, state => {
-    state.step = USER_STEP;
-  });
-  builder.addCase(submitUserInfo.fulfilled, (state, { payload: user }) => {
+  builder.addCase(submitUser.fulfilled, (state, { payload: user }) => {
     state.user = user;
     state.step = DATABASE_STEP;
   });
-
-  builder.addCase(selectDatabaseStep, state => {
-    state.step = DATABASE_STEP;
+  builder.addCase(
+    updateDatabaseEngine.fulfilled,
+    (state, { payload: engine }) => {
+      state.databaseEngine = engine;
+    },
+  );
+  builder.addCase(submitDatabase.fulfilled, state => {
+    state.invite = undefined;
+    state.step = PREFERENCES_STEP;
   });
-  builder.addCase(updateEngine.fulfilled, (state, { payload: engine }) => {
-    state.databaseEngine = engine;
-  });
-  builder.addCase(submitInviteInfo.fulfilled, (state, { payload: invite }) => {
+  builder.addCase(submitUserInvite.fulfilled, (state, { payload: invite }) => {
     state.database = undefined;
     state.invite = invite;
     state.step = PREFERENCES_STEP;
@@ -81,16 +67,12 @@ export const reducer = createReducer(initialState, builder => {
     state.invite = undefined;
     state.step = PREFERENCES_STEP;
   });
-
   builder.addCase(
     updateTracking.fulfilled,
     (state, { payload: isTrackingEnabled }) => {
       state.isTrackingAllowed = isTrackingEnabled;
     },
   );
-  builder.addCase(selectPreferencesStep, state => {
-    state.step = PREFERENCES_STEP;
-  });
   builder.addCase(submitPreferencesStep.fulfilled, state => {
     state.step = COMPLETED_STEP;
   });

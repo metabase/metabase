@@ -1,30 +1,25 @@
 import { connect } from "react-redux";
 import Settings from "metabase/lib/settings";
 import { DatabaseData } from "metabase-types/api";
-import { State, InviteInfo } from "metabase-types/store";
+import { InviteInfo, State } from "metabase-types/store";
 import DatabaseStep from "../../components/DatabaseStep";
 import {
-  setDatabaseEngine,
-  setDatabase,
-  setInvite,
-  setStep,
+  cancelDatabaseStep,
+  selectStep,
   submitDatabase,
+  submitUserInvite,
+  updateDatabaseEngine,
 } from "../../actions";
-import {
-  trackDatabaseSelected,
-  trackAddDataLaterClicked,
-  trackDatabaseStepCompleted,
-} from "../../analytics";
-import { DATABASE_STEP, PREFERENCES_STEP } from "../../constants";
+import { DATABASE_STEP } from "../../constants";
 import {
   getDatabase,
-  isStepActive,
-  isStepCompleted,
-  isSetupCompleted,
   getDatabaseEngine,
   getInvite,
   getUser,
   isLocaleLoaded,
+  isSetupCompleted,
+  isStepActive,
+  isStepCompleted,
 } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
@@ -41,32 +36,19 @@ const mapStateToProps = (state: State) => ({
 
 const mapDispatchToProps = (dispatch: any) => ({
   onEngineChange: (engine?: string) => {
-    if (engine) {
-      trackDatabaseSelected(engine);
-    }
-    dispatch(setDatabaseEngine(engine || null));
+    dispatch(updateDatabaseEngine(engine));
   },
   onStepSelect: () => {
-    dispatch(setStep(DATABASE_STEP));
+    dispatch(selectStep(DATABASE_STEP));
   },
   onDatabaseSubmit: async (database: DatabaseData) => {
     await dispatch(submitDatabase(database));
-    dispatch(setInvite(null));
-    dispatch(setStep(PREFERENCES_STEP));
-    trackDatabaseStepCompleted(database.engine);
   },
   onInviteSubmit: (invite: InviteInfo) => {
-    dispatch(setDatabase(null));
-    dispatch(setInvite(invite));
-    dispatch(setStep(PREFERENCES_STEP));
-    trackDatabaseStepCompleted();
+    dispatch(submitUserInvite(invite));
   },
   onStepCancel: (engine?: string) => {
-    dispatch(setDatabase(null));
-    dispatch(setInvite(null));
-    dispatch(setStep(PREFERENCES_STEP));
-    trackDatabaseStepCompleted();
-    trackAddDataLaterClicked(engine);
+    dispatch(cancelDatabaseStep(engine));
   },
 });
 

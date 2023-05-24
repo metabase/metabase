@@ -2,7 +2,7 @@ import { connect } from "react-redux";
 import { State } from "metabase-types/store";
 import PreferencesStep from "../../components/PreferencesStep";
 import {
-  selectPreferencesStep,
+  selectStep,
   submitPreferencesStep,
   updateTracking,
 } from "../../actions";
@@ -28,7 +28,7 @@ const mapDispatchToProps = (dispatch: any) => ({
     dispatch(updateTracking(isTrackingAllowed));
   },
   onStepSelect: () => {
-    dispatch(selectPreferencesStep());
+    dispatch(selectStep(PREFERENCES_STEP));
   },
   onStepSubmit: async (isTrackingAllowed: boolean) => {
     await dispatch(submitPreferencesStep(isTrackingAllowed));

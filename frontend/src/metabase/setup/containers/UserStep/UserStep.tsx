@@ -2,7 +2,7 @@ import { connect } from "react-redux";
 import Settings from "metabase/lib/settings";
 import { State, UserInfo } from "metabase-types/store";
 import UserStep from "../../components/UserStep";
-import { selectUserStep, submitUserInfo } from "../../actions";
+import { selectStep, submitUser } from "../../actions";
 import { USER_STEP } from "../../constants";
 import {
   getUser,
@@ -25,10 +25,10 @@ const mapStateToProps = (state: State) => ({
 
 const mapDispatchToProps = (dispatch: any) => ({
   onStepSelect: () => {
-    dispatch(selectUserStep());
+    dispatch(selectStep(USER_STEP));
   },
   onStepSubmit: (user: UserInfo) => {
-    dispatch(submitUserInfo(user));
+    dispatch(submitUser(user));
   },
 });
 

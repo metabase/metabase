@@ -1,6 +1,7 @@
 import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { SetupApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
+import { DatabaseData } from "metabase-types/api";
 import { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 import {
   trackAddDataLaterClicked,
@@ -14,8 +15,9 @@ import {
 } from "./analytics";
 import { getDefaultLocale, getLocales, getUserToken } from "./utils";
 
+export const LOAD_USER_DEFAULTS = "metabase/setup/LOAD_USER_DEFAULTS";
 export const loadUserDefaults = createAsyncThunk(
-  "metabase/setup/LOAD_USER_DEFAULTS",
+  LOAD_USER_DEFAULTS,
   async (): Promise<UserInfo | undefined> => {
     const token = getUserToken();
     if (token) {
@@ -25,16 +27,114 @@ export const loadUserDefaults = createAsyncThunk(
   },
 );
 
+export const LOAD_LOCALE_DEFAULTS = "metabase/setup/LOAD_LOCALE_DEFAULTS";
 export const loadLocaleDefaults = createAsyncThunk(
-  "metabase/setup/LOAD_LOCALE_DEFAULTS",
+  LOAD_LOCALE_DEFAULTS,
   async () => {
     const data = MetabaseSettings.get("available-locales") || [];
     return getDefaultLocale(getLocales(data));
   },
 );
 
+export const LOAD_DEFAULTS = "metabase/setup/LOAD_DEFAULTS";
+export const loadDefaults = createAsyncThunk(LOAD_DEFAULTS, (_, thunkAPI) => {
+  thunkAPI.dispatch(loadUserDefaults());
+  thunkAPI.dispatch(loadLocaleDefaults());
+});
+
+export const SELECT_STEP = "metabase/setup/SUBMIT_WELCOME_STEP";
+export const selectStep = createAction<number>(SELECT_STEP);
+
+export const SUBMIT_WELCOME = "metabase/setup/SUBMIT_WELCOME_STEP";
+export const submitWelcome = createAsyncThunk(SUBMIT_WELCOME, () => {
+  trackWelcomeStepCompleted();
+});
+
+export const UPDATE_LOCALE = "metabase/setup/UPDATE_LOCALE";
+export const updateLocale = createAction<Locale>(UPDATE_LOCALE);
+
+export const SUBMIT_LANGUAGE = "metabase/setup/SUBMIT_LANGUAGE";
+export const submitLanguage = createAction(SUBMIT_LANGUAGE);
+
+export const submitUser = createAsyncThunk(
+  "metabase/setup/SUBMIT_USER_INFO",
+  (user: UserInfo) => {
+    trackUserStepCompleted();
+    return user;
+  },
+);
+
+export const UPDATE_DATABASE_ENGINE = "metabase/setup/UPDATE_DATABASE_ENGINE";
+export const updateDatabaseEngine = createAsyncThunk(
+  UPDATE_DATABASE_ENGINE,
+  (engine?: string) => {
+    if (engine) {
+      trackDatabaseSelected(engine);
+    }
+    return engine;
+  },
+);
+
+export const validateDatabase = async (database: DatabaseData) => {
+  await SetupApi.validate_db({
+    token: MetabaseSettings.get("setup-token"),
+    details: database,
+  });
+};
+
+export const SUBMIT_DATABASE = "metabase/setup/SUBMIT_DATABASE";
+export const submitDatabase = createAsyncThunk(
+  SUBMIT_DATABASE,
+  async (database: DatabaseData) => {
+    const sslDetails = { ...database.details, ssl: true };
+    const sslDatabase = { ...database, details: sslDetails };
+    const nonSslDetails = { ...database.details, ssl: false };
+    const nonSslDatabase = { ...database, database: nonSslDetails };
+
+    try {
+      await validateDatabase(sslDatabase);
+      trackDatabaseStepCompleted(sslDatabase.engine);
+      return sslDatabase;
+    } catch (error) {
+      await validateDatabase(nonSslDatabase);
+      trackDatabaseStepCompleted(nonSslDatabase.engine);
+      return nonSslDatabase;
+    }
+  },
+);
+
+export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
+export const submitUserInvite = createAsyncThunk(
+  SUBMIT_USER_INVITE,
+  (invite: InviteInfo) => {
+    trackDatabaseStepCompleted();
+    return invite;
+  },
+);
+
+export const CANCEL_DATABASE_STEP = "metabase/setup/CANCEL_DATABASE_STEP";
+export const cancelDatabaseStep = createAsyncThunk(
+  CANCEL_DATABASE_STEP,
+  (engine?: string) => {
+    trackDatabaseStepCompleted();
+    trackAddDataLaterClicked(engine);
+  },
+);
+
+export const UPDATE_TRACKING = "metabase/setup/UPDATE_TRACKING";
+export const updateTracking = createAsyncThunk(
+  UPDATE_TRACKING,
+  (isTrackingAllowed: boolean) => {
+    trackTrackingChanged(isTrackingAllowed);
+    MetabaseSettings.set("anon-tracking-enabled", isTrackingAllowed);
+    trackTrackingChanged(isTrackingAllowed);
+    return isTrackingAllowed;
+  },
+);
+
+export const SUBMIT_SETUP = "metabase/setup/SUBMIT_SETUP";
 export const submitSetup = createAsyncThunk(
-  "metabase/setup/SUBMIT_SETUP",
+  SUBMIT_SETUP,
   async (_, thunkAPI) => {
     const { setup } = thunkAPI.getState() as State;
     const { locale, user, database, invite, isTrackingAllowed } = setup;
@@ -55,89 +155,9 @@ export const submitSetup = createAsyncThunk(
   },
 );
 
-export const loadWelcomeStep = createAsyncThunk(
-  "metabase/setup/LOAD_WELCOME_STEP",
-  (_, thunkAPI) => {
-    thunkAPI.dispatch(loadUserDefaults());
-    thunkAPI.dispatch(loadLocaleDefaults());
-  },
-);
-
-export const submitWelcomeStep = createAsyncThunk(
-  "metabase/setup/SUBMIT_WELCOME_STEP",
-  () => {
-    trackWelcomeStepCompleted();
-  },
-);
-
-export const updateLocale = createAction<Locale>(
-  "metabase/setup/UPDATE_LOCALE",
-);
-
-export const selectLanguageStep = createAction(
-  "metabase/setup/SELECT_LANGUAGE_STEP",
-);
-
-export const submitLanguageInfo = createAction(
-  "metabase/setup/SUBMIT_LANGUAGE_STEP",
-);
-
-export const selectUserStep = createAction("metabase/setup/SELECT_USER_STEP");
-
-export const submitUserInfo = createAsyncThunk(
-  "metabase/setup/SUBMIT_USER_INFO",
-  (user: UserInfo) => {
-    trackUserStepCompleted();
-    return user;
-  },
-);
-
-export const selectDatabaseStep = createAction(
-  "metabase/setup/SELECT_DATABASE_STEP",
-);
-
-export const updateEngine = createAsyncThunk(
-  "metabase/setup/UPDATE_ENGINE",
-  (engine?: string) => {
-    if (engine) {
-      trackDatabaseSelected(engine);
-    }
-    return engine;
-  },
-);
-
-export const submitInviteInfo = createAsyncThunk(
-  "metabase/setup/SUBMIT_INVITE_INFO",
-  (invite: InviteInfo) => {
-    trackDatabaseStepCompleted();
-    return invite;
-  },
-);
-
-export const cancelDatabaseStep = createAsyncThunk(
-  "metabase/setup/CANCEL_DATABASE_STEP",
-  (engine?: string) => {
-    trackDatabaseStepCompleted();
-    trackAddDataLaterClicked(engine);
-  },
-);
-
-export const updateTracking = createAsyncThunk(
-  "metabase/setup/UPDATE_TRACKING",
-  (isTrackingAllowed: boolean) => {
-    trackTrackingChanged(isTrackingAllowed);
-    MetabaseSettings.set("anon-tracking-enabled", isTrackingAllowed);
-    trackTrackingChanged(isTrackingAllowed);
-    return isTrackingAllowed;
-  },
-);
-
-export const selectPreferencesStep = createAction(
-  "metabase/setup/SELECT_PREFERENCES_STEP",
-);
-
+export const SUBMIT_PREFERENCES = "metabase/setup/SUBMIT_PREFERENCES_STEP";
 export const submitPreferencesStep = createAsyncThunk(
-  "metabase/setup/SUBMIT_PREFERENCES_STEP",
+  SUBMIT_PREFERENCES,
   async (isTrackingAllowed: boolean, thunkAPI) => {
     await thunkAPI.dispatch(submitSetup());
     trackPreferencesStepCompleted(isTrackingAllowed);
