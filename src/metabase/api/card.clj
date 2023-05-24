@@ -15,6 +15,7 @@
    [metabase.driver :as driver]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models
@@ -43,11 +44,12 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.sync.analyze.query-results :as qr]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -147,25 +149,24 @@
        (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
 
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
-  (-> (apply cards-for-filter-option* (or filter-option :all) (when model-id-or-nil [model-id-or-nil]))
+  (-> (apply cards-for-filter-option* filter-option (when model-id-or-nil [model-id-or-nil]))
       (hydrate :creator :collection)))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
 
-(def ^:private CardFilterOption
-  "Schema for a valid card filter option."
-  (apply s/enum (map name (keys (methods cards-for-filter-option*)))))
+(def ^:private card-filter-options
+  "a valid card filter option."
+  (map name (keys (methods cards-for-filter-option*))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, :using_model
-  and `archived`. See corresponding implementation functions above for the specific behavior of each filter
+  and `archived`. See corresponditng implementation functions above for the specific behavior of each filter
   option. :card_index:"
   [f model_id]
-  {f        (s/maybe CardFilterOption)
-   model_id (s/maybe su/IntGreaterThanZero)}
-  (let [f (keyword f)]
+  {f        [:maybe (into [:enum] card-filter-options)]
+   model_id [:maybe ms/IntGreaterThanZero]}
+  (let [f (or (keyword f) :all)]
     (when (contains? #{:database :table :using_model} f)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
                                                          (name f)))
@@ -173,7 +174,7 @@
         :database    (api/read-check Database model_id)
         :table       (api/read-check Database (db/select-one-field :db_id Table, :id model_id))
         :using_model (api/read-check Card model_id)))
-    (let [cards (filter mi/can-read? (cards-for-filter-option f model_id))
+    (let [cards          (filter mi/can-read? (cards-for-filter-option f model_id))
           last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
       (into []
             (map (fn [{:keys [id] :as card}]
@@ -202,6 +203,175 @@
     (u/prog1 card
       (when-not (Boolean/parseBoolean ignore_view)
         (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))))
+
+(defn- card-columns-from-names
+  [card names]
+  (when-let [names (set names)]
+    (filter #(names (:name %)) (:result_metadata card))))
+
+(defn- cols->kebab-case
+  [cols]
+  (map #(update-keys % u/->kebab-case-en) cols))
+
+(defn- area-bar-line-series-are-compatible?
+  [first-card second-card]
+  (and (#{:area :line :bar} (:display second-card))
+       (let [initial-dimensions (cols->kebab-case
+                                  (card-columns-from-names
+                                    first-card
+                                    (get-in first-card [:visualization_settings :graph.dimensions])))
+             new-dimensions     (cols->kebab-case
+                                  (card-columns-from-names
+                                    second-card
+                                    (get-in second-card [:visualization_settings :graph.dimensions])))
+             new-metrics        (cols->kebab-case
+                                  (card-columns-from-names
+                                    second-card
+                                    (get-in second-card [:visualization_settings :graph.metrics])))]
+         (cond
+           ;; must have at least one dimension and one metric
+           (or (zero? (count new-dimensions))
+               (zero? (count new-metrics)))
+           false
+
+           ;; all metrics must be numeric
+           (not (every? lib.types.isa/numeric? new-metrics))
+           false
+
+           ;; both or neither primary dimension must be dates
+           (not= (lib.types.isa/date? (first initial-dimensions))
+                 (lib.types.isa/date? (first new-dimensions)))
+           false
+
+           ;; both or neither primary dimension must be numeric
+           ;; a timestamp field is both date and number so don't enforce the condition if both fields are dates; see #2811
+           (and (not= (lib.types.isa/numeric? (first initial-dimensions))
+                      (lib.types.isa/numeric? (first new-dimensions)))
+                (not (and
+                      (lib.types.isa/date? (first initial-dimensions))
+                      (lib.types.isa/date? (first new-dimensions)))))
+           false
+
+           :else true))))
+
+(defmulti series-are-compatible?
+  "Check if the `second-card` is compatible to be used as series of `card`."
+  (fn [card _second-card]
+   (:display card)))
+
+(defmethod series-are-compatible? :area
+  [first-card second-card]
+  (area-bar-line-series-are-compatible? first-card second-card))
+
+(defmethod series-are-compatible? :line
+  [first-card second-card]
+  (area-bar-line-series-are-compatible? first-card second-card))
+
+(defmethod series-are-compatible? :bar
+  [first-card second-card]
+  (area-bar-line-series-are-compatible? first-card second-card))
+
+(defmethod series-are-compatible? :scalar
+  [first-card second-card]
+  (and (= :scalar (:display second-card))
+       (= 1
+          (count (:result_metadata first-card))
+          (count (:result_metadata second-card)))))
+
+(def ^:private supported-series-display-type (set (keys (methods series-are-compatible?))))
+
+(defn- fetch-compatible-series*
+  "Implementaiton of `fetch-compatible-series`.
+
+  Provide `page-size` to limit the number of cards returned, it does not guaranteed to return exactly `page-size` cards.
+  Use `fetch-compatible-series` for that."
+  [card {:keys [query last-cursor page-size exclude-ids] :as _options}]
+  (let [matching-cards  (t2/select Card
+                                   :archived false
+                                   :display [:in supported-series-display-type]
+                                   :id [:not= (:id card)]
+                                   (cond-> {:order-by [[:id :desc]]
+                                            :where    [:and]}
+                                     last-cursor
+                                     (update :where conj [:< :id last-cursor])
+
+                                     (seq exclude-ids)
+                                     (update :where conj [:not [:in :id exclude-ids]])
+
+                                     query
+                                     (update :where conj [:like :%lower.name (str "%" (u/lower-case-en query) "%")])
+
+                                     ;; add a little buffer to the page to account for cards that are not
+                                     ;; compatible + do not have permissions to read
+                                     ;; this is just a heuristic, but it should be good enough
+                                     page-size
+                                     (assoc :limit (+ 10 page-size))))
+
+        compatible-cards (->> matching-cards
+                              (filter mi/can-read?)
+                              (filter #(or
+                                         ;; columns name on native query are not match with the column name in viz-settings. why??
+                                         ;; so we can't use series-are-compatible? to filter out incompatible native cards.
+                                         ;; => we assume all native queries are compatible and FE will figure it out later
+                                         (= (:query_type %) :native)
+                                         (series-are-compatible? card %))))]
+    (if page-size
+      (take page-size compatible-cards)
+      compatible-cards)))
+
+(defn- fetch-compatible-series
+  "Fetch a list of compatible series for `card`.
+
+  options:
+  - exclude-ids: filter out these card ids
+  - query:       filter cards by name
+  - last-cursor: the id of the last card from the previous page
+  - page-size:   is nullable, it'll try to fetches exactly `page-size` cards if there are enough cards."
+  ([card options]
+   (fetch-compatible-series card options []))
+
+  ([card {:keys [page-size] :as options} current-cards]
+   (let [cards     (fetch-compatible-series* card options)
+         new-cards (concat current-cards cards)]
+     ;; if the total card fetches is less than page-size and there are still more, continue fetching
+     (if (and (some? page-size)
+              (seq cards)
+              (< (count cards) page-size))
+       (fetch-compatible-series card
+                                (merge options
+                                       {:page-size   (- page-size (count cards))
+                                        :last-cursor (:id (last cards))})
+                                new-cards)
+       new-cards))))
+
+(api/defendpoint GET "/:id/series"
+  "Fetches a list of comptatible series with the card with id `card_id`.
+
+  - `last_cursor` with value is the id of the last card from the previous page to fetch the next page.
+  - `query` to search card by name.
+  - `exclude_ids` to filter out a list of card ids"
+  [id last_cursor query exclude_ids]
+  {id          int?
+   query       [:maybe ms/NonBlankString]
+   exclude_ids [:maybe [:fn
+                        {:error/fn (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))}
+                        (fn [ids]
+                          (every? pos-int? (api/parse-multi-values-param ids parse-long)))]]}
+  (let [last_cursor  (when last_cursor (parse-long last_cursor))
+        exclude_ids  (when exclude_ids (api/parse-multi-values-param exclude_ids parse-long))
+        card         (-> (t2/select-one Card :id id) api/check-404 api/read-check)
+        card-display (:display card)]
+   (when-not (supported-series-display-type card-display)
+             (throw (ex-info (tru "Card with type {0} is not compatible to have series" (name card-display))
+                             {:display         card-display
+                              :allowed-display (map name supported-series-display-type)
+                              :status-code     400})))
+   (fetch-compatible-series
+     card
+     {:exclude-ids exclude_ids
+      :query       query
+      :last-cursor last_cursor
+      :page-size   mw.offset-paging/*limit*})))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/timelines"
