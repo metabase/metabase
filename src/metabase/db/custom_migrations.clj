@@ -247,8 +247,7 @@
                                                           [:<> :result_metadata "[]"]]})))))
 
 (defn- remove-opts
-  "Removes the `join-alias`, `temporal-unit`, and `binning` options from the `field_ref` options map.
-   If the map becomes empty, replace it with nil."
+  "Removes options from the `field_ref` options map. If the resulting map is empty, it's replaced it with nil."
   [field_ref & opts-to-remove]
   (match field_ref
     ["field" id opts] ["field" id (not-empty (apply dissoc opts opts-to-remove))]
