@@ -170,15 +170,15 @@ The `--no-settings` flag (alias `-S`) tells Metabase to exclude the `settings.ya
 
 ### `--no-data-model`
 
-The `no-data-model` flag tells Metabase to exclude the data model settings from the export. Admins define the data model settings in the [Data model](../data-modeling/metadata-editing.md) tab of the Admin settings.
+The `--no-data-model` flag (alias `-D`) tells Metabase to exclude the data model settings from the export. Admins define the data model settings in the [Data model](../data-modeling/metadata-editing.md) tab of the Admin settings.
 
 ### `--include-field-values`
 
-The `include-field-values` tells Metabase to include the sample values for field values, which Metabase uses to present dropdown menus. By default, Metabase excludes these sample field values.
+The `--include-field-values` flag (alias `-f`) tells Metabase to include the sample values for field values, which Metabase uses to present dropdown menus. By default, Metabase excludes these sample field values.
 
 ### `--include-database-secrets`
 
-The `include-database-secrets` flag tells Metabase to include connection details. By default, Metabase excludes these database connection secrets.
+The `--include-database-secrets` flag (alias `-s`) tells Metabase to include connection details, including the database user name and password. By default, Metabase excludes these database connection secrets. If you don't use this flag, you'll need to manually input the credentials in the target Metabase. 
 
 ## Importing to a Metabase
 
