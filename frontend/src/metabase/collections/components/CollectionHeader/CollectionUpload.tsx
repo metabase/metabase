@@ -44,7 +44,7 @@ export default function ColllectionUpload({
       placement="bottom"
     >
       <label htmlFor="upload-csv">
-        <CollectionHeaderButton as="span" to="" icon="upload" iconSize="20" />
+        <CollectionHeaderButton as="span" to="" icon="upload" iconSize={20} />
       </label>
       <UploadInput
         id="upload-csv"
