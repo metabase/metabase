@@ -6,7 +6,7 @@ import type {
   ClickObject,
   DrillProps,
 } from "metabase-lib/queries/drills/types";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Field from "metabase-lib/metadata/Field";
 import Metadata from "metabase-lib/metadata/Metadata";
 import { isSameField } from "metabase-lib/queries/utils";
@@ -86,7 +86,7 @@ function objectDetailDrillType({
   column: DatasetColumn;
   objectId: RowValue;
 } | null {
-  const query = question.query() as StructuredQuery;
+  const query = question.query();
 
   if (column == null || !query.isEditable()) {
     return null;
@@ -117,7 +117,8 @@ function objectDetailDrillType({
       objectId: value,
     };
   } else {
-    const isAggregated = query.aggregations().length > 0;
+    const isAggregated =
+      query instanceof StructuredQuery && query.aggregations().length > 0;
     if (!isAggregated) {
       const pkColumn = data?.find(
         ({ col: item }) => isPK(item) && !isSameField(item, column),
