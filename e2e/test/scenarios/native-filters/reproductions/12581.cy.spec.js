@@ -62,13 +62,13 @@ describe("issue 12581", () => {
     cy.findByTestId("revision-history-button").click();
     // Make sure sidebar opened and the history loaded
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("You created this");
+    cy.findByText(/You created this/i);
 
     cy.findByTestId("question-revert-button").click(); // Revert to the first revision
     cy.wait("@dataset");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("You reverted to an earlier version");
+    cy.findByText(/You reverted to an earlier version/i);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open Editor/i).click();
 
