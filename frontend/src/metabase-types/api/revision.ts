@@ -17,5 +17,5 @@ export interface Revision {
 
 export interface RevisionListQuery {
   model_type: string;
-  model_id: number;
+  model_id: number | string;
 }
