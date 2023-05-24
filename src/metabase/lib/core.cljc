@@ -54,9 +54,12 @@
 
 (shared.ns/import-fns
   [lib.aggregation
+   aggregate
+   aggregation-clause
+   aggregation-operator-columns
    aggregations
    aggregations-metadata
-   aggregate
+   available-aggregation-operators
    count
    avg
    count-where

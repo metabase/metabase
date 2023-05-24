@@ -103,6 +103,7 @@ function QuestionRowCount({
       triggerElement={
         <RowCountLabel
           className={className}
+          data-testid="question-row-count"
           highlighted={limit != null}
           disabled={!canChangeLimit}
         >
@@ -196,15 +197,13 @@ const ConnectedQuestionRowCount = _.compose(
 )(QuestionRowCount);
 
 function shouldRender({
-  question,
   result,
   isObjectDetail,
 }: {
-  question: Question;
   result?: Dataset;
   isObjectDetail: boolean;
 }) {
-  return result?.data && !isObjectDetail && question.display() === "table";
+  return result?.data && !isObjectDetail;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

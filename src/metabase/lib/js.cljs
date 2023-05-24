@@ -93,6 +93,16 @@
   [query-map]
   (-> query-map convert/->legacy-MBQL fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
+(defn ^:export append-stage
+  "Adds a new blank stage to the end of the pipeline"
+  [a-query]
+  (lib.core/append-stage a-query))
+
+(defn ^:export drop-stage
+  "Drops the final stage in the pipeline"
+  [a-query]
+  (lib.core/drop-stage a-query))
+
 (defn ^:export orderable-columns
   "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To
   add an order by, pass the result to [[order-by]]."
@@ -312,3 +322,19 @@
   (let [n    (if (string? n) (keyword n) n)
         unit (if (string? unit) (keyword unit) unit)]
       (lib.core/describe-relative-datetime n unit)))
+
+(defn ^:export available-aggregation-operators
+  "Get the available aggregation operators for the stage with `stage-number` of
+  the query `a-query`.
+  If `stage-number` is omitted, the last stage is used."
+  ([a-query]
+   (available-aggregation-operators a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/available-aggregation-operators a-query stage-number))))
+
+(defn ^:export aggregation-operator-columns
+  "Get the columns `aggregation-operator` can be applied to.
+  The columns are valid for the stage of the query that was used in
+  [[available-binning-strategies]] to get `available-aggregation`."
+  [aggregation-operator]
+  (to-array (lib.core/aggregation-operator-columns aggregation-operator)))

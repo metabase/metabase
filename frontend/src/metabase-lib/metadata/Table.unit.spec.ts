@@ -9,14 +9,16 @@ const TABLE_ORIGIN_ID = 1;
 const TABLE_DESTINATION_ID = 2;
 const TABLE_EMPTY_ID = 3;
 const TABLE_VIRTUAL_ID = "card__1";
+const FIELD_ORIGIN_ID = 1;
+const FIELD_DESTINATION_ID = 2;
 
 const FIELD_ORIGIN = createMockField({
-  id: 1,
+  id: FIELD_ORIGIN_ID,
   table_id: TABLE_ORIGIN_ID,
 });
 
 const FIELD_DESTINATION = createMockField({
-  id: 2,
+  id: FIELD_DESTINATION_ID,
   table_id: TABLE_DESTINATION_ID,
 });
 
@@ -31,9 +33,9 @@ const TABLE_DESTINATION = createMockTable({
   fks: [
     createMockForeignKey({
       origin: FIELD_ORIGIN,
-      origin_id: FIELD_ORIGIN.id,
+      origin_id: FIELD_ORIGIN_ID,
       destination: FIELD_DESTINATION,
-      destination_id: FIELD_DESTINATION.id,
+      destination_id: FIELD_DESTINATION_ID,
     }),
   ],
 });

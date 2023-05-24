@@ -225,7 +225,7 @@
       (testing (str \newline (pr-str clause))
         (is (= (condp = (first arg)
                  :field :metabase.lib.schema.expression/type.unknown
-                 :type/*)
+                 :type/Number)
                (lib.schema.expression/type-of clause)))
         (is (= (condp = (first arg)
                  :field :type/BigInteger
@@ -243,6 +243,184 @@
             (lib/aggregations-metadata query)))
     (is (= :type/Integer
            (lib/type-of query (first (lib/aggregations-metadata query)))))))
+
+(deftest ^:parallel aggregation-operator-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/expression "double-price" (lib/* (lib/field (meta/id :venues :price)) 2))
+                  (lib/expression "budget?" (lib/< (lib/field (meta/id :venues :price)) 2))
+                  (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))
+        summable-cols [{:display-name "Latitude",
+                        :effective-type :type/Float,
+                        :semantic-type :type/Latitude,
+                        :lib/source :source/table-defaults}
+                       {:display-name "Longitude",
+                        :effective-type :type/Float,
+                        :semantic-type :type/Longitude,
+                        :lib/source :source/table-defaults}
+                       {:display-name "Price",
+                        :effective-type :type/Integer,
+                        :semantic-type :type/Category,
+                        :lib/source :source/table-defaults}
+                       {:display-name "double-price",
+                        :effective-type :type/Integer
+                        :lib/source :source/expressions}]
+        all-cols [{:display-name "ID"
+                   :effective-type :type/BigInteger
+                   :semantic-type :type/PK
+                   :lib/source :source/table-defaults}
+                  {:display-name "Name"
+                   :effective-type :type/Text
+                   :semantic-type :type/Name
+                   :lib/source :source/table-defaults}
+                  {:display-name "Category ID",
+                   :effective-type :type/Integer,
+                   :semantic-type :type/FK,
+                   :lib/source :source/table-defaults}
+                  {:display-name "Latitude",
+                   :effective-type :type/Float,
+                   :semantic-type :type/Latitude,
+                   :lib/source :source/table-defaults}
+                  {:display-name "Longitude",
+                   :effective-type :type/Float,
+                   :semantic-type :type/Longitude,
+                   :lib/source :source/table-defaults}
+                  {:display-name "Price",
+                   :effective-type :type/Integer,
+                   :semantic-type :type/Category,
+                   :lib/source :source/table-defaults}
+                  {:display-name "double-price"
+                   :effective-type :type/Integer
+                   :lib/source :source/expressions}
+                  {:display-name "budget?"
+                   :effective-type :type/Boolean
+                   :lib/source :source/expressions}
+                  {:display-name "ID",
+                   :effective-type :type/BigInteger,
+                   :semantic-type :type/PK,
+                   :lib/source :source/implicitly-joinable}
+                  {:display-name "Name",
+                   :effective-type :type/Text,
+                   :semantic-type :type/Name,
+                   :lib/source :source/implicitly-joinable}]
+        scope-cols all-cols
+        aggregation-operators (lib/available-aggregation-operators query)
+        count-op (first aggregation-operators)
+        sum-op (second aggregation-operators)]
+    (testing "available aggregation operators"
+      (is (=? [{:short :count,
+                :requires-column? false}
+               {:short :sum,
+                :requires-column? true,
+                :columns summable-cols}
+               {:short :avg,
+                :requires-column? true,
+                :columns summable-cols}
+               {:short :distinct,
+                :requires-column? true,
+                :columns all-cols}
+               {:short :cum-sum,
+                :requires-column? true,
+                :columns summable-cols}
+               {:short :cum-count,
+                :requires-column? false}
+               {:short :stddev,
+                :requires-column? true,
+                :columns summable-cols}
+               {:short :min,
+                :requires-column? true,
+                :columns scope-cols}
+               {:short :max,
+                :requires-column? true,
+                :columns scope-cols}]
+              aggregation-operators)))
+    (testing "aggregation operator display info"
+      (is (=? [{:display-name "Count of rows",
+                :column-name "Count",
+                :description "Total number of rows in the answer.",
+                :short :count,
+                :requires-column false}
+               {:display-name "Sum of ...",
+                :column-name "Sum",
+                :description "Sum of all the values of a column.",
+                :short :sum,
+                :requires-column true}
+               {:display-name "Average of ...",
+                :column-name "Average",
+                :description "Average of all the values of a column",
+                :short :avg,
+                :requires-column true}
+               {:display-name "Number of distinct values of ...",
+                :column-name "Distinct values",
+                :description "Number of unique values of a column among all the rows in the answer.",
+                :short :distinct,
+                :requires-column true}
+               {:display-name "Cumulative sum of ...",
+                :column-name "Sum",
+                :description "Additive sum of all the values of a column.\ne.x. total revenue over time.",
+                :short :cum-sum,
+                :requires-column true}
+               {:display-name "Cumulative count of rows",
+                :column-name "Count",
+                :description "Additive count of the number of rows.\ne.x. total number of sales over time.",
+                :short :cum-count,
+                :requires-column false}
+               {:display-name "Standard deviation of ...",
+                :column-name "SD",
+                :description "Number which expresses how much the values of a column vary among all rows in the answer.",
+                :short :stddev,
+                :requires-column true}
+               {:display-name "Minimum of ...",
+                :column-name "Min",
+                :description "Minimum value of a column",
+                :short :min,
+                :requires-column true}
+               {:display-name "Maximum of ...",
+                :column-name "Max",
+                :description "Maximum value of a column",
+                :short :max,
+                :requires-column true}]
+              (map #(lib/display-info query %) aggregation-operators))))
+    (testing "display name"
+      (is (= "Count of rows" (lib/display-name query (first aggregation-operators)))))
+    (testing "testing getting the available columns for an aggregation operator"
+      (is (nil? (lib/aggregation-operator-columns count-op)))
+      (is (=? summable-cols (lib/aggregation-operator-columns sum-op))))
+    (testing "aggregation operators can be added as aggregates"
+      (let [price-col (-> sum-op lib/aggregation-operator-columns pop peek)
+            agg-query (-> query
+                          (lib/aggregate (lib/aggregation-clause count-op))
+                          (lib/aggregate (lib/aggregation-clause sum-op price-col)))]
+        (is (=? {:lib/type :mbql/query
+                 :stages
+                 [{:lib/type :mbql.stage/mbql,
+                   :source-table int?,
+                   :expressions
+                   {"double-price"
+                    [:* {} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?] 2]
+                    "budget?"
+                    [:< {} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?] 2]}
+                   :aggregation
+                   [[:sum {} [:expression {} "double-price"]]
+                    [:count {}]
+                    [:sum {} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?]]]}]}
+                agg-query))
+        (is (=? [{:lib/type     :metadata/field,
+                  :base-type    :type/Integer,
+                  :name         "sum_double-price",
+                  :display-name "Sum of double-price",
+                  :lib/source   :source/aggregations}
+                 {:lib/type     :metadata/field,
+                  :base-type    :type/Integer,
+                  :name         "count",
+                  :display-name "Count",
+                  :lib/source   :source/aggregations}
+                 {:settings     {:is_priceless true},
+                  :lib/type     :metadata/field,
+                  :base-type    :type/Integer,
+                  :name         "sum_PRICE",
+                  :display-name "Sum of Price",
+                  :lib/source   :source/aggregations}]
+                (lib/aggregations-metadata agg-query)))))))
 
 (deftest ^:parallel preserve-field-settings-metadata-test
   (testing "Aggregation metadata should return the `:settings` for the field being aggregated, for some reason."
