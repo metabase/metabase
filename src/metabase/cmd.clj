@@ -151,7 +151,9 @@
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
 
 (defn ^:command environment-variables-documentation
-  "Generates a markdown file containing documentation for environment variables relevant to configuring Metabase."
+  "Generates a markdown file containing documentation for environment variables relevant to configuring Metabase.
+  The command only includes environment variables registered as defsettings.
+  For a full list of environment variables, see https://www.metabase.com/docs/latest/configuring-metabase/environment-variables."
   []
   (classloader/require 'metabase.cmd.env-var-dox)
   ((resolve 'metabase.cmd.env-var-dox/generate-dox!)))

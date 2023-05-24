@@ -33,7 +33,7 @@ export const LoadMoreRow = styled.li`
   justify-content: center;
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0.5rem 0;
   width: 100%;
 `;
 
@@ -47,6 +47,11 @@ export const SearchContainer = styled.div`
 
 export const SearchInput = styled(Input)`
   width: 100%;
+
+  ${Input.Field} {
+    border-radius: 0;
+    outline: none;
+  }
 `;
 
 export const EmptyStateContainer = styled.div`

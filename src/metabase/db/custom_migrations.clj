@@ -245,3 +245,77 @@
                                                  :where  [:and
                                                           [:<> :result_metadata nil]
                                                           [:<> :result_metadata "[]"]]})))))
+
+(defn- remove-opts
+  "Removes options from the `field_ref` options map. If the resulting map is empty, it's replaced it with nil."
+  [field_ref & opts-to-remove]
+  (match field_ref
+    ["field" id opts] ["field" id (not-empty (apply dissoc opts opts-to-remove))]
+    _ field_ref))
+
+(defn- add-join-alias-to-visualization-field-refs [{:keys [visualization_settings result_metadata]}]
+  (let [result_metadata        (json/parse-string result_metadata)
+        visualization_settings (json/parse-string visualization_settings)
+        column-key->metadata   (group-by #(-> (get % "field_ref")
+                                              ;; like the FE's `getColumnKey` function, remove "join-alias",
+                                              ;; "temporal-unit" and "binning" options from the field_ref
+                                              (remove-opts "join-alias" "temporal-unit" "binning"))
+                                         result_metadata)]
+    (json/generate-string
+     (update visualization_settings "column_settings"
+             (fn [column_settings]
+               (into {}
+                     (mapcat (fn [[k v]]
+                               (match (vec (json/parse-string k))
+                                 ["ref" ["field" id opts]]
+                                 (for [column-metadata (column-key->metadata ["field" id opts])
+                                       ;; remove "temporal-unit" and "binning" options from the matching field refs,
+                                       ;; but not "join-alias" as before.
+                                       :let [field-ref (-> (get column-metadata "field_ref")
+                                                           (remove-opts "temporal-unit" "binning"))]]
+                                   [(json/generate-string ["ref" field-ref]) v])
+                                 _ [[k v]]))
+                             column_settings)))))))
+
+(define-migration AddJoinAliasToVisualizationSettingsFieldRefs
+  (let [update! (fn [{:keys [id visualization_settings]}]
+                  (t2/query-one {:update :report_card
+                                 :set    {:visualization_settings visualization_settings}
+                                 :where  [:= :id id]}))]
+    (run! update! (eduction (keep (fn [{:keys [id visualization_settings] :as card}]
+                                    (let [updated (add-join-alias-to-visualization-field-refs card)]
+                                      (when (not= visualization_settings updated)
+                                        {:id                     id
+                                         :visualization_settings updated}))))
+                            (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
+                                                 :from   [:report_card]
+                                                 :where  [:and
+                                                          [:<> :result_metadata nil]
+                                                          [:<> :result_metadata "[]"]]})))))
+
+(defn- update-card-row-on-downgrade-for-dashboard-tab
+  [dashboard-id]
+  (let [ordered-tab+cards (->> (t2/query {:select    [:report_dashboardcard.* [:dashboard_tab.position :tab_position]]
+                                          :from      [:report_dashboardcard]
+                                          :where     [:= :report_dashboardcard.dashboard_id dashboard-id]
+                                          :left-join [:dashboard_tab [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]]})
+                               (group-by :tab_position)
+                               ;; sort by tab position
+                               (sort-by first))
+        cards->max-height (fn [cards] (apply max (map #(+ (:row %) (:size_y %)) cards)))]
+    (loop [position+cards ordered-tab+cards
+           next-tab-row   0]
+      (when-let [[tab-pos cards] (first position+cards)]
+        (if (zero? tab-pos)
+          (recur (rest position+cards) (long (cards->max-height cards)))
+          (do
+            (t2/query {:update :report_dashboardcard
+                       :set    {:row [:+ :row next-tab-row]}
+                       :where  [:= :dashboard_tab_id (:dashboard_tab_id (first cards))]})
+            (recur (rest position+cards) (long (+ next-tab-row (cards->max-height cards))))))))))
+
+(define-reversible-migration DowngradeDashboardTab
+  (log/info "No forward migration for DowngradeDashboardTab")
+  (run! update-card-row-on-downgrade-for-dashboard-tab
+        (eduction (map :dashboard_id) (t2/reducible-query {:select-distinct [:dashboard_id]
+                                                           :from            [:dashboard_tab]}))))

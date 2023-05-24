@@ -412,7 +412,7 @@
                {:name                   "Metric B"
                 :id                     id-2
                 :creator                {}
-                :definition_description "Venues, Sum of Categories → Name, Filtered by Price equals 4 and Segment"}]
+                :definition_description "Venues, Sum of Category → Name, Filtered by Price equals 4 and Segment"}]
               (filter (fn [{metric-id :id}]
                         (contains? #{id-1 id-2 id-3} metric-id))
                       (mt/user-http-request :rasta :get 200 "metric/")))))))
