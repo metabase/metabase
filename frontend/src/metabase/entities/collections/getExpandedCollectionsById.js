@@ -13,7 +13,7 @@ import {
 function getExpandedCollectionsById(
   collections,
   userPersonalCollectionId,
-  collectionFilter,
+  collectionFilter = () => true,
 ) {
   const collectionsById = {};
   const filteredCollections = collections.filter(collectionFilter);
