@@ -88,7 +88,8 @@
              :updated_at (boolean updated_at)
              :card       (-> (into {} card)
                              (dissoc :id :database_id :table_id :created_at :updated_at :query_average_duration)
-                             (update :collection_id boolean)))))
+                             (update :collection_id boolean)
+                             (update :collection boolean)))))
 
 (defn- dashboard-response [{:keys [creator ordered_cards created_at updated_at] :as dashboard}]
   ;; todo: should be udpated to use mt/boolean-ids-and-timestamps
@@ -97,7 +98,8 @@
                  (assoc :created_at (boolean created_at)
                         :updated_at (boolean updated_at))
                  (update :entity_id boolean)
-                 (update :collection_id boolean))]
+                 (update :collection_id boolean)
+                 (update :collection boolean))]
     (cond-> dash
       (contains? dash :last-edit-info)
       (update :last-edit-info (fn [info]
@@ -154,6 +156,7 @@
    :caveats                 nil
    :collection_id           nil
    :collection_position     nil
+   :collection              true
    :created_at              true ; assuming you call dashboard-response on the results
    :description             nil
    :embedding_params        nil
@@ -387,6 +390,7 @@
                            :creator_id                 (mt/user->id :rasta)
                            :collection_id              true
                            :collection_authority_level nil
+                           :collection                 true
                            :can_write                  false
                            :param_values  nil
                            :param_fields               {field-id {:id               field-id
