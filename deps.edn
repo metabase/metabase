@@ -262,8 +262,7 @@
   :run
   {:main-opts ["-m" "metabase.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=dev"
-               "-Djava.awt.headless=true"                   ; prevent Java icon from randomly popping up in macOS dock
-               "-Dmb.jetty.port=3000"]}
+               "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
 
   ;; alias for CI-specific options.
   :ci
