@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React from "react";
 
-import useActionForm from "metabase/actions/hooks/use-action-form";
 import { getFormTitle } from "metabase/actions/utils";
+import ActionExecuteModal from "metabase/actions/containers/ActionExecuteModal";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 import type {
   ActionDashboardCard,
@@ -13,19 +14,15 @@ import type {
   WritebackParameter,
 } from "metabase-types/api";
 
-import ActionParametersInputForm, {
-  ActionParametersInputModal,
-} from "../../containers/ActionParametersInputForm";
-import ActionButtonView from "./ActionButtonView";
-import { shouldShowConfirmation } from "./utils";
+import ActionParametersInputForm from "../../containers/ActionParametersInputForm";
 
+import ActionButtonView from "./ActionButtonView";
 import { FormWrapper, FormTitle } from "./ActionForm.styled";
 
 interface ActionFormProps {
   action: WritebackAction;
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
-  missingParameters?: WritebackParameter[];
   mappedParameters?: WritebackParameter[];
   dashcardParamValues: ParametersForActionExecution;
   settings: VisualizationSettings;
@@ -40,7 +37,6 @@ function ActionVizForm({
   dashcard,
   dashboard,
   settings,
-  missingParameters = [],
   mappedParameters = [],
   dashcardParamValues,
   isSettings,
@@ -48,58 +44,23 @@ function ActionVizForm({
   isEditingDashcard,
   onSubmit,
 }: ActionFormProps) {
-  const [showModal, setShowModal] = useState(false);
   const title = getFormTitle(action);
-  const { getCleanValues } = useActionForm({
-    action,
-    initialValues: dashcardParamValues,
-  });
-
-  // only show confirmation if there are no missing parameters
-  const showConfirmMessage =
-    shouldShowConfirmation(action) && !missingParameters.length;
-
-  const onClick = () => {
-    if (missingParameters.length > 0 || showConfirmMessage) {
-      setShowModal(true);
-    } else {
-      onSubmit(getCleanValues());
-    }
-  };
-
-  const onModalSubmit = async (params: ParametersForActionExecution) => {
-    const result = await onSubmit(params);
-    if (result.success) {
-      setShowModal(false);
-    }
-    return result;
-  };
 
   if (shouldDisplayButton) {
     return (
-      <>
-        <ActionButtonView
-          settings={settings}
-          isFullHeight={!isSettings}
-          focus={isEditingDashcard}
-          onClick={onClick}
-        />
-        {showModal && (
-          <ActionParametersInputModal
-            action={action}
-            dashboard={dashboard}
-            dashcard={dashcard}
-            mappedParameters={mappedParameters}
-            dashcardParamValues={dashcardParamValues}
-            title={title}
-            showConfirmMessage={showConfirmMessage}
-            confirmMessage={action.visualization_settings?.confirmMessage}
-            onSubmit={onModalSubmit}
-            onClose={() => setShowModal(false)}
-            onCancel={() => setShowModal(false)}
+      <ModalWithTrigger
+        triggerElement={
+          <ActionButtonView
+            settings={settings}
+            isFullHeight={!isSettings}
+            focus={isEditingDashcard}
           />
+        }
+      >
+        {({ onClose }) => (
+          <ActionExecuteModal actionId={action.id} onClose={onClose} />
         )}
-      </>
+      </ModalWithTrigger>
     );
   }
 
