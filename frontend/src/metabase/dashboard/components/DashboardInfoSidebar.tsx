@@ -15,11 +15,15 @@ import Revision from "metabase/entities/revisions";
 import { getRevisionEventsForTimeline } from "metabase/lib/revisions";
 import { getUser } from "metabase/selectors/user";
 
-import { revertToRevision } from "metabase/dashboard/actions";
+import {
+  revertToRevision,
+  toggleAutoApplyFilters,
+} from "metabase/dashboard/actions";
 
 import Toggle from "metabase/core/components/Toggle";
 import FormField from "metabase/core/components/FormField";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { useDispatch } from "metabase/lib/redux";
 import {
   DashboardInfoSidebarRoot,
   HistoryHeader,
@@ -67,12 +71,12 @@ const DashboardInfoSidebar = ({
     [saveDashboardAndCards, setDashboardAttribute],
   );
 
+  const dispatch = useDispatch();
   const handleToggleAutoApplyFilters = useCallback(
     (isAutoApplyingFilters: boolean) => {
-      setDashboardAttribute("auto_apply_filters", isAutoApplyingFilters);
-      saveDashboardAndCards(true);
+      dispatch(toggleAutoApplyFilters(isAutoApplyingFilters));
     },
-    [saveDashboardAndCards, setDashboardAttribute],
+    [dispatch],
   );
 
   const events = useMemo(
