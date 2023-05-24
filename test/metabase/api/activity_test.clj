@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time :as t]
+   [metabase.events.view-log :as view-log]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.query-execution :refer [QueryExecution]]
@@ -11,40 +12,12 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan.db :as db]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
-
-;;; GET /recent_views
-
-;; Things we are testing for:
-;;  1. ordering is sorted by most recent
-;;  2. results are filtered to current user
-;;  3. `:model_object` is hydrated in each result
-;;  4. we filter out entries where `:model_object` is nil (object doesn't exist)
-
-(defn- create-views!
-  "Insert views [user-id model model-id]. Views are entered a second apart with last view as most recent."
-  [views]
-  (let [start-time (t/offset-date-time)
-        views (->> (map (fn [[user model model-id] seconds-ago]
-                          (case model
-                            "card" {:executor_id user :card_id model-id
-                                    :context :question
-                                    :hash (qp.util/query-hash {})
-                                    :running_time 1
-                                    :result_rows 1
-                                    :native false
-                                    :started_at (t/plus start-time (t/seconds (- seconds-ago)))}
-                            {:user_id user, :model model, :model_id model-id
-                             :timestamp (t/plus start-time (t/seconds (- seconds-ago)))}))
-                        (reverse views)
-                        (range))
-                   (group-by #(if (:card_id %) :card :other)))]
-    (db/insert-many! ViewLog (:other views))
-    (db/insert-many! QueryExecution (:card views))))
 
 (deftest recent-views-test
   (mt/with-temp* [Card      [card1 {:name                   "rand-name"
@@ -67,22 +40,62 @@
                                       :creator_id             (mt/user->id :crowberto)
                                       :display                "table"
                                       :visualization_settings {}}]]
-    (mt/with-model-cleanup [ViewLog QueryExecution]
-      (create-views! [[(mt/user->id :crowberto) "card"      (:id dataset)]
-                      [(mt/user->id :crowberto) "card"      (:id card1)]
-                      [(mt/user->id :crowberto) "card"      36478]
-                      [(mt/user->id :crowberto) "dashboard" (:id dash)]
-                      [(mt/user->id :crowberto) "table"     (:id table1)]
-                      ;; most recent for crowberto are archived card and hidden table
-                      [(mt/user->id :crowberto) "card"      (:id archived)]
-                      [(mt/user->id :crowberto) "table"     (:id hidden-table)]
-                      [(mt/user->id :rasta)     "card"      (:id card1)]])
-      (let [recent-views (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
-        (is (partial= [{:model "table"     :model_id (:id table1)}
-                       {:model "dashboard" :model_id (:id dash)}
-                       {:model "card"      :model_id (:id card1)}
-                       {:model "dataset"   :model_id (:id dataset)}]
-                      recent-views))))))
+    (testing "recent_views endpoint shows the current user's recently viewed items."
+      (mt/with-model-cleanup [ViewLog]
+        (mt/with-test-user :crowberto
+          (mt/with-temporary-setting-values [user-recent-views []]
+            (doseq [event [{:topic :card-query :item dataset}
+                           {:topic :card-query :item dataset}
+                           {:topic :card-query :item card1}
+                           {:topic :card-query :item card1}
+                           {:topic :card-query :item card1}
+                           {:topic :dashboard-read :item dash}
+                           {:topic :card-query :item card1}
+                           {:topic :dashboard-read :item dash}
+                           {:topic :table-read :item table1}
+                           {:topic :card-query :item archived}
+                           {:topic :table-read :item hidden-table}]]
+              (view-log/handle-view-event!
+               ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
+               (assoc-in event [:item :actor_id] (mt/user->id :crowberto))))
+            (testing "No duplicates or archived items are returned."
+              (let [recent-views (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
+                (is (partial=
+                     [{:model "table" :model_id (u/the-id table1)}
+                      {:model "dashboard" :model_id (u/the-id dash)}
+                      {:model "card" :model_id (u/the-id card1)}
+                      {:model "dataset" :model_id (u/the-id dataset)}]
+                     recent-views))))))
+        (mt/with-test-user :rasta
+          (mt/with-temporary-setting-values [user-recent-views []]
+            (view-log/handle-view-event! {:topic :card-query :item (assoc dataset :actor_id (mt/user->id :rasta))})
+            (view-log/handle-view-event! {:topic :card-query :item (assoc card1 :actor_id (mt/user->id :crowberto))})
+            (testing "Only the user's own views are returned."
+              (let [recent-views (mt/user-http-request :rasta :get 200 "activity/recent_views")]
+                (is (partial=
+                     [{:model "dataset" :model_id (u/the-id dataset)}]
+                     (reverse recent-views)))))))))))
+
+(defn- create-views!
+  "Insert views [user-id model model-id]. Views are entered a second apart with last view as most recent."
+  [views]
+  (let [start-time (t/offset-date-time)
+        views (->> (map (fn [[user model model-id] seconds-ago]
+                          (case model
+                            "card" {:executor_id user :card_id model-id
+                                    :context :question
+                                    :hash (qp.util/query-hash {})
+                                    :running_time 1
+                                    :result_rows 1
+                                    :native false
+                                    :started_at (t/plus start-time (t/seconds (- seconds-ago)))}
+                            {:user_id user, :model model, :model_id model-id
+                             :timestamp (t/plus start-time (t/seconds (- seconds-ago)))}))
+                        (reverse views)
+                        (range))
+                   (group-by #(if (:card_id %) :card :other)))]
+    (db/insert! ViewLog (:other views))
+    (db/insert! QueryExecution (:card views))))
 
 (deftest popular-items-test
   (mt/with-temp* [Card      [card1 {:name                   "rand-name"
