@@ -608,9 +608,32 @@
          (reconcile-position-for-collection! old-collection-id old-position nil)
          (reconcile-position-for-collection! new-collection-id nil new-position))))))
 
+
+;;; ------------------------------------------ PARAM PARSING FNS ----------------------------------------
+
 (defn bit->boolean
   "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
   [v]
   (if (number? v)
     (not (zero? v))
     v))
+
+(defn parse-multi-values-param
+  "Parse a param that could have a single value or multiple values using `parse-fn`.
+  Always return a vector.
+
+  Used for API that can parse single value or multiple values for a param:
+  e.g:
+    single value: api/card/series?exclude_ids=1
+    multi values: api/card/series?exclude_ids=1&exclude_ids=2
+
+  Example usage:
+    (parse-multi-values-param \"1\" parse-long)
+    => [1]
+
+    (parse-multi-values-param [\"1\" \"2\"] parse-long)
+    => [1, 2]"
+  [xs parse-fn]
+  (if (sequential? xs)
+    (map parse-fn xs)
+    [(parse-fn xs)]))
