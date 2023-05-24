@@ -263,7 +263,8 @@ const dashcardData = handleActions(
   {
     // clear existing dashboard data when loading a dashboard
     [INITIALIZE]: {
-      next: (state, { payload: { clear = true } = {} }) => (clear ? {} : state),
+      next: (state, { payload: { clearCache = true } = {} }) =>
+        clearCache ? {} : state,
     },
     [FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id, card_id, result } }) =>

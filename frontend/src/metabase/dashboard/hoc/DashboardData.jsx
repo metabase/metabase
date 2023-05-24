@@ -53,11 +53,11 @@ export default ComposedComponent =>
           isNavigatingBackToDashboard,
         } = props;
 
-        initialize({ clear: !isNavigatingBackToDashboard });
+        initialize({ clearCache: !isNavigatingBackToDashboard });
 
         try {
           await fetchDashboard(dashboardId, location && location.query, {
-            preserveDashboard: isNavigatingBackToDashboard,
+            clearCache: !isNavigatingBackToDashboard,
           });
           await fetchDashboardCardData({
             reload: false,

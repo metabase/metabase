@@ -168,13 +168,13 @@ class Dashboard extends Component {
       isNavigatingBackToDashboard,
     } = this.props;
 
-    initialize({ clear: !isNavigatingBackToDashboard });
+    initialize({ clearCache: !isNavigatingBackToDashboard });
 
     loadDashboardParams();
 
     try {
       await fetchDashboard(dashboardId, location.query, {
-        preserveDashboard: isNavigatingBackToDashboard,
+        clearCache: !isNavigatingBackToDashboard,
       });
       if (editingOnLoad) {
         this.setEditing(this.props.dashboard);

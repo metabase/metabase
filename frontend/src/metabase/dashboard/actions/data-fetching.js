@@ -136,7 +136,7 @@ export const fetchDashboard = createThunkAction(
   function (
     dashId,
     queryParams,
-    { preserveParameters = false, preserveDashboard = false } = {},
+    { preserveParameters = false, clearCache = true } = {},
   ) {
     let entities;
     let result;
@@ -144,7 +144,7 @@ export const fetchDashboard = createThunkAction(
       const dashboardType = getDashboardType(dashId);
       const loadedDashboard = getDashboardById(getState(), dashId);
 
-      if (preserveDashboard && loadedDashboard) {
+      if (!clearCache && loadedDashboard) {
         entities = {
           dashboard: { [dashId]: loadedDashboard },
           dashcard: Object.fromEntries(
