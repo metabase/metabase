@@ -70,6 +70,7 @@ export interface Field {
   id: FieldId | FieldReference;
   table_id: TableId;
   table?: Table;
+  field_ref?: FieldReference;
 
   name: string;
   display_name: string;

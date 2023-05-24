@@ -8,6 +8,7 @@
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
@@ -34,9 +35,10 @@
     (filter (partial enforce-sandbox? group-id->perms-set)
             sandboxes)))
 
-(defn segmented-user?
+(defenterprise segmented-user?
   "Returns true if the currently logged in user has segmented permissions. Throws an exception if no current user
   is bound."
+  :feature :sandboxes
   []
   (boolean
    (when-not *is-superuser?*
