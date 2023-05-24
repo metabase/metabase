@@ -410,6 +410,12 @@
   (fn [pulse _ {:keys [channel_type]}]
     [(alert-or-pulse pulse) (keyword channel_type)]))
 
+(defn- construct-pulse-email [subject recipient message]
+  {:subject      subject
+   :recipients   [recipient]
+   :message-type :attachments
+   :message      message})
+
 (defmethod notification [:pulse :email]
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} parts {:keys [recipients]}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
@@ -420,15 +426,11 @@
                                                          (nil? (:id recipient)))) recipients)
         timezone            (->> parts (some :card) defaulted-timezone)
         dashboard           (update (t2/select-one Dashboard :id dashboard-id) :description markdown/process-markdown :html)
-        email-to-users      [{:subject      (subject pulse)
-                              :recipients   (mapv :email user-recipients)
-                              :message-type :attachments
-                              :message      (messages/render-pulse-email timezone pulse dashboard parts nil)}]]
-    (concat email-to-users (for [email (map :email non-user-recipients)]
-                             {:subject      (subject pulse)
-                              :recipients   [email]
-                              :message-type :attachments
-                              :message      (messages/render-pulse-email timezone pulse dashboard parts email)}))))
+        email-to-users      (for [user (map :email user-recipients)]
+                              (construct-pulse-email (subject pulse) user (messages/render-pulse-email timezone pulse dashboard parts nil)))
+        email-to-nonusers   (for [non-user (map :email non-user-recipients)]
+                              (construct-pulse-email (subject pulse) non-user (messages/render-pulse-email timezone pulse dashboard parts nonuser)))]
+    (concat email-to-users email-to-nonusers)))
 
 (defmethod notification [:pulse :slack]
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse}
@@ -456,15 +458,11 @@
                                                          (nil? (:id recipient)))) (:recipients channel))
         first-part          (some :card parts)
         timezone            (defaulted-timezone first-part)
-        email-to-users      [{:subject      email-subject
-                              :recipients   (mapv :email user-recipients)
-                              :message-type :attachments
-                              :message      (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))}]]
-        (concat email-to-users (for [email (map :email non-user-recipients)]
-                                 {:subject      email-subject
-                                  :recipients   [email]
-                                  :message-type :attachments
-                                  :message      (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))}))))
+        email-to-users      (for [user (map :email user-recipients)]
+                              (construct-pulse-email email-subject user (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))))
+        email-to-nonusers   (for [non-user (map :email non-user-recipients)]
+                              (construct-pulse-email email-subject non-user (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))))]
+        (concat email-to-users email-to-nonusers)))
 
 (defmethod notification [:alert :slack]
   [pulse parts {{channel-id :channel} :details}]

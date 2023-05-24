@@ -7,7 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.ldap :as api.ldap]
    [metabase.config :as config]
-   [metabase.email.messages :as messages :refer [generate-pulse-unsubscribe-hash]]
+   [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.integrations.ldap :as ldap]
@@ -321,7 +321,7 @@
 
 (defn- check-hash [pulse-id email hash ip-address]
   (throttle-check unsubscribe-throttler ip-address)
-  (when (not= hash (generate-pulse-unsubscribe-hash pulse-id email))
+  (when (not= hash (messages/generate-pulse-unsubscribe-hash pulse-id email))
     (throw (ex-info (tru "Invalid hash.")
                     {:type        type
                      :status-code 400}))))
