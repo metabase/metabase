@@ -201,6 +201,30 @@
 
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
+(def ^:private action-public-keys
+  "The only keys for an action that should be visible to the general public."
+  #{:name
+    :id
+    :database_id ;; needed to check if the database has actions enabled on the frontend
+    :visualization_settings
+    :parameters})
+
+(defn- public-action
+  "Returns a public version of `action`, removing all data that should not be visible to the general public."
+  [action]
+  (let [hidden-parameter-ids (->> (get-in action [:visualization_settings :fields])
+                                  vals
+                                  (keep (fn [x]
+                                          (when (true? (:hidden x))
+                                            (:id x))))
+                                  set)]
+    (-> action
+        (update :parameters (fn [parameters]
+                              (remove #(contains? hidden-parameter-ids (:id %)) parameters)))
+        (update-in [:visualization_settings :fields] (fn [fields]
+                                                       (m/remove-keys hidden-parameter-ids fields)))
+        (select-keys action-public-keys))))
+
 (defn public-dashboard
   "Return a public Dashboard matching key-value `conditions`, removing all columns that should not be visible to the
   general public. Throws a 404 if the Dashboard doesn't exist."
@@ -217,7 +241,8 @@
                                        (update :card remove-card-non-public-columns)
                                        (update :series (fn [series]
                                                          (for [series series]
-                                                           (remove-card-non-public-columns series)))))))))))
+                                                           (remove-card-non-public-columns series))))
+                                       (m/update-existing :action public-action))))))))
 
 (defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
 
@@ -336,13 +361,6 @@
 
 ;;; ----------------------------------------------- Public Action ------------------------------------------------
 
-(def ^:private action-public-keys
-  "The only keys for an action that should be visible to the general public."
-  #{:name
-    :id
-    :visualization_settings
-    :parameters})
-
 (api/defendpoint GET "/action/:uuid"
   "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
   [uuid]
@@ -350,18 +368,7 @@
   (validation/check-public-sharing-enabled)
   (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
     (actions/check-actions-enabled! action)
-    (let [hidden-parameter-ids (->> (get-in action [:visualization_settings :fields])
-                                    vals
-                                    (keep (fn [x]
-                                            (when (true? (:hidden x))
-                                              (:id x))))
-                                    set)]
-      (-> action
-          (update :parameters (fn [parameters]
-                                (remove #(contains? hidden-parameter-ids (:id %)) parameters)))
-          (update-in [:visualization_settings :fields] (fn [fields]
-                                                         (m/remove-keys hidden-parameter-ids fields)))
-          (select-keys action-public-keys)))))
+    (public-action action)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

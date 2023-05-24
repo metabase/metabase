@@ -553,3 +553,34 @@
                 (is (some? last-login)))
               (finally
                 (run-action! "Plato Yeshua")))))))))
+
+(deftest parameter-default-test
+  (mt/with-actions-test-data-tables #{"users"}
+    (mt/with-actions-enabled
+      (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
+                        {action-id :action-id} {:type :implicit :kind "row/update"
+                                                :visualization_settings {:fields {"last_login" {:defaultValue "2023-04-01T00:00:00Z"}}}}]
+        (testing "Missing parameters should be filled in with default values"
+          (let [run-action! #(mt/user-http-request :crowberto
+                                                   :post 200
+                                                   (format "action/%s/execute" action-id)
+                                                   {:parameters (merge {:id 1} %)})]
+            (try
+              (run-action! {:name "Darth Vader"})
+              (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]})))]
+                (is (= "Darth Vader" new-name))
+                (is (= "2023-04-01T00:00:00Z" last-login)))
+              (finally
+                (run-action! {:name "Plato Yeshua" :last_login "2014-04-01T00:00:00Z"})))))
+        (testing "{<param-id>: null} means a parameter is missing, and should not be replaced with a default value"
+          (let [run-action! #(mt/user-http-request :crowberto
+                                                   :post 200
+                                                   (format "action/%s/execute" action-id)
+                                                   {:parameters (merge {:id 1} %)})]
+            (try
+              (run-action! {:name "Darth Vader" :last_login nil})
+              (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]})))]
+                (is (= "Darth Vader" new-name))
+                (is (= "2014-04-01T00:00:00Z" last-login)))
+              (finally
+                (run-action! {:name "Plato Yeshua" :last_login "2014-04-01T00:00:00Z"})))))))))
