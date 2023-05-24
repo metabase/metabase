@@ -76,7 +76,7 @@ function NewPulseSidebar({
             <div className="flex align-center mb1">
               <Icon
                 name={slackConfigured ? "slack_colorized" : "slack"}
-                size={24}
+                size={16}
                 className={cx("mr1", {
                   "text-light": !slackConfigured,
                   "hover-child hover--inherit": slackConfigured,
