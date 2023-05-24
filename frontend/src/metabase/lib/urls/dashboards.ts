@@ -24,6 +24,7 @@ export function dashboard(
   const path = appendSlug(dashboard.id, slugg(dashboard.name));
   const hash = stringifyHashOptions(options);
 
+  // x-ray dashboards have ids as urls
   if (typeof dashboard.id === "string") {
     return hash ? `${dashboard.id}#${hash}` : dashboard.id;
   } else {
