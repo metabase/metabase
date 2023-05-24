@@ -149,6 +149,7 @@ const crossVersionTargetConfig = {
 
 const stressTestConfig = {
   ...defaultConfig,
+  specPattern: "e2e/test/**/*.cy.spec.js",
   retries: 0,
 };
 
