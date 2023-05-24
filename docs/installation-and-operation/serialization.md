@@ -26,17 +26,17 @@ Metabase only includes some artifacts in its exports.
 - Saved questions
 - Actions
 - Models
-- Segments and Metrics defined in the Data Model
 - SQL Snippets
+- Data model settings
+- Segments and Metrics defined in the Data Model
 - Public sharing settings for questions and dashboards
-- Admin Panel settings, except for permissions
-- Database connection settings 
-- Data Model settings
+- [General Metabase settings](#the-general-settings-that-metabase-exports)
+- Database connection settings
 - Events and timelines
 
 Metabase will export its artifacts to a directory of YAML files. The export includes:
 
-- A `settings.yaml` file that includes some basic, Metabase-wide settings
+- A `settings.yaml` file that includes some basic, [Metabase-wide settings](#the-general-settings-that-metabase-exports)
 - Directories that contain YAML files for various Metabase entities
 
 An example export could include the following directories, depending on what you exported:
@@ -178,7 +178,7 @@ The `include-field-values` tells Metabase to include the sample values for field
 
 ### `--include-database-secrets`
 
-The `include-database-secrets` flag tells Metabase to include connection details. By default, Metabase excludes these database connection secrets. 
+The `include-database-secrets` flag tells Metabase to include connection details. By default, Metabase excludes these database connection secrets.
 
 ## Importing to a Metabase
 
@@ -223,6 +223,55 @@ Just a note: serialization is _not_ meant to back up your Metabase.
 See [Backing up Metabase](./backing-up-metabase-application-data.md).
 
 If you're instead looking to do a one-time migration from the default H2 database included with Metabase to a MySQL/Postgres, then use the [migration guide instead](./migrating-from-h2.md).
+
+### The general settings that Metabase exports
+
+A list of the general settings Metabase exports in the `settings.yaml` file.
+
+```
+humanization-strategy
+native-query-autocomplete-match-style
+site-locale
+report-timezone-short
+report-timezone-long
+application-name
+enable-xrays
+show-homepage-pin-message
+source-address-header
+enable-nested-queries
+custom-geojson-enabled
+start-of-week
+custom-geojson
+available-timezones
+max-results-bare-rows
+hide-embed-branding?
+search-typeahead-enabled
+enable-sandboxes?
+application-font
+available-locales
+landing-page
+enable-embedding
+application-colors
+application-logo-url
+application-favicon-url
+show-homepage-xrays
+show-metabot
+enable-whitelabeling?
+show-homepage-data
+site-name
+application-font-files
+loading-message
+report-timezone
+show-lighthouse-illustration
+persisted-models-enabled
+enable-content-management?
+subscription-allowed-domains
+breakout-bins-num
+available-fonts
+custom-formatting
+```
+
+For more on Metabase settings, see [Configuring Metabase](../configuring-metabase/start.md)
 
 ## Further reading
 
