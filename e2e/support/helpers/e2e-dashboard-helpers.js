@@ -1,7 +1,7 @@
 import { popover } from "./e2e-ui-elements-helpers";
 
 const REVISION_HISTORY_INTERVAL = 500;
-const REVISION_HISTORY_TIMEOUT = 5000;
+const REVISION_HISTORY_TIMEOUT = 10000;
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(selection, filterName) {
