@@ -39,7 +39,7 @@ function SavedQuestionList({
 }) {
   const emptyState = (
     <SavedQuestionListEmptyState>
-      <EmptyState message={t`Nothing here`} icon="all" />
+      <EmptyState message={t`Nothing here`} icon="folder" />
     </SavedQuestionListEmptyState>
   );
 

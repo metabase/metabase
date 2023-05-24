@@ -74,7 +74,7 @@ export function QuestionList({
         if (shouldShowEmptyState) {
           return (
             <EmptyStateContainer>
-              <EmptyState message={t`Nothing here`} icon="all" />
+              <EmptyState message={t`Nothing here`} icon="folder" />
             </EmptyStateContainer>
           );
         }
