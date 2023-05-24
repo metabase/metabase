@@ -1,11 +1,11 @@
 import d3 from "d3";
 import { ICON_PATHS } from "metabase/icon_paths";
 
-const ICON_X = -16;
-const ICON_Y = 10;
+const ICON_X = -8;
+const ICON_Y = 4;
 const ICON_SIZE = 16;
-const ICON_SCALE = 0.45;
-const RECT_SIZE = ICON_SIZE * 2;
+const ICON_SCALE = 1;
+const RECT_SIZE = ICON_SIZE;
 const TEXT_X = 10;
 const TEXT_Y = 16;
 const TEXT_DISTANCE = ICON_SIZE * 2;
