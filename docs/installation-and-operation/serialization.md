@@ -116,7 +116,7 @@ Otherwise, you're good.
 
 ## Exporting a Metabase
 
-To export the contents of a Metabase instance, use the following command in your terminal:
+To export the contents of a Metabase instance, change into the directory where you're running the Metabase JAR and run:
 
 ```
 java -jar metabase.jar export [export_name]
@@ -170,7 +170,7 @@ The `--no-settings` flag (alias `-S`) tells Metabase to exclude the `settings.ya
 
 ### `--no-data-model`
 
-The `no-data-model` flag tells Metabase to exclude the data model settings from the export. Admins define the data model settings in the [Data model](../data-modeling/metadata-editing) tab of the Admin settings.
+The `no-data-model` flag tells Metabase to exclude the data model settings from the export. Admins define the data model settings in the [Data model](../data-modeling/metadata-editing.md) tab of the Admin settings.
 
 ### `--include-field-values`
 
@@ -189,6 +189,10 @@ java -jar metabase.jar import [my_export]
 ```
 
 Currently, you can only import exported artifacts into a Metabase instance that was created from the same version of Metabase.
+
+### You'll need to manually add license tokens
+
+Metabase excludes your license token from exports, so if you're running multiple environments of Metabase Enterprise Edition, you'll need to manually add your license token to the target Metabase(s), either via the [Metabase user interface](https://www.metabase.com/docs/latest/paid-features/activating-the-enterprise-edition), or via an [environment variable](./environment-variables.md#mb_premium_embedding_token).
 
 ## Import options
 
