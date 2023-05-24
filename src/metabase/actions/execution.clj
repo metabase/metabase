@@ -219,11 +219,15 @@
         ;; prefilling a form with day old data would be bad
         result (binding [persisted-info/*allow-persisted-substitution* false]
                  (qp/process-query-and-save-execution!
-                   (qp.card/query-for-card card prefetch-parameters nil nil)
-                   info))
-        exposed-params (set (map :id (:parameters action)))]
+                  (qp.card/query-for-card card prefetch-parameters nil nil)
+                  info))
+        ;; only expose values for fields that are not hidden
+        hidden-param-ids (keep #(when (:hidden %) (:id %))
+                               (vals (get-in action [:visualization_settings :fields])))
+        exposed-param-ids (-> (set (map :id (:parameters action)))
+                              (set/difference (set hidden-param-ids)))]
     (m/filter-keys
-      #(contains? exposed-params %)
+      #(contains? exposed-param-ids %)
       (zipmap
         (map (comp u/slugify :name) (get-in result [:data :cols]))
         (first (get-in result [:data :rows]))))))

@@ -398,6 +398,38 @@
           (is (= {:name true, :ordered_cards 0}
                  (fetch-public-dashboard dash))))))))
 
+(deftest public-dashboard-with-implicit-action-only-expose-unhidden-fields
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (mt/with-actions-test-data-tables #{"venues" "categories"}
+        (mt/with-actions-test-data-and-actions-enabled
+          (mt/with-actions [{card-id :id} {:dataset true, :dataset_query (mt/mbql-query venues {:fields [$id $name $price]})}
+                            {:keys [action-id]} {:type :implicit
+                                                 :kind "row/update"
+                                                 :visualization_settings {:fields {"id"    {:id     "id"
+                                                                                            :hidden false}
+                                                                                   "name"  {:id     "name"
+                                                                                            :hidden false}
+                                                                                   "price" {:id     "price"
+                                                                                            :hidden true}}}}]
+            (let [dashboard-uuid (str (UUID/randomUUID))]
+              (mt/with-temp* [Dashboard [{dashboard-id :id} {:public_uuid dashboard-uuid}]
+                              DashboardCard [dashcard {:dashboard_id dashboard-id
+                                                       :action_id    action-id
+                                                       :card_id      card-id}]]
+                (testing "Dashcard should only have id and name params"
+                  (is (partial= {:ordered_cards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
+                                (mt/user-http-request :crowberto :get 200 (format "public/dashboard/%s" dashboard-uuid)))))
+                (let [execute-path (format "public/dashboard/%s/dashcard/%s/execute" dashboard-uuid (:id dashcard))]
+                  (testing "Prefetch should only return non-hidden fields"
+                    (is (= {:id 1 :name "Red Medicine"} ; price is hidden
+                           (mt/user-http-request :crowberto :get 200 (str execute-path "?parameters=" (json/encode {:id 1}))))))
+                  (testing "Update should only allow name"
+                    (is (= {:rows-updated [1]}
+                           (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
+                    (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
+                                  (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))))
+
 (deftest get-public-dashboard-actions-test
   (testing "GET /api/public/dashboard/:uuid"
     (mt/with-actions-test-data-and-actions-enabled
