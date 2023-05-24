@@ -10,7 +10,6 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.tsx";
 
-import ActivityApp from "metabase/home/containers/ActivityApp";
 import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
 import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
 
@@ -167,8 +166,6 @@ export const getRoutes = store => (
           <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
           {getCollectionTimelineRoutes()}
         </Route>
-
-        <Route path="activity" component={ActivityApp} />
 
         <Route
           path="dashboard/:slug"
