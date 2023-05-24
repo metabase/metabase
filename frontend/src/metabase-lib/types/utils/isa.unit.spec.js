@@ -1,4 +1,8 @@
-import { getFieldType } from "metabase-lib/types/utils/isa";
+import {
+  getFieldType,
+  isString,
+  isInteger,
+} from "metabase-lib/types/utils/isa";
 import {
   TYPE,
   TEMPORAL,
@@ -105,6 +109,25 @@ describe("isa", () => {
 
     it("should know what it doesn't know", () => {
       expect(getFieldType({ base_type: "DERP DERP DERP" })).toEqual(undefined);
+    });
+  });
+
+  describe("isInteger", () => {
+    it("should know an integer", () => {
+      expect(isInteger({ base_type: TYPE.BigInteger })).toEqual(true);
+      expect(isInteger({ base_type: TYPE.Integer })).toEqual(true);
+      expect(isInteger({ base_type: TYPE.Float })).toEqual(false);
+      expect(isInteger({ base_type: TYPE.String })).toEqual(false);
+    });
+  });
+
+  describe("isString", () => {
+    it("should detect text", () => {
+      expect(isString({ base_type: TYPE.Text })).toEqual(true);
+    });
+
+    it("should know that booleans are not strings", () => {
+      expect(isString({ base_type: TYPE.Boolean })).toEqual(false);
     });
   });
 });
