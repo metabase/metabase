@@ -9,7 +9,9 @@ export const revertToRevision = createThunkAction(
     return async dispatch => {
       await revision.revert();
       await dispatch(fetchDashboard(revision.model_id, null));
-      await dispatch(fetchDashboardCardData({ reload: false, clear: true }));
+      await dispatch(
+        fetchDashboardCardData({ reload: false, clearCache: true }),
+      );
     };
   },
 );
