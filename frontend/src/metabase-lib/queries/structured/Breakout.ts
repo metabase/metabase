@@ -66,7 +66,7 @@ export default class Breakout extends MBQLClause {
     const dimension = this.dimension();
     const field = dimension.field();
     const isConcreteField = typeof field?.id === "number";
-    return isConcreteField
+    return isConcreteField || dimension.isExpression()
       ? dimension.withoutOptions("base-type", "effective-type")
       : dimension;
   }

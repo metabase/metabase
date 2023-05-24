@@ -1,6 +1,5 @@
 (ns metabase.lib.field
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
@@ -8,6 +7,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.names :as lib.names]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -22,7 +22,6 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
-   [metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -97,14 +96,9 @@
    stage-number                                                          :- :int
    [_field {:keys [join-alias], :as opts} id-or-name, :as _field-clause] :- :mbql.clause/field]
   (merge
-   (when-let [base-type (:base-type opts)]
-     {:base-type base-type})
+   (select-keys opts [:base-type :binning :temporal-unit])
    (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
      {:effective-type effective-type})
-   (when-let [binning (:binning opts)]
-     {::binning binning})
-   (when-let [temporal-unit (:temporal-unit opts)]
-     {::temporal-unit temporal-unit})
    ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if the Field is
    ;; temporally bucketed, the base-type/effective-type would probably be affected, right? We should probably be
    ;; taking that into consideration?
@@ -129,7 +123,7 @@
                              (str parent-name \. field-name)))))
 
 (defn- column-metadata-effective-type
-  "Effective type of a column when taking the `::temporal-unit` into account. If we have a temporal extraction like
+  "Effective type of a column when taking the `:temporal-unit` into account. If we have a temporal extraction like
   `:month-of-year`, then this actually returns an integer rather than the 'original` effective type of `:type/Date` or
   whatever."
   [{::keys [temporal-unit], :as column-metadata}]
@@ -145,7 +139,7 @@
 (defmethod lib.metadata.calculation/type-of-method :field
   [query stage-number [_tag {:keys [temporal-unit], :as _opts} _id-or-name :as field-ref]]
   (let [metadata (cond-> (resolve-field-metadata query stage-number field-ref)
-                   temporal-unit (assoc ::temporal-unit temporal-unit))]
+                   temporal-unit (assoc :temporal-unit temporal-unit))]
     (lib.metadata.calculation/type-of query stage-number metadata)))
 
 (defmethod lib.metadata.calculation/metadata-method :metadata/field
@@ -169,9 +163,9 @@
                         (when base-type
                           {:base-type base-type})
                         (when temporal-unit
-                          {::temporal-unit temporal-unit})
+                          {:temporal-unit temporal-unit})
                         (when binning
-                          {::binning binning})
+                          {:binning binning})
                         (when join-alias
                           {::join-alias join-alias})
                         (when source-field
@@ -182,43 +176,8 @@
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.
 (defmethod lib.metadata.calculation/display-name-method :metadata/field
-  [query stage-number {field-display-name :display-name
-                       field-name         :name
-                       temporal-unit      :unit
-                       binning            ::binning
-                       join-alias         :source_alias
-                       fk-field-id        :fk-field-id
-                       table-id           :table-id
-                       :as                field-metadata} style]
-  (let [field-display-name (or field-display-name
-                               (u.humanization/name->human-readable-name :simple field-name))
-        join-display-name  (when (= style :long)
-                             (or
-                               (when fk-field-id
-
-                                 ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
-                                 ;; "ID" dropped instead.
-                                 ;; This is very intentional: one table might have several FKs to one foreign table, each with different
-                                 ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
-                                 ;; See #30109 for more details.
-                                 (if-let [field (lib.metadata/field query fk-field-id)]
-                                   (-> (lib.metadata.calculation/display-info query stage-number field)
-                                       :display-name
-                                       lib.util/strip-id)
-                                   (let [table (lib.metadata/table query table-id)]
-                                     (lib.metadata.calculation/display-name query stage-number table style))))
-                               (when join-alias
-                                 (let [join (lib.join/resolve-join query stage-number join-alias)]
-                                   (lib.metadata.calculation/display-name query stage-number join style)))))
-        display-name       (if join-display-name
-                             (str join-display-name " → " field-display-name)
-                             field-display-name)]
-    (cond
-      temporal-unit (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
-                                                               (str/replace \- \space)
-                                                               u/capitalize-en))
-      binning       (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata))
-      :else         display-name)))
+  [query stage-number field-metadata style]
+  (lib.names/column-display-name query stage-number field-metadata style))
 
 (defmethod lib.metadata.calculation/display-name-method :field
   [query
@@ -228,7 +187,7 @@
   (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
                             join-alias    (assoc :source_alias join-alias)
                             temporal-unit (assoc :unit temporal-unit)
-                            binning       (assoc ::binning binning)
+                            binning       (assoc :binning binning)
                             source-field  (assoc :fk-field-id source-field))]
     (lib.metadata.calculation/display-name query stage-number field-metadata style)
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
@@ -263,7 +222,7 @@
 
 (defmethod lib.temporal-bucket/temporal-bucket-method :metadata/field
   [metadata]
-  (::temporal-unit metadata))
+  (:temporal-unit metadata))
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :field
   [[_tag options id-or-name] unit]
@@ -294,7 +253,7 @@
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/field
   [metadata unit]
-  (u/assoc-dissoc metadata ::temporal-unit unit))
+  (u/assoc-dissoc metadata :temporal-unit unit))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
@@ -328,8 +287,8 @@
               (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
               (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
               :else                                [])
-      fingerprint-default              (mark-unit :default fingerprint-default)
-      (::temporal-unit field-metadata) (mark-unit :selected (::temporal-unit field-metadata)))))
+      fingerprint-default             (mark-unit :default fingerprint-default)
+      (:temporal-unit field-metadata) (mark-unit :selected (:temporal-unit field-metadata)))))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
 (defmethod lib.binning/binning-method :field
@@ -344,7 +303,7 @@
 (defmethod lib.binning/binning-method :metadata/field
   [metadata]
   (some-> metadata
-          ::binning
+          :binning
           (assoc :lib/type    ::lib.binning/binning
                  :metadata-fn (constantly metadata))))
 
@@ -354,7 +313,8 @@
 
 (defmethod lib.binning/with-binning-method :metadata/field
   [metadata binning]
-  (u/assoc-dissoc metadata ::binning binning))
+  #?(:cljs (js/console.log "WBM metadata/field" metadata binning))
+  (u/assoc-dissoc metadata :binning binning))
 
 (defmethod lib.binning/available-binning-strategies-method :field
   [query stage-number field-ref]
@@ -406,15 +366,17 @@
   (case source
     :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
     :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
+    ;; TODO: The logic to conditionally include temporal-unit and binning is duplicated for expression refs and maybe
+    ;; should be for aggregations as well. Refactor the process of constructing refs to be more unified.
     (let [options          (merge
                             {:lib/uuid       (str (random-uuid))
                              :base-type      (:base-type metadata)
                              :effective-type (column-metadata-effective-type metadata)}
                             (when-let [join-alias (::join-alias metadata)]
                               {:join-alias join-alias})
-                            (when-let [temporal-unit (::temporal-unit metadata)]
+                            (when-let [temporal-unit (:temporal-unit metadata)]
                               {:temporal-unit temporal-unit})
-                            (when-let [binning (::binning metadata)]
+                            (when-let [binning (:binning metadata)]
                               {:binning binning})
                             (when-let [source-field-id (:fk-field-id metadata)]
                               {:source-field source-field-id}))

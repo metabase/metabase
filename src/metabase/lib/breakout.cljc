@@ -27,10 +27,13 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     expr         :- some?]
-   (let [expr (lib.ref/ref (if (fn? expr)
-                             (expr query stage-number)
-                             expr))]
-     (lib.util/add-summary-clause query stage-number :breakout expr))))
+   (let [expr     (if (fn? expr)
+                    (expr query stage-number)
+                    expr)
+         expr-ref (lib.ref/ref expr)
+         result   (lib.util/add-summary-clause query stage-number :breakout expr)]
+     #?(:cljs (js/console.log "breakout added" query stage-number "original" expr "ref" expr-ref "final query" result))
+     result)))
 
 (mu/defn breakouts :- [:maybe [:sequential ::lib.schema.expression/expression]]
   "Return the current breakouts"

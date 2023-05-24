@@ -4,10 +4,13 @@
    [+ - * / case coalesce abs time concat replace])
   (:require
    [clojure.string :as str]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.names :as lib.names]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -18,14 +21,16 @@
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.types :as types]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
   "Given `:metadata/field` column metadata for an expression, construct an `:expression` reference."
   [metadata :- lib.metadata/ColumnMetadata]
-  (let [options {:lib/uuid       (str (random-uuid))
-                 :base-type      (:base-type metadata)
-                 :effective-type ((some-fn :effective-type :base-type) metadata)}]
+  (let [options (merge {:lib/uuid       (str (random-uuid))
+                        :base-type      (:base-type metadata)
+                        :effective-type ((some-fn :effective-type :base-type) metadata)}
+                       (select-keys metadata [:binning :temporal-unit]))]
     [:expression options (:name metadata)]))
 
 (mu/defn resolve-expression :- ::lib.schema.expression/expression
@@ -48,12 +53,13 @@
 
 (defmethod lib.metadata.calculation/metadata-method :expression
   [query stage-number [_expression opts expression-name, :as expression-ref]]
-  {:lib/type        :metadata/field
-   :lib/source-uuid (:lib/uuid opts)
-   :name            expression-name
-   :display-name    (lib.metadata.calculation/display-name query stage-number expression-ref)
-   :base-type       (lib.metadata.calculation/type-of query stage-number expression-ref)
-   :lib/source      :source/expressions})
+  (merge {:lib/type        :metadata/field
+          :lib/source-uuid (:lib/uuid opts)
+          :name            expression-name
+          :display-name    (lib.metadata.calculation/display-name query stage-number expression-ref)
+          :base-type       (lib.metadata.calculation/type-of query stage-number expression-ref)
+          :lib/source      :source/expressions}
+         (select-keys opts [:binning :temporal-unit])))
 
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/integer
   [_query _stage-number n _style]
@@ -68,8 +74,10 @@
   (str \" s \"))
 
 (defmethod lib.metadata.calculation/display-name-method :expression
-  [_query _stage-number [_expression _opts expression-name] _style]
-  expression-name)
+  [query stage-number [_expression opts expression-name :as expr] style]
+  (lib.names/column-display-name query stage-number
+                                 (merge {:name expression-name} opts)
+                                 style))
 
 (defmethod lib.metadata.calculation/column-name-method :expression
   [_query _stage-number [_expression _opts expression-name]]
@@ -265,3 +273,21 @@
 (defmethod lib.ref/ref-method :expression
   [expression-clause]
   expression-clause)
+
+(defmethod lib.binning/binning-method :expression
+  [expr-clause]
+  (some-> expr-clause
+          lib.options/options
+          :binning
+          (assoc :lib/type    ::lib.binning/binning
+                 :metadata-fn (fn [query stage-number]
+                                (lib.metadata.calculation/metadata query stage-number expr-clause)))))
+
+(defmethod lib.binning/with-binning-method :expression
+  [expr-clause binning]
+  (lib.options/update-options expr-clause u/assoc-dissoc :binning binning))
+
+;; START HERE: Need to implement bucketing and binning on expression clauses.
+;; This is another instance of filling in all the cells of the table! We really need to factor this apart into
+;; "rows" and "columns" rather than having to duplicate all this effort and have accidental gaps.
+;; Can I write binning-method, with-binning-method, etc. for any generic MBQL clause?

@@ -308,7 +308,7 @@
     (merge
      ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display-name`
      ;; everywhere? Determine whether or not this is the case.
-     (select-keys x-metadata [:name :display-name :semantic-type])
+     (select-keys x-metadata [:name :display-name :semantic-type :binning :temporal-unit])
      (when-let [long-display-name (display-name query stage-number x :long)]
        {:long-display-name long-display-name})
      ;; don't return `:base-type`, FE should just use `:effective-type` everywhere and not even need to know

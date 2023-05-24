@@ -133,10 +133,8 @@
                   :lib/source-column-alias  source-alias
                   :lib/desired-column-alias (unique-name-fn source-alias))
            ;; do not retain `:temporal-unit`; it's not like we're doing a extract(month from <x>) twice, in both
-           ;; stages of a query. It's a little hacky that we're manipulating `::lib.field` keys directly here since
-           ;; they're presumably supposed to be private-ish, but I don't have a more elegant way of solving this sort
-           ;; of problem at this point in time.
-           (dissoc ::lib.field/temporal-unit))))))
+           ;; stages of a query.
+           (dissoc :temporal-unit))))))
 
 (mu/defn ^:private saved-question-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata associated with a Saved Question, if `:source-table` is a `card__<id>` string."

@@ -22,6 +22,13 @@
     (let [x (f query stage-number)]
       (with-binning-method x binning))))
 
+(defmethod with-binning-method :default
+  [x binning]
+  ;; START HERE - is this what gets called by `with-binning` on a custom expression? Figure that out.
+  ;; See what with-temporal-bucketing does here.
+  (prn "default with-binning-method" x binning)
+  nil)
+
 (mu/defn with-binning
   "Add binning to an MBQL clause or something that can be converted to an MBQL clause.
   Eg. for a Field or Field metadata or `:field` clause, this might do something like this:
@@ -47,6 +54,8 @@
 (defmethod binning-method :default
   [_x]
   nil)
+
+(lib.hierarchy/isa? :expression :mbql/clause)
 
 (mu/defn binning :- [:maybe ::lib.schema.binning/binning]
   "Get the current binning options associated with `x`, if any."

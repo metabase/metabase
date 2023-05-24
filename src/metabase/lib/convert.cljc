@@ -275,7 +275,11 @@
              :trim :ltrim :rtrim :upper :lower]]
   (lib.hierarchy/derive tag ::expression))
 
-(defmethod ->legacy-MBQL ::aggregation-or-expression
+#_(defmethod ->legacy-MBQL ::expression
+  [input]
+  (aggregation->legacy-MBQL input))
+
+(defmethod ->legacy-MBQL ::aggregation
   [input]
   (aggregation->legacy-MBQL input))
 
