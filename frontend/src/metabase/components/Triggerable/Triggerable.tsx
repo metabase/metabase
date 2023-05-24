@@ -16,7 +16,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { isObscured } from "metabase/lib/dom";
 
 import { RenderProp } from "./types";
-import { isChildrenRenderProp, isReactElement } from "./utils";
+import { isRenderProp, isReactElement } from "./utils";
 
 const Trigger = styled.a``;
 
@@ -169,7 +169,7 @@ const _Triggerable = (ComposedComponent: TriggerableComponent) => {
 
       let { children } = this.props;
 
-      if (isChildrenRenderProp(children)) {
+      if (isRenderProp(children)) {
         children = children({ onClose: this.onClose });
       } else if (Children.count(children) === 1) {
         const child = Children.only(children);

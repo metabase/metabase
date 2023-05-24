@@ -3,7 +3,7 @@ import { isObject } from "underscore";
 
 import { RenderProp } from "./types";
 
-export const isChildrenRenderProp = <Props extends Record<string, unknown>>(
+export const isRenderProp = <Props extends Record<string, unknown>>(
   value: unknown,
 ): value is RenderProp<Props> => {
   return typeof value === "function";
