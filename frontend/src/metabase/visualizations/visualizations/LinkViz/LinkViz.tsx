@@ -13,6 +13,7 @@ import type {
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import Search from "metabase/entities/search";
+import { isWithinIframe } from "metabase/lib/dom";
 
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
 import {
@@ -119,9 +120,16 @@ function LinkViz({
       );
     }
 
+    const target = isWithinIframe() ? undefined : "_blank";
+
     return (
       <DisplayLinkCardWrapper>
-        <CardLink to={wrappedEntity.getUrl()} target="_blank" rel="noreferrer">
+        <CardLink
+          to={wrappedEntity.getUrl()}
+          target={target}
+          rel="noreferrer"
+          role="link"
+        >
           <EntityDisplay entity={wrappedEntity} showDescription />
         </CardLink>
       </DisplayLinkCardWrapper>
