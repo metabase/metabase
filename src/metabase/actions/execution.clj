@@ -163,14 +163,15 @@
   "Check that the given request parameters do not contain any parameters that are not in the given set of destination parameter ids"
   [request-parameters destination-param-ids]
   (doseq [[parameter-id _value] request-parameters]
-    (when-not (contains? destination-param-ids parameter-id)
-      (throw (ex-info (tru "No destination parameter found for id {0}. Found: {1}"
-                           (pr-str parameter-id)
-                           (pr-str destination-param-ids))
-                      {:status-code            400
-                       :type                   qp.error-type/invalid-parameter
-                       :parameters             request-parameters
-                       :destination-parameters destination-param-ids})))))
+    (api/check (not (contains? destination-param-ids parameter-id))
+               400
+               {:status-code            400
+                :message                (tru "No destination parameter found for id {0}. Found: {1}"
+                                             (pr-str parameter-id)
+                                             (pr-str destination-param-ids))
+                :type                   qp.error-type/invalid-parameter
+                :parameters             request-parameters
+                :destination-parameters destination-param-ids})))
 
 (defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
