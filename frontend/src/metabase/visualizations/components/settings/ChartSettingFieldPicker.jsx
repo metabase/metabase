@@ -94,7 +94,6 @@ const ChartSettingFieldPicker = ({
         <SettingsButton
           data-testid={`remove-${value}`}
           icon="close"
-          iconSize={14}
           onlyIcon
           onClick={onRemove}
         />
