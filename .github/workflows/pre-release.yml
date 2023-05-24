@@ -84,7 +84,7 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
     steps:
-    - name: Fail early if custom docker relaese repo is missing
+    - name: Fail early if custom docker release repo is missing
       if: ${{ env.CUSTOM_REPO == null }}
       run: exit 1
     - name: Check out the code
