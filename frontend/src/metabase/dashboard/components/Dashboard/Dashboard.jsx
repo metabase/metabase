@@ -144,7 +144,7 @@ class Dashboard extends Component {
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
       (!prevProps.dashboard && this.props.dashboard)
     ) {
-      this.props.fetchDashboardCardData({ reload: false, clear: true });
+      this.props.fetchDashboardCardData({ reload: false, clearCache: true });
     }
   }
 
@@ -168,13 +168,13 @@ class Dashboard extends Component {
       isNavigatingBackToDashboard,
     } = this.props;
 
-    initialize({ clear: !isNavigatingBackToDashboard });
+    initialize({ clearCache: !isNavigatingBackToDashboard });
 
     loadDashboardParams();
 
     try {
       await fetchDashboard(dashboardId, location.query, {
-        preserveDashboard: isNavigatingBackToDashboard,
+        clearCache: !isNavigatingBackToDashboard,
       });
       if (editingOnLoad) {
         this.setEditing(this.props.dashboard);

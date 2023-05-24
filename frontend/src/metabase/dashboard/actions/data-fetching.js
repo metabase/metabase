@@ -136,7 +136,7 @@ export const fetchDashboard = createThunkAction(
   function (
     dashId,
     queryParams,
-    { preserveParameters = false, preserveDashboard = false } = {},
+    { preserveParameters = false, clearCache = true } = {},
   ) {
     let entities;
     let result;
@@ -144,7 +144,7 @@ export const fetchDashboard = createThunkAction(
       const dashboardType = getDashboardType(dashId);
       const loadedDashboard = getDashboardById(getState(), dashId);
 
-      if (preserveDashboard && loadedDashboard) {
+      if (!clearCache && loadedDashboard) {
         entities = {
           dashboard: { [dashId]: loadedDashboard },
           dashcard: Object.fromEntries(
@@ -246,7 +246,7 @@ export const fetchDashboard = createThunkAction(
 
 export const fetchCardData = createThunkAction(
   FETCH_CARD_DATA,
-  function (card, dashcard, { reload, clear, ignoreCache } = {}) {
+  function (card, dashcard, { reload, clearCache, ignoreCache } = {}) {
     return async function (dispatch, getState) {
       // If the dataset_query was filtered then we don't have permisison to view this card, so
       // shortcircuit and return a fake 403
@@ -292,7 +292,7 @@ export const fetchCardData = createThunkAction(
 
       cancelFetchCardData(card.id, dashcard.id);
 
-      if (clear) {
+      if (clearCache) {
         // clears the card data to indicate the card is reloading
         dispatch(clearCardData(card.id, dashcard.id));
       }

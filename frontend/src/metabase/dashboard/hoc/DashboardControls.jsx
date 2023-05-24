@@ -173,7 +173,7 @@ export default ComposedComponent =>
           );
           this.props.fetchDashboardCardData({
             reload: true,
-            clear: false,
+            clearCache: false,
           });
         }
         this.setRefreshElapsed(this._refreshElapsed);

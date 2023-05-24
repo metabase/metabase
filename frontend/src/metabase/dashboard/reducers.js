@@ -231,10 +231,10 @@ const dashcards = handleActions(
       ...state,
       [dashcardId]: { ...state[dashcardId], justAdded: false },
     }),
-    [Questions.actionTypes.UPDATE]: (state, { payload: { object } }) =>
+    [Questions.actionTypes.UPDATE]: (state, { payload: { object: card } }) =>
       _.mapObject(state, dashcard =>
-        dashcard.card?.id === object?.id
-          ? assocIn(dashcard, ["card"], object)
+        dashcard.card?.id === card?.id
+          ? assocIn(dashcard, ["card"], card)
           : dashcard,
       ),
   },
@@ -263,7 +263,8 @@ const dashcardData = handleActions(
   {
     // clear existing dashboard data when loading a dashboard
     [INITIALIZE]: {
-      next: (state, { payload: { clear = true } = {} }) => (clear ? {} : state),
+      next: (state, { payload: { clearCache = true } = {} }) =>
+        clearCache ? {} : state,
     },
     [FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id, card_id, result } }) =>
@@ -273,8 +274,8 @@ const dashcardData = handleActions(
       next: (state, { payload: { cardId, dashcardId } }) =>
         assocIn(state, [dashcardId, cardId]),
     },
-    [Questions.actionTypes.UPDATE]: (state, { payload: { object } }) =>
-      _.mapObject(state, data => dissoc(data, object.id)),
+    [Questions.actionTypes.UPDATE]: (state, { payload: { object: card } }) =>
+      _.mapObject(state, dashboardData => dissoc(dashboardData, card.id)),
   },
   INITIAL_DASHBOARD_STATE.dashcardData,
 );
