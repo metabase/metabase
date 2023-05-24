@@ -16,9 +16,6 @@ import dashboard from "metabase/dashboard/reducers";
 /* parameters */
 import * as parameters from "metabase/parameters/reducers";
 
-/* home page */
-import * as home from "metabase/home/reducers";
-
 /* query builder */
 import * as qb from "metabase/query_builder/reducers";
 
@@ -46,7 +43,6 @@ export default {
   alert,
   dashboard,
   parameters: combineReducers(parameters),
-  home: combineReducers(home),
   metabot: combineReducers(metabot),
   pulse: combineReducers(pulse),
   qb: combineReducers(qb),

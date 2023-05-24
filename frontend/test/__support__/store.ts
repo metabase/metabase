@@ -7,7 +7,9 @@ import {
   DashboardSchema,
   DatabaseSchema,
   FieldSchema,
+  IndexedEntitySchema,
   MetricSchema,
+  ModelIndexSchema,
   QuestionSchema,
   SegmentSchema,
   SnippetSchema,
@@ -62,6 +64,8 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   metrics: [MetricSchema],
   segments: [SegmentSchema],
   snippets: [SnippetSchema],
+  modelIndexes: [ModelIndexSchema],
+  indexedEntities: [IndexedEntitySchema],
   users: [UserSchema],
   questions: [QuestionSchema],
 };

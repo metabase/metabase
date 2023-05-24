@@ -8,6 +8,7 @@
    [clojure.spec.alpha :as spec]
    [clojure.string :as str]
    [environ.core :refer [env]]
+   [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
@@ -500,3 +501,17 @@
                         (assoc :return-schema (-> parsed-args :return-schema :schema))
                         (assoc :fn-name fn-name))]
     `(defenterprise-impl ~args)))
+
+
+(defenterprise segmented-user?
+  "Returns a boolean if the current user is a segmented user. In OSS is always false. Will throw an error
+  if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.sandbox.api.util
+  []
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
+    ;; returning `false` for users who should actually be sandboxes.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have sandboxing. But we throw if no current-user-id so the behavior doesn't change when ee version
+  false)

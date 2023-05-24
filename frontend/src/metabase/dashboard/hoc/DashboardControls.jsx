@@ -169,11 +169,11 @@ export default ComposedComponent =>
           await this.props.fetchDashboard(
             this.props.dashboardId,
             this.props.location.query,
-            true,
+            { preserveParameters: true },
           );
           this.props.fetchDashboardCardData({
             reload: true,
-            clear: false,
+            clearCache: false,
           });
         }
         this.setRefreshElapsed(this._refreshElapsed);

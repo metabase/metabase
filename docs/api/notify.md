@@ -19,13 +19,13 @@ Notification about a potential schema change to one of our `Databases`.
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
-*  **`table_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`table_id`** nullable value must be an integer greater than zero.
 
-*  **`table_name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`table_name`** nullable value must be a non-blank string.
 
-*  **`scan`** value may be nil, or if non-nil, value must be one of: `full`, `schema`.
+*  **`scan`** nullable enum of full, schema
 
 *  **`synchronous?`**
 
@@ -36,7 +36,7 @@ Sync a new table without running a full database sync. Requires `schema_name` an
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
 *  **`schema_name`** value must be a non-blank string.
 
