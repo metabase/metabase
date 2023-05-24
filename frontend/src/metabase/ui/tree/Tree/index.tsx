@@ -32,7 +32,6 @@ function TreeNode({ component, selected, setSelected }) {
           mr="sm"
           variant={selected?.id === component?.id ? "light" : "subtle"}
           onClick={() => setIsOpened(!isOpened)}
-          leftIcon={component.children?.length > 0 && isOpened ? "chevron-down" : "chevron-right"}
         >
           {component.name}
         </Button>

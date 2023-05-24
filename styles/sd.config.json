@@ -1,0 +1,21 @@
+{
+  "source": [
+    "tokens/**/*.json"
+  ],
+  "platforms": {
+    "js": {
+      "transformGroup": "js",
+      "buildPath": "./styles/js/",
+      "files": [
+        {
+          "destination": "variables.js",
+          "format": "javascript/es6"
+        },
+        {
+          "destination": "test.js",
+          "format": "myCustomFormat"
+        }
+      ]
+    }
+  }
+}

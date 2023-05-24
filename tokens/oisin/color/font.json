@@ -1,0 +1,9 @@
+{
+  "color": {
+    "font": {
+      "base"     : { "value": "{color.base.ocean.500.value}" },
+      "secondary": { "value": "{color.base.orion.500.value}" },
+      "tertiary" : { "value": "{color.base.fog.500.value}" }
+    }
+  }
+}

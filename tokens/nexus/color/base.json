@@ -1,23 +1,15 @@
 {
   "color": {
+    "primary": {
+      "value": "{color.base.ocean.500.value}"
+    },
+    "primaryShade": {
+      "value": 4
+    },
+    "black": {
+      "value": "{color.base.orion.800.value}"
+    },
     "base": {
-      "gray": {
-        "light": {
-          "value": "#CCCCCC"
-        },
-        "medium": {
-          "value": "#999999"
-        },
-        "dark": {
-          "value": "#111111"
-        }
-      },
-      "red": {
-        "value": "#FF0000"
-      },
-      "green": {
-        "value": "#00FF00"
-      },
       "ocean": {
         "100": {
           "value": "#E0F4FF"

@@ -1,0 +1,21 @@
+{
+  "size": {
+    "font": {
+      "xs": {
+        "value": "0.5rem"
+      },
+      "sm": {
+        "value": "0.8rem"
+      },
+      "md": {
+        "value": "1.1rem"
+      },
+      "lg": {
+        "value": "1.4rem"
+      },
+      "xl": {
+        "value": "1.8rem"
+      }
+    }
+  }
+}

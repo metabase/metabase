@@ -1,0 +1,53 @@
+/**
+ * Do not edit directly
+ * Generated on Wed, 24 May 2023 11:28:31 GMT
+ */
+
+export const ColorPrimary = "#ff0000";
+export const ColorPrimaryShade = "#000000";
+export const ColorBlack = "#ffff00";
+export const ColorBaseOcean100 = "#ffff00";
+export const ColorBaseOcean200 = "#008000";
+export const ColorBaseOcean300 = "#ff0000";
+export const ColorBaseOcean400 = "#ffff00";
+export const ColorBaseOcean500 = "#ff0000";
+export const ColorBaseOcean600 = "#008000";
+export const ColorBaseOcean700 = "#ff0000";
+export const ColorBaseOcean800 = "#ffff00";
+export const ColorBaseOcean900 = "#0000ff";
+export const ColorBaseOrion100 = "#ffff00";
+export const ColorBaseOrion200 = "#008000";
+export const ColorBaseOrion300 = "#ff0000";
+export const ColorBaseOrion400 = "#ffff00";
+export const ColorBaseOrion500 = "#ff0000";
+export const ColorBaseOrion600 = "#008000";
+export const ColorBaseOrion700 = "#ff0000";
+export const ColorBaseOrion800 = "#ffff00";
+export const ColorBaseOrion900 = "#0000ff";
+export const ColorBaseFog100 = "#ffff00";
+export const ColorBaseFog200 = "#008000";
+export const ColorBaseFog300 = "#ff0000";
+export const ColorBaseFog400 = "#ffff00";
+export const ColorBaseFog500 = "#ff0000";
+export const ColorBaseFog600 = "#008000";
+export const ColorBaseFog700 = "#ff0000";
+export const ColorBaseFog800 = "#ffff00";
+export const ColorBaseFog900 = "#0000ff";
+export const ColorBaseOcean100 = "#ffff00";
+export const ColorBaseOcean200 = "#008000";
+export const ColorBaseOcean300 = "#ff0000";
+export const ColorBaseOcean400 = "#ffff00";
+export const ColorBaseOcean500 = "#ff0000";
+export const ColorBaseOcean600 = "#008000";
+export const ColorBaseOcean700 = "#ff0000";
+export const ColorBaseOcean800 = "#ffff00";
+export const ColorBaseOcean900 = "#0000ff";
+export const ColorFontBase = "#ff0000";
+export const ColorFontSecondary = "#ff0000";
+export const ColorFontTertiary = "#ff0000";
+export const FontDefault = "sans-serif";
+export const SizeFontXs = "0.1rem";
+export const SizeFontSm = "0.2rem";
+export const SizeFontMd = "1.8rem";
+export const SizeFontLg = "2rem";
+export const SizeFontXl = "5rem";

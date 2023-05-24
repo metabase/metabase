@@ -46,6 +46,7 @@
     "d3-time-format": "^4.1.0",
     "dc": "2.1.9",
     "diff": "^3.2.0",
+    "flat": "^5.0.2",
     "formik": "^2.2.9",
     "history": "3",
     "html2canvas": "^1.4.1",
@@ -347,7 +348,7 @@
     "build-storybook": "yarn build:cljs && build-storybook",
     "chromatic": "yarn build:cljs && chromatic",
     "docs-lint-links": "find docs -type f -name '*.md' -print0 | xargs -0 markdown-link-check --quiet --config .mlc_config.json",
-    "build-style": "style-dictionary build"
+    "build-style": "node ./styles/build.js"
   },
   "lint-staged": {
     "+(enterprise|frontend)/**/*.css": [

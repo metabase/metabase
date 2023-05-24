@@ -60,6 +60,9 @@ export function Preview() {
   return (
     <MantineProvider theme={theme}>
       <Box ml="auto" mr="auto" style={{ width: 900 }}>
+        <Box mb="lg">
+          <Button size='lg'>Change theme</Button>
+        </Box>
         <Box mb="lg" mt="sm">
           <Button mr="sm">Hi there</Button>
           <Button variant="outline">Yo there</Button>

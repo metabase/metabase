@@ -1,0 +1,103 @@
+{
+  "color": {
+    "primary": {
+      "value": "{color.base.ocean.500.value}"
+    },
+    "primaryShade": {
+      "value": 4
+    },
+    "black": {
+      "value": "{color.base.orion.800.value}"
+    },
+    "base": {
+      "ocean": {
+        "100": {
+          "value": "yellow"
+        },
+        "200": {
+          "value": "green"
+        },
+        "300": {
+          "value": "red"
+        },
+        "400": {
+          "value": "yellow"
+        },
+        "500": {
+          "value": "red"
+        },
+        "600": {
+          "value": "green"
+        },
+        "700": {
+          "value": "red"
+        },
+        "800": {
+          "value": "yellow"
+        },
+        "900": {
+          "value": "blue"
+        }
+      },
+      "orion": {
+        "100": {
+          "value": "yellow"
+        },
+        "200": {
+          "value": "green"
+        },
+        "300": {
+          "value": "red"
+        },
+        "400": {
+          "value": "yellow"
+        },
+        "500": {
+          "value": "red"
+        },
+        "600": {
+          "value": "green"
+        },
+        "700": {
+          "value": "red"
+        },
+        "800": {
+          "value": "yellow"
+        },
+        "900": {
+          "value": "blue"
+        }
+      },
+      "fog": {
+        "100": {
+          "value": "yellow"
+        },
+        "200": {
+          "value": "green"
+        },
+        "300": {
+          "value": "red"
+        },
+        "400": {
+          "value": "yellow"
+        },
+        "500": {
+          "value": "red"
+        },
+        "600": {
+          "value": "green"
+        },
+        "700": {
+          "value": "red"
+        },
+        "800": {
+          "value": "yellow"
+        },
+        "900": {
+          "value": "blue"
+        }
+      },
+      "blue": "{color.base.ocean}"
+    }
+  }
+}

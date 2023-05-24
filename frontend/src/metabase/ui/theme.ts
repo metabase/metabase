@@ -1,50 +1,8 @@
 import type { MantineThemeOverride } from "@mantine/core";
-import { ColorBaseOrion800 } from "../../../../styles/ts/styles";
+import generatedTheme from "../../../../styles/js/test";
 
-const colors = {
-  ocean: [
-    "#E0F4FF",
-    "#B9DAF8",
-    "#8FC2EE",
-    "#65AAE6",
-    "#3C91DE",
-    "#2478C5",
-    "#195D9A",
-    "",
-    "",
-    "",
-  ],
-  orion: [
-    "#EDF1FF",
-    "#D0D5E5",
-    "#B1BACD",
-    "#949EB8",
-    "#7682A3",
-    "#5C6989",
-    "#47516B",
-    "#323A4E",
-    "#1C2331",
-    "#040D17",
-  ],
-  fog: [
-    "#FBFBFD",
-    "#F2F2F7",
-    "#E9E9EF",
-    "#E0E0E7",
-    "#D7D7DF",
-    "#CECED7",
-    "",
-    "",
-    "",
-    "",
-  ],
-};
 export const theme: MantineThemeOverride = {
-  colors: colors,
-  black: ColorBaseOrion800,
-  fontFamily: "Lato, sans-serif",
-  primaryColor: "ocean",
-  primaryShade: 4,
+  ...generatedTheme,
 
   focusRingStyles: {
     styles(theme) {
