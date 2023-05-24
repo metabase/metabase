@@ -608,7 +608,7 @@
                                               {:source-field (meta/id :venues :category-id)}
                                               (meta/id :categories :name)]]]}]}
               query))
-      (is (= "Venues, Sorted by Categories → Name ascending"
+      (is (= "Venues, Sorted by Category → Name ascending"
              (lib/describe-query query)))
       (is (=? [{:display-name "ID",          :lib/source :source/table-defaults}
                {:display-name "Name",        :lib/source :source/table-defaults}

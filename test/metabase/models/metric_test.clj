@@ -144,7 +144,7 @@
                                                                  :filter      [:and
                                                                                [:= $price 4]
                                                                                [:segment segment-id]]}))}]
-    (is (= "Venues, Sum of Categories → Name, Filtered by Price equals 4 and Checkins with ID = 1"
+    (is (= "Venues, Sum of Category → Name, Filtered by Price equals 4 and Checkins with ID = 1"
            (:definition_description (t2/hydrate metric :definition_description))))))
 
 (deftest definition-description-missing-source-table-test
@@ -154,7 +154,7 @@
                                             :definition (mt/$ids venues
                                                           {:aggregation [[:sum $category_id->categories.name]]
                                                            :filter      [:= $price 4]})}]
-      (is (= "Venues, Sum of Categories → Name, Filtered by Price equals 4"
+      (is (= "Venues, Sum of Category → Name, Filtered by Price equals 4"
              (:definition_description (t2/hydrate metric :definition_description)))))))
 
 (deftest definition-description-invalid-query-test

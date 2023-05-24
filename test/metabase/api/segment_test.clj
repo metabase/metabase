@@ -425,7 +425,7 @@
                 :name                   "Segment 2"
                 :definition             {}
                 :creator                {}
-                :definition_description "Filtered by Price equals 4 and Categories → Name equals \"BBQ\""}]
+                :definition_description "Filtered by Price equals 4 and Category → Name equals \"BBQ\""}]
               (filter (fn [{segment-id :id}]
                         (contains? #{id-1 id-2 id-3} segment-id))
                       (mt/user-http-request :rasta :get 200 "segment/")))))))
