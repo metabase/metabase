@@ -14,6 +14,7 @@ import {
   queryBuilderHeader,
   collectionTable,
   rightSidebar,
+  main,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -1015,26 +1016,39 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should display a back to the dashboard button in table x-ray dashboards", () => {
-    cy.visit("/reference/databases");
+    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
+    cy.wait("@dataset");
 
-    cy.findByRole("main").within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Tables in Sample Database").click();
-      cy.findByText("Orders").click();
-      cy.findByText("X-ray this table").click();
+    main().within(() => {
+      cy.findByText("Sales per state").click();
       cy.wait("@dataset");
     });
 
-    getDashboardCard(1).within(() => {
-      cy.findByText("Sales per state").click();
+    queryBuilderHeader().within(() => {
+      cy.findByLabelText(/Back to .*Orders.*/).click();
+    });
+
+    main().within(() => {
+      cy.findByText("Sales per state").should("exist");
+    });
+  });
+
+  it("should display a back to the dashboard button in model x-ray dashboards", () => {
+    cy.request("PUT", "/api/card/1", { dataset: true });
+    cy.visit("/auto/dashboard/model/1");
+    cy.wait("@dataset");
+
+    main().within(() => {
+      cy.findByText("Orders by Subtotal").click();
+      cy.wait("@dataset");
     });
 
     queryBuilderHeader().within(() => {
-      cy.findByLabelText(/Back to .* Orders/).click();
+      cy.findByLabelText(/Back to .*Orders.*/).click();
     });
 
-    getDashboardCard(1).within(() => {
-      cy.findByText("Sales per state").should("be.visible");
+    main().within(() => {
+      cy.findByText("Orders by Subtotal").should("be.visible");
     });
   });
 
