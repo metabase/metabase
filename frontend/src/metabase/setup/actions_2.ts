@@ -1,8 +1,12 @@
-import { createAsyncThunk } from "@reduxjs/toolkit";
+import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { SetupApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
-import { UserInfo } from "metabase-types/store";
-import { trackStepSeen, trackWelcomeStepCompleted } from "./analytics";
+import { Locale, UserInfo } from "metabase-types/store";
+import {
+  trackStepSeen,
+  trackUserStepCompleted,
+  trackWelcomeStepCompleted,
+} from "./analytics";
 import { WELCOME_STEP } from "./constants";
 import { getDefaultLocale, getLocales, getUserToken } from "./utils";
 
@@ -38,5 +42,26 @@ export const submitWelcomeStep = createAsyncThunk(
   "metabase/setup/SUBMIT_WELCOME_STEP",
   () => {
     trackWelcomeStepCompleted();
+  },
+);
+
+export const changeLocale = createAction<Locale>(
+  "metabase/setup/CHANGE_LOCALE",
+);
+
+export const selectLanguageStep = createAction(
+  "metabase/setup/SELECT_LANGUAGE_STEP",
+);
+
+export const submitLanguageStep = createAction(
+  "metabase/setup/SUBMIT_LANGUAGE_STEP",
+);
+
+export const selectUserStep = createAction("metabase/setup/SELECT_USER_STEP");
+
+export const submitUserStep = createAsyncThunk(
+  "metabase/setup/SUBMIT_USER_STEP",
+  (_: UserInfo) => {
+    trackUserStepCompleted();
   },
 );
