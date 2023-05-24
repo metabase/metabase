@@ -85,7 +85,7 @@
   "Add indexed values to the model_index_value table."
   [model-index]
   (let [[error-message values-to-index] (fetch-values model-index)
-        current-index-values               (into []
+        current-index-values               (into #{}
                                                  (map (juxt :model_pk :name))
                                                  (t2/select ModelIndexValue
                                                             :model_index_id (:id model-index)))]
@@ -97,10 +97,10 @@
         (t2/with-transaction [_conn]
           (let [{:keys [additions deletions]} (find-changes {:current-index current-index-values
                                                              :source-values values-to-index})]
-            (when-some [removal-ids (some->> deletions seq (map first))]
+            (when (seq deletions)
               (t2/delete! ModelIndexValue
                           :model_index_id (:id model-index)
-                          :pk_ref [:in removal-ids]))
+                          :pk_ref [:in (->> deletions (map first))]))
             (when (seq additions)
               (t2/insert! ModelIndexValue
                           (map (fn [[id v]]
