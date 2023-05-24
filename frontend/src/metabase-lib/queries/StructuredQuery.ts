@@ -804,7 +804,7 @@ class StructuredQueryInner extends AtomicQuery {
             .filter(breakout => !_.isEqual(breakout, includedBreakout))
             .map(breakout => breakout.dimension());
 
-    return this.dimensionOptions(
+    return this.dimensionOptionsForValidation(
       dimension =>
         fieldFilter(dimension.field()) &&
         !breakoutDimensions.some(breakoutDimension =>
