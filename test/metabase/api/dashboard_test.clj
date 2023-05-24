@@ -3219,10 +3219,15 @@
                 (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {"extra" 1 "id" 1}}))))
+              (testing "Extra parameter should fail even if it's a model field"
+                (is (partial= {:message "No destination parameter found for #{\"name\"}. Found: #{\"id\"}"}
+                              (mt/user-http-request :crowberto :post 400 execute-path
+                                                    {:parameters {"id"   1
+                                                                  "name" "Birds"}}))))
               (testing "Missing pk parameter should fail gracefully"
                 (is (partial= "Missing primary key parameter: \"id\""
                               (mt/user-http-request :crowberto :post 400 execute-path
-                                                    {:parameters {"name" "Birds"}})))))))))))
+                                                    {:parameters {}})))))))))))
 
 (deftest dashcard-hidden-parameter-test
   (mt/with-actions-test-data-tables #{"users"}
