@@ -597,5 +597,4 @@
           (testing "GET /api/action/:id/execute"
             (is (partial= {:message "No destination parameter found for id \"name\". Found: #{\"last_login\" \"id\"}"}
                           (mt/user-http-request :crowberto :post 400 (format "action/%s/execute" action-id)
-                                                {:parameters {:name "Darth Vader"}}))))
-)))))
+                                                {:parameters {:name "Darth Vader"}})))))))))
