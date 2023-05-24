@@ -15,6 +15,10 @@ import {
 } from "./analytics";
 import { getDefaultLocale, getLocales, getUserToken } from "./utils";
 
+interface ThunkConfig {
+  state: State;
+}
+
 export const LOAD_USER_DEFAULTS = "metabase/setup/LOAD_USER_DEFAULTS";
 export const loadUserDefaults = createAsyncThunk(
   LOAD_USER_DEFAULTS,
@@ -133,10 +137,10 @@ export const updateTracking = createAsyncThunk(
 );
 
 export const SUBMIT_SETUP = "metabase/setup/SUBMIT_SETUP";
-export const submitSetup = createAsyncThunk(
+export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
   SUBMIT_SETUP,
   async (_, thunkAPI) => {
-    const { setup } = thunkAPI.getState() as State;
+    const { setup } = thunkAPI.getState();
     const { locale, user, database, invite, isTrackingAllowed } = setup;
 
     await SetupApi.create({
@@ -156,7 +160,7 @@ export const submitSetup = createAsyncThunk(
 );
 
 export const SUBMIT_PREFERENCES = "metabase/setup/SUBMIT_PREFERENCES_STEP";
-export const submitPreferences = createAsyncThunk(
+export const submitPreferences = createAsyncThunk<void, boolean, ThunkConfig>(
   SUBMIT_PREFERENCES,
   async (isTrackingAllowed: boolean, thunkAPI) => {
     await thunkAPI.dispatch(submitSetup());
