@@ -90,10 +90,10 @@
   (testing "strings, regardless of the effective type is"
     (are [typ] (= ::lib.types.constants/string (lib.types.isa/field-type {:effective-type :type/Float
                                                                           :semantic-type typ}))
-      :type/Name :type/Category)))
+      :type/Name :type/Category))
   (testing "boolean, regardless of the semantic type"
     (is (= ::lib.types.constants/boolean (lib.types.isa/field-type {:effective-type :type/Boolean
-                                                  :semantic-type :type/Category}))))
+                                                                    :semantic-type :type/Category}))))
   (testing "unexpected things"
     (are [column] (nil? (lib.types.isa/field-type column))
       {:effective-type "DERP DERP DERP"}
@@ -102,7 +102,7 @@
       {:semantic-type nil}
       "DERP DERP DERP"
       :type/Category
-      nil))
+      nil)))
 
 (deftest ^:parallel type-predicate-test
   (letfn [(column [x]
