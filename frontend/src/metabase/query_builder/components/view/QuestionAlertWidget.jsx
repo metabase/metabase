@@ -70,6 +70,7 @@ export default class QuestionAlertWidget extends React.Component {
         <Icon
           name="bell"
           tooltip={t`Get alerts`}
+          size={20}
           className={cx(className, "text-brand-hover cursor-pointer")}
           onClick={onCreateAlert}
         />
