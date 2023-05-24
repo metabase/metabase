@@ -5,13 +5,15 @@ import {
   loadLocaleDefaults,
   submitWelcomeStep,
   selectUserStep,
-  submitUserStep,
+  submitUserInfo,
   changeLocale,
   selectLanguageStep,
-  submitLanguageStep,
-  changeTracking,
+  submitLanguageInfo,
+  updateTracking,
   selectPreferencesStep,
   submitPreferencesStep,
+  cancelDatabaseStep,
+  submitInviteInfo,
 } from "./actions_2";
 import {
   COMPLETED_STEP,
@@ -49,20 +51,31 @@ export const reducer = createReducer(initialState, builder => {
   builder.addCase(selectLanguageStep, state => {
     state.step = LANGUAGE_STEP;
   });
-  builder.addCase(submitLanguageStep, state => {
+  builder.addCase(submitLanguageInfo, state => {
     state.step = USER_STEP;
   });
 
   builder.addCase(selectUserStep, state => {
     state.step = USER_STEP;
   });
-  builder.addCase(submitUserStep.fulfilled, (state, { payload: user }) => {
+  builder.addCase(submitUserInfo.fulfilled, (state, { payload: user }) => {
     state.user = user;
     state.step = DATABASE_STEP;
   });
 
+  builder.addCase(submitInviteInfo.fulfilled, (state, { payload: invite }) => {
+    state.database = undefined;
+    state.invite = invite;
+    state.step = PREFERENCES_STEP;
+  });
+  builder.addCase(cancelDatabaseStep.fulfilled, state => {
+    state.database = undefined;
+    state.invite = undefined;
+    state.step = PREFERENCES_STEP;
+  });
+
   builder.addCase(
-    changeTracking.fulfilled,
+    updateTracking.fulfilled,
     (state, { payload: isTrackingEnabled }) => {
       state.isTrackingAllowed = isTrackingEnabled;
     },

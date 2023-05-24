@@ -1,8 +1,10 @@
 import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { SetupApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
-import { Locale, State, UserInfo } from "metabase-types/store";
+import { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 import {
+  trackAddDataLaterClicked,
+  trackDatabaseStepCompleted,
   trackPreferencesStepCompleted,
   trackSetupCompleted,
   trackTrackingChanged,
@@ -75,22 +77,38 @@ export const selectLanguageStep = createAction(
   "metabase/setup/SELECT_LANGUAGE_STEP",
 );
 
-export const submitLanguageStep = createAction(
+export const submitLanguageInfo = createAction(
   "metabase/setup/SUBMIT_LANGUAGE_STEP",
 );
 
 export const selectUserStep = createAction("metabase/setup/SELECT_USER_STEP");
 
-export const submitUserStep = createAsyncThunk(
-  "metabase/setup/SUBMIT_USER_STEP",
+export const submitUserInfo = createAsyncThunk(
+  "metabase/setup/SUBMIT_USER_INFO",
   (user: UserInfo) => {
     trackUserStepCompleted();
     return user;
   },
 );
 
-export const changeTracking = createAsyncThunk(
-  "metabase/setup/CHANGE_TRACKING",
+export const submitInviteInfo = createAsyncThunk(
+  "metabase/setup/SUBMIT_INVITE_INFO",
+  (invite: InviteInfo) => {
+    trackDatabaseStepCompleted();
+    return invite;
+  },
+);
+
+export const cancelDatabaseStep = createAsyncThunk(
+  "metabase/setup/CANCEL_DATABASE_STEP",
+  (engine?: string) => {
+    trackDatabaseStepCompleted();
+    trackAddDataLaterClicked(engine);
+  },
+);
+
+export const updateTracking = createAsyncThunk(
+  "metabase/setup/UPDATE_TRACKING",
   (isTrackingAllowed: boolean) => {
     trackTrackingChanged(isTrackingAllowed);
     MetabaseSettings.set("anon-tracking-enabled", isTrackingAllowed);
