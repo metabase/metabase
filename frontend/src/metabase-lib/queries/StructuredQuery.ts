@@ -801,7 +801,7 @@ class StructuredQueryInner extends AtomicQuery {
             .filter(breakout => !_.isEqual(breakout, includedBreakout))
             .map(breakout => breakout.dimension());
 
-    return this.dimensionOptions(
+    return this.dimensionOptionsForValidation(
       dimension =>
         fieldFilter(dimension.field()) &&
         !breakoutDimensions.some(breakoutDimension =>
@@ -1232,8 +1232,6 @@ class StructuredQueryInner extends AtomicQuery {
     return explicitJoins;
   }
 
-  // TODO Atte Keinänen 6/18/17: Refactor to dimensionOptions which takes a dimensionFilter
-  // See aggregationFieldOptions for an explanation why that covers more use cases
   dimensionOptions(
     dimensionFilter: DimensionFilter = dimension => true,
   ): DimensionOptions {
@@ -1299,6 +1297,35 @@ class StructuredQueryInner extends AtomicQuery {
     }
 
     return new DimensionOptions(dimensionOptions);
+  }
+
+  dimensionOptionsForValidation(
+    dimensionFilter: DimensionFilter = dimension => true,
+  ): DimensionOptions {
+    const baseOptions = this.dimensionOptions(dimensionFilter);
+
+    const mlv2FriendlyDimensions: Dimension[] = [];
+
+    baseOptions.dimensions.forEach(dimension => {
+      if (dimension instanceof FieldDimension) {
+        const field = dimension.field();
+        const options = dimension.getOptions();
+        if (isVirtualCardId(field.table_id)) {
+          const mlv2Dimension = Dimension.parseMBQL([
+            "field",
+            field.name,
+            _.omit(options, "join-alias"),
+          ]);
+          mlv2FriendlyDimensions.push(mlv2Dimension);
+        }
+      }
+    });
+
+    return new DimensionOptions({
+      count: baseOptions.count + mlv2FriendlyDimensions.length,
+      dimensions: [...baseOptions.dimensions, ...mlv2FriendlyDimensions],
+      fks: baseOptions.fks,
+    });
   }
 
   // FIELD OPTIONS
