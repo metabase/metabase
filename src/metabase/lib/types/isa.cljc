@@ -5,7 +5,7 @@
    [metabase.lib.types.constants :as lib.types.constants]
    [metabase.lib.util :as lib.u]
    [metabase.types])
-  (:refer-clojure :exclude [isa? any? boolean? number? string?]))
+  (:refer-clojure :exclude [isa? any? boolean? number? string? integer?]))
 
 (comment metabase.types/keep-me)
 
