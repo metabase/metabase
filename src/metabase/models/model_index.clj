@@ -92,7 +92,7 @@
     (if-not (str/blank? error-message)
       (t2/update! ModelIndex (:id model-index) {:state           "error"
                                                 :error           error-message
-                                                :state_change_at :%now})
+                                                :indexed_at :%now})
       (try
         (t2/with-transaction [_conn]
           (let [{:keys [additions deletions]} (find-changes {:current-index current-index-values
@@ -109,7 +109,7 @@
                                   :model_index_id (:id model-index)})
                                additions))))
           (t2/update! ModelIndex (:id model-index)
-                      {:state_change_at :%now
+                      {:indexed_at :%now
                        :state           (if (> (count values-to-index) max-indexed-values)
                                           "overflow"
                                           "indexed")}))
@@ -117,7 +117,7 @@
           (t2/update! ModelIndex (:id model-index)
                       {:state           "error"
                        :error           (ex-message e)
-                       :state_change_at :%now}))))))
+                       :indexed_at :%now}))))))
 
 
 ;;;; creation

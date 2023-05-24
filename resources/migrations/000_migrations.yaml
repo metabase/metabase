@@ -14660,7 +14660,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: state_change_at
+                  name: indexed_at
                   type: ${timestamp_type}
                   remarks: 'When the status changed'
                   constraints:
