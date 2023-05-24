@@ -101,6 +101,7 @@ export const createMockPublicAction = (
 ): PublicWritebackAction => ({
   id: 1,
   name: "Public Action",
+  database_id: 1,
   parameters: [],
   ...opts,
 });

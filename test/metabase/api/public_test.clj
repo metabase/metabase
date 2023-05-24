@@ -398,6 +398,31 @@
           (is (= {:name true, :ordered_cards 0}
                  (fetch-public-dashboard dash))))))))
 
+(deftest get-public-dashboard-actions-test
+  (testing "GET /api/public/dashboard/:uuid"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-dashboard [dash {:parameters []}]
+          (mt/with-actions [{:keys [action-id model-id]} {:visualization_settings {:fields {"id"   {:id     "id"
+                                                                                                    :hidden true}
+                                                                                            "name" {:id     "name"
+                                                                                                    :hidden false}}}}]
+            (mt/with-temp* [DashboardCard [_ {:dashboard_id (:id dash)
+                                              :action_id action-id
+                                              :card_id model-id}]]
+              (let [public-action (-> (client/client :get 200 (format "public/dashboard/%s" (:public_uuid dash)))
+                                      :ordered_cards first :action)]
+                (testing "hidden action fields should not be included in the response"
+                  (is (partial= [:name] ; id is hidden
+                                (-> public-action :visualization_settings :fields keys))))
+                (testing "the action should only include the columns shown for public actions"
+                  (= #{:name
+                       :id
+                       :database_id
+                       :visualization_settings
+                       :parameters}
+                     (set (keys public-action))))))))))))
+
 
 ;;; --------------------------------- GET /api/public/dashboard/:uuid/card/:card-id ----------------------------------
 
@@ -871,6 +896,7 @@
               (testing "Happy path -- should be able to fetch the Action"
                 (is (= #{:name
                          :id
+                         :database_id
                          :visualization_settings
                          :parameters}
                        (set (keys public-action)))))
