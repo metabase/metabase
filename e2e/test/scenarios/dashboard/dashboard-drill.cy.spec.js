@@ -7,6 +7,7 @@ import {
   visitDashboard,
   addOrUpdateDashboardCard,
   getDashboardCardMenu,
+  getDashboardCards,
   getDashboardCard,
   appBar,
   summarize,
@@ -33,6 +34,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", `/api/dataset`).as("dataset");
     cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
     cy.intercept("PUT", `/api/card/*`).as("updateCard");
     cy.intercept("GET", `/api/dashboard/*`).as("dashboard");
@@ -981,7 +983,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     }
   });
 
-  it("should display a back button to the dashboard when navigating to a question", () => {
+  it("should display a back to the dashboard button when navigating to a question", () => {
     const dashboardName = "Orders in a dashboard";
     const backButtonLabel = `Back to ${dashboardName}`;
 
@@ -1011,6 +1013,43 @@ describe("scenarios > dashboard > dashboard drill", () => {
     appBar().findByText("Our analytics").click();
     cy.findByTestId("collection-table").findByText("Orders").click();
     cy.findByLabelText(backButtonLabel).should("not.exist");
+  });
+
+  it("should display a back to the dashboard button in table x-ray dashboards", () => {
+    const cardTitle = "Sales per state";
+    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
+    cy.wait("@dataset");
+
+    getDashboardCards()
+      .filter(`:contains("${cardTitle}")`)
+      .findByText(cardTitle)
+      .click();
+    cy.wait("@dataset");
+
+    queryBuilderHeader()
+      .findByLabelText(/Back to .*Orders.*/)
+      .click();
+
+    getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
+  });
+
+  it("should display a back to the dashboard button in model x-ray dashboards", () => {
+    const cardTitle = "Orders by Subtotal";
+    cy.request("PUT", "/api/card/1", { dataset: true });
+    cy.visit("/auto/dashboard/model/1");
+    cy.wait("@dataset");
+
+    getDashboardCards()
+      .filter(`:contains("${cardTitle}")`)
+      .findByText(cardTitle)
+      .click();
+    cy.wait("@dataset");
+
+    queryBuilderHeader()
+      .findByLabelText(/Back to .*Orders.*/)
+      .click();
+
+    getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
   });
 
   it("should preserve query results when navigating between the dashboard and the query builder", () => {
