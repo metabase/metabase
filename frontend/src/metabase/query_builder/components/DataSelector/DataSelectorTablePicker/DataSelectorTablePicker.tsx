@@ -97,7 +97,7 @@ const DataSelectorTablePicker = ({
       table && selectedTable ? table.id === selectedTable.id : false;
 
     const renderItemIcon = ({ table }: { table: Table }) =>
-      table ? <Icon name="table2" size={18} /> : null;
+      table ? <Icon name="table" /> : null;
 
     const handleChange = ({ table }: { table: Table }) => onChangeTable(table);
 
