@@ -1,5 +1,4 @@
 import { t, ngettext, msgid } from "ttag";
-import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import Field from "metabase-lib/metadata/Field";
 import {
   NodeListItemLink,
@@ -34,7 +33,7 @@ const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
         <li key={field.getUniqueId()}>
           <NodeListItemLink onClick={() => onFieldClick(field)}>
             <NodeListItemIcon
-              name={getSemanticTypeIcon(field.semantic_type, "warning")}
+              name={field.dimension().icon()}
               tooltip={tooltip}
             />
             <NodeListItemName>{field.name}</NodeListItemName>
