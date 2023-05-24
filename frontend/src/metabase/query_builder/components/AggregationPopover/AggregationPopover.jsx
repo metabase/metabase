@@ -206,7 +206,7 @@ export default class AggregationPopover extends Component {
     if (metricItems.length > 0) {
       sections.push({
         name: COMMON_SECTION_NAME,
-        icon: "star_outline",
+        icon: "star",
         items: metricItems,
       });
     }
