@@ -14,6 +14,8 @@ import {
   submitPreferencesStep,
   cancelDatabaseStep,
   submitInviteInfo,
+  selectDatabaseStep,
+  updateEngine,
 } from "./actions_2";
 import {
   COMPLETED_STEP,
@@ -63,6 +65,12 @@ export const reducer = createReducer(initialState, builder => {
     state.step = DATABASE_STEP;
   });
 
+  builder.addCase(selectDatabaseStep, state => {
+    state.step = DATABASE_STEP;
+  });
+  builder.addCase(updateEngine.fulfilled, (state, { payload: engine }) => {
+    state.databaseEngine = engine;
+  });
   builder.addCase(submitInviteInfo.fulfilled, (state, { payload: invite }) => {
     state.database = undefined;
     state.invite = invite;

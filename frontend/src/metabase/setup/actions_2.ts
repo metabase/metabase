@@ -4,6 +4,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 import {
   trackAddDataLaterClicked,
+  trackDatabaseSelected,
   trackDatabaseStepCompleted,
   trackPreferencesStepCompleted,
   trackSetupCompleted,
@@ -88,6 +89,20 @@ export const submitUserInfo = createAsyncThunk(
   (user: UserInfo) => {
     trackUserStepCompleted();
     return user;
+  },
+);
+
+export const selectDatabaseStep = createAction(
+  "metabase/setup/SELECT_DATABASE_STEP",
+);
+
+export const updateEngine = createAsyncThunk(
+  "metabase/setup/UPDATE_ENGINE",
+  (engine?: string) => {
+    if (engine) {
+      trackDatabaseSelected(engine);
+    }
+    return engine;
   },
 );
 
