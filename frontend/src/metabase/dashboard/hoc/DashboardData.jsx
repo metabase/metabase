@@ -53,13 +53,15 @@ export default ComposedComponent =>
           isNavigatingBackToDashboard,
         } = props;
 
-        initialize({ clear: !isNavigatingBackToDashboard });
+        initialize({ clearCache: !isNavigatingBackToDashboard });
 
         try {
-          await fetchDashboard(dashboardId, location && location.query);
+          await fetchDashboard(dashboardId, location && location.query, {
+            clearCache: !isNavigatingBackToDashboard,
+          });
           await fetchDashboardCardData({
             reload: false,
-            clear: !isNavigatingBackToDashboard,
+            clearCache: !isNavigatingBackToDashboard,
           });
         } catch (error) {
           console.error(error);
@@ -81,7 +83,10 @@ export default ComposedComponent =>
         } else if (
           !_.isEqual(this.props.parameterValues, nextProps.parameterValues)
         ) {
-          this.props.fetchDashboardCardData({ reload: false, clear: true });
+          this.props.fetchDashboardCardData({
+            reload: false,
+            clearCache: true,
+          });
         }
       }
 

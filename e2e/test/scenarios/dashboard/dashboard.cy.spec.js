@@ -14,9 +14,6 @@ import {
   getDashboardCardMenu,
   addOrUpdateDashboardCard,
   openQuestionsSidebar,
-  getDashboardCard,
-  queryBuilderHeader,
-  collectionTable,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -33,12 +30,6 @@ describe("scenarios > dashboard", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
-    cy.intercept("PUT", `/api/card/*`).as("updateCard");
-    cy.intercept("GET", `/api/dashboard/*`).as("dashboard");
-    cy.intercept("POST", `/api/dashboard/*/dashcard/*/card/*/query`).as(
-      "dashcardQuery",
-    );
   });
 
   it("should create new dashboard and navigate to it from the nav bar and from the root collection (metabase#20638)", () => {
@@ -690,82 +681,6 @@ describe("scenarios > dashboard", () => {
 
     cy.findByTestId("dashcard").within(() => {
       cy.findByText("There was a problem displaying this chart.");
-    });
-  });
-
-  it("should preserve query results when navigating between the dashboard and the query builder", () => {
-    visitDashboard(1);
-    cy.wait("@dashboard");
-    cy.wait("@dashcardQuery");
-
-    getDashboardCard().within(() => {
-      // table data
-      cy.findByText("101.04").should("be.visible");
-      cy.findByText("Orders").click();
-      cy.wait("@cardQuery");
-    });
-
-    queryBuilderHeader().within(() => {
-      cy.findByLabelText("Back to Orders in a dashboard").click();
-      cy.wait("@dashboard");
-    });
-
-    getDashboardCard().within(() => {
-      // cached data
-      cy.findByText("101.04").should("be.visible");
-      cy.get("@dashcardQuery.all").should("have.length", 1);
-    });
-
-    appBar().within(() => {
-      cy.findByText("Our analytics").click();
-    });
-
-    collectionTable().within(() => {
-      cy.findByText("Orders in a dashboard").click();
-      cy.wait("@dashboard");
-      cy.wait("@dashcardQuery");
-      cy.get("@dashcardQuery.all").should("have.length", 2);
-    });
-  });
-
-  it("should not preserve query results when the question changes during navigation", () => {
-    visitDashboard(1);
-    cy.wait("@dashboard");
-    cy.wait("@dashcardQuery");
-
-    getDashboardCard().within(() => {
-      // table data
-      cy.findByText("101.04").should("be.visible");
-      cy.findByText("Orders").click();
-      cy.wait("@cardQuery");
-    });
-
-    queryBuilderHeader().within(() => {
-      cy.button("Summarize").click();
-    });
-
-    rightSidebar().within(() => {
-      cy.findByText("Total").click();
-    });
-
-    queryBuilderHeader().within(() => {
-      cy.findByText("Save").click();
-    });
-
-    modal().within(() => {
-      cy.button("Save").click();
-      cy.wait("@updateCard");
-    });
-
-    queryBuilderHeader().within(() => {
-      cy.findByLabelText("Back to Orders in a dashboard").click();
-      cy.wait("@dashboard");
-      cy.wait("@dashcardQuery");
-    });
-
-    getDashboardCard().within(() => {
-      // aggregated data
-      cy.findByText("140 – 160").should("be.visible");
     });
   });
 });

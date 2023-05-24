@@ -1,5 +1,6 @@
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
 import reduceReducers from "reduce-reducers";
+import _ from "underscore";
 
 import { handleActions, combineReducers } from "metabase/lib/redux";
 import Dashboards from "metabase/entities/dashboards";
@@ -230,6 +231,12 @@ const dashcards = handleActions(
       ...state,
       [dashcardId]: { ...state[dashcardId], justAdded: false },
     }),
+    [Questions.actionTypes.UPDATE]: (state, { payload: { object: card } }) =>
+      _.mapObject(state, dashcard =>
+        dashcard.card?.id === card?.id
+          ? assocIn(dashcard, ["card"], card)
+          : dashcard,
+      ),
   },
   INITIAL_DASHBOARD_STATE.dashcards,
 );
@@ -256,7 +263,8 @@ const dashcardData = handleActions(
   {
     // clear existing dashboard data when loading a dashboard
     [INITIALIZE]: {
-      next: (state, { payload: { clear = true } = {} }) => (clear ? {} : state),
+      next: (state, { payload: { clearCache = true } = {} }) =>
+        clearCache ? {} : state,
     },
     [FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id, card_id, result } }) =>
@@ -266,7 +274,8 @@ const dashcardData = handleActions(
       next: (state, { payload: { cardId, dashcardId } }) =>
         assocIn(state, [dashcardId, cardId]),
     },
-    [Questions.actionTypes.UPDATE]: () => ({}),
+    [Questions.actionTypes.UPDATE]: (state, { payload: { object: card } }) =>
+      _.mapObject(state, dashboardData => dissoc(dashboardData, card.id)),
   },
   INITIAL_DASHBOARD_STATE.dashcardData,
 );
@@ -360,8 +369,8 @@ const loadingDashCards = handleActions(
     [FETCH_DASHBOARD_CARD_DATA]: {
       next: (state, { payload: { currentTime } }) => ({
         ...state,
-        loadingStatus: state.dashcardIds.length > 0 ? "running" : "idle",
-        startTime: state.dashcardIds.length > 0 ? currentTime : null,
+        loadingStatus: state.loadingIds.length > 0 ? "running" : "idle",
+        startTime: state.loadingIds.length > 0 ? currentTime : null,
       }),
     },
     [FETCH_CARD_DATA]: {
