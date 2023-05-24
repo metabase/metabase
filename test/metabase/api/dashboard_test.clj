@@ -3143,7 +3143,7 @@
                        (mt/user-http-request :crowberto :post 400 execute-path
                                              {:parameters {"id" 1 "fail" "true"}}))))
               (testing "Extra parameter should fail gracefully"
-                (is (partial= {:message "No destination parameter found for id \"extra\". Found: #{\"id\" \"fail\"}"}
+                (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"fail\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {"extra" 1}}))))
               (testing "Missing parameter should fail gracefully"
@@ -3219,10 +3219,33 @@
                 (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {"extra" 1 "id" 1}}))))
+              (testing "Extra parameter should fail even if it's a model field"
+                (is (partial= {:message "No destination parameter found for #{\"name\"}. Found: #{\"id\"}"}
+                              (mt/user-http-request :crowberto :post 400 execute-path
+                                                    {:parameters {"id"   1
+                                                                  "name" "Birds"}}))))
               (testing "Missing pk parameter should fail gracefully"
                 (is (partial= "Missing primary key parameter: \"id\""
                               (mt/user-http-request :crowberto :post 400 execute-path
-                                                    {:parameters {"name" "Birds"}})))))))))))
+                                                    {:parameters {}})))))))))))
+
+(deftest dashcard-hidden-parameter-test
+  (mt/with-actions-test-data-tables #{"users"}
+    (mt/with-actions-enabled
+      (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
+                        {:keys [action-id model-id]} {:type                   :implicit
+                                                      :visualization_settings {:fields {"name" {:id     "name"
+                                                                                                :hidden true}}}}]
+        (testing "Supplying a hidden parameter value should fail gracefully for GET /api/dashboard/:id/dashcard/:id/execute"
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :action_id    action-id
+                                                            :card_id      model-id}]]
+            (is (partial= {:message "No destination parameter found for #{\"name\"}. Found: #{\"last_login\" \"id\"}"}
+                          (mt/user-http-request :crowberto :post 400 (format "dashboard/%s/dashcard/%s/execute"
+                                                                             dashboard-id
+                                                                             dashcard-id)
+                                                {:parameters {:name "Darth Vader"}})))))))))
 
 (defn- custom-action-for-field [field-name]
   ;; It seems the :type of parameters or template-tag doesn't matter??

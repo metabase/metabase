@@ -424,11 +424,11 @@
                   (testing "Prefetch should only return non-hidden fields"
                     (is (= {:id 1 :name "Red Medicine"} ; price is hidden
                            (mt/user-http-request :crowberto :get 200 (str execute-path "?parameters=" (json/encode {:id 1}))))))
-                  (testing "Update should only allow name"
+                  (testing "Update should not allow hidden fields to be updated"
                     (is (= {:rows-updated [1]}
                            (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
-                    (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
-                                  (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))))
+                    (is (= "An error occurred."
+                           (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))))
 
 (deftest get-public-dashboard-actions-test
   (testing "GET /api/public/dashboard/:uuid"
