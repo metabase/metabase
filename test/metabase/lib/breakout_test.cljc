@@ -286,7 +286,7 @@
                                      {:lib/uuid string? :base-type :type/Integer}
                                      (meta/id :venues :price)]]}]}
               query'))
-      (is (= "Venues, Grouped by Categories → Name and Price"
+      (is (= "Venues, Grouped by Category → Name and Price"
              (lib/describe-query query')))
       (is (=? [{:display-name "ID",          :lib/source :source/table-defaults}
                {:display-name "Name",        :lib/source :source/table-defaults}
