@@ -1016,12 +1016,13 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should display a back to the dashboard button in table x-ray dashboards", () => {
+    const cardTitle = "Sales per state";
     cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
     cy.wait("@dataset");
 
     getDashboardCards()
-      .filter(':contains("Sales per state")')
-      .findByText("Sales per state")
+      .filter(`:contains("${cardTitle}")`)
+      .findByText(cardTitle)
       .click();
     cy.wait("@dataset");
 
@@ -1029,17 +1030,18 @@ describe("scenarios > dashboard > dashboard drill", () => {
       .findByLabelText(/Back to .*Orders.*/)
       .click();
 
-    getDashboardCards().filter(':contains("Sales per state")').should("exist");
+    getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
   });
 
   it("should display a back to the dashboard button in model x-ray dashboards", () => {
+    const cardTitle = "Orders by Subtotal";
     cy.request("PUT", "/api/card/1", { dataset: true });
     cy.visit("/auto/dashboard/model/1");
     cy.wait("@dataset");
 
     getDashboardCards()
-      .filter(':contains("Orders by Subtotal")')
-      .findByText("Orders by Subtotal")
+      .filter(`:contains("${cardTitle}")`)
+      .findByText(cardTitle)
       .click();
     cy.wait("@dataset");
 
@@ -1047,9 +1049,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       .findByLabelText(/Back to .*Orders.*/)
       .click();
 
-    getDashboardCards()
-      .filter(':contains("Orders by Subtotal")')
-      .should("exist");
+    getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
   });
 
   it("should preserve query results when navigating between the dashboard and the query builder", () => {
