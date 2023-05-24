@@ -181,8 +181,8 @@
                        json/generate-string)))))))))
 
 (deftest add-join-alias-to-visualization-settings-field-refs-test
-  (testing "Migrations v47.00-029: update visualization_settings.column_settings legacy field refs"
-    (impl/test-migrations ["v47.00-029"] [migrate!]
+  (testing "Migrations v47.00-028: update visualization_settings.column_settings legacy field refs"
+    (impl/test-migrations ["v47.00-028"] [migrate!]
       (let [result_metadata
             [{:field_ref [:field 1 nil]}
              {:field_ref [:field 1 {:join-alias "Self-joined Table"}]}
