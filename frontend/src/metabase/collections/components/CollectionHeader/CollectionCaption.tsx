@@ -5,7 +5,14 @@ import {
   isPersonalCollection,
   isRootCollection,
 } from "metabase/collections/utils";
+import { color } from "metabase/lib/colors";
 import { Collection } from "metabase-types/api";
+import {
+  getCollectionIcon,
+  getCollectionTooltip,
+} from "metabase/entities/collections";
+import Icon from "metabase/components/Icon";
+
 import {
   CaptionDescription,
   CaptionRoot,
@@ -18,7 +25,7 @@ export interface CollectionCaptionProps {
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }
 
-const CollectionCaption = ({
+export const CollectionCaption = ({
   collection,
   onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
@@ -48,6 +55,7 @@ const CollectionCaption = ({
           collection={collection}
           size={24}
         />
+        <CollectionCaptionIcon collection={collection} />
         <CaptionTitle
           key={collection.id}
           initialValue={collection.name}
@@ -74,5 +82,20 @@ const CollectionCaption = ({
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CollectionCaption;
+const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
+  // we only show icons for "special" collections with types
+  if (!collection.type) {
+    return null;
+  }
+
+  const icon = getCollectionIcon(collection);
+  const tooltip = getCollectionTooltip(collection);
+
+  if (!icon) {
+    return null;
+  }
+
+  return (
+    <Icon size={24} name={icon.name} color={color("brand")} tooltip={tooltip} />
+  );
+};
