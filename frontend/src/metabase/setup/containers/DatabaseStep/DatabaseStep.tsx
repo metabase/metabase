@@ -4,7 +4,7 @@ import { DatabaseData } from "metabase-types/api";
 import { InviteInfo, State } from "metabase-types/store";
 import DatabaseStep from "../../components/DatabaseStep";
 import {
-  cancelDatabaseStep,
+  skipDatabase,
   selectStep,
   submitDatabase,
   submitUserInvite,
@@ -48,7 +48,7 @@ const mapDispatchToProps = (dispatch: any) => ({
     dispatch(submitUserInvite(invite));
   },
   onStepCancel: (engine?: string) => {
-    dispatch(cancelDatabaseStep(engine));
+    dispatch(skipDatabase(engine));
   },
 });
 

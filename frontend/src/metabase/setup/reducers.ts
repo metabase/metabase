@@ -1,12 +1,12 @@
 import { createReducer } from "@reduxjs/toolkit";
 import { SetupState } from "metabase-types/store";
 import {
-  cancelDatabaseStep,
+  skipDatabase,
   loadLocaleDefaults,
   loadUserDefaults,
   selectStep,
   submitDatabase,
-  submitPreferencesStep,
+  submitPreferences,
   submitUser,
   submitUserInvite,
   updateDatabaseEngine,
@@ -23,7 +23,7 @@ import {
 const initialState: SetupState = {
   step: WELCOME_STEP,
   isLocaleLoaded: false,
-  isTrackingAllowed: false,
+  isTrackingAllowed: true,
 };
 
 export const reducer = createReducer(initialState, builder => {
@@ -37,11 +37,11 @@ export const reducer = createReducer(initialState, builder => {
       state.isLocaleLoaded = true;
     },
   );
-  builder.addCase(updateLocale, (state, { payload: locale }) => {
-    state.locale = locale;
-  });
   builder.addCase(selectStep, (state, { payload: step }) => {
     state.step = step;
+  });
+  builder.addCase(updateLocale, (state, { payload: locale }) => {
+    state.locale = locale;
   });
   builder.addCase(submitUser.fulfilled, (state, { payload: user }) => {
     state.user = user;
@@ -53,7 +53,8 @@ export const reducer = createReducer(initialState, builder => {
       state.databaseEngine = engine;
     },
   );
-  builder.addCase(submitDatabase.fulfilled, state => {
+  builder.addCase(submitDatabase.fulfilled, (state, { payload: database }) => {
+    state.database = database;
     state.invite = undefined;
     state.step = PREFERENCES_STEP;
   });
@@ -62,7 +63,7 @@ export const reducer = createReducer(initialState, builder => {
     state.invite = invite;
     state.step = PREFERENCES_STEP;
   });
-  builder.addCase(cancelDatabaseStep.fulfilled, state => {
+  builder.addCase(skipDatabase.fulfilled, state => {
     state.database = undefined;
     state.invite = undefined;
     state.step = PREFERENCES_STEP;
@@ -73,7 +74,7 @@ export const reducer = createReducer(initialState, builder => {
       state.isTrackingAllowed = isTrackingEnabled;
     },
   );
-  builder.addCase(submitPreferencesStep.fulfilled, state => {
+  builder.addCase(submitPreferences.fulfilled, state => {
     state.step = COMPLETED_STEP;
   });
 });

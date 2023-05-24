@@ -75,7 +75,7 @@ export const updateDatabaseEngine = createAsyncThunk(
   },
 );
 
-export const validateDatabase = async (database: DatabaseData) => {
+const validateDatabase = async (database: DatabaseData) => {
   await SetupApi.validate_db({
     token: MetabaseSettings.get("setup-token"),
     details: database,
@@ -112,9 +112,9 @@ export const submitUserInvite = createAsyncThunk(
   },
 );
 
-export const CANCEL_DATABASE_STEP = "metabase/setup/CANCEL_DATABASE_STEP";
-export const cancelDatabaseStep = createAsyncThunk(
-  CANCEL_DATABASE_STEP,
+export const SKIP_DATABASE = "metabase/setup/SKIP_DATABASE";
+export const skipDatabase = createAsyncThunk(
+  SKIP_DATABASE,
   (engine?: string) => {
     trackDatabaseStepCompleted();
     trackAddDataLaterClicked(engine);
@@ -156,7 +156,7 @@ export const submitSetup = createAsyncThunk(
 );
 
 export const SUBMIT_PREFERENCES = "metabase/setup/SUBMIT_PREFERENCES_STEP";
-export const submitPreferencesStep = createAsyncThunk(
+export const submitPreferences = createAsyncThunk(
   SUBMIT_PREFERENCES,
   async (isTrackingAllowed: boolean, thunkAPI) => {
     await thunkAPI.dispatch(submitSetup());

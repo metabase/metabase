@@ -1,11 +1,7 @@
 import { connect } from "react-redux";
 import { State } from "metabase-types/store";
 import PreferencesStep from "../../components/PreferencesStep";
-import {
-  selectStep,
-  submitPreferencesStep,
-  updateTracking,
-} from "../../actions";
+import { selectStep, submitPreferences, updateTracking } from "../../actions";
 import { PREFERENCES_STEP } from "../../constants";
 import {
   isLocaleLoaded,
@@ -31,7 +27,7 @@ const mapDispatchToProps = (dispatch: any) => ({
     dispatch(selectStep(PREFERENCES_STEP));
   },
   onStepSubmit: async (isTrackingAllowed: boolean) => {
-    await dispatch(submitPreferencesStep(isTrackingAllowed));
+    await dispatch(submitPreferences(isTrackingAllowed));
   },
 });
 
