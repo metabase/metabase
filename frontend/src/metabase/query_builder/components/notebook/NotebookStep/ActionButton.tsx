@@ -36,7 +36,7 @@ function ActionButton({
       color={color}
       transparent={transparent}
       iconVertical={large}
-      iconSize={large ? 18 : 14}
+      iconSize={large ? 20 : 16}
       aria-label={label}
       onClick={onClick}
       {...props}

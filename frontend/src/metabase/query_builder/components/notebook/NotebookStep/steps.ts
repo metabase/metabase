@@ -80,7 +80,7 @@ export const STEP_UI: Record<string, StepUIItem> = {
   },
   sort: {
     title: t`Sort`,
-    icon: "smartscalar",
+    icon: "sort",
     component: SortStep,
     compact: true,
     transparent: true,
