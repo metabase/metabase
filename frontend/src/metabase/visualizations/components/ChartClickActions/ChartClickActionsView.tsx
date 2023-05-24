@@ -29,6 +29,7 @@ export const ChartClickActionsView = ({
         const sectionTitle = getSectionTitle(key, actions);
         const contentDirection = getSectionContentDirection(key, actions);
         const withBottomDivider = key === "records" && !hasOnlyOneSection;
+        const withTopDivider = key === "details" && !hasOnlyOneSection;
 
         return (
           <ChartClickActionsSection
@@ -37,6 +38,7 @@ export const ChartClickActionsView = ({
             title={sectionTitle}
             contentDirection={contentDirection}
           >
+            {withTopDivider && <Divider />}
             {actions.map((action, index) => (
               <ChartClickActionControl
                 key={action.name}

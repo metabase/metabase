@@ -1,5 +1,5 @@
 import SortDrill from "../drill/SortDrill";
-import ObjectDetailDrill from "../drill/ObjectDetailDrill";
+import { ObjectDetailDrill } from "../drill/ObjectDetailDrill";
 import { QuickFilterDrill } from "../drill/QuickFilterDrill";
 import ForeignKeyDrill from "../drill/ForeignKeyDrill";
 import { ColumnFilterDrill } from "../drill/ColumnFilterDrill";

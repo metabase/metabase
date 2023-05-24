@@ -33,6 +33,9 @@ export interface DatasetColumn {
   };
   settings?: Record<string, any>;
   fingerprint: FieldFingerprint | null;
+
+  // model with customized metadata
+  fk_target_field_id?: FieldId | null;
 }
 
 export interface ResultsMetadata {

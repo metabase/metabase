@@ -36,7 +36,7 @@ export const ChartClickActionControl = ({
           small
           icon={
             typeof action.icon === "string" && (
-              <ClickActionButtonIcon size={12} name={action.icon} />
+              <ClickActionButtonIcon name={action.icon} />
             )
           }
           onClick={() => onClick(action)}
@@ -80,7 +80,7 @@ export const ChartClickActionControl = ({
           small
           icon={
             typeof action.icon === "string" ? (
-              <ClickActionButtonIcon size={14} name={action.icon} />
+              <ClickActionButtonIcon name={action.icon} />
             ) : (
               <IconWrapper>{action.icon}</IconWrapper>
             )

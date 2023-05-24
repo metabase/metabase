@@ -1,39 +1,48 @@
 import { t } from "ttag";
 import { zoomInRow } from "metabase/query_builder/actions";
-import type { RowValue } from "metabase-types/api";
-import type { Drill, ClickActionProps } from "metabase/modes/types";
+import type { RowValue, DatasetColumn } from "metabase-types/api";
+import type { ClickActionProps } from "metabase/modes/types";
+import {
+  QuestionChangeClickAction,
+  ReduxClickAction,
+} from "metabase/modes/types";
 import type Question from "metabase-lib/Question";
 import {
   objectDetailDrill,
+  ObjectDetailDrillType,
   objectDetailFKDrillQuestion,
   objectDetailPKDrillQuestion,
 } from "metabase-lib/queries/drills/object-detail-drill";
 
-type DrillType = "pk" | "fk" | "zoom" | "dashboard";
-
 function getAction({
   question,
-  clicked,
   type,
   objectId,
-}: ClickActionProps & {
+  column,
+}: {
   question: Question;
-  type: DrillType;
+  type: ObjectDetailDrillType;
+  column: DatasetColumn;
   objectId: RowValue;
 }) {
   switch (type) {
     case "pk":
       return {
-        question: () => objectDetailPKDrillQuestion({ question, clicked }),
+        question: () =>
+          objectDetailPKDrillQuestion({ question, column, objectId }),
       };
+
     case "fk":
       return {
-        question: () => objectDetailFKDrillQuestion({ question, clicked }),
+        question: () =>
+          objectDetailFKDrillQuestion({ question, column, objectId }),
       };
-    case "zoom":
-      return { action: () => zoomInRow({ objectId }) };
+
     case "dashboard":
       return { question: () => question };
+
+    case "zoom":
+      return { action: () => zoomInRow({ objectId }) };
   }
 }
 
@@ -51,13 +60,16 @@ function getActionExtraData({
   }
 }
 
-const ObjectDetailDrill: Drill = ({ question, clicked }) => {
+export const ObjectDetailDrill = ({
+  question,
+  clicked,
+}: ClickActionProps): [] | [ReduxClickAction | QuestionChangeClickAction] => {
   const drill = objectDetailDrill({ question, clicked });
-  if (!drill) {
+  if (!drill || !clicked) {
     return [];
   }
 
-  const { type, objectId, hasManyPKColumns } = drill;
+  const { type, column, objectId, hasManyPKColumns } = drill;
 
   return [
     {
@@ -65,13 +77,10 @@ const ObjectDetailDrill: Drill = ({ question, clicked }) => {
       section: "details",
       title: t`View details`,
       buttonType: "horizontal",
-      icon: "document",
+      icon: "expand",
       default: true,
-      ...getAction({ question, clicked, type: type as DrillType, objectId }),
+      ...getAction({ question, type, column, objectId }),
       ...getActionExtraData({ objectId, hasManyPKColumns }),
     },
   ];
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ObjectDetailDrill;

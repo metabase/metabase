@@ -21,6 +21,8 @@ export type ClickActionProps = {
   extraData?: Record<string, any>;
 };
 
+export type DrillProps = Pick<ClickActionProps, "question" | "clicked">;
+
 type ClickActionCreator = (props: ClickActionProps) => ClickAction[];
 
 export interface QueryMode {
@@ -48,6 +50,10 @@ export interface ClickObject {
     cols: DatasetColumn[];
   };
   extraData?: Record<string, unknown>;
+  data?: {
+    col: DatasetColumn;
+    value: RowValue;
+  }[];
 }
 
 export interface ClickAction {
