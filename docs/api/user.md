@@ -137,7 +137,9 @@ Update a user's password.
 
 *  **`password`** password is too common.
 
-*  **`old_password`**
+*  **`old_password`** 
+
+*  **`request`**
 
 ## `PUT /api/user/:id/reactivate`
 
