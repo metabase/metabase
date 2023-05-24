@@ -9,11 +9,13 @@
   :feature :none
   [x]
   (when (and (keyword? x)
-             (= (namespace x) "model"))
+             (= (namespace x) "model")
+             ;; Don't try to require if it's already registered as a :metabase/model, since that means it has already
+             ;; been required
+             (not (isa? x :metabase/model)))
     (doseq [feature @premium-features/premium-features]
-      (do
-        (u/ignore-exceptions
-         (let [model-namespace (symbol (str "metabase-enterprise." (name feature) ".models." (u/->kebab-case-en (name x))))]
-           ;; use `classloader/require` which is thread-safe and plays nice with our plugins system
-           (classloader/require model-namespace))))))
+      (u/ignore-exceptions
+       (let [model-namespace (symbol (str "metabase-enterprise." (name feature) ".models." (u/->kebab-case-en (name x))))]
+         ;; use `classloader/require` which is thread-safe and plays nice with our plugins system
+         (classloader/require model-namespace)))))
   x)

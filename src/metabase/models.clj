@@ -155,7 +155,10 @@
   This is a safety mechanism as we moving to toucan2 and we don't need to require the model namespaces in order to use it."
   [x]
   (when (and (keyword? x)
-             (= (namespace x) "model"))
+             (= (namespace x) "model")
+             ;; Don't try to require if it's already registered as a :metabase/model, since that means it has already
+             ;; been required
+             (not (isa? x :metabase/model)))
     (try
       (let [model-namespace (str "metabase.models." (u/->kebab-case-en (name x)))]
         ;; use `classloader/require` which is thread-safe and plays nice with our plugins system
