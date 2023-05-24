@@ -24,6 +24,7 @@ function ModelDetailLink({ model, ...props }: Props) {
       to={Urls.modelDetail(model)}
       icon="reference"
       onlyIcon
+      iconSize={16}
       role="link"
       data-testid="model-detail-link"
     />
