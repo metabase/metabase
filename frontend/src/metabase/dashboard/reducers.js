@@ -368,8 +368,8 @@ const loadingDashCards = handleActions(
     [FETCH_DASHBOARD_CARD_DATA]: {
       next: (state, { payload: { currentTime } }) => ({
         ...state,
-        loadingStatus: state.dashcardIds.length > 0 ? "running" : "idle",
-        startTime: state.dashcardIds.length > 0 ? currentTime : null,
+        loadingStatus: state.loadingIds.length > 0 ? "running" : "idle",
+        startTime: state.loadingIds.length > 0 ? currentTime : null,
       }),
     },
     [FETCH_CARD_DATA]: {
