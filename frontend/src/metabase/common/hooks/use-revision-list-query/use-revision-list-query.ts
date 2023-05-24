@@ -13,6 +13,7 @@ export const useRevisionListQuery = (
     fetchList: RevisionEntity.actions.fetchList,
     getList: RevisionEntity.selectors.getList,
     getLoading: RevisionEntity.selectors.getLoading,
+    getLoaded: RevisionEntity.selectors.getLoaded,
     getError: RevisionEntity.selectors.getError,
   });
 };

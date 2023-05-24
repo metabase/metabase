@@ -13,6 +13,7 @@ export const useUserListQuery = (
     fetchList: Users.actions.fetchList,
     getList: Users.selectors.getList,
     getLoading: Users.selectors.getLoading,
+    getLoaded: Users.selectors.getLoaded,
     getError: Users.selectors.getError,
   });
 };
