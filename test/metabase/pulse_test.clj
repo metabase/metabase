@@ -702,6 +702,21 @@
                                      :body    {"<h1>dashboard description</h1>" true}})
                 (mt/regex-email-bodies #"<h1>dashboard description</h1>")))))))
 
+(deftest nonuser-email-test
+  (testing "Both users and Nonusers get an email, with unsubscribe text for nonusers"
+    (mt/with-temp* [Card                  [{card-id :id} {:name "Test card"}]
+                    Pulse                 [{pulse-id :id} {:name "Pulse Name"}]
+                    PulseCard             [_ {:pulse_id pulse-id
+                                              :card_id  card-id}]
+                    PulseChannel          [{pc-id :id} {:pulse_id pulse-id
+                                                        :details {:emails ["nonuser@metabase.com"]}}]
+                    PulseChannelRecipient [_ {:user_id (pulse.test-util/rasta-id)
+                                              :pulse_channel_id pc-id}]]
+      (pulse.test-util/email-test-setup
+       (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
+       (is (mt/received-email-body? :rasta #"Manage your subscriptions"))
+       (is (mt/received-email-body? "nonuser@metabase.com" #"Unsubscribe"))))))
+
 (deftest basic-slack-test-2
   (testing "Basic slack test, 2 cards, 1 recipient channel"
     (mt/with-temp* [Card         [{card-id-1 :id} (pulse.test-util/checkins-query-card {:breakout [!day.date]})]
