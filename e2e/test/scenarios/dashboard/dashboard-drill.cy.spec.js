@@ -33,6 +33,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", `/api/dataset`).as("dataset");
     cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
     cy.intercept("PUT", `/api/card/*`).as("updateCard");
     cy.intercept("GET", `/api/dashboard/*`).as("dashboard");
@@ -981,7 +982,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     }
   });
 
-  it("should display a back button to the dashboard when navigating to a question", () => {
+  it("should display a back to the dashboard button when navigating to a question", () => {
     const dashboardName = "Orders in a dashboard";
     const buttonLabel = `Back to ${dashboardName}`;
 
@@ -1011,6 +1012,30 @@ describe("scenarios > dashboard > dashboard drill", () => {
     appBar().findByText("Our analytics").click();
     cy.findByTestId("collection-table").findByText("Orders").click();
     cy.findByLabelText(buttonLabel).should("not.exist");
+  });
+
+  it("should display a back to the dashboard button in table x-ray dashboards", () => {
+    cy.visit("/reference/databases");
+
+    cy.findByRole("main").within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Tables in Sample Database").click();
+      cy.findByText("Orders").click();
+      cy.findByText("X-ray this table").click();
+      cy.wait("@dataset");
+    });
+
+    getDashboardCard(1).within(() => {
+      cy.findByText("Sales per state").click();
+    });
+
+    queryBuilderHeader().within(() => {
+      cy.findByLabelText(/Back to .* Orders/).click();
+    });
+
+    getDashboardCard(1).within(() => {
+      cy.findByText("Sales per state").should("be.visible");
+    });
   });
 
   it("should preserve query results when navigating between the dashboard and the query builder", () => {

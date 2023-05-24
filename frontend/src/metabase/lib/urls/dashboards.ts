@@ -23,7 +23,12 @@ export function dashboard(
 
   const path = appendSlug(dashboard.id, slugg(dashboard.name));
   const hash = stringifyHashOptions(options);
-  return hash ? `/dashboard/${path}#${hash}` : `/dashboard/${path}`;
+
+  if (typeof dashboard.id === "string") {
+    return hash ? `${dashboard.id}#${hash}` : dashboard.id;
+  } else {
+    return hash ? `/dashboard/${path}#${hash}` : `/dashboard/${path}`;
+  }
 }
 
 export function publicDashboard(uuid: string) {
