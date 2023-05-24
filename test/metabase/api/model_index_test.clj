@@ -18,8 +18,7 @@
                                                  :pk_ref    pk_ref
                                                  :value_ref value_ref})]
           (testing "POST"
-            (is (=? {:generation 1
-                     :state      "indexed"
+            (is (=? {:state      "indexed"
                      :model_id   (:id model)
                      :error      nil}
                     model-index))
@@ -30,8 +29,7 @@
                                        :pk_ref    pk_ref
                                        :value_ref value_ref}))))
           (testing "GET by model id"
-            (is (=? [{:generation 1
-                      :state      "indexed"
+            (is (=? [{:state      "indexed"
                       :model_id   (:id model)
                       :error      nil}]
                     (mt/user-http-request :rasta :get 200 "model-index"
@@ -41,8 +39,7 @@
                 (mt/user-http-request :rasta :get 403 "model-index"
                                       :model_id (:id model)))))
           (testing "GET by model-index id"
-            (is (=? {:generation 1
-                     :state      "indexed"
+            (is (=? {:state      "indexed"
                      :model_id   (:id model)
                      :error      nil}
                     (mt/user-http-request :rasta :get 200

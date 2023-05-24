@@ -14648,12 +14648,6 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: generation
-                  type: int
-                  remarks: 'The current generation of indexed values. Values from previous generations can be deleted.'
-                  constraints:
-                    nullable: false
-              - column:
                   name: schedule
                   type: ${text.type}
                   remarks: 'The cron schedule for when value syncing should happen.'
@@ -14720,12 +14714,6 @@ databaseChangeLog:
                   name: name
                   type: ${text.type}
                   remarks: 'The label to display identifying the indexed value.'
-                  constraints:
-                    nullable: false
-              - column:
-                  name: generation
-                  type: int
-                  remarks: 'The current generation of indexed values. Values from previous generations can be deleted.'
                   constraints:
                     nullable: false
       rollback:

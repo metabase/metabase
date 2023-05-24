@@ -50,8 +50,7 @@
                 by-key      (fn [k xs]
                               (some (fn [x] (when (= (:key x) k) x)) xs))]
             (testing "We can get the model index"
-              (is (=? {:generation 1
-                       :state      "indexed"
+              (is (=? {:state      "indexed"
                        :model_id   (:id model)
                        :error      nil}
                       (mt/user-http-request :rasta :get 200 (str "/model-index/" (:id model-index))))))
@@ -76,6 +75,67 @@
               (testing "Deleting the model index removes the indexing task"
                 (t2/delete! ModelIndex :id (:id model-index))
                 (is (nil? (index-trigger!)) "Index trigger not removed")))))))))
+
+(def empty-changes "empty state map for find changes"
+  {:additions #{}, :deletions #{}})
+
+(deftest find-changes-test
+  (testing "Identifies no changes"
+    (let [values [[1 "apple"] [2 "banana"]]]
+      (is (= empty-changes (model-index/find-changes {:current-index values
+                                                      :source-values values})))))
+  (testing "identifies additions"
+    (let [values    [[1 "apple"] [2 "banana"]]
+          new-value [3 "cherry"]]
+      (is (= (update empty-changes :additions conj new-value)
+             (model-index/find-changes {:current-index values
+                                        :source-values (conj values new-value)})))))
+
+  (testing "identifies removals"
+    (let [values [[1 "apple"] [2 "banana"]]]
+      (is (= (update empty-changes :deletions conj (first values))
+             (model-index/find-changes {:current-index values
+                                        :source-values (rest values)})))))
+
+  (testing "identifies updates"
+    (let [values     [[1 "apple"] [2 "banana"]]
+          new-values [[1 "applesauce"] [2 "banana"]]]
+      (is (= (-> empty-changes
+                 (update :deletions conj [1 "apple"])
+                 (update :additions conj [1 "applesauce"]))
+             (model-index/find-changes {:current-index values
+                                        :source-values new-values})))))
+
+  (testing "Handles duplicate keys (only one goes into db)"
+    (let [values     [[1 "apple"] [2 "banana"]]
+          ;; maybe a join involved. Later values win.
+          new-values [[1 "apple"] [2 "banana"] [1 "applesauce"]]]
+      (is (= (-> empty-changes
+                 (update :deletions conj [1 "apple"])
+                 (update :additions conj [1 "applesauce"]))
+             (model-index/find-changes {:current-index values
+                                        :source-values new-values})))))
+
+  (testing "When no indexed values are present all are additions"
+    (let [values (into [] (map (fn [i] [i (mt/random-name)])) (range 5000))]
+      (is (= {:additions (set values)
+              :deletions #{}}
+             (model-index/find-changes {:current-index []
+                                        :source-values (shuffle values)})))))
+
+  (testing "All together"
+    (let [already-indexed (into [] (map (fn [i] [i (mt/random-name)])) (range 5000))
+
+          ;; two drop away, two ids have new values
+          [remove-1 remove-2 change-1 change-2 & unchanged] (shuffle already-indexed)
+
+          updated-1    (update change-1 1 (fn [_previous] (mt/random-name)))
+          updated-2    (update change-2 1 (fn [_previous] (mt/random-name)))
+          fresh-values (shuffle (conj unchanged updated-1 updated-2))]
+      (is (= {:additions #{updated-1 updated-2}
+              :deletions #{remove-1 remove-2 change-1 change-2}}
+             (model-index/find-changes {:current-index already-indexed
+                                        :source-values fresh-values}))))))
 
 (deftest fetch-values-test
   (mt/test-drivers (disj (mt/normal-drivers) :mongo)
@@ -196,7 +256,6 @@
                                  ModelIndex mi {:model_id   (:id model)
                                                 :pk_ref     pk-ref
                                                 :value_ref  invalid-value-ref
-                                                :generation 0
                                                 :creator_id (mt/user->id :rasta)
                                                 :schedule   "0 0 23 * * ? *"
                                                 :state      "initial"}]
@@ -205,46 +264,3 @@
             (is (=? {:state "error"
                      :error #"(?s)Error executing query.*"}
                     bad-attempt))))))))
-
-(deftest generation-test
-  (mt/dataset sample-dataset
-    (let [query  (mt/mbql-query products)
-          pk_ref (mt/$ids $products.id)]
-      (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                           :dataset         true
-                                           :name            "Simple MBQL model")
-                               ModelIndex model-index {:model_id   (:id model)
-                                                       :pk_ref     pk_ref
-                                                       :schedule   "0 0 23 * * ? *"
-                                                       :state      "initial"
-                                                       :value_ref  (mt/$ids $products.title)
-                                                       :generation 0
-                                                       :creator_id (mt/user->id :rasta)}]
-        (let [indexed-values! (fn fetch-indexed-values []
-                                (into {}
-                                      (map (juxt :model_pk identity))
-                                      (t2/select ModelIndexValue :model_index_id (:id model-index))))]
-          (testing "Populates indexed values"
-            (#'model-index/add-values* model-index
-                                       [[1 "chair"] [2 "desk"]])
-            (is (partial= {1 {:name       "chair"
-                              :model_pk   1
-                              :generation 1}
-                           2 {:name       "desk"
-                              :model_pk   2
-                              :generation 1}}
-                          (indexed-values!))))
-          (testing "Removes values no longer present"
-            ;; drop desk and add lamp
-            (#'model-index/add-values* (update model-index :generation inc)
-                                       [[1 "chair"] [3 "lamp"]])
-            (is (partial= {1 {:name       "chair"
-                              :model_pk   1
-                              :generation 2}
-                           3 {:name       "lamp"
-                              :model_pk   3
-                              :generation 2}}
-                          (indexed-values!))))
-          (testing "Can remove the model index"
-            (mt/user-http-request :rasta :delete 200 (str "/model-index/" (:id model-index)))
-            (is (= {} (indexed-values!)))))))))

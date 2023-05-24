@@ -1,7 +1,7 @@
 (ns metabase.models.model-index
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.db.connection :as mdb.connection]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
@@ -67,72 +67,50 @@
            (log/warn (trs "Error fetching indexed values for model {0}" (:id model)) e)
            [(ex-message e) []]))))
 
-(defmulti add-values* "Index values in a model."
-  (fn [_model-index _values] (mdb.connection/db-type)))
+(defn find-changes
+  "Find additions and deletions in indexed values. `source-values` are from the db, `indexed-values` are what we
+  currently have indexed.
 
-(defmethod add-values* :h2
-  [model-index values]
-  ;; h2 just deletes and recreates
-  (t2/delete! ModelIndexValue :model_index_id (:id model-index))
-  (t2/insert! ModelIndexValue (map (fn [[id v]]
-                                     {:name           v
-                                      :model_pk       id
-                                      :model_index_id (:id model-index)
-                                      :generation     (inc (:generation model-index))})
-                                   values)))
-
-(defmethod add-values* :postgres
-  [model-index values]
-  (let [new-generation (inc (:generation model-index))]
-    ;; use upserts and delete ones with old generations
-    (t2/query {:insert-into   [:model_index_value]
-               :values        (into []
-                                    (comp (filter valid-tuples?)
-                                          (map (fn [[id v]]
-                                                 {:name           v
-                                                  :model_pk       id
-                                                  :model_index_id (:id model-index)
-                                                  :generation     new-generation})))
-                                    values)
-               :on-conflict   [:model_index_id :model_pk]
-               :do-update-set {:generation new-generation}})
-    (t2/delete! ModelIndexValue
-                :model_index_id (:id model-index)
-                :generation     [:< new-generation])))
-
-(defmethod add-values* :mysql
-  [model-index values]
-  (let [new-generation (inc (:generation model-index))]
-    ;; use upserts and delete ones with old generations
-    (t2/query {:insert-into             [:model_index_value]
-               :values                  (into []
-                                              (comp (filter (fn [[id v]] (and id v)))
-                                                    (map (fn [[id v]]
-                                                           {:name           v
-                                                            :model_pk       id
-                                                            :model_index_id (:id model-index)
-                                                            :generation     new-generation})))
-                                              values)
-               :on-duplicate-key-update {:generation new-generation}})
-    (t2/delete! ModelIndexValue
-                :model_index_id (:id model-index)
-                :generation     [:< new-generation])))
+  We have to identity values no longer in the set, values that must be added to the index, and primary keys which now
+  have a different value. Updates will come out as a deletion and an addition. In the future we could make these an
+  update if desired."
+  [{:keys [current-index source-values]}]
+  (let [current (set current-index)
+        ;; into {} to ensure that each id appears only once. Later values "win".
+        source  (set (into {} source-values))]
+    {:additions (set/difference source current)
+     :deletions (set/difference current source)}))
 
 (defn add-values!
   "Add indexed values to the model_index_value table."
   [model-index]
-  (let [[error-message index-values] (fetch-values model-index)]
+  (let [[error-message values-to-index] (fetch-values model-index)
+        current-index-values               (into []
+                                                 (map (juxt :model_pk :name))
+                                                 (t2/select ModelIndexValue
+                                                            :model_index_id (:id model-index)))]
     (if-not (str/blank? error-message)
       (t2/update! ModelIndex (:id model-index) {:state           "error"
                                                 :error           error-message
                                                 :state_change_at :%now})
       (try
         (t2/with-transaction [_conn]
-          (add-values* model-index (filter (fn [[_id value]] (some? value)) index-values))
+          (let [{:keys [additions deletions]} (find-changes {:current-index current-index-values
+                                                             :source-values values-to-index})]
+            (when-some [removal-ids (some->> deletions seq (map first))]
+              (t2/delete! ModelIndexValue
+                          :model_index_id (:id model-index)
+                          :pk_ref [:in removal-ids]))
+            (when (seq additions)
+              (t2/insert! ModelIndexValue
+                          (map (fn [[id v]]
+                                 {:name           v
+                                  :model_pk       id
+                                  :model_index_id (:id model-index)})
+                               additions))))
           (t2/update! ModelIndex (:id model-index)
-                      {:generation      (inc (:generation model-index))
-                       :state_change_at :%now
-                       :state           (if (> (count index-values) max-indexed-values)
+                      {:state_change_at :%now
+                       :state           (if (> (count values-to-index) max-indexed-values)
                                           "overflow"
                                           "indexed")}))
         (catch Exception e
@@ -157,7 +135,6 @@
                                            ;; todo: sanitize these?
                                            :pk_ref     pk-ref
                                            :value_ref  value-ref
-                                           :generation 0
                                            :schedule   (default-schedule)
                                            :state      "initial"
                                            :creator_id creator-id}])))
