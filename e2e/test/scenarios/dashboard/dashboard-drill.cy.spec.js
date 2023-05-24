@@ -7,6 +7,7 @@ import {
   visitDashboard,
   addOrUpdateDashboardCard,
   getDashboardCardMenu,
+  getDashboardCards,
   getDashboardCard,
   appBar,
   summarize,
@@ -14,7 +15,6 @@ import {
   queryBuilderHeader,
   collectionTable,
   rightSidebar,
-  main,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -1019,18 +1019,17 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
     cy.wait("@dataset");
 
-    main().within(() => {
-      cy.findByText("Sales per state").click();
-      cy.wait("@dataset");
-    });
+    getDashboardCards()
+      .filter(':contains("Sales per state")')
+      .findByText("Sales per state")
+      .click();
+    cy.wait("@dataset");
 
-    queryBuilderHeader().within(() => {
-      cy.findByLabelText(/Back to .*Orders.*/).click();
-    });
+    queryBuilderHeader()
+      .findByLabelText(/Back to .*Orders.*/)
+      .click();
 
-    main().within(() => {
-      cy.findByText("Sales per state").should("exist");
-    });
+    getDashboardCards().filter(':contains("Sales per state")').should("exist");
   });
 
   it("should display a back to the dashboard button in model x-ray dashboards", () => {
@@ -1038,18 +1037,19 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.visit("/auto/dashboard/model/1");
     cy.wait("@dataset");
 
-    main().within(() => {
-      cy.findByText("Orders by Subtotal").click();
-      cy.wait("@dataset");
-    });
+    getDashboardCards()
+      .filter(':contains("Orders by Subtotal")')
+      .findByText("Orders by Subtotal")
+      .click();
+    cy.wait("@dataset");
 
-    queryBuilderHeader().within(() => {
-      cy.findByLabelText(/Back to .*Orders.*/).click();
-    });
+    queryBuilderHeader()
+      .findByLabelText(/Back to .*Orders.*/)
+      .click();
 
-    main().within(() => {
-      cy.findByText("Orders by Subtotal").should("be.visible");
-    });
+    getDashboardCards()
+      .filter(':contains("Orders by Subtotal")')
+      .should("exist");
   });
 
   it("should preserve query results when navigating between the dashboard and the query builder", () => {

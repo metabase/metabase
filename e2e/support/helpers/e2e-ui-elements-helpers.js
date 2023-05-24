@@ -10,10 +10,6 @@ export function modal() {
   return cy.get(".ModalContainer .ModalContent");
 }
 
-export function main() {
-  return cy.findByRole("main");
-}
-
 export function sidebar() {
   return cy.get("main aside");
 }
