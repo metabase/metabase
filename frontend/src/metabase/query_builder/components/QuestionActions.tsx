@@ -194,7 +194,7 @@ const QuestionActions = ({
     if (isDataset) {
       extraButtons.push({
         title: t`Turn back to saved question`,
-        icon: "model_framed",
+        icon: "insight",
         action: turnDatasetIntoQuestion,
       });
     }
