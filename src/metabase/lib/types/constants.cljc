@@ -38,6 +38,7 @@
                   :semantic-type  [:type/Temporal]}
    ::number      {:effective-type [:type/Number]
                   :semantic-type  [:type/Number]}
+   ::integer     {:effective-type [:type/Integer]}
    ::string      {:effective-type [:type/Text]
                   :semantic-type  [:type/Text :type/Category]}
    ::string_like {:effective-type [:type/TextLike]}

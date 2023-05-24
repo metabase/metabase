@@ -154,6 +154,11 @@
              ;; this is a precaution, :type/Number is not a semantic type
              (clojure.core/isa? semantic-type :type/Number)))))
 
+(defn ^:export integer?
+  "Is `column` a integer column?"
+  [column]
+  (field-type? ::lib.types.constants/integer column))
+
 (defn ^:export time?
   "Is `column` a time?"
   [column]
