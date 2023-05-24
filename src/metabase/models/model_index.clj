@@ -58,9 +58,7 @@
                     {:database (:database_id model)
                      :type     :query
                      :query    {:source-table (format "card__%d" (:id model))
-                                :fields       [(:pk_ref model-index) (:value_ref model-index)]
                                 :breakout     [(:pk_ref model-index) (:value_ref model-index)]
-                                :order-by     [[:desc (:value_ref model-index)]]
                                 :limit        (inc max-indexed-values)}})
                    :data :rows (filter valid-tuples?))]
          (catch Exception e
