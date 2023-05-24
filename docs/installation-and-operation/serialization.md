@@ -162,13 +162,7 @@ java -jar metabase.jar export --collection 1,3,5,9
 
 ### `--no-collection`
 
-The `--no-collection` flag (alias `-C`) allows you to exclude one or more collections. E.g.:
-
-```
-java -jar metabase.jar export --no-collection 1,3,5,9
-```
-
-The above command would export every collection except collections with IDs `1`, `3`, `5`, and `9`.
+The `--no-collection` flag (alias `-C`) tells Metabase to exclude all collections from the export.
 
 ### `--no-settings`
 
