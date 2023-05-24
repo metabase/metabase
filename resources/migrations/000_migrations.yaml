@@ -14616,6 +14616,165 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
 
   - changeSet:
+      id: v47.00-018
+      author: dpsutton
+      comment: Indexed Entities information table
+      changes:
+        - createTable:
+            tableName: model_index
+            remarks: 'Used to keep track of which models have indexed columns.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: 'The ID of the indexed model.'
+              - column:
+                  name: pk_ref
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the primary key field ref.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value_ref
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the label field ref.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schedule
+                  type: ${text.type}
+                  remarks: 'The cron schedule for when value syncing should happen.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: state
+                  type: ${text.type}
+                  remarks: 'The status of the index: initializing, indexed, error, overflow.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: indexed_at
+                  type: ${timestamp_type}
+                  remarks: 'When the status changed'
+                  constraints:
+                    nullable: true
+              - column:
+                  name: error
+                  type: ${text.type}
+                  remarks: 'The error message if the status is error.'
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: 'The timestamp of when these changes were made.'
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: 'ID of the user who created the event'
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_model_index_creator_id
+                    deleteCascade: true
+      rollback:
+        - dropTable:
+            tableName: model_index
+
+  - changeSet:
+      id: v47.00-019
+      author: dpsutton
+      comment: Indexed Entities values table
+      changes:
+        - createTable:
+            tableName: model_index_value
+            remarks: 'Used to keep track of the values indexed in a model'
+            columns:
+              - column:
+                  name: model_index_id
+                  type: int
+                  remarks: 'The ID of the indexed model.'
+              - column:
+                  name: model_pk
+                  type: int
+                  remarks: 'The primary key of the indexed value'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: ${text.type}
+                  remarks: 'The label to display identifying the indexed value.'
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: model_index_value
+
+  - changeSet:
+      id: v47.00-020
+      author: dpsutton
+      comment: Add unique constraint on index_id and pk
+      changes:
+        - addUniqueConstraint:
+            tableName: model_index_value
+            constraintName: unique_model_index_value_model_index_id_model_pk
+            columnNames: model_index_id, model_pk
+      rollback:
+        - dropUniqueConstraint:
+            tableName: model_index_value
+            constraintName: unique_model_index_value_model_index_id_model_pk
+
+  - changeSet:
+      id: v47.00-023
+      author: dpsutton
+      comment: Added 0.47.0 -- model_index index
+      changes:
+        - createIndex:
+            tableName: model_index
+            columns:
+              - column:
+                  name: model_id
+            indexName: idx_model_index_model_id
+
+  - changeSet:
+      id: v47.00-024
+      author: dpsutton
+      comment: Added 0.47.0 -- model_index foriegn key to report_card
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: model_index
+            baseColumnNames: model_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_model_index_model_id
+            nullable: false
+            deleteCascade: true
+
+  - changeSet:
+      id: v47.00-025
+      author: dpsutton
+      comment: Added 0.47.0 -- model_index_value foriegn key to model_index
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: model_index_value
+            baseColumnNames: model_index_id
+            referencedTableName: model_index
+            referencedColumnNames: id
+            constraintName: fk_model_index_value_model_id
+            nullable: false
+            deleteCascade: true
+
+  - changeSet:
       id: v47.00-027
       author: calherres
       comment: Added 0.47.0 - Migrate field_ref in report_card.result_metadata from legacy format
