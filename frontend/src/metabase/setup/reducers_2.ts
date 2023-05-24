@@ -39,7 +39,7 @@ export const reducer = createReducer(initialState, builder => {
       state.isLocaleLoaded = true;
     },
   );
-  builder.addCase(submitWelcomeStep.pending, state => {
+  builder.addCase(submitWelcomeStep.fulfilled, state => {
     state.step = LANGUAGE_STEP;
   });
 
@@ -56,13 +56,13 @@ export const reducer = createReducer(initialState, builder => {
   builder.addCase(selectUserStep, state => {
     state.step = USER_STEP;
   });
-  builder.addCase(submitUserStep.pending, (state, { payload: user }) => {
+  builder.addCase(submitUserStep.fulfilled, (state, { payload: user }) => {
     state.user = user;
     state.step = DATABASE_STEP;
   });
 
   builder.addCase(
-    changeTracking.pending,
+    changeTracking.fulfilled,
     (state, { payload: isTrackingEnabled }) => {
       state.isTrackingAllowed = isTrackingEnabled;
     },

@@ -83,8 +83,9 @@ export const selectUserStep = createAction("metabase/setup/SELECT_USER_STEP");
 
 export const submitUserStep = createAsyncThunk(
   "metabase/setup/SUBMIT_USER_STEP",
-  (_: UserInfo) => {
+  (user: UserInfo) => {
     trackUserStepCompleted();
+    return user;
   },
 );
 
@@ -94,6 +95,7 @@ export const changeTracking = createAsyncThunk(
     trackTrackingChanged(isTrackingAllowed);
     MetabaseSettings.set("anon-tracking-enabled", isTrackingAllowed);
     trackTrackingChanged(isTrackingAllowed);
+    return isTrackingAllowed;
   },
 );
 
