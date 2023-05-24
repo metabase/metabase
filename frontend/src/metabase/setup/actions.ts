@@ -1,6 +1,7 @@
 import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { SetupApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
+import { loadLocalization } from "metabase/lib/i18n";
 import { DatabaseData } from "metabase-types/api";
 import { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 import {
@@ -55,7 +56,13 @@ export const submitWelcome = createAsyncThunk(SUBMIT_WELCOME, () => {
 });
 
 export const UPDATE_LOCALE = "metabase/setup/UPDATE_LOCALE";
-export const updateLocale = createAction<Locale>(UPDATE_LOCALE);
+export const updateLocale = createAsyncThunk(
+  UPDATE_LOCALE,
+  async (locale: Locale) => {
+    await loadLocalization(locale.code);
+    return locale;
+  },
+);
 
 export const SUBMIT_LANGUAGE = "metabase/setup/SUBMIT_LANGUAGE";
 export const submitLanguage = createAction(SUBMIT_LANGUAGE);

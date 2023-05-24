@@ -40,8 +40,12 @@ export const reducer = createReducer(initialState, builder => {
   builder.addCase(selectStep, (state, { payload: step }) => {
     state.step = step;
   });
-  builder.addCase(updateLocale, (state, { payload: locale }) => {
-    state.locale = locale;
+  builder.addCase(updateLocale.pending, (state, { meta }) => {
+    state.locale = meta.arg;
+    state.isLocaleLoaded = false;
+  });
+  builder.addCase(updateLocale.fulfilled, (state, { payload: locale }) => {
+    state.isLocaleLoaded = true;
   });
   builder.addCase(submitUser.fulfilled, (state, { payload: user }) => {
     state.user = user;
