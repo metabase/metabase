@@ -14798,6 +14798,16 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.DowngradeDashboardTab"
 
+  - changeSet:
+      id: v47.00-031
+      author: qnkhuat
+      comment: Added 0.47.0 - migrate dashboard grid size from 18 to 24
+      changes:
+          - sql:
+              sql: >-
+                  update report_dashboardcard set size_x = size_x + floor(cast(size_x + col + 1  as float) / 3) - floor(cast(col + 1 as float) / 3);
+                  update report_dashboardcard set col = col + floor(cast(col + 1 as float) / 3);
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

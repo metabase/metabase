@@ -996,14 +996,14 @@
           mysql-field-2-id :type/Text)
         ;; TODO: this is commented out temporarily because it flakes for MySQL
         #_(testing "Rollback restores the original state"
-          (migrate! :down 46)
-          (let [new-base-types (t2/select-pk->fn :base_type Field)]
-            (are [field-id expected] (= expected (get new-base-types field-id))
-              pg-field-1-id :type/Structured
-              pg-field-2-id :type/Structured
-              pg-field-3-id :type/Text
-              mysql-field-1-id :type/SerializedJSON
-              mysql-field-2-id :type/Text)))))))
+           (migrate! :down 46)
+           (let [new-base-types (t2/select-pk->fn :base_type Field)]
+             (are [field-id expected] (= expected (get new-base-types field-id))
+               pg-field-1-id :type/Structured
+               pg-field-2-id :type/Structured
+               pg-field-3-id :type/Text
+               mysql-field-1-id :type/SerializedJSON
+               mysql-field-2-id :type/Text)))))))
 
 (deftest migrate-google-auth-test
   (testing "Migrations v47.00-009 and v47.00-012: migrate google_auth into sso_source"
@@ -1054,3 +1054,29 @@
              (mdb.query/query {:select   [:first_name :sso_source]
                                :from     [:core_user]
                                :order-by [[:id :asc]]}))))))
+
+(defn migrate18-to-24-reversed-short
+  [{:keys [col size_x]}]
+  {:col    (+ col (quot (+ col 1) 3))
+   :size_x (- (+ size_x
+                 (quot (+ col size_x 1) 3))
+              (quot (+ col 1) 3))})
+
+(deftest migrate-grid-from-18-to-24-test
+  (impl/test-migrations ["v47.00-030" "v47.00-031"] [migrate!]
+    (let [user         (create-raw-user! (tu.random/random-email))
+          dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
+                                                                          :creator_id (:id user)}))
+          cases        (for [w (range 1 7)
+                             s (range 0 (- 19 w))]
+                         {:col    s
+                          :size_x w})
+          dashcard-ids (t2/insert-returning-pks! :model/DashboardCard
+                                                 (map #(merge % {:dashboard_id dashboard-id
+                                                                 :size_y 0
+                                                                 :row    0
+                                                                 :visualization_settings {}
+                                                                 :parameter_mappings     {}}) cases))]
+      (migrate!)
+      (is (= (map migrate18-to-24-reversed-short cases)
+             (t2/select-fn-vec #(select-keys % [:col :size_x]) :model/DashboardCard :id [:in dashcard-ids]))))))
