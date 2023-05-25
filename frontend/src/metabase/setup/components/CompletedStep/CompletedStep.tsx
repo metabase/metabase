@@ -1,5 +1,8 @@
 import React from "react";
 import { t } from "ttag";
+import { useSelector } from "metabase/lib/redux";
+import { COMPLETED_STEP } from "../../constants";
+import { getIsStepActive } from "../../selectors";
 import { NewsletterForm } from "../NewsletterForm";
 import {
   StepBody,
@@ -8,13 +11,10 @@ import {
   StepTitle,
 } from "./CompletedStep.styled";
 
-export interface CompletedStepProps {
-  isStepActive: boolean;
-}
-
-const CompletedStep = ({
-  isStepActive,
-}: CompletedStepProps): JSX.Element | null => {
+export const CompletedStep = (): JSX.Element | null => {
+  const isStepActive = useSelector(state =>
+    getIsStepActive(state, COMPLETED_STEP),
+  );
   if (!isStepActive) {
     return null;
   }
@@ -35,6 +35,3 @@ const CompletedStep = ({
     </StepRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CompletedStep;

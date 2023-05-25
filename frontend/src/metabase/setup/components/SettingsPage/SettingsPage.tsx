@@ -1,13 +1,13 @@
 import React from "react";
 import LogoIcon from "metabase/components/LogoIcon";
 import MigrationHelp from "metabase/setup/containers/CloudMigrationHelp";
+import { CompletedStep } from "../CompletedStep";
 import { LanguageStep } from "../LanguageStep";
 import { PreferencesStep } from "../PreferencesStep";
 import { UserStep } from "../UserStep";
 import { SetupHelp } from "../SetupHelp";
 import DatabaseStep from "../../containers/DatabaseStep";
 import { DatabaseHelp } from "../DatabaseHelp";
-import CompletedStep from "../../containers/CompletedStep";
 import { PageBody, PageHeader } from "./SettingsPage.styled";
 
 export const SettingsPage = (): JSX.Element => {
