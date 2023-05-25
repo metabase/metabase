@@ -1180,7 +1180,7 @@
             (mt/with-temp* [:model/Card [_ {:name "model"
                                             :dataset true
                                             :dataset_query (mt/mbql-query categories)
-                                            :database_id (mt/db)}]]
+                                            :database_id (mt/id)}]]
               (persist-models!)
               (is (some (partial re-matches #"metabase_cache(.*)")
                         (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
