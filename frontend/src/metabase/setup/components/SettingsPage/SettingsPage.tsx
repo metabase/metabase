@@ -2,12 +2,12 @@ import React, { useEffect } from "react";
 import LogoIcon from "metabase/components/LogoIcon";
 import MigrationHelp from "metabase/setup/containers/CloudMigrationHelp";
 import LanguageStep from "../../containers/LanguageStep";
+import { PreferencesStep } from "../PreferencesStep";
 import { UserStep } from "../UserStep";
+import { SetupHelp } from "../SetupHelp";
 import DatabaseStep from "../../containers/DatabaseStep";
 import DatabaseHelp from "../../containers/DatabaseHelp";
-import PreferencesStep from "../../containers/PreferencesStep";
 import CompletedStep from "../../containers/CompletedStep";
-import SetupHelp from "../SetupHelp";
 import { PageHeader, PageBody } from "./SettingsPage.styled";
 
 export interface SettingsPageProps {
@@ -34,10 +34,10 @@ const SettingsPage = ({
         <UserStep />
         <DatabaseStep {...props} />
         <DatabaseHelp {...props} />
-        <PreferencesStep {...props} />
+        <PreferencesStep />
         <CompletedStep {...props} />
         <MigrationHelp {...props} />
-        <SetupHelp {...props} />
+        <SetupHelp />
       </PageBody>
     </div>
   );
