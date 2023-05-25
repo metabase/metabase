@@ -64,6 +64,7 @@ const _Triggerable = <P extends Record<string, unknown>>(
   > {
     static defaultProps = {
       as: "a",
+      closeOnObscuredTrigger: false,
     };
 
     static displayName = `Triggerable[${name}]`;
@@ -79,8 +80,6 @@ const _Triggerable = <P extends Record<string, unknown>>(
         isOpen: Boolean(this.props.isInitiallyOpen || false),
       };
     }
-
-    state;
 
     open = () => {
       this.toggle(true);
@@ -145,6 +144,7 @@ const _Triggerable = <P extends Record<string, unknown>>(
         }, 250);
       }
     };
+
     _stopCheckObscured = () => {
       if (this._offscreenTimer != null) {
         window.clearInterval(this._offscreenTimer);
@@ -203,7 +203,9 @@ const _Triggerable = <P extends Record<string, unknown>>(
             target={() => this.target()}
             sizeToFit
           >
-            <Children onClose={this.onClose}>{children}</Children>
+            <Children isOpen={isOpen} onClose={this.onClose}>
+              {children}
+            </Children>
           </ComposedComponent>
         </>
       );
