@@ -429,7 +429,7 @@
         email-to-users      (for [user (map :email user-recipients)]
                               (construct-pulse-email (subject pulse) user (messages/render-pulse-email timezone pulse dashboard parts nil)))
         email-to-nonusers   (for [non-user (map :email non-user-recipients)]
-                              (construct-pulse-email (subject pulse) non-user (messages/render-pulse-email timezone pulse dashboard parts nonuser)))]
+                              (construct-pulse-email (subject pulse) non-user (messages/render-pulse-email timezone pulse dashboard parts non-user)))]
     (concat email-to-users email-to-nonusers)))
 
 (defmethod notification [:pulse :slack]
