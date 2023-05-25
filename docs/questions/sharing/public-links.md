@@ -109,13 +109,13 @@ For example, to embed a dashboard with multiple appearance parameters:
 /dashboard/42#theme=night&titled=true&bordered=false
 ```
 
-To embed a question with multiple appearance parameters:
+To embed a question without filter widgets and without the download button:
 
 ```
-/question/42#theme=transparent&hide_download_button=true
+/question/42#hide_parameters=true&hide_download_button=true
 ```
 
-For more info about `hide_parameters`, see the next section on [Filter parameters](#filter-parameters).
+For more info about hiding filter widgets with `hide_parameters`, see the next section on [Filter parameters](#filter-parameters).
 
 ### Filter parameters
 
