@@ -36,7 +36,9 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
     getHasNativeWrite(props.databases ?? []),
   );
 
-  const collectionId = Urls.extractEntityId(location.query.collectionId);
+  const collectionId = Urls.extractEntityId(
+    props.location.query.collectionId as string,
+  );
 
   if (!hasDataAccess && !hasNativeWrite) {
     return (
