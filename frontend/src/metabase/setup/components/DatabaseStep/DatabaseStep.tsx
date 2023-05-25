@@ -25,7 +25,7 @@ import {
 } from "../../selectors";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InvactiveStep";
-import InviteUserForm from "../InviteUserForm";
+import { InviteUserForm } from "../InviteUserForm";
 import { SetupSection } from "../SetupSection";
 import { StepDescription } from "./DatabaseStep.styled";
 

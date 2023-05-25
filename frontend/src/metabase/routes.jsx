@@ -37,7 +37,7 @@ import CollectionPermissionsModal from "metabase/admin/permissions/components/Co
 import UserCollectionList from "metabase/containers/UserCollectionList";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
-import SetupApp from "metabase/setup/containers/SetupApp";
+import { Setup } from "metabase/setup/components/Setup";
 
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 
@@ -98,7 +98,7 @@ export const getRoutes = store => (
     {/* SETUP */}
     <Route
       path="/setup"
-      component={SetupApp}
+      component={Setup}
       onEnter={(nextState, replace) => {
         if (MetabaseSettings.hasUserSetup()) {
           replace("/");
