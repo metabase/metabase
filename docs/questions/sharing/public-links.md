@@ -90,12 +90,6 @@ If you'd like to create a secure embed that prevents people from changing filter
 
 To toggle appearance settings, add _hash_ parameters to the end of the public link in your iframe's `src` attribute.
 
-For example, to embed a dashboard with a dark theme, original title, and no border:
-
-```
-/dashboard/42#theme=night&titled=true&bordered=false
-```
-
 | Parameter name          | Possible values                                  |
 | ----------------------- | ------------------------------------------------ |
 | bordered                | true, false                                      |
@@ -108,6 +102,18 @@ For example, to embed a dashboard with a dark theme, original title, and no bord
 ¹ Available on [paid plans](https://www.metabase.com/pricing).
 
 ² Available on [paid plans](https://www.metabase.com/pricing) and hides the download button on questions only (not dashboards).
+
+For example, to embed a dashboard with multiple appearance parameters:
+
+```
+/dashboard/42#theme=night&titled=true&bordered=false
+```
+
+To embed a question with multiple appearance parameters:
+
+```
+/question/42#theme=transparent&hide_download_button=true
+```
 
 For more info about `hide_parameters`, see the next section on [Filter parameters](#filter-parameters).
 
