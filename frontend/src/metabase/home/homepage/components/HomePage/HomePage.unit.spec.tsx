@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { renderWithProviders } from "__support__/ui";
 import * as dom from "metabase/lib/dom";
 import HomePage from "./HomePage";
 
@@ -26,7 +26,9 @@ describe("HomePage", () => {
     const onOpenNavbar = jest.fn();
     isSmallScreenSpy.mockReturnValue(false);
 
-    render(<HomePage hasMetabot={false} onOpenNavbar={onOpenNavbar} />);
+    renderWithProviders(
+      <HomePage hasMetabot={false} onOpenNavbar={onOpenNavbar} />,
+    );
 
     expect(onOpenNavbar).toHaveBeenCalled();
   });
@@ -35,7 +37,9 @@ describe("HomePage", () => {
     const onOpenNavbar = jest.fn();
     isSmallScreenSpy.mockReturnValue(true);
 
-    render(<HomePage hasMetabot={false} onOpenNavbar={onOpenNavbar} />);
+    renderWithProviders(
+      <HomePage hasMetabot={false} onOpenNavbar={onOpenNavbar} />,
+    );
 
     expect(onOpenNavbar).not.toHaveBeenCalled();
   });

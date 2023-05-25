@@ -3,26 +3,17 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.api.search :as api.search]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models
-    :refer [Action
-            Card
-            CardBookmark
-            Collection
-            Dashboard
-            DashboardBookmark
-            DashboardCard
-            Database
-            Metric
-            PermissionsGroup
-            PermissionsGroupMembership
-            Pulse
-            PulseCard
-            QueryAction
-            Segment
-            Table]]
+    :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
+            DashboardCard Database Metric PermissionsGroup
+            PermissionsGroupMembership Pulse PulseCard QueryAction Segment Table]]
+   [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search-config]
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
@@ -57,6 +48,7 @@
    :model_id                   false
    :model_name                 nil
    :moderated_status           nil
+   :pk_ref                     nil
    :table_description          nil
    :table_id                   false
    :table_name                 nil
@@ -471,6 +463,58 @@
                (map #(select-keys % [:name :model :description])
                     (search-request-data-with sorted-results :crowberto :q "aviaries"))))))))
 
+(deftest indexed-entity-test
+  (testing "Should search indexed entities"
+    (mt/dataset airports
+      (let [query (mt/mbql-query municipality)]
+        (mt/with-temp* [Card [model {:dataset       true
+                                     :dataset_query query}]]
+          (let [model-index (model-index/create
+                             (mt/$ids {:model-id   (:id model)
+                                       :pk-ref     $municipality.id
+                                       :value-ref  $municipality.name
+                                       :creator-id (mt/user->id :rasta)}))
+                relevant    (comp (filter (comp #{(:id model)} :model_id))
+                                  (filter (comp #{"indexed-entity"} :model)))
+                search!     (fn [search-term]
+                              (:data (make-search-request :crowberto [:q search-term])))]
+            (model-index/add-values! model-index)
+
+            (is (= #{"Dallas-Fort Worth" "Fort Lauderdale" "Fort Myers"
+                     "Fort Worth" "Fort Smith" "Fort Wayne"}
+                   (into #{} (comp relevant (map :name)) (search! "fort"))))
+
+            (testing "Sandboxed users do not see indexed entities in search"
+              (with-redefs [premium-features/segmented-user? (constantly true)]
+                (is (= #{}
+                       (into #{} (comp relevant (map :name)) (search! "fort"))))))
+
+            (let [normalize (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
+              (is (=? {"Rome"   {:pk_ref        (mt/$ids $municipality.id)
+                                 :name          "Rome"
+                                 :model_id      (:id model)
+                                 :model_name    (:name model)}
+                       "Tromsø" {:pk_ref        (mt/$ids $municipality.id)
+                                 :name          "Tromsø"
+                                 :model_id      (:id model)
+                                 :model_name    (:name model)}}
+                      (into {} (comp relevant (map (juxt :name normalize)))
+                            (search! "rom"))))))))))
+
+  (testing "Sandboxing inhibits searching indexes"
+    (binding [api/*current-user-id* (mt/user->id :rasta)]
+      (is (= [:and
+              [:inline [:= 1 1]]
+              [:or [:like [:lower :model-index-value.name] "%foo%"]]]
+             (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
+                                                                         :search-string "foo"
+                                                                         :current-user-perms #{"/"}})))
+      (with-redefs [premium-features/segmented-user? (constantly true)]
+        (is (= [:and [:inline [:= 1 1]] [:or [:= 0 1]]]
+               (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
+                                                                           :search-string "foo"
+                                                                           :current-user-perms #{"/"}})))))))
+
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
@@ -512,8 +556,8 @@
     (with-search-items-in-root-collection "test2"
       (mt/with-temp* [Card        [action-model action-model-params]
                       Action      [{action-id :id} (archived {:name     "action test action"
-                                                :type     :query
-                                                :model_id (u/the-id action-model)})]
+                                                              :type     :query
+                                                              :model_id (u/the-id action-model)})]
                       QueryAction [_ (query-action action-id)]
                       Card        [_ (archived {:name "card test card"})]
                       Card        [_ (archived {:name "dataset test dataset" :dataset true})]
@@ -546,6 +590,7 @@
     :archived            nil
     :model               "table"
     :database_id         true
+    :pk_ref              nil
     :initial_sync_status "incomplete"}))
 
 (defmacro ^:private do-test-users {:style/indent 1} [[user-binding users] & body]
@@ -661,7 +706,7 @@
      Table     {table-id :id} {:db_id  db-id
                                :schema nil}
      Metric    _              {:table_id table-id
-                                :name     "metric count test 1"}
+                               :name     "metric count test 1"}
      Metric    _              {:table_id table-id
                                :name     "metric count test 1"}
      Metric    _              {:table_id table-id
@@ -672,9 +717,10 @@
                                :name     "segment count test 2"}
      Segment   _              {:table_id table-id
                                :name     "segment count test 3"}]
-    (toucan2.execute/with-call-count [call-count]
-      (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
-      ;; the call count number here are expected to change if we change the search api
-      ;; we have this test here just to keep tracks this number to remind us to put effort
-      ;; into keep this number as low as we can
-      (is (= 7 (call-count))))))
+    (with-redefs [premium-features/segmented-user? (constantly false)]
+      (toucan2.execute/with-call-count [call-count]
+        (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
+        ;; the call count number here are expected to change if we change the search api
+        ;; we have this test here just to keep tracks this number to remind us to put effort
+        ;; into keep this number as low as we can
+        (is (= 7 (call-count)))))))

@@ -9,7 +9,8 @@ import type { SearchModelType } from "./search";
 import type { Card, CardId, CardDisplayType } from "./card";
 import type { Dataset } from "./dataset";
 
-export type DashboardId = number;
+// x-ray dashboard have string ids
+export type DashboardId = number | string;
 
 export interface Dashboard {
   id: DashboardId;
