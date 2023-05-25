@@ -5,7 +5,6 @@ import { useArgs } from "@storybook/client-api";
 
 import { SegmentedControl } from "./SegmentedControl";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Components/SegmentedControl",
   component: SegmentedControl,
