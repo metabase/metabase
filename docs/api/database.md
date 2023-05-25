@@ -42,17 +42,17 @@ Fetch all `Databases`.
 
 ### PARAMS:
 
-*  **`include_tables`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`include_tables`** nullable boolean
 
-*  **`include_cards`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`include_cards`** nullable boolean
 
 *  **`include`** include must be either empty or the value tables
 
-*  **`saved`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`saved`** nullable boolean
 
-*  **`include_editable_data_model`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`include_editable_data_model`** nullable boolean
 
-*  **`exclude_uneditable_details`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`exclude_uneditable_details`** nullable boolean
 
 ## `GET /api/database/:id`
 
@@ -152,6 +152,10 @@ Return a list of Tables for a Database whose `schema` is `nil` or an empty strin
 
 *  **`id`** value must be an integer greater than zero.
 
+*  **`include_hidden`** nullable value must be a valid boolean string ('true' or 'false').
+
+*  **`include_editable_data_model`** nullable value must be a valid boolean string ('true' or 'false').
+
 ## `GET /api/database/:id/schema/:schema`
 
 Returns a list of Tables for the given Database `id` and `schema`.
@@ -160,15 +164,33 @@ Returns a list of Tables for the given Database `id` and `schema`.
 
 *  **`id`** value must be an integer greater than zero.
 
+*  **`include_hidden`** nullable value must be a valid boolean string ('true' or 'false').
+
+*  **`include_editable_data_model`** nullable value must be a valid boolean string ('true' or 'false').
+
 *  **`schema`**
 
 ## `GET /api/database/:id/schemas`
 
-Returns a list of all the schemas found for the database `id`.
+Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
+
+*  **`include_editable_data_model`** nullable value must be a valid boolean string ('true' or 'false').
+
+*  **`include_hidden`** nullable value must be a valid boolean string ('true' or 'false').
+
+## `GET /api/database/:id/syncable_schemas`
+
+Returns a list of all syncable schemas found for the database `id`.
+
+You must be a superuser to do this.
+
+### PARAMS:
+
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/database/:id/usage_info`
 

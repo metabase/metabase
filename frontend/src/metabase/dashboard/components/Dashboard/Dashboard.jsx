@@ -53,6 +53,7 @@ class Dashboard extends Component {
     isNavbarOpen: PropTypes.bool.isRequired,
     isHeaderVisible: PropTypes.bool,
     isAdditionalInfoVisible: PropTypes.bool,
+    isNavigatingBackToDashboard: PropTypes.bool,
 
     dashboard: PropTypes.object,
     dashboardId: PropTypes.number,
@@ -143,7 +144,7 @@ class Dashboard extends Component {
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
       (!prevProps.dashboard && this.props.dashboard)
     ) {
-      this.props.fetchDashboardCardData({ reload: false, clear: true });
+      this.props.fetchDashboardCardData({ reload: false, clearCache: true });
     }
   }
 
@@ -164,14 +165,17 @@ class Dashboard extends Component {
       loadDashboardParams,
       location,
       setErrorPage,
+      isNavigatingBackToDashboard,
     } = this.props;
 
-    initialize();
+    initialize({ clearCache: !isNavigatingBackToDashboard });
 
     loadDashboardParams();
 
     try {
-      await fetchDashboard(dashboardId, location.query);
+      await fetchDashboard(dashboardId, location.query, {
+        clearCache: !isNavigatingBackToDashboard,
+      });
       if (editingOnLoad) {
         this.setEditing(this.props.dashboard);
       }

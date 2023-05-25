@@ -269,6 +269,7 @@
                      :first_login                "2021-03-18T19:52:41.808482Z"
                      :group_ids                  [(u/the-id (perms-group/all-users))]
                      :personal_collection_id     true
+                     :custom_homepage            nil
                      :has_question_and_dashboard false
                      :is_installer               (= 1 (mt/user->id :rasta))
                      :has_invited_second_user    (= 1 (mt/user->id :rasta))})
@@ -288,12 +289,53 @@
                      :group_ids                  [(u/the-id (perms-group/all-users))]
                      :personal_collection_id     true
                      :has_question_and_dashboard true
+                     :custom_homepage            nil
                      :is_installer               (= 1 (mt/user->id :rasta))
                      :has_invited_second_user    (= 1 (mt/user->id :rasta))})
                    (dissoc :is_qbnewb :last_login))
                (-> (mt/user-http-request :rasta :get 200 "user/current")
                    mt/boolean-ids-and-timestamps
-                   (dissoc :is_qbnewb :first_login :last_login))))))))
+                   (dissoc :is_qbnewb :first_login :last_login))))))
+    (testing "Custom homepage"
+      (testing "If id is set but not enabled it is not included"
+        (mt/with-temporary-setting-values [custom-homepage false
+                                           custom-homepage-dashboard 1]
+          (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current"))))))
+      (testing "Not If enabled and set but"
+        (testing "user cannot read"
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temp* [Collection [{coll-id :id} {:name "Collection"}]
+                            Dashboard  [{dash-id :id} {:name          "Dashboard Homepage"
+                                                       :collection_id coll-id}]]
+              (mt/with-temporary-setting-values [custom-homepage true
+                                                 custom-homepage-dashboard dash-id]
+                (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current"))))))))
+        (testing "Dashboard is archived"
+          (mt/with-temp* [Collection [{coll-id :id} {:name "Collection"}]
+                          Dashboard  [{dash-id :id} {:name          "Dashboard Homepage"
+                                                     :archived      true
+                                                     :collection_id coll-id}]]
+            (mt/with-temporary-setting-values [custom-homepage true
+                                               custom-homepage-dashboard dash-id]
+              (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))
+        (testing "Dashboard doesn't exist"
+          (mt/with-temporary-setting-values [custom-homepage true
+                                             custom-homepage-dashboard Long/MAX_VALUE]
+            (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))
+
+      (testing "Otherwise is set"
+        (mt/with-temp* [Collection [{coll-id :id} {:name "Collection"}]
+                        Dashboard  [{dash-id :id} {:name          "Dashboard Homepage"
+                                                   :collection_id coll-id}]]
+          (mt/with-temporary-setting-values [custom-homepage true
+                                             custom-homepage-dashboard dash-id]
+            (is (=? {:first_name      "Rasta"
+                     :custom_homepage {:dashboard_id dash-id}}
+                    (mt/user-http-request :rasta :get 200 "user/current"))))))
+      (testing "If id does not point to a dashboard is nil"
+        (mt/with-temporary-setting-values [custom-homepage true
+                                           custom-homepage-dashboard -3]
+          (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))))
 
 (deftest get-user-test
   (testing "GET /api/user/:id"

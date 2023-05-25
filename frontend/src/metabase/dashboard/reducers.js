@@ -1,8 +1,12 @@
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
 import reduceReducers from "reduce-reducers";
+import _ from "underscore";
 
 import { handleActions, combineReducers } from "metabase/lib/redux";
 import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
+
+import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 
 import {
   INITIALIZE,
@@ -40,7 +44,6 @@ import {
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   tabsReducer,
 } from "./actions";
-
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 
@@ -228,6 +231,12 @@ const dashcards = handleActions(
       ...state,
       [dashcardId]: { ...state[dashcardId], justAdded: false },
     }),
+    [Questions.actionTypes.UPDATE]: (state, { payload: { object: card } }) =>
+      _.mapObject(state, dashcard =>
+        dashcard.card?.id === card?.id
+          ? assocIn(dashcard, ["card"], card)
+          : dashcard,
+      ),
   },
   INITIAL_DASHBOARD_STATE.dashcards,
 );
@@ -242,10 +251,21 @@ const isAddParameterPopoverOpen = handleActions(
   INITIAL_DASHBOARD_STATE.isAddParameterPopoverOpen,
 );
 
+const isNavigatingBackToDashboard = handleActions(
+  {
+    [NAVIGATE_BACK_TO_DASHBOARD]: () => true,
+    [RESET]: () => false,
+  },
+  INITIAL_DASHBOARD_STATE.isNavigatingBackToDashboard,
+);
+
 const dashcardData = handleActions(
   {
     // clear existing dashboard data when loading a dashboard
-    [INITIALIZE]: { next: state => ({}) },
+    [INITIALIZE]: {
+      next: (state, { payload: { clearCache = true } = {} }) =>
+        clearCache ? {} : state,
+    },
     [FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id, card_id, result } }) =>
         assocIn(state, [dashcard_id, card_id], result),
@@ -254,7 +274,8 @@ const dashcardData = handleActions(
       next: (state, { payload: { cardId, dashcardId } }) =>
         assocIn(state, [dashcardId, cardId]),
     },
-    [RESET]: { next: state => ({}) },
+    [Questions.actionTypes.UPDATE]: (state, { payload: { object: card } }) =>
+      _.mapObject(state, dashboardData => dissoc(dashboardData, card.id)),
   },
   INITIAL_DASHBOARD_STATE.dashcardData,
 );
@@ -348,8 +369,8 @@ const loadingDashCards = handleActions(
     [FETCH_DASHBOARD_CARD_DATA]: {
       next: (state, { payload: { currentTime } }) => ({
         ...state,
-        loadingStatus: state.dashcardIds.length > 0 ? "running" : "idle",
-        startTime: state.dashcardIds.length > 0 ? currentTime : null,
+        loadingStatus: state.loadingIds.length > 0 ? "running" : "idle",
+        startTime: state.loadingIds.length > 0 ? currentTime : null,
       }),
     },
     [FETCH_CARD_DATA]: {
@@ -451,6 +472,7 @@ export default reduceReducers(
     draftParameterValues,
     loadingDashCards,
     isAddParameterPopoverOpen,
+    isNavigatingBackToDashboard,
     sidebar,
     missingActionParameters,
     autoApplyFilters,
