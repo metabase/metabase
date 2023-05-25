@@ -838,6 +838,12 @@
             {}
             permissions)))
 
+(defenterprise add-impersonations-to-permissions-graph
+  "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is.."
+   metabase-enterprise.advanced-permissions.models.connection-impersonation
+  [graph]
+  graph)
+
 (defn- post-process-graph [graph]
   (->>
    graph
@@ -854,7 +860,8 @@
             (if (= permissions-graph :all)
               (all-permissions db-ids)
               (:db permissions-graph)))))
-       post-process-graph))
+       post-process-graph
+       add-impersonations-to-permissions-graph))
 
 (defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
