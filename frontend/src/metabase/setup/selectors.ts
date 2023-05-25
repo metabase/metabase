@@ -1,4 +1,4 @@
-import { DatabaseData } from "metabase-types/api";
+import { DatabaseData, LocaleData } from "metabase-types/api";
 import { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 import { getSetting } from "metabase/selectors/settings";
 import { COMPLETED_STEP } from "./constants";
@@ -53,4 +53,8 @@ export const getDatabaseEngine = (state: State): string | undefined => {
 
 export const getIsHosted = (state: State): boolean => {
   return getSetting(state, "is-hosted?");
+};
+
+export const getAvailableLocales = (state: State): LocaleData[] => {
+  return getSetting(state, "available-locales") ?? [];
 };

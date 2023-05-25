@@ -6,7 +6,7 @@ import LogoIcon from "metabase/components/LogoIcon";
 import { loadDefaults, selectStep } from "../../actions";
 import { LANGUAGE_STEP, LOCALE_TIMEOUT } from "../../constants";
 import { getIsLocaleLoaded } from "../../selectors";
-import SetupHelp from "../SetupHelp";
+import { SetupHelp } from "../SetupHelp";
 import {
   PageRoot,
   PageMain,
@@ -18,9 +18,11 @@ import {
 export const WelcomePage = (): JSX.Element | null => {
   const [isElapsed] = useTimeout(LOCALE_TIMEOUT);
   const isLocaleLoaded = useSelector(getIsLocaleLoaded);
-
   const dispatch = useDispatch();
-  const handleSubmit = () => dispatch(selectStep(LANGUAGE_STEP));
+
+  const handleStepSubmit = () => {
+    dispatch(selectStep(LANGUAGE_STEP));
+  };
 
   useEffect(() => {
     dispatch(loadDefaults());
@@ -39,7 +41,7 @@ export const WelcomePage = (): JSX.Element | null => {
           {t`Looks like everything is working.`}{" "}
           {t`Now let’s get to know you, connect to your data, and start finding you some answers!`}
         </PageBody>
-        <PageButton primary autoFocus onClick={handleSubmit}>
+        <PageButton primary autoFocus onClick={handleStepSubmit}>
           {t`Let's get started`}
         </PageButton>
       </PageMain>

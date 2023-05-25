@@ -24,11 +24,16 @@ export const UserStep = (): JSX.Element => {
   const isStepCompleted = useSelector(state =>
     getIsStepCompleted(state, USER_STEP),
   );
-  const isSetupCompleted = useSelector(state => getIsSetupCompleted(state));
-
+  const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
-  const handleSelect = () => dispatch(selectStep(USER_STEP));
-  const handleSubmit = (user: UserInfo) => dispatch(submitUser(user));
+
+  const handleStepSelect = () => {
+    dispatch(selectStep(USER_STEP));
+  };
+
+  const handleSubmit = (user: UserInfo) => {
+    dispatch(submitUser(user));
+  };
 
   if (!isStepActive) {
     return (
@@ -37,7 +42,7 @@ export const UserStep = (): JSX.Element => {
         label={2}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
-        onStepSelect={handleSelect}
+        onStepSelect={handleStepSelect}
       />
     );
   }

@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import LogoIcon from "metabase/components/LogoIcon";
 import MigrationHelp from "metabase/setup/containers/CloudMigrationHelp";
-import LanguageStep from "../../containers/LanguageStep";
+import { LanguageStep } from "../LanguageStep";
 import { PreferencesStep } from "../PreferencesStep";
 import { UserStep } from "../UserStep";
 import { SetupHelp } from "../SetupHelp";
@@ -15,11 +15,7 @@ export interface SettingsPageProps {
   onStepShow: (step: number) => void;
 }
 
-const SettingsPage = ({
-  step,
-  onStepShow,
-  ...props
-}: SettingsPageProps): JSX.Element => {
+const SettingsPage = ({ step, onStepShow }: SettingsPageProps): JSX.Element => {
   useEffect(() => {
     onStepShow(step);
   }, [step, onStepShow]);
@@ -30,13 +26,13 @@ const SettingsPage = ({
         <LogoIcon height={51} />
       </PageHeader>
       <PageBody>
-        <LanguageStep {...props} />
+        <LanguageStep />
         <UserStep />
-        <DatabaseStep {...props} />
-        <DatabaseHelp {...props} />
+        <DatabaseStep />
+        <DatabaseHelp />
         <PreferencesStep />
-        <CompletedStep {...props} />
-        <MigrationHelp {...props} />
+        <CompletedStep />
+        <MigrationHelp />
         <SetupHelp />
       </PageBody>
     </div>
