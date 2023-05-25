@@ -64,7 +64,7 @@ export const reducer = createReducer(initialState, builder => {
     state.invite = meta.arg;
     state.step = PREFERENCES_STEP;
   });
-  builder.addCase(skipDatabase.fulfilled, state => {
+  builder.addCase(skipDatabase.pending, state => {
     state.database = undefined;
     state.invite = undefined;
     state.step = PREFERENCES_STEP;
