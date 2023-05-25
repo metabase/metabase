@@ -9,8 +9,12 @@ export function selectDashboardFilter(selection, filterName) {
   popover().contains(filterName).click({ force: true });
 }
 
+export function getDashboardCards() {
+  return cy.get(".DashCard");
+}
+
 export function getDashboardCard(index = 0) {
-  return cy.get(".DashCard").eq(index);
+  return getDashboardCards().eq(index);
 }
 
 function getDashCardApiUrl(dashId) {

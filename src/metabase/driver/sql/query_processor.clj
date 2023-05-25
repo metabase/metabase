@@ -414,6 +414,10 @@
   [driver _ expr]
   (unix-timestamp->honeysql driver :seconds (hx// expr 1000000)))
 
+(defmethod unix-timestamp->honeysql [:sql :nanoseconds]
+  [driver _ expr]
+  (unix-timestamp->honeysql driver :seconds (hx// expr 1000000000)))
+
 (defmulti cast-temporal-byte
   "Cast a byte field"
   {:arglists '([driver coercion-strategy expr]), :added "0.38.0"}
@@ -536,7 +540,8 @@
     (throw (ex-info "Semantic type must be a UNIXTimestamp"
                     {:type          qp.error-type/invalid-query
                      :coercion-type coercion-type})))
-  (or (get {:Coercion/UNIXMicroSeconds->DateTime :microseconds
+  (or (get {:Coercion/UNIXNanoSeconds->DateTime :nanoseconds
+            :Coercion/UNIXMicroSeconds->DateTime :microseconds
             :Coercion/UNIXMilliSeconds->DateTime :milliseconds
             :Coercion/UNIXSeconds->DateTime      :seconds}
            coercion-type)

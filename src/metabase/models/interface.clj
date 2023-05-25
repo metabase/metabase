@@ -380,6 +380,16 @@
   {:in  (comp json-in maybe-normalize)
    :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization)})
 
+(def normalize-field-ref
+  "Normalize the field ref. Ensure it's well-formed mbql, not just json."
+  (comp #'mbql.normalize/canonicalize-mbql-clauses
+        #'mbql.normalize/normalize-tokens))
+
+(def transform-field-ref
+  "Transform field refs"
+  {:in  json-in
+   :out (comp (catch-normalization-exceptions normalize-field-ref) json-out-with-keywordization)})
+
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
   [metadata]
@@ -473,30 +483,6 @@
                                         (t2.protocols/changes row))))
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
-
-(methodical/defmethod t2.model/resolve-model :before :default
-  "Ensure the namespace for given model is loaded.
-  This is a safety mechanism as we moving to toucan2 and we don't need to require the model namespaces in order to use it."
-  [x]
-  (when (and (keyword? x)
-             (= (namespace x) "model")
-             ;; don't try to require if it's already registered as a :metabase/model; this way ones defined in EE
-             ;; namespaces won't break if they are loaded in some other way.
-             (not (isa? x :metabase/model)))
-    (let [model-namespace (str "metabase.models." (u/->kebab-case-en (name x)))]
-      ;; use `classloader/require` which is thread-safe and plays nice with our plugins system
-      (classloader/require model-namespace)))
-  x)
-
-(methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
-  "Handle models deriving from :metabase/model."
-  [symb]
-  (or
-    (when (simple-symbol? symb)
-      (let [metabase-models-keyword (keyword "model" (name symb))]
-        (when (isa? metabase-models-keyword :metabase/model)
-          metabase-models-keyword)))
-    (next-method symb)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |

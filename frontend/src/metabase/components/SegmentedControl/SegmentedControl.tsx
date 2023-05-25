@@ -63,7 +63,7 @@ export function SegmentedControl<Value extends SegmentedControlValue = number>({
     option => option.value === value,
   );
   return (
-    <SegmentedList {...props}>
+    <SegmentedList {...props} role="radiogroup">
       {options.map((option, index) => {
         const isSelected = index === selectedOptionIndex;
         const id = `${name}-${option.value}`;
@@ -81,6 +81,8 @@ export function SegmentedControl<Value extends SegmentedControlValue = number>({
             variant={variant}
             selectedColor={selectedColor}
             inactiveColor={inactiveColor}
+            role="radio"
+            aria-checked={isSelected}
           >
             <SegmentedItemLabel
               id={labelId}
