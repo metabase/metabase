@@ -112,7 +112,6 @@ function ActionComponent({
       action={dashcard.action as WritebackAction}
       dashboard={dashboard}
       dashcard={dashcard}
-      missingParameters={missingParameters}
       mappedParameters={mappedParameters}
       dashcardParamValues={dashcardParamValues}
       settings={settings}
