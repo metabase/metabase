@@ -180,7 +180,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags=@OSS \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser="replay-chromium"
+          --browser "replay-chromium"
         env:
           TERM: xterm
           REPLAYIO_ENABLED: 1
@@ -195,7 +195,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="-@quarantine" \
           --folder ${{ matrix.folder }} \
-          --browser="replay-chromium"
+          --browser "replay-chromium"
         env:
           TERM: xterm
           REPLAYIO_ENABLED: 1
