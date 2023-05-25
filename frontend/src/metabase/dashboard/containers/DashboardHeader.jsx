@@ -380,7 +380,7 @@ class DashboardHeader extends Component {
 
       extraButtons.push({
         title: t`Export as PDF`,
-        icon: "png",
+        icon: "document",
         action: () => {
           this.saveAsImage();
         },
