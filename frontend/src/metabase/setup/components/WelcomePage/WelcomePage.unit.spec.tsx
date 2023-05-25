@@ -1,9 +1,22 @@
 import React from "react";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 import { act, renderWithProviders, screen } from "__support__/ui";
 import { WelcomePage } from "./WelcomePage";
 
 const setup = () => {
-  renderWithProviders(<WelcomePage />);
+  const state = createMockState({
+    settings: createMockSettingsState({
+      "available-locales": [
+        ["en", "English"],
+        ["de", "German"],
+      ],
+    }),
+  });
+
+  renderWithProviders(<WelcomePage />, { storeInitialState: state });
 };
 
 describe("WelcomePage", () => {
