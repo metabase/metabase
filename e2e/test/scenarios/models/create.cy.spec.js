@@ -57,7 +57,7 @@ describe("scenarios > models > create", () => {
     navigateToNewModelPage();
     cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
 
-    cy.findByTestId("edit-bar").within(() => {
+    cy.findByTestId("dataset-edit-bar").within(() => {
       cy.contains("button", "Save").click();
     });
     modal().within(() => {
@@ -77,7 +77,7 @@ describe("scenarios > models > create", () => {
       cy.findByText("Orders").click();
     });
 
-    cy.findByTestId("edit-bar").within(() => {
+    cy.findByTestId("dataset-edit-bar").within(() => {
       cy.contains("button", "Save").click();
     });
 
