@@ -303,7 +303,7 @@
                                                               [:metabase_database :db] [:= :db.id :card.database_id]]
                                                      :where  [:in :action.id action-ids]}))]
     (map (fn [action]
-           (assoc action :database-enable-actions (true? (get id->database-enable-actions (:id action)))))
+           (assoc action :database_enabled_actions (true? (get id->database-enable-actions (:id action)))))
          actions)))
 
 (mi/define-batched-hydration-method dashcard-action
