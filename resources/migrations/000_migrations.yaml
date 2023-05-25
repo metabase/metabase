@@ -14608,6 +14608,15 @@ databaseChangeLog:
         - createTable:
             tableName: model_index
             remarks: 'Used to keep track of which models have indexed columns.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
                   name: model_id
                   type: int
                   remarks: 'The ID of the indexed model.'
