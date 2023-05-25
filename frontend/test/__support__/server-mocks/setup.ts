@@ -2,7 +2,7 @@ import fetchMock from "fetch-mock";
 import { SetupCheckListItem } from "metabase-types/api";
 
 export function setupErrorSetupEndpoints() {
-  fetchMock.post("path:/api/setup", 500);
+  fetchMock.post("path:/api/setup", 400);
 }
 
 export function setupAdminCheckListEndpoint(items: SetupCheckListItem[]) {

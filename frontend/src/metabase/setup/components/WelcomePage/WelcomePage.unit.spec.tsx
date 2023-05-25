@@ -9,10 +9,7 @@ import { WelcomePage } from "./WelcomePage";
 const setup = () => {
   const state = createMockState({
     settings: createMockSettingsState({
-      "available-locales": [
-        ["en", "English"],
-        ["de", "German"],
-      ],
+      "available-locales": [["en", "English"]],
     }),
   });
 
@@ -28,23 +25,11 @@ describe("WelcomePage", () => {
     jest.useRealTimers();
   });
 
-  it("should not render until the locale is loaded", () => {
+  it("should render after the locale is loaded", () => {
     setup();
-
     expect(screen.queryByText("Welcome to Metabase")).not.toBeInTheDocument();
-  });
 
-  it("should render after some time even if the locale is not loaded", () => {
-    setup();
-
-    act(() => jest.advanceTimersByTime(310));
-
-    expect(screen.getByText("Welcome to Metabase")).toBeInTheDocument();
-  });
-
-  it("should render before the timeout if the locale is loaded", () => {
-    setup();
-
+    act(() => jest.advanceTimersByTime(400));
     expect(screen.getByText("Welcome to Metabase")).toBeInTheDocument();
   });
 });

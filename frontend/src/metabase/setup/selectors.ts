@@ -51,6 +51,10 @@ export const getDatabaseEngine = (state: State): string | undefined => {
   return getDatabase(state)?.engine || state.setup.databaseEngine;
 };
 
+export const getSetupToken = (state: State) => {
+  return getSetting(state, "setup-token");
+};
+
 export const getIsHosted = (state: State): boolean => {
   return getSetting(state, "is-hosted?");
 };
