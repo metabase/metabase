@@ -4,12 +4,14 @@ import MetabaseSettings from "metabase/lib/settings";
 import { loadLocalization } from "metabase/lib/i18n";
 import { DatabaseData } from "metabase-types/api";
 import { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
+import { WELCOME_STEP } from "metabase/setup/constants";
 import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,
   trackDatabaseStepCompleted,
   trackPreferencesStepCompleted,
   trackSetupCompleted,
+  trackStepSeen,
   trackTrackingChanged,
   trackUserStepCompleted,
   trackWelcomeStepCompleted,
@@ -45,6 +47,7 @@ export const LOAD_DEFAULTS = "metabase/setup/LOAD_DEFAULTS";
 export const loadDefaults = createAsyncThunk(LOAD_DEFAULTS, (_, thunkAPI) => {
   thunkAPI.dispatch(loadUserDefaults());
   thunkAPI.dispatch(loadLocaleDefaults());
+  trackStepSeen(WELCOME_STEP);
 });
 
 export const SELECT_STEP = "metabase/setup/SUBMIT_WELCOME_STEP";
