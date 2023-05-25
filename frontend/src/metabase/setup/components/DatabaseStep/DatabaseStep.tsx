@@ -50,7 +50,7 @@ export const DatabaseStep = (): JSX.Element => {
 
   const handleDatabaseSubmit = async (database: DatabaseData) => {
     try {
-      await dispatch(submitDatabase(database));
+      await dispatch(submitDatabase(database)).unwrap();
     } catch (error) {
       throw getSubmitError(error);
     }
