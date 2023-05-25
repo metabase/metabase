@@ -27,7 +27,7 @@
     (str/split endpoint #"metabase-enterprise.")
     (str/split endpoint #"\.")))
 
-(def initialisms "Used to format initialisms/acronyms in generated docs." '["SSO" "GTAP" "LDAP" "SQL" "JSON"])
+(def initialisms "Used to format initialisms/acronyms in generated docs." '["SSO" "SAML" "GTAP" "LDAP" "SQL" "JSON"])
 
 (defn capitalize-initialisms
   "Converts initialisms to upper case."

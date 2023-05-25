@@ -15,6 +15,8 @@ import { openUrl } from "metabase/redux/app";
 
 import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
+import { ModelIndexes } from "metabase/entities/model-indexes";
+
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import {
   cardIsEquivalent,
@@ -224,6 +226,11 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
   return async (dispatch, getState) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
+
+    if (question.isDataset()) {
+      await dispatch(ModelIndexes.actions.updateModelIndexes(question));
+      question = ModelIndexes.actions.cleanIndexFlags(question);
+    }
 
     rerunQuery = rerunQuery ?? getIsResultDirty(getState());
 

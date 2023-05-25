@@ -72,8 +72,16 @@ export const openQuestionActions = () => {
   });
 };
 
+export const collectionTable = () => {
+  return cy.findByTestId("collection-table");
+};
+
+export const queryBuilderHeader = () => {
+  return cy.findByTestId("qb-header");
+};
+
 export const closeQuestionActions = () => {
-  cy.findByTestId("qb-header").click();
+  queryBuilderHeader().click();
 };
 
 export const questionInfoButton = () => {

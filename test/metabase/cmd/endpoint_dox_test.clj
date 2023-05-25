@@ -1,6 +1,7 @@
 (ns metabase.cmd.endpoint-dox-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.activity]
    [metabase.cmd.endpoint-dox :as endpoint-dox]
    [metabase.config :as config]))
 
