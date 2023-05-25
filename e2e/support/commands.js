@@ -5,7 +5,6 @@ import "./commands/api/alert";
 import "./commands/api/question";
 import "./commands/api/dashboard";
 import "./commands/api/dashboardCard";
-import "./commands/api/dashboardFilters";
 import "./commands/api/collection";
 import "./commands/api/moderation";
 import "./commands/api/pulse";

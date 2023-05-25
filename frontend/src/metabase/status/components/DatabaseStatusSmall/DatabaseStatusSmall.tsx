@@ -2,15 +2,9 @@ import React from "react";
 import { t } from "ttag";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { isSyncAborted, isSyncInProgress } from "metabase/lib/syncing";
-import Tooltip from "metabase/core/components/Tooltip";
-import { Database, InitialSyncStatus } from "metabase-types/api";
-import {
-  StatusRoot,
-  StatusIconContainer,
-  StatusIcon,
-  StatusContainer,
-  StatusSpinner,
-} from "./DatabaseStatusSmall.styled";
+import { InitialSyncStatus } from "metabase-types/api";
+import Database from "metabase-lib/metadata/Database";
+import StatusSmall from "../StatusSmall";
 
 export interface DatabaseStatusSmallProps {
   databases: Database[];
@@ -24,18 +18,16 @@ const DatabaseStatusSmall = ({
   const status = getStatus(databases);
   const statusLabel = getStatusLabel(status);
   const hasSpinner = isSpinnerVisible(status);
+  const icon = getIconName(status);
 
   return (
-    <Tooltip tooltip={statusLabel}>
-      <StatusRoot role="status" aria-label={statusLabel} onClick={onExpand}>
-        <StatusContainer status={status}>
-          <StatusIconContainer status={status}>
-            <StatusIcon status={status} name={getIconName(status)} />
-          </StatusIconContainer>
-        </StatusContainer>
-        {hasSpinner && <StatusSpinner size={48} />}
-      </StatusRoot>
-    </Tooltip>
+    <StatusSmall
+      status={status}
+      statusLabel={statusLabel}
+      hasSpinner={hasSpinner}
+      icon={icon}
+      onExpand={onExpand}
+    />
   );
 };
 
@@ -80,4 +72,5 @@ const isSpinnerVisible = (status: InitialSyncStatus): boolean => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseStatusSmall;

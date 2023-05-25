@@ -8,7 +8,7 @@
     :as qp.add-dimension-projections]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -291,7 +291,7 @@
                                           :alias        "Products"}]
                               :order-by [[:asc $id]]
                               :limit    2})
-              dimension-id (db/select-one-id Dimension :field_id (mt/id :orders :product_id))]
+              dimension-id (t2/select-one-pk Dimension :field_id (mt/id :orders :product_id))]
           (doseq [nesting-level [0 1]
                   :let          [query (mt/nest-query query nesting-level)]]
             (testing (format "nesting level = %d" nesting-level)
@@ -327,7 +327,7 @@
                                                          :order-by [[:asc $name]]
                                                          :limit    4})
             {remap-info :remaps, preprocessed :query} (add-fk-remaps query)
-            dimension-id                              (db/select-one-id Dimension
+            dimension-id                              (t2/select-one-pk Dimension
                                                         :field_id                (mt/id :venues :category_id)
                                                         :human_readable_field_id (mt/id :categories :name))]
         (is (integer? dimension-id))
@@ -379,10 +379,10 @@
                                                           {:fields   [$sender_id $receiver_id $text]
                                                            :order-by [[:asc $id]]
                                                            :limit    3})
-              sender-dimension-id                       (db/select-one-id Dimension
+              sender-dimension-id                       (t2/select-one-pk Dimension
                                                           :field_id                (mt/id :messages :sender_id)
                                                           :human_readable_field_id (mt/id :users :name))
-              receiver-dimension-id                     (db/select-one-id Dimension
+              receiver-dimension-id                     (t2/select-one-pk Dimension
                                                           :field_id                (mt/id :messages :receiver_id)
                                                           :human_readable_field_id (mt/id :users :name))
               {remap-info :remaps, preprocessed :query} (add-fk-remaps query)]

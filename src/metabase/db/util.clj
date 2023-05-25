@@ -5,16 +5,36 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan2.core :as t2]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model]))
+
+(defn toucan-model?
+  "Check if `model` is a toucan model."
+  [model]
+  (or
+    ;; toucan 2 models
+    (isa? model :metabase/model)
+    ;; toucan 1 models
+    (isa? model :toucan1/model)))
+
+(defn primary-key
+  "Replacement of [[mdb.u/primary-key]], this is used to make the transition to toucan 2 easier.
+  In toucan2, every keyword can be a model so if `model` is a keyword, returns as is, otherwise calls [[mdb.u/primary-key]]."
+  [model]
+  (if (keyword? model)
+   (first (t2/primary-keys model))
+   #_{:clj-kondo/ignore [:discouraged-var]}
+   (models/primary-key model)))
 
 (defn join
   "Convenience for generating a HoneySQL `JOIN` clause.
 
-     (db/select-ids FieldValues
+     (t2/select-pks-set FieldValues
        (mdb/join [FieldValues :field_id] [Field :id])
        :active true)"
   [[source-entity fk] [dest-entity pk]]
-  {:left-join [(t2/table-name (db/resolve-model dest-entity))
+  {:left-join [(t2/table-name (t2.model/resolve-model dest-entity))
                [:= (db/qualify source-entity fk) (db/qualify dest-entity pk)]]})
 
 (def ^:private NamespacedKeyword
@@ -32,15 +52,15 @@
   "Convenience for generating an HoneySQL `IN` clause for a keyword and all of its descendents.
    Intended for use with the type hierarchy in `metabase.types`.
 
-     (db/select Field :semantic_type (mdb/isa :type/URL))
+     (t2/select Field :semantic_type (mdb/isa :type/URL))
       ->
-     (db/select Field :semantic_type [:in #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}])
+     (t2/select Field :semantic_type [:in #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}])
 
    Also accepts optional `expr` for use directly in a HoneySQL `where`:
 
-     (db/select Field {:where (mdb/isa :semantic_type :type/URL)})
+     (t2/select Field {:where (mdb/isa :semantic_type :type/URL)})
      ->
-     (db/select Field {:where [:in :semantic_type #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}]})"
+     (t2/select Field {:where [:in :semantic_type #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}]})"
   ([type-keyword]
    [:in (type-keyword->descendants type-keyword)])
   ;; when using this with an `expr` (e.g. `(isa :semantic_type :type/URL)`) just go ahead and take the results of the

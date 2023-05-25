@@ -9,6 +9,8 @@ import { getUniqueFieldId } from "metabase-lib/metadata/utils/fields";
 export const ActionSchema = new schema.Entity("actions");
 export const UserSchema = new schema.Entity("users");
 export const QuestionSchema = new schema.Entity("questions");
+export const ModelIndexSchema = new schema.Entity("modelIndexes");
+export const IndexedEntitySchema = new schema.Entity("indexedEntities");
 export const BookmarkSchema = new schema.Entity("bookmarks");
 export const DashboardSchema = new schema.Entity("dashboards");
 export const PulseSchema = new schema.Entity("pulses");
@@ -71,6 +73,7 @@ export const TimelineEventSchema = new schema.Entity("timelineEvents");
 DatabaseSchema.define({
   tables: [TableSchema],
   schemas: [SchemaSchema],
+  idFields: [FieldSchema],
 });
 
 SchemaSchema.define({
@@ -81,6 +84,7 @@ SchemaSchema.define({
 TableSchema.define({
   db: DatabaseSchema,
   fields: [FieldSchema],
+  fks: [{ origin: FieldSchema, destination: FieldSchema }],
   segments: [SegmentSchema],
   metrics: [MetricSchema],
   schema: SchemaSchema,
@@ -109,7 +113,10 @@ TimelineSchema.define({
 });
 
 export const ENTITIES_SCHEMA_MAP = {
+  actions: ActionSchema,
   questions: QuestionSchema,
+  modelIndexes: ModelIndexSchema,
+  indexedEntity: IndexedEntitySchema,
   bookmarks: BookmarkSchema,
   dashboards: DashboardSchema,
   pulses: PulseSchema,

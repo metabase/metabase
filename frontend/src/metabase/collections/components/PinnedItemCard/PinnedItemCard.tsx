@@ -7,6 +7,7 @@ import ActionMenu from "metabase/collections/components/ActionMenu";
 import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import Database from "metabase-lib/metadata/Database";
 
 import {
   Body,
@@ -20,6 +21,7 @@ import {
 } from "./PinnedItemCard.styled";
 
 type Props = {
+  databases?: Database[];
   bookmarks?: Bookmark[];
   createBookmark: (id: string, collection: string) => void;
   deleteBookmark: (id: string, collection: string) => void;
@@ -41,6 +43,7 @@ function getDefaultDescription(model: string) {
 }
 
 function PinnedItemCard({
+  databases,
   bookmarks,
   createBookmark,
   deleteBookmark,
@@ -75,10 +78,9 @@ function PinnedItemCard({
           <Header>
             <ItemIcon name={icon} />
             <ActionsContainer>
-              {item.model === "dataset" && (
-                <ModelDetailLink model={item as CollectionItem<"dataset">} />
-              )}
+              {item.model === "dataset" && <ModelDetailLink model={item} />}
               <ActionMenu
+                databases={databases}
                 bookmarks={bookmarks}
                 createBookmark={createBookmark}
                 deleteBookmark={deleteBookmark}
@@ -123,4 +125,5 @@ function PinnedItemCard({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default PinnedItemCard;

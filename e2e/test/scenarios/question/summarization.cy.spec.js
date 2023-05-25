@@ -71,7 +71,7 @@ describe("scenarios > question > summarize sidebar", () => {
     });
   });
 
-  it("selected dimensions from another table includes the table name when becomes pinned to the top", () => {
+  it("selected dimensions from another table includes the table alias when becomes pinned to the top", () => {
     getDimensionByName({ name: "State" }).click();
 
     cy.button("Done").click();
@@ -79,16 +79,17 @@ describe("scenarios > question > summarize sidebar", () => {
     summarize();
 
     cy.findByTestId("pinned-dimensions").within(() => {
-      getDimensionByName({ name: "People → State" }).should(
+      getDimensionByName({ name: "User → State" }).should(
         "have.attr",
         "aria-selected",
         "true",
       );
     });
 
-    getRemoveDimensionButton({ name: "People → State" }).click();
+    getRemoveDimensionButton({ name: "User → State" }).click();
 
-    cy.findByText("People → State").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("User → State").should("not.exist");
   });
 
   it("selecting a binning adds a dimension", () => {
@@ -139,14 +140,18 @@ describe("scenarios > question > summarize sidebar", () => {
       { visitQuestion: true },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("49.54");
   });
 
   it("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
     cy.visit("/question/1/notebook");
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At")
       .closest(".List-item")
       .findByText("by month")
@@ -165,28 +170,36 @@ describe("scenarios > question > summarize sidebar", () => {
     popover().contains("Custom Expression").click();
     popover().within(() => {
       enterCustomColumnDetails({ formula: "2 * Max([Total])" });
-      cy.findByPlaceholderText("Name (required)").type("twice max total");
+      cy.findByPlaceholderText("Something nice and descriptive").type(
+        "twice max total",
+      );
       cy.findByText("Done").click();
     });
 
     visualize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("318.7");
   });
 
-  it.skip("should keep manually entered parenthesis intact (metabase#13306)", () => {
-    const FORMULA =
-      "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))";
-
+  it("should keep manually entered parenthesis intact if they affect the result (metabase#13306)", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
+
     popover().contains("Custom Expression").click();
     popover().within(() => {
-      cy.get(".ace_text-input").type(FORMULA).blur();
+      enterCustomColumnDetails({
+        formula:
+          "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
+      });
+      cy.get("@formula").blur();
+    });
 
-      cy.log("Fails after blur in v0.36.6");
-      // Implicit assertion
-      cy.contains(FORMULA);
+    popover().within(() => {
+      cy.get(".ace_text-layer").should(
+        "have.text",
+        "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))",
+      );
     });
   });
 
@@ -201,7 +214,7 @@ describe("scenarios > question > summarize sidebar", () => {
       "**The point of failure for ANY non-numeric value reported in v0.36.4**",
     );
     // the default type for "Reviewer" is "No semantic type"
-    popover().within(() => {
+    cy.findByTestId("expression-suggestions-list").within(() => {
       cy.contains("Reviewer");
     });
   });
@@ -222,7 +235,8 @@ describe("scenarios > question > summarize sidebar", () => {
       cy.get(".List-item").contains("by month").click({ force: true });
     });
     // this should be among the granular selection choices
-    cy.findByText("Hour of Day").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Hour of day").click();
   });
 
   it.skip("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
@@ -255,6 +269,7 @@ describe("scenarios > question > summarize sidebar", () => {
     removeMetricFromSidebar("Sum of Subtotal");
 
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sum of Subtotal").should("not.exist");
 
     // "Sum of Total" should not be sorted, nor any other header cell
@@ -263,7 +278,9 @@ describe("scenarios > question > summarize sidebar", () => {
     removeMetricFromSidebar("Sum of Total");
 
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/No results!/i).should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("744"); // `Count` for year 2016
   });
 
@@ -272,6 +289,7 @@ describe("scenarios > question > summarize sidebar", () => {
     openReviewsTable();
 
     summarize();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Group by")
       .parent()
       .findByText("Title")

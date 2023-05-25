@@ -38,6 +38,7 @@ describe("scenarios > visualizations > gauge chart", () => {
     );
 
     cy.findByTestId("gauge-arc-1").trigger("mousemove");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Something went wrong").should("not.exist");
   });
 });

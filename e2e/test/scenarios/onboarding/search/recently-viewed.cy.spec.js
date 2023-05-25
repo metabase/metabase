@@ -30,12 +30,15 @@ describe("search > recently viewed", () => {
     // which elicits a ViewLog entry
 
     cy.visit("/");
+
+    cy.intercept(`/api/activity/recent_views`).as("recent");
     cy.findByPlaceholderText("Search…").click();
+    cy.wait("@recent");
+
+    cy.findByTestId("loading-spinner").should("not.exist");
   });
 
   it("shows list of recently viewed items", () => {
-    cy.findByTestId("loading-spinner").should("not.exist");
-
     assertRecentlyViewedItem(
       0,
       "Orders in a dashboard",
@@ -52,6 +55,8 @@ describe("search > recently viewed", () => {
   });
 
   it("allows to select an item from keyboard", () => {
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Recently viewed");
     cy.get("body").trigger("keydown", { key: "ArrowDown" });
     cy.get("body").trigger("keydown", { key: "ArrowDown" });
     cy.get("body").trigger("keydown", { key: "Enter" });
@@ -79,6 +84,7 @@ describeEE("search > recently viewed > enterprise features", () => {
   it("should show verified badge in the 'Recently viewed' list (metabase#18021)", () => {
     cy.findByPlaceholderText("Search…").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Recently viewed")
       .parent()
       .within(() => {

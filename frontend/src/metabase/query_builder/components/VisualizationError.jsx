@@ -9,6 +9,7 @@ import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
 import ErrorMessage from "metabase/components/ErrorMessage";
 import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
+import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   QueryError,
   QueryErrorHeader,
@@ -87,20 +88,20 @@ class VisualizationError extends Component {
   }
   static propTypes = {
     via: PropTypes.object.isRequired,
-    card: PropTypes.object.isRequired,
+    question: PropTypes.object.isRequired,
     duration: PropTypes.number.isRequired,
     error: PropTypes.object.isRequired,
     className: PropTypes.string,
   };
 
   render() {
-    const { via, card, duration, error, className } = this.props;
-    console.log("error", error);
+    const { via, question, duration, error, className } = this.props;
+    console.error(error);
 
     if (error && typeof error.status === "number") {
       // Assume if the request took more than 15 seconds it was due to a timeout
       // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
-      if (duration > 15 * 1000) {
+      if (duration > VISUALIZATION_SLOW_TIMEOUT) {
         return (
           <ErrorMessage
             className={className}
@@ -131,11 +132,7 @@ class VisualizationError extends Component {
           </div>
         </div>
       );
-    } else if (
-      card &&
-      card.dataset_query &&
-      card.dataset_query.type === "native"
-    ) {
+    } else if (question?.isNative()) {
       // always show errors for native queries
       let processedError = error;
       const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);

@@ -11,7 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.secret :as secret :refer [Secret]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
    [metabase.server.middleware.session :as mw.session]
    [metabase.task :as task]
@@ -20,7 +20,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -44,8 +44,8 @@
 
   (testing "After deleting a Database, no permissions for the DB should still exist"
     (mt/with-temp Database [{db-id :id}]
-      (db/delete! Database :id db-id)
-      (is (= [] (db/select Permissions :object [:like (str "%" (perms/data-perms-path db-id) "%")]))))))
+      (t2/delete! Database :id db-id)
+      (is (= [] (t2/select Permissions :object [:like (str "%" (perms/data-perms-path db-id) "%")]))))))
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
@@ -63,7 +63,7 @@
                      (trigger-for-db db-id)))
 
         (testing "When deleting a Database, sync tasks should get removed"
-          (db/delete! Database :id db-id)
+          (t2/delete! Database :id db-id)
           (is (= nil
                  (trigger-for-db db-id))))))))
 
@@ -102,13 +102,13 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"The database does not support actions."
-             (db/update! Database (:id database) :settings {:database-enable-actions true})))))
+             (t2/update! Database (:id database) {:settings {:database-enable-actions true}})))))
     (testing "Updating the engine when database-enable-actions is true should fail if the engine doesn't support actions"
       (mt/with-temp Database [database {:engine :h2 :settings {:database-enable-actions true}}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"The database does not support actions."
-             (db/update! Database (:id database) :engine :sqlite)))))))
+             (t2/update! Database (:id database) {:engine :sqlite})))))))
 
 (deftest sensitive-data-redacted-test
   (let [encode-decode (fn [obj] (decode (encode obj)))
@@ -265,8 +265,8 @@
                                        :version 1
                                        :value   "new-password"})
                 (testing " updating the value works as expected"
-                  (db/update! Database id :details (assoc details :password-path  "/path/to/my/password-file"))
-                  (check-db-fn (db/select-one Database :id id) {:kind    :password
+                  (t2/update! Database id {:details (assoc details :password-path  "/path/to/my/password-file")})
+                  (check-db-fn (t2/select-one Database :id id) {:kind    :password
                                                                 :source  :file-path
                                                                 :version 2
                                                                 :value   "/path/to/my/password-file"}))))
@@ -274,7 +274,7 @@
               (is (seq @secret-ids) "At least one Secret instance should have been created")
               (doseq [secret-id @secret-ids]
                 (testing (format "Secret ID %d should have been deleted after the Database was" secret-id)
-                  (is (nil? (db/select-one Secret :id secret-id))
+                  (is (nil? (t2/select-one Secret :id secret-id))
                       (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
 
 (deftest user-may-not-update-sample-database-test
@@ -286,10 +286,10 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"The engine on a sample database cannot be changed."
-           (db/update! Database id :engine :sqlite))))
+           (t2/update! Database id {:engine :sqlite}))))
     (testing " updating other attributes of a sample database is allowed"
-      (db/update! Database id :name "My New Name")
-      (is (= "My New Name" (db/select-one-field :name Database :id id))))))
+      (t2/update! Database id {:name "My New Name"})
+      (is (= "My New Name" (t2/select-one-fn :name Database :id id))))))
 
 (driver/register! ::test, :abstract? true)
 
@@ -297,19 +297,19 @@
   (testing "Make sure databases preserve namespaced driver names"
     (mt/with-temp Database [{db-id :id} {:engine (u/qualified-name ::test)}]
       (is (= ::test
-             (db/select-one-field :engine Database :id db-id))))))
+             (t2/select-one-fn :engine Database :id db-id))))))
 
 (deftest identity-hash-test
   (testing "Database hashes are composed of the name and engine"
     (mt/with-temp Database [db {:engine :mysql :name "hashmysql"}]
       (is (= (Integer/toHexString (hash ["hashmysql" :mysql]))
-             (serdes.hash/identity-hash db)))
+             (serdes/identity-hash db)))
       (is (= "b6f1a9e8"
-             (serdes.hash/identity-hash db))))))
+             (serdes/identity-hash db))))))
 
 (deftest create-database-with-null-details-test
   (testing "Details should get a default value of {} if unspecified"
     (mt/with-model-cleanup [Database]
-      (let [db (db/insert! Database (dissoc (mt/with-temp-defaults Database) :details))]
+      (let [db (first (t2/insert-returning-instances! Database (dissoc (mt/with-temp-defaults Database) :details)))]
         (is (partial= {:details {}}
                       db))))))

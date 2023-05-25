@@ -73,6 +73,7 @@ export default class AggregationWidget extends React.Component {
       <ControlledPopoverWithTrigger
         disableContentSandbox
         placement="bottom-start"
+        maxWidth={450}
         visible={this.state.isOpen}
         onClose={this.handleClose}
         onOpen={this.handleOpen}

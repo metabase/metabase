@@ -4,21 +4,20 @@
    [clojure.data :as data]
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
-   [metabase.api.query-description :as api.qd]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models :refer [Metric  MetricImportantField Table]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :as metric :refer [Metric]]
    [metabase.models.revision :as revision]
-   [metabase.models.table :refer [Table]]
    [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
@@ -31,51 +30,41 @@
   ;; TODO - why can't set the other properties like `show_in_getting_started` when you create a Metric?
   (api/create-check Metric body)
   (let [metric (api/check-500
-                (db/insert! Metric
-                  :table_id    table_id
-                  :creator_id  api/*current-user-id*
-                  :name        name
-                  :description description
-                  :definition  definition))]
+                 (first (t2/insert-returning-instances! Metric
+                                                        :table_id    table_id
+                                                        :creator_id  api/*current-user-id*
+                                                        :name        name
+                                                        :description description
+                                                        :definition  definition)))]
     (-> (events/publish-event! :metric-create metric)
         (hydrate :creator))))
 
 (s/defn ^:private hydrated-metric [id :- su/IntGreaterThanZero]
-  (-> (api/read-check (db/select-one Metric :id id))
+  (-> (api/read-check (t2/select-one Metric :id id))
       (hydrate :creator)))
 
-(defn- add-query-descriptions
-  [metrics] {:pre [(coll? metrics)]}
-  (when (some? metrics)
-    (for [metric metrics]
-      (let [table (db/select-one Table :id (:table_id metric))]
-        (assoc metric
-               :query_description
-               (api.qd/generate-query-description table (:definition metric)))))))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch `Metric` with ID."
   [id]
-  (first (add-query-descriptions [(hydrated-metric id)])))
+  {id ms/PositiveInt}
+  (hydrated-metric id))
 
 (defn- add-db-ids
   "Add `:database_id` fields to `metrics` by looking them up from their `:table_id`."
   [metrics]
   (when (seq metrics)
-    (let [table-id->db-id (db/select-id->field :db_id Table, :id [:in (set (map :table_id metrics))])]
+    (let [table-id->db-id (t2/select-pk->fn :db_id Table, :id [:in (set (map :table_id metrics))])]
       (for [metric metrics]
         (assoc metric :database_id (table-id->db-id (:table_id metric)))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Fetch *all* `Metrics`."
   []
-  (as-> (db/select Metric, :archived false, {:order-by [:%lower.name]}) metrics
-    (hydrate metrics :creator)
+  (as-> (t2/select Metric, :archived false, {:order-by [:%lower.name]}) metrics
+    (hydrate metrics :creator :definition_description)
     (add-db-ids metrics)
     (filter mi/can-read? metrics)
-    (add-query-descriptions metrics)))
+    metrics))
 
 (defn- write-check-and-update-metric!
   "Check whether current user has write permissions, then update Metric with values in `body`. Publishes appropriate
@@ -93,7 +82,7 @@
                      new-body)
         archive?   (:archived changes)]
     (when changes
-      (db/update! Metric id changes))
+      (t2/update! Metric id changes))
     (u/prog1 (hydrated-metric id)
       (events/publish-event! (if archive? :metric-delete :metric-update)
         (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
@@ -125,15 +114,15 @@
   (api/write-check Metric id)
   (api/check (<= (count important_field_ids) 3)
     [400 "A Metric can have a maximum of 3 important fields."])
-  (let [[fields-to-remove fields-to-add] (data/diff (set (db/select-field :field_id 'MetricImportantField :metric_id id))
+  (let [[fields-to-remove fields-to-add] (data/diff (set (t2/select-fn-set :field_id 'MetricImportantField :metric_id id))
                                                     (set important_field_ids))]
 
     ;; delete old fields as needed
     (when (seq fields-to-remove)
-      (db/simple-delete! 'MetricImportantField {:metric_id id, :field_id [:in fields-to-remove]}))
+      (t2/delete! (t2/table-name MetricImportantField) {:metric_id id, :field_id [:in fields-to-remove]}))
     ;; add new fields as needed
-    (db/insert-many! 'MetricImportantField (for [field-id fields-to-add]
-                                             {:metric_id id, :field_id field-id}))
+    (t2/insert! 'MetricImportantField (for [field-id fields-to-add]
+                                        {:metric_id id, :field_id field-id}))
     {:success true}))
 
 
@@ -172,7 +161,7 @@
 (api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
-  (-> (db/select-one Metric :id id) api/read-check related/related))
+  (-> (t2/select-one Metric :id id) api/read-check related/related))
 
 
 (api/define-routes)

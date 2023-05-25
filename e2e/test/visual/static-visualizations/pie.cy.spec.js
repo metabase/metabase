@@ -25,6 +25,8 @@ describe("static visualizations", () => {
         createPieQuestion({ percentVisibility: "off " }),
         createPieQuestion({ percentVisibility: "legend" }),
         createPieQuestion({ percentVisibility: "inside" }),
+        createPieQuestion({ showTotal: true }),
+        createPieQuestion({ showTotal: false }),
       ],
     }).then(({ dashboard }) => {
       visitDashboard(dashboard.id);
@@ -38,9 +40,9 @@ describe("static visualizations", () => {
   });
 });
 
-function createPieQuestion({ percentVisibility }) {
+function createPieQuestion({ percentVisibility, showTotal }) {
   const query = {
-    name: `pie showDataLabels=${percentVisibility}`,
+    name: `pie showDataLabels=${percentVisibility}, showTotal=${showTotal}`,
     native: {
       query:
         "select 1 x, 1000 y\n" +
@@ -55,6 +57,7 @@ function createPieQuestion({ percentVisibility }) {
     },
     visualization_settings: {
       "pie.percent_visibility": percentVisibility,
+      "pie.show_total": showTotal,
     },
     display: "pie",
     database: SAMPLE_DB_ID,

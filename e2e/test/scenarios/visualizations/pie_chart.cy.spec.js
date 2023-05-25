@@ -29,6 +29,21 @@ describe("scenarios > visualizations > pie chart", () => {
 
     ensurePieChartRendered(["Doohickey", "Gadget", "Gizmo", "Widget"], 200);
   });
+
+  it("should mute items in legend when hovering (metabase#29224)", () => {
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "pie",
+    });
+
+    cy.findByTestId("chart-legend").findByText("Doohickey").realHover();
+    [
+      ["Doohickey", "true"],
+      ["Gadget", "false"],
+      ["Gizmo", "false"],
+      ["Widget", "false"],
+    ].map(args => checkLegendItemAriaCurrent(args[0], args[1]));
+  });
 });
 
 function ensurePieChartRendered(rows, totalValue) {
@@ -45,4 +60,10 @@ function ensurePieChartRendered(rows, totalValue) {
       cy.get(".LegendItem").contains(name).should("be.visible");
     });
   });
+}
+
+function checkLegendItemAriaCurrent(title, value) {
+  cy.findByTestId("chart-legend")
+    .findByTestId(`legend-item-${title}`)
+    .should("have.attr", "aria-current", value);
 }

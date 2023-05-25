@@ -24,7 +24,7 @@ Execute a query and download the result data as a file in the specified format.
 
 ### PARAMS:
 
-*  **`export-format`** value must be one of: `api`, `csv`, `json`, `xlsx`.
+*  **`export-format`** enum of csv, api, xlsx, json
 
 *  **`query`** value must be a valid JSON string.
 
@@ -45,6 +45,10 @@ Get historical query execution duration.
 Fetch a native version of an MBQL query.
 
 ### PARAMS:
+
+*  **`database`** value must be an integer greater than zero.
+
+*  **`pretty`** nullable boolean
 
 *  **`query`**
 
@@ -76,7 +80,7 @@ Generate a pivoted dataset for an ad-hoc query.
 
 ### PARAMS:
 
-*  **`database`** value may be nil, or if non-nil, value must be an integer.
+*  **`database`** nullable value must be an integer greater than zero.
 
 *  **`query`**
 

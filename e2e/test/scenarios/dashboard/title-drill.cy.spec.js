@@ -34,15 +34,20 @@ describe("scenarios > dashboard > title drill", () => {
     describe("as a user with access to underlying data", () => {
       it("should let you click through the title to the query builder (metabase#13042)", () => {
         // wait for qustion to load
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("foo");
 
         // drill through title
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Q1").click();
 
         // check that we're in the QB now
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("This question is written in SQL.");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("foo");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("bar");
       });
     });
@@ -55,15 +60,20 @@ describe("scenarios > dashboard > title drill", () => {
 
       it("should let you click through the title to the query builder (metabase#13042)", () => {
         // wait for qustion to load
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("foo");
 
         // drill through title
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Q1").click();
 
         // check that we're in the QB now
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("This question is written in SQL.");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("foo");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("bar");
       });
     });
@@ -101,41 +111,43 @@ describe("scenarios > dashboard > title drill", () => {
         display: "scalar",
       };
 
-      cy.createNativeQuestionAndDashboard({ questionDetails }).then(
-        ({ body: { id, card_id, dashboard_id } }) => {
-          cy.addFilterToDashboard({ filter, dashboard_id });
+      const dashboardDetails = { parameters: [filter] };
 
-          // Connect filter to the card
-          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-            cards: [
-              {
-                id,
-                card_id,
-                row: 0,
-                col: 0,
-                size_x: 8,
-                size_y: 6,
-                parameter_mappings: [
-                  {
-                    parameter_id: filter.id,
-                    card_id,
-                    target: ["dimension", ["template-tag", "filter"]],
-                  },
-                ],
-              },
-            ],
-          });
+      cy.createNativeQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails,
+      }).then(({ body: { id, card_id, dashboard_id } }) => {
+        // Connect filter to the card
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 8,
+              size_y: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: filter.id,
+                  card_id,
+                  target: ["dimension", ["template-tag", "filter"]],
+                },
+              ],
+            },
+          ],
+        });
 
-          visitDashboard(dashboard_id);
-          checkScalarResult("200");
-        },
-      );
+        visitDashboard(dashboard_id);
+        checkScalarResult("200");
+      });
     });
 
     describe("as a user with access to underlying data", () => {
       it("'contains' filter should still work after title drill through IF the native question field filter's type matches exactly (metabase#16181)", () => {
         checkScalarResult("200");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Text contains").click();
         cy.findByPlaceholderText("Enter some text").type("bb").blur();
         cy.button("Add filter").click();
@@ -144,6 +156,7 @@ describe("scenarios > dashboard > title drill", () => {
         checkScalarResult("12");
 
         // Drill through on the quesiton's title
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("16181").click();
 
         checkFilterLabelAndValue("Filter", "bb");
@@ -160,6 +173,7 @@ describe("scenarios > dashboard > title drill", () => {
       it("'contains' filter should still work after title drill through IF the native question field filter's type matches exactly (metabase#16181)", () => {
         checkScalarResult("200");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Text contains").click();
         cy.findByPlaceholderText("Enter some text").type("bb").blur();
         cy.button("Add filter").click();
@@ -168,6 +182,7 @@ describe("scenarios > dashboard > title drill", () => {
         checkScalarResult("12");
 
         // Drill through on the quesiton's title
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("16181").click();
 
         checkFilterLabelAndValue("Filter", "bb");
@@ -241,15 +256,19 @@ describe("scenarios > dashboard > title drill", () => {
         cy.wait("@cardQuery");
 
         // make sure query results are correct
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("42");
 
         // drill through title
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("GUI Question").click();
 
         // make sure the query builder filter is present
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Category is Doohickey");
 
         // make sure the results match
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("42");
       });
     });
@@ -264,12 +283,15 @@ describe("scenarios > dashboard > title drill", () => {
         cy.wait("@cardQuery");
 
         // make sure query results are correct
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("42");
 
         // drill through title
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("GUI Question").click();
 
         // make sure the results match
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("42");
 
         // update the parameter filter to a new value
@@ -284,12 +306,14 @@ describe("scenarios > dashboard > title drill", () => {
         cy.wait("@cardQuery");
 
         // make sure the results reflect the new filter
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("53");
 
         // make sure the set parameter filter persists after a page refresh
         cy.reload();
         cy.wait("@cardQuery");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("53");
 
         // make sure the unset id parameter works
@@ -303,6 +327,7 @@ describe("scenarios > dashboard > title drill", () => {
         cy.get(".RunButton").first().click();
         cy.wait("@cardQuery");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("1");
       });
     });

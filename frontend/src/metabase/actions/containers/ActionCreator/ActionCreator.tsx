@@ -14,7 +14,6 @@ import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import type {
-  Card,
   CardId,
   DatabaseId,
   WritebackActionId,
@@ -23,13 +22,14 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 import Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
 import { isSavedAction } from "../../utils";
 import ActionContext, { useActionContext } from "./ActionContext";
+import { ACE_ELEMENT_ID } from "./ActionContext/QueryActionContextProvider";
 import ActionCreatorView from "./ActionCreatorView";
-import { ACE_ELEMENT_ID } from "./QueryActionEditor";
 import CreateActionForm, {
   FormValues as CreateActionFormValues,
 } from "./CreateActionForm";
@@ -47,11 +47,10 @@ interface ActionLoaderProps {
 }
 
 interface ModelLoaderProps {
-  modelCard: Card;
+  model?: Question;
 }
 
 interface StateProps {
-  model: Question;
   metadata: Metadata;
 }
 
@@ -68,8 +67,7 @@ type Props = OwnProps &
   StateProps &
   DispatchProps;
 
-const mapStateToProps = (state: State, { modelCard }: ModelLoaderProps) => ({
-  model: new Question(modelCard, getMetadata(state)),
+const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
 });
 
@@ -90,15 +88,18 @@ function ActionCreator({
     formSettings,
     isNew,
     canSave,
+    isDirty,
     ui: UIProps,
     handleActionChange,
     handleFormSettingsChange,
     renderEditorBody,
   } = useActionContext();
 
+  useBeforeUnload(isDirty);
+
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
-  const isEditable = isNew || model.canWriteActions();
+  const isEditable = isNew || (model != null && model.canWriteActions());
 
   const handleCreate = async (values: CreateActionFormValues) => {
     if (action.type !== "query") {
@@ -124,7 +125,7 @@ function ActionCreator({
     if (isSavedAction(action)) {
       const reduxAction = await onUpdateAction({
         ...action,
-        model_id: model.id(),
+        model_id: model?.id(),
         visualization_settings: formSettings,
       });
       const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
@@ -170,7 +171,7 @@ function ActionCreator({
             initialValues={{
               name: action.name,
               description: action.description,
-              model_id: model.id(),
+              model_id: model?.id(),
             }}
             onCreate={handleCreate}
             onCancel={handleCloseNewActionModal}
@@ -184,9 +185,7 @@ function ActionCreator({
 function ensureAceEditorClosed() {
   // @ts-expect-error — `ace` isn't typed yet
   const editor = window.ace?.edit(ACE_ELEMENT_ID);
-  if (editor) {
-    editor.completer.popup.hide();
-  }
+  editor?.completer?.popup?.hide();
 }
 
 function ActionCreatorWithContext({
@@ -211,6 +210,7 @@ function ActionCreatorWithContext({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Actions.load({
     id: (state: State, props: OwnProps) => props.actionId,
@@ -219,7 +219,7 @@ export default _.compose(
   }),
   Questions.load({
     id: (state: State, props: OwnProps) => props?.modelId,
-    entityAlias: "modelCard",
+    entityAlias: "model",
   }),
   Database.loadList(),
   connect(mapStateToProps, mapDispatchToProps),

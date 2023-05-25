@@ -19,6 +19,7 @@ export const findSeriesByKey = (series: Series, key: string) => {
 export const getOrderedSeries = (
   series: Series,
   settings: VisualizationSettings,
+  isReversed?: boolean,
 ) => {
   if (
     (settings["graph.dimensions"] &&
@@ -32,6 +33,10 @@ export const getOrderedSeries = (
     ?.filter(orderedItem => orderedItem.enabled)
     .map(orderedItem => findSeriesByKey(series, orderedItem.key))
     .filter(isNotNull);
+
+  if (isReversed) {
+    orderedSeries.reverse();
+  }
 
   if ("_raw" in series) {
     const transformedOrderedSeries = [...orderedSeries] as TransformedSeries;

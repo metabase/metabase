@@ -10,8 +10,6 @@ export function createEmptyWritebackAction(): Partial<WritebackQueryAction> {
     parameters: [],
     dataset_query: {
       type: "native",
-      // @ts-expect-error — this is a valid unsaved query state
-      // We could allow nulls in the query type, but that'd require a lot of changes
       database: null,
       native: {
         query: "",

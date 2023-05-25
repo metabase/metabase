@@ -6,7 +6,7 @@ import {
 } from "metabase/collections/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-import Metadata from "metabase-lib/metadata/Metadata";
+import Database from "metabase-lib/metadata/Database";
 import PinnedQuestionLoader from "./PinnedQuestionLoader";
 import {
   CardActionMenu,
@@ -18,7 +18,7 @@ import {
 export interface PinnedQuestionCardProps {
   item: CollectionItem;
   collection: Collection;
-  metadata: Metadata;
+  databases?: Database[];
   bookmarks?: Bookmark[];
   onCopy: (items: CollectionItem[]) => void;
   onMove: (items: CollectionItem[]) => void;
@@ -29,7 +29,7 @@ export interface PinnedQuestionCardProps {
 const PinnedQuestionCard = ({
   item,
   collection,
-  metadata,
+  databases,
   bookmarks,
   onCopy,
   onMove,
@@ -43,6 +43,7 @@ const PinnedQuestionCard = ({
       <CardActionMenu
         item={item}
         collection={collection}
+        databases={databases}
         bookmarks={bookmarks}
         onCopy={onCopy}
         onMove={onMove}
@@ -50,7 +51,7 @@ const PinnedQuestionCard = ({
         deleteBookmark={onDeleteBookmark}
       />
       {isPreview ? (
-        <PinnedQuestionLoader id={item.id} metadata={metadata}>
+        <PinnedQuestionLoader id={item.id}>
           {({ question, rawSeries, loading, error, errorIcon }) =>
             loading ? (
               <CardPreviewSkeleton
@@ -89,4 +90,5 @@ const getSkeletonTooltip = (item: CollectionItem) => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default PinnedQuestionCard;

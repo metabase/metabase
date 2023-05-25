@@ -4,7 +4,50 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.47.0
+
+- The multimethod `metabase.driver/syncable-schemas` has been added. This method is used to list schemas to upload
+  CSVs to, and it should include all schemas that are able to be synced to. Currently it only needs to be implemented
+  if the database has schema, and the database supports the `uploads` feature.
+
+- A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
+  schemas (also known as namespaces) or not. Most databases have schemas so this feature is supported on by default.
+  An implemention of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
+  database doesn't store tables in schemas.
+
+- The multimethod `metabase.driver/supports?` has been deprecated in favor of `metabase.driver/database-supports?`. The existing default implementation of `database-supports?` currently calls `supports?`, but it will be removed in 0.55.0.
+
 ## Metabase 0.46.0
+
+- The process for building a driver has changed slightly in Metabase 0.46.0. Your build command should now look
+  something like this:
+
+  ```sh
+  # Example for building the driver with bash or similar
+
+  # switch to the local checkout of the Metabase repo
+  cd /path/to/metabase/repo
+
+  # get absolute path to the driver project directory
+  DRIVER_PATH=`readlink -f ~/sudoku-driver`
+
+  # Build driver. See explanation in sample Sudoku driver README
+  clojure \
+    -Sdeps "{:aliases {:sudoku {:extra-deps {com.metabase/sudoku-driver {:local/root \"$DRIVER_PATH\"}}}}}"  \
+    -X:build:sudoku \
+    build-drivers.build-driver/build-driver! \
+    "{:driver :sudoku, :project-dir \"$DRIVER_PATH\", :target-dir \"$DRIVER_PATH/target\"}"
+  ```
+
+  Take a look at our [build instructions for the sample Sudoku
+  driver](https://github.com/metabase/sudoku-driver#build-it-updated-for-build-script-changes-in-metabase-0460)
+  for an explanation of the command.
+
+  Note that while this command itself is quite a lot to type, you no longer need to specify a `:build` alias in your
+  driver's `deps.edn` file.
+
+  Please upvote https://ask.clojure.org/index.php/7843/allow-specifying-aliases-coordinates-that-point-projects ,
+  which will allow us to simplify the driver build command in the future.
 
 - The multimethod `metabase.driver/table-rows-sample` has been added. This method is used in situations where Metabase
   needs a limited sample from a table, like when fingerprinting. The default implementation defined in the

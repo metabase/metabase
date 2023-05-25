@@ -13,25 +13,29 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (s/defn ^:private update-field-metadata-if-needed! :- (s/enum 0 1)
   "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs
   base type, database type, semantic type, and comments/remarks; returns `1` if the Field was updated; `0` otherwise."
   [table :- i/TableInstance, field-metadata :- i/TableMetadataField, metabase-field :- common/TableMetadataFieldWithID]
-  (let [{old-database-type     :database-type
-         old-base-type         :base-type
-         old-field-comment     :field-comment
-         old-semantic-type     :semantic-type
-         old-database-position :database-position
-         old-database-name     :name
-         old-db-required       :database-required} metabase-field
-        {new-database-type     :database-type
-         new-base-type         :base-type
-         new-field-comment     :field-comment
-         new-database-position :database-position
-         new-database-name     :name
-         new-db-required       :database-required} field-metadata
+  (let [{old-database-type              :database-type
+         old-base-type                  :base-type
+         old-field-comment              :field-comment
+         old-semantic-type              :semantic-type
+         old-database-position          :database-position
+         old-position                   :position
+         old-database-name              :name
+         old-database-is-auto-increment :database-is-auto-increment
+         old-db-required                :database-required} metabase-field
+        {new-database-type              :database-type
+         new-base-type                  :base-type
+         new-field-comment              :field-comment
+         new-database-position          :database-position
+         new-database-name              :name
+         new-database-is-auto-increment :database-is-auto-increment
+         new-db-required                :database-required} field-metadata
+        new-database-is-auto-increment             (boolean new-database-is-auto-increment)
         new-db-required                            (boolean new-db-required)
         new-database-type                          (or new-database-type "NULL")
         new-semantic-type                          (common/semantic-type field-metadata)
@@ -58,6 +62,7 @@
         ;; different they have the same canonical representation (lower-casing at the moment).
         new-name? (not= old-database-name new-database-name)
 
+        new-db-auto-incremented? (not= old-database-is-auto-increment new-database-is-auto-increment)
         new-db-required? (not= old-db-required new-db-required)
 
         ;; calculate combined updates
@@ -91,12 +96,25 @@
                           old-database-position
                           new-database-position))
            {:database_position new-database-position})
+         (when (and (= (:field_order table) :database)
+                    (not= old-position new-database-position))
+           (log/info (trs "Position of {0} has changed from ''{1}'' to ''{2}''."
+                          (common/field-metadata-name-for-logging table metabase-field)
+                          old-position
+                          new-database-position))
+           {:position new-database-position})
          (when new-name?
            (log/info (trs "Name of {0} has changed from ''{1}'' to ''{2}''."
                           (common/field-metadata-name-for-logging table metabase-field)
                           old-database-name
                           new-database-name))
            {:name new-database-name})
+         (when new-db-auto-incremented?
+           (log/info (trs "Database auto incremented of {0} has changed from ''{1}'' to ''{2}''."
+                          (common/field-metadata-name-for-logging table metabase-field)
+                          old-database-is-auto-increment
+                          new-database-is-auto-increment))
+           {:database_is_auto_increment new-database-is-auto-increment})
          (when new-db-required?
            (log/info (trs "Database required of {0} has changed from ''{1}'' to ''{2}''."
                           (common/field-metadata-name-for-logging table metabase-field)
@@ -105,7 +123,7 @@
            {:database_required new-db-required}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
-             (db/update! Field (u/the-id metabase-field) updates))
+             (pos? (t2/update! Field (u/the-id metabase-field) updates)))
       1
       0)))
 

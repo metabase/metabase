@@ -3,6 +3,7 @@ import {
   popover,
   visitDashboard,
   visitIframe,
+  updateDashboardCards,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -56,6 +57,13 @@ describe.skip("issue 15860", () => {
         query: { "source-table": PRODUCTS_ID },
       },
       dashboardDetails: {
+        embedding_params: {
+          q1_id: "locked",
+          q1_category: "enabled",
+          q2_id: "locked",
+          q2_category: "enabled",
+        },
+        enable_embedding: true,
         parameters: [
           q1IdFilter,
           q1CategoryFilter,
@@ -63,69 +71,56 @@ describe.skip("issue 15860", () => {
           q2CategoryFilter,
         ],
       },
-    }).then(({ body: { id: q1DashCard, card_id: q1, dashboard_id } }) => {
+      cardDetails: {
+        size_x: 8,
+        size_y: 6,
+      },
+    }).then(({ body: { card_id: q1, dashboard_id } }) => {
       // Create a second question with the same source table
       cy.createQuestion({
         name: "Q2",
         query: { "source-table": PRODUCTS_ID },
       }).then(({ body: { id: q2 } }) => {
-        // Add it to the dashboard
-        cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
-          cardId: q2,
-          row: 0,
-          col: 8,
-          size_x: 10,
-          size_y: 6,
-        }).then(({ body: { id: q2DashCard } }) => {
-          // Map filters to the cards and rearrange cards so they can nicely fit
-          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-            cards: [
-              {
-                id: q1DashCard,
-                card_id: q1,
-                row: 0,
-                col: 0,
-                size_x: 8,
-                size_y: 6,
-                series: [],
-                visualization_settings: {},
-                parameter_mappings: [
-                  {
-                    parameter_id: q1IdFilter.id,
-                    card_id: q1,
-                    target: ["dimension", ["field", PRODUCTS.ID, null]],
-                  },
-                  {
-                    parameter_id: q1CategoryFilter.id,
-                    card_id: q1,
-                    target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-                  },
-                ],
-              },
-              {
-                id: q2DashCard,
-                card_id: q2,
-                row: 0,
-                col: 8,
-                size_x: 10,
-                size_y: 6,
-                series: [],
-                visualization_settings: {},
-                parameter_mappings: [
-                  {
-                    parameter_id: q2IdFilter.id,
-                    card_id: q2,
-                    target: ["dimension", ["field", PRODUCTS.ID, null]],
-                  },
-                  {
-                    parameter_id: q2CategoryFilter.id,
-                    card_id: q2,
-                    target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-                  },
-                ],
-              },
-            ],
-          });
+        updateDashboardCards({
+          dashboard_id,
+          cards: [
+            // Add card for second question with parameter mappings
+            {
+              card_id: q2,
+              row: 0,
+              col: 8,
+              size_x: 10,
+              size_y: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: q2IdFilter.id,
+                  card_id: q2,
+                  target: ["dimension", ["field", PRODUCTS.ID, null]],
+                },
+                {
+                  parameter_id: q2CategoryFilter.id,
+                  card_id: q2,
+                  target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                },
+              ],
+            },
+            // Add parameter mappings to first question's card
+            {
+              card_id: q1,
+              parameter_mappings: [
+                {
+                  parameter_id: q1IdFilter.id,
+                  card_id: q1,
+                  target: ["dimension", ["field", PRODUCTS.ID, null]],
+                },
+                {
+                  parameter_id: q1CategoryFilter.id,
+                  card_id: q1,
+                  target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                },
+              ],
+            },
+          ],
         });
       });
 
@@ -145,6 +140,7 @@ describe.skip("issue 15860", () => {
 
   it("should work for locked linked filters connected to different cards with the same source table (metabase#15860)", () => {
     cy.icon("share").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Embed in your application").click();
 
     setDefaultValueForLockedFilter("Q1 ID", 1);
@@ -152,6 +148,7 @@ describe.skip("issue 15860", () => {
 
     visitIframe();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Q1 Category").click();
 
     popover().within(() => {
@@ -160,6 +157,7 @@ describe.skip("issue 15860", () => {
         .and("contain", "Gizmo");
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Q2 Category").click();
 
     popover().within(() => {

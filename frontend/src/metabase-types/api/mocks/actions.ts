@@ -44,6 +44,7 @@ export const createMockQueryAction = ({
     archived: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    visualization_settings: { fields: {} },
     public_uuid: null,
     ...opts,
     type: "query",

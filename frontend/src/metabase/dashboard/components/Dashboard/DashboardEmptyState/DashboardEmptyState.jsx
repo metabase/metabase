@@ -2,9 +2,10 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import Link from "metabase/core/components/Link";
 import Button from "metabase/core/components/Button";
 import EmptyState from "metabase/components/EmptyState";
-import { Container, BrandLink } from "./DashboardEmptyState.styled";
+import { Container } from "./DashboardEmptyState.styled";
 
 const propTypes = {
   isNightMode: PropTypes.bool.isRequired,
@@ -25,13 +26,14 @@ const DashboardEmptyState = ({ isNightMode, addQuestion, closeNavbar }) => (
             {t`Add a saved question`}
           </Button>
           {t`, or `}
-          <BrandLink
+          <Link
+            variant="brandBold"
             to="/question/new"
             className="text-bold text-brand"
             onClick={closeNavbar}
           >
             {t`ask a new one`}
-          </BrandLink>
+          </Link>
         </>
       }
     />

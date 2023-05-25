@@ -4,23 +4,26 @@ import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 
 import ActionParametersInputForm, {
-  ActionParamatersInputFormProps,
+  ActionParametersInputFormProps,
 } from "./ActionParametersInputForm";
 
 interface ModalProps {
-  onClose: () => void;
   title: string;
   showConfirmMessage?: boolean;
   confirmMessage?: string;
+  onClose: () => void;
 }
 
-export default function ActionParametersInputModal({
-  onClose,
+export type ActionParametersInputModalProps = ModalProps &
+  ActionParametersInputFormProps;
+
+function ActionParametersInputModal({
   title,
   showConfirmMessage,
   confirmMessage,
+  onClose,
   ...formProps
-}: ModalProps & ActionParamatersInputFormProps) {
+}: ActionParametersInputModalProps) {
   return (
     <Modal onClose={onClose}>
       <ModalContent title={title} onClose={onClose}>
@@ -36,3 +39,6 @@ export default function ActionParametersInputModal({
 const ConfirmMessage = ({ message }: { message?: string }) => (
   <div>{message ?? t`This action cannot be undone.`}</div>
 );
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default ActionParametersInputModal;

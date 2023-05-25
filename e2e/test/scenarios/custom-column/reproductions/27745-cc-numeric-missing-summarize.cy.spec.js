@@ -8,7 +8,7 @@ import {
 } from "e2e/support/helpers";
 
 ["postgres", "mysql"].forEach(dialect => {
-  describe.skip(`issue 27745 (${dialect})`, { tags: "@external" }, () => {
+  describe(`issue 27745 (${dialect})`, { tags: "@external" }, () => {
     const tableName = "colors27745";
 
     beforeEach(() => {
@@ -21,7 +21,9 @@ import {
 
     it("should display all summarize options if the only numeric field is a custom column (metabase#27745)", () => {
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Writable/i).click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/colors/i).click();
       cy.icon("add_data").click();
       enterCustomColumnDetails({

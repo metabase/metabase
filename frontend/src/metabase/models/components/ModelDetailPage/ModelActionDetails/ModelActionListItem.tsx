@@ -3,6 +3,7 @@ import { t } from "ttag";
 import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Icon from "metabase/components/Icon";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import ActionExecuteModal from "metabase/actions/containers/ActionExecuteModal";
 import { WritebackAction, WritebackQueryAction } from "metabase-types/api";
@@ -33,6 +34,14 @@ interface ModalProps {
 }
 
 function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
+  if (!action.dataset_query?.native?.query) {
+    return (
+      <CodeBlock>
+        <Icon name="warning" size={16} tooltip={t`No query found`} />
+      </CodeBlock>
+    );
+  }
+
   return <CodeBlock>{action.dataset_query.native.query}</CodeBlock>;
 }
 
@@ -85,6 +94,9 @@ function ModelActionListItem({
         <div>
           <ActionTitle to={actionUrl}>{action.name}</ActionTitle>
           <ActionSubtitle>
+            {action.type === "implicit" && (
+              <ActionSubtitlePart>{t`Basic action`}</ActionSubtitlePart>
+            )}
             {action.public_uuid && (
               <ActionSubtitlePart>{t`Public action form`}</ActionSubtitlePart>
             )}
@@ -131,4 +143,5 @@ function ModelActionListItem({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelActionListItem;

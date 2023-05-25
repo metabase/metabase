@@ -1,5 +1,5 @@
 import React from "react";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 
 import { renderWithProviders } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -78,8 +78,13 @@ describe("EmbedModalContent", () => {
     );
 
     openEmbedModal();
-    expect(screen.getByText("My param")).toBeInTheDocument();
-    expect(screen.getByLabelText("My param")).toHaveTextContent("Locked");
+    const parametersSection = screen.getByRole("region", {
+      name: "Parameters",
+    });
+    expect(within(parametersSection).getByText("My param")).toBeInTheDocument();
+    expect(
+      within(parametersSection).getByLabelText("My param"),
+    ).toHaveTextContent("Locked");
   });
 
   it("should only render valid parameters", () => {

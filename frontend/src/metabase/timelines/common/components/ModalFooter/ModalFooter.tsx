@@ -13,4 +13,5 @@ const ModalFooter = ({
   return <FooterRoot hasPadding={hasPadding}>{children}</FooterRoot>;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModalFooter;

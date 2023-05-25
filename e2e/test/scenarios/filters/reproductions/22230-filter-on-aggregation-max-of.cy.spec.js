@@ -23,7 +23,7 @@ const questionDetails = {
   },
 };
 
-describe.skip("issue 22230", () => {
+describe("issue 22230", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -32,13 +32,21 @@ describe.skip("issue 22230", () => {
   });
 
   it("should be able to filter on an aggregation (metabase#22230)", () => {
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
     popover().contains("Max of Name").click();
+    cy.findByTestId("select-button").click();
+    cy.findByRole("option", { name: "Starts with" }).click();
 
-    cy.findByPlaceholderText("Enter some text").type("Zora").blur();
+    cy.findByPlaceholderText("Enter some text").type("Zo").blur();
     cy.button("Add filter").click();
 
     visualize();
-    cy.findByText("Zora Schamberger");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Showing 2 rows").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Zora Schamberger").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Zoie Kozey").should("be.visible");
   });
 });

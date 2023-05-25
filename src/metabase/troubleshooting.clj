@@ -5,7 +5,6 @@
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (javax.management ObjectName)))
@@ -32,7 +31,7 @@
 (defn metabase-info
   "Make it easy for the user to tell us what they're using"
   []
-  {:databases                    (->> (db/select 'Database) (map :engine) distinct)
+  {:databases                    (->> (t2/select 'Database) (map :engine) distinct)
    :hosting-env                  (stats/environment-type)
    :application-database         (mdb/db-type)
    :application-database-details (t2/with-connection [^java.sql.Connection conn]

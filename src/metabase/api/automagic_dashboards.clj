@@ -21,10 +21,12 @@
    [metabase.transforms.dashboard :as transform.dashboard]
    [metabase.transforms.materialize :as tf.materialize]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -58,11 +60,11 @@
       (s/pred decode-base64-json)
     (deferred-tru "value couldn''t be parsed as base64 encoded JSON")))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/database/:id/candidates"
+(api/defendpoint GET "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards orderd by interestingness."
   [id]
-  (-> (db/select-one Database :id id)
+  {id ms/PositiveInt}
+  (-> (t2/select-one Database :id id)
       api/read-check
       candidate-tables))
 
@@ -95,15 +97,21 @@
   (if-let [[_ card-id-str] (when (string? table-id-str)
                              (re-matches #"^card__(\d+$)" table-id-str))]
     (->entity :question card-id-str)
-    (api/read-check (db/select-one Table :id (ensure-int table-id-str)))))
+    (api/read-check (t2/select-one Table :id (ensure-int table-id-str)))))
 
 (defmethod ->entity :segment
   [_entity-type segment-id-str]
-  (api/read-check (db/select-one Segment :id (ensure-int segment-id-str))))
+  (api/read-check (t2/select-one Segment :id (ensure-int segment-id-str))))
+
+(defmethod ->entity :model
+  [_entity-type card-id-str]
+  (api/read-check (t2/select-one Card
+                    :id (ensure-int card-id-str)
+                    :dataset true)))
 
 (defmethod ->entity :question
   [_entity-type card-id-str]
-  (api/read-check (db/select-one Card :id (ensure-int card-id-str))))
+  (api/read-check (t2/select-one Card :id (ensure-int card-id-str))))
 
 (defmethod ->entity :adhoc
   [_entity-type encoded-query]
@@ -111,20 +119,23 @@
 
 (defmethod ->entity :metric
   [_entity-type metric-id-str]
-  (api/read-check (db/select-one Metric :id (ensure-int metric-id-str))))
+  (api/read-check (t2/select-one Metric :id (ensure-int metric-id-str))))
 
 (defmethod ->entity :field
   [_entity-type field-id-str]
-  (api/read-check (db/select-one Field :id (ensure-int field-id-str))))
+  (api/read-check (t2/select-one Field :id (ensure-int field-id-str))))
 
 (defmethod ->entity :transform
   [_entity-type transform-name]
-  (api/read-check (db/select-one Collection :id (tf.materialize/get-collection transform-name)))
+  (api/read-check (t2/select-one Collection :id (tf.materialize/get-collection transform-name)))
   transform-name)
+
+(def ^:private entities
+  (map name (keys (methods ->entity))))
 
 (def ^:private Entity
   (su/with-api-error-message
-      (apply s/enum (map name (keys (methods ->entity))))
+      (apply s/enum entities)
     (deferred-tru "Invalid entity type")))
 
 (def ^:private ComparisonEntity
@@ -132,12 +143,13 @@
       (s/enum "segment" "adhoc" "table")
     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"")))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:entity/:entity-id-or-query"
+(api/defendpoint GET "/:entity/:entity-id-or-query"
   "Return an automagic dashboard for entity `entity` with id `id`."
   [entity entity-id-or-query show]
-  {show   Show
-   entity Entity}
+  {show   [:maybe [:= "all"]]
+   entity (mu/with-api-error-message
+            (into [:enum] entities)
+            (deferred-tru "Invalid entity type"))}
   (if (= entity "transform")
     (transform.dashboard/dashboard (->entity entity entity-id-or-query))
     (-> (->entity entity entity-id-or-query)

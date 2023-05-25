@@ -16,7 +16,7 @@ export const SET_LOCALE_LOADED = "metabase/setup/SET_LOCALE_LOADED";
 export const setLocale = createThunkAction(
   SET_LOCALE_LOADED,
   (locale: Locale) => async (dispatch: any) => {
-    dispatch.action(SET_LOCALE, locale);
+    dispatch({ type: SET_LOCALE, payload: locale });
     await loadLocalization(locale.code);
   },
 );

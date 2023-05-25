@@ -1,7 +1,7 @@
 import type {
-  ParameterTarget,
   ParameterDimensionTarget,
-} from "metabase-types/types/Parameter";
+  ParameterTarget,
+} from "metabase-types/api";
 
 export function isDimensionTarget(
   target: ParameterTarget,

@@ -13,8 +13,8 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,12 +22,12 @@
 (def temp-db-name "Fingerprint test-data copy")
 
 (defn temp-field [from-field-id table-id]
-  (-> (db/select-one Field :id from-field-id)
+  (-> (t2/select-one Field :id from-field-id)
       (dissoc :id)
       (assoc :table_id table-id)))
 
 (defn temp-table [from-tbl-id db-id]
-  (-> (db/select-one Table :id from-tbl-id)
+  (-> (t2/select-one Table :id from-tbl-id)
       (dissoc :id)
       (update :display_name #(str "Temp " %))
       (assoc :db_id db-id)))
@@ -42,7 +42,7 @@
   "Gets the personal collection ID for :crowberto (needed for tests). Must be public because the `with-world` macro
   is public."
   []
-  (db/select-one-field :id Collection :personal_owner_id (mt/user->id :crowberto)))
+  (t2/select-one-fn :id Collection :personal_owner_id (mt/user->id :crowberto)))
 
 (defmacro with-temp-dpc
   "Wraps with-temp*, but binding `*allow-deleting-personal-collections*` to true so that temporary personal collections
@@ -52,7 +52,7 @@
      (tt/with-temp* ~model-bindings ~@body)))
 
 (defn create! [model & {:as properties}]
-  (db/insert! model (merge (tt/with-temp-defaults model) properties)))
+ (first (t2/insert-returning-instances! model (merge (tt/with-temp-defaults model) properties))))
 
 (defn- do-with-in-memory-h2-db [db-name-prefix f]
   (let [db-name           (str db-name-prefix (mt/random-name))

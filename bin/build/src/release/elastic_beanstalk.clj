@@ -6,7 +6,7 @@
    [metabuild-common.core :as u]
    [release.common :as c]
    [release.common.http :as common.http]
-   [release.common.upload :as upload]
+   [release.common.upload :as common.upload]
    [stencil.core :as stencil]
    [stencil.loader]))
 
@@ -105,9 +105,9 @@
 (defn- upload-artifacts! []
   (u/step "Upload Elastic Beanstalk artifacts"
     (u/step "Upload metabase-aws-eb.zip"
-      (upload/upload-artifact! archive-path "metabase-aws-eb.zip"))
+      (common.upload/upload-artifact! archive-path "metabase-aws-eb.zip"))
     (u/step "Upload launch-aws-eb.html"
-      (upload/upload-artifact! html-file-path "launch-aws-eb.html"))))
+      (common.upload/upload-artifact! html-file-path "launch-aws-eb.html"))))
 
 ;; TODO -- we should merge the EB build logic into this script, it's still an ancient bash script
 (defn publish-elastic-beanstalk-artifacts! []

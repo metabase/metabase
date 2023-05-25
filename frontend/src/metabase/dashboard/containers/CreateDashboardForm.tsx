@@ -40,7 +40,7 @@ interface CreateDashboardProperties {
 }
 
 export interface CreateDashboardFormOwnProps {
-  collectionId?: CollectionId; // can be used by `getInitialCollectionId`
+  collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
 }
@@ -132,6 +132,7 @@ function CreateDashboardForm({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   withRouter,
   connect(mapStateToProps, mapDispatchToProps),

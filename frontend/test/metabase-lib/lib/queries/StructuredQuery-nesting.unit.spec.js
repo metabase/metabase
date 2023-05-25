@@ -1,54 +1,77 @@
+import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import {
+  createOrdersTable,
+  createProductsTable,
+  createSampleDatabase,
   ORDERS,
-  PRODUCTS,
-  PEOPLE,
-  metadata,
-} from "__support__/sample_database_fixture";
+  ORDERS_ID,
+  PEOPLE_ID,
+  PRODUCTS_ID,
+} from "metabase-types/api/mocks/presets";
+import { createMockMetadata } from "__support__/metadata";
+
+const setup = ({ tables = [] } = {}) => {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+    tables,
+  });
+
+  return {
+    ordersTable: metadata.table(ORDERS_ID),
+    productsTable: metadata.table(PRODUCTS_ID),
+    peopleTable: metadata.table(PEOPLE_ID),
+  };
+};
 
 describe("StructuredQuery nesting", () => {
   describe("nest", () => {
     it("should nest correctly", () => {
-      const q = ORDERS.query();
-      expect(q.query()).toEqual({ "source-table": ORDERS.id });
+      const { ordersTable } = setup();
+      const q = ordersTable.query();
+      expect(q.query()).toEqual({ "source-table": ORDERS_ID });
       expect(q.nest().query()).toEqual({
-        "source-query": { "source-table": ORDERS.id },
+        "source-query": { "source-table": ORDERS_ID },
       });
     });
 
     it("should be able to modify the outer question", () => {
-      const q = ORDERS.query();
+      const { ordersTable } = setup();
+      const q = ordersTable.query();
       expect(
         q
           .nest()
-          .filter(["=", ["field", ORDERS.TOTAL.id, null], 42])
+          .filter(["=", ["field", ORDERS.TOTAL, null], 42])
           .query(),
       ).toEqual({
-        "source-query": { "source-table": ORDERS.id },
-        filter: ["=", ["field", ORDERS.TOTAL.id, null], 42],
+        "source-query": { "source-table": ORDERS_ID },
+        filter: ["=", ["field", ORDERS.TOTAL, null], 42],
       });
     });
 
     it("should be able to modify the source question", () => {
-      const q = ORDERS.query();
+      const { ordersTable } = setup();
+      const q = ordersTable.query();
       expect(
         q
           .nest()
           .sourceQuery()
-          .filter(["=", ["field", ORDERS.TOTAL.id, null], 42])
+          .filter(["=", ["field", ORDERS.TOTAL, null], 42])
           .parentQuery()
           .query(),
       ).toEqual({
         "source-query": {
-          "source-table": ORDERS.id,
-          filter: ["=", ["field", ORDERS.TOTAL.id, null], 42],
+          "source-table": ORDERS_ID,
+          filter: ["=", ["field", ORDERS.TOTAL, null], 42],
         },
       });
     });
 
     it("should return a table with correct dimensions", () => {
-      const q = ORDERS.query()
+      const { ordersTable } = setup();
+      const q = ordersTable
+        .query()
         .aggregate(["count"])
-        .breakout(["field", ORDERS.PRODUCT_ID.id, null]);
+        .breakout(["field", ORDERS.PRODUCT_ID, null]);
       expect(
         q
           .nest()
@@ -63,18 +86,16 @@ describe("StructuredQuery nesting", () => {
 
   describe("topLevelFilters", () => {
     it("should return filters for the last two stages", () => {
-      const q = ORDERS.query()
+      const { ordersTable } = setup();
+      const q = ordersTable
+        .query()
         .aggregate(["count"])
-        .filter(["=", ["field", ORDERS.PRODUCT_ID.id, null], 1])
+        .filter(["=", ["field", ORDERS.PRODUCT_ID, null], 1])
         .nest()
         .filter(["=", ["field", "count", { "base-type": "type/Integer" }], 2]);
       const filters = q.topLevelFilters();
       expect(filters).toHaveLength(2);
-      expect(filters[0]).toEqual([
-        "=",
-        ["field", ORDERS.PRODUCT_ID.id, null],
-        1,
-      ]);
+      expect(filters[0]).toEqual(["=", ["field", ORDERS.PRODUCT_ID, null], 1]);
       expect(filters[1]).toEqual([
         "=",
         ["field", "count", { "base-type": "type/Integer" }],
@@ -85,28 +106,32 @@ describe("StructuredQuery nesting", () => {
 
   describe("topLevelQuery", () => {
     it("should return the query if it's summarized", () => {
-      const q = ORDERS.query();
+      const { ordersTable } = setup();
+      const q = ordersTable.query();
       expect(q.topLevelQuery().query()).toEqual({
-        "source-table": ORDERS.id,
+        "source-table": ORDERS_ID,
       });
     });
     it("should return the query if it's not summarized", () => {
-      const q = ORDERS.query().aggregate(["count"]);
+      const { ordersTable } = setup();
+      const q = ordersTable.query().aggregate(["count"]);
       expect(q.topLevelQuery().query()).toEqual({
-        "source-table": ORDERS.id,
+        "source-table": ORDERS_ID,
         aggregation: [["count"]],
       });
     });
     it("should return last stage if none are summarized", () => {
-      const q = ORDERS.query().nest();
+      const { ordersTable } = setup();
+      const q = ordersTable.query().nest();
       expect(q.topLevelQuery().query()).toEqual({
-        "source-query": { "source-table": ORDERS.id },
+        "source-query": { "source-table": ORDERS_ID },
       });
     });
     it("should return last summarized stage if any is summarized", () => {
-      const q = ORDERS.query().aggregate(["count"]).nest();
+      const { ordersTable } = setup();
+      const q = ordersTable.query().aggregate(["count"]).nest();
       expect(q.topLevelQuery().query()).toEqual({
-        "source-table": ORDERS.id,
+        "source-table": ORDERS_ID,
         aggregation: [["count"]],
       });
     });
@@ -114,16 +139,19 @@ describe("StructuredQuery nesting", () => {
 
   describe("topLevelDimension", () => {
     it("should return same dimension if not nested", () => {
-      const q = ORDERS.query();
+      const { ordersTable } = setup();
+      const q = ordersTable.query();
       const d = q.topLevelDimension(
-        q.parseFieldReference(["field", ORDERS.TOTAL.id, null]),
+        q.parseFieldReference(["field", ORDERS.TOTAL, null]),
       );
-      expect(d.mbql()).toEqual(["field", ORDERS.TOTAL.id, null]);
+      expect(d.mbql()).toEqual(["field", ORDERS.TOTAL, null]);
     });
     it("should return underlying dimension for a nested query", () => {
-      const q = ORDERS.query()
+      const { ordersTable } = setup();
+      const q = ordersTable
+        .query()
         .aggregate(["count"])
-        .breakout(["field", ORDERS.TOTAL.id, null])
+        .breakout(["field", ORDERS.TOTAL, null])
         .nest();
       const d = q.topLevelDimension(
         q.parseFieldReference([
@@ -132,77 +160,45 @@ describe("StructuredQuery nesting", () => {
           { "base-type": "type/Float" },
         ]),
       );
-      expect(d.mbql()).toEqual(["field", ORDERS.TOTAL.id, null]);
+      expect(d.mbql()).toEqual(["field", ORDERS.TOTAL, null]);
     });
   });
 
   describe("model question", () => {
-    let dataset;
-    let virtualCardTable;
-    beforeEach(() => {
-      const question = ORDERS.question();
-      dataset = question.setId(123).setDataset(true);
-
-      // create a virtual table for the card
-      // that contains fields from both Orders and Products tables
-      // to imitate an explicit join of Products to Orders
-      virtualCardTable = ORDERS.clone();
-      virtualCardTable.id = `card__123`;
-      virtualCardTable.fields = virtualCardTable.fields
-        .map(f =>
-          f.clone({
-            table_id: `card__123`,
-            uniqueId: `card__123:${f.id}`,
-          }),
-        )
-        .concat(
-          PRODUCTS.fields.map(f => {
-            const field = f.clone({
-              table_id: `card__123`,
-              uniqueId: `card__123:${f.id}`,
-            });
-
-            return field;
-          }),
-        );
-
-      // add instances to the `metadata` instance
-      metadata.questions[dataset.id()] = dataset;
-      metadata.tables[virtualCardTable.id] = virtualCardTable;
-      virtualCardTable.fields.forEach(f => {
-        metadata.fields[f.uniqueId] = f;
-      });
-    });
-
     it("should not include implicit join dimensions when the underyling question has an explicit join", () => {
+      const fields = [
+        ...createOrdersTable().fields,
+        ...createProductsTable().fields,
+      ];
+
+      const { ordersTable, productsTable, peopleTable } = setup({
+        tables: [
+          createMockTable({
+            id: "card__1",
+            fields: fields.map(field =>
+              createMockField({ ...field, table_id: "card__1" }),
+            ),
+          }),
+        ],
+      });
+
+      const metadata = ordersTable.metadata;
+      const question = ordersTable.question();
+      const dataset = question.setId(1).setDataset(true);
       const nestedDatasetQuery = dataset.composeDataset().query();
       expect(
         // get a list of all dimension options for the nested query
         nestedDatasetQuery
           .dimensionOptions()
           .all()
-          .map(d => d.field().getPlainObject()),
+          .map(d => d.field()),
       ).toEqual([
         // Order fields
-        ...ORDERS.fields.map(f =>
-          f
-            .clone({
-              table_id: `card__123`,
-              uniqueId: `card__123:${f.id}`,
-            })
-            .getPlainObject(),
-        ),
+        ...ordersTable.fields.map(({ id }) => metadata.field(id, "card__1")),
         // Product fields from the explicit join
-        ...PRODUCTS.fields.map(f =>
-          f
-            .clone({
-              table_id: `card__123`,
-              uniqueId: `card__123:${f.id}`,
-            })
-            .getPlainObject(),
-        ),
+        ...productsTable.fields.map(({ id }) => metadata.field(id, "card__1")),
         // People fields from the implicit join
-        ...PEOPLE.fields.map(f => f.getPlainObject()),
+        ...peopleTable.fields,
       ]);
     });
   });

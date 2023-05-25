@@ -9,7 +9,7 @@ import React, {
 
 import _ from "underscore";
 import cx from "classnames";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton, {
@@ -67,6 +67,7 @@ export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
   optionStylesFn?: (option: TOption) => CSSProperties | undefined;
 
   footer?: ReactNode;
+  "data-testid"?: string;
 }
 
 export interface SelectOption<TValue = Key> {
@@ -253,6 +254,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
       disabled,
       width,
       footer,
+      "data-testid": testId,
     } = this.props;
 
     const sections = this._getSections();
@@ -321,6 +323,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
           searchFuzzy={searchFuzzy}
           searchPlaceholder={searchPlaceholder}
           hideEmptySectionsInSearch={hideEmptySectionsInSearch}
+          data-testid={testId ? `${testId}-list` : null}
         />
         {footer}
       </PopoverWithTrigger>
@@ -328,6 +331,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Uncontrollable()(Select);
 
 export interface OptionSectionProps {

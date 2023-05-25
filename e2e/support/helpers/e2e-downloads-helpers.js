@@ -1,3 +1,6 @@
+import { getDashboardCardMenu } from "./e2e-dashboard-helpers";
+import { popover } from "./e2e-ui-elements-helpers";
+
 const xlsx = require("xlsx");
 
 /**
@@ -12,11 +15,24 @@ const xlsx = require("xlsx");
  * @param {function} callback
  */
 export function downloadAndAssert(
-  { fileType, questionId, raw, logResults, publicUid } = {},
+  {
+    fileType,
+    questionId,
+    raw,
+    logResults,
+    publicUid,
+    dashcardId,
+    dashboardId,
+  } = {},
   callback,
 ) {
-  const downloadClassName = `.Icon-${fileType}`;
-  const endpoint = getEndpoint(fileType, questionId, publicUid);
+  const endpoint = getEndpoint(
+    fileType,
+    questionId,
+    publicUid,
+    dashcardId,
+    dashboardId,
+  );
   const isPublicDownload = !!publicUid;
   const method = isPublicDownload ? "GET" : "POST";
 
@@ -44,9 +60,14 @@ export function downloadAndAssert(
 
   cy.log(`Downloading ${fileType} file`);
 
-  cy.findByTestId("download-button").click();
+  if (dashcardId != null && dashboardId != null) {
+    getDashboardCardMenu().click();
+    cy.findByText("Download results").click();
+  } else {
+    cy.findByTestId("download-button").click();
+  }
   // Initiate the file download
-  cy.get(downloadClassName).click();
+  popover().findByText(`.${fileType}`).click();
 
   cy.wait("@fileDownload")
     .its("request")
@@ -78,7 +99,11 @@ export function assertSheetRowsCount(expectedCount) {
   };
 }
 
-function getEndpoint(fileType, questionId, publicUid) {
+function getEndpoint(fileType, questionId, publicUid, dashcardId, dashboardId) {
+  if (dashcardId != null && dashboardId != null) {
+    return `api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${questionId}/query/${fileType}`;
+  }
+
   if (publicUid) {
     return `/public/question/${publicUid}.${fileType}**`;
   }

@@ -25,7 +25,7 @@
    [monger.db :as mdb]
    [monger.json]
    [taoensso.nippy :as nippy]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (com.mongodb DB DBObject)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -183,9 +183,14 @@
 (defmethod driver/dbms-version :mongo
   [_ database]
   (with-mongo-connection [^com.mongodb.DB conn database]
-    (let [build-info (mg/command conn {:buildInfo 1})]
+    (let [build-info (mg/command conn {:buildInfo 1})
+          version-array (get build-info "versionArray")
+          sanitized-version-array (into [] (take-while nat-int?) version-array)]
+      (when (not= (take 3 version-array) (take 3 sanitized-version-array))
+        (log/warnf "sanitizing versionArray %s results in %s, losing information"
+                   version-array sanitized-version-array))
       {:version (get build-info "version")
-       :semantic-version (get build-info "versionArray")})))
+       :semantic-version sanitized-version-array})))
 
 (defmethod driver/describe-database :mongo
   [_ database]
@@ -250,16 +255,27 @@
                         [#{} 0]
                         column-info))})))
 
-(doseq [feature [:basic-aggregations
-                 :expression-aggregations
-                 :inner-join
-                 :left-join
-                 :nested-fields
-                 :nested-queries
-                 :native-parameters
-                 :set-timezone
-                 :standard-deviation-aggregations]]
-  (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
+(doseq [[feature supported?] {:basic-aggregations              true
+                              :expression-aggregations         true
+                              :inner-join                      true
+                              :left-join                       true
+                              :nested-fields                   true
+                              :nested-queries                  true
+                              :native-parameters               true
+                              :set-timezone                    true
+                              :standard-deviation-aggregations true
+                              :test/jvm-timezone-setting       false}]
+  (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
+
+;; We say Mongo supports foreign keys so that the front end can use implicit
+;; joins. In reality, Mongo doesn't support foreign keys.
+;; Only define an implementation for `:foreign-keys` if none exists already.
+;; In test extensions we define an alternate implementation, and we don't want
+;; to stomp over that if it was loaded already.
+(when-not (get (methods driver/supports?) [:mongo :foreign-keys])
+  (defmethod driver/supports? [:mongo :foreign-keys] [_ _] true))
+
+(defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
 
 (defmethod driver/database-supports? [:mongo :expressions]
   [_driver _feature db]
@@ -285,10 +301,6 @@
   (-> (:dbms_version db)
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
-
-(defmethod driver/database-supports? [:mongo :test/jvm-timezone-setting]
-  [_driver _feature _database]
-  false)
 
 (defmethod driver/mbql->native :mongo
   [_ query]
@@ -348,7 +360,7 @@
   :sunday)
 
 (defn- get-id-field-id [table]
-  (db/select-one-id Field :name "_id" :table_id (u/the-id table)))
+  (t2/select-one-pk Field :name "_id" :table_id (u/the-id table)))
 
 (defmethod driver/table-rows-sample :mongo
   [_driver table fields rff opts]

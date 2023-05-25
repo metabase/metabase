@@ -7,7 +7,7 @@ export const canRunAction = (
   databases: Database[],
 ) => {
   const database = databases.find(({ id }) => id === action.database_id);
-  return database != null && database.canWrite();
+  return database != null && database.hasActionsEnabled();
 };
 
 export const canEditAction = (action: WritebackAction, model: Question) => {

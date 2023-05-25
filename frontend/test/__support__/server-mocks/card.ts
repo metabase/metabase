@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
-import { Card } from "metabase-types/api";
+import { Card, Dataset } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   getQuestionVirtualTableId,
@@ -45,4 +45,12 @@ export function setupUnauthorizedCardEndpoints(card: Card) {
 
 export function setupUnauthorizedCardsEndpoints(cards: Card[]) {
   cards.forEach(card => setupUnauthorizedCardEndpoints(card));
+}
+
+export function setupCardQueryEndpoints(card: Card, dataset: Dataset) {
+  fetchMock.post(`path:/api/card/${card.id}/query`, dataset);
+}
+
+export function setupCardQueryDownloadEndpoint(card: Card, type: string) {
+  fetchMock.post(`path:/api/card/${card.id}/query/${type}`, {});
 }

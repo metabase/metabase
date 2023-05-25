@@ -2,22 +2,23 @@ import React, { useEffect, useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-
 import { usePrevious, useMount } from "react-use";
+
 import * as Urls from "metabase/lib/urls";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
-
-import Link from "metabase/core/components/Link";
-import ViewButton from "metabase/query_builder/components/view/ViewButton";
-
 import { useToggle } from "metabase/hooks/use-toggle";
+import Link from "metabase/core/components/Link";
+import Tooltip from "metabase/core/components/Tooltip";
 
-import { MODAL_TYPES } from "metabase/query_builder/constants";
+import ViewButton from "metabase/query_builder/components/view/ViewButton";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 
+import { navigateBackToDashboard } from "metabase/query_builder/actions";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { getDashboard } from "metabase/query_builder/selectors";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
-
 import QuestionActions from "../QuestionActions";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
@@ -44,6 +45,8 @@ import {
   HeaderDivider,
   ViewHeaderActionPanel,
   ViewHeaderIconButtonContainer,
+  BackButton,
+  BackButtonContainer,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -125,6 +128,7 @@ export function ViewTitleHeader(props) {
         data-testid="qb-header"
         isNavBarOpen={isNavBarOpen}
       >
+        <DashboardBackButton />
         {isSaved ? (
           <SavedQuestionLeftSide {...props} />
         ) : (
@@ -155,6 +159,36 @@ export function ViewTitleHeader(props) {
         />
       )}
     </>
+  );
+}
+
+function DashboardBackButton() {
+  const dashboard = useSelector(getDashboard);
+  const dispatch = useDispatch();
+
+  const handleClick = () => {
+    dispatch(navigateBackToDashboard(dashboard.id));
+  };
+
+  if (!dashboard) {
+    return null;
+  }
+
+  const label = t`Back to ${dashboard.name}`;
+
+  return (
+    <Tooltip tooltip={label}>
+      <BackButtonContainer>
+        <BackButton
+          as={Link}
+          to={Urls.dashboard(dashboard)}
+          round
+          icon="arrow_left"
+          aria-label={label}
+          onClick={handleClick}
+        />
+      </BackButtonContainer>
+    </Tooltip>
   );
 }
 
@@ -346,7 +380,7 @@ ViewTitleHeaderRightSide.propTypes = {
   onOpenQuestionInfo: PropTypes.func,
   onCloseQuestionInfo: PropTypes.func,
   isShowingQuestionInfoSidebar: PropTypes.bool,
-  onModelPersistenceChange: PropTypes.bool,
+  onModelPersistenceChange: PropTypes.func,
   onQueryChange: PropTypes.func,
 };
 

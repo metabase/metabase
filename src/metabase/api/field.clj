@@ -20,10 +20,11 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2])
   (:import
    (java.text NumberFormat)))
 
@@ -54,9 +55,13 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Get `Field` with ID."
-  [id]
-  (let [field (-> (api/check-404 (db/select-one Field :id id))
-                  (hydrate [:table :db] :has_field_values :dimensions :name_field))]
+  [id include_editable_data_model]
+  (let [include_editable_data_model (Boolean/parseBoolean include_editable_data_model)
+        field                       (-> (api/check-404 (t2/select-one Field :id id))
+                                        (hydrate [:table :db] :has_field_values :dimensions :name_field))
+        field                       (if include_editable_data_model
+                                      (field/hydrate-target-with-write-perms field)
+                                      (hydrate field :target))]
     ;; Normal read perms = normal access.
     ;;
     ;; There's also a special case where we allow you to fetch a Field even if you don't have full read permissions for
@@ -65,15 +70,16 @@
     ;; differently in other endpoints such as the FieldValues fetching endpoint.
     ;;
     ;; Check for permissions and throw 403 if we don't have them...
-    (throw-if-no-read-or-segmented-perms field)
+    (if include_editable_data_model
+      (api/write-check Table (:table_id field))
+      (throw-if-no-read-or-segmented-perms field))
     ;; ...but if we do, return the Field <3
     field))
 
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
     (when (and dimension-id (= :external dimension-type))
-      (db/delete! Dimension :id dimension-id)))
-  true)
+      (t2/delete! Dimension :id dimension-id))))
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
   (and (not= old-semantic-type new-semantic-type)
@@ -96,14 +102,36 @@
     (when (and old-dim-id
                (= :internal old-dim-type)
                (not (internal-remapping-allowed? base-type new-semantic-type)))
-      (db/delete! Dimension :id old-dim-id)))
-  true)
+      (t2/delete! Dimension :id old-dim-id))))
+
+(defn- update-nested-fields-on-json-unfolding-change!
+  "If JSON unfolding was enabled for a JSON field, it activates previously synced nested fields from the JSON field.
+   If JSON unfolding was disabled for that field, it inactivates the nested fields from the JSON field.
+   Returns nil."
+  [old-field new-json-unfolding]
+  (when (not= new-json-unfolding (:json_unfolding old-field))
+    (if new-json-unfolding
+      (let [update-result (t2/update! Field
+                                      :table_id (:table_id old-field)
+                                      :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
+                                      {:active true})]
+        (when (zero? update-result)
+          ;; Sync the table if no nested fields exist. This means the table hasn't previously
+          ;; been synced when JSON unfolding was enabled. This assumes the JSON field is already updated to have
+          ;; JSON unfolding enabled.
+          (let [table (field/table old-field)]
+            (sync.concurrent/submit-task (fn [] (sync/sync-table! table))))))
+      (t2/update! Field
+                  :table_id (:table_id old-field)
+                  :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
+                  {:active false})))
+  nil)
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update `Field` with ID."
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
-                   coercion_strategy visibility_type has_field_values settings nfc_path]
+                   coercion_strategy visibility_type has_field_values settings nfc_path json_unfolding]
             :as   body} :body}]
   {caveats            (s/maybe su/NonBlankString)
    description        (s/maybe su/NonBlankString)
@@ -115,9 +143,10 @@
    visibility_type    (s/maybe FieldVisibilityType)
    has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
    settings           (s/maybe su/Map)
-   nfc_path           (s/maybe [su/NonBlankString])}
-  (let [field              (hydrate (api/write-check Field id) :dimensions)
-        new-semantic-type  (keyword (get body :semantic_type (:semantic_type field)))
+   nfc_path           (s/maybe [su/NonBlankString])
+   json_unfolding     (s/maybe s/Bool)}
+  (let [field             (hydrate (api/write-check Field id) :dimensions)
+        new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
         (or (when-let [coercion_strategy (keyword coercion_strategy)]
               (let [effective (types/effective-type-for-coercion coercion_strategy)]
@@ -131,27 +160,33 @@
     ;; validate that fk_target_field_id is a valid Field
     ;; TODO - we should also check that the Field is within the same database as our field
     (when fk-target-field-id
-      (api/checkp (db/exists? Field :id fk-target-field-id)
+      (api/checkp (t2/exists? Field :id fk-target-field-id)
         :fk_target_field_id "Invalid target field"))
+    (when (and display_name
+               (not removed-fk?)
+               (not= (:display_name field) display_name))
+      (t2/update! Dimension :field_id id {:name display_name}))
     ;; everything checks out, now update the field
     (api/check-500
-     (db/transaction
-       (and
-        (if removed-fk?
-          (clear-dimension-on-fk-change! field)
-          true)
-        (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-        (db/update! Field id
-          (u/select-keys-when (assoc body
-                                     :fk_target_field_id (when-not removed-fk? fk-target-field-id)
-                                     :effective_type effective-type
-                                     :coercion_strategy coercion-strategy)
-            :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
-                       :coercion_strategy :effective_type :has_field_values :nfc_path}
-            :non-nil #{:display_name :settings})))))
+     (t2/with-transaction [_conn]
+       (when removed-fk?
+         (clear-dimension-on-fk-change! field))
+       (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
+       (t2/update! Field id
+                   (u/select-keys-when (assoc body
+                                              :fk_target_field_id (when-not removed-fk? fk-target-field-id)
+                                              :effective_type effective-type
+                                              :coercion_strategy coercion-strategy)
+                                       :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
+                                                  :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
+                                       :non-nil #{:display_name :settings}))))
+    (when (some? json_unfolding)
+      (update-nested-fields-on-json-unfolding-change! field json_unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
-    (u/prog1 (hydrate (db/select-one Field :id id) :dimensions)
+    (u/prog1 (-> (t2/select-one Field :id id)
+                 (hydrate :dimensions :has_field_values)
+                 (field/hydrate-target-with-write-perms))
       (when (not= effective-type (:effective_type field))
         (sync.concurrent/submit-task (fn [] (sync/refingerprint-field! <>)))))))
 
@@ -180,24 +215,24 @@
                  (and (= dimension-type "external")
                       human_readable_field_id))
              [400 "Foreign key based remappings require a human readable field id"])
-  (if-let [dimension (db/select-one Dimension :field_id id)]
-    (db/update! Dimension (u/the-id dimension)
-      {:type                    dimension-type
-       :name                    dimension-name
-       :human_readable_field_id human_readable_field_id})
-    (db/insert! Dimension
+  (if-let [dimension (t2/select-one Dimension :field_id id)]
+    (t2/update! Dimension (u/the-id dimension)
+                {:type                    dimension-type
+                 :name                    dimension-name
+                 :human_readable_field_id human_readable_field_id})
+    (t2/insert! Dimension
                 {:field_id                id
                  :type                    dimension-type
                  :name                    dimension-name
                  :human_readable_field_id human_readable_field_id}))
-  (db/select-one Dimension :field_id id))
+  (t2/select-one Dimension :field_id id))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id/dimension"
   "Remove the dimension associated to field at ID"
   [id]
   (api/write-check Field id)
-  (db/delete! Dimension :field_id id)
+  (t2/delete! Dimension :field_id id)
   api/generic-204-no-content)
 
 
@@ -216,9 +251,9 @@
   ;; `[original remapped]`. The code for this exists in the [[search-values]] function below. So let's just use
   ;; [[search-values]] without a search term to fetch all values.
   (if-let [human-readable-field-id (when (= has-field-values-type :list)
-                                     (db/select-one-field :human_readable_field_id Dimension :field_id (u/the-id field)))]
+                                     (t2/select-one-fn :human_readable_field_id Dimension :field_id (u/the-id field)))]
     {:values          (search-values (api/check-404 field)
-                                     (api/check-404 (db/select-one Field :id human-readable-field-id)))
+                                     (api/check-404 (t2/select-one Field :id human-readable-field-id)))
      :field_id        field-id
      :has_more_values has_more_values}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
@@ -227,7 +262,7 @@
   "Impl for `GET /api/field/:id/values` endpoint; check whether current user has read perms for Field with `id`, and, if
   so, return its values."
   [field-id]
-  (let [field (api/check-404 (db/select-one Field :id field-id))]
+  (let [field (api/check-404 (t2/select-one Field :id field-id))]
     (api/check-403 (params.field-values/current-user-can-fetch-field-values? field))
     (field->values field)))
 
@@ -238,7 +273,7 @@
   [field-id query]
   (if (str/blank? query)
     (check-perms-and-return-field-values field-id)
-    (let [field (api/check-404 (db/select-one Field :id field-id))]
+    (let [field (api/check-404 (t2/select-one Field :id field-id))]
       ;; matching the output of the other params. [["Foo" "Foo"] ["Bar" "Bar"]] -> [["Foo"] ["Bar"]]. This shape
       ;; is what the return-field-values returns above
       {:values (map (comp vector first) (search-values field field query))
@@ -251,6 +286,7 @@
   "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field, and (if
   defined by a User) a map of human-readable remapped values."
   [id]
+  {id ms/PositiveInt}
   (check-perms-and-return-field-values id))
 
 ;; match things like GET /field%2Ccreated_at%2options
@@ -276,20 +312,20 @@
 
 (defn- update-field-values! [field-value-id value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
-    (api/check-500 (db/update! FieldValues field-value-id
-                     :values (map first value-pairs)
-                     :human_readable_values (when human-readable-values?
-                                              (map second value-pairs))))))
+    (api/check-500 (pos? (t2/update! FieldValues field-value-id
+                                     {:values (map first value-pairs)
+                                      :human_readable_values (when human-readable-values?
+                                                               (map second value-pairs))})))))
 
 (defn- create-field-values!
   [field-or-id value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
-    (db/insert! FieldValues
-      :type :full
-      :field_id (u/the-id field-or-id)
-      :values (map first value-pairs)
-      :human_readable_values (when human-readable-values?
-                               (map second value-pairs)))))
+    (t2/insert! FieldValues
+                :type :full
+                :field_id (u/the-id field-or-id)
+                :values (map first value-pairs)
+                :human_readable_values (when human-readable-values?
+                                         (map second value-pairs)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/values"
@@ -301,7 +337,7 @@
     (api/check (field-values/field-should-have-field-values? field)
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                 "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
-    (if-let [field-value-id (db/select-one-id FieldValues, :field_id id :type :full)]
+    (if-let [field-value-id (t2/select-one-pk FieldValues, :field_id id :type :full)]
       (update-field-values! field-value-id value-pairs)
       (create-field-values! field value-pairs)))
   {:status :success})
@@ -311,7 +347,7 @@
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
   [id]
-  (let [field (api/write-check (db/select-one Field :id id))]
+  (let [field (api/write-check (t2/select-one Field :id id))]
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
@@ -324,7 +360,7 @@
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
-  (field-values/clear-field-values-for-field! (api/write-check (db/select-one Field :id id)))
+  (field-values/clear-field-values-for-field! (api/write-check (t2/select-one Field :id id)))
   {:status :success})
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
@@ -333,7 +369,7 @@
   (u/the-id (:table_id field)))
 
 (defn- db-id [field]
-  (u/the-id (db/select-one-field :db_id Table :id (table-id field))))
+  (u/the-id (t2/select-one-fn :db_id Table :id (table-id field))))
 
 (defn- follow-fks
   "Automatically follow the target IDs in an FK `field` until we reach the PK it points to, and return that. For
@@ -347,7 +383,7 @@
   [{semantic-type :semantic_type, fk-target-field-id :fk_target_field_id, :as field}]
   (if (and (isa? semantic-type :type/FK)
            fk-target-field-id)
-    (db/select-one Field :id fk-target-field-id)
+    (t2/select-one Field :id fk-target-field-id)
     field))
 
 (defn- search-values-query
@@ -410,8 +446,8 @@
   `metabase.api.field/search-values` for a more detailed explanation."
   [id search-id value]
   {value su/NonBlankString}
-  (let [field        (api/check-404 (db/select-one Field :id id))
-        search-field (api/check-404 (db/select-one Field :id search-id))]
+  (let [field        (api/check-404 (t2/select-one Field :id id))
+        search-field (api/check-404 (t2/select-one Field :id search-id))]
     (throw-if-no-read-or-segmented-perms field)
     (throw-if-no-read-or-segmented-perms search-field)
     (search-values field search-field value mw.offset-paging/*limit*)))
@@ -466,6 +502,6 @@
 (api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
-  (-> (db/select-one Field :id id) api/read-check related/related))
+  (-> (t2/select-one Field :id id) api/read-check related/related))
 
 (api/define-routes)

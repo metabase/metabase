@@ -13,6 +13,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.email :as email]
    [metabase.models.collection :as collection]
+   [metabase.models.dashboard :as dashboard]
    [metabase.models.permissions :as perms]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
@@ -36,7 +37,7 @@
    [metabase.util.urls :as urls]
    [stencil.core :as stencil]
    [stencil.loader :as stencil-loader]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.io File IOException OutputStream)
    (java.time LocalTime)
@@ -137,7 +138,7 @@
   []
   (concat (when-let [admin-email (public-settings/admin-email)]
             [admin-email])
-          (db/select-field :email 'User, :is_superuser true, :is_active true, {:order-by [[:id :asc]]})))
+          (t2/select-fn-set :email 'User, :is_superuser true, :is_active true, {:order-by [[:id :asc]]})))
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
@@ -162,17 +163,16 @@
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
-  [email google-auth? non-google-sso? password-reset-url is-active?]
-  {:pre [(m/boolean? google-auth?)
-         (m/boolean? non-google-sso?)
-         (u/email? email)
+  [email sso-source password-reset-url is-active?]
+  {:pre [(u/email? email)
          ((some-fn string? nil?) password-reset-url)]}
-  (let [message-body (stencil/render-file
+  (let [google-sso? (= "google" sso-source)
+        message-body (stencil/render-file
                       "metabase/email/password_reset"
                       (merge (common-context)
                              {:emailType        "password_reset"
-                              :google           google-auth?
-                              :nonGoogleSSO     non-google-sso?
+                              :google           google-sso?
+                              :nonGoogleSSO     (and (not google-sso?) (some? sso-source))
                               :passwordResetUrl password-reset-url
                               :logoHeader       true
                               :isActive         is-active?
@@ -188,7 +188,7 @@
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by `metabase.models.login-history/human-friendly-infos`."
   [{user-id :user_id, :keys [timestamp], :as login-history}]
-  (let [user-info    (db/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
+  (let [user-info    (t2/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
         user-locale  (or (:locale user-info) (i18n/site-locale))
         timestamp    (u.date/format-human-readable timestamp user-locale)
         context      (merge (common-context)
@@ -235,9 +235,9 @@
       (concat
         (all-admin-recipients)
         (when (seq user-ids)
-          (db/select-field :email User {:where [:and
-                                                [:= :is_active true]
-                                                [:in :id user-ids]]}))))))
+          (t2/select-fn-set :email User {:where [:and
+                                                 [:= :is_active true]
+                                                 [:in :id user-ids]]}))))))
 
 (defn send-persistent-model-error-email!
   "Format and send an email informing the user about errors in the persistent model refresh task."
@@ -301,14 +301,17 @@
     {:pulseLink (urls/dashboard-url dashboard-id)}))
 
 (defn- pulse-context [pulse dashboard]
-  (merge (common-context)
-         {:emailType                 "pulse"
-          :title                     (:name pulse)
-          :titleUrl                  (params/dashboard-url (:id dashboard) (params/parameters pulse dashboard))
-          :dashboardDescription      (:description dashboard)
-          :creator                   (-> pulse :creator :common_name)
-          :sectionStyle              (style/style (style/section-style))}
-         (pulse-link-context pulse)))
+  (let [dashboard-id (:id dashboard)]
+   (merge (common-context)
+          {:emailType                 "pulse"
+           :title                     (:name pulse)
+           :titleUrl                  (params/dashboard-url dashboard-id (params/parameters pulse dashboard))
+           :dashboardDescription      (:description dashboard)
+           ;; There are legacy pulses that exist without being tied to a dashboard
+           :dashboardHasTabs          (when dashboard-id (dashboard/has-tabs? dashboard-id))
+           :creator                   (-> pulse :creator :common_name)
+           :sectionStyle              (style/style (style/section-style))}
+          (pulse-link-context pulse))))
 
 (defn- create-temp-file
   "Separate from `create-temp-file-or-throw` primarily so that we can simulate exceptions in tests"
@@ -407,14 +410,20 @@
          (stream-api-results-to-export-format :xlsx os result))
        (create-result-attachment-map "xlsx" card-name temp-file))]))
 
-(defn- result-attachments [results]
-  (filter some? (mapcat result-attachment results)))
+(defn- part-attachments [parts]
+  (filter some? (mapcat result-attachment parts)))
 
-(defn- render-result-card
-  [timezone result]
-  (if (:card result)
-    (render/render-pulse-section timezone result)
-    {:content (markdown/process-markdown (:text result) :html)}))
+(defn- render-part
+  [timezone part]
+  (case (:type part)
+    :card
+    (render/render-pulse-section timezone part)
+
+    :text
+    {:content (markdown/process-markdown (:text part) :html)}
+
+    :tab-title
+    {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html)}))
 
 (defn- render-filters
   [notification dashboard]
@@ -459,9 +468,9 @@
         [:tr {} row])])))
 
 (defn- render-message-body
-  [notification message-type message-context timezone dashboard results]
+  [notification message-type message-context timezone dashboard parts]
   (let [rendered-cards  (binding [render/*include-title* true]
-                          (mapv #(render-result-card timezone %) results))
+                          (mapv #(render-part timezone %) parts))
         icon-name       (case message-type
                           :alert :bell
                           :pulse :dashboard)
@@ -475,7 +484,7 @@
     (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file "metabase/email/pulse" message-body)}]
                  (map make-message-attachment attachments)
                  [icon-attachment]
-                 (result-attachments results)))))
+                 (part-attachments parts)))))
 
 (defn- assoc-attachment-booleans [pulse results]
   (for [{{result-card-id :id} :card :as result} results
@@ -486,13 +495,13 @@
 
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
-  [timezone pulse dashboard results]
+  [timezone pulse dashboard parts]
   (render-message-body pulse
                        :pulse
                        (pulse-context pulse dashboard)
                        timezone
                        dashboard
-                       (assoc-attachment-booleans pulse results)))
+                       (assoc-attachment-booleans pulse parts)))
 
 (defn pulse->alert-condition-kwd
   "Given an `alert` return a keyword representing what kind of goal needs to be met."

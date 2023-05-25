@@ -6,7 +6,7 @@ import {
   sendEmailAndAssert,
 } from "e2e/support/helpers";
 
-describe.skip("issue 18009", { tags: "@external" }, () => {
+describe("issue 18009", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -21,6 +21,7 @@ describe.skip("issue 18009", { tags: "@external" }, () => {
 
     cy.icon("subscription").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
     cy.findByPlaceholderText("Enter user names or email addresses").click();
@@ -29,6 +30,7 @@ describe.skip("issue 18009", { tags: "@external" }, () => {
       .click();
 
     // Click anywhere to close the popover that covers the "Send email now" button
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("To:").click();
 
     sendEmailAndAssert(email => {

@@ -221,7 +221,7 @@ Note: to guard against SQL injection attacks, Metabase converts whatever is in t
 
 ### Filter widget with search box
 
-- Include a SQL variable in you query.
+- Include a SQL variable in your query.
 - Set the **Variable type** to **Field Filter**.
 - Set the **Field to map to** to a field of type "Category" that has its **Filtering on this field** option set to "Search box"
 
@@ -229,7 +229,7 @@ Note: to guard against SQL injection attacks, Metabase converts whatever is in t
 
 To create a dropdown menu with search and a list of all values, you need to:
 
-- Include a SQL variable in you query.
+- Include a SQL variable in your query.
 - Set the **Variable type** to **Field Filter**.
 - Set the **Field to map to** to a field of type "Category" that has its **Filtering on this field** option set to "A list of all values".
 - Set the **Filter widget type** to "Category".

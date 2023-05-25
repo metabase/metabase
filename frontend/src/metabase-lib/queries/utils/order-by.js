@@ -6,7 +6,7 @@ export function getOrderBys(breakout) {
 }
 
 // turns a list of OrderBys into the canonical OrderByClause
-export function getOrderByClause(breakouts) {
+function getOrderByClause(breakouts) {
   breakouts = getOrderBys(breakouts);
   if (breakouts.length === 0) {
     return undefined;

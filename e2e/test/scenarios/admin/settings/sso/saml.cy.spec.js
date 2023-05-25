@@ -17,6 +17,7 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     cy.signInAsAdmin();
     cy.intercept("PUT", "/api/setting").as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
+    cy.intercept("PUT", "/api/saml/settings").as("updateSamlSettings");
   });
 
   it("should allow to save and enable saml", () => {
@@ -24,7 +25,8 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
 
     enterSamlSettings();
     cy.button("Save and enable").click();
-    cy.wait("@updateSettings");
+    cy.wait("@updateSamlSettings");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Success").should("exist");
 
     cy.findAllByRole("link", { name: "Authentication" }).first().click();
@@ -37,7 +39,8 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
 
     typeAndBlurUsingLabel("SAML Identity Provider URL", "https://other.test");
     cy.button("Save changes").click();
-    cy.wait("@updateSettings");
+    cy.wait("@updateSamlSettings");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Success").should("exist");
 
     cy.findAllByRole("link", { name: "Authentication" }).first().click();

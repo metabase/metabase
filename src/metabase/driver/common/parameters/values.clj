@@ -24,7 +24,7 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
    (java.text NumberFormat)
@@ -102,9 +102,12 @@
   multiple values."
   [tag :- mbql.s/TemplateTag params :- (s/maybe [mbql.s/Parameter])]
   (let [matching-params  (tag-params tag params)
+        tag-opts         (:options tag)
         normalize-params (fn [params]
-                           ;; remove `:target` which is no longer needed after this point.
-                           (let [params (map #(dissoc % :target) params)]
+                           ;; remove `:target` which is no longer needed after this point, and add any tag options
+                           (let [params (map #(cond-> (dissoc % :target)
+                                                (seq tag-opts) (assoc :options tag-opts))
+                                             params)]
                              (if (= (count params) 1)
                                (first params)
                                params)))]
@@ -115,8 +118,9 @@
        (normalize-params matching-params))
      ;; otherwise, attempt to fall back to the default value specified as part of the template tag.
      (when-let [tag-default (:default tag)]
-       {:type  (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
-        :value tag-default})
+       (cond-> {:type    (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
+                :value   tag-default}
+         tag-opts (assoc :options tag-opts)))
      ;; if that doesn't exist, see if the matching parameters specified default values This can be the case if the
      ;; parameters came from a Dashboard -- Dashboard parameter mappings can specify their own defaults -- but we want
      ;; the defaults specified in the template tag to take precedence if both are specified
@@ -145,9 +149,9 @@
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
-  (let [card           (db/select-one Card :id card-id)
+  (let [card           (t2/select-one Card :id card-id)
         persisted-info (when (:dataset card)
-                         (db/select-one PersistedInfo :card_id card-id))
+                         (t2/select-one PersistedInfo :card_id card-id))
         query          (or (:dataset_query card)
                            (throw (ex-info (tru "Card {0} not found." card-id)
                                            {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
@@ -174,7 +178,7 @@
   (let [snippet-id (or snippet-id
                        (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
                                        {:tag tag, :type qp.error-type/invalid-parameter})))
-        snippet    (or (db/select-one NativeQuerySnippet :id snippet-id)
+        snippet    (or (t2/select-one NativeQuerySnippet :id snippet-id)
                        (throw (ex-info (tru "Snippet {0} {1} not found." snippet-id (pr-str snippet-name))
                                        {:snippet-id   snippet-id
                                         :snippet-name snippet-name

@@ -1,5 +1,4 @@
 import React, { useCallback } from "react";
-import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
 import Actions from "metabase/entities/actions";
@@ -35,17 +34,15 @@ const ActionExecuteModal = ({
   onSubmit,
   onClose,
 }: ActionExecuteModalProps) => {
-  const title =
-    action.parameters.length > 0 ? action.name : t`Run ${action.name}?`;
-
   const handleSubmit = useCallback(
     (parameters: ParametersForActionExecution) => {
       return onSubmit({ action, parameters });
     },
     [action, onSubmit],
   );
+
   return (
-    <ModalContent title={title} onClose={onClose}>
+    <ModalContent title={action.name} onClose={onClose}>
       <ActionParametersInputForm
         action={action}
         onCancel={onClose}
@@ -56,6 +53,7 @@ const ActionExecuteModal = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Actions.load({
     id: (state: State, props: OwnProps) => props.actionId,

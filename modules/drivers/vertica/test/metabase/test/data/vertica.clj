@@ -174,8 +174,6 @@
 (defmethod execute/execute-sql! :vertica [& args]
   (apply execute/sequentially-execute-sql! args))
 
-(defmethod tx/has-questionable-timezone-support? :vertica [_] true)
-
 (defmethod tx/before-run :vertica
   [_]
   ;; Close all existing sessions connected to our test DB

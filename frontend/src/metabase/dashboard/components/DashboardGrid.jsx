@@ -4,6 +4,8 @@ import PropTypes from "prop-types";
 
 import _ from "underscore";
 import cx from "classnames";
+import { connect } from "react-redux";
+import { t } from "ttag";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Modal from "metabase/components/Modal";
@@ -13,6 +15,7 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getVisualizationRaw } from "metabase/visualizations";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
+import { getVisibleCardIds } from "metabase/dashboard/utils";
 
 import {
   GRID_WIDTH,
@@ -23,13 +26,15 @@ import {
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+import { addUndo } from "metabase/redux/undo";
 import { DashboardCard } from "./DashboardGrid.styled";
 
 import GridLayout from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";
 import AddSeriesModal from "./AddSeriesModal/AddSeriesModal";
-import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
 import DashCard from "./DashCard";
+
+const mapDispatchToProps = { addUndo };
 
 class DashboardGrid extends Component {
   static contextType = ContentViewportContext;
@@ -37,10 +42,14 @@ class DashboardGrid extends Component {
   constructor(props, context) {
     super(props, context);
 
+    const visibleCardIds = getVisibleCardIds(
+      props.dashboard.ordered_cards,
+      props.dashcardData,
+    );
+
     this.state = {
-      layouts: this.getLayouts(props),
-      dashcards: this.getSortedDashcards(props),
-      removeModalDashCard: null,
+      visibleCardIds,
+      layouts: this.getLayouts(props.dashboard.ordered_cards),
       addSeriesModalDashCard: null,
       isDragging: false,
       isAnimationPaused: true,
@@ -87,25 +96,42 @@ class DashboardGrid extends Component {
   }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
+    const { dashboard, dashcardData, isEditing } = nextProps;
+
+    const visibleCardIds = !isEditing
+      ? getVisibleCardIds(
+          dashboard.ordered_cards,
+          dashcardData,
+          this.state.visibleCardIds,
+        )
+      : new Set(dashboard.ordered_cards.map(card => card.id));
+
+    const cards = this.getVisibleCards(
+      dashboard.ordered_cards,
+      visibleCardIds,
+      isEditing,
+    );
+
     this.setState({
-      dashcards: this.getSortedDashcards(nextProps),
-      layouts: this.getLayouts(nextProps),
+      visibleCardIds,
+      layouts: this.getLayouts(cards),
     });
   }
 
   onLayoutChange = ({ layout, breakpoint }) => {
+    const { setMultipleDashCardAttributes, isEditing } = this.props;
+
     // We allow moving and resizing cards only on the desktop
     // Ensures onLayoutChange triggered by window resize,
     // won't break the main layout
-    if (breakpoint !== "desktop") {
+    if (!isEditing || breakpoint !== "desktop") {
       return;
     }
 
-    const { dashboard, setMultipleDashCardAttributes } = this.props;
     const changes = [];
 
     layout.forEach(layoutItem => {
-      const dashboardCard = dashboard.ordered_cards.find(
+      const dashboardCard = this.getVisibleCards().find(
         card => String(card.id) === layoutItem.i,
       );
 
@@ -129,31 +155,10 @@ class DashboardGrid extends Component {
     });
 
     if (changes.length > 0) {
-      setMultipleDashCardAttributes(changes);
+      setMultipleDashCardAttributes({ dashcards: changes });
       MetabaseAnalytics.trackStructEvent("Dashboard", "Layout Changed");
     }
   };
-
-  getSortedDashcards(props) {
-    return (
-      props.dashboard &&
-      props.dashboard.ordered_cards.sort((a, b) => {
-        if (a.row < b.row) {
-          return -1;
-        }
-        if (a.row > b.row) {
-          return 1;
-        }
-        if (a.col < b.col) {
-          return -1;
-        }
-        if (a.col > b.col) {
-          return 1;
-        }
-        return 0;
-      })
-    );
-  }
 
   getLayoutForDashCard(dashcard) {
     const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
@@ -171,8 +176,18 @@ class DashboardGrid extends Component {
     };
   }
 
-  getLayouts({ dashboard }) {
-    const desktop = dashboard.ordered_cards.map(this.getLayoutForDashCard);
+  getVisibleCards = (
+    cards = this.props.dashboard.ordered_cards,
+    visibleCardIds = this.state.visibleCardIds,
+    isEditing = this.props.isEditing,
+  ) => {
+    return isEditing
+      ? cards
+      : cards.filter(card => visibleCardIds.has(card.id));
+  };
+
+  getLayouts(cards) {
+    const desktop = cards.map(this.getLayoutForDashCard);
     const mobile = generateMobileLayout({
       desktopLayout: desktop,
       defaultCardHeight: 6,
@@ -200,23 +215,6 @@ class DashboardGrid extends Component {
     // prevent infinite re-rendering when the scroll bar appears/disappears
     // https://github.com/metabase/metabase/issues/17229
     return hasScroll ? Math.ceil(actualHeight) : Math.floor(actualHeight);
-  }
-
-  renderRemoveModal() {
-    // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-    const isOpen = this.state.removeModalDashCard != null;
-    return (
-      <Modal isOpen={isOpen}>
-        {isOpen && (
-          <RemoveFromDashboardModal
-            dashcard={this.state.removeModalDashCard}
-            dashboard={this.props.dashboard}
-            removeCardFromDashboard={this.props.removeCardFromDashboard}
-            onClose={() => this.setState({ removeModalDashCard: null })}
-          />
-        )}
-      </Modal>
-    );
   }
 
   renderAddSeriesModal() {
@@ -253,7 +251,16 @@ class DashboardGrid extends Component {
   };
 
   onDashCardRemove(dc) {
-    this.setState({ removeModalDashCard: dc });
+    this.props.removeCardFromDashboard({
+      dashcardId: dc.id,
+    });
+    this.props.addUndo({
+      message: t`Removed card`,
+      undo: true,
+      action: () =>
+        this.props.undoRemoveCardFromDashboard({ dashcardId: dc.id }),
+    });
+    MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Card");
   }
 
   onDashCardAddSeries(dc) {
@@ -354,7 +361,7 @@ class DashboardGrid extends Component {
   );
 
   renderGrid() {
-    const { dashboard, width } = this.props;
+    const { width } = this.props;
     const { layouts } = this.state;
     const rowHeight = this.getRowHeight();
     return (
@@ -375,7 +382,7 @@ class DashboardGrid extends Component {
         onDragStop={this.onDragStop}
         isEditing={this.isEditingLayout}
         compactType="vertical"
-        items={dashboard.ordered_cards}
+        items={this.getVisibleCards()}
         itemRenderer={this.renderGridItem}
       />
     );
@@ -386,11 +393,13 @@ class DashboardGrid extends Component {
     return (
       <div className="flex layout-centered">
         {width > 0 ? this.renderGrid() : <div />}
-        {this.renderRemoveModal()}
         {this.renderAddSeriesModal()}
       </div>
     );
   }
 }
 
-export default ExplicitSize()(DashboardGrid);
+export default _.compose(
+  ExplicitSize(),
+  connect(null, mapDispatchToProps),
+)(DashboardGrid);

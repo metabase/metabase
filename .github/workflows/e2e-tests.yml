@@ -243,10 +243,6 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-    strategy:
-      matrix:
-        java-version: [11]
-        edition: [ee]
     services:
       maildev:
         image: maildev/maildev:2.0.5
@@ -264,18 +260,18 @@ jobs:
           echo "PERCY_TOKEN=${{ secrets.PERCY_TOKEN }}" >> $GITHUB_ENV
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare JDK ${{ matrix.java-version }}
+      - name: Prepare JDK 11
         uses: actions/setup-java@v3
         with:
-          java-version: ${{ matrix.java-version }}
+          java-version: 11
           distribution: 'temurin'
       - name: Prepare Cypress environment
         uses: ./.github/actions/prepare-cypress
 
       - uses: actions/download-artifact@v3
-        name: Retrieve uberjar artifact for ${{ matrix.edition }}
+        name: Retrieve uberjar artifact for ee
         with:
-          name: metabase-${{ matrix.edition }}-uberjar
+          name: metabase-ee-uberjar
       - name: Get the version info
         run: |
           jar xf target/uberjar/metabase.jar version.properties

@@ -3,8 +3,9 @@ import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import Settings from "metabase/lib/settings";
 import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
-import { ModalLink, ModalMessage } from "./HelpModal.styled";
+import { ModalMessage } from "./HelpModal.styled";
 
 const propTypes = {
   onClose: PropTypes.func,
@@ -40,9 +41,9 @@ HelpModal.propTypes = propTypes;
 
 const getAdminLink = (email, text) => {
   return email ? (
-    <ModalLink key="admin-link" href={`mailto:${email}`}>
+    <Link variant="brand" key="admin-link" href={`mailto:${email}`}>
       {text}
-    </ModalLink>
+    </Link>
   ) : (
     text
   );

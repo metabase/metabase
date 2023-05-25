@@ -7,6 +7,7 @@ import {
   navigationSidebar,
   openNativeEditor,
   openCollectionMenu,
+  openCollectionItemMenu,
   modal,
 } from "e2e/support/helpers";
 
@@ -44,6 +45,7 @@ describe("collection permissions", () => {
                   appBar().within(() => {
                     cy.icon("add").click();
                   });
+                  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                   cy.findByText("Dashboard").click();
                   cy.findByTestId("select-button").findByText(
                     "Second collection",
@@ -53,6 +55,7 @@ describe("collection permissions", () => {
                 onlyOn(user === "admin", () => {
                   it("should offer to save dashboard to root collection from a dashboard page (metabase#16832)", () => {
                     cy.visit("/collection/root");
+                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Orders in a dashboard").click();
                     appBar().within(() => {
                       cy.icon("add").click();
@@ -103,7 +106,7 @@ describe("collection permissions", () => {
 
                 function move(item) {
                   cy.visit("/collection/root");
-                  openEllipsisMenuFor(item);
+                  openCollectionItemMenu(item);
                   popover().within(() => {
                     cy.findByText("Move").click();
                   });
@@ -141,7 +144,7 @@ describe("collection permissions", () => {
 
                 function duplicate(item) {
                   cy.visit("/collection/root");
-                  openEllipsisMenuFor(item);
+                  openCollectionItemMenu(item);
                   cy.findByText("Duplicate").click();
                   cy.get(".Modal")
                     .as("modal")
@@ -178,7 +181,7 @@ describe("collection permissions", () => {
                 describe("archive page", () => {
                   it("should show archived items (metabase#15080, metabase#16617)", () => {
                     cy.visit("collection/root");
-                    openEllipsisMenuFor("Orders");
+                    openCollectionItemMenu("Orders");
                     popover().within(() => {
                       cy.findByText("Archive").click();
                     });
@@ -191,6 +194,7 @@ describe("collection permissions", () => {
                     });
                     popover().findByText("View archive").click();
                     cy.location("pathname").should("eq", "/archive");
+                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Orders");
                   });
                 });
@@ -199,6 +203,7 @@ describe("collection permissions", () => {
                   it("shouldn't be able to archive/edit root or personal collection", () => {
                     cy.visit("/collection/root");
                     cy.icon("edit").should("not.exist");
+                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Your personal collection").click();
                     cy.icon("edit").should("not.exist");
                   });
@@ -219,6 +224,7 @@ describe("collection permissions", () => {
                     });
 
                     openCollectionMenu();
+                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     popover().within(() => cy.findByText("Archive").click());
                     cy.get(".Modal").findByText("Archive").click();
 
@@ -235,11 +241,14 @@ describe("collection permissions", () => {
                     });
 
                     // While we're here, we can test unarchiving the collection as well
+                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Archived collection");
+                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Undo").click();
 
                     cy.wait("@editCollection");
 
+                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText(
                       "Sorry, you don’t have permission to see that.",
                     ).should("not.exist");
@@ -282,7 +291,7 @@ describe("collection permissions", () => {
                     cy.icon("lock").should("not.exist");
                     /**
                      *  We can take 2 routes from here - it will really depend on the design decision:
-                     *    1. Edit icon shouldn't exist at all in which case some other call to action menu/button should exist
+                     *    1. Edit icon shouldn't exist at all in which case some other call to drill-through menu/button should exist
                      *       notifying the user that this collection is archived and prompting them to unarchive it
                      *    2. Edit icon stays but with "Unarchive this item" ONLY in the menu
                      */
@@ -323,7 +332,7 @@ describe("collection permissions", () => {
 
                 function archiveUnarchive(item, expectedEntityName) {
                   cy.visit("/collection/root");
-                  openEllipsisMenuFor(item);
+                  openCollectionItemMenu(item);
                   popover().within(() => {
                     cy.findByText("Archive").click();
                   });
@@ -347,6 +356,7 @@ describe("collection permissions", () => {
             it("should not show pins or a helper text (metabase#20043)", () => {
               cy.visit("/collection/root");
 
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders in a dashboard");
               cy.icon("pin").should("not.exist");
             });
@@ -354,7 +364,7 @@ describe("collection permissions", () => {
             it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
               const { first_name, last_name } = USERS[user];
               cy.visit("/collection/root");
-              openEllipsisMenuFor("Orders in a dashboard");
+              openCollectionItemMenu("Orders in a dashboard");
               popover().findByText("Duplicate").click();
               cy.findByTestId("select-button").findByText(
                 `${first_name} ${last_name}'s Personal Collection`,
@@ -364,6 +374,7 @@ describe("collection permissions", () => {
             it("should not be able to use bulk actions on collection items (metabase#16490)", () => {
               cy.visit("/collection/root");
 
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders")
                 .closest("tr")
                 .within(() => {
@@ -371,6 +382,7 @@ describe("collection permissions", () => {
                   cy.findByRole("checkbox").should("not.exist");
                 });
 
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders in a dashboard")
                 .closest("tr")
                 .within(() => {
@@ -384,6 +396,7 @@ describe("collection permissions", () => {
                 const { first_name, last_name } = USERS[user];
                 cy.visit(route);
                 cy.icon("add").click();
+                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("Dashboard").click();
 
                 // Coming from the root collection, the initial offered collection will be "Our analytics" (read-only access)
@@ -416,25 +429,19 @@ describe("collection permissions", () => {
     cy.signIn("normal");
 
     openNativeEditor().type("select * from people");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     cy.findByTestId("select-button").findByText("Our analytics");
   });
 });
 
-function openEllipsisMenuFor(item, index = 0) {
-  cy.findAllByText(item)
-    .eq(index)
-    .closest("tr")
-    .within(() => cy.icon("ellipsis").click());
-}
-
 function clickButton(name) {
   cy.findByRole("button", { name }).should("not.be.disabled").click();
 }
 
 function pinItem(item) {
-  openEllipsisMenuFor(item);
+  openCollectionItemMenu(item);
   popover().within(() => cy.icon("pin").click());
 }
 

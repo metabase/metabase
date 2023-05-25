@@ -2,19 +2,21 @@ import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import Button from "metabase/core/components/Button";
+import EmptyState from "metabase/components/EmptyState";
+
+import MetabaseSettings from "metabase/lib/settings";
+
+import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker/ActionPicker";
+import { setActionForDashcard } from "metabase/dashboard/actions";
+
 import type {
   ActionDashboardCard,
   Dashboard,
   WritebackAction,
 } from "metabase-types/api";
 
-import Button from "metabase/core/components/Button";
-
-import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker/ActionPicker";
-import { setActionForDashcard } from "metabase/dashboard/actions";
-import EmptyState from "metabase/components/EmptyState";
 import { ConnectedActionParameterMappingForm } from "./ActionParameterMapper";
-
 import {
   ActionSettingsWrapper,
   ParameterMapperContainer,
@@ -70,7 +72,9 @@ export function ActionDashcardSettings({
                 </ActionSettingsHeader>
                 <ExplainerText>
                   {t`You can either ask users to enter values, or use the value of a dashboard filter.`}
-                  <BrandLinkWithLeftMargin to="https://www.metabase.com/docs/actions/custom">
+                  <BrandLinkWithLeftMargin
+                    href={MetabaseSettings.docsUrl("dashboards/actions")}
+                  >
                     {t`Learn more.`}
                   </BrandLinkWithLeftMargin>
                 </ExplainerText>

@@ -314,7 +314,7 @@ class View extends React.Component {
         <NativeQueryEditor
           {...this.props}
           viewHeight={height}
-          isOpen={!card.dataset_query.native.query || isDirty}
+          isOpen={query.isEmpty() || isDirty}
           datasetQuery={card && card.dataset_query}
         />
       </NativeQueryEditorContainer>
@@ -345,7 +345,10 @@ class View extends React.Component {
     const isSidebarOpen = leftSidebar || rightSidebar;
 
     return (
-      <QueryBuilderMain isSidebarOpen={isSidebarOpen}>
+      <QueryBuilderMain
+        isSidebarOpen={isSidebarOpen}
+        data-testid="query-builder-main"
+      >
         {isNative ? (
           this.renderNativeQueryEditor()
         ) : (

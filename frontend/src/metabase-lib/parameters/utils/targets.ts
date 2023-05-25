@@ -1,9 +1,9 @@
-import {
-  ParameterTarget,
+import type {
+  Card,
   ParameterDimensionTarget,
   ParameterVariableTarget,
-} from "metabase-types/types/Parameter";
-import type { Card } from "metabase-types/api";
+  ParameterTarget,
+} from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 import Dimension from "metabase-lib/Dimension";
 import Metadata from "metabase-lib/metadata/Metadata";

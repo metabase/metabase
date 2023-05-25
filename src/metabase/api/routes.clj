@@ -19,7 +19,9 @@
    [metabase.api.google :as api.google]
    [metabase.api.ldap :as api.ldap]
    [metabase.api.login-history :as api.login-history]
+   [metabase.api.metabot :as api.metabot]
    [metabase.api.metric :as api.metric]
+   [metabase.api.model-index :as api.model-index]
    [metabase.api.native-query-snippet :as api.native-query-snippet]
    [metabase.api.notify :as api.notify]
    [metabase.api.permissions :as api.permissions]
@@ -30,7 +32,7 @@
    [metabase.api.pulse :as api.pulse]
    [metabase.api.revision :as api.revision]
    [metabase.api.routes.common
-    :refer [+apikey +auth +generic-exceptions +message-only-exceptions]]
+    :refer [+apikey +auth +public-exceptions +message-only-exceptions]]
    [metabase.api.search :as api.search]
    [metabase.api.segment :as api.segment]
    [metabase.api.session :as api.session]
@@ -83,13 +85,15 @@
   (context "/ldap"                 [] (+auth api.ldap/routes))
   (context "/login-history"        [] (+auth api.login-history/routes))
   (context "/premium-features"     [] (+auth api.premium-features/routes))
+  (context "/metabot"              [] (+auth api.metabot/routes))
   (context "/metric"               [] (+auth api.metric/routes))
+  (context "/model-index"          [] (+auth api.model-index/routes))
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
   (context "/notify"               [] (+apikey api.notify/routes))
   (context "/permissions"          [] (+auth api.permissions/routes))
   (context "/persist"              [] (+auth api.persist/routes))
   (context "/preview_embed"        [] (+auth api.preview-embed/routes))
-  (context "/public"               [] (+generic-exceptions api.public/routes))
+  (context "/public"               [] (+public-exceptions api.public/routes))
   (context "/pulse"                [] (+auth api.pulse/routes))
   (context "/revision"             [] (+auth api.revision/routes))
   (context "/search"               [] (+auth api.search/routes))

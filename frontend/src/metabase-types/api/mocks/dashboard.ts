@@ -22,6 +22,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
     last_name: "Doe",
     timestamp: "2018-01-01",
   },
+  auto_apply_filters: true,
   ...opts,
 });
 

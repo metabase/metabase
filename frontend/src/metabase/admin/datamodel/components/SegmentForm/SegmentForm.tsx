@@ -7,6 +7,7 @@ import { formatValue } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button/Button";
 import FieldSet from "metabase/components/FieldSet";
 import { Segment, StructuredQuery } from "metabase-types/api";
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 import * as Q from "metabase-lib/queries/utils/query";
 import FormInput from "../FormInput";
 import FormLabel from "../FormLabel";
@@ -41,12 +42,15 @@ const SegmentForm = ({
 }: SegmentFormProps): JSX.Element => {
   const isNew = segment == null;
 
-  const { isValid, getFieldProps, getFieldMeta, handleSubmit } = useFormik({
-    initialValues: segment ?? {},
-    isInitialValid: false,
-    validate: getFormErrors,
-    onSubmit,
-  });
+  const { isValid, getFieldProps, getFieldMeta, handleSubmit, dirty } =
+    useFormik({
+      initialValues: segment ?? {},
+      isInitialValid: false,
+      validate: getFormErrors,
+      onSubmit,
+    });
+
+  useBeforeUnload(dirty);
 
   return (
     <FormRoot onSubmit={handleSubmit}>
@@ -174,4 +178,5 @@ const getQueryBuilderProps = ({
   };
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SegmentForm;

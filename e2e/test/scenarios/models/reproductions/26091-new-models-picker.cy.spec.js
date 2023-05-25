@@ -14,7 +14,7 @@ describe("issue 26091", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/database/*/datasets/*").as("getModels");
+    cy.intercept("GET", "/api/collection/*/items?*").as("getCollectionContent");
     cy.intercept("POST", "/api/card").as("saveQuestion");
   });
 
@@ -25,7 +25,7 @@ describe("issue 26091", () => {
     startNewQuestion();
     popover().within(() => {
       cy.findByText("Models").click();
-      cy.wait("@getModels");
+      cy.wait("@getCollectionContent");
     });
 
     startNewQuestion();
@@ -33,6 +33,7 @@ describe("issue 26091", () => {
       cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     modal().within(() => {
       cy.findByLabelText("Name").clear().type("New model");

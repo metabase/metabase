@@ -35,11 +35,25 @@
 (defn- keep-source+alias-props [field]
   (update field 2 select-keys [::add/source-alias ::add/source-table :join-alias]))
 
+(defn- nfc-root [[_ field-id]]
+  (when-let [field (and (int? field-id) (qp.store/field field-id))]
+    (when-let [nfc-root (first (:nfc_path field))]
+      {:table_id (:table_id field)
+       :name nfc-root})))
+
+(defn- field-id-props [[_ field-id]]
+  (when-let [field (and (int? field-id) (qp.store/field field-id))]
+    (select-keys field [:table_id :name])))
+
 (defn- remove-unused-fields [inner-query source]
   (let [used-fields (-> #{}
                         (into (map keep-source+alias-props) (mbql.u/match inner-query :field))
-                        (into (map keep-source+alias-props) (mbql.u/match inner-query :expression)))]
-    (update source :fields #(filterv (comp used-fields keep-source+alias-props) %))))
+                        (into (map keep-source+alias-props) (mbql.u/match inner-query :expression)))
+        nfc-roots (into #{} (keep nfc-root) used-fields)]
+    (update source :fields (fn [fields]
+                             (filterv #(or (-> % keep-source+alias-props used-fields)
+                                           (-> % field-id-props nfc-roots))
+                                      fields)))))
 
 (defn- nest-source [inner-query]
   (classloader/require 'metabase.query-processor)

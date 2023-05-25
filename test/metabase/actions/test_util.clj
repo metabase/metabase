@@ -14,8 +14,8 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
-   [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -88,7 +88,7 @@
       (finally
         (when-let [{driver :engine, db-id :id} @db]
           (tx/destroy-db! driver (tx/get-dataset-definition dataset-definition))
-          (db/delete! Database :id db-id))))))
+          (t2/delete! Database :id db-id))))))
 
 (defmacro with-actions-test-data
   "Sets the current dataset to a freshly-loaded copy of [[defs/test-data]] that only includes the `categories` table
@@ -103,6 +103,13 @@
   {:style/indent :defn}
   [dataset-definition & body]
   `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym)) ~dataset-definition) (fn [] ~@body)))
+
+(defmacro with-empty-db
+  "Sets the current dataset to a freshly created db that gets destroyed at the conclusion of `body`.
+   Use this to test destructive actions that may modify the data."
+  {:style/indent :defn}
+  [& body]
+  `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym))) (fn [] ~@body)))
 
 (deftest with-actions-test-data-test
   (datasets/test-drivers (qp.test/normal-drivers-with-feature :actions/custom)

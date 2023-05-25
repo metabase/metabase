@@ -16,7 +16,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (comment metabase.driver.googleanalytics/keep-me)
@@ -38,9 +37,9 @@
    :mbql? true})
 
 (defn- mbql->native [query]
-  (binding [qp.store/*store* (atom {:tables {1 (t2/instance :metabase.models.table/Table {:name   "0123456"
-                                                                                          :schema nil
-                                                                                          :id     1})}})]
+  (binding [qp.store/*store* (atom {:tables {1 (t2/instance :model/Table {:name   "0123456"
+                                                                          :schema nil
+                                                                          :id     1})}})]
     (driver/mbql->native :googleanalytics (update query :query (partial merge {:source-table 1})))))
 
 (deftest basic-compilation-test
@@ -387,6 +386,6 @@
                    ;; just make sure the API call actually worked by checking that the created Card is actually
                    ;; successfully saved in the DB
                    u/the-id
-                   (db/count Card :id))]
+                   (t2/count Card :id))]
       (is (= 1
              cnt)))))

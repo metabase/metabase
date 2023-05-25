@@ -266,3 +266,22 @@ jobs:
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       timeout-minutes: 3
+
+  publish-elastic-beanstalk-artifacts:
+    runs-on: ubuntu-22.04
+    needs: containerize
+    timeout-minutes: 15
+    env:
+      NO_SLACK: 1
+    steps:
+    - uses: actions/checkout@v3
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+    - name: Configure AWS credentials for S3
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+    - name: Publish Elastic Beanstalk artifacts
+      run: ./bin/ebs.sh :version ${{ github.ref_name }}

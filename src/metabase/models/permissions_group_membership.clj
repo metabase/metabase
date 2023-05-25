@@ -5,8 +5,8 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel PermissionsGroupMembership :permissions_group_membership)
 
@@ -54,8 +54,7 @@
     ;; ...and this is the last membership, throw an exception
     (throw-if-last-admin!)
     ;; ...otherwise we're ok. Unset the `:is_superuser` flag for the user whose membership was revoked
-    (db/update! 'User user_id
-      :is_superuser false)))
+    (t2/update! 'User user_id {:is_superuser false})))
 
 (defn- pre-insert [{:keys [group_id], :as membership}]
   (u/prog1 membership
@@ -66,8 +65,7 @@
     ;; If we're adding a user to the admin group, set the `:is_superuser` flag for the user to whom membership was
     ;; granted
     (when (= group_id (:id (perms-group/admin)))
-      (db/update! 'User user_id
-        :is_superuser true))))
+      (t2/update! 'User user_id {:is_superuser true}))))
 
 (mi/define-methods
  PermissionsGroupMembership

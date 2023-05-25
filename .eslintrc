@@ -15,6 +15,7 @@
     "no-empty": [1, { "allowEmptyCatch": true }],
     "curly": [1, "all"],
     "eqeqeq": [1, "smart"],
+    "import/no-default-export": 2,
     "import/no-commonjs": 1,
     "import/order": [
       "error",
@@ -56,7 +57,7 @@
         ]
       }
     ],
-    "no-console": 0,
+    "no-console": [2, {"allow": ["warn", "error"]}],
     "react/no-is-mounted": 2,
     "react/prefer-es6-class": 2,
     "react/display-name": 1,

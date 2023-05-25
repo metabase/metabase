@@ -6,15 +6,13 @@ redirect_from:
 
 # Managing people and groups
 
-To start managing people, click on the **gear** icon > **Admin settings** > **People**. You'll see a list f all the people in your organization.
+To start managing people, click on the **gear** icon > **Admin settings** > **People**. You'll see a list of all the people in your organization.
 
 ![Admin menu](images/AdminBar.png)
 
 ## Creating an account
 
-To add a new person, click **Invite someone** in the upper right corner. You’ll be prompted to enter their first and last names and their email address. 
-
-You can optionally add attributes to that user account, though you can add attributes to accounts at any time (as well as [via SSO](../people-and-groups/start.md#authentication)). Metabase uses attributes to create [data sandboxes](../permissions/data-sandboxes.md).
+To add a new person, click **Invite someone** in the upper right corner. You’ll be prompted to enter their email, and optionally their first and last names–only the email is required.
 
 Click **Create** to activate an account. An account becomes active once you click **Create**, even if the person never signs into the account. The account remains active until you [deactivate the account](#deactivating-an-account). If you're on a paid Metabase plan, all active accounts will count toward your user account total. If one person has more than one account, each account will count toward the total (see [how billing works](https://www.metabase.com/pricing/how-billing-works)).
 
@@ -22,9 +20,28 @@ If you’ve already [configured Metabase to use email](../configuring-metabase/e
 
 ## Editing an account
 
-You can edit someone's name and email address by clicking the three dots icon and choosing **Edit Details**.
+You can edit someone's name and email address by clicking the three dots icon and choosing **Edit user**.
 
 > Be careful: changing an account's email address _will change the address the person will use to log in to Metabase_.
+
+## Adding a user attribute
+
+{% include plans-blockquote.html feature="User attributes" %}
+
+To add a user attribute manually:
+
+1. Go to **Admin settings** > **People**.
+2. Find the person's account and click the **three dot** (...) menu.
+3. Click **Edit user**.
+4. Click **+ Add an attribute**.
+5. Add the name of the user attribute under "Key". For example, "Department".
+6. Add the value that applies to the specific person. For example, "Engineering".
+7. Optional: if a group for sandboxed people doesn't exist, [create a group](#creating-a-group) to organize people who will get sandboxed table permission, such as "Sandboxed people".
+8. Add the person to the group.
+
+You can also sync user attributes from your identity provider [via SSO](./start.md#authentication).
+
+User attributes are required for [data sandbox](../permissions/data-sandboxes.md) permissions.
 
 ## Deactivating an account
 

@@ -1,35 +1,15 @@
 const cypress = require("cypress");
-const arg = require("arg");
 
-const { executeYarnCommand } = require("./cypress-runner-utils");
-
-const args = arg(
-  {
-    "--folder": String, // The name of the folder to run files from
-    "--open": [Boolean], // Run Cypress in open mode or not? Doesn't accept additional arguments
-  },
-  { permissive: true }, // Passes all other flags and args to the Cypress parser
-);
+const {
+  executeYarnCommand,
+  parseArguments,
+  args,
+} = require("./cypress-runner-utils");
 
 const folder = args["--folder"];
 const isFolder = !!folder;
 
 const isOpenMode = args["--open"];
-
-const parseArguments = async () => {
-  const cliArgs = args._;
-
-  // cypress.cli.parseArguments requires `cypress run` as the first two arguments
-  if (cliArgs[0] !== "cypress") {
-    cliArgs.unshift("cypress");
-  }
-
-  if (cliArgs[1] !== "run") {
-    cliArgs.splice(1, 0, "run");
-  }
-
-  return await cypress.cli.parseRunArguments(cliArgs);
-};
 
 const getSourceFolder = folder => {
   return `./e2e/test/scenarios/${folder}/**/*.cy.spec.js`;
@@ -50,7 +30,7 @@ const runCypress = async (baseUrl, exitFunction) => {
     spec: isFolder && getSourceFolder(folder),
   };
 
-  const userArgs = await parseArguments();
+  const userArgs = await parseArguments(args);
 
   const finalConfig = Object.assign({}, defaultConfig, userArgs);
 

@@ -18,7 +18,7 @@ import ModelUsageDetails from "./ModelUsageDetails";
 import {
   RootLayout,
   ModelMain,
-  TabList,
+  TabRow,
   TabPanel,
   TabPanelContent,
 } from "./ModelDetailPage.styled";
@@ -58,7 +58,7 @@ function ModelDetailPage({
           onChangeCollection={onChangeCollection}
         />
         <TabContent value={tab}>
-          <TabList>
+          <TabRow>
             <TabLink
               value="usage"
               to={Urls.modelDetail(modelCard, "usage")}
@@ -73,10 +73,13 @@ function ModelDetailPage({
                 to={Urls.modelDetail(modelCard, "actions")}
               >{t`Actions`}</TabLink>
             )}
-          </TabList>
+          </TabRow>
           <TabPanel value="usage">
             <TabPanelContent>
-              <ModelUsageDetails model={model} />
+              <ModelUsageDetails
+                model={model}
+                hasNewQuestionLink={hasDataPermissions}
+              />
             </TabPanelContent>
           </TabPanel>
           <TabPanel value="schema">
@@ -108,4 +111,5 @@ function ModelDetailPage({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelDetailPage;

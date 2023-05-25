@@ -101,12 +101,21 @@
 ;;; |                                                QUERY PROCESSOR                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(u/ignore-exceptions
- (classloader/require '[metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.perms]
-                      '[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as ee.audit]
-                      '[metabase-enterprise.sandbox.query-processor.middleware
-                        [column-level-perms-check :as ee.sandbox.columns]
-                        [row-level-restrictions :as ee.sandbox.rows]]))
+(when config/ee-available?
+  (classloader/require '[metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.perms]
+                       '[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as ee.audit]
+                       '[metabase-enterprise.sandbox.query-processor.middleware
+                         [column-level-perms-check :as ee.sandbox.columns]
+                         [row-level-restrictions :as ee.sandbox.rows]]))
+
+;;; This is a namespace that adds middleware to test MLv2 stuff every time we run a query. It lives in a `./test`
+;;; namespace, so it's only around when running with `:dev` or the like.
+;;;
+;;; Why not just do `classloader/require` in a `try-catch` and ignore exceptions? Because we want to know if this errors
+;;; for some reason. If we accidentally break the namespace and just ignore exceptions, we could be skipping our tests
+;;; without even knowing about it. So it's better to have this actually error if in cases where it SHOULD be working.
+(when config/tests-available?
+  (classloader/require 'metabase.query-processor-test.test-mlv2))
 
 (def ^:private pre-processing-middleware
   "Pre-processing middleware. Has the form
@@ -185,6 +194,7 @@
 
     (f metadata) -> rf"
   [#'results-metadata/record-and-return-metadata!
+   (resolve 'metabase.query-processor-test.test-mlv2/post-processing-middleware)
    #'limit/limit-result-rows
    (resolve 'ee.perms/limit-download-result-rows)
    #'qp.add-rows-truncated/add-rows-truncated
@@ -219,13 +229,20 @@
   Where `qp` has the form
 
     (f query rff context)"
+  ;; think of the direction stuff happens in as if you were throwing a ball up in the air; as the query-ball goes up the
+  ;; around middleware pre-processing stuff happens; then the query is executed, as the "ball of results" comes back
+  ;; down any post-processing these around middlewares might do happens in reversed order.
+  ;;
+  ;; ↓↓↓ POST-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
   [#'qp.resolve-database-and-driver/resolve-database-and-driver
    #'fetch-source-query/resolve-card-id-source-tables
    #'store/initialize-store
    ;; `normalize` has to be done at the very beginning or `resolve-card-id-source-tables` and the like might not work.
    ;; It doesn't really need to be 'around' middleware tho.
+   (resolve 'metabase.query-processor-test.test-mlv2/around-middleware)
    #'normalize/normalize
    (resolve 'ee.audit/handle-internal-queries)])
+;; ↑↑↑ PRE-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 
 ;; query -> preprocessed = around + pre-process
 ;; query -> native       = around + pre-process + compile
@@ -290,6 +307,10 @@
               (preprocess* query)))]
     (qp query nil nil)))
 
+(defn- restore-join-aliases [preprocessed-query]
+  (let [replacement (-> preprocessed-query :info :alias/escaped->original)]
+    (escape-join-aliases/restore-aliases preprocessed-query replacement)))
+
 (defn query->expected-cols
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
@@ -297,11 +318,11 @@
   [{query-type :type, :as query}]
   (when-not (= (mbql.u/normalize-token query-type) :query)
     (throw (ex-info (tru "Can only determine expected columns for MBQL queries.")
-             {:type qp.error-type/qp})))
+                    {:type qp.error-type/qp})))
   ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
   ;; check where this is used.
   (qp.store/with-store
-    (let [preprocessed (preprocess query)]
+    (let [preprocessed (-> query preprocess restore-join-aliases)]
       (driver/with-driver (driver.u/database->driver (:database preprocessed))
         (not-empty (vec (annotate/merged-column-info preprocessed nil)))))))
 

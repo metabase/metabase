@@ -7,7 +7,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defmulti verify-data-loaded-correctly
   "Make sure a `DatabaseDefinition` (see `metabase.test.data.interface`) was loaded correctly. This checks that all
@@ -89,7 +89,7 @@
             (throw (ex-info "Error verifying Field." (params->ex-data params) e)))))
       (log/debugf "All Fields for Table %s.%s loaded correctly." (pr-str actual-schema) (pr-str actual-name))
       (log/debugf "Verifying rows...")
-      (let [table-id           (or (db/select-one-id Table :db_id (u/the-id database), :name actual-name)
+      (let [table-id           (or (t2/select-one-pk Table :db_id (u/the-id database), :name actual-name)
                                    (throw (ex-info (format "Cannot find %s.%s after sync." (pr-str actual-schema) (pr-str actual-name))
                                                    (params->ex-data params))))
             expected-row-count (count rows)

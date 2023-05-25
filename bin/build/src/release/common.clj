@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [metabuild-common.core :as u]))
 
-(def cloudfront-distribution-id "E35CJLWZIZVG7K")
+(def downloads-cloudfront-distribution-id "E35CJLWZIZVG7K")
+(def static-cloudfront-distribution-id "E1HU16PWP1JPMC")
 
 (def ^String root-directory
   "e.g. /Users/cam/metabase"

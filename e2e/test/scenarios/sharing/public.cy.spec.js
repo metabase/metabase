@@ -5,6 +5,7 @@ import {
   visitQuestion,
   visitDashboard,
   openQuestionActions,
+  rightSidebar,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -83,26 +84,35 @@ describe("scenarios > public", () => {
         cy.findByText("Is").click();
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Select…").click();
       popover().contains("Category").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Done").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Save").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You're editing this dashboard.").should("not.exist");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(COUNT_ALL);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Text")
         .parent()
         .parent()
         .find("fieldset")
         .should("not.exist");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Text").click();
 
       popover().within(() => {
         cy.findByText("Doohickey").click();
       });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Add filter").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(COUNT_DOOHICKEY);
 
       cy.url()
@@ -119,11 +129,13 @@ describe("scenarios > public", () => {
 
       cy.icon("share").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Enable sharing")
         .parent()
         .find("input[type=checkbox]")
         .check();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Public link")
         .parent()
         .find("input")
@@ -140,11 +152,13 @@ describe("scenarios > public", () => {
 
       cy.icon("share").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Enable sharing")
         .parent()
         .find("input[type=checkbox]")
         .check();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Public link")
         .parent()
         .find("input")
@@ -157,16 +171,20 @@ describe("scenarios > public", () => {
     it("should show shared questions and dashboards in admin settings", () => {
       cy.visit("/admin/settings/public-sharing");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Enable Public Sharing").should("be.visible");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards.",
       ).should("be.visible");
 
       // shared questions
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("sql param").should("be.visible");
 
       // shared dashboard
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("parameterized dashboard").should("be.visible");
     });
 
@@ -176,23 +194,33 @@ describe("scenarios > public", () => {
 
         it(`should be able to view public questions`, () => {
           cy.visit(questionPublicLink);
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.contains(COUNT_ALL);
 
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.contains("Category").click();
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.contains("Doohickey").click();
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.contains("Add filter").click();
 
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.contains(COUNT_DOOHICKEY);
         });
 
         it(`should be able to view public dashboards`, () => {
           cy.visit(dashboardPublicLink);
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.contains(COUNT_ALL);
 
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.contains("Text").click();
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.contains("Doohickey").click();
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.contains("Add filter").click();
 
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.contains(COUNT_DOOHICKEY);
 
           // Enter full-screen button
@@ -200,5 +228,49 @@ describe("scenarios > public", () => {
         });
       }),
     );
+
+    describe("Disable auto-apply filters", () => {
+      before(() => {
+        cy.signInAsAdmin();
+        visitDashboard(dashboardId);
+
+        openDashboardSidebar();
+        rightSidebar()
+          .findByLabelText("Auto-apply filters")
+          .click()
+          .should("not.be.checked");
+      });
+
+      it("should be able to view public dashboards by anonymous users", () => {
+        cy.signOut();
+        cy.visit(dashboardPublicLink);
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.contains(COUNT_ALL);
+
+        cy.button("Apply").should("not.exist");
+
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.contains("Text").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.contains("Doohickey").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.contains("Add filter").click();
+
+        cy.button("Apply").should("be.visible").click();
+        cy.button("Apply").should("not.exist");
+
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.contains(COUNT_DOOHICKEY);
+
+        // Enter full-screen button
+        cy.icon("expand");
+      });
+    });
   });
 });
+
+function openDashboardSidebar() {
+  cy.get("main header").within(() => {
+    cy.icon("info").click();
+  });
+}

@@ -22,7 +22,7 @@ Remove a User from a PermissionsGroup (delete their membership).
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/permissions/execution/graph`
 
@@ -101,7 +101,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`body`** value must be a map.
+*  **`body`** map
 
 ## `PUT /api/permissions/graph`
 
@@ -123,7 +123,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`body`** value must be a map.
+*  **`body`** map
 
 ## `PUT /api/permissions/group/:group-id`
 
@@ -141,7 +141,7 @@ Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the
 
 ### PARAMS:
 
-*  **`group-id`**
+*  **`group-id`** value must be an integer greater than zero.
 
 ## `PUT /api/permissions/membership/:id`
 
@@ -149,7 +149,7 @@ Update a Permission Group membership. Returns the updated record.
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
 *  **`is_group_manager`** boolean
 

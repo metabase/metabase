@@ -1,24 +1,38 @@
 import React from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
-import { getIcon, getName } from "metabase/entities/recent-items";
+import RecentItems, { getIcon, getName } from "metabase/entities/recent-items";
+import { getUser } from "metabase/selectors/user";
 import { RecentItem, User } from "metabase-types/api";
+import { State } from "metabase-types/store";
 import HomeCaption from "../HomeCaption";
 import HomeHelpCard from "../HomeHelpCard";
 import HomeModelCard from "../HomeModelCard";
 import { isWithinWeeks } from "../../utils";
 import { SectionBody } from "./HomeRecentSection.styled";
 
-export interface HomeRecentSectionProps {
-  user: User;
+interface EntityLoaderProps {
   recentItems: RecentItem[];
 }
+
+interface StateProps {
+  user: User | null;
+}
+
+export type HomeRecentSectionProps = EntityLoaderProps & StateProps;
+
+const mapStateToProps = (state: State): StateProps => ({
+  user: getUser(state),
+});
 
 const HomeRecentSection = ({
   user,
   recentItems,
 }: HomeRecentSectionProps): JSX.Element => {
-  const hasHelpCard = user.is_installer && isWithinWeeks(user.first_login, 2);
+  const hasHelpCard =
+    user != null && user.is_installer && isWithinWeeks(user.first_login, 2);
 
   return (
     <div>
@@ -38,4 +52,8 @@ const HomeRecentSection = ({
   );
 };
 
-export default HomeRecentSection;
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default _.compose(
+  RecentItems.loadList(),
+  connect(mapStateToProps),
+)(HomeRecentSection);

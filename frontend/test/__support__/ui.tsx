@@ -1,17 +1,16 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import type { ByRoleMatcher } from "@testing-library/react";
-import { merge } from "icepick";
 import _ from "underscore";
 import { createMemoryHistory, History } from "history";
 import { Router } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
+import type { Store, Reducer } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "@emotion/react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-
-import { state as sampleDatabaseReduxState } from "__support__/sample_database_fixture";
+import type { MatcherFunction } from "@testing-library/dom";
 
 import type { State } from "metabase-types/store";
 
@@ -22,13 +21,18 @@ import publicReducers from "metabase/reducers-public";
 
 import { getStore } from "./entities-store";
 
+type ReducerValue = ReducerObject | Reducer;
+interface ReducerObject {
+  [slice: string]: ReducerValue;
+}
+
 export interface RenderWithProvidersOptions {
   mode?: "default" | "public";
   initialRoute?: string;
   storeInitialState?: Partial<State>;
-  withSampleDatabase?: boolean;
   withRouter?: boolean;
   withDND?: boolean;
+  customReducers?: ReducerObject;
 }
 
 /**
@@ -42,17 +46,13 @@ export function renderWithProviders(
     mode = "default",
     initialRoute = "/",
     storeInitialState = {},
-    withSampleDatabase,
     withRouter = false,
     withDND = false,
+    customReducers,
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  let initialState = createMockState(
-    withSampleDatabase
-      ? merge(sampleDatabaseReduxState, storeInitialState)
-      : storeInitialState,
-  );
+  let initialState = createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
@@ -63,17 +63,20 @@ export function renderWithProviders(
     ? createMemoryHistory({ entries: [initialRoute] })
     : undefined;
 
-  const reducers = mode === "default" ? mainReducers : publicReducers;
+  let reducers = mode === "default" ? mainReducers : publicReducers;
 
   if (withRouter) {
     Object.assign(reducers, { routing: routerReducer });
+  }
+  if (customReducers) {
+    reducers = { ...reducers, ...customReducers };
   }
 
   const store = getStore(
     reducers,
     initialState,
     history ? [routerMiddleware(history)] : [],
-  );
+  ) as unknown as Store<State>;
 
   const wrapper = (props: any) => (
     <Wrapper
@@ -161,6 +164,17 @@ export function getIcon(name: string, role: ByRoleMatcher = "img") {
 
 export function queryIcon(name: string, role: ByRoleMatcher = "img") {
   return screen.queryByRole(role, { name: `${name} icon` });
+}
+
+/**
+ * Returns a matcher function to find text content that is broken up by multiple elements
+ *
+ * @param {string} textToFind
+ * @example
+ * screen.getByText(getBrokenUpTextMatcher("my text with a styled word"))
+ */
+export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
+  return (content, element) => element?.textContent === textToFind;
 }
 
 export * from "@testing-library/react";

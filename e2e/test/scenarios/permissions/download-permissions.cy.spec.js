@@ -9,6 +9,7 @@ import {
   sidebar,
   visitQuestion,
   visitDashboard,
+  popover,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -97,6 +98,7 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
 
     visitQuestion("1");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing first 2,000 rows");
     cy.icon("download").should("not.exist");
   });
@@ -115,6 +117,7 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
 
     visitQuestion("1");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing first 2,000 rows");
     cy.icon("download").should("not.exist");
 
@@ -122,7 +125,12 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
 
     cy.findByTestId("dashcard").within(() => {
       cy.findByTestId("legend-caption").realHover();
-      cy.icon("ellipsis").should("not.exist");
+      cy.findByTestId("dashcard-menu").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Edit question").should("be.visible");
+      cy.findByText("Download results").should("not.exist");
     });
   });
 

@@ -10,7 +10,7 @@ import {
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > bar chart", () => {
   beforeEach(() => {
@@ -46,6 +46,7 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("(empty)").should("not.exist");
     });
 
@@ -58,6 +59,7 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("(empty)");
     });
   });
@@ -79,7 +81,9 @@ describe("scenarios > visualizations > bar chart", () => {
       });
 
       cy.get(".bar").should("have.length", 5); // there are six bars when null isn't filtered
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1,800"); // correct data has this on the y-axis
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("16,000").should("not.exist"); // If nulls are included the y-axis stretches much higher
     });
   });
@@ -187,7 +191,9 @@ describe("scenarios > visualizations > bar chart", () => {
           cy.icon("eye_outline").click();
         });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Product").click();
 
       cy.findByTestId("filter-field-Category").within(() => {
@@ -202,6 +208,7 @@ describe("scenarios > visualizations > bar chart", () => {
         cy.findByText("Gadget").click();
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Apply Filters").click();
 
       getDraggableElements().should("have.length", 3);
@@ -222,6 +229,87 @@ describe("scenarios > visualizations > bar chart", () => {
       //Re-added items should appear at the end of the list.
       getDraggableElements().eq(0).should("have.text", "Gizmo");
       getDraggableElements().eq(3).should("have.text", "Gadget");
+    });
+  });
+
+  // Note (EmmadUsmani): see `line_chart.cy.spec.js` for more test cases of this
+  describe("with split y-axis (metabase#12939)", () => {
+    it("should split the y-axis when column settings differ", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["avg", ["field", ORDERS.TOTAL, null]],
+              ["min", ["field", ORDERS.TOTAL, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "bar",
+        visualization_settings: {
+          column_settings: {
+            '["name","avg"]': { number_style: "decimal" },
+            '["name","min"]': { number_style: "percent" },
+          },
+        },
+      });
+
+      cy.get("g.axis.yr").should("be.visible");
+    });
+
+    it("should not split the y-axis when semantic_type, column settings are same and values are not far", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["avg", ["field", ORDERS.TOTAL, null]],
+              ["min", ["field", ORDERS.TOTAL, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "bar",
+      });
+
+      cy.get("g.axis.yr").should("not.exist");
+    });
+  });
+
+  describe("with stacked bars", () => {
+    it("should drill-through correctly when stacking", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", PRODUCTS.CATEGORY],
+              ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+        },
+        display: "bar",
+        visualization_settings: { "stackable.stack_type": "stacked" },
+      });
+
+      cy.findAllByTestId("legend-item").findByText("Doohickey").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("View these Products").click();
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Category is Doohickey").should("be.visible");
     });
   });
 
@@ -250,10 +338,13 @@ describe("scenarios > visualizations > bar chart", () => {
     cy.findByTestId("viz-settings-button").click();
     cy.get("[data-testid^=draggable-item]").should("have.length", 100);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID is less than 101").click();
     cy.findByDisplayValue("101").type("{backspace}2");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Update filter").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "This chart type doesn't support more than 100 series of data.",
     );

@@ -13,7 +13,6 @@
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
-   [metabase.api.timeline :as api.timeline]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
@@ -33,10 +32,11 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -59,8 +59,7 @@
       (remove personal? collections)
       collections)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
 
@@ -70,40 +69,37 @@
   By default, admin users will see all collections. To hide other user's collections pass in
   `?exclude-other-user-collections=true`."
   [archived exclude-other-user-collections namespace]
-  {archived                       (s/maybe su/BooleanString)
-   exclude-other-user-collections (s/maybe su/BooleanString)
-   namespace (s/maybe su/NonBlankString)}
-  (let [archived? (Boolean/parseBoolean archived)
-        exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)]
-    (as-> (db/select Collection
-            {:where    [:and
-                        [:= :archived archived?]
-                        [:= :namespace namespace]
-                        (collection/visible-collection-ids->honeysql-filter-clause
-                         :id
-                         (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-             :order-by [[:%lower.name :asc]]}) collections
-          ;; Remove other users' personal collections
-          (if exclude-other-user-collections?
-            (remove-other-users-personal-collections api/*current-user-id* collections)
-            collections)
-          ;; include Root Collection at beginning or results if archived isn't `true`
-      (if archived?
-        collections
-        (let [root (root-collection namespace)]
-          (cond->> collections
-            (mi/can-read? root)
-            (cons root))))
-      (hydrate collections :can_write)
-      ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
-      ;; and for personal collections we translate the name to user's locale
-      (for [collection collections]
-        (-> collection
-            (dissoc ::collection.root/is-root?)
-            collection/personal-collection-with-ui-details)))))
+  {archived                       [:maybe ms/BooleanValue]
+   exclude-other-user-collections [:maybe ms/BooleanValue]
+   namespace                      [:maybe ms/NonBlankString]}
+  (as-> (t2/select Collection
+                   {:where    [:and
+                               [:= :archived archived]
+                               [:= :namespace namespace]
+                               (collection/visible-collection-ids->honeysql-filter-clause
+                                :id
+                                (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                    :order-by [[:%lower.name :asc]]}) collections
+    ;; Remove other users' personal collections
+    (if exclude-other-user-collections
+      (remove-other-users-personal-collections api/*current-user-id* collections)
+      collections)
+    ;; include Root Collection at beginning or results if archived isn't `true`
+    (if archived
+      collections
+      (let [root (root-collection namespace)]
+        (cond->> collections
+          (mi/can-read? root)
+          (cons root))))
+    (hydrate collections :can_write)
+    ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
+    ;; and for personal collections we translate the name to user's locale
+    (for [collection collections]
+      (-> collection
+          (dissoc ::collection.root/is-root?)
+          collection/personal-collection-with-ui-details))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/tree"
+(api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
   ```
@@ -125,11 +121,11 @@
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
   [exclude-archived exclude-other-user-collections namespace]
-  {exclude-archived (s/maybe su/BooleanString)
-   exclude-other-user-collections (s/maybe su/BooleanString)
-   namespace        (s/maybe su/NonBlankString)}
-  (let [exclude-archived? (Boolean/parseBoolean exclude-archived)
-        exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)
+  {exclude-archived               [:maybe :boolean]
+   exclude-other-user-collections [:maybe :boolean]
+   namespace                      [:maybe ms/NonBlankString]}
+  (let [exclude-archived? exclude-archived
+        exclude-other-user-collections? exclude-other-user-collections
         coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
                                 (update acc (if dataset :dataset :card) conj collection_id))
                               {:dataset #{}
@@ -138,7 +134,7 @@
                                                           :from            [:report_card]
                                                           :where           [:= :archived false]}))
         colls (cond->>
-                (db/select Collection
+                (t2/select Collection
                   {:where [:and
                            (when exclude-archived?
                              [:= :archived false])
@@ -151,32 +147,6 @@
         colls-with-details (map collection/personal-collection-with-ui-details colls)]
     (collection/collections->tree coll-type-ids colls-with-details)))
 
-(comment
-  (binding [api/*current-user-permissions-set* (delay #{"/"})
-            api/*current-user-id* 1]
-    (time
-     (let [exclude-archived?               false
-           exclude-other-user-collections? true
-           coll-type-ids                   (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
-                                                     (update acc (if dataset :dataset :card) conj collection_id))
-                                                   {:dataset #{}
-                                                    :card    #{}}
-                                                   (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
-                                                                               :from            [:report_card]
-                                                                               :where           [:= :archived false]}))
-           colls                           (cond->>
-                                             (db/select Collection
-                                               {:where [:and
-                                                        (when exclude-archived?
-                                                          [:= :archived false])
-                                                        [:= :namespace nil]
-                                                        (collection/visible-collection-ids->honeysql-filter-clause
-                                                         :id
-                                                         (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-                                             exclude-other-user-collections?
-                                             (remove-other-users-personal-collections api/*current-user-id*))
-           colls-with-details              (map collection/personal-collection-with-ui-details colls)]
-       (collection/collections->tree coll-type-ids colls-with-details)))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
@@ -322,25 +292,28 @@
             :dataset_query)))
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                   :c.dataset_query
-                   [(h2x/literal (if dataset? "dataset" "card")) :model]
-                   [:u.id :last_edit_user]
-                   [:u.email :last_edit_email]
-                   [:u.first_name :last_edit_first_name]
-                   [:u.last_name :last_edit_last_name]
-                   [:r.timestamp :last_edit_timestamp]
-                   [{:select   [:status]
-                     :from     [:moderation_review]
-                     :where    [:and
-                                [:= :moderated_item_type "card"]
-                                [:= :moderated_item_id :c.id]
-                                [:= :most_recent true]]
-                     ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                     ;; protecting against potential bugs
-                     :order-by [[:id :desc]]
-                     :limit    1}
-                    :moderated_status]]
+  (-> {:select    (cond->
+                    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                     :c.dataset_query
+                     [(h2x/literal (if dataset? "dataset" "card")) :model]
+                     [:u.id :last_edit_user]
+                     [:u.email :last_edit_email]
+                     [:u.first_name :last_edit_first_name]
+                     [:u.last_name :last_edit_last_name]
+                     [:r.timestamp :last_edit_timestamp]
+                     [{:select   [:status]
+                       :from     [:moderation_review]
+                       :where    [:and
+                                  [:= :moderated_item_type "card"]
+                                  [:= :moderated_item_id :c.id]
+                                  [:= :most_recent true]]
+                       ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                       ;; protecting against potential bugs
+                       :order-by [[:id :desc]]
+                       :limit    1}
+                      :moderated_status]]
+                    dataset?
+                    (conj :c.database_id))
        :from      [[:report_card :c]]
        ;; todo: should there be a flag, or a realized view?
        :left-join [[{:select    [:r1.*]
@@ -557,7 +530,7 @@
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
    :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
-   [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
+   [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]])
 
 (defn- add-missing-columns
   "Ensures that all necessary columns are in the select-columns collection, adding `[nil :column]` as necessary."
@@ -701,31 +674,28 @@
       collection/personal-collection-with-ui-details
       (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"
   [id]
+  {id ms/PositiveInt}
   (collection-detail (api/read-check Collection id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/root/timelines"
+(api/defendpoint GET "/root/timelines"
   "Fetch the root Collection's timelines."
   [include archived]
-  {include  (s/maybe api.timeline/Include)
-   archived (s/maybe su/BooleanString)}
-  (let [archived? (Boolean/parseBoolean archived)]
-    (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
-                                            :timeline/archived? archived?})))
+  {include  [:maybe [:= "events"]]
+   archived [:maybe :boolean]}
+  (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
+                                          :timeline/archived? archived}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/timelines"
+(api/defendpoint GET "/:id/timelines"
   "Fetch a specific Collection's timelines."
   [id include archived]
-  {include  (s/maybe api.timeline/Include)
-   archived (s/maybe su/BooleanString)}
-  (let [archived? (Boolean/parseBoolean archived)]
-    (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
-                                           :timeline/archived? archived?})))
+  {id       ms/PositiveInt
+   include  [:maybe [:= "events"]]
+   archived [:maybe :boolean]}
+  (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
+                                         :timeline/archived? archived}))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/items"
@@ -756,11 +726,10 @@
 (defn- root-collection [collection-namespace]
   (collection-detail (collection/root-collection-with-ui-details collection-namespace)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/root"
+(api/defendpoint GET "/root"
   "Return the 'Root' Collection object with standard details added"
   [namespace]
-  {namespace (s/maybe su/NonBlankString)}
+  {namespace [:maybe ms/NonBlankString]}
   (-> (root-collection namespace)
       (api/read-check)
       (dissoc ::collection.root/is-root?)))
@@ -820,7 +789,7 @@
   Root Collection perms."
   [collection-id collection-namespace]
   (api/write-check (if collection-id
-                     (db/select-one Collection :id collection-id)
+                     (t2/select-one Collection :id collection-id)
                      (cond-> collection/root-collection
                        collection-namespace (assoc :namespace collection-namespace)))))
 
@@ -832,15 +801,17 @@
   ;; Now create the new Collection :)
   (api/check-403 (or (nil? authority_level)
                      (and api/*is-superuser?* authority_level)))
-  (db/insert! Collection
-    (merge
-     {:name        name
-      :color       color
-      :description description
-      :authority_level authority_level
-      :namespace   namespace}
-     (when parent_id
-       {:location (collection/children-location (db/select-one [Collection :location :id] :id parent_id))}))))
+  (first
+    (t2/insert-returning-instances!
+      Collection
+      (merge
+        {:name        name
+         :color       color
+         :description description
+         :authority_level authority_level
+         :namespace   namespace}
+        (when parent_id
+          {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
@@ -867,7 +838,7 @@
     (let [orig-location (:location collection-before-update)
           new-parent-id (:parent_id collection-updates)
           new-parent    (if new-parent-id
-                          (db/select-one [Collection :location :id] :id new-parent-id)
+                          (t2/select-one [Collection :location :id] :id new-parent-id)
                           collection/root-collection)
           new-location  (collection/children-location new-parent)]
       ;; check and make sure we're actually supposed to be moving something
@@ -898,7 +869,7 @@
   [collection-before-update collection-updates]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
     (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
-                            {:card-ids (db/select-ids Card :collection_id (u/the-id collection-before-update))}))]
+                            {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
       (api.card/delete-alert-and-notify-archived! alerts))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -926,22 +897,21 @@
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :authority_level])]
       (when (seq updates)
-        (db/update! Collection id updates)))
+        (t2/update! Collection id updates)))
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
     (move-collection-if-needed! collection-before-update collection-updates)
     ;; if we *did* end up archiving this Collection, we most post a few notifications
     (maybe-send-archived-notificaitons! collection-before-update collection-updates))
   ;; finally, return the updated object
-  (-> (db/select-one Collection :id id)
+  (-> (t2/select-one Collection :id id)
       (hydrate :parent_id)))
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/graph"
+(api/defendpoint GET "/graph"
   "Fetch a graph of all Collection Permissions."
   [namespace]
-  {namespace (s/maybe su/NonBlankString)}
+  {namespace [:maybe ms/NonBlankString]}
   (api/check-superuser)
   (graph/graph namespace))
 
@@ -977,15 +947,15 @@
   (mc/decoder PermissionsGraph (mtx/string-transformer)))
 
 (defn- decode-graph [permission-graph]
+  ;; TODO: should use a coercer for this?
   (graph-decoder permission-graph))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/graph"
+(api/defendpoint PUT "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph.
   Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
   [:as {{:keys [namespace], :as body} :body}]
-  {body      su/Map
-   namespace (s/maybe su/NonBlankString)}
+  {body      :map
+   namespace [:maybe ms/NonBlankString]}
   (api/check-superuser)
   (->> (dissoc body :namespace)
        decode-graph

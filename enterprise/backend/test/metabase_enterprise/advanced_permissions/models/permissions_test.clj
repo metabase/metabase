@@ -11,7 +11,7 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Download permissions                                                  |
@@ -135,7 +135,7 @@
 
       (testing "If a group has granular download perms for a DB, native download perms are removed when a new table is
               found during sync, since the new table has no download perms"
-        (let [table-ids (db/select-ids 'Table :db_id db-id)
+        (let [table-ids (t2/select-pks-set 'Table :db_id db-id)
               limited-downloads-id  (apply min table-ids)
               graph {:schemas {"PUBLIC"
                                (-> (into {} (for [id table-ids] [id :full]))

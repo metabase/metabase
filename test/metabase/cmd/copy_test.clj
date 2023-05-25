@@ -2,9 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.cmd.copy :as copy]
+   [metabase.db.util :as mdb.u]
    [metabase.plugins.classloader :as classloader]
-   [metabase.util :as u]
-   [toucan.models :as models]))
+   [metabase.util :as u]))
 
 (deftest all-models-accounted-for-test
   ;; This fetches the `metabase.cmd.load-from-h2/entities` and compares it all existing entities
@@ -18,7 +18,7 @@
                                         [_ varr] (do (classloader/require ns)
                                                      (ns-interns ns))
                                         :let     [{model-name :name, :as model} (var-get varr)]
-                                        :when    (and (models/model? model)
+                                        :when    (and (mdb.u/toucan-model? model)
                                                       (not (contains? models-to-exclude model-name)))]
                                     model-name))]
     (is (= all-model-names migrated-model-names))))

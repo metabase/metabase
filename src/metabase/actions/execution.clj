@@ -18,8 +18,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (defn- execute-query-action!
   "Execute a `QueryAction` with parameters as passed in from an
@@ -63,9 +63,9 @@
 
 (defn- implicit-action-table
   [card_id]
-  (let [card (db/select-one Card :id card_id)
+  (let [card (t2/select-one Card :id card_id)
         {:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
-    (hydrate (db/select-one Table :id table-id) :fields)))
+    (hydrate (t2/select-one Table :id table-id) :fields)))
 
 (defn- execute-custom-action [action request-parameters]
   (let [{action-type :type}          action
@@ -80,11 +80,11 @@
                          :parameters             request-parameters
                          :destination-parameters (:parameters action)}))))
     (actions/check-actions-enabled! action)
-    (let [model (db/select-one Card :id (:model_id action))]
+    (let [model (t2/select-one Card :id (:model_id action))]
       (when (and (= action-type :query) (not= (:database_id model) (:database_id action)))
         ;; the above check checks the db of the model. We check the db of the query action here
         (actions/check-actions-enabled-for-database!
-         (db/select-one Database :id (:database_id action)))))
+         (t2/select-one Database :id (:database_id action)))))
     (try
       (case action-type
         :query
@@ -114,7 +114,11 @@
         extra-parameters         (set/difference (set (keys request-parameters))
                                                  (set (keys slug->field-name)))
         pk-field                 (first pk-fields)
-        simple-parameters        (update-keys request-parameters (comp keyword slug->field-name))
+        ;; Ignore params with nil values; the client doesn't reliably omit blank, optional parameters from the
+        ;; request. See discussion at #29049
+        simple-parameters        (->> (update-keys request-parameters (comp keyword slug->field-name))
+                                      (filter (fn [[_k v]] (some? v)))
+                                      (into {}))
         pk-field-name            (keyword (:name pk-field))
         row-parameters           (cond-> simple-parameters
                                    (not= implicit-action :row/create) (dissoc pk-field-name))
@@ -179,7 +183,7 @@
   "Execute the given action in the dashboard/dashcard context with the given parameters
    of shape `{<parameter-id> <value>}."
   [dashboard-id dashcard-id request-parameters]
-  (let [dashcard (api/check-404 (db/select-one DashboardCard
+  (let [dashcard (api/check-404 (t2/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
         action (api/check-404 (action/select-action :id (:action_id dashcard)))]
@@ -198,7 +202,7 @@
         info {:executed-by api/*current-user-id*
               :context :question
               :dashboard-id dashboard-id}
-        card (db/select-one Card :id (:model_id action))
+        card (t2/select-one Card :id (:model_id action))
         ;; prefilling a form with day old data would be bad
         result (binding [persisted-info/*allow-persisted-substitution* false]
                  (qp/process-query-and-save-execution!
@@ -215,7 +219,7 @@
   "Fetch values to pre-fill implicit action execution - custom actions will return no values.
    Must pass in parameters of shape `{<parameter-id> <value>}` for primary keys."
   [dashboard-id dashcard-id request-parameters]
-  (let [dashcard (api/check-404 (db/select-one DashboardCard
+  (let [dashcard (api/check-404 (t2/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
         action (api/check-404 (action/select-action :id (:action_id dashcard)))]

@@ -16,7 +16,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.sql ResultSet)))
 
@@ -37,7 +37,7 @@
       :h2
       :postgres))
   (testing "simple-select-probe-query shouldn't actually return any rows"
-    (let [{:keys [name schema]} (db/select-one Table :id (mt/id :venues))]
+    (let [{:keys [name schema]} (t2/select-one Table :id (mt/id :venues))]
       (is (= []
              (mt/rows
                (qp/process-query
@@ -100,7 +100,7 @@
 
 (defn- count-active-tables-in-db
   [db-id]
-  (db/count Table
+  (t2/count Table
     :db_id  db-id
     :active true))
 
@@ -128,7 +128,7 @@
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (mt/with-temp Database [db-filtered database]
     (sync/sync-database! db-filtered {:scan :schema})
-    (let [tables (db/select Table :db_id (u/the-id db-filtered))]
+    (let [tables (t2/select Table :db_id (u/the-id db-filtered))]
       (doseq [table tables]
         (assert-table-fn table)))))
 
@@ -150,20 +150,24 @@
           patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
       (testing "Filtering connections for schemas works as expected"
         (testing " with an inclusion filter"
-          (sync-and-assert-filtered-tables {:name    (format "Test %s DB with dataset inclusion filters" driver)
-                                            :engine  driver
-                                            :details (-> (mt/db)
-                                                         :details
-                                                         (assoc filter-type-prop "inclusion"
-                                                                patterns-type-prop "s*,v*"))}
-            (fn [{schema-name :schema}]
-              (is (contains? #{\s \v} (first schema-name))))))
+          (sync-and-assert-filtered-tables
+           {:name    (format "Test %s DB with dataset inclusion filters" driver)
+            :engine  driver
+            :details (-> (mt/db)
+                         :details
+                         (assoc filter-type-prop "inclusion"
+                                patterns-type-prop "s*,v*,2*"))}
+           (fn [{schema-name :schema}]
+             (testing (format "schema name = %s" (pr-str schema-name))
+               (is (contains? #{\s \v \2} (first schema-name)))))))
         (testing " with an exclusion filter"
-          (sync-and-assert-filtered-tables {:name    (format "Test %s DB with dataset exclusion filters" driver)
-                                            :engine  driver
-                                            :details (-> (mt/db)
-                                                         :details
-                                                         (assoc filter-type-prop "exclusion"
-                                                                patterns-type-prop "v*"))}
-            (fn [{schema-name :schema}]
-              (is (not= \v (first schema-name))))))))))
+          (sync-and-assert-filtered-tables
+           {:name    (format "Test %s DB with dataset exclusion filters" driver)
+            :engine  driver
+            :details (-> (mt/db)
+                         :details
+                         (assoc filter-type-prop "exclusion"
+                                patterns-type-prop "v*"))}
+           (fn [{schema-name :schema}]
+             (testing (format "schema name = %s" (pr-str schema-name))
+               (is (not= \v (first schema-name)))))))))))

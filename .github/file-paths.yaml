@@ -6,15 +6,16 @@ ci: &ci
   - ".github/**/!(*.md)"
 
 shared_sources: &shared_sources
-  - "shared/src"
+  - "shared/src/**"
+  - "src/metabase/lib/**"
 
 shared_specs: &shared_specs
-  - "shared/test"
+  - "shared/test/**"
 
 frontend_sources: &frontend_sources
   - *shared_sources
-  - "enterprise/frontend/**"
-  - "frontend/!(test)/**"
+  - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+  - "frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
   - "yarn.lock"
   - "**/tsconfig*.json"
   - "package.json"
@@ -65,6 +66,7 @@ backend_all: &backend_all
   - *frontend_sources # keep it here until we detect static viz changes
 
 sources: &sources
+  - *shared_sources
   - *frontend_sources
   - *backend_sources
 
@@ -95,3 +97,13 @@ yaml:
 codeql:
   - "frontend/src/**"
   - "enterprise/frontend/src/**"
+
+i18n:
+  - *default
+  - *ci
+  - *sources
+
+visualizations:
+  - "frontend/src/metabase/visualizations/**"
+  - "frontend/src/metabase/static-viz/**"
+  - "src/metabase/pulse/**"

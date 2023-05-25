@@ -12,6 +12,10 @@ export const FormContainer = styled.div`
   background-color: ${color("white")};
 `;
 
+export const FormFieldEditorDragContainer = styled.div`
+  margin-bottom: ${space(1)};
+`;
+
 export const InfoText = styled.span`
   display: block;
   color: ${color("text-medium")};
@@ -36,7 +40,7 @@ export const ExplainerTitle = styled.h3`
   margin-bottom: ${space(1)};
 `;
 
-export const ExplainerText = styled.p`
+export const ExplainerText = styled.div`
   font-weight: 400;
   line-height: 1.5rem;
   color: ${color("text-medium")};
@@ -60,6 +64,7 @@ export const ExplainerLink = styled(ExternalLink)`
   margin-top: ${space(2)};
 
   color: ${color("brand")};
+
   &:hover {
     color: ${lighten("brand", 0.1)};
   }

@@ -1,5 +1,6 @@
 (ns metabase.api.action-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.action :as api.action]
@@ -9,7 +10,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -92,15 +92,15 @@
                                     :model_id   card-id
                                     :kind       "row/create"
                                     :parameters [{:id "x" :type "number"}]}
-                          _archived {:name                   "Archived example"
-                                     :type                   :query
-                                     :model_id               card-id
-                                     :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
-                                                                     :type name)
-                                     :database_id            (mt/id)
-                                     :parameters             [{:id "x" :type "number"}]
-                                     :visualization_settings {:position "top"}
-                                     :archived               true}]
+                          archived {:name                   "Archived example"
+                                    :type                   :query
+                                    :model_id               card-id
+                                    :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
+                                                                    :type name)
+                                    :database_id            (mt/id)
+                                    :parameters             [{:id "x" :type "number"}]
+                                    :visualization_settings {:position "top"}
+                                    :archived               true}]
           (let [response (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))]
             (is (= (map :action-id [action-1 action-2 action-3])
                    (map :id response)))
@@ -112,7 +112,23 @@
           (testing "Should not be allowed to list actions without permission on the model"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))
-                "Should not be able to list actions without read permission on the model")))))))
+                "Should not be able to list actions without read permission on the model"))
+          (testing "Can list all actions"
+            (let [response (mt/user-http-request :crowberto :get 200 "action")
+                  action-ids (into #{} (map :id) response)]
+              (is (set/subset? (into #{} (map :action-id) [action-1 action-2 action-3])
+                               action-ids))
+              (doseq [action response
+                      :when (= (:type action) "query")]
+                (testing "Should return a query action deserialized (#23201)"
+                  (is (schema= ExpectedGetQueryActionAPIResponse
+                               action))))
+              (testing "Does not have archived actions"
+                (is (not (contains? action-ids (:id archived)))))
+              (testing "Does not return actions on models without permissions"
+                (let [rasta-list (mt/user-http-request :rasta :get 200 "action")]
+                  (is (empty? (set/intersection (into #{} (map :action-id) [action-1 action-2 action-3])
+                                                (into #{} (map :id) rasta-list)))))))))))))
 
 (deftest get-action-test
   (testing "GET /api/action/:id"
@@ -214,8 +230,10 @@
                   expected-fn    (fn [m]
                                    (cond-> m
                                      (= (:type initial-action) "implicit")
-                                     (assoc :parameters [{:id "id" :type "type/BigInteger" :special "hello"}]
-                                            :database_id (mt/id))))
+                                     (assoc :database_id (mt/id)
+                                            :parameters (if (= "row/create" (:kind initial-action))
+                                                            []
+                                                            [{:id "id" :type "type/BigInteger" :special "hello"}]))))
                   updated-action (update-fn initial-action)]
               (testing "Create fails with"
                 (testing "no permission"
@@ -227,7 +245,7 @@
                            (:cause
                             (mt/user-http-request :crowberto :post 400 "action" initial-action))))))
                 (testing "a plain card instead of a model"
-                  (mt/with-temp Card [{plain-card-id :id}]
+                  (mt/with-temp Card [{plain-card-id :id} {:dataset_query (mt/mbql-query users)}]
                     (is (= "Actions must be made with models, not cards."
                            (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :model_id plain-card-id)))))))
               (let [created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
@@ -276,12 +294,25 @@
                   (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
                   (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path))))))))))))
 
+(deftest implicit-actions-on-non-raw-model-test
+  (testing "Implicit actions are not supported on models that have clauses (aggregation, sort, breakout, ...)"
+    (mt/with-actions-enabled
+      (mt/with-temp Card [{model-id :id} {:dataset_query (mt/mbql-query users {:aggregation [[:count]]})
+                                          :dataset       true}]
+        (is (= "Implicit actions are not supported for models with clauses."
+               (mt/user-http-request :crowberto :post 400 "action"
+                                     {:name       "Implicit example"
+                                      :type       "implicit"
+                                      :model_id   model-id
+                                      :kind       "row/create"
+                                      :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]})))))))
+
 (deftest snowplow-test
   (snowplow-test/with-fake-snowplow-collector
     (mt/with-actions-enabled
       (testing "Should send a snowplow event when"
         (t2.with-temp/with-temp
-          [Card {card-id :id} {:dataset true}]
+          [Card {card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}]
           (doseq [{:keys [type parameters] :as action} (all-actions-default card-id)]
             (let [new-action (mt/user-http-request :crowberto :post 200 "action" action)]
               (testing (format "adding an action of type %s" type)
@@ -325,38 +356,35 @@
               action-path    (str "action/" action-id)]
           (testing "Archiving"
             (mt/user-http-request :crowberto :put 200 action-path {:archived true})
-            (is (true? (db/select-one-field :archived Action :id action-id)))
+            (is (true? (t2/select-one-fn :archived Action :id action-id)))
             (mt/user-http-request :crowberto :put 200 action-path {:archived false})
-            (is (false? (db/select-one-field :archived Action :id action-id))))
+            (is (false? (t2/select-one-fn :archived Action :id action-id))))
           (testing "Validate POST"
             (testing "Required fields"
               (is (partial= {:errors {:name "string"},
-                             :specific-errors {:name ["should be a string"]}}
+                             :specific-errors {:name ["should be a string, received: nil"]}}
                             (mt/user-http-request :crowberto :post 400 "action" {:type "http"})))
-              (is (partial= {:errors {:model_id "integer greater than 0"},
-                             :specific-errors {:model_id ["should be a positive int"]}}
+              (is (partial= {:errors {:model_id "value must be an integer greater than zero."}
+                             :specific-errors {:model_id ["value must be an integer greater than zero., received: nil"]}}
                             (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "test"}))))
             (testing "Handles need to be valid jq"
-              (is (partial= {:errors {:response_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
-                             :specific-errors {:response_handle ["must be a valid json-query, something like '.item.title'"]}}
+              (is (partial= {:errors {:response_handle "nullable string, and must be a valid json-query, something like '.item.title'"}
+                             :specific-errors {:response_handle ["must be a valid json-query, something like '.item.title', received: \"body\""]}}
                             (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :response_handle "body"))))
-              (is (partial= {:errors {:error_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
-                             :specific-errors {:error_handle ["must be a valid json-query, something like '.item.title'"]}}
+              (is (partial= {:errors {:error_handle "nullable string, and must be a valid json-query, something like '.item.title'"}
+                             :specific-errors {:error_handle ["must be a valid json-query, something like '.item.title', received: \"x\""]}}
                             (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :error_handle "x"))))))
           (testing "Validate PUT"
             (testing "Template needs method and url"
-              (is (partial= {:errors
-                             {:template
-                              "nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length >= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys"},
-                             :specific-errors {:template {:method ["missing required key"],
-                                                          :url ["missing required key"]}}}
+              (is (partial= {:errors {:action "map where {:archived (optional) -> <nullable boolean>, :database_id (optional) -> <nullable value must be an integer greater than zero.>, :dataset_query (optional) -> <nullable map>, :description (optional) -> <nullable string>, :error_handle (optional) -> <nullable string, and must be a valid json-query, something like '.item.title'>, :kind (optional) -> <nullable Unsupported implicit action kind>, :model_id (optional) -> <nullable value must be an integer greater than zero.>, :name (optional) -> <nullable string>, :parameter_mappings (optional) -> <nullable map>, :parameters (optional) -> <nullable sequence of map>, :response_handle (optional) -> <nullable string, and must be a valid json-query, something like '.item.title'>, :template (optional) -> <nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length >= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys>, :type (optional) -> <nullable Unsupported action type>, :visualization_settings (optional) -> <nullable map>}"},
+                             :specific-errors {:action {:template {:method ["missing required key, received: nil"] :url ["missing required key, received: nil"]}}}}
                             (mt/user-http-request :crowberto :put 400 action-path {:type "http" :template {}}))))
             (testing "Handles need to be valid jq"
-              (is (partial= {:errors {:response_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
-                             :specific-errors {:response_handle ["must be a valid json-query, something like '.item.title'"]}}
+              (is (partial= {:errors {:action "map where {:archived (optional) -> <nullable boolean>, :database_id (optional) -> <nullable value must be an integer greater than zero.>, :dataset_query (optional) -> <nullable map>, :description (optional) -> <nullable string>, :error_handle (optional) -> <nullable string, and must be a valid json-query, something like '.item.title'>, :kind (optional) -> <nullable Unsupported implicit action kind>, :model_id (optional) -> <nullable value must be an integer greater than zero.>, :name (optional) -> <nullable string>, :parameter_mappings (optional) -> <nullable map>, :parameters (optional) -> <nullable sequence of map>, :response_handle (optional) -> <nullable string, and must be a valid json-query, something like '.item.title'>, :template (optional) -> <nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length >= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys>, :type (optional) -> <nullable Unsupported action type>, :visualization_settings (optional) -> <nullable map>}"},
+                             :specific-errors {:action {:response_handle ["must be a valid json-query, something like '.item.title', received: \"body\""]}}}
                             (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :response_handle "body"))))
-              (is (partial= {:errors {:error_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
-                             :specific-errors {:error_handle ["must be a valid json-query, something like '.item.title'"]}}
+              (is (partial= {:errors {:action "map where {:archived (optional) -> <nullable boolean>, :database_id (optional) -> <nullable value must be an integer greater than zero.>, :dataset_query (optional) -> <nullable map>, :description (optional) -> <nullable string>, :error_handle (optional) -> <nullable string, and must be a valid json-query, something like '.item.title'>, :kind (optional) -> <nullable Unsupported implicit action kind>, :model_id (optional) -> <nullable value must be an integer greater than zero.>, :name (optional) -> <nullable string>, :parameter_mappings (optional) -> <nullable map>, :parameters (optional) -> <nullable sequence of map>, :response_handle (optional) -> <nullable string, and must be a valid json-query, something like '.item.title'>, :template (optional) -> <nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length >= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys>, :type (optional) -> <nullable Unsupported action type>, :visualization_settings (optional) -> <nullable map>}"},
+                             :specific-errors {:action {:error_handle ["must be a valid json-query, something like '.item.title', received: \"x\""]}}}
                             (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :error_handle "x")))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -396,7 +424,7 @@
             (mt/with-actions [{:keys [action-id]} unshared-action-opts]
               (let [uuid (:uuid (mt/user-http-request :crowberto :post 200
                                                       (format "action/%d/public_link" action-id)))]
-                (is (db/exists? Action :id action-id, :public_uuid uuid))
+                (is (t2/exists? Action :id action-id, :public_uuid uuid))
                 (testing "Test that if an Action has already been shared we reuse the existing UUID"
                   (is (= uuid
                          (:uuid (mt/user-http-request :crowberto :post 200
@@ -442,7 +470,7 @@
             (testing "Test that we can unshare an action"
               (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id))
               (is (= false
-                     (db/exists? Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
+                     (t2/exists? Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
 
         (testing "Test that we cannot unshare an action if it's archived"
           (let [action-opts (merge {:archived true} (shared-action-opts))]
@@ -492,7 +520,7 @@
                                      (format "action/%s/execute" action-id)
                                      {:parameters {:id 1 :name "European"}})))))
     (mt/with-actions [{:keys [action-id]} unshared-action-opts]
-      (let [nonexistent-id (inc (db/select-one-id Action {:order-by [[:id :desc]]}))]
+      (let [nonexistent-id (inc (t2/select-one-pk Action {:order-by [[:id :desc]]}))]
         (testing "Check that we get a 404 if the action doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :crowberto
@@ -507,3 +535,21 @@
                                         :post 400
                                         (format "action/%s/execute" action-id)
                                         {:parameters {:id 1 :name "European"}})))))))))
+
+(deftest parameter-ignore-test
+  (mt/with-actions-test-data-tables #{"users"}
+    (mt/with-actions-enabled
+      (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
+                        {action-id :action-id} {:type :implicit :kind "row/update"}]
+        (testing "It strips out nil values"
+          (let [run-action! #(mt/user-http-request :crowberto
+                                                   :post 200
+                                                   (format "action/%s/execute" action-id)
+                                                   {:parameters {:id 1 :name % :last_login nil}})]
+            (try
+              (run-action! "Darth Vader")
+              (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]})))]
+                (is (= "Darth Vader" new-name))
+                (is (some? last-login)))
+              (finally
+                (run-action! "Plato Yeshua")))))))))

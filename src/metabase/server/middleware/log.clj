@@ -14,7 +14,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (com.mchange.v2.c3p0 PoolBackedDataSource)
@@ -204,7 +204,7 @@
       ;; non-API call or health or logs call, don't log it
       (handler request respond raise)
       ;; API call, log info about it
-      (db/with-call-counting [call-count-fn]
+      (t2/with-call-count [call-count-fn]
         (sql-jdbc.execute.diagnostic/capturing-diagnostic-info [diag-info-fn]
           (let [info           {:request       request
                                 :start-time    (System/nanoTime)

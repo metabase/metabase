@@ -4,15 +4,17 @@
    [metabase.models
     :refer [Card
             Collection
-            Database
             Dashboard
             DashboardCard
+            Database
             Pulse
             PulseCard
             PulseChannel
             PulseChannelRecipient
             Table
             User]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
    [metabase.public-settings :as public-settings]
    [metabase.pulse]
@@ -231,7 +233,8 @@
         (is (= (count result) 2))
         (is (schema= [{:card     (s/pred map?)
                        :dashcard (s/pred map?)
-                       :result   (s/pred map?)}]
+                       :result   (s/pred map?)
+                       :type     (s/eq :card)}]
                      result)))))
   (testing "dashboard cards are ordered correctly -- by rows, and then by columns (#17419)"
     (mt/with-temp* [Card          [{card-id-1 :id}]
@@ -252,7 +255,7 @@
                     DashboardCard [_ {:dashboard_id dashboard-id
                                       :visualization_settings {:virtual_card {}, :text "test"}}]
                     User [{user-id :id}]]
-      (is (= [{:virtual_card {}, :text "test"}] (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
+      (is (= [{:virtual_card {} :text "test" :type :text}] (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false} :display :table}
@@ -422,8 +425,6 @@
                                                        "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test*>")}]}]}]}
                    (pulse.test-util/thunk->boolean pulse-results)))))}})))
 
-
-
 (deftest dashboard-with-link-card-test
   (tests {:pulse     {:skip_if_empty false}
           :dashboard pulse.test-util/test-dashboard}
@@ -432,8 +433,9 @@
 
     :fixture
     (fn [{dashboard-id :dashboard-id} thunk]
-      (with-link-card-fixture-for-dashboard (t2/select-one Dashboard :id dashboard-id) [_]
-        (thunk)))
+      (mt/with-temporary-setting-values [site-name "Metabase Test"]
+        (with-link-card-fixture-for-dashboard (t2/select-one Dashboard :id dashboard-id) [_]
+          (thunk))))
     :assert
     {:email
      (fn [_ _]
@@ -626,8 +628,27 @@
                                                             :target       [:text-tag "foo"]}]
                                       :dashboard_id       dashboard-id
                                       :visualization_settings {:text "{{foo}}"}}]]
-      (is (= [{:text "Doohickey and Gizmo"}]
+      (is (= [{:text "Doohickey and Gizmo" :type :text}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
+
+(deftest no-native-perms-test
+  (testing "A native query on a dashboard executes succesfully even if the subscription creator does not have native
+           query permissions (#28947)"
+    (let [native-perm-path     [:groups (u/the-id (perms-group/all-users)) (mt/id) :data :native]
+          original-native-perm (get-in (perms/data-perms-graph) native-perm-path)]
+      (try
+        (mt/with-temp* [Dashboard [{dashboard-id :id, :as dashboard} {:name "Dashboard"}]
+                        Card      [{card-id :id} {:name          "Products (SQL)"
+                                                  :dataset_query (mt/native-query
+                                                                  {:query "SELECT * FROM venues LIMIT 1"})}]
+                        DashboardCard [_ {:dashboard_id dashboard-id
+                                          :card_id      card-id}]]
+          (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) native-perm-path :none))
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
+                 (-> (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)
+                     first :result :data :rows))))
+        (finally
+          (perms/update-data-perms-graph! (assoc-in (perms/data-perms-graph) native-perm-path original-native-perm)))))))
 
 (deftest actions-are-skipped-test
   (testing "Actions should be filtered out"
@@ -644,8 +665,8 @@
        DashboardCard _                 {:dashboard_id           dashboard-id
                                         :visualization_settings {:virtual_card {:display "action"}}
                                         :row                    3}]
-      (is (= [{:text "Markdown"}
-              {:text "### [https://metabase.com](https://metabase.com)"}]
+      (is (=? [{:text "Markdown"}
+               {:text "### [https://metabase.com](https://metabase.com)"}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))
 
   (testing "Link cards are returned and info should be newly fetched"
@@ -680,3 +701,123 @@
                      {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
                      {:text (format "### [https://metabase.com](https://metabase.com)")}]
                     (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :lucky)} dashboard)))))))))
+
+(deftest execute-dashboard-with-tabs-test
+  (t2.with-temp/with-temp
+    [Dashboard           {dashboard-id :id
+                          :as dashboard}   {:name "Dashboard"}
+     :model/DashboardTab {tab-id-2 :id}    {:name         "The second tab"
+                                            :position     1
+                                            :dashboard_id dashboard-id}
+     :model/DashboardTab {tab-id-1 :id}    {:name         "The first tab"
+                                            :position     0
+                                            :dashboard_id dashboard-id}
+     DashboardCard       _                 {:dashboard_id           dashboard-id
+                                            :dashboard_tab_id       tab-id-1
+                                            :row                    2
+                                            :visualization_settings {:text "Card 2 tab-1"}}
+     DashboardCard       _                 {:dashboard_id           dashboard-id
+                                            :dashboard_tab_id       tab-id-1
+                                            :row                    1
+                                            :visualization_settings {:text "Card 1 tab-1"}}
+     DashboardCard       _                 {:dashboard_id           dashboard-id
+                                            :dashboard_tab_id       tab-id-2
+                                            :row                    2
+                                            :visualization_settings {:text "Card 2 tab-2"}}
+     DashboardCard       _                 {:dashboard_id           dashboard-id
+                                            :dashboard_tab_id       tab-id-2
+                                            :row                    1
+                                            :visualization_settings {:text "Card 1 tab-2"}}]
+    (testing "tabs are correctly rendered"
+      (is (= [{:text "The first tab", :type :tab-title}
+              {:text "Card 1 tab-1", :type :text}
+              {:text "Card 2 tab-1", :type :text}
+              {:text "The second tab", :type :tab-title}
+              {:text "Card 1 tab-2", :type :text}
+              {:text "Card 2 tab-2", :type :text}]
+             (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
+
+(deftest render-dashboard-with-tabs-test
+  (tests {:pulse     {:skip_if_empty false}
+          :dashboard pulse.test-util/test-dashboard}
+   "Dashboard that has link cards should render correctly"
+   {:card    (pulse.test-util/checkins-query-card {})
+
+    :fixture
+    (fn [{dashboard-id :dashboard-id} thunk]
+      (mt/with-temporary-setting-values [site-name "Metabase Test"]
+        (t2.with-temp/with-temp
+         [:model/DashboardTab {tab-id-2 :id}    {:name         "The second tab"
+                                                 :position     1
+                                                 :dashboard_id dashboard-id}
+          :model/DashboardTab {tab-id-1 :id}    {:name         "The first tab"
+                                                 :position     0
+                                                 :dashboard_id dashboard-id}
+          DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                 :dashboard_tab_id       tab-id-1
+                                                 :row                    1
+                                                 :visualization_settings {:text "Card 1 tab-1"}}
+          DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                 :dashboard_tab_id       tab-id-1
+                                                 :row                    2
+                                                 :visualization_settings {:text "Card 2 tab-1"}}
+          DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                 :dashboard_tab_id       tab-id-2
+                                                 :row                    1
+                                                 :visualization_settings {:text "Card 1 tab-2"}}
+          DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                 :dashboard_tab_id       tab-id-2
+                                                 :row                    2
+                                                 :visualization_settings {:text "Card 2 tab-2"}}]
+         ;; dashcards from this setup is currently not belong to any tabs, we should make sure them belong to one
+         (t2/update! :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id nil {:dashboard_tab_id tab-id-1})
+         (thunk))))
+    :assert
+    {:email
+     (fn [_ _]
+      (is (every?
+            true?
+            (-> (mt/summarize-multipart-email
+                 #"The first tab"
+                 #"Card 1 tab-1"
+                 #"Card 2 tab-1"
+                 #"The second tab"
+                 #"Card 1 tab-2"
+                 #"Card 2 tab-2")
+                (get "rasta@metabase.com")
+                first
+                :body
+                first
+                vals))))
+
+     :slack
+     (fn [_ [pulse-results]]
+       (is (=? {:channel-id "#general",
+                :attachments
+                [{:blocks
+                  [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
+                   {:type "section",
+                    :fields
+                    [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}
+                     {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
+                   {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "*The first tab*"}}]}
+                 {:title "Test card",
+                  :rendered-info {:attachments false, :content true, :render/text true},
+                  :title_link #"https://metabase.com/testmb/question/.+",
+                  :attachment-name "image.png",
+                  :channel-id "FOO",
+                  :fallback "Test card"}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 1 tab-1"}}]}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 2 tab-1"}}]}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "*The second tab*"}}]}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 1 tab-2"}}]}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 2 tab-2"}}]}
+                 {:blocks
+                  [{:type "divider"}
+                   {:type "context",
+                    :elements
+                    [{:type "mrkdwn",
+                      :text
+                      #"<https://metabase\.com/testmb/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test\*>"}]}]}]}
+               (pulse.test-util/thunk->boolean pulse-results))))}}))

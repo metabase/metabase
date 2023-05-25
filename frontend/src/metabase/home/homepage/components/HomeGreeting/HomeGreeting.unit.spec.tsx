@@ -1,36 +1,47 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { renderWithProviders, screen } from "__support__/ui";
+import { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
-import HomeGreeting, { HomeGreetingProps } from "./HomeGreeting";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
+import HomeGreeting from "./HomeGreeting";
+
+interface SetupOpts {
+  currentUser?: User;
+  showLogo?: boolean;
+}
+
+const setup = ({ currentUser, showLogo }: SetupOpts) => {
+  const state = createMockState({
+    currentUser,
+    settings: createMockSettingsState({
+      "show-metabot": showLogo,
+    }),
+  });
+
+  renderWithProviders(<HomeGreeting />, { storeInitialState: state });
+};
 
 describe("HomeGreeting", () => {
   it("should render with logo", () => {
-    const props = getProps({
-      user: createMockUser({ first_name: "John" }),
+    setup({
+      currentUser: createMockUser({ first_name: "John" }),
       showLogo: true,
     });
-
-    render(<HomeGreeting {...props} />);
 
     expect(screen.getByText(/John/)).toBeInTheDocument();
     expect(screen.getByRole("img")).toBeInTheDocument();
   });
 
   it("should render without logo", () => {
-    const props = getProps({
-      user: createMockUser({ first_name: "John" }),
+    setup({
+      currentUser: createMockUser({ first_name: "John" }),
       showLogo: false,
     });
-
-    render(<HomeGreeting {...props} />);
 
     expect(screen.getByText(/John/)).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
-});
-
-const getProps = (opts?: Partial<HomeGreetingProps>): HomeGreetingProps => ({
-  user: createMockUser(),
-  showLogo: false,
-  ...opts,
 });

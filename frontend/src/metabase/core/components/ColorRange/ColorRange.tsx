@@ -57,4 +57,5 @@ const ColorRange = forwardRef(function ColorRange(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorRange;

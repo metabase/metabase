@@ -1,83 +1,69 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { screen, waitForElementToBeRemoved } from "@testing-library/react";
 import { createMockRecentItem, createMockUser } from "metabase-types/api/mocks";
-import HomeRecentSection, { HomeRecentSectionProps } from "./HomeRecentSection";
+import { renderWithProviders } from "__support__/ui";
+import { setupRecentViewsEndpoints } from "__support__/server-mocks";
+import { User } from "metabase-types/api";
+import * as utils from "../../utils";
+import HomeRecentSection from "./HomeRecentSection";
+
+jest.mock("../../utils", () => ({
+  isWithinWeeks: jest.fn(),
+}));
+
+const setup = async (user?: User) => {
+  setupRecentViewsEndpoints([
+    createMockRecentItem({
+      model: "table",
+      model_object: {
+        name: "Orders",
+      },
+    }),
+  ]);
+
+  renderWithProviders(<HomeRecentSection />, {
+    storeInitialState: {
+      currentUser: user,
+    },
+  });
+
+  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+};
 
 describe("HomeRecentSection", () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date(2020, 0, 10));
-  });
-
   afterEach(() => {
-    jest.useRealTimers();
+    jest.restoreAllMocks();
   });
 
-  it("should render a list of recent items", () => {
-    const props = getProps({
-      recentItems: [
-        createMockRecentItem({
-          model: "table",
-          model_object: {
-            name: "Orders",
-          },
+  describe("new installers", () => {
+    it("should show a help link for new installers", async () => {
+      jest.spyOn(utils, "isWithinWeeks").mockImplementationOnce(() => true);
+
+      await setup(
+        createMockUser({
+          is_installer: true,
+          first_login: "2020-01-05T00:00:00Z",
         }),
-      ],
+      );
+
+      expect(await screen.findByText("Metabase tips")).toBeInTheDocument();
     });
 
-    render(<HomeRecentSection {...props} />);
+    it("should not show a help link for regular users", async () => {
+      jest.spyOn(utils, "isWithinWeeks").mockImplementationOnce(() => false);
 
-    expect(screen.getByText("Pick up where you left off")).toBeInTheDocument();
+      await setup();
+
+      expect(screen.queryByText("Metabase tips")).not.toBeInTheDocument();
+    });
+  });
+
+  it("should render a list of recent items", async () => {
+    await setup();
+
+    expect(
+      await screen.findByText("Pick up where you left off"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Orders")).toBeInTheDocument();
   });
-
-  it("should show a help link for new installers", () => {
-    const props = getProps({
-      user: createMockUser({
-        is_installer: true,
-        first_login: "2020-01-05T00:00:00Z",
-      }),
-      recentItems: [
-        createMockRecentItem({
-          model: "table",
-          model_object: {
-            name: "Orders",
-          },
-        }),
-      ],
-    });
-
-    render(<HomeRecentSection {...props} />);
-
-    expect(screen.getByText("Metabase tips")).toBeInTheDocument();
-  });
-
-  it("should not show a help link for regular users", () => {
-    const props = getProps({
-      user: createMockUser({
-        is_installer: false,
-        first_login: "2020-01-05T00:00:00Z",
-      }),
-      recentItems: [
-        createMockRecentItem({
-          model: "table",
-          model_object: {
-            name: "Orders",
-          },
-        }),
-      ],
-    });
-
-    render(<HomeRecentSection {...props} />);
-
-    expect(screen.queryByText("Metabase tips")).not.toBeInTheDocument();
-  });
-});
-
-const getProps = (
-  opts?: Partial<HomeRecentSectionProps>,
-): HomeRecentSectionProps => ({
-  user: createMockUser(),
-  recentItems: [],
-  ...opts,
 });

@@ -3,17 +3,15 @@
   (:require
    [clojure.test :refer :all]
    [metabase.http-client :as client]
-   [metabase.models.database :refer [Database]]
+   [metabase.models :refer [Database Revision Table]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.revision :refer [Revision]]
    [metabase.models.segment :as segment :refer [Segment]]
-   [metabase.models.table :refer [Table]]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;; ## Helper Fns
 
@@ -173,7 +171,7 @@
         (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
                                         {:archived true, :revision_message "Archive the Segment"})))
         (is (= true
-               (db/select-one-field :archived Segment :id id)))))))
+               (t2/select-one-fn :archived Segment :id id)))))))
 
 (deftest unarchive-test
   (testing "PUT /api/segment/:id"
@@ -182,7 +180,7 @@
         (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
                                         {:archived false, :revision_message "Unarchive the Segment"})))
         (is (= false
-               (db/select-one-field :archived Segment :id id)))))))
+               (t2/select-one-fn :archived Segment :id id)))))))
 
 
 ;; ## DELETE /api/segment/:id
@@ -211,21 +209,20 @@
       (is (= nil
              (mt/user-http-request :crowberto :delete 204 (format "segment/%d" id) :revision_message "carryon")))
       (testing "should still be able to fetch the archived segment"
-        (is (= {:name                    "Toucans in the rainforest"
-                :description             "Lookin' for a blueberry"
-                :show_in_getting_started false
-                :caveats                 nil
-                :points_of_interest      nil
-                :creator_id              (mt/user->id :rasta)
-                :creator                 (user-details (mt/fetch-user :rasta))
-                :created_at              true
-                :updated_at              true
-                :entity_id               true
-                :archived                true
-                :definition              nil}
-               (-> (mt/user-http-request :crowberto :get 200 (format "segment/%d" id))
-                   segment-response
-                   (dissoc :query_description))))))))
+        (is (=? {:name                    "Toucans in the rainforest"
+                 :description             "Lookin' for a blueberry"
+                 :show_in_getting_started false
+                 :caveats                 nil
+                 :points_of_interest      nil
+                 :creator_id              (mt/user->id :rasta)
+                 :creator                 (user-details (mt/fetch-user :rasta))
+                 :created_at              true
+                 :updated_at              true
+                 :entity_id               true
+                 :archived                true
+                 :definition              nil}
+                (-> (mt/user-http-request :crowberto :get 200 (format "segment/%d" id))
+                    segment-response)))))))
 
 
 ;; ## GET /api/segment/:id
@@ -408,21 +405,30 @@
                (for [revision (mt/user-http-request :crowberto :get 200 (format "segment/%d/revisions" id))]
                  (dissoc revision :timestamp :id))))))))
 
-
-;;; GET /api/segement/
-
 (deftest list-test
-  (testing "GET /api/segement/"
-    (mt/with-temp* [Segment [segment-1 {:name "Segment 1"}]
-                    Segment [segment-2 {:name "Segment 2"}]
-                    ;; inactive segments shouldn't show up
-                    Segment [_         {:archived true}]]
-      (is (= (mt/derecordize (hydrate [segment-1
-                                       segment-2] :creator))
-             (map #(dissoc % :query_description) (mt/user-http-request :rasta :get 200 "segment/")))))
-
-    (is (= []
-           (mt/user-http-request :rasta :get 200 "segment/")))))
+  (testing "GET /api/segment/"
+    (t2.with-temp/with-temp [Segment {id-1 :id} {:name     "Segment 1"
+                                                 :table_id (mt/id :users)}
+                             Segment {id-2 :id} {:name       "Segment 2"
+                                                 :definition (:query (mt/mbql-query venues
+                                                                       {:filter
+                                                                        [:and
+                                                                         [:= $price 4]
+                                                                         [:= $category_id->categories.name "BBQ"]]}))}
+                             ;; inactive segments shouldn't show up
+                             Segment {id-3 :id} {:archived true}]
+      (is (=? [{:id                     id-1
+                :name                   "Segment 1"
+                :creator                {}
+                :definition_description nil}
+               {:id                     id-2
+                :name                   "Segment 2"
+                :definition             {}
+                :creator                {}
+                :definition_description "Filtered by Price equals 4 and Category → Name equals \"BBQ\""}]
+              (filter (fn [{segment-id :id}]
+                        (contains? #{id-1 id-2 id-3} segment-id))
+                      (mt/user-http-request :rasta :get 200 "segment/")))))))
 
 (deftest related-entities-test
   (testing "GET /api/segment/:id/related"

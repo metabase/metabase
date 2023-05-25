@@ -8,7 +8,7 @@
    [metabase.models.user :refer [User]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -69,7 +69,7 @@
               (is (= {:first_name "Rasta", :last_name "Toucan", :email "rasta@sf-toucannery.com"}
                      (select-keys user [:first_name :last_name :email]))))
             (finally
-              (db/delete! User :email "rasta@sf-toucannery.com"))))))))
+              (t2/delete! User :email "rasta@sf-toucannery.com"))))))))
 
 
 ;;; --------------------------------------------- google-auth-token-info ---------------------------------------------
@@ -153,4 +153,4 @@
                                  (#'google/google-auth-fetch-or-create-user!
                                   "Rasta" "Toucan" "rasta@sf-toucannery.com")))
             (finally
-              (db/delete! User :email "rasta@sf-toucannery.com"))))))))
+              (t2/delete! User :email "rasta@sf-toucannery.com"))))))))

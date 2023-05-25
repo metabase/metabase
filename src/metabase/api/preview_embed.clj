@@ -34,7 +34,7 @@
   2000)
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming GET "/card/:token/query"
+(api/defendpoint-schema GET "/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [token & query-params]
   (let [unsigned-token (check-and-unsign token)
@@ -56,7 +56,7 @@
       :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+(api/defendpoint-schema GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
   [token dashcard-id card-id & query-params]
   (let [unsigned-token   (check-and-unsign token)
@@ -73,7 +73,7 @@
       :query-params     query-params)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming GET "/pivot/card/:token/query"
+(api/defendpoint-schema GET "/pivot/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [token & query-params]
   (let [unsigned-token (check-and-unsign token)
@@ -87,7 +87,7 @@
       :qp-runner        qp.pivot/run-pivot-query)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+(api/defendpoint-schema GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
   [token dashcard-id card-id & query-params]
   (let [unsigned-token   (check-and-unsign token)

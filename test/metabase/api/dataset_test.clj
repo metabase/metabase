@@ -27,7 +27,7 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -56,7 +56,7 @@
   ;; it might take a fraction of a second for the QueryExecution to show up, it's saved asynchronously. So wait a bit
   ;; and retry if it's not there yet.
   (letfn [(thunk []
-            (db/select-one QueryExecution
+            (t2/select-one QueryExecution
                            :hash (qp.util/query-hash query)
                            {:order-by [[:started_at :desc]]}))]
     (loop [retries 3]
@@ -114,7 +114,7 @@
 
 (deftest failure-test
   ;; clear out recent query executions!
-  (db/delete! QueryExecution)
+  (t2/delete! QueryExecution)
   (testing "POST /api/dataset"
     (testing "\nEven if a query fails we still expect a 202 response from the API"
       ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
@@ -279,8 +279,8 @@
                            "LIMIT 1048575")
               :params nil}
              (mt/user-http-request :rasta :post 200 "dataset/native"
-                                   (mt/mbql-query venues
-                                     {:fields [$id $name]}))))
+                                   (assoc (mt/mbql-query venues {:fields [$id $name]})
+                                     :pretty false))))
 
       (testing "\nMake sure parameters are spliced correctly"
         (is (= {:query  (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
@@ -289,9 +289,10 @@
                              "LIMIT 1048575")
                 :params nil}
                (mt/user-http-request :rasta :post 200 "dataset/native"
-                                     (mt/mbql-query checkins
-                                       {:fields [$id]
-                                        :filter [:= $date "2015-11-13"]})))))
+                                     (assoc (mt/mbql-query checkins
+                                                           {:fields [$id]
+                                                            :filter [:= $date "2015-11-13"]})
+                                       :pretty false)))))
 
       (testing "\nshould require that the user have ad-hoc native perms for the DB"
         (mt/with-temp-copy-of-db
@@ -303,7 +304,32 @@
                         s/Any               s/Any}
                        (mt/user-http-request :rasta :post "dataset/native"
                                              (mt/mbql-query venues
-                                               {:fields [$id $name]})))))))))
+                                               {:fields [$id $name]})))))))
+    (testing "We should be able to format the resulting SQL query if desired"
+      ;; Note that the following was tested against all driver branches of format-sql and all results were identical.
+      (is (= {:query  (str "SELECT\n"
+                           "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"
+                           "  \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\"\n"
+                           "FROM\n"
+                           "  \"PUBLIC\".\"VENUES\"\n"
+                           "LIMIT\n"
+                           "  1048575")
+              :params nil}
+             (mt/user-http-request :rasta :post 200 "dataset/native"
+                                   (assoc
+                                    (mt/mbql-query venues {:fields [$id $name]})
+                                     :pretty true)))))
+    (testing "The default behavior is to format the SQL"
+      (is (= {:query  (str "SELECT\n"
+                           "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"
+                           "  \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\"\n"
+                           "FROM\n"
+                           "  \"PUBLIC\".\"VENUES\"\n"
+                           "LIMIT\n"
+                           "  1048575")
+              :params nil}
+             (mt/user-http-request :rasta :post 200 "dataset/native"
+                                   (mt/mbql-query venues {:fields [$id $name]})))))))
 
 (deftest report-timezone-test
   (mt/test-driver :postgres

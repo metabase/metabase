@@ -75,13 +75,17 @@ Admins get special privileges with alerts.
 ### Everyone
 
 - Everyone can edit alerts that they've set up (but not alerts set up by other people).
-- Everyone can add any Metabase user account, email address, or even a Slack channel as a recipient of an alert that they created (but not alerts created by others).
 - Everyone can view and unsubscribe from all alerts they receive by clicking on the **gear** icon in the upper right and navigating to **Account settings** > **Notifications**.
+
+## Avoid changing the name of the alerted channel in Slack
+
+Once you set up an alert to a Slack channel, avoid changing the name of that channel in Slack. If you rename the channel in Slack, but you want Metabase to continue to send alerts to that renamed channel, you'll need to update the alert in Metabase to point to the new channel name. 
 
 ## Alert expiration
 
 Some circumstances will automatically delete alerts:
 
+- Renaming the alerted channel in Slack. Well, technically the alert won't get deleted, but Metabase will no longer have anywhere to send the alerts to. You'll need to update the alert's target channel in Metabase to the new channel's name.
 - If a saved question that has an alert gets edited in such a way that the alert doesn't make sense anymore, the alert will get deleted. For example, if a saved question with a goal line alert on it gets edited, and the goal line is removed entirely, Metabase will delete the alert.
 - If a question gets archived, Metabase will delete any alerts set up for that question.
 
@@ -100,7 +104,6 @@ See [Notification permissions](../../permissions/notifications.md).
 ## Further reading
 
 - [Dashboard subscriptions](../../dashboards/subscriptions.md)
-- [Notification permissions](../../permissions/notifications.md)
 - [Setting up email](../../configuring-metabase/email.md)
 - [Setting up Slack](../../configuring-metabase/slack.md)
 - [Auditing Metabase](../../usage-and-performance-tools/audit.md)

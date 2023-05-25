@@ -2,6 +2,7 @@ import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import EditableText from "./EditableText";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/EditableText",
   component: EditableText,
@@ -29,4 +30,16 @@ WithMaxWidth.args = {
   initialValue: "Question",
   placeholder: "Enter title",
   style: { maxWidth: 500 },
+};
+
+export const WithMarkdown = Template.bind({});
+WithMarkdown.args = {
+  initialValue: `**bold** text
+
+  *multiline*
+
+  and [link](https://metabase.com)`,
+  placeholder: "Enter description",
+  isMultiline: true,
+  isMarkdown: true,
 };

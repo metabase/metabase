@@ -21,7 +21,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -197,9 +197,7 @@
                                                      (when dataset?
                                                        {:info {:metadata/dataset-metadata (:result_metadata card)}}))))))))))))
 
-
-
-(deftest sql-source-query-breakout-aggregation-test
+(deftest ^:parallel sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a query with breakout and aggregation using a SQL source query"
       (is (= (:rows (breakout-results))
@@ -209,7 +207,6 @@
                   {:source-query {:native (compile-to-native (mt/mbql-query venues))}
                    :aggregation  [:count]
                    :breakout     [*price]}))))))))
-
 
 (defn- mbql-card-def
   "Basic MBQL Card definition. Pass kv-pair clauses for the inner query."
@@ -366,24 +363,25 @@
                       :limit        10}}))
       (str "make sure that dots in field literal identifiers get handled properly so you can't reference fields "
            "from other tables using them"))
-  (is (= (honeysql->sql
-          {:select [[:source.ID :ID]
-                    [:source.NAME :NAME]
-                    [:source.CATEGORY_ID :CATEGORY_ID]
-                    [:source.LATITUDE :LATITUDE]
-                    [:source.LONGITUDE :LONGITUDE]
-                    [:source.PRICE :PRICE]]
-           :from   [[venues-source-honeysql :source]]
-           :where  [:and
-                    [:>= [:raw "\"source\".\"BIRD.ID\""] (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
-                    [:< [:raw "\"source\".\"BIRD.ID\""]  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
-           :limit  [:inline 10]})
-         (qp/compile
-          (mt/mbql-query venues
-            {:source-query {:source-table $$venues}
-             :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
-             :limit        10})))
-      "make sure that field-literals work as DateTimeFields"))
+  (mt/with-temporary-setting-values [start-of-week :sunday]
+    (is (= (honeysql->sql
+            {:select [[:source.ID :ID]
+                      [:source.NAME :NAME]
+                      [:source.CATEGORY_ID :CATEGORY_ID]
+                      [:source.LATITUDE :LATITUDE]
+                      [:source.LONGITUDE :LONGITUDE]
+                      [:source.PRICE :PRICE]]
+             :from   [[venues-source-honeysql :source]]
+             :where  [:and
+                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
+                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
+             :limit  [:inline 10]})
+           (qp/compile
+            (mt/mbql-query venues
+              {:source-query {:source-table $$venues}
+               :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
+               :limit        10})))
+        "make sure that field-literals work as DateTimeFields")))
 
 (deftest aggregatation-references-test
   (testing "make sure that aggregation references match up to aggregations from the same level they're from"
@@ -773,7 +771,8 @@
 
 (deftest two-of-the-same-aggregations-test
   ;; TODO make this work for other drivers supporting :nested-queries
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries) :vertica :sqlite :presto-jdbc)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries)
+                         :vertica :sqlite :presto-jdbc :starburst)
     (testing "Do nested queries work with two of the same aggregation? (#9767)"
       (is (= [["2014-02-01T00:00:00Z" 302 1804]
               ["2014-03-01T00:00:00Z" 350 2362]]
@@ -951,8 +950,8 @@
                            (ean-metadata (qp/process-query query))))))))))))))
 
 (defn- field-id->name [field-id]
-  (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id field-id)
-        table-name                             (db/select-one-field :name Table :id table-id)]
+  (let [{field-name :name, table-id :table_id} (t2/select-one [Field :name :table_id] :id field-id)
+        table-name                             (t2/select-one-fn :name Table :id table-id)]
     (format "%s.%s" table-name field-name)))
 
 (deftest inception-test
@@ -1387,3 +1386,16 @@
                     ["Widget"    5061]]
                    (mt/formatted-rows [str int]
                      (qp/process-query query))))))))))
+
+(deftest unfolded-json-with-custom-expression-test
+  (testing "Should keep roots of unfolded JSON fields in the nested query (#29184)"
+    (mt/test-driver :postgres
+      (mt/dataset json
+        (let [db    (t2/select-one 'Database :name "json" :engine driver/*driver*)
+              table (t2/select-one 'Table :db_id (:id db) :name "json")
+              field (t2/select-one 'Field :table_id (:id table)
+                                   :name "json_bit → title")]
+          (is (seq (mt/run-mbql-query json
+                                      {:expressions  {"substring" [:substring [:field (:id field) nil] 1 10]}
+                                       :fields       [[:expression "substring"]
+                                                      [:field (:id field) nil]]}))))))))

@@ -105,6 +105,7 @@ function NumberInputWidget({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default NumberInputWidget;
 
 function normalize(value: number[] | undefined): number[] {

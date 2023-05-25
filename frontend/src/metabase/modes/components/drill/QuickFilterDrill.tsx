@@ -11,13 +11,14 @@ const QuickFilterDrill: Drill = ({ question, clicked }) => {
     return [];
   }
 
-  return drill.operators.map(({ name, operator }) => ({
-    name: operator,
+  return drill.operators.map(({ name, filter }) => ({
+    name,
     title: <span className="h2">{name}</span>,
     section: "filter",
     buttonType: "token-filter",
-    question: () => quickFilterDrillQuestion({ question, clicked, operator }),
+    question: () => quickFilterDrillQuestion({ question, clicked, filter }),
   }));
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QuickFilterDrill;

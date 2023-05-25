@@ -99,7 +99,7 @@ Before we **Save** our changes, we can edit our filter's settings.
 - **To remove a filter**: click on the filter's **gear** icon to open the filter sidebar. Under the **Settings** tab, click **Remove** in the sidebar. If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard editing mode without saving your changes.
 - **To reorder your filters**: click on the grabber handle on the left side of a filter, then drag the filter to a different position.
 - **To set a default value**: click on the filter's **gear** icon to open the filter sidebar. Under the **Settings** tab, enter a value in the **Default value** input field.
- **To change the selectable values in a filter**: click on the gear icon for that filter, and under "How should users filter on this column", click on the **Dropdown list**, then click **Edit**. You can specify where the values should come from:
+- **To change the selectable values in a filter**: click on the gear icon for that filter, and under "How should users filter on this column", click on the **Dropdown list**, then click **Edit**. You can specify where the values should come from:
     - From connected fields
     - From another model or question
     - Custom list

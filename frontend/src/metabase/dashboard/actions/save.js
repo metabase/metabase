@@ -10,15 +10,16 @@ import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavi
 
 import { getDashboardBeforeEditing } from "../selectors";
 
-import { updateDashcardId } from "./core";
 import { fetchDashboard } from "./data-fetching";
+import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
+import { saveCardsAndTabs } from "./tabs";
 
 export const SAVE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/SAVE_DASHBOARD_AND_CARDS";
 
 export const saveDashboardAndCards = createThunkAction(
   SAVE_DASHBOARD_AND_CARDS,
-  function () {
+  function (preserveParameters = false) {
     return async function (dispatch, getState) {
       const state = getState();
       const { dashboards, dashcards, dashboardId } = state.dashboard;
@@ -29,11 +30,28 @@ export const saveDashboardAndCards = createThunkAction(
         ),
       };
 
+      const dashboardBeforeEditing = getDashboardBeforeEditing(state);
+
+      if (dashboardBeforeEditing) {
+        const dashboardHasChanged = hasDashboardChanged(
+          dashboard,
+          dashboardBeforeEditing,
+        );
+
+        const cardsHaveChanged = haveDashboardCardsChanged(
+          dashboard.ordered_cards,
+          dashboardBeforeEditing.ordered_cards,
+        );
+
+        if (!cardsHaveChanged && !dashboardHasChanged) {
+          return;
+        }
+      }
+
       // clean invalid dashcards
       // We currently only do this for dashcard click behavior.
       // Invalid (partially complete) states are fine during editing,
       // but we should restore the previous value if saved while invalid.
-      const dashboardBeforeEditing = getDashboardBeforeEditing(state);
       const clickBehaviorPath = ["visualization_settings", "click_behavior"];
       dashboard.ordered_cards = dashboard.ordered_cards.map((card, index) => {
         if (!clickBehaviorIsValid(getIn(card, clickBehaviorPath))) {
@@ -48,18 +66,6 @@ export const saveDashboardAndCards = createThunkAction(
         }
         return card;
       });
-
-      // remove isRemoved dashboards
-      await Promise.all(
-        dashboard.ordered_cards
-          .filter(dc => dc.isRemoved && !dc.isAdded)
-          .map(dc =>
-            DashboardApi.removeCard({
-              dashId: dashboard.id,
-              dashcardId: dc.id,
-            }),
-          ),
-      );
 
       // update parameter mappings
       dashboard.ordered_cards = dashboard.ordered_cards.map(dc => ({
@@ -78,32 +84,6 @@ export const saveDashboardAndCards = createThunkAction(
         ),
       }));
 
-      // add new cards to dashboard
-      const updatedDashcards = await Promise.all(
-        dashboard.ordered_cards
-          .filter(dc => !dc.isRemoved)
-          .map(async dc => {
-            if (dc.isAdded) {
-              const result = await DashboardApi.addCard({
-                dashId: dashboard.id,
-                cardId: dc.card_id,
-                col: dc.col,
-                row: dc.row,
-                size_x: dc.size_x,
-                size_y: dc.size_y,
-                series: dc.series,
-                parameter_mappings: dc.parameter_mappings,
-                visualization_settings: dc.visualization_settings,
-                action_id: dc.action_id,
-              });
-              dispatch(updateDashcardId(dc.id, result.id));
-              return result;
-            } else {
-              return dc;
-            }
-          }),
-      );
-
       // update modified cards
       await Promise.all(
         dashboard.ordered_cards
@@ -119,11 +99,16 @@ export const saveDashboardAndCards = createThunkAction(
         );
       }
 
-      // update the dashboard cards
-      if (_.some(updatedDashcards, dc => dc.isDirty)) {
-        const cards = updatedDashcards.map(dc => ({
+      // update the dashboard cards and tabs
+      const dashcardsToUpdate = dashboard.ordered_cards.filter(
+        dc => !dc.isRemoved,
+      );
+      const updatedCardsAndTabs = await DashboardApi.updateCardsAndTabs({
+        dashId: dashboard.id,
+        cards: dashcardsToUpdate.map(dc => ({
           id: dc.id,
           card_id: dc.card_id,
+          dashboard_tab_id: dc.dashboard_tab_id,
           action_id: dc.action_id,
           row: dc.row,
           col: dc.col,
@@ -132,20 +117,20 @@ export const saveDashboardAndCards = createThunkAction(
           series: dc.series,
           visualization_settings: dc.visualization_settings,
           parameter_mappings: dc.parameter_mappings,
-        }));
-        const result = await DashboardApi.updateCards({
-          dashId: dashboard.id,
-          cards,
-        });
-        if (result.status !== "ok") {
-          throw new Error(result.status);
-        }
-      }
+        })),
+        ordered_tabs: (dashboard.ordered_tabs ?? [])
+          .filter(tab => !tab.isRemoved)
+          .map(({ id, name }) => ({
+            id,
+            name,
+          })),
+      });
+      dispatch(saveCardsAndTabs(updatedCardsAndTabs));
 
       await dispatch(Dashboards.actions.update(dashboard));
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
-      dispatch(fetchDashboard(dashboard.id, null)); // disable using query parameters when saving
+      dispatch(fetchDashboard(dashboard.id, null, { preserveParameters })); // disable using query parameters when saving
     };
   },
 );

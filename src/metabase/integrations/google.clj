@@ -15,7 +15,7 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;; Load EE implementation if available
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.enhancements.integrations.google))
@@ -113,7 +113,7 @@
 
 (s/defn ^:private google-auth-fetch-or-create-user! :- (mi/InstanceOf User)
   [first-name last-name email]
-  (or (db/select-one [User :id :email :last_login] :%lower.email (u/lower-case-en email))
+  (or (t2/select-one [User :id :email :last_login] :%lower.email (u/lower-case-en email))
       (google-auth-create-new-user! {:first_name first-name
                                      :last_name  last-name
                                      :email      email})))
