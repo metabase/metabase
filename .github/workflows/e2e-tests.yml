@@ -198,7 +198,7 @@ jobs:
         if: ${{ github.event_name == 'schedule' }}
         run: npx @replayio/cypress install
 
-      - name: Run OSS-specific Cypress tests
+      - name: Run OSS-specific Cypress tests using Replay.io browser
         if: matrix.edition == 'oss' && github.event_name == 'schedule'
         run: |
           yarn run test-cypress-run \
@@ -212,7 +212,7 @@ jobs:
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
           RECORD_REPLAY_DISABLE_ASSERTS: 1
 
-      - name: Run EE Cypress tests on ${{ matrix.folder }}
+      - name: Run EE Cypress tests on ${{ matrix.folder }} using Replay.io browser
         if: matrix.edition == 'ee' && github.event_name == 'schedule'
         run: |
           yarn run test-cypress-run \
