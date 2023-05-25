@@ -59,8 +59,10 @@ export const getIsHosted = (state: State): boolean => {
   return getSetting(state, "is-hosted?");
 };
 
+const EMPTY_LOCALES: LocaleData[] = [];
+
 export const getAvailableLocales = (state: State): LocaleData[] => {
-  return getSetting(state, "available-locales") ?? [];
+  return getSetting(state, "available-locales") ?? EMPTY_LOCALES;
 };
 
 export const getIsEmailConfigured = (state: State): boolean => {
