@@ -17,7 +17,7 @@ export function getTimelineEvents({
     // we want to show the changelog in a description and set a title to just "User edited this"
     // If only one field is changed, we just show everything in the title
     // like "John added a description"
-    const titleText = r.has_multiple_changes ? t`edited this` : r.description;
+    const titleText = r.has_multiple_changes ? t`edited this.` : r.description;
     return {
       title: `${
         r.user.id === currentUser?.id ? t`You` : r.user.common_name
