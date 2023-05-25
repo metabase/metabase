@@ -38,11 +38,16 @@ const INIT_TABS = "metabase/dashboard/INIT_TABS";
 
 const createNewTabAction = createAction<CreateNewTabPayload>(CREATE_NEW_TAB);
 
-let tempNewTabId = -2;
+let tempTabId = -2;
+// Needed for testing
+export function resetTempTabId() {
+  tempTabId = -2;
+}
+
 export function createNewTab() {
   // Decrement by 2 to leave space for two new tabs if dash doesn't have tabs already
-  const tabId = tempNewTabId;
-  tempNewTabId -= 2;
+  const tabId = tempTabId;
+  tempTabId -= 2;
 
   return createNewTabAction({ tabId });
 }
@@ -64,7 +69,7 @@ export const initTabs = createAction(INIT_TABS);
 function getPrevDashAndTabs(state: Draft<DashboardState>) {
   const dashId = state.dashboardId;
   const prevDash = dashId ? state.dashboards[dashId] : null;
-  const prevTabs = prevDash?.ordered_tabs ?? [];
+  const prevTabs = prevDash?.ordered_tabs?.filter(t => !t.isRemoved) ?? [];
 
   return { dashId, prevDash, prevTabs };
 }
@@ -155,6 +160,7 @@ export const tabsReducer = createReducer<DashboardState>(
         // 1. Select a different tab if needed
         const noTabsRemaining = prevTabs.length === 1;
         const deletingSelectedTab = state.selectedTabId === tabToRemove.id;
+
         if (noTabsRemaining) {
           state.selectedTabId = null;
         } else if (deletingSelectedTab) {
