@@ -99,7 +99,10 @@
                         :updated_at (boolean updated_at))
                  (update :entity_id boolean)
                  (update :collection_id boolean)
-                 (update :collection boolean))]
+                 (update :collection boolean)
+                 (cond->
+                   (:param_values dashboard)
+                   (update :param_values not-empty)))]
     (cond-> dash
       (contains? dash :last-edit-info)
       (update :last-edit-info (fn [info]
@@ -187,7 +190,7 @@
                      :updated_at     true
                      :created_at     true
                      :collection_id  true
-                     :collection     true
+                     :collection     false
                      :cache_ttl      1234
                      :last-edit-info {:timestamp true :id true :first_name "Rasta"
                                       :last_name "Toucan" :email "rasta@metabase.com"}})
@@ -390,11 +393,10 @@
             (is (= (merge dashboard-defaults
                           {:name                       "Test Dashboard"
                            :creator_id                 (mt/user->id :rasta)
-                           :collection                 true
                            :collection_id              true
                            :collection_authority_level nil
                            :can_write                  false
-                           :param_values  nil
+                           :param_values               nil
                            :param_fields               {field-id {:id               field-id
                                                                   :table_id         table-id
                                                                   :display_name     display-name
@@ -421,6 +423,7 @@
                                                                                             {:name                   "Dashboard Test Card"
                                                                                              :creator_id             (mt/user->id :rasta)
                                                                                              :collection_id          true
+                                                                                             :collection             false
                                                                                              :entity_id              (:entity_id card)
                                                                                              :display                "table"
                                                                                              :query_type             nil
@@ -564,7 +567,7 @@
         (with-dashboards-in-writeable-collection [dashboard-id]
           (is (= (merge dashboard-defaults {:name                    "Test Dashboard"
                                             :creator_id              (mt/user->id :rasta)
-                                            :collection              true
+                                            :collection              false
                                             :collection_id           true
                                             :caveats                 ""
                                             :points_of_interest      ""
@@ -835,6 +838,7 @@
                      {:name          "Test Dashboard"
                       :description   "A description"
                       :creator_id    (mt/user->id :rasta)
+                      :collection    false
                       :collection_id false})
                    (dashboard-response response)))
             (is (some? (:entity_id response)))
@@ -855,7 +859,8 @@
                      {:name          "Test Dashboard - Duplicate"
                       :description   "A new description"
                       :creator_id    (mt/user->id :crowberto)
-                      :collection_id false})
+                      :collection_id false
+                      :collection    false})
                    (dashboard-response response)))
             (is (some? (:entity_id response)))
             (is (not= (:entity_id dashboard) (:entity_id response))
