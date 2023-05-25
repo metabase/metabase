@@ -11,7 +11,8 @@ import "@cypress/skip-test/support";
 import "@percy/cypress";
 import "./commands";
 
-const runWithReplay = process.env["REPLAYIO_ENABLED"];
+const { env } = require("node:process");
+const runWithReplay = env["REPLAYIO_ENABLED"];
 
 if (runWithReplay) {
   require("@replayio/cypress/support");
