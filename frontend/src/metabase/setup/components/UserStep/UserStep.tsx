@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
-import UserForm from "../UserForm";
+import { UserForm } from "../UserForm";
 import { selectStep, submitUser } from "../../actions";
 import { USER_STEP } from "../../constants";
 import {
