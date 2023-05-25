@@ -637,4 +637,4 @@
     (testing "`syncable-schemas` should return an empty set because mysql doesn't support schemas"
       (mt/with-empty-db
         (is (= #{}
-               (driver/syncable-schemas driver/*driver* (mt/id))))))))
+               (driver/syncable-schemas driver/*driver* (mt/db))))))))
