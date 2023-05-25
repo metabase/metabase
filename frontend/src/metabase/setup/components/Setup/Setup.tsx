@@ -1,6 +1,6 @@
 import React from "react";
+import { WelcomePage } from "../WelcomePage";
 import SettingsPage from "../../containers/SettingsPage";
-import WelcomePage from "../../containers/WelcomePage";
 
 export interface SetupProps {
   isWelcome: boolean;
@@ -8,7 +8,7 @@ export interface SetupProps {
 
 const Setup = ({ isWelcome, ...props }: SetupProps): JSX.Element => {
   if (isWelcome) {
-    return <WelcomePage {...props} />;
+    return <WelcomePage />;
   } else {
     return <SettingsPage {...props} />;
   }
