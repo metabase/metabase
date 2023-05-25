@@ -9,7 +9,7 @@ import ModalContent from "metabase/components/ModalContent";
 
 import { DashboardSelector } from "metabase/components/DashboardSelector/DashboardSelector";
 import Button from "metabase/core/components/Button/Button";
-import { Collection } from "metabase-types/api";
+import { Collection, DashboardId } from "metabase-types/api";
 
 const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";
 const CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY = "custom-homepage-dashboard";
@@ -23,7 +23,7 @@ export const CustomHomePageModal = ({
   isOpen,
   onClose,
 }: CustomHomePageModalProps) => {
-  const [dashboard, setDashboard] = useState<number>();
+  const [dashboard, setDashboard] = useState<DashboardId>();
   const dispatch = useDispatch();
 
   const handleSave = async () => {
@@ -37,7 +37,7 @@ export const CustomHomePageModal = ({
   };
 
   const handleChange = useCallback(
-    (value: number | null | undefined) => {
+    (value: number | null | undefined | string) => {
       if (value) {
         setDashboard(value);
       } else {
