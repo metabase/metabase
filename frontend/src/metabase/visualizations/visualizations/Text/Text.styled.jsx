@@ -28,7 +28,7 @@ export const TextInput = styled.textarea`
   line-height: 1.602em;
   min-height: unset;
   outline: none;
-  padding: 0.25em 0.75em;
+  padding: 0.6em 0.84em;
   pointer-events: all;
   resize: none;
 `;
