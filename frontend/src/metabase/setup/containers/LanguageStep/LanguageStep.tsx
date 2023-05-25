@@ -6,19 +6,19 @@ import { selectStep, updateLocale } from "../../actions";
 import { LANGUAGE_STEP, USER_STEP } from "../../constants";
 import {
   getLocale,
-  isLocaleLoaded,
-  isSetupCompleted,
-  isStepActive,
-  isStepCompleted,
+  getIsLocaleLoaded,
+  getIsSetupCompleted,
+  getIsStepActive,
+  getIsStepCompleted,
 } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
   locale: getLocale(state),
   localeData: Settings.get("available-locales") || [],
-  isStepActive: isStepActive(state, LANGUAGE_STEP),
-  isStepCompleted: isStepCompleted(state, LANGUAGE_STEP),
-  isSetupCompleted: isSetupCompleted(state),
-  isLocaleLoaded: isLocaleLoaded(state),
+  isStepActive: getIsStepActive(state, LANGUAGE_STEP),
+  isStepCompleted: getIsStepCompleted(state, LANGUAGE_STEP),
+  isSetupCompleted: getIsSetupCompleted(state),
+  isLocaleLoaded: getIsLocaleLoaded(state),
 });
 
 const mapDispatchToProps = (dispatch: any) => ({

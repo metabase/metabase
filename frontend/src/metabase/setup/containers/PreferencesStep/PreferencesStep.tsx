@@ -4,19 +4,19 @@ import PreferencesStep from "../../components/PreferencesStep";
 import { selectStep, submitPreferences, updateTracking } from "../../actions";
 import { PREFERENCES_STEP } from "../../constants";
 import {
-  isLocaleLoaded,
-  isSetupCompleted,
-  isStepActive,
-  isStepCompleted,
-  isTrackingAllowed,
+  getIsLocaleLoaded,
+  getIsSetupCompleted,
+  getIsStepActive,
+  getIsStepCompleted,
+  getIsTrackingAllowed,
 } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
-  isTrackingAllowed: isTrackingAllowed(state),
-  isStepActive: isStepActive(state, PREFERENCES_STEP),
-  isStepCompleted: isStepCompleted(state, PREFERENCES_STEP),
-  isSetupCompleted: isSetupCompleted(state),
-  isLocaleLoaded: isLocaleLoaded(state),
+  isTrackingAllowed: getIsTrackingAllowed(state),
+  isStepActive: getIsStepActive(state, PREFERENCES_STEP),
+  isStepCompleted: getIsStepCompleted(state, PREFERENCES_STEP),
+  isSetupCompleted: getIsSetupCompleted(state),
+  isLocaleLoaded: getIsLocaleLoaded(state),
 });
 
 const mapDispatchToProps = (dispatch: any) => ({

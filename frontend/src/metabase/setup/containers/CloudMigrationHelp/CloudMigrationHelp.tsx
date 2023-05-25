@@ -11,11 +11,11 @@ import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
 import { COMPLETED_STEP } from "../../constants";
-import { isStepActive } from "../../selectors";
+import { getIsStepActive } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
   isHosted: getSetting(state, "is-hosted?"),
-  isStepActive: isStepActive(state, COMPLETED_STEP),
+  isStepActive: getIsStepActive(state, COMPLETED_STEP),
 });
 
 interface CloudMigrationHelpProps {

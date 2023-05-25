@@ -4,14 +4,14 @@ import DatabaseHelp from "../../components/DatabaseHelp";
 import { DATABASE_STEP } from "../../constants";
 import {
   getDatabaseEngine,
-  isLocaleLoaded,
-  isStepActive,
+  getIsLocaleLoaded,
+  getIsStepActive,
 } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
   engine: getDatabaseEngine(state),
-  isStepActive: isStepActive(state, DATABASE_STEP),
-  isLocaleLoaded: isLocaleLoaded(state),
+  isStepActive: getIsStepActive(state, DATABASE_STEP),
+  isLocaleLoaded: getIsLocaleLoaded(state),
 });
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

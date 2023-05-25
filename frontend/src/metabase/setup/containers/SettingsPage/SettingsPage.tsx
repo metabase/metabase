@@ -2,11 +2,11 @@ import { connect } from "react-redux";
 import { State } from "metabase-types/store";
 import SettingsPage from "../../components/SettingsPage";
 import { trackStepSeen } from "../../analytics";
-import { getStep, isLocaleLoaded } from "../../selectors";
+import { getStep, getIsLocaleLoaded } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
   step: getStep(state),
-  isLocaleLoaded: isLocaleLoaded(state),
+  isLocaleLoaded: getIsLocaleLoaded(state),
 });
 
 const mapDispatchToProps = () => ({

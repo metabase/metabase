@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import LogoIcon from "metabase/components/LogoIcon";
 import MigrationHelp from "metabase/setup/containers/CloudMigrationHelp";
 import LanguageStep from "../../containers/LanguageStep";
-import UserStep from "../../containers/UserStep";
+import { UserStep } from "../UserStep";
 import DatabaseStep from "../../containers/DatabaseStep";
 import DatabaseHelp from "../../containers/DatabaseHelp";
 import PreferencesStep from "../../containers/PreferencesStep";
@@ -31,7 +31,7 @@ const SettingsPage = ({
       </PageHeader>
       <PageBody>
         <LanguageStep {...props} />
-        <UserStep {...props} />
+        <UserStep />
         <DatabaseStep {...props} />
         <DatabaseHelp {...props} />
         <PreferencesStep {...props} />

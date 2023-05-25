@@ -16,10 +16,10 @@ import {
   getDatabaseEngine,
   getInvite,
   getUser,
-  isLocaleLoaded,
-  isSetupCompleted,
-  isStepActive,
-  isStepCompleted,
+  getIsLocaleLoaded,
+  getIsSetupCompleted,
+  getIsStepActive,
+  getIsStepCompleted,
 } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
@@ -28,10 +28,10 @@ const mapStateToProps = (state: State) => ({
   engine: getDatabaseEngine(state),
   invite: getInvite(state),
   isEmailConfigured: Settings.isEmailConfigured(),
-  isStepActive: isStepActive(state, DATABASE_STEP),
-  isStepCompleted: isStepCompleted(state, DATABASE_STEP),
-  isSetupCompleted: isSetupCompleted(state),
-  isLocaleLoaded: isLocaleLoaded(state),
+  isStepActive: getIsStepActive(state, DATABASE_STEP),
+  isStepCompleted: getIsStepCompleted(state, DATABASE_STEP),
+  isSetupCompleted: getIsSetupCompleted(state),
+  isLocaleLoaded: getIsLocaleLoaded(state),
 });
 
 const mapDispatchToProps = (dispatch: any) => ({

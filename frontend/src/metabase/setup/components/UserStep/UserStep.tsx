@@ -1,32 +1,35 @@
 import React from "react";
 import { t } from "ttag";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import UserForm from "../UserForm";
+import { selectStep, submitUser } from "../../actions";
+import { USER_STEP } from "../../constants";
+import {
+  getIsHosted,
+  getIsSetupCompleted,
+  getIsStepActive,
+  getIsStepCompleted,
+  getUser,
+} from "../../selectors";
+import { validatePassword } from "../../utils";
 import { StepDescription } from "./UserStep.styled";
 
-export interface UserStepProps {
-  user?: UserInfo;
-  isHosted: boolean;
-  isStepActive: boolean;
-  isStepCompleted: boolean;
-  isSetupCompleted: boolean;
-  onValidatePassword: (password: string) => Promise<string | undefined>;
-  onStepSelect: () => void;
-  onStepSubmit: (user: UserInfo) => void;
-}
+export const UserStep = (): JSX.Element => {
+  const user = useSelector(getUser);
+  const isHosted = useSelector(getIsHosted);
+  const isStepActive = useSelector(state => getIsStepActive(state, USER_STEP));
+  const isStepCompleted = useSelector(state =>
+    getIsStepCompleted(state, USER_STEP),
+  );
+  const isSetupCompleted = useSelector(state => getIsSetupCompleted(state));
 
-const UserStep = ({
-  user,
-  isHosted,
-  isStepActive,
-  isStepCompleted,
-  isSetupCompleted,
-  onValidatePassword,
-  onStepSelect,
-  onStepSubmit,
-}: UserStepProps): JSX.Element => {
+  const dispatch = useDispatch();
+  const handleSelect = () => dispatch(selectStep(USER_STEP));
+  const handleSubmit = (user: UserInfo) => dispatch(submitUser(user));
+
   if (!isStepActive) {
     return (
       <InactiveStep
@@ -34,7 +37,7 @@ const UserStep = ({
         label={2}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
-        onStepSelect={onStepSelect}
+        onStepSelect={handleSelect}
       />
     );
   }
@@ -49,8 +52,8 @@ const UserStep = ({
       )}
       <UserForm
         user={user}
-        onValidatePassword={onValidatePassword}
-        onSubmit={onStepSubmit}
+        onValidatePassword={validatePassword}
+        onSubmit={handleSubmit}
       />
     </ActiveStep>
   );
@@ -62,6 +65,3 @@ const getStepTitle = (user: UserInfo | undefined, isStepCompleted: boolean) => {
     ? t`Hi${namePart}. Nice to meet you!`
     : t`What should we call you?`;
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default UserStep;
