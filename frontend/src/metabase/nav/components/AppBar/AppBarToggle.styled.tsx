@@ -35,6 +35,7 @@ interface SidebarIconProps {
 export const SidebarIcon = styled(Icon)<SidebarIconProps>`
   color: ${color("brand")};
   display: block;
+  transform: translateY(2px) translateX(2px);
 
   ${props =>
     !props.isLogoVisible &&
