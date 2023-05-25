@@ -12,7 +12,7 @@ export const isRenderProp = <Props extends Record<string, unknown>>(
 export const isReactElement = (value: unknown): value is ReactElement => {
   return (
     isObject(value) &&
-    typeof value.type === "string" &&
+    (typeof value.type === "string" || typeof value.type === "function") &&
     isObject(value.props) &&
     (typeof value.key === "string" ||
       typeof value.key === "number" ||

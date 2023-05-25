@@ -7,11 +7,12 @@ interface Props {
   children:
     | ReactNode
     | RenderProp<{ onClose: (event: SyntheticEvent) => void }>;
+  isOpen: boolean;
   onClose: (event: SyntheticEvent) => void;
 }
 
-export function Children({ children, onClose }: Props) {
-  if (isRenderProp(children)) {
+export function Children({ children, isOpen, onClose }: Props) {
+  if (isRenderProp(children) && isOpen) {
     return <>{children({ onClose })}</>;
   }
 
