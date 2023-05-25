@@ -14,4 +14,6 @@ export function withFields(
   query: Query,
   stageIndex: number,
   newFields: ColumnMetadata[],
-): Query;
+): Query {
+  return ML.with_fields(query, stageIndex, newFields);
+}
