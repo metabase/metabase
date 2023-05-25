@@ -44,7 +44,7 @@ export const reducer = createReducer(initialState, builder => {
     state.locale = meta.arg;
     state.isLocaleLoaded = false;
   });
-  builder.addCase(updateLocale.fulfilled, (state, { payload: locale }) => {
+  builder.addCase(updateLocale.fulfilled, state => {
     state.isLocaleLoaded = true;
   });
   builder.addCase(submitUser.pending, (state, { meta }) => {
