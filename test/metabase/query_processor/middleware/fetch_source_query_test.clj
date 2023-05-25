@@ -353,7 +353,7 @@
                                   :mbql?       true}
                 :database        (mt/id)}
                (#'fetch-source-query/card-id->source-query-and-metadata card-id))))))
-  (testing "card-id->source-query-and-metadata-test should preserve mongodb native queries in string format"
+  (testing "card-id->source-query-and-metadata-test should preserve mongodb native queries in string format (#30112)"
     (let [query-str (str "[{\"$project\":\n"
                          "   {\"_id\":\"$_id\",\n"
                          "    \"user_id\":\"$user_id\",\n"

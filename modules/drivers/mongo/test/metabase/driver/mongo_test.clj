@@ -124,7 +124,7 @@
 
 (deftest nested-native-query-test
   (mt/test-driver :mongo
-    (testing "Mbql query with nested native source query _returns correct results_"
+    (testing "Mbql query with nested native source query _returns correct results_ (#30112)"
         (mt/with-temp Card [{:keys [id]} {:dataset_query {:type     :native
                                                           :native   {:collection    "venues"
                                                                      :query         native-query}
@@ -139,7 +139,7 @@
                                                            {"$limit" 1})}
                            :rows        [[1]]}}
                  (qp/process-query query))))))
-    (testing "Mbql query with nested native source query _aggregates_ correctly"
+    (testing "Mbql query with nested native source query _aggregates_ correctly (#30112)"
       (let [query-str (str "[{\"$project\":\n"
                            "   {\"_id\": \"$_id\",\n"
                            "    \"name\": \"$name\",\n"

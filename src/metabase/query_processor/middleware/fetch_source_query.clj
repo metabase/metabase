@@ -120,7 +120,7 @@
                                                  :query      pipeline}))
 
                  ;; trim trailing comments from SQL, but not other types of native queries
-                 (and (str/blank? collection)
+                 (and (nil? collection)
                       (string? (:native native-query)))
                  (update :native (partial trim-sql-query card-id))
 
