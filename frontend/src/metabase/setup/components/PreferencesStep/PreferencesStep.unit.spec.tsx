@@ -1,12 +1,11 @@
 import React from "react";
-import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
 import { setupErrorSetupEndpoints } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { PREFERENCES_STEP, USER_STEP } from "../../constants";
 import { PreferencesStep } from "./PreferencesStep";
 

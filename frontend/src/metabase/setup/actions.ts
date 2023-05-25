@@ -8,8 +8,6 @@ import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,
   trackDatabaseStepCompleted,
-  trackPreferencesStepCompleted,
-  trackSetupCompleted,
   trackTrackingChanged,
   trackUserStepCompleted,
   trackWelcomeStepCompleted,
@@ -60,7 +58,6 @@ export const updateLocale = createAsyncThunk(
   UPDATE_LOCALE,
   async (locale: Locale) => {
     await loadLocalization(locale.code);
-    return locale;
   },
 );
 
@@ -71,7 +68,6 @@ export const submitUser = createAsyncThunk(
   "metabase/setup/SUBMIT_USER_INFO",
   (user: UserInfo) => {
     trackUserStepCompleted();
-    return user;
   },
 );
 
@@ -82,7 +78,6 @@ export const updateDatabaseEngine = createAsyncThunk(
     if (engine) {
       trackDatabaseSelected(engine);
     }
-    return engine;
   },
 );
 
@@ -119,7 +114,6 @@ export const submitUserInvite = createAsyncThunk(
   SUBMIT_USER_INVITE,
   (invite: InviteInfo) => {
     trackDatabaseStepCompleted();
-    return invite;
   },
 );
 
@@ -139,7 +133,6 @@ export const updateTracking = createAsyncThunk(
     trackTrackingChanged(isTrackingAllowed);
     MetabaseSettings.set("anon-tracking-enabled", isTrackingAllowed);
     trackTrackingChanged(isTrackingAllowed);
-    return isTrackingAllowed;
   },
 );
 
@@ -163,15 +156,5 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
     });
 
     MetabaseSettings.set("setup-token", null);
-  },
-);
-
-export const SUBMIT_PREFERENCES = "metabase/setup/SUBMIT_PREFERENCES_STEP";
-export const submitPreferences = createAsyncThunk<void, boolean, ThunkConfig>(
-  SUBMIT_PREFERENCES,
-  async (isTrackingAllowed: boolean, thunkAPI) => {
-    await thunkAPI.dispatch(submitSetup());
-    trackPreferencesStepCompleted(isTrackingAllowed);
-    trackSetupCompleted();
   },
 );

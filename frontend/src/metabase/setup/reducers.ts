@@ -6,12 +6,12 @@ import {
   loadUserDefaults,
   selectStep,
   submitDatabase,
-  submitPreferences,
   submitUser,
   submitUserInvite,
   updateDatabaseEngine,
   updateLocale,
   updateTracking,
+  submitSetup,
 } from "./actions";
 import {
   COMPLETED_STEP,
@@ -47,24 +47,21 @@ export const reducer = createReducer(initialState, builder => {
   builder.addCase(updateLocale.fulfilled, (state, { payload: locale }) => {
     state.isLocaleLoaded = true;
   });
-  builder.addCase(submitUser.fulfilled, (state, { payload: user }) => {
-    state.user = user;
+  builder.addCase(submitUser.pending, (state, { meta }) => {
+    state.user = meta.arg;
     state.step = DATABASE_STEP;
   });
-  builder.addCase(
-    updateDatabaseEngine.fulfilled,
-    (state, { payload: engine }) => {
-      state.databaseEngine = engine;
-    },
-  );
+  builder.addCase(updateDatabaseEngine.pending, (state, { meta }) => {
+    state.databaseEngine = meta.arg;
+  });
   builder.addCase(submitDatabase.fulfilled, (state, { payload: database }) => {
     state.database = database;
     state.invite = undefined;
     state.step = PREFERENCES_STEP;
   });
-  builder.addCase(submitUserInvite.fulfilled, (state, { payload: invite }) => {
+  builder.addCase(submitUserInvite.pending, (state, { meta }) => {
     state.database = undefined;
-    state.invite = invite;
+    state.invite = meta.arg;
     state.step = PREFERENCES_STEP;
   });
   builder.addCase(skipDatabase.fulfilled, state => {
@@ -72,13 +69,10 @@ export const reducer = createReducer(initialState, builder => {
     state.invite = undefined;
     state.step = PREFERENCES_STEP;
   });
-  builder.addCase(
-    updateTracking.fulfilled,
-    (state, { payload: isTrackingEnabled }) => {
-      state.isTrackingAllowed = isTrackingEnabled;
-    },
-  );
-  builder.addCase(submitPreferences.fulfilled, state => {
+  builder.addCase(updateTracking.pending, (state, { meta }) => {
+    state.isTrackingAllowed = meta.arg;
+  });
+  builder.addCase(submitSetup.fulfilled, state => {
     state.step = COMPLETED_STEP;
   });
 });

@@ -46,7 +46,7 @@ export const PreferencesStep = (): JSX.Element => {
 
   const handleStepSubmit = async () => {
     try {
-      await dispatch(submitSetup());
+      await dispatch(submitSetup()).unwrap();
     } catch (error) {
       setErrorMessage(getSubmitError(error));
       throw error;
