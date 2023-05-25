@@ -6,7 +6,7 @@ import { PreferencesStep } from "../PreferencesStep";
 import { UserStep } from "../UserStep";
 import { SetupHelp } from "../SetupHelp";
 import DatabaseStep from "../../containers/DatabaseStep";
-import DatabaseHelp from "../../containers/DatabaseHelp";
+import { DatabaseHelp } from "../DatabaseHelp";
 import CompletedStep from "../../containers/CompletedStep";
 import { PageBody, PageHeader } from "./SettingsPage.styled";
 

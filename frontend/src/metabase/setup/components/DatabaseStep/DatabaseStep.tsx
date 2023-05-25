@@ -4,10 +4,10 @@ import { updateIn } from "icepick";
 import DatabaseForm from "metabase/databases/containers/DatabaseForm";
 import { DatabaseData } from "metabase-types/api";
 import { InviteInfo, UserInfo } from "metabase-types/store";
-import ActiveStep from "../ActiveStep";
-import InactiveStep from "../InvactiveStep";
+import { ActiveStep } from "../ActiveStep";
+import { InactiveStep } from "../InvactiveStep";
 import InviteUserForm from "../InviteUserForm";
-import SetupSection from "../SetupSection";
+import { SetupSection } from "../SetupSection";
 import { StepDescription } from "./DatabaseStep.styled";
 
 export interface DatabaseStepProps {
