@@ -1,6 +1,6 @@
 import React from "react";
 import LogoIcon from "metabase/components/LogoIcon";
-import MigrationHelp from "metabase/setup/containers/CloudMigrationHelp";
+import { CloudMigrationHelp } from "../CloudMigrationHelp";
 import { CompletedStep } from "../CompletedStep";
 import { LanguageStep } from "../LanguageStep";
 import { PreferencesStep } from "../PreferencesStep";
@@ -23,7 +23,7 @@ export const SettingsPage = (): JSX.Element => {
         <DatabaseHelp />
         <PreferencesStep />
         <CompletedStep />
-        <MigrationHelp />
+        <CloudMigrationHelp />
         <SetupHelp />
       </PageBody>
     </div>
