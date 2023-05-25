@@ -1,6 +1,9 @@
 name: E2E Tests
 
 on:
+  # We'll record runs using Replay.io and their browser on a schedule as an experiment
+  schedule:
+    - cron: '0 */8 * * *'
   push:
     branches:
       - "master"
@@ -162,8 +165,6 @@ jobs:
         uses: ./.github/actions/prepare-cypress
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
-      - name: Install Replay.io browser
-        run: npx @replayio/cypress install
 
       - uses: actions/download-artifact@v3
         name: Retrieve uberjar artifact for ${{ matrix.edition }}
@@ -175,7 +176,30 @@ jobs:
           mv version.properties resources/
 
       - name: Run OSS-specific Cypress tests
-        if: matrix.edition == 'oss'
+        if: matrix.edition == 'oss' && github.event_name != 'schedule'
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags=@OSS \
+          --spec './e2e/test/scenarios/**/*.cy.spec.js'
+        env:
+          TERM: xterm
+
+      - name: Run EE Cypress tests on ${{ matrix.folder }}
+        if: matrix.edition == 'ee' && github.event_name != 'schedule'
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags="-@quarantine" \
+          --folder ${{ matrix.folder }}
+        env:
+          TERM: xterm
+
+      # REPLAY.IO specific jobs
+      - name: Install Replay.io browser
+        if: ${{ github.event_name == 'schedule' }}
+        run: npx @replayio/cypress install
+
+      - name: Run OSS-specific Cypress tests
+        if: matrix.edition == 'oss' && github.event_name == 'schedule'
         run: |
           yarn run test-cypress-run \
           --env grepTags=@OSS \
@@ -189,7 +213,7 @@ jobs:
           RECORD_REPLAY_DISABLE_ASSERTS: 1
 
       - name: Run EE Cypress tests on ${{ matrix.folder }}
-        if: matrix.edition == 'ee'
+        if: matrix.edition == 'ee' && github.event_name == 'schedule'
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@quarantine" \
@@ -203,7 +227,7 @@ jobs:
           RECORD_REPLAY_DISABLE_ASSERTS: 1
 
       - name: Upload Replay.io recordings
-        if: ${{ github.ref == 'refs/heads/master' }}
+        if: ${{ github.event_name == 'schedule' }}
         uses: replayio/action-upload@v0.4.7
         with:
           api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ
@@ -265,6 +289,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     needs: build
+    if: ${{ github.event_name != 'schedule' }}
     name: percy-visual-regression-tests
     env:
       MB_EDITION: ${{ matrix.edition }}
