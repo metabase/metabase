@@ -95,7 +95,7 @@ To toggle appearance settings, add _hash_ parameters to the end of the public li
 | bordered                | true, false                                      |
 | titled                  | true, false                                      |
 | theme                   | null, transparent, night                         |
-| hide_parameters         | true, false                                      |      
+| hide_parameters         | [filter name](#filter-parameters)                |      
 | font¹                   | [font name](../../configuring-metabase/fonts.md) |
 | hide_download_button²   | true, false                                      |
 
@@ -112,7 +112,7 @@ For example, to embed a dashboard with multiple appearance parameters:
 To embed a question without filter widgets and without the download button:
 
 ```
-/question/42#hide_parameters=true&hide_download_button=true
+/question/42#hide_parameters=filter_name&hide_download_button=true
 ```
 
 For more info about hiding filter widgets with `hide_parameters`, see the next section on [Filter parameters](#filter-parameters).
