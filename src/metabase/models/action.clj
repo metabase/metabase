@@ -291,12 +291,29 @@
   [& options]
   (first (apply select-actions nil options)))
 
+(defn- map-assoc-database-enable-actions
+  "Adds `:database-enable-actions` to each action in `actions`, according to the `database-enable-actions` setting for the action's database."
+  [actions]
+  (let [action-ids (map :id actions)
+        id->database-enable-actions (into {}
+                                          (map (juxt :id (comp :database-enable-actions #(json/parse-string % true) :settings)))
+                                          (t2/query {:select [:action.id :db.settings]
+                                                     :from   :action
+                                                     :join   [[:report_card :card] [:= :card.id :action.model_id]
+                                                              [:metabase_database :db] [:= :db.id :card.database_id]]
+                                                     :where  [:in :action.id action-ids]}))]
+    (map (fn [action]
+           (assoc action :database-enable-actions (true? (get id->database-enable-actions (:id action)))))
+         actions)))
+
 (mi/define-batched-hydration-method dashcard-action
   :dashcard/action
   "Hydrates action from DashboardCards."
   [dashcards]
   (let [actions-by-id (when-let [action-ids (seq (keep :action_id dashcards))]
-                        (m/index-by :id (select-actions nil :id [:in action-ids])))]
+                        (let [actions (select-actions nil :id [:in action-ids])]
+                          (->> (map-assoc-database-enable-actions actions)
+                               (m/index-by :id))))]
     (for [dashcard dashcards]
       (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard))))))
 
