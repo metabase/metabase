@@ -1224,7 +1224,7 @@ function addTextCardToDashboard(dashboardId) {
       {
         id: 1,
         card_id: 1,
-        dashboard_id: 1,
+        dashboard_id: dashboardId,
         row: 0,
         col: 0,
         size_x: 8,
@@ -1234,8 +1234,7 @@ function addTextCardToDashboard(dashboardId) {
       {
         id: -1,
         card_id: null,
-        dashboard_id: 1,
-        dashboard_tab_id: null,
+        dashboard_id: dashboardId,
         series: [],
         col: 8,
         row: 0,
