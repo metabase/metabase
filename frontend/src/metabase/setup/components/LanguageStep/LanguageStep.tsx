@@ -4,8 +4,8 @@ import _ from "underscore";
 import Button from "metabase/core/components/Button";
 import { LocaleData } from "metabase-types/api";
 import { Locale } from "metabase-types/store";
-import ActiveStep from "../ActiveStep";
-import InactiveStep from "../InvactiveStep";
+import { ActiveStep } from "../ActiveStep";
+import { InactiveStep } from "../InvactiveStep";
 import { getLocales } from "../../utils";
 import {
   LocaleGroup,

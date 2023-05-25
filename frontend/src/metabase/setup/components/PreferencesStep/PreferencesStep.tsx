@@ -13,8 +13,8 @@ import {
   getIsStepCompleted,
   getIsTrackingAllowed,
 } from "../../selectors";
-import ActiveStep from "../ActiveStep";
-import InactiveStep from "../InvactiveStep";
+import { ActiveStep } from "../ActiveStep";
+import { InactiveStep } from "../InvactiveStep";
 import {
   StepDescription,
   StepToggleContainer,
