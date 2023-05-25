@@ -1,18 +1,21 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useSelector } from "metabase/lib/redux";
+import { trackStepSeen } from "../../analytics";
+import { WELCOME_STEP } from "../../constants";
+import { getStep } from "../../selectors";
+import { SettingsPage } from "../SettingsPage";
 import { WelcomePage } from "../WelcomePage";
-import SettingsPage from "../../containers/SettingsPage";
 
-export interface SetupProps {
-  isWelcome: boolean;
-}
+export const Setup = (): JSX.Element => {
+  const step = useSelector(getStep);
 
-const Setup = ({ isWelcome, ...props }: SetupProps): JSX.Element => {
-  if (isWelcome) {
+  useEffect(() => {
+    trackStepSeen(step);
+  }, [step]);
+
+  if (step === WELCOME_STEP) {
     return <WelcomePage />;
   } else {
-    return <SettingsPage {...props} />;
+    return <SettingsPage />;
   }
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Setup;

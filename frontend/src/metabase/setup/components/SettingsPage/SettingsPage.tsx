@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import LogoIcon from "metabase/components/LogoIcon";
 import MigrationHelp from "metabase/setup/containers/CloudMigrationHelp";
 import { LanguageStep } from "../LanguageStep";
@@ -8,18 +8,9 @@ import { SetupHelp } from "../SetupHelp";
 import DatabaseStep from "../../containers/DatabaseStep";
 import DatabaseHelp from "../../containers/DatabaseHelp";
 import CompletedStep from "../../containers/CompletedStep";
-import { PageHeader, PageBody } from "./SettingsPage.styled";
+import { PageBody, PageHeader } from "./SettingsPage.styled";
 
-export interface SettingsPageProps {
-  step: number;
-  onStepShow: (step: number) => void;
-}
-
-const SettingsPage = ({ step, onStepShow }: SettingsPageProps): JSX.Element => {
-  useEffect(() => {
-    onStepShow(step);
-  }, [step, onStepShow]);
-
+export const SettingsPage = (): JSX.Element => {
   return (
     <div>
       <PageHeader>
@@ -38,6 +29,3 @@ const SettingsPage = ({ step, onStepShow }: SettingsPageProps): JSX.Element => {
     </div>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SettingsPage;
