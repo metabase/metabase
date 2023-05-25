@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   test-run-id:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       testRunId: ${{ steps.testRunId.outputs.testRunId }}
     steps:
