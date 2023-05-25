@@ -107,8 +107,7 @@ function getIndexIdsToRemove(
   return indexIdsToRemove;
 }
 
-export function cleanIndexFlags(model: Question) {
-  const fields = model.getResultMetadata();
+export function cleanIndexFlags(fields: Field[]) {
   const indexesToClean = fields.reduce(
     (
       indexesToClean: number[],
@@ -123,12 +122,11 @@ export function cleanIndexFlags(model: Question) {
     [],
   );
 
-  const newResultMetadata = [...model.getResultMetadata()];
+  const newResultMetadata = [...fields];
   for (const index of indexesToClean) {
     newResultMetadata[index] = dissocIn(newResultMetadata[index], [
       "should_index",
     ]);
   }
-  const newModel = model.setResultsMetadata(newResultMetadata);
-  return newModel;
+  return newResultMetadata;
 }
