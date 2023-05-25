@@ -179,7 +179,7 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --env grepTags=@OSS \
-          --spec './e2e/test/scenarios/**/*.cy.spec.js'
+          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
           --browser="replay-chromium"
         env:
           TERM: xterm
@@ -193,7 +193,7 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@quarantine" \
-          --folder ${{ matrix.folder }}
+          --folder ${{ matrix.folder }} \
           --browser="replay-chromium"
         env:
           TERM: xterm
