@@ -500,7 +500,7 @@
         (testing "GET before update"
           (is (= (merge dashboard-defaults {:name          "Test Dashboard"
                                             :creator_id    (mt/user->id :rasta)
-                                            :collection    true
+                                            :collection    false
                                             :collection_id true})
                  (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
 
@@ -511,7 +511,7 @@
                                             :cache_ttl      1234
                                             :last-edit-info {:timestamp true     :id    true :first_name "Rasta"
                                                              :last_name "Toucan" :email "rasta@metabase.com"}
-                                            :collection     true
+                                            :collection     false
                                             :collection_id  true})
                  (dashboard-response
                   (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
@@ -526,7 +526,7 @@
                                             :description   "Some awesome description"
                                             :cache_ttl     1234
                                             :creator_id    (mt/user->id :rasta)
-                                            :collection    true
+                                            :collection    false
                                             :collection_id true})
                  (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
 
