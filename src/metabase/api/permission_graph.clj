@@ -72,7 +72,7 @@
 
 (def ^:private Schemas
   [:or
-   [:enum :all :segmented :none :block :full :limited]
+   [:enum :all :segmented :none :block :full :limited :impersonated]
    SchemaGraph])
 
 (def ^:private DataPerms
