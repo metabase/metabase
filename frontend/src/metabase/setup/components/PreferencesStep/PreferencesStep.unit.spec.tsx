@@ -5,6 +5,7 @@ import {
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
+import { setupErrorSetupEndpoints } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import { PREFERENCES_STEP, USER_STEP } from "../../constants";
 import { PreferencesStep } from "./PreferencesStep";
@@ -20,6 +21,7 @@ const setup = ({ step = PREFERENCES_STEP }: SetupOpts = {}) => {
     }),
   });
 
+  setupErrorSetupEndpoints();
   renderWithProviders(<PreferencesStep />, { storeInitialState: state });
 };
 

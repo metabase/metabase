@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import Settings from "metabase/lib/settings";
 import ActionButton from "metabase/components/ActionButton";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { selectStep, submitPreferences, updateTracking } from "../../actions";
+import { selectStep, submitSetup, updateTracking } from "../../actions";
 import { PREFERENCES_STEP } from "../../constants";
 import {
   getIsSetupCompleted,
@@ -46,7 +46,7 @@ export const PreferencesStep = (): JSX.Element => {
 
   const handleStepSubmit = async () => {
     try {
-      await dispatch(submitPreferences(isTrackingAllowed));
+      await dispatch(submitSetup());
     } catch (error) {
       setErrorMessage(getSubmitError(error));
       throw error;
