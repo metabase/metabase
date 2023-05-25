@@ -1053,6 +1053,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should preserve query results when navigating between the dashboard and the query builder", () => {
+    addTextCardToDashboard(1);
     visitDashboard(1);
     cy.wait("@dashboard");
     cy.wait("@dashcardQuery");
@@ -1067,11 +1068,16 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.findByLabelText("Back to Orders in a dashboard").click();
     });
 
-    getDashboardCard().within(() => {
+    getDashboardCard(0).within(() => {
       cy.findByText("101.04").should("be.visible"); // cached data
-      cy.get("@dashboard.all").should("have.length", 1);
-      cy.get("@dashcardQuery.all").should("have.length", 1);
     });
+
+    getDashboardCard(1).within(() => {
+      cy.findByText("Text card").should("be.visible"); // cached data
+    });
+
+    cy.get("@dashboard.all").should("have.length", 1);
+    cy.get("@dashcardQuery.all").should("have.length", 1);
 
     appBar().within(() => {
       cy.findByText("Our analytics").click();
@@ -1210,4 +1216,43 @@ function drillThroughCardTitle(title) {
 
 function testPairedTooltipValues(val1, val2) {
   cy.contains(val1).closest("td").siblings("td").findByText(val2);
+}
+
+function addTextCardToDashboard(dashboardId) {
+  cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+    cards: [
+      {
+        id: 1,
+        card_id: 1,
+        dashboard_id: 1,
+        row: 0,
+        col: 0,
+        size_x: 8,
+        size_y: 8,
+        visualization_settings: {},
+      },
+      {
+        id: -1,
+        card_id: null,
+        dashboard_id: 1,
+        dashboard_tab_id: null,
+        series: [],
+        col: 8,
+        row: 0,
+        size_x: 4,
+        size_y: 4,
+        parameter_mappings: [],
+        visualization_settings: {
+          virtual_card: {
+            name: null,
+            display: "text",
+            visualization_settings: {},
+            dataset_query: {},
+            archived: false,
+          },
+          text: "Text card",
+        },
+      },
+    ],
+  });
 }
