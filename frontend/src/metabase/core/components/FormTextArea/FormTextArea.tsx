@@ -17,6 +17,7 @@ export interface FormTextAreaProps
   > {
   name: string;
   title?: string;
+  titleActions?: ReactNode;
   description?: ReactNode;
   nullable?: boolean;
   infoLabel?: string;
@@ -30,6 +31,7 @@ const FormTextArea = forwardRef(function FormTextArea(
     className,
     style,
     title,
+    titleActions,
     description,
     nullable,
     infoLabel,
@@ -55,6 +57,7 @@ const FormTextArea = forwardRef(function FormTextArea(
       className={className}
       style={style}
       title={title}
+      titleActions={titleActions}
       description={description}
       htmlFor={id}
       error={touched ? error : undefined}

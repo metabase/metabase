@@ -12,10 +12,12 @@ import {
   FieldLabelError,
   FieldRoot,
   OptionalTag,
+  FieldTitleActions,
 } from "./FormField.styled";
 
 export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
   title?: string;
+  titleActions?: ReactNode;
   description?: ReactNode;
   alignment?: FieldAlignment;
   orientation?: FieldOrientation;
@@ -29,6 +31,7 @@ export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
 const FormField = forwardRef(function FormField(
   {
     title,
+    titleActions,
     description,
     alignment = "end",
     orientation = "vertical",
@@ -81,6 +84,9 @@ const FormField = forwardRef(function FormField(
                   <FieldInfoIcon name="info" />
                 )}
               </Tooltip>
+            )}
+            {titleActions && (
+              <FieldTitleActions>{titleActions}</FieldTitleActions>
             )}
           </FieldLabelContainer>
           {description && <FieldDescription>{description}</FieldDescription>}

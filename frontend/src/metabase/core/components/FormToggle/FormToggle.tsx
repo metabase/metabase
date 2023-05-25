@@ -7,6 +7,7 @@ import FormField from "metabase/core/components/FormField";
 export interface FormToggleProps extends Omit<ToggleProps, "value" | "onBlur"> {
   name: string;
   title?: string;
+  titleActions?: ReactNode;
   description?: ReactNode;
   optional?: boolean;
 }
@@ -17,6 +18,7 @@ const FormToggle = forwardRef(function FormToggle(
     className,
     style,
     title,
+    titleActions,
     description,
     onChange,
     optional,

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import { isNotNull } from "metabase/core/utils/types";
 
-import ActionFormFieldWidget from "metabase/actions/components/ActionFormFieldWidget";
+import { ActionFormFieldWidget } from "metabase/actions/components/ActionFormFieldWidget";
 import { getFieldTypes, getInputTypes } from "metabase/actions/constants";
 import { inputTypeHasOptions } from "metabase/actions/utils";
 
