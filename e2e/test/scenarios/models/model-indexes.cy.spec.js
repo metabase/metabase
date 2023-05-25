@@ -20,6 +20,7 @@ describe("scenarios > model indexes", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/model-index").as("modelIndexCreate");
     cy.intercept("DELETE", "/api/model-index/*").as("modelIndexDelete");
+    cy.intercept("PUT", "/api/card/*").as("cardUpdate");
 
     cy.createQuestion({
       name: "Products Model",
@@ -64,6 +65,39 @@ describe("scenarios > model indexes", () => {
       expect(request.url).to.include("/api/model-index/1");
       expect(response.statusCode).to.equal(200);
     });
+  });
+
+  it("should not allow indexing when a primary key has been unassigned", () => {
+    cy.visit(`/model/${modelId}`);
+    cy.wait("@dataset");
+
+    editTitleMetadata();
+
+    sidebar()
+      .findByLabelText(/surface individual records/i)
+      .click();
+
+    openColumnOptions("ID");
+
+    // change the entity key to a foreign key so no key exists
+    sidebar()
+      .findByText(/entity key/i)
+      .click();
+
+    popover()
+      .findByText(/foreign key/i)
+      .click();
+
+    cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+
+    cy.wait("@cardUpdate");
+
+    // search should fail
+    cy.findByTestId("app-bar")
+      .findByPlaceholderText("Search…")
+      .type("marble shoes");
+
+    cy.findByTestId("search-results-list").findByText(/didn't find anything/i);
   });
 
   it("should be able to search model index values and visit detail records", () => {

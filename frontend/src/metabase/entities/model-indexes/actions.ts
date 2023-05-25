@@ -42,15 +42,17 @@ export const updateModelIndexes =
     if (newFieldsToIndex.length) {
       const pkRef = ModelIndexes.utils.getPkRef(fields);
 
-      await Promise.all(
-        newFieldsToIndex.map(field =>
-          ModelIndexes.api.create({
-            model_id: model.id(),
-            value_ref: field.field_ref,
-            pk_ref: pkRef,
-          }),
-        ),
-      );
+      if (pkRef) {
+        await Promise.all(
+          newFieldsToIndex.map(field =>
+            ModelIndexes.api.create({
+              model_id: model.id(),
+              value_ref: field.field_ref,
+              pk_ref: pkRef,
+            }),
+          ),
+        );
+      }
     }
 
     if (indexIdsToRemove.length) {
