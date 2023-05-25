@@ -1,6 +1,10 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import WelcomePage, { WelcomePageProps } from "./WelcomePage";
+import { act, renderWithProviders, screen } from "__support__/ui";
+import { WelcomePage } from "./WelcomePage";
+
+const setup = () => {
+  renderWithProviders(<WelcomePage />);
+};
 
 describe("WelcomePage", () => {
   beforeEach(() => {
@@ -12,38 +16,22 @@ describe("WelcomePage", () => {
   });
 
   it("should not render until the locale is loaded", () => {
-    const props = getProps({ isLocaleLoaded: false });
-
-    render(<WelcomePage {...props} />);
+    setup();
 
     expect(screen.queryByText("Welcome to Metabase")).not.toBeInTheDocument();
   });
 
   it("should render after some time even if the locale is not loaded", () => {
-    const oldProps = getProps({ isLocaleLoaded: false });
-    const newProps = getProps({ isLocaleLoaded: false });
+    setup();
 
-    const { rerender } = render(<WelcomePage {...oldProps} />);
-    jest.advanceTimersByTime(310);
-    rerender(<WelcomePage {...newProps} />);
+    act(() => jest.advanceTimersByTime(310));
 
     expect(screen.getByText("Welcome to Metabase")).toBeInTheDocument();
   });
 
   it("should render before the timeout if the locale is loaded", () => {
-    const oldProps = getProps({ isLocaleLoaded: false });
-    const newProps = getProps({ isLocaleLoaded: true });
-
-    const { rerender } = render(<WelcomePage {...oldProps} />);
-    rerender(<WelcomePage {...newProps} />);
+    setup();
 
     expect(screen.getByText("Welcome to Metabase")).toBeInTheDocument();
   });
-});
-
-const getProps = (opts?: Partial<WelcomePageProps>): WelcomePageProps => ({
-  isLocaleLoaded: false,
-  onStepShow: jest.fn(),
-  onStepSubmit: jest.fn(),
-  ...opts,
 });
