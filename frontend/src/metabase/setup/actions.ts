@@ -34,8 +34,12 @@ export const LOAD_LOCALE_DEFAULTS = "metabase/setup/LOAD_LOCALE_DEFAULTS";
 export const loadLocaleDefaults = createAsyncThunk(
   LOAD_LOCALE_DEFAULTS,
   async () => {
-    const data = MetabaseSettings.get("available-locales") || [];
-    return getDefaultLocale(getLocales(data));
+    const data = MetabaseSettings.get("available-locales") ?? [];
+    const locale = getDefaultLocale(getLocales(data));
+    if (locale) {
+      await loadLocalization(locale.code);
+    }
+    return locale;
   },
 );
 
