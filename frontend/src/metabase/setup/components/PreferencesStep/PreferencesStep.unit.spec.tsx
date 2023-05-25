@@ -1,54 +1,49 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import PreferencesStep, { PreferencesStepProps } from "./PreferencesStep";
+import {
+  createMockSetupState,
+  createMockState,
+} from "metabase-types/store/mocks";
+import { renderWithProviders } from "__support__/ui";
+import { PREFERENCES_STEP, USER_STEP } from "../../constants";
+import { PreferencesStep } from "./PreferencesStep";
+
+interface SetupOpts {
+  step?: number;
+}
+
+const setup = ({ step = PREFERENCES_STEP }: SetupOpts = {}) => {
+  const state = createMockState({
+    setup: createMockSetupState({
+      step,
+    }),
+  });
+
+  renderWithProviders(<PreferencesStep />, { storeInitialState: state });
+};
 
 describe("PreferencesStep", () => {
   it("should render in inactive state", () => {
-    const props = getProps({
-      isStepActive: false,
-    });
-
-    render(<PreferencesStep {...props} />);
+    setup({ step: USER_STEP });
 
     expect(screen.getByText("Usage data preferences")).toBeInTheDocument();
   });
 
   it("should allow toggling tracking permissions", () => {
-    const props = getProps({
-      isTrackingAllowed: false,
-      isStepActive: true,
-    });
+    setup({ step: PREFERENCES_STEP });
 
-    render(<PreferencesStep {...props} />);
-    userEvent.click(screen.getByLabelText(/Allow Metabase/));
+    const toggle = screen.getByRole("switch", { name: /Allow Metabase/ });
+    userEvent.click(toggle);
 
-    expect(props.onTrackingChange).toHaveBeenCalledWith(true);
+    expect(toggle).toBeChecked();
   });
 
   it("should show an error message on submit", async () => {
-    const props = getProps({
-      isTrackingAllowed: true,
-      isStepActive: true,
-      onStepSubmit: jest.fn().mockRejectedValue({}),
-    });
+    setup({ step: PREFERENCES_STEP });
 
-    render(<PreferencesStep {...props} />);
     userEvent.click(screen.getByText("Finish"));
 
     expect(await screen.findByText("An error occurred")).toBeInTheDocument();
   });
-});
-
-const getProps = (
-  opts?: Partial<PreferencesStepProps>,
-): PreferencesStepProps => ({
-  isTrackingAllowed: false,
-  isStepActive: false,
-  isStepCompleted: false,
-  isSetupCompleted: false,
-  onTrackingChange: jest.fn(),
-  onStepSelect: jest.fn(),
-  onStepSubmit: jest.fn(),
-  ...opts,
 });
