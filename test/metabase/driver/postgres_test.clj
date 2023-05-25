@@ -14,12 +14,10 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.driver.util :as driver.u]
    [metabase.models.action :as action]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -34,6 +32,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
