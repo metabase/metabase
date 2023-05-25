@@ -4,6 +4,7 @@ import { UtilApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
 import { LocaleData } from "metabase-types/api";
 import { Locale } from "metabase-types/store";
+import { SUBSCRIBE_URL, SUBSCRIBE_TOKEN } from "./constants";
 
 export const getLocales = (
   localeData: LocaleData[] = [["en", "English"]],
@@ -43,10 +44,6 @@ export const validatePassword = async (password: string) => {
     return getIn(error, ["data", "errors", "password"]);
   }
 };
-
-const SUBSCRIBE_URL =
-  "https://metabase.us10.list-manage.com/subscribe/post?u=869fec0e4689e8fd1db91e795&id=b9664113a8";
-const SUBSCRIBE_TOKEN = "b_869fec0e4689e8fd1db91e795_b9664113a8";
 
 export const subscribeToNewsletter = async (email: string): Promise<void> => {
   const body = new FormData();
