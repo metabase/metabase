@@ -12,6 +12,7 @@ export * from "./field";
 export * from "./group";
 export * from "./metabot";
 export * from "./metric";
+export * from "./model-indexes";
 export * from "./search";
 export * from "./segment";
 export * from "./session";
