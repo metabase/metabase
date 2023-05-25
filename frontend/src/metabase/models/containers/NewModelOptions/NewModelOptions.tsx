@@ -14,7 +14,6 @@ import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
 
 import { useSelector } from "metabase/lib/redux";
-import { parseSearchOptions } from "metabase/lib/browser";
 import Database from "metabase-lib/metadata/Database";
 import {
   OptionsGridItem,
@@ -37,10 +36,7 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
     getHasNativeWrite(props.databases ?? []),
   );
 
-  const options = parseSearchOptions(location.search);
-  const collectionId = options.collectionId
-    ? Number(options.collectionId)
-    : undefined;
+  const collectionId = Urls.extractEntityId(location.query.collectionId);
 
   if (!hasDataAccess && !hasNativeWrite) {
     return (
