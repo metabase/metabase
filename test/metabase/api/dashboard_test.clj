@@ -17,6 +17,7 @@
     :refer [Action
             Card
             Collection
+            Database
             Dashboard
             DashboardCard
             DashboardCardSeries
@@ -1716,7 +1717,7 @@
 
 (deftest dashcard-action-create-update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (mt/with-actions-test-data-and-actions-enabled
+    (mt/with-actions-test-data
       (doseq [action-type [:http :implicit :query]]
         (mt/with-actions [{:keys [action-id]} {:type action-type :visualization_settings {:hello true}}]
           (testing (str "Creating dashcard with action: " action-type)
@@ -1736,10 +1737,23 @@
                                                            :ordered_tabs []}))))
               (is (partial= {:ordered_cards [{:action (cond-> {:visualization_settings {:hello true}
                                                                :type (name action-type)
-                                                               :parameters [{:id "id"}]}
+                                                               :parameters [{:id "id"}]
+                                                               :database_enabled_actions true}
                                                               (#{:query :implicit} action-type)
                                                               (assoc :database_id (mt/id)))}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))
+
+(deftest dashcard-action-database-enabled-actions-test
+  (testing "database_enabled_actions should hydrate according to database-enable-actions setting"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (mt/with-actions-test-data
+        (doseq [enable? [true false]]
+          (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions enable?}}
+            (mt/with-actions [{:keys [action-id]} {:type :query :visualization_settings {:hello true}}]
+              (mt/with-temp* [Dashboard     [{dashboard-id :id}]
+                              DashboardCard [_ {:action_id action-id, :dashboard_id dashboard-id}]]
+                (is (partial= {:ordered_cards [{:action {:database_enabled_actions enable?}}]}
+                              (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))))))))
 
 (deftest add-card-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id/cards"
