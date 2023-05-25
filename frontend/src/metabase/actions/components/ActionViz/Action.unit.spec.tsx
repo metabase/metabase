@@ -35,6 +35,7 @@ const DATABASE = createMockDatabase({
 const ACTION = createMockQueryAction({
   name: "My Awesome Action",
   database_id: DATABASE.id,
+  database_enabled_actions: true,
   parameters: [
     createMockActionParameter({
       id: "parameter_1",
@@ -139,7 +140,7 @@ describe("Actions > ActionViz > Action", () => {
       await setup({
         dashcard: createMockActionDashboardCard({
           action: createMockQueryAction({
-            database_id: DATABASE_WITHOUT_ACTIONS.id,
+            database_enabled_actions: false,
           }),
         }),
       });
@@ -210,6 +211,7 @@ describe("Actions > ActionViz > Action", () => {
 
       const action = createMockQueryAction({
         database_id: DATABASE.id,
+        database_enabled_actions: true,
         parameters: [
           createMockActionParameter({
             id: parameterId,
@@ -359,6 +361,7 @@ describe("Actions > ActionViz > Action", () => {
             name: "My Delete Action",
             kind: "row/delete",
             database_id: DATABASE.id,
+            database_enabled_actions: true,
             parameters: [
               createMockActionParameter({
                 id: "1",

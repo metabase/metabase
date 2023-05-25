@@ -2,15 +2,11 @@ import React, { useMemo, useCallback } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
-
 import Tooltip from "metabase/core/components/Tooltip";
 import { getResponseErrorMessage } from "metabase/core/utils/errors";
-
 import Databases from "metabase/entities/databases";
-
 import { executeRowAction } from "metabase/dashboard/actions";
 import { getEditingDashcardId } from "metabase/dashboard/selectors";
-
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   ActionDashboardCard,
@@ -20,7 +16,6 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
-
 import type Database from "metabase-lib/metadata/Database";
 
 import {
@@ -29,7 +24,6 @@ import {
   getMappedActionParameters,
   shouldShowConfirmation,
 } from "./utils";
-
 import ActionVizForm from "./ActionVizForm";
 import ActionButtonView from "./ActionButtonView";
 import { FullContainer } from "./ActionButton.styled";
@@ -134,12 +128,11 @@ function mapStateToProps(state: State, props: ActionProps) {
 
 function ActionFn(props: ActionProps) {
   const {
-    database,
     dashcard: { action },
     error,
   } = props;
 
-  const hasActionsEnabled = database?.hasActionsEnabled?.();
+  const hasActionsEnabled = !!action?.database_enabled_actions;
 
   if (error || !action || !hasActionsEnabled) {
     const tooltip = getErrorTooltip({
