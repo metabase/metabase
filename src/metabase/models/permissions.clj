@@ -1295,20 +1295,34 @@
               (log/trace "Deleting block permissions entries for Group %d for Database %d" group-id db-id)
               (t2/delete! Permissions :group_id group-id, :object (database-block-perms-path db-id)))]
       (condp = schemas
-        :all (do
-               (revoke-db-schema-permissions! group-id db-id)
-               (delete-block-perms-for-this-db!)
-               (grant-permissions-for-all-schemas! group-id db-id))
-        :none  (do
-                 (revoke-db-schema-permissions! group-id db-id)
-                 (delete-block-perms-for-this-db!))
+        :all
+        (do
+          (revoke-db-schema-permissions! group-id db-id)
+          (delete-block-perms-for-this-db!)
+          (grant-permissions-for-all-schemas! group-id db-id))
+
+        :none
+        (do
+          (revoke-db-schema-permissions! group-id db-id)
+          (delete-block-perms-for-this-db!))
+
+        ;; Groups using connection impersonation for a DB should be treated the same as if they had full self-service
+        ;; data access.
+        :impersonated
+        (do
+          (revoke-db-schema-permissions! group-id db-id)
+          (delete-block-perms-for-this-db!)
+          (grant-permissions-for-all-schemas! group-id db-id))
+
         ;; TODO -- should this code be enterprise only?
-        :block (do
-                 (when-not (premium-features/has-feature? :advanced-permissions)
-                   (throw (ee-permissions-exception :block)))
-                 (revoke-data-perms! group-id db-id)
-                 (revoke-download-perms! group-id db-id)
-                 (grant-permissions! group-id (database-block-perms-path db-id)))
+        :block
+        (do
+          (when-not (premium-features/has-feature? :advanced-permissions)
+            (throw (ee-permissions-exception :block)))
+          (revoke-data-perms! group-id db-id)
+          (revoke-download-perms! group-id db-id)
+          (grant-permissions! group-id (database-block-perms-path db-id)))
+
         (when (map? schemas)
           (delete-block-perms-for-this-db!)
           (doseq [schema (keys schemas)]
