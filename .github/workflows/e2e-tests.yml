@@ -151,6 +151,12 @@ jobs:
         if: ${{ github.ref == 'refs/heads/master' || !(startsWith(github.event.pull_request.base.ref, 'release')) }}
         run: |
           echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
+      - name: Record runs using Replay.io only on the master branch
+        if: ${{ github.ref == 'refs/heads/master' }}
+        run: |
+          echo "RECORD_REPLAY_METADATA_FILE=/tmp/replay-metadata.json" >> $GITHUB_ENV
+          echo "RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}" >> $GITHUB_ENV
+          echo "RECORD_REPLAY_DISABLE_ASSERTS: 1" >> $GITHUB_ENV
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare JDK ${{ matrix.java-version }}
@@ -182,9 +188,6 @@ jobs:
           --spec './e2e/test/scenarios/**/*.cy.spec.js'
         env:
           TERM: xterm
-          RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
-          RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
-          RECORD_REPLAY_DISABLE_ASSERTS: 1
 
       - name: Run EE Cypress tests on ${{ matrix.folder }}
         if: matrix.edition == 'ee'
@@ -194,12 +197,9 @@ jobs:
           --folder ${{ matrix.folder }}
         env:
           TERM: xterm
-          RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
-          RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
-          RECORD_REPLAY_DISABLE_ASSERTS: 1
 
       - name: Upload Replay.io recordings
-        if: always()
+        if: ${{ github.ref == 'refs/heads/master' }}
         uses: replayio/action-upload@v0.4.7
         with:
           api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ
