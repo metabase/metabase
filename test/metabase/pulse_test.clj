@@ -381,7 +381,7 @@
        (fn [_ _]
          (is (= (into {} (map (fn [user-kwd]
                                 (mt/email-to user-kwd {:subject "Pulse: Pulse Name",
-                                                       :to      #{user-kwd}
+                                                       :to      #{(:email (mt/fetch-user user-kwd))}
                                                        :body    [{"Pulse Name" true}
                                                                  pulse.test-util/png-attachment
                                                                  pulse.test-util/png-attachment]}))
