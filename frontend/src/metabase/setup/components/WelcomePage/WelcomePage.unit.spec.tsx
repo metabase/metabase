@@ -3,7 +3,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { WelcomePage } from "./WelcomePage";
 
 const setup = () => {
@@ -17,19 +17,10 @@ const setup = () => {
 };
 
 describe("WelcomePage", () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
-  it("should render after the locale is loaded", () => {
+  it("should render before the timeout when the locale is loaded", async () => {
     setup();
-    expect(screen.queryByText("Welcome to Metabase")).not.toBeInTheDocument();
 
-    act(() => jest.advanceTimersByTime(400));
-    expect(screen.getByText("Welcome to Metabase")).toBeInTheDocument();
+    expect(screen.queryByText("Welcome to Metabase")).not.toBeInTheDocument();
+    expect(await screen.findByText("Welcome to Metabase")).toBeInTheDocument();
   });
 });
