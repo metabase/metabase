@@ -78,7 +78,7 @@ class PublicDashboard extends Component {
     initialize();
     try {
       await fetchDashboard(uuid || token, location.query);
-      await fetchDashboardCardData({ reload: false, clear: true });
+      await fetchDashboardCardData({ reload: false, clearCache: true });
     } catch (error) {
       console.error(error);
       setErrorPage(error);
@@ -99,7 +99,7 @@ class PublicDashboard extends Component {
     }
 
     if (!_.isEqual(this.props.parameterValues, prevProps.parameterValues)) {
-      this.props.fetchDashboardCardData({ reload: false, clear: true });
+      this.props.fetchDashboardCardData({ reload: false, clearCache: true });
     }
   }
 

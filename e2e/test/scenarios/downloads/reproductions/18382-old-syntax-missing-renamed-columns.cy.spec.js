@@ -46,15 +46,6 @@ const questionDetails = {
   },
   display: "table",
   visualization_settings: {
-    /**
-     * Rename columns
-     *
-     * Please note: it is currently not possible to use the old syntax for columns rename.
-     * That results in `500` error, and backend doesn't handle it at all.
-     * Once some kind of mechanism is put in place to prevent the app from breaking in such cases,
-     * change the following syntax to the old style `["field-id", ${COLUMN_ID}]`
-     */
-
     column_settings: {
       [`["ref",["field",${REVIEWS.ID},null]]`]: {
         column_title: "MOD:ID",

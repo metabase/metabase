@@ -44,7 +44,7 @@ describe("order by", () => {
         expect.objectContaining({
           name: "TITLE",
           displayName: "Title",
-          longDisplayName: "Products → Title",
+          longDisplayName: "Product → Title",
           effectiveType: "type/Text",
           semanticType: "type/Title",
           isCalculated: false,

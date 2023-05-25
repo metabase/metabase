@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 
 import { t } from "ttag";
 
-import { normalize, schema } from "normalizr";
+import { denormalize, normalize, schema } from "normalizr";
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import { defer } from "metabase/lib/promise";
 
@@ -32,6 +32,8 @@ import {
   getParameterValues,
   getLoadingDashCards,
   getCanShowAutoApplyFiltersToast,
+  getDashboardById,
+  getDashCardById,
 } from "../selectors";
 
 import {
@@ -131,11 +133,29 @@ const loadingComplete = createThunkAction(
 
 export const fetchDashboard = createThunkAction(
   FETCH_DASHBOARD,
-  function (dashId, queryParams, preserveParameters) {
+  function (
+    dashId,
+    queryParams,
+    { preserveParameters = false, clearCache = true } = {},
+  ) {
+    let entities;
     let result;
     return async function (dispatch, getState) {
       const dashboardType = getDashboardType(dashId);
-      if (dashboardType === "public") {
+      const loadedDashboard = getDashboardById(getState(), dashId);
+
+      if (!clearCache && loadedDashboard) {
+        entities = {
+          dashboard: { [dashId]: loadedDashboard },
+          dashcard: Object.fromEntries(
+            loadedDashboard.ordered_cards.map(id => [
+              id,
+              getDashCardById(getState(), id),
+            ]),
+          ),
+        };
+        result = denormalize(dashId, dashboard, entities);
+      } else if (dashboardType === "public") {
         result = await PublicApi.dashboard({ uuid: dashId });
         result = {
           ...result,
@@ -211,8 +231,10 @@ export const fetchDashboard = createThunkAction(
             },
           );
 
+      entities = entities ?? normalize(result, dashboard).entities;
+
       return {
-        ...normalize(result, dashboard), // includes `result` and `entities`
+        entities,
         dashboard: result,
         dashboardId: dashId,
         parameterValues: parameterValuesById,
@@ -224,7 +246,7 @@ export const fetchDashboard = createThunkAction(
 
 export const fetchCardData = createThunkAction(
   FETCH_CARD_DATA,
-  function (card, dashcard, { reload, clear, ignoreCache } = {}) {
+  function (card, dashcard, { reload, clearCache, ignoreCache } = {}) {
     return async function (dispatch, getState) {
       // If the dataset_query was filtered then we don't have permisison to view this card, so
       // shortcircuit and return a fake 403
@@ -270,7 +292,7 @@ export const fetchCardData = createThunkAction(
 
       cancelFetchCardData(card.id, dashcard.id);
 
-      if (clear) {
+      if (clearCache) {
         // clears the card data to indicate the card is reloading
         dispatch(clearCardData(card.id, dashcard.id));
       }

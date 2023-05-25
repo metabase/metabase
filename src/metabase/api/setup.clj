@@ -16,10 +16,8 @@
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.database :refer [Database]]
-   [metabase.models.metric :refer [Metric]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.segment :refer [Segment]]
    [metabase.models.session :refer [Session]]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.table :refer [Table]]
@@ -204,13 +202,12 @@
              [:card :int]
              [:table :int]]]
    [:exists [:map
+             [:model :boolean]
              [:non-sample-db :boolean]
              [:dashboard :boolean]
              [:pulse :boolean]
              [:hidden-table :boolean]
-             [:collection :boolean]
-             [:metric :boolean]
-             [:segment :boolean]]]])
+             [:collection :boolean]]]])
 
 (mu/defn ^:private state-for-checklist :- ChecklistState
   []
@@ -226,8 +223,7 @@
                 :pulse         (t2/exists? Pulse)
                 :hidden-table  (t2/exists? Table, :visibility_type [:not= nil])
                 :collection    (t2/exists? Collection)
-                :metric        (t2/exists? Metric)
-                :segment       (t2/exists? Segment)}})
+                :model         (t2/exists? Card :dataset true)}})
 
 (defn- get-connected-tasks
   [{:keys [configured counts exists] :as _info}]
@@ -281,18 +277,12 @@
     :link        "/collection/root"
     :completed   (exists :collection)
     :triggered   (>= (counts :card) 30)}
-   {:title       (tru "Create metrics")
+   {:title       (tru "Create a model")
     :group       (tru "Curate your data")
-    :description (tru "Define canonical metrics to make it easier for the rest of your team to get the right answers.")
-    :link        "/admin/datamodel/metrics"
-    :completed   (exists :metric)
-    :triggered   (>= (counts :card) 30)}
-   {:title       (tru "Create segments")
-    :group       (tru "Curate your data")
-    :description (tru "Keep everyone on the same page by creating canonical sets of filters anyone can use while asking questions.")
-    :link        "/admin/datamodel/segments"
-    :completed   (exists :segment)
-    :triggered   (>= (counts :card) 30)}])
+    :description (tru "Set up friendly starting points for your team to explore data")
+    :link        "/model/new"
+    :completed   (exists :model)
+    :triggered   (not (exists :model))}])
 
 (mu/defn ^:private checklist-items
   [info :- ChecklistState]
