@@ -3,6 +3,8 @@ import { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 import { getSetting } from "metabase/selectors/settings";
 import { COMPLETED_STEP } from "./constants";
 
+const DEFAULT_LOCALES: LocaleData[] = [];
+
 export const getStep = (state: State): number => {
   return state.setup.step;
 };
@@ -59,10 +61,8 @@ export const getIsHosted = (state: State): boolean => {
   return getSetting(state, "is-hosted?");
 };
 
-const EMPTY_LOCALES: LocaleData[] = [];
-
 export const getAvailableLocales = (state: State): LocaleData[] => {
-  return getSetting(state, "available-locales") ?? EMPTY_LOCALES;
+  return getSetting(state, "available-locales") ?? DEFAULT_LOCALES;
 };
 
 export const getIsEmailConfigured = (state: State): boolean => {
