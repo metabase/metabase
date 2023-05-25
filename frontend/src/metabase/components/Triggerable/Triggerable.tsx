@@ -2,30 +2,28 @@ import styled from "@emotion/styled";
 import cx from "classnames";
 import React, {
   CSSProperties,
-  Children,
   Component,
   ComponentType,
   ElementType,
   ReactNode,
   SyntheticEvent,
-  cloneElement,
   createRef,
 } from "react";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import { isObscured } from "metabase/lib/dom";
 
-import { RenderProp } from "./types";
-import { isRenderProp, isReactElement } from "./utils";
+import { Children } from "./Children";
+import { TriggerElement } from "./TriggerElement";
+import { RenderProp, RenderTriggerElement } from "./types";
 
 const Trigger = styled.a``;
 
-type TriggerableComponent = ComponentType<{
+type TriggerableComponentProps<P extends Record<string, unknown>> = P & {
   isOpen: boolean;
-  onClose?: (event: SyntheticEvent) => void;
   sizeToFit?: boolean;
-  target?: Props["target"];
-}>;
+  target?: () => EventTarget | null;
+  onClose?: (event: SyntheticEvent) => void;
+};
 
 interface Props {
   as?: ElementType | ComponentType;
@@ -46,22 +44,24 @@ interface Props {
   onClose?: (event: SyntheticEvent) => void;
 }
 
-type RenderTriggerElement = (props: {
-  isTriggeredComponentOpen: boolean;
-  open: () => void;
-  close: () => void;
-}) => ReactNode;
-
 interface State {
   isOpen: boolean;
 }
 
 // higher order component that takes a component which takes props "isOpen" and optionally "onClose"
 // and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
-const _Triggerable = (ComposedComponent: TriggerableComponent) => {
+const _Triggerable = <P extends Record<string, unknown>>(
+  ComposedComponent: ComponentType<TriggerableComponentProps<P>>,
+) => {
+  type TriggerableComposedComponentProps = Props &
+    Omit<TriggerableComponentProps<P>, "isOpen" | "target" | "onClose">;
+
   const name = ComposedComponent.displayName || ComposedComponent.name;
 
-  return class extends Component<Props, State> {
+  return class TriggerableComposedComponent extends Component<
+    TriggerableComposedComponentProps,
+    State
+  > {
     static defaultProps = {
       as: "a",
     };
@@ -72,9 +72,15 @@ const _Triggerable = (ComposedComponent: TriggerableComponent) => {
 
     private _offscreenTimer: number | null = null;
 
-    state = {
-      isOpen: this.props.isInitiallyOpen || false,
-    };
+    constructor(props: TriggerableComposedComponentProps) {
+      super(props);
+
+      this.state = {
+        isOpen: Boolean(this.props.isInitiallyOpen || false),
+      };
+    }
+
+    state;
 
     open = () => {
       this.toggle(true);
@@ -149,40 +155,16 @@ const _Triggerable = (ComposedComponent: TriggerableComponent) => {
     render() {
       const {
         as,
+        children,
         triggerId,
         triggerClasses,
+        triggerElement,
         triggerStyle,
         triggerClassesOpen,
         triggerClassesClose,
       } = this.props;
-
       const isOpen =
         this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
-
-      let { triggerElement } = this.props;
-      if (isReactElement(triggerElement) && triggerElement.type === Tooltip) {
-        // Disables tooltip when open:
-        triggerElement = cloneElement(triggerElement, {
-          isEnabled: triggerElement.props.isEnabled && !isOpen,
-        });
-      }
-
-      let { children } = this.props;
-
-      if (isRenderProp(children)) {
-        children = children({ onClose: this.onClose });
-      } else if (Children.count(children) === 1) {
-        const child = Children.only(children);
-
-        if (isReactElement(child)) {
-          const isHtmlElement = child.type === "string";
-          const hasOnCloseProp = typeof child.props.onClose !== "undefined";
-
-          if (!isHtmlElement && !hasOnCloseProp) {
-            children = cloneElement(child, { onClose: this.onClose });
-          }
-        }
-      }
 
       return (
         <>
@@ -206,23 +188,22 @@ const _Triggerable = (ComposedComponent: TriggerableComponent) => {
             aria-disabled={this.props.disabled}
             style={triggerStyle}
           >
-            {typeof triggerElement === "function"
-              ? triggerElement({
-                  isTriggeredComponentOpen: isOpen,
-                  open: this.open,
-                  close: this.close,
-                })
-              : triggerElement}
+            <TriggerElement
+              isOpen={isOpen}
+              triggerElement={triggerElement}
+              onClose={this.close}
+              onOpen={this.open}
+            />
           </Trigger>
 
           <ComposedComponent
-            {...this.props}
+            {...(this.props as P)}
             isOpen={isOpen}
             onClose={this.onClose}
             target={() => this.target()}
             sizeToFit
           >
-            {children}
+            <Children onClose={this.onClose}>{children}</Children>
           </ComposedComponent>
         </>
       );
