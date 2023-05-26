@@ -240,10 +240,10 @@
 
 (deftest downgrade-dashboard-tabs-test
   (testing "Migrations v47.00-029: downgrade dashboard tab test"
-    (impl/test-migrations ["v47.00-029"] [_migrate!]
+    (impl/test-migrations ["v47.00-029", "v47.00-030"] [migrate!]
+      (migrate!)
       (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-            migrate!     (partial db.setup/migrate! db-type data-source)
-            _            (migrate! :up)
+            migrate-down! (partial db.setup/migrate! db-type data-source :down)
             user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
                                                                 :last_name   "Hughes"
                                                                 :email       "howard@aircraft.com"
@@ -313,7 +313,7 @@
                                                                                    :col              0
                                                                                    :size_x           4
                                                                                    :size_y           2})))]
-       (migrate! :down 46)
+       (migrate-down! 46)
        (is (= [;; tab 1
                {:id  tab1-card1-id
                 :row 0}
