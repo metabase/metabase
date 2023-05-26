@@ -18,6 +18,7 @@ import Databases from "metabase/entities/databases";
 import { ModelIndexes } from "metabase/entities/model-indexes";
 
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import Revision from "metabase/entities/revisions";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
@@ -293,7 +294,7 @@ export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
   revision => {
     return async dispatch => {
-      await revision.revert();
+      await dispatch(Revision.objectActions.revert(revision));
       await dispatch(reloadCard());
     };
   },

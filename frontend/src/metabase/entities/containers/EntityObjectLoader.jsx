@@ -184,6 +184,9 @@ const EntityObjectLoader = _.compose(
 
 export default EntityObjectLoader;
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export const entityObjectLoader =
   eolProps =>
   // eslint-disable-line react/display-name

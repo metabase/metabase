@@ -293,21 +293,21 @@
                                  :object   {:name       "c"
                                             :definition {:filter [:and [:> 1 25]]}}
                                  :message  "updated"}]]
-      (is (= [{:is_reversion false
-               :is_creation  false
-               :message      "updated"
-               :user         (-> (user-details (mt/fetch-user :crowberto))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         {:name {:before "b" :after "c"}}
-               :description  "renamed this Segment from \"b\" to \"c\"."}
-              {:is_reversion false
-               :is_creation  true
-               :message      nil
-               :user         (-> (user-details (mt/fetch-user :rasta))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         {:name       {:after "b"}
-                              :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
-               :description  nil}]
+      (is (=? [{:is_reversion false
+                :is_creation  false
+                :message      "updated"
+                :user         (-> (user-details (mt/fetch-user :crowberto))
+                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                :diff         {:name {:before "b" :after "c"}}
+                :description  "renamed this Segment from \"b\" to \"c\"."}
+               {:is_reversion false
+                :is_creation  true
+                :message      nil
+                :user         (-> (user-details (mt/fetch-user :rasta))
+                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                :diff         {:name       {:after "b"}
+                               :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
+                :description  "created this."}]
              (for [revision (mt/user-http-request :rasta :get 200 (format "segment/%d/revisions" id))]
                (dissoc revision :timestamp :id)))))))
 
@@ -365,43 +365,43 @@
                                                             :definition              {:filter [:= [:field 2 nil] "cans"]}}
                                                  :message  "updated"}]]
       (testing "the api response"
-        (is (= {:is_reversion true
-                :is_creation  false
-                :message      nil
-                :user         (-> (user-details (mt/fetch-user :crowberto))
-                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-                :diff         {:name {:before "Changed Segment Name"
-                                      :after  "One Segment to rule them all, one segment to define them"}}
-                :description  "renamed this Segment from \"Changed Segment Name\" to \"One Segment to rule them all, one segment to define them\"."}
-               (-> (mt/user-http-request :crowberto :post 200 (format "segment/%d/revert" id) {:revision_id revision-id})
-                   (dissoc :id :timestamp)))))
-
-      (testing "full list of final revisions, first one should be same as the revision returned by the endpoint"
-        (is (= [{:is_reversion true
+        (is (=? {:is_reversion true
                  :is_creation  false
                  :message      nil
                  :user         (-> (user-details (mt/fetch-user :crowberto))
                                    (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                  :diff         {:name {:before "Changed Segment Name"
                                        :after  "One Segment to rule them all, one segment to define them"}}
-                 :description  "renamed this Segment from \"Changed Segment Name\" to \"One Segment to rule them all, one segment to define them\"."}
-                {:is_reversion false
-                 :is_creation  false
-                 :message      "updated"
-                 :user         (-> (user-details (mt/fetch-user :crowberto))
-                                   (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-                 :diff         {:name {:after  "Changed Segment Name"
-                                       :before "One Segment to rule them all, one segment to define them"}}
-                 :description  "renamed this Segment from \"One Segment to rule them all, one segment to define them\" to \"Changed Segment Name\"."}
-                {:is_reversion false
-                 :is_creation  true
-                 :message      nil
-                 :user         (-> (user-details (mt/fetch-user :rasta))
-                                   (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-                 :diff         {:name        {:after "One Segment to rule them all, one segment to define them"}
-                                :description {:after "One segment to bring them all, and in the DataModel bind them"}
-                                :definition  {:after {:filter ["=" ["field" 2 nil] "cans"]}}}
-                 :description  nil}]
+                 :description  "reverted to an earlier version."}
+               (-> (mt/user-http-request :crowberto :post 200 (format "segment/%d/revert" id) {:revision_id revision-id})
+                   (dissoc :id :timestamp)))))
+
+      (testing "full list of final revisions, first one should be same as the revision returned by the endpoint"
+        (is (=? [{:is_reversion true
+                  :is_creation  false
+                  :message      nil
+                  :user         (-> (user-details (mt/fetch-user :crowberto))
+                                    (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                  :diff         {:name {:before "Changed Segment Name"
+                                        :after  "One Segment to rule them all, one segment to define them"}}
+                  :description  "reverted to an earlier version."}
+                 {:is_reversion false
+                  :is_creation  false
+                  :message      "updated"
+                  :user         (-> (user-details (mt/fetch-user :crowberto))
+                                    (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                  :diff         {:name {:after  "Changed Segment Name"
+                                        :before "One Segment to rule them all, one segment to define them"}}
+                  :description  "renamed this Segment from \"One Segment to rule them all, one segment to define them\" to \"Changed Segment Name\"."}
+                 {:is_reversion false
+                  :is_creation  true
+                  :message      nil
+                  :user         (-> (user-details (mt/fetch-user :rasta))
+                                    (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                  :diff         {:name        {:after "One Segment to rule them all, one segment to define them"}
+                                 :description {:after "One segment to bring them all, and in the DataModel bind them"}
+                                 :definition  {:after {:filter ["=" ["field" 2 nil] "cans"]}}}
+                  :description  "created this."}]
                (for [revision (mt/user-http-request :crowberto :get 200 (format "segment/%d/revisions" id))]
                  (dissoc revision :timestamp :id))))))))
 
