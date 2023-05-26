@@ -21,7 +21,7 @@ import type {
 import type { AdminPathKey, State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
 
-import { PluginGroupManagersType } from "./types";
+import { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 const array = () => [];
@@ -80,7 +80,7 @@ export const PLUGIN_ADMIN_USER_MENU_ITEMS = [];
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
 // authentication providers
-export const PLUGIN_AUTH_PROVIDERS = [] as any;
+export const PLUGIN_AUTH_PROVIDERS: GetAuthProviders[] = [];
 
 // Only show the password tab in account settings if these functions all return true.
 // Otherwise, the user is logged in via SSO and should hide first name, last name, and email field in profile settings metabase#23298.
