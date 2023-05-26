@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from "react";
 import { t } from "ttag";
-import AuthButton from "metabase/auth/components/AuthButton";
+import { AuthButton } from "metabase/auth/components/AuthButton";
 
 export interface SSOButtonProps {
   isCard?: boolean;
