@@ -30,7 +30,6 @@ const addTypesToCollections = (collections: Collection[]) => {
 
   for (const col of collections) {
     if (reservedNames.includes(col.name)) {
-      // @ts-expect-error need to update this puppy
       col.type = "instance-analytics";
     }
 

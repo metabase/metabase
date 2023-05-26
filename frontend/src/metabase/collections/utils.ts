@@ -13,6 +13,10 @@ export function isPersonalCollection(collection: Partial<Collection>): boolean {
   return typeof collection.personal_owner_id === "number";
 }
 
+export function isInstanceAnalyticsCollection(collection: Collection): boolean {
+  return collection.type === "instance-analytics";
+}
+
 // Replace the name for the current user's collection
 // @Question - should we just update the API to do this?
 function preparePersonalCollection(c: Collection): Collection {
