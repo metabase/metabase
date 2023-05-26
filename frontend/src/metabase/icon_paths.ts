@@ -8,7 +8,26 @@
     Some of these icons are used in BE to render subscriptions and defined in src/metabase/pulse/render/js_svg.clj
     so if you update icons here please make sure you update icons there as well.
 */
-export const ICON_PATHS: Record<string, any> = {
+
+interface PathIcon {
+  path: string,
+  attrs?: Record<string, any>
+}
+
+interface svgIcon {
+  svg: string,
+  attrs?: Record<string, any>
+}
+
+interface imgIcon {
+  img: string,
+  img_2x?: string,
+  attrs?: Record<string, any>
+}
+
+type iIcon = PathIcon | svgIcon | imgIcon
+
+export const ICON_PATHS = {
   add: "M12.4285714,12.4285714 L12.4285714,0 L19.5714286,0 L19.5714286,12.4285714 L32,12.4285714 L32,19.5714286 L19.5714286,19.5714286 L19.5714286,32 L12.4285714,32 L12.4285714,19.5714286 L0,19.5714286 L0,12.4285714 L12.4285714,12.4285714 Z",
   add_data:
     "M0 8h5.926v6.208H0V8zm7.704 0h5.926v6.208H7.704V8zM0 16.07h5.926v6.209H0V16.07zm7.704 0h5.926v6.209H7.704V16.07zm7.703 0h5.926v6.209h-5.926V16.07zM0 24.142h5.926v6.208H0v-6.208zm7.704 0h5.926v6.208H7.704v-6.208zm7.703 0h5.926v6.208h-5.926v-6.208zM23.08 8.08V3h4.064v5.08h5.08v4.063h-5.08v5.08h-4.064v-5.08H18V8.079h5.08z",
@@ -536,34 +555,43 @@ export const ICON_PATHS: Record<string, any> = {
     "M12.416 12.454V8.37h3.256v4.083h4.07v3.266h-4.07v4.083h-3.256V15.72h-4.07v-3.266h4.07zm10.389 13.28c-5.582 4.178-13.543 3.718-18.632-1.37-5.58-5.581-5.595-14.615-.031-20.179 5.563-5.563 14.597-5.55 20.178.031 5.068 5.068 5.545 12.985 1.422 18.563l5.661 5.661a2.08 2.08 0 0 1 .003 2.949 2.085 2.085 0 0 1-2.95-.003l-5.651-5.652zm-1.486-4.371c3.895-3.895 3.885-10.218-.021-14.125-3.906-3.906-10.23-3.916-14.125-.021-3.894 3.894-3.885 10.218.022 14.124 3.906 3.907 10.23 3.916 14.124.022z",
   zoom_out:
     "M22.8048272,25.7342559 C17.2227958,29.9120922 9.26170192,29.4524812 4.17264358,24.3634229 C-1.40785877,18.7829205 -1.42162182,9.74890155 4.14190296,4.18537677 C9.70542774,-1.37814801 18.7394467,-1.36438497 24.319949,4.21611739 C29.3880584,9.28422669 29.8647559,17.2007749 25.7421403,22.7792454 L31.4029793,28.4400843 C32.2180024,29.2551074 32.2248604,30.569663 31.4056282,31.3888951 C30.5920681,32.2024552 29.2715215,32.2009502 28.4568175,31.3862462 L22.8048272,25.7342559 Z M21.3193717,21.3628455 C25.213839,17.4683781 25.2042049,11.1445649 21.2978532,7.23821321 C17.3915016,3.33186156 11.0676883,3.32222743 7.17322097,7.21669477 C3.27875362,11.1111621 3.28838776,17.4349754 7.1947394,21.341327 C11.1010911,25.2476787 17.4249043,25.2573128 21.3193717,21.3628455 Z M8.34528717,12.453545 L19.7423242,12.453545 L19.7423242,15.7197782 L8.34528717,15.7197782 L8.34528717,12.453545 Z",
-};
-ICON_PATHS["horizontal_bar"] = {
-  path: ICON_PATHS["bar"],
-  attrs: {
-    style: {
-      transform: "rotate(90deg) scaleX(-1)",
-    },
+  get horizontal_bar() {
+    return {
+      path: this["bar"] as string,
+      attrs: {
+        style: {
+          transform: "rotate(90deg) scaleX(-1)",
+        },
+      },
+    }
   },
-};
-ICON_PATHS["arrow_right"] = {
-  path: ICON_PATHS["arrow_left"].path,
-  attrs: {
-    ...ICON_PATHS["arrow_left"].attrs,
-    style: {
-      transform: "rotate(-180deg)",
-    },
+  get arrow_right() {
+    return {
+      path: (this["arrow_left"] as PathIcon).path,
+      attrs: {
+        ...(this["arrow_left"] as PathIcon).attrs,
+        style: {
+          transform: "rotate(-180deg)",
+        },
+      },
+    }
   },
-};
-ICON_PATHS["join_right_outer"] = {
-  path: ICON_PATHS["join_left_outer"],
-  attrs: {
-    style: {
-      transform: "rotate(-180deg)",
-    },
+  get join_right_outer() {
+    return {
+      path: this["join_left_outer"] as string,
+      attrs: {
+        style: {
+          transform: "rotate(-180deg)",
+        },
+      },
+    }
   },
+  get scalar() {return this["number"]},
+  get collection() {return this["folder"]},
 };
-ICON_PATHS["scalar"] = ICON_PATHS["number"];
-ICON_PATHS["collection"] = ICON_PATHS["folder"];
+
+export type ICON_NAMES = keyof typeof ICON_PATHS
+
 
 export function parseViewBox(viewBox: string): Array<number> {
   // a viewBox is a string that takes the form 'min-x, min-y, width, height'
@@ -575,7 +603,7 @@ export function parseViewBox(viewBox: string): Array<number> {
     .map(v => Number(v))
     .slice(2, 4);
 }
-export function loadIcon(name: string) {
+export function loadIcon(name: ICON_NAMES) {
   const def = ICON_PATHS[name];
 
   if (!def) {
@@ -583,6 +611,7 @@ export function loadIcon(name: string) {
   }
 
   if (def.img) {
+    
     return { ...def, attrs: { ...def.attrs, className: "Icon Icon-" + name } };
   }
 

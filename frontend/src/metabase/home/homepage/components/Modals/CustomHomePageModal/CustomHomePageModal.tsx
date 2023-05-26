@@ -10,6 +10,7 @@ import ModalContent from "metabase/components/ModalContent";
 import { DashboardSelector } from "metabase/components/DashboardSelector/DashboardSelector";
 import Button from "metabase/core/components/Button/Button";
 import { Collection, DashboardId } from "metabase-types/api";
+import Icon from "metabase/components/Icon/Icon";
 
 const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";
 const CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY = "custom-homepage-dashboard";
