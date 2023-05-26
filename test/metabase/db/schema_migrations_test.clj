@@ -1055,28 +1055,61 @@
                                :from     [:core_user]
                                :order-by [[:id :asc]]}))))))
 
-(defn migrate18-to-24-reversed-short
-  [{:keys [col size_x]}]
-  {:col    (+ col (quot (+ col 1) 3))
+(defn- migrate18-to-24
+  [{:keys [row col size_x size_y]}]
+  {:row    (+ row (quot row 3))
+   :col    (+ col (quot (+ col 1) 3))
    :size_x (- (+ size_x
                  (quot (+ col size_x 1) 3))
-              (quot (+ col 1) 3))})
+              (quot (+ col 1) 3))
+   :size_y (+ size_y
+              (-
+                (quot (+ size_y row) 3)
+                (quot row 3)))})
+
+(defn- migrate24-to-18
+  [{:keys [row col size_x size_y]}]
+  {:row    (- row (quot row 4))
+   :col    (- col (quot col 4))
+   :size_x (- size_x
+              (-
+                (quot (+ size_x col) 4)
+                (quot col 4)))
+   :size_y (- size_y
+              (-
+                (quot (+ size_y row) 4)
+                (quot row 4)))})
 
 (deftest migrate-grid-from-18-to-24-test
-  (impl/test-migrations ["v47.00-030" "v47.00-031"] [migrate!]
-    (let [user         (create-raw-user! (tu.random/random-email))
+  (impl/test-migrations ["v47.00-030" "v47.00-031"] [_migrate!]
+    (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+          migrate!     (partial db.setup/migrate! db-type data-source)
+          user         (create-raw-user! (tu.random/random-email))
           dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
                                                                           :creator_id (:id user)}))
-          cases        (for [w (range 1 7)
-                             s (range 0 (- 19 w))]
-                         {:col    s
-                          :size_x w})
+          cases        (for [[col, row, size_x, size_y] [[0, 15, 12, 8],
+                                                         [12, 7, 6, 8],
+                                                         [5, 2, 5, 3],
+                                                         [0, 25, 7, 10,],
+                                                         [0, 2, 5, 3],
+                                                         [6, 7, 6, 8,],
+                                                         [7, 25 ,11 ,10],
+                                                         [0, 7, 6, 4,],
+                                                         [0, 23, 18, 2],
+                                                         [0, 5, 18, 2],
+                                                         [0, 0, 18 ,2],]]
+                         {:row    row
+                          :col    col
+                          :size_x size_x
+                          :size_y size_y})
           dashcard-ids (t2/insert-returning-pks! :model/DashboardCard
                                                  (map #(merge % {:dashboard_id dashboard-id
-                                                                 :size_y 0
-                                                                 :row    0
                                                                  :visualization_settings {}
                                                                  :parameter_mappings     {}}) cases))]
-      (migrate!)
-      (is (= (map migrate18-to-24-reversed-short cases)
-             (t2/select-fn-vec #(select-keys % [:col :size_x]) :model/DashboardCard :id [:in dashcard-ids]))))))
+      (migrate! :up)
+      (is (= (map migrate18-to-24 cases)
+             (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y]) :model/DashboardCard :id [:in dashcard-ids])))
+
+      (migrate! :down 46)
+      (is (= (->> cases (map migrate18-to-24) (map migrate24-to-18))
+             (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y]) :model/DashboardCard :id [:in dashcard-ids]))))))
