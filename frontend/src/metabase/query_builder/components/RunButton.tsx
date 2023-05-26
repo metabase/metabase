@@ -38,7 +38,6 @@ const RunButton = forwardRef(function RunButton(
       {...props}
       icon={icon}
       primary={isDirty}
-      iconSize={16}
       className={cx(className, "RunButton", {
         "RunButton--hidden": hidden,
         "RunButton--compact": circular && !props.borderless && compact,

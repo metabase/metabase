@@ -50,7 +50,6 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
       >
         <BookmarkIcon
           name="bookmark"
-          size={20}
           isBookmarked={isBookmarked}
           isAnimating={isAnimating}
           onAnimationEnd={handleAnimationEnd}

@@ -120,7 +120,7 @@ const BaseButton = forwardRef(function BaseButton(
           <Icon
             color={iconColor}
             name={iconRight}
-            size={iconSize ? iconSize : 14}
+            size={iconSize ? iconSize : 16}
           />
         )}
       </ButtonContent>
