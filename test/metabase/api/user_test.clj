@@ -270,7 +270,6 @@
                      :group_ids                  [(u/the-id (perms-group/all-users))]
                      :personal_collection_id     true
                      :custom_homepage            nil
-                     :has_question_and_dashboard false
                      :is_installer               (= 1 (mt/user->id :rasta))
                      :has_invited_second_user    (= 1 (mt/user->id :rasta))})
                    (dissoc :is_qbnewb :last_login))
