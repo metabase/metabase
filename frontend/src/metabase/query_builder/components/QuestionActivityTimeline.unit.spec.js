@@ -1,8 +1,15 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { createMockUser } from "metabase-types/api/mocks";
+
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
+import { createMockUser, createMockUserInfo } from "metabase-types/api/mocks";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
+import { createMockRevision } from "metabase-types/api/mocks/revision";
+import { setupRevisionsEndpoints } from "__support__/server-mocks/revision";
+import { setupUsersEndpoints } from "__support__/server-mocks/user";
 
 const REVISIONS = [
   {
@@ -23,17 +30,20 @@ const REVISIONS = [
   },
 ];
 
-function setup({ question }) {
-  const revertToRevision = jest.fn().mockReturnValue(Promise.resolve());
-  render(
+async function setup({ question }) {
+  setupRevisionsEndpoints([
+    createMockRevision(),
+    createMockRevision({ id: 2 }),
+  ]);
+  setupUsersEndpoints([createMockUserInfo()]);
+  renderWithProviders(
     <QuestionActivityTimeline
       question={question}
       revisions={REVISIONS}
       currentUser={createMockUser()}
-      revertToRevision={revertToRevision}
     />,
   );
-  return { revertToRevision };
+  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 }
 
 describe("QuestionActivityTimeline", () => {
@@ -41,10 +51,11 @@ describe("QuestionActivityTimeline", () => {
     const question = {
       canWrite: () => false,
       getModerationReviews: () => [],
+      id: () => 1,
     };
 
-    it("should not render revert action buttons", () => {
-      setup({ question });
+    it("should not render revert action buttons", async () => {
+      await setup({ question });
       expect(() => screen.getByTestId("question-revert-button")).toThrow();
     });
   });
@@ -53,17 +64,12 @@ describe("QuestionActivityTimeline", () => {
     const question = {
       canWrite: () => true,
       getModerationReviews: () => [],
+      id: () => 1,
     };
 
-    it("should render revert action buttons", () => {
-      setup({ question });
+    it("should render revert action buttons", async () => {
+      await setup({ question });
       expect(screen.getByTestId("question-revert-button")).toBeInTheDocument();
-    });
-
-    it("should call revertToRevision when revert button is clicked", () => {
-      const { revertToRevision } = setup({ question });
-      userEvent.click(screen.getByTestId("question-revert-button"));
-      expect(revertToRevision).toHaveBeenCalled();
     });
   });
 });
