@@ -1,4 +1,4 @@
-import React, { forwardRef, useState } from "react";
+import React, { forwardRef } from "react";
 
 import FormInputWidget from "metabase/core/components/FormInput";
 import FormTextAreaWidget from "metabase/core/components/FormTextArea";
@@ -8,7 +8,6 @@ import FormRadioWidget, {
 import FormSelectWidget from "metabase/core/components/FormSelect";
 import FormNumericInputWidget from "metabase/core/components/FormNumericInput";
 import FormBooleanWidget from "metabase/core/components/FormToggle";
-import CheckBox from "metabase/core/components/CheckBox";
 
 import type { InputComponentType } from "metabase-types/api";
 import type { ActionFormFieldProps } from "metabase/actions/types";
@@ -33,24 +32,16 @@ interface FormWidgetProps {
   formField: ActionFormFieldProps;
 }
 
-export const ActionFormFieldWidget = forwardRef(function FormFieldWidget(
+const ActionFormFieldWidget = forwardRef(function FormFieldWidget(
   { formField }: FormWidgetProps,
   ref: React.Ref<any>,
 ) {
-  const [hidden, setHidden] = useState(false);
   const Widget =
     (formField.type ? WIDGETS[formField.type] : FormInputWidget) ??
     FormInputWidget;
 
-  const titleActions = (
-    <CheckBox
-      checked={!hidden}
-      label="Show Field"
-      onChange={() => setHidden(checked => !checked)}
-    />
-  );
-
-  return (
-    <Widget {...formField} titleActions={titleActions} nullable ref={ref} />
-  );
+  return <Widget {...formField} nullable ref={ref} />;
 });
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default ActionFormFieldWidget;
