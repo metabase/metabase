@@ -41,7 +41,7 @@ const ResetPassword = ({ params }: ResetPasswordProps): JSX.Element | null => {
 
   const handlePasswordSubmit = useCallback(
     async ({ password }: ResetPasswordData) => {
-      await dispatch(resetPassword({ token, password }));
+      await dispatch(resetPassword({ token, password })).unwrap();
       dispatch(replace("/"));
       dispatch(addUndo({ message: t`You've updated your password.` }));
     },
