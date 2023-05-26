@@ -111,8 +111,7 @@ export default class AccordionList extends Component {
     hideEmptySectionsInSearch: false,
 
     // section getters/render props
-    renderSectionIcon: section =>
-      section.icon && <Icon name={section.icon} size={18} />,
+    renderSectionIcon: section => section.icon && <Icon name={section.icon} />,
     renderSectionExtra: () => null,
 
     // item getters/render props
@@ -121,7 +120,7 @@ export default class AccordionList extends Component {
     renderItemName: item => item.name,
     renderItemDescription: item => item.description,
     renderItemExtra: item => null,
-    renderItemIcon: item => item.icon && <Icon name={item.icon} size={18} />,
+    renderItemIcon: item => item.icon && <Icon name={item.icon} />,
     getItemClassName: item => item.className,
     getItemStyles: item => {},
     hasInitialFocus: true,
