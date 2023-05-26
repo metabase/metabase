@@ -181,7 +181,8 @@
 
 (defn- filter-operators
   "The list of available filter operators.
-   The order of operators is relevant for the front end."
+   The order of operators is relevant for the front end.
+   There are slight differences between names and ordering for the different base types."
   [column]
   (let [key-operators [{:short := :display-name (i18n/tru "Is")}
                        {:short :!= :display-name (i18n/tru "Is not")}
@@ -192,6 +193,7 @@
                        {:short :<= :display-name (i18n/tru "Less than or equal to")}
                        {:short :is-null :display-name (i18n/tru "Is empty")}
                        {:short :not-null :display-name (i18n/tru "Not empty")}]]
+    ;; The order of these clauses is important since we want to match the most relevant type
     (condp #(lib.types.isa/isa? %2 %1) column
       :type/PK
       key-operators
