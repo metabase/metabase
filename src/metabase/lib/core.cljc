@@ -139,6 +139,9 @@
   [lib.filter
    filter
    filters
+   filterable-columns
+   filterable-column-operators
+   filter-clause
    and
    or
    not
