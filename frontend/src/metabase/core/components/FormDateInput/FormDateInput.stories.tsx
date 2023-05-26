@@ -4,7 +4,6 @@ import Form from "../Form";
 import FormProvider from "../FormProvider";
 import FormDateInput from "./FormDateInput";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/FormDateInput",
   component: FormDateInput,

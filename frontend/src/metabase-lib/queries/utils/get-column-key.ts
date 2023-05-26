@@ -2,7 +2,6 @@ import { DatasetColumn } from "metabase-types/api";
 import {
   createFieldReference,
   getBaseDimensionReference,
-  getDimensionReferenceWithoutOptions,
   getNormalizedDimensionReference,
   hasStringFieldName,
   isAggregationReference,
@@ -28,10 +27,6 @@ export const getColumnKey = (
 
   if (isFieldReference(fieldRef) || isAggregationReference(fieldRef)) {
     fieldRef = getBaseDimensionReference(fieldRef);
-  }
-
-  if (isFieldReference(fieldRef)) {
-    fieldRef = getDimensionReferenceWithoutOptions(fieldRef, ["join-alias"]);
   }
 
   const isLegacyRef =

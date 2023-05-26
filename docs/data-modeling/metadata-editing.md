@@ -121,6 +121,7 @@ If you want Metabase to treat a text or number column as a datetime column:
 
 - UNIXMicroSeconds->DateTime
 - UNIXMilliSeconds->DateTime
+- UNIXNanoSeconds->DateTime
 - UNIXSeconds->DateTime
 
 Casting is different from setting the [field type](./field-types.md). For example, say you have a "Created At" column with a string [data type](https://www.metabase.com/learn/databases/data-types-overview) in your database. You'll need to cast "Created At" to one of the datetime types above if you want to do things like:

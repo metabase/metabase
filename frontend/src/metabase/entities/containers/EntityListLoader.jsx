@@ -295,6 +295,9 @@ EntityListLoader.defaultProps = defaultProps;
 
 export default EntityListLoader;
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export const entityListLoader = ellProps => ComposedComponent => {
   function WrappedComponent(props) {
     return (

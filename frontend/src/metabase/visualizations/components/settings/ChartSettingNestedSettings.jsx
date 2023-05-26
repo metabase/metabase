@@ -6,6 +6,9 @@ import _ from "underscore";
 import { updateSettings } from "metabase/visualizations/lib/settings";
 import ChartSettingsWidget from "../ChartSettingsWidget";
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 const chartSettingNestedSettings =
   ({ getObjectKey, getSettingsWidgetsForObject }) =>
   ComposedComponent =>

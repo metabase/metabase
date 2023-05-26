@@ -22,7 +22,7 @@ Delete a bookmark. Will delete a bookmark assigned to the user making the reques
 
 ### PARAMS:
 
-*  **`model`** value must be one of: `card`, `collection`, `dashboard`.
+*  **`model`** enum of card, dashboard, collection
 
 *  **`id`** value must be an integer greater than zero.
 
@@ -36,7 +36,7 @@ Create a new bookmark for user.
 
 ### PARAMS:
 
-*  **`model`** value must be one of: `card`, `collection`, `dashboard`.
+*  **`model`** enum of card, dashboard, collection
 
 *  **`id`** value must be an integer greater than zero.
 

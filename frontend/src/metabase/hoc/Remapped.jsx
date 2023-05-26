@@ -13,6 +13,9 @@ const mapDispatchToProps = {
   fetchRemapping,
 };
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export default ComposedComponent =>
   connect(
     mapStateToProps,
