@@ -106,6 +106,7 @@ From this filter editing mode, you can wire up individual cards to the filter, o
 - [Reorder filters](#reorder-filters)
 - [Set a default filter value](#set-a-default-filter-value)
 - [Make a multi-select filter](#make-a-multi-select-filter)
+- [Change the filter widget type](#filter-widgets)
 - [Change a filter's selectable values](#change-a-filters-selectable-values)
 
 ### Remove a filter
@@ -150,36 +151,35 @@ You can also set up a dashboard question to [update a filter on click](./interac
 
 ## Filter widgets
 
-The filter widget is the little box at the top of your dashboard where people will enter their filter value(s). Metabase will automatically choose the widget type based on the number of filter values for a column:
+The filter widget is the little box at the top of your dashboard which people will use to enter their filter values. 
 
-- [Plain input box](#plain-input-box)
+You can find a filter's widget settings by clicking on a filter's **gear** icon in dashboard edit mode. From the filter settings sidebar, you'll find the widget types under **How should people filter on this column?**:
+
+- [Dropdown list](#dropdown-list)
 - [Search box](#search-box)
+- [Input box](#plain-input-box)
 
-Both widget types will let you pick one or multiple selections depending on your [multi-select settings](#make-a-multi-select-filter).
+All widget types will let you pick one or multiple selections depending on your [multi-select settings](#make-a-multi-select-filter).
 
 ![Multi-select](./images/multi-select.png)
 
-If you want your filter to display a dropdown list of values, see [Creating a dropdown filter](#creating-a-dropdown-filter).
+### Dropdown list
 
-### Plain input box
-
-If the column you're using for a filter has more than 100 unique values, you'll automatically see a search box with autocomplete suggestions.
-
-![Autocomplete](./images/autocomplete.png)
-
-### Search box
-
-Columns with fewer than 100 distinct values will list all options (with checkboxes if you have a multi-select filter):
-
-![List](./images/list.png)
-
-## Creating a dropdown filter
+A list of all of the possible values in a column (with checkboxes if you have a [multi-select filter](#make-a-multi-select-filter)).
 
 If your dashboard filter is based on:
 
 - **A column from a table or GUI-based model**: The dropdown filter widget must be set from Metabase's **Admin settings**. See [Data model admin settings: changing the filter widget](../data-modeling/metadata-editing.md).
 
 - **A column from a SQL-based model**: Go to your [model's metadata settings](../data-modeling/models#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
+
+### Search box
+
+A search box that offers a list of matching filter values as you type.
+
+### Plain input box
+
+An input box that lets people enter any text (without suggesting values from the column).
 
 ## Linking filters
 
