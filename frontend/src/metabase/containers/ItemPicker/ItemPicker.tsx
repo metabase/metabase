@@ -239,28 +239,15 @@ function ItemPicker<T>({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-// export default _.compose(
-//   entityObjectLoader({
-//     id: "root",
-//     entityType: getEntityLoaderType,
-//     loadingAndErrorWrapper: false,
-//   }),
-//   entityListLoader({
-//     entityType: getEntityLoaderType,
-//     loadingAndErrorWrapper: false,
-//   }),
-//   connect(mapStateToProps),
-// )(ItemPicker);
-
-export default (function <T>() {
-  return entityObjectLoader({
+export default _.compose(
+  entityObjectLoader({
     id: "root",
     entityType: getEntityLoaderType,
     loadingAndErrorWrapper: false,
-  })(
-    entityListLoader({
-      entityType: getEntityLoaderType,
-      loadingAndErrorWrapper: false,
-    }),
-  )(connect(mapStateToProps)(ItemPicker<T>));
-} as React.FC);
+  }),
+  entityListLoader({
+    entityType: getEntityLoaderType,
+    loadingAndErrorWrapper: false,
+  }),
+  connect(mapStateToProps),
+)(ItemPicker) as <T>(props: OwnProps<T>) => JSX.Element;

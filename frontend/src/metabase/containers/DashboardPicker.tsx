@@ -1,6 +1,6 @@
 import React from "react";
 import { CollectionId, DashboardId } from "metabase-types/api";
-import ItemPicker, { PickerValue } from "./ItemPicker";
+import ItemPicker from "./ItemPicker";
 
 export interface DashboardPickerProps {
   value?: DashboardId;
@@ -14,7 +14,7 @@ const DashboardPicker = ({
   collectionId,
   ...props
 }: DashboardPickerProps) => (
-  <ItemPicker<DashboardId>
+  <ItemPicker
     {...props}
     initialOpenCollectionId={collectionId}
     value={value === undefined ? undefined : { model: "dashboard", id: value }}
