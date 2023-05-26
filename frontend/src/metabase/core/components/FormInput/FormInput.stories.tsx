@@ -21,7 +21,7 @@ export default {
   title: "Core/FormInput",
   component: FormInput,
   argTypes: {
-    titleActions: {
+    actions: {
       mapping: {
         Default: <TitleActions />,
       },
@@ -58,5 +58,5 @@ WithTitleAndActions.args = {
   title: "Title",
   description: "Description",
   optional: true,
-  titleActions: "Default",
+  actions: "Default",
 };

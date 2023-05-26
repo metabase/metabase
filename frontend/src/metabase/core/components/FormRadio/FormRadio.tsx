@@ -12,7 +12,7 @@ export interface FormRadioProps<
   > {
   name: string;
   title?: string;
-  titleActions?: ReactNode;
+  actions?: ReactNode;
   description?: ReactNode;
   optional?: boolean;
 }
@@ -26,7 +26,7 @@ const FormRadio = forwardRef(function FormRadio<
     className,
     style,
     title,
-    titleActions,
+    actions,
     description,
     optional,
     ...props
@@ -41,7 +41,7 @@ const FormRadio = forwardRef(function FormRadio<
       className={className}
       style={style}
       title={title}
-      titleActions={titleActions}
+      actions={actions}
       description={description}
       error={touched ? error : undefined}
       optional={optional}

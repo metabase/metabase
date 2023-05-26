@@ -17,7 +17,7 @@ import {
 
 export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
   title?: string;
-  titleActions?: ReactNode;
+  actions?: ReactNode;
   description?: ReactNode;
   alignment?: FieldAlignment;
   orientation?: FieldOrientation;
@@ -31,7 +31,7 @@ export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
 const FormField = forwardRef(function FormField(
   {
     title,
-    titleActions,
+    actions,
     description,
     alignment = "end",
     orientation = "vertical",
@@ -85,9 +85,7 @@ const FormField = forwardRef(function FormField(
                 )}
               </Tooltip>
             )}
-            {titleActions && (
-              <FieldTitleActions>{titleActions}</FieldTitleActions>
-            )}
+            {actions && <FieldTitleActions>{actions}</FieldTitleActions>}
           </FieldLabelContainer>
           {description && <FieldDescription>{description}</FieldDescription>}
         </FieldCaption>

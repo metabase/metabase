@@ -32,7 +32,7 @@ interface FormWidgetProps {
   formField: ActionFormFieldProps;
 }
 
-const ActionFormFieldWidget = forwardRef(function FormFieldWidget(
+export const ActionFormFieldWidget = forwardRef(function FormFieldWidget(
   { formField }: FormWidgetProps,
   ref: React.Ref<any>,
 ) {
@@ -42,6 +42,3 @@ const ActionFormFieldWidget = forwardRef(function FormFieldWidget(
 
   return <Widget {...formField} nullable ref={ref} />;
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ActionFormFieldWidget;

@@ -17,7 +17,7 @@ export interface FormInputProps
   > {
   name: string;
   title?: string;
-  titleActions?: ReactNode;
+  actions?: ReactNode;
   description?: ReactNode;
   nullable?: boolean;
   optional?: boolean;
@@ -29,7 +29,7 @@ const FormInput = forwardRef(function FormInput(
     className,
     style,
     title,
-    titleActions,
+    actions,
     description,
     nullable,
     optional,
@@ -53,7 +53,7 @@ const FormInput = forwardRef(function FormInput(
       className={className}
       style={style}
       title={title}
-      titleActions={titleActions}
+      actions={actions}
       description={description}
       htmlFor={id}
       error={touched ? error : undefined}
