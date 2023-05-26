@@ -6,7 +6,6 @@ import { useArgs } from "@storybook/client-api";
 import Toggle from "../Toggle/Toggle";
 import FormField from "./FormField";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/FormField",
   component: FormField,
