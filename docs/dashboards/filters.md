@@ -26,7 +26,7 @@ You can choose from a number of filter types:
 - [Number](#number-filter)
 - [Text or categories](#text-or-category-filter)
 
-The type of filter you choose will determine what the filter widget will look like, as well as which fields you’ll be able to filter your cards by:
+The type of filter you choose will determine what the [filter widget](#filter-widgets) will look like, as well as which fields you’ll be able to filter your cards by:
 
 ### Time filters
 
@@ -95,11 +95,45 @@ Before we **Save** our changes, we can edit our filter's settings.
 
 ## Editing a filter
 
-- **To edit a filter**: click the **pencil** icon to enter dashboard editing mode, then click the **gear** icon button on the filter you want to change. You can wire up individual cards to the filter, and use the sidebar to update the label.
-- **To remove a filter**: click on the filter's **gear** icon to open the filter sidebar. Under the **Settings** tab, click **Remove** in the sidebar. If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard editing mode without saving your changes.
-- **To reorder your filters**: click on the grabber handle on the left side of a filter, then drag the filter to a different position.
-- **To set a default value**: click on the filter's **gear** icon to open the filter sidebar. Under the **Settings** tab, enter a value in the **Default value** input field.
-- **To change the selectable values in a filter**: click on the gear icon for that filter, and under "How should users filter on this column", click on the **Dropdown list**, then click **Edit**. You can specify where the values should come from:
+To access a filter's settings:
+
+1. Click the **pencil** icon to enter dashboard editing mode.
+2. Click the **gear** icon button on the filter you want to change.
+
+From this filter editing mode, you can wire up individual cards to the filter, or use the sidebar settings to:
+
+- [Remove a filter](#remove-a-filter)
+- [Reorder filters](#reorder-filters)
+- [Set a default filter value](#set-a-default-filter-value)
+- [Make a multi-select filter](#make-a-multi-select-filter)
+- [Change a filter's selectable values](#change-a-filters-selectable-values)
+
+### Remove a filter
+
+1. In dashboard edit mode, click your filter's **gear** icon. 
+2. From the sidebar, click **Remove**.
+
+If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard edit mode without saving your changes.
+
+### Reorder filters
+
+In dashboard edit mode, click on the grabber handle (six dots) on the left side of a filter, then drag the filter to a different position.
+
+### Set a default filter value
+
+1. In dashboard edit mode, click your filter's **gear** icon. 
+2. From the sidebar, choose a value from the **Default value** input field.
+
+### Make a multi-select filter
+
+1. In dashboard edit mode, click your filter's **gear** icon. 
+2. From the sidebar, choose **Users can pick** > "Multiple values".
+
+### Change a filter's selectable values
+
+1. In dashboard edit mode, click your filter's **gear** icon. 
+2. From the sidebar, find "How should users filter on this column".
+3. Click on the **Dropdown list**, then click **Edit** to specify where the values should come from:
     - From connected fields
     - From another model or question
     - Custom list
@@ -114,23 +148,38 @@ Once you’ve added a filter to your dashboard, just click on the filter to sele
 
 You can also set up a dashboard question to [update a filter on click](./interactive.md#use-a-chart-to-filter-a-dashboard).
 
-## Default filter types
+## Filter widgets
+
+The filter widget is the little box at the top of your dashboard where people will enter their filter value(s). Metabase will automatically choose the widget type based on the number of filter values for a column:
+
+- [Plain input box](#plain-input-box)
+- [Search box](#search-box)
+
+Both widget types will let you pick one or multiple selections depending on your [multi-select settings](#make-a-multi-select-filter).
+
+![Multi-select](./images/multi-select.png)
+
+If you want your filter to display a dropdown list of values, see [Creating a dropdown filter](#creating-a-dropdown-filter).
+
+### Plain input box
 
 If the column you're using for a filter has more than 100 unique values, you'll automatically see a search box with autocomplete suggestions.
 
 ![Autocomplete](./images/autocomplete.png)
 
-Columns with fewer than 100 distinct values will list all options:
+### Search box
+
+Columns with fewer than 100 distinct values will list all options (with checkboxes if you have a multi-select filter):
 
 ![List](./images/list.png)
 
-In both cases, you can pick one or multiple selections for your filter.
-
-![Multi-select](./images/multi-select.png)
-
 ## Creating a dropdown filter
 
-To override the default text box or search box filter widget, ask your Metabase admin to help you [update the column's settings](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) on the Data Model page.
+If your dashboard filter is based on:
+
+- **A column from a table or GUI-based model**: The dropdown filter widget must be set from Metabase's **Admin settings**. See [Data model admin settings: changing the filter widget](../data-modeling/metadata-editing.md).
+
+- **A column from a SQL-based model**: Go to your [model's metadata settings](../data-modeling/models#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
 
 ## Linking filters
 
