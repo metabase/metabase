@@ -170,7 +170,7 @@
   (into {}
         (filter (fn [[k v]]
                   (not= v (get old k)))
-        new)))
+         new)))
 
 (s/defn update-dashboard-card!
   "Updates an existing DashboardCard including all DashboardCardSeries.
@@ -235,14 +235,11 @@
 
 (defn delete-dashboard-card!
   "Delete a DashboardCard."
-  [dashboard-card user-id]
-  {:pre [(map? dashboard-card)
-         (integer? user-id)]}
-  (let [{:keys [id]} (dashboard dashboard-card)]
-    (db/transaction
-      (db/delete! PulseCard :dashboard_card_id (:id dashboard-card))
-      (db/delete! DashboardCard :id (:id dashboard-card)))
-    (events/publish-event! :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))
+  [dashboard-card-id]
+  {:pre [(integer? dashboard-card-id)]}
+  (db/transaction
+    (db/delete! PulseCard :dashboard_card_id dashboard-card-id)
+    (db/delete! DashboardCard :id dashboard-card-id)))
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 

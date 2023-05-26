@@ -585,7 +585,8 @@
   {dashcardId su/IntStringGreaterThanZero}
   (api/check-not-archived (api/write-check Dashboard id))
   (when-let [dashboard-card (db/select-one DashboardCard :id (Integer/parseInt dashcardId))]
-    (api/check-500 (dashboard-card/delete-dashboard-card! dashboard-card api/*current-user-id*))
+    (api/check-500 (dashboard-card/delete-dashboard-card! (:id dashboard-card)))
+    (events/publish-event! :dashboard-remove-cards {:id id :actor_id api/*current-user-id* :dashcards [dashboard-card]})
     api/generic-204-no-content))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
