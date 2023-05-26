@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import AuthLayout from "../../containers/AuthLayout";
-import ResetPasswordForm from "../ResetPasswordForm";
+import { AuthLayout } from "../AuthLayout";
+import { ResetPasswordForm } from "../ResetPasswordForm";
 import { ResetPasswordData } from "../../types";
 import { InfoBody, InfoMessage, InfoTitle } from "./ResetPassword.styled";
 
