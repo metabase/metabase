@@ -85,7 +85,7 @@ describe("ActionCreator > Query Actions", () => {
       await setup({ action, canWrite: false });
 
       expect(screen.getByDisplayValue(action.name)).toBeDisabled();
-      expect(queryIcon("grabber2")).not.toBeInTheDocument();
+      expect(queryIcon("grabber")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Update" }),
@@ -103,7 +103,7 @@ describe("ActionCreator > Query Actions", () => {
       await setup({ action, hasActionsEnabled: false });
 
       expect(screen.getByDisplayValue(action.name)).toBeDisabled();
-      expect(queryIcon("grabber2")).not.toBeInTheDocument();
+      expect(queryIcon("grabber")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Update" }),

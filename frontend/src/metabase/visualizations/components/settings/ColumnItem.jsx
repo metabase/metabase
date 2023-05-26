@@ -43,7 +43,7 @@ const ColumnItem = ({
       data-testid={`draggable-item-${title}`}
     >
       <ColumnItemContainer>
-        {draggable && <ColumnItemDragHandle name="grabber2" size={12} />}
+        {draggable && <ColumnItemDragHandle name="grabber" />}
         {onColorChange && color && (
           <ColumnItemColorPicker
             value={color}

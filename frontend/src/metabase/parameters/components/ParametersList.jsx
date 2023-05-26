@@ -22,7 +22,7 @@ const StaticParameterWidgetList = ({
 
 const SortableParameterHandle = SortableHandle(() => (
   <div className="flex layout-centered cursor-grab text-inherit">
-    <Icon name="grabber2" size={12} />
+    <Icon name="grabber" />
   </div>
 ));
 

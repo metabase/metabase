@@ -127,7 +127,6 @@ function PermissionsPageLayout({
       {shouldShowHelp && (
         <PermissionPageSidebar>
           <CloseSidebarButton
-            size={20}
             onClick={() => setShouldShowHelp(prev => !prev)}
           />
           {helpContent}

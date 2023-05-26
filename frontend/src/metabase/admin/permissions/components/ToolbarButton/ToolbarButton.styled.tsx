@@ -17,5 +17,5 @@ export const ToolbarButtonRoot = styled.button`
 `;
 
 export const ToolbarButtonIcon = styled(Icon)`
-  margin-right: 0.5rem;
+  margin-right: 0.25rem;
 `;

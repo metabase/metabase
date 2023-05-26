@@ -10,7 +10,7 @@ interface ToolbarButtonProps {
 export const ToolbarButton = ({ onClick, text, icon }: ToolbarButtonProps) => {
   return (
     <ToolbarButtonRoot onClick={onClick}>
-      <ToolbarButtonIcon name={icon} size={20} />
+      <ToolbarButtonIcon name={icon} />
       {text}
     </ToolbarButtonRoot>
   );

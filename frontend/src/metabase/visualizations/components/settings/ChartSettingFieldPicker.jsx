@@ -52,9 +52,7 @@ const ChartSettingFieldPicker = ({
       disabled={options.length === 1 && options[0].value === value}
       data-testid="chartsettings-field-picker"
     >
-      {showDragHandle && (
-        <SettingsIcon name="grabber2" size={12} noPointer noMargin />
-      )}
+      {showDragHandle && <SettingsIcon name="grabber" noPointer noMargin />}
       {showColorPicker && seriesKey && (
         <FieldPickerColorPicker
           pillSize="small"
