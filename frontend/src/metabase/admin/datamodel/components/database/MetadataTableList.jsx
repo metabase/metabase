@@ -222,7 +222,6 @@ function ToggleHiddenButton({ setVisibilityForTables, tables, isHidden }) {
           ? t`Unhide`
           : t`Hide`
       }
-      size={18}
       className={cx(
         "float-right",
         isLoading ? "cursor-not-allowed" : "cursor-pointer",

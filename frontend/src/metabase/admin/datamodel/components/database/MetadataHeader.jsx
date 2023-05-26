@@ -58,6 +58,7 @@ class MetadataHeader extends Component {
         <Icon
           className="flex align-center flex-no-shrink text-medium"
           name="database"
+          size={20}
         />
         <div className="MetadataEditor-headerSection h2">
           <DatabaseDataSelector
