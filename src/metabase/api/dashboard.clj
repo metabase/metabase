@@ -568,7 +568,7 @@
      :created-tab-ids    (map :id to-create)
      :updated-tab-ids    (map :id to-update)
      :deleted-tab-ids    to-delete-ids
-     :total-num-tabs     (+ (count to-create) (count to-upgrade))}))
+     :total-num-tabs     (+ (count to-create) (count to-update))}))
 
 (defn- create-dashcards!
   [dashboard dashcards]
@@ -643,19 +643,19 @@
 
   ;; Tabs events
   (when (seq deleted-tab-ids)
-  (snowplow/track-event! ::snowplow/dashboard-tabs-deleted
-    api/*current-user-id*
-    {:dashboard-id   (:id dashboard)
-     :num-tabs       (count deleted-tab-ids)
-     :total-num-tabs total-num-tabs})
+    (snowplow/track-event! ::snowplow/dashboard-tabs-deleted
+                           api/*current-user-id*
+                           {:dashboard-id   (:id dashboard)
+                            :num-tabs       (count deleted-tab-ids)
+                            :total-num-tabs total-num-tabs})
     (events/publish-event! :dashboard-remove-tabs
                            {:id dashboard-id :actor_id api/*current-user-id* :tab-ids deleted-tab-ids}))
   (when (seq created-tab-ids)
-  (snowplow/track-event! ::snowplow/dashboard-tabs-created
-    api/*current-user-id*
-    {:dashboard-id   (:id dashboard)
-     :num-tabs       (count created-tab-ids)
-     :total-num-tabs total-num-tabs}))
+    (snowplow/track-event! ::snowplow/dashboard-tabs-created
+                           api/*current-user-id*
+                           {:dashboard-id   (:id dashboard)
+                            :num-tabs       (count created-tab-ids)
+                            :total-num-tabs total-num-tabs})
     (events/publish-event! :dashboard-add-tabs
                            {:id dashboard-id :actor_id api/*current-user-id* :tab-ids created-tab-ids}))
   (when (seq updated-tab-ids)
