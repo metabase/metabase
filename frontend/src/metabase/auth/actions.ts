@@ -63,7 +63,7 @@ export const login = createAsyncThunk<void, LoginPayload, ThunkConfig>(
 );
 
 interface LoginGooglePayload {
-  token: string;
+  credential: string;
   redirectUrl?: string;
 }
 
@@ -72,8 +72,8 @@ export const loginGoogle = createAsyncThunk<
   void,
   LoginGooglePayload,
   ThunkConfig
->(LOGIN_GOOGLE, async ({ token, redirectUrl = "/" }, { dispatch }) => {
-  await SessionApi.createWithGoogleAuth({ token });
+>(LOGIN_GOOGLE, async ({ credential, redirectUrl = "/" }, { dispatch }) => {
+  await SessionApi.createWithGoogleAuth({ token: credential });
   await dispatch(refreshSession()).unwrap();
   trackLoginGoogle();
 

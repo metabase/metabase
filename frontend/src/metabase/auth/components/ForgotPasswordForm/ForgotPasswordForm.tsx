@@ -18,7 +18,7 @@ const FORGOT_PASSWORD_SCHEMA = Yup.object({
   email: Yup.string().required(Errors.required).email(Errors.email),
 });
 
-export interface ForgotPasswordFormProps {
+interface ForgotPasswordFormProps {
   initialEmail?: string;
   onSubmit: (email: string) => void;
 }
