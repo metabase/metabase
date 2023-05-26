@@ -17,8 +17,12 @@ import {
 
 type ViewType = "form" | "disabled" | "success";
 
-export interface ForgotPasswordProps {
-  location?: Location;
+interface ForgotPasswordQuery {
+  email?: string;
+}
+
+interface ForgotPasswordProps {
+  location?: Location<ForgotPasswordQuery>;
 }
 
 export const ForgotPassword = ({
