@@ -76,7 +76,7 @@ export const DimensionListItem = ({
     >
       <DimensionListItemContent>
         <DimensionListItemTitleContainer onClick={handleChange}>
-          <DimensionListItemIcon name={iconName} size={18} />
+          <DimensionListItemIcon name={iconName} />
           <DimensionListItemTitle data-testid="dimension-list-item-name">
             {name}
           </DimensionListItemTitle>
