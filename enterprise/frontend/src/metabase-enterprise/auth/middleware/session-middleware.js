@@ -37,14 +37,14 @@ export const createSessionMiddleware = (
           if (isLoggedIn) {
             // get the redirect url before refreshing the session because after the refresh the url will be reset
             const redirectUrl = getRedirectUrl();
-            await store.dispatch(refreshSession()).unwrap();
+            await store.dispatch(refreshSession())?.unwrap();
 
             if (redirectUrl !== null) {
               store.dispatch(replace(redirectUrl));
             }
           } else {
             const url = location.pathname + location.search + location.hash;
-            store.dispatch(logout(url)).unwrap();
+            store.dispatch(logout(url));
           }
         }
       }, COOKIE_POOLING_TIMEOUT);
