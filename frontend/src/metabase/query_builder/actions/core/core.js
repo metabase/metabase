@@ -15,7 +15,10 @@ import { openUrl } from "metabase/redux/app";
 
 import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
+import { ModelIndexes } from "metabase/entities/model-indexes";
+
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import Revision from "metabase/entities/revisions";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
@@ -225,6 +228,11 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
+    if (question.isDataset()) {
+      await dispatch(ModelIndexes.actions.updateModelIndexes(question));
+      question = ModelIndexes.actions.cleanIndexFlags(question);
+    }
+
     rerunQuery = rerunQuery ?? getIsResultDirty(getState());
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
@@ -286,7 +294,7 @@ export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
   revision => {
     return async dispatch => {
-      await revision.revert();
+      await dispatch(Revision.objectActions.revert(revision));
       await dispatch(reloadCard());
     };
   },

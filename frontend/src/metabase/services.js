@@ -179,6 +179,14 @@ export const CardApi = {
   parameterSearch: GET("/api/card/:cardId/params/:paramId/search/:query"),
 };
 
+export const ModelIndexApi = {
+  list: GET("/api/model-index"),
+  get: GET("/api/model-index/:id"),
+  create: POST("/api/model-index"),
+  update: PUT("/api/model-index/:id"),
+  delete: DELETE("/api/model-index/:id"),
+};
+
 export const DashboardApi = {
   list: GET("/api/dashboard"),
   // creates a new empty dashboard

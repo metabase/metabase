@@ -5,7 +5,6 @@ import { useArgs } from "@storybook/client-api";
 
 import SchedulePicker from "./SchedulePicker";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Components/SchedulePicker",
   component: SchedulePicker,

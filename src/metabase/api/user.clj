@@ -12,10 +12,13 @@
    [metabase.email.messages :as messages]
    [metabase.integrations.google :as google]
    [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.interface :as mi]
    [metabase.models.login-history :refer [LoginHistory]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user :refer [User]]
    [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.server.middleware.session :as mw.session]
@@ -131,14 +134,12 @@
   - with include_deactivatved"
   [status query group_id include_deactivated]
   (cond-> {}
-    true             (sql.helpers/where (status-clause status include_deactivated))
-    true             (sql.helpers/where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-                                          (when (segmented-user?)
-                                            [:= :core_user.id api/*current-user-id*])))
-    (some? query)    (sql.helpers/where (query-clause query))
-    (some? group_id) (sql.helpers/right-join :permissions_group_membership
+    true                               (sql.helpers/where (status-clause status include_deactivated))
+    (premium-features/segmented-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
+    (some? query)                      (sql.helpers/where (query-clause query))
+    (some? group_id)                   (sql.helpers/right-join :permissions_group_membership
                                              [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group_id) (sql.helpers/where [:= :permissions_group_membership.group_id group_id])))
+    (some? group_id)                   (sql.helpers/where [:= :permissions_group_membership.group_id group_id])))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
@@ -220,6 +221,16 @@
             (t/offset-date-time))]
     (assoc user :first_login ts)))
 
+(defn add-custom-homepage-info
+  "Adds custom homepage dashboard information to the current user."
+  [user]
+  (let [enabled? (public-settings/custom-homepage)
+        id       (public-settings/custom-homepage-dashboard)
+        dash     (t2/select-one Dashboard :id id)
+        valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
+    (assoc user :custom_homepage (when valid?
+                                   {:dashboard_id id}))))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/current"
   "Fetch the current `User`."
@@ -229,7 +240,8 @@
       add-has-question-and-dashboard
       add-first-login
       maybe-add-advanced-permissions
-      maybe-add-sso-source))
+      maybe-add-sso-source
+      add-custom-homepage-info))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"

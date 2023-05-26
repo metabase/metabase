@@ -30,3 +30,8 @@ export const getUserPersonalCollectionId = createSelector(
   [getUser],
   user => user?.personal_collection_id,
 );
+
+export const getUserRedirectHomepageToDashboard = createSelector(
+  [getUser],
+  user => user?.custom_homepage?.dashboard_id || null,
+);

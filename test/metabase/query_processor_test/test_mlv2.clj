@@ -1,6 +1,5 @@
 (ns metabase.query-processor-test.test-mlv2
   (:require
-   [clojure.string :as str]
    [clojure.test :as t :refer :all]
    [malli.core :as mc]
    [malli.error :as me]
@@ -35,10 +34,6 @@
   [legacy-query]
   (or
    *skip-conversion-tests*
-   ;; #29949: missing schema
-   (mbql.u/match-one legacy-query
-     :regex-match-first
-     "#29949")
    ;; #29958: `:convert-timezone` with 2 args is broken
    (mbql.u/match-one legacy-query
      [:convert-timezone _expr _source-timezone]
@@ -63,20 +58,7 @@
      {:aggregation aggregations}
      (mbql.u/match-one aggregations
        :case
-       "#29935"))
-   ;; #29936: metadata for an `:aggregation` that is a `:metric`
-   (mbql.u/match-one legacy-query
-     {:aggregation aggregations}
-     (mbql.u/match-one aggregations
-       :metric
-       "#29936"))
-   ;; #29941 : metadata resolution for query with a `card__` source-table does not work correctly for `:field` <name>
-   ;; #clauses
-   (mbql.u/match-one legacy-query
-     {:source-table (_id :guard #(str/starts-with? % "card__"))}
-     (mbql.u/match-one &match
-       [:field (_field-name :guard string?) _opts]
-       "#29941"))))
+       "#29935"))))
 
 (defn- test-mlv2-metadata [original-query _qp-metadata]
   {:pre [(map? original-query)]}

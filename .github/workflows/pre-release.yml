@@ -84,7 +84,7 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
     steps:
-    - name: Fail early if custom docker relaese repo is missing
+    - name: Fail early if custom docker release repo is missing
       if: ${{ env.CUSTOM_REPO == null }}
       run: exit 1
     - name: Check out the code
@@ -99,6 +99,33 @@ jobs:
         m2-cache-key: pre-release-build
     - name: Build
       run: ./bin/build.sh
+
+    - name: Determine the canonical version ## EE is always v1.x.y, OSS is always v0.x.y
+      uses: actions/github-script@v6
+      id: canonical_version
+      env:
+        INTENDED_VERSION: ${{ github.event.inputs.version }}
+        EDITION: ${{ matrix.edition }}
+      with:
+        result-encoding: string
+        script: |
+          var canonical_version;
+          const ver = process.env.INTENDED_VERSION;
+          if (process.env.EDITION === "ee") {
+            canonical_version = ver.replace(/^v0\./, "v1."); // always e.g. v1.47.2
+          } else {
+            canonical_version = ver.replace(/^v1\./, "v0."); // always e.g. v0.45.6
+          }
+          console.log("The canonical version of this", process.env.EDITION, "edition is", canonical_version);
+          return canonical_version;
+    - name: Adjust the tag in the version.properties file
+      run: |
+        jar xf ./target/uberjar/metabase.jar version.properties
+        sed -i 's/tag=.*/tag=${{ steps.canonical_version.outputs.result }}/' version.properties
+        zip ./target/uberjar/metabase.jar version.properties
+    - name: Show the updated version.properties
+      run: echo "Updated version.properties:" && cat version.properties
+
     - name: Prepare uberjar artifact
       uses: ./.github/actions/prepare-uberjar-artifact
 
