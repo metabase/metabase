@@ -1,6 +1,6 @@
 import React from "react";
 import fetchMock from "fetch-mock";
-import { setupLogoutEndpoints } from "__support__/server-mocks";
+import { setupLogoutEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import { Logout } from "./Logout";
 
@@ -11,7 +11,7 @@ const setup = () => {
     reload: jest.fn(),
   });
 
-  setupLogoutEndpoints();
+  setupLogoutEndpoint();
   renderWithProviders(<Logout />);
 };
 

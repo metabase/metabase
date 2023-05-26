@@ -5,7 +5,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { setupForgotPasswordEndpoints } from "__support__/server-mocks";
+import { setupForgotPasswordEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { ForgotPassword } from "./ForgotPassword";
 
@@ -24,7 +24,7 @@ const setup = ({ isEmailConfigured, isLdapEnabled }: SetupOpts) => {
     }),
   });
 
-  setupForgotPasswordEndpoints();
+  setupForgotPasswordEndpoint();
 
   renderWithProviders(
     <Route path="/auth/forgot_password" component={ForgotPassword} />,

@@ -1,18 +1,26 @@
 import fetchMock from "fetch-mock";
-import { Settings } from "metabase-types/api";
+import { PasswordResetTokenInfo, Settings } from "metabase-types/api";
 
 export function setupPropertiesEndpoints(settings: Settings) {
   fetchMock.get("path:/api/session/properties", settings);
 }
 
-export function setupLoginEndpoints() {
+export function setupLoginEndpoint() {
   fetchMock.post("path:/api/session", 204);
 }
 
-export function setupLogoutEndpoints() {
+export function setupLogoutEndpoint() {
   fetchMock.delete("path:/api/session", 204);
 }
 
-export function setupForgotPasswordEndpoints() {
+export function setupForgotPasswordEndpoint() {
   fetchMock.post("path:/api/session/forgot_password", 204);
+}
+
+export function setupResetPasswordEndpoint() {
+  fetchMock.post("path:/api/session/reset_password", 204);
+}
+
+export function setupPasswordResetTokenEndpoint(info: PasswordResetTokenInfo) {
+  fetchMock.get("path:/api/session/password_reset_token_valid", info);
 }
