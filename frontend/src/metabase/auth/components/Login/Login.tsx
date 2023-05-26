@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import AuthLayout from "../../containers/AuthLayout";
+import { AuthLayout } from "../AuthLayout";
 import { AuthProvider } from "../../types";
 import {
   ActionList,
