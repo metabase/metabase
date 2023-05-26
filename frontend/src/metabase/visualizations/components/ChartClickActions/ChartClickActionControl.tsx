@@ -79,11 +79,13 @@ export const ChartClickActionControl = ({
         <HorizontalClickActionButton
           small
           icon={
-            typeof action.icon === "string" ? (
-              <ClickActionButtonIcon name={action.icon} />
-            ) : (
-              <IconWrapper>{action.icon}</IconWrapper>
-            )
+            action.icon ? (
+              typeof action.icon === "string" ? (
+                <ClickActionButtonIcon name={action.icon} />
+              ) : (
+                <IconWrapper>{action.icon}</IconWrapper>
+              )
+            ) : null
           }
           iconColor={color("brand")}
           onClick={() => onClick(action)}

@@ -13,7 +13,7 @@ export const Section = styled.div<{
     type === "sort" &&
     direction === "row" &&
     css`
-      margin-bottom: 0.5rem;
+      margin: 0 0 0.5rem -0.5rem;
     `}
 
   ${({ direction }) =>

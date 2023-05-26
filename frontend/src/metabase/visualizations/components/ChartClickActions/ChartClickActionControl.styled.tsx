@@ -4,15 +4,16 @@ import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 
 export const IconWrapper = styled.span`
+  display: flex;
+  margin-right: 0.25rem;
+
   color: ${color("brand")};
 
   transition: all 200ms linear;
-
-  display: flex;
 `;
 
 export const ClickActionButtonIcon = styled(Icon)`
-  margin-right: 0.25rem;
+  margin-right: 0.5rem;
 
   width: 0.75rem;
   height: 0.75rem;
