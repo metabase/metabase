@@ -14,7 +14,12 @@
      (java.time ZoneId))]
    :cljs
    [(:require
-     ["moment" :as moment])]))
+     ["moment" :as moment]
+     ["moment-timezone" :as mtz])]))
+
+#?(:cljs
+   ;; so the moment-timezone stuff gets loaded
+   (comment mtz/keep-me))
 
 (mbql-clause/define-tuple-mbql-clause :interval :- :type/Interval
   :int
