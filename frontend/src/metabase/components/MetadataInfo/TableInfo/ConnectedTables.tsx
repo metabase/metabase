@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Table from "metabase-lib/metadata/Table";
+import * as QUESTION from "metabase-lib/Question";
 
 import { Label, LabelContainer, Container } from "../MetadataInfo.styled";
 import {
@@ -58,7 +59,7 @@ function ConnectedTableButton({
 
 function ConnectedTableLink({ table }: { table: Table }) {
   return (
-    <LabelLink to={table.newQuestion().getUrl()}>
+    <LabelLink to={QUESTION.getUrl(table.newQuestion())}>
       <InteractiveTableLabel table={table} />
     </LabelLink>
   );

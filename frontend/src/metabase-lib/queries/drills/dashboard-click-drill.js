@@ -8,7 +8,7 @@ import {
   getDataFromClicked,
   getTargetForQueryParams,
 } from "metabase-lib/parameters/utils/click-behavior";
-import Question from "metabase-lib/Question";
+import Question, * as QUESTION from "metabase-lib/Question";
 
 export function getDashboardDrillType(clicked) {
   const clickBehavior = getClickBehavior(clicked);
@@ -110,8 +110,10 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
   });
 
   return targetQuestion.isStructured()
-    ? targetQuestion.getUrlWithParameters(parameters, queryParams)
-    : `${targetQuestion.getUrl()}?${querystring.stringify(queryParams)}`;
+    ? QUESTION.getUrlWithParameters(targetQuestion, parameters, queryParams)
+    : `${QUESTION.getUrl(targetQuestion)}?${querystring.stringify(
+        queryParams,
+      )}`;
 }
 
 function getClickBehavior(clicked) {

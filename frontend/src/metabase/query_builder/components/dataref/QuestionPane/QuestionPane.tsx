@@ -12,7 +12,7 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type { Collection } from "metabase-types/api/collection";
 import type { State } from "metabase-types/store";
 import Table from "metabase-lib/metadata/Table";
-import Question from "metabase-lib/Question";
+import Question, * as QUESTION from "metabase-lib/Question";
 import FieldList from "../FieldList";
 import { PaneContent } from "../Pane.styled";
 import {
@@ -57,7 +57,7 @@ const QuestionPane = ({
         </QuestionPaneDescription>
         <QuestionPaneDetail>
           <QuestionPaneDetailLink
-            href={question.getUrl()}
+            href={QUESTION.getUrl(question)}
             target="_blank"
             rel="noreferrer"
           >

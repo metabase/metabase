@@ -1,6 +1,7 @@
 import { connect } from "react-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
+import * as QUESTION from "metabase-lib/Question";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
@@ -44,7 +45,7 @@ const getReloadInterval = (state, { database }, tables = []) => {
 
 const getTableUrl = (table, metadata) => {
   const metadataTable = metadata?.table(table.id);
-  return metadataTable?.newQuestion().getUrl({ clean: false });
+  return QUESTION.getUrl(metadataTable?.newQuestion(), { clean: false });
 };
 
 export default _.compose(

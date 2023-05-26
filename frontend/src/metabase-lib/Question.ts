@@ -651,7 +651,7 @@ class QuestionInner {
     }
   }
 
-  composeDataset() {
+  composeDataset(): Question {
     if (!this.isDataset() || !this.isSaved()) {
       return this;
     }
@@ -988,92 +988,6 @@ class QuestionInner {
     return this._card && this._card.archived;
   }
 
-  getUrl({
-    originalQuestion,
-    clean = true,
-    query,
-    includeDisplayIsLocked,
-    creationType,
-    ...options
-  }: {
-    originalQuestion?: Question;
-    clean?: boolean;
-    query?: Record<string, any>;
-    includeDisplayIsLocked?: boolean;
-    creationType?: string;
-  } = {}): string {
-    const question = this.omitTransientCardIds();
-
-    if (
-      !question.id() ||
-      (originalQuestion && question.isDirtyComparedTo(originalQuestion))
-    ) {
-      return Urls.question(null, {
-        hash: question._serializeForUrl({
-          clean,
-          includeDisplayIsLocked,
-          creationType,
-        }),
-        query,
-      });
-    } else {
-      return Urls.question(question.card(), { query });
-    }
-  }
-
-  getAutomaticDashboardUrl(
-    filters,
-    /*?: Filter[] = []*/
-  ) {
-    let cellQuery = "";
-
-    if (filters.length > 0) {
-      const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
-      cellQuery = `/cell/${utf8_to_b64url(JSON.stringify(mbqlFilter))}`;
-    }
-
-    const questionId = this.id();
-
-    if (questionId != null && !isTransientId(questionId)) {
-      return `/auto/dashboard/question/${questionId}${cellQuery}`;
-    } else {
-      const adHocQuery = utf8_to_b64url(
-        JSON.stringify(this.card().dataset_query),
-      );
-      return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}`;
-    }
-  }
-
-  getComparisonDashboardUrl(
-    filters,
-    /*?: Filter[] = []*/
-  ) {
-    let cellQuery = "";
-
-    if (filters.length > 0) {
-      const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
-      cellQuery = `/cell/${utf8_to_b64url(JSON.stringify(mbqlFilter))}`;
-    }
-
-    const questionId = this.id();
-    const query = this.query();
-
-    if (query instanceof StructuredQuery) {
-      const tableId = query.tableId();
-
-      if (tableId) {
-        if (questionId != null && !isTransientId(questionId)) {
-          return `/auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
-        } else {
-          const adHocQuery = utf8_to_b64url(
-            JSON.stringify(this.card().dataset_query),
-          );
-          return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/table/${tableId}`;
-        }
-      }
-    }
-  }
-
   setResultsMetadata(resultsMetadata) {
     const metadataColumns = resultsMetadata && resultsMetadata.columns;
     return this.setCard({
@@ -1246,7 +1160,7 @@ class QuestionInner {
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
-  private _convertParametersToMbql() {
+  _convertParametersToMbql(): Question {
     if (!this.isStructured()) {
       return this;
     }
@@ -1305,43 +1219,6 @@ class QuestionInner {
     return ML.suggestedName(query);
   }
 
-  getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
-    const includeDisplayIsLocked = true;
-
-    if (this.isStructured()) {
-      const questionWithParameters = this.setParameters(parameters);
-
-      if (this.query().isEditable()) {
-        return questionWithParameters
-          .setParameterValues(parameterValues)
-          ._convertParametersToMbql()
-          .getUrl({
-            clean,
-            originalQuestion: this,
-            includeDisplayIsLocked,
-            query: { objectId },
-          });
-      } else {
-        const query = getParameterValuesBySlug(parameters, parameterValues);
-        return questionWithParameters.markDirty().getUrl({
-          clean,
-          query,
-          includeDisplayIsLocked,
-        });
-      }
-    } else {
-      return this.getUrl({
-        clean,
-        query: remapParameterValuesToTemplateTags(
-          this.query().templateTags(),
-          parameters,
-          parameterValues,
-        ),
-        includeDisplayIsLocked,
-      });
-    }
-  }
-
   getModerationReviews() {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
@@ -1392,5 +1269,138 @@ export default class Question extends memoizeClass<QuestionInner>("query")(
     }
 
     return new Question(card, metadata, parameterValues);
+  }
+}
+
+export function getUrl(
+  question: Question,
+  {
+    originalQuestion,
+    clean = true,
+    query,
+    includeDisplayIsLocked,
+    creationType,
+    ...options
+  }: {
+    originalQuestion?: Question;
+    clean?: boolean;
+    query?: Record<string, any>;
+    includeDisplayIsLocked?: boolean;
+    creationType?: string;
+  } = {},
+): string {
+  question = question.omitTransientCardIds();
+
+  if (
+    !question.id() ||
+    (originalQuestion && question.isDirtyComparedTo(originalQuestion))
+  ) {
+    return Urls.question(null, {
+      hash: question._serializeForUrl({
+        clean,
+        includeDisplayIsLocked,
+        creationType,
+      }),
+      query,
+    });
+  } else {
+    return Urls.question(question.card(), { query });
+  }
+}
+
+export function getUrlWithParameters(
+  Question: question,
+  parameters,
+  parameterValues,
+  { objectId, clean } = {},
+): string {
+  const includeDisplayIsLocked = true;
+
+  if (question.isStructured()) {
+    let questionWithParameters = question.setParameters(parameters);
+
+    if (question.query().isEditable()) {
+      questionWithParameters = questionWithParameters
+        .setParameterValues(parameterValues)
+        ._convertParametersToMbql();
+      return getUrl(questionWithParameters, {
+        clean,
+        originalQuestion: question,
+        includeDisplayIsLocked,
+        query: { objectId },
+      });
+    } else {
+      const query = getParameterValuesBySlug(parameters, parameterValues);
+      return getUrl(questionWithParameters.markDirty(), {
+        clean,
+        query,
+        includeDisplayIsLocked,
+      });
+    }
+  } else {
+    return getUrl(question, {
+      clean,
+      query: remapParameterValuesToTemplateTags(
+        question.query().templateTags(),
+        parameters,
+        parameterValues,
+      ),
+      includeDisplayIsLocked,
+    });
+  }
+}
+
+export function getAutomaticDashboardUrl(
+  question: Question,
+  filters,
+  /*?: Filter[] = []*/
+): string {
+  let cellQuery = "";
+
+  if (filters.length > 0) {
+    const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
+    cellQuery = `/cell/${utf8_to_b64url(JSON.stringify(mbqlFilter))}`;
+  }
+
+  const questionId = question.id();
+
+  if (questionId != null && !isTransientId(questionId)) {
+    return `/auto/dashboard/question/${questionId}${cellQuery}`;
+  } else {
+    const adHocQuery = utf8_to_b64url(
+      JSON.stringify(question.card().dataset_query),
+    );
+    return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}`;
+  }
+}
+
+export function getComparisonDashboardUrl(
+  question: Question,
+  filters,
+  /*?: Filter[] = []*/
+): string {
+  let cellQuery = "";
+
+  if (filters.length > 0) {
+    const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
+    cellQuery = `/cell/${utf8_to_b64url(JSON.stringify(mbqlFilter))}`;
+  }
+
+  const questionId = question.id();
+  const query = question.query();
+
+  if (query instanceof StructuredQuery) {
+    const tableId = query.tableId();
+
+    if (tableId) {
+      if (questionId != null && !isTransientId(questionId)) {
+        return `/auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
+      } else {
+        const adHocQuery = utf8_to_b64url(
+          JSON.stringify(question.card().dataset_query),
+        );
+        return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/table/${tableId}`;
+      }
+    }
   }
 }

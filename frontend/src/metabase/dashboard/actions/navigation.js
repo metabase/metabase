@@ -5,7 +5,7 @@ import { openUrl } from "metabase/redux/app";
 import { getParametersMappedToDashcard } from "metabase/parameters/utils/dashboards";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
-import Question from "metabase-lib/Question";
+import Question, * as QUESTION from "metabase-lib/Question";
 import { getDashboardId } from "../selectors";
 
 export const EDIT_QUESTION = "metabase/dashboard/EDIT_QUESTION";
@@ -75,7 +75,8 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       const isDrillingFromNativeModel =
         previousQuestion.isDataset() && previousQuestion.isNative();
 
-      const url = question.getUrlWithParameters(
+      const url = QUESTION.getUrlWithParameters(
+        question,
         parametersMappedToCard,
         parameterValues,
         {

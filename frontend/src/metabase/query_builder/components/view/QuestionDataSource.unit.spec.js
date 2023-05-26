@@ -15,7 +15,7 @@ import {
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
-import Question from "metabase-lib/Question";
+import Question, * as QUESTION from "metabase-lib/Question";
 import QuestionDataSource from "./QuestionDataSource";
 
 const MULTI_SCHEMA_DB_ID = 2;
@@ -432,7 +432,7 @@ describe("QuestionDataSource", () => {
           );
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            question.table().newQuestion().getUrl(),
+            QUESTION.getUrl(question.table().newQuestion()),
           );
         });
 
@@ -443,7 +443,7 @@ describe("QuestionDataSource", () => {
           );
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            question.table().newQuestion().getUrl(),
+            QUESTION.getUrl(question.table().newQuestion()),
           );
         });
       });
@@ -488,12 +488,12 @@ describe("QuestionDataSource", () => {
           expect(orders).toBeInTheDocument();
           expect(orders.closest("a")).toHaveAttribute(
             "href",
-            getAdHocOrdersQuestion().getUrl(),
+            QUESTION.getUrl(getAdHocOrdersQuestion()),
           );
           expect(products).toBeInTheDocument();
           expect(products.closest("a")).toHaveAttribute(
             "href",
-            getAdHocProductsQuestion().getUrl(),
+            QUESTION.getUrl(getAdHocProductsQuestion()),
           );
         });
       });
@@ -516,17 +516,17 @@ describe("QuestionDataSource", () => {
           expect(orders).toBeInTheDocument();
           expect(orders.closest("a")).toHaveAttribute(
             "href",
-            getAdHocOrdersQuestion().getUrl(),
+            QUESTION.getUrl(getAdHocOrdersQuestion()),
           );
           expect(products).toBeInTheDocument();
           expect(products.closest("a")).toHaveAttribute(
             "href",
-            getAdHocProductsQuestion().getUrl(),
+            QUESTION.getUrl(getAdHocProductsQuestion()),
           );
           expect(people).toBeInTheDocument();
           expect(people.closest("a")).toHaveAttribute(
             "href",
-            getAdHocPeopleQuestion().getUrl(),
+            QUESTION.getUrl(getAdHocPeopleQuestion()),
           );
         });
       });

@@ -22,7 +22,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import Question from "metabase-lib/Question";
+import Question, * as QUESTION from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { ObjectDetailDrill } from "./ObjectDetailDrill";
 
@@ -260,7 +260,7 @@ describe("ObjectDetailDrill", () => {
 
         it("should return correct URL to object detail", () => {
           const action = actions[0] as QuestionChangeClickAction;
-          expect(action.question().getUrl()).toBe(
+          expect(QUESTION.getUrl(action.question())).toBe(
             `/question/${SAVED_QUESTION.slug()}`,
           );
         });

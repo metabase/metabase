@@ -4,6 +4,7 @@ import { t } from "ttag";
 import cx from "classnames";
 import { usePrevious, useMount } from "react-use";
 
+import * as QUESTION from "metabase-lib/Question";
 import * as Urls from "metabase/lib/urls";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
@@ -559,11 +560,9 @@ ExploreResultsLink.propTypes = {
 };
 
 function ExploreResultsLink({ question }) {
-  const url = question
-    .composeThisQuery()
-    .setDisplay("table")
-    .setSettings({})
-    .getUrl();
+  const url = QUESTION.getUrl(
+    question.composeThisQuery().setDisplay("table").setSettings({}),
+  );
 
   return (
     <Link to={url}>

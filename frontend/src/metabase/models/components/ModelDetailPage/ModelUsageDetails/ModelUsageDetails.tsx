@@ -11,6 +11,7 @@ import Questions, {
 
 import type { State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
+import * as QUESTION from "metabase-lib/Question";
 
 import {
   EmptyStateContainer,
@@ -40,7 +41,7 @@ function ModelUsageDetails({ model, questions, hasNewQuestionLink }: Props) {
           <EmptyStateActionContainer>
             <Button
               as={Link}
-              to={model.composeDataset().getUrl()}
+              to={QUESTION.getUrl(model.composeDataset())}
               icon="add"
             >{t`Create a new question`}</Button>
           </EmptyStateActionContainer>

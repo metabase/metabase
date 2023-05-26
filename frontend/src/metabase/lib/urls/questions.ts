@@ -4,7 +4,7 @@ import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { CardId, Card as SavedCard } from "metabase-types/api";
-import Question, { QuestionCreatorOpts } from "metabase-lib/Question";
+import Question, * as QUESTION from "metabase-lib/Question";
 
 import { appendSlug, extractQueryParams } from "./utils";
 
@@ -89,7 +89,7 @@ export function serializedQuestion(card: Card, opts = {}) {
   return question(null, { ...opts, hash: card });
 }
 
-type NewQuestionUrlBuilderParams = QuestionCreatorOpts & {
+type NewQuestionUrlBuilderParams = QUESTION.QuestionCreatorOpts & {
   mode?: "view" | "notebook" | "query";
   creationType?: string;
   objectId?: number | string;
@@ -102,7 +102,7 @@ export function newQuestion({
   ...options
 }: NewQuestionUrlBuilderParams = {}) {
   const question = Question.create(options);
-  const url = question.getUrl({
+  const url = QUESTION.getUrl(question, {
     creationType,
     query: objectId ? { objectId } : undefined,
   });
