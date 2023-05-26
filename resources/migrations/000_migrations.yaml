@@ -14805,17 +14805,25 @@ databaseChangeLog:
       changes:
           - sql:
               sql: >-
+                  # new_size_x = size_x + ((col + size_x + 1) // 3) - ((col + 1) // 3)
                   update report_dashboardcard set size_x = size_x + floor(cast(size_x + col + 1  as float) / 3) - floor(cast(col + 1 as float) / 3);
+                  # new_col = col + ((col + 1) // 3)
                   update report_dashboardcard set col    = col + floor(cast(col + 1 as float) / 3);
+                  # new_size_y = size_y + (size_y + row) // 3 - (row // 3)
                   update report_dashboardcard set size_y = size_y + floor(cast(size_y + row as float) / 3) - floor(cast(row as float) / 3);
+                  # new_row = row + (row // 3)
                   update report_dashboardcard set `row`  = row + floor(cast(row as float) / 3);
 
       rollback:
           - sql:
               sql: >-
+                  # new_size_x = size_x - ((size_x + col) // 4 - col // 4)
                   update report_dashboardcard set size_x = size_x - (floor(cast(size_x + col as float) / 4 ) - floor(cast(col as float) / 4 ));
+                  # new_col = col - col // 4
                   update report_dashboardcard set col    = col - floor(cast(col as float) / 4);
+                  # new_size_y = size_y - ((size_y + row) // 4 - y // 4)
                   update report_dashboardcard set size_y = size_y - (floor(cast(size_y + row as float) / 4) - floor(cast(row as float) / 4 ));
+                  # new_col = col - col // 4
                   update report_dashboardcard set `row`  = row - floor(cast(row as float) / 4);
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
