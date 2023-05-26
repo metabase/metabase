@@ -635,6 +635,7 @@ export default class Dimension {
     return JSON.stringify(this.mbql());
   }
 }
+
 /**
  * `:field` clause e.g. `["field", fieldIdOrName, options]`
  */
@@ -1180,7 +1181,7 @@ export class ExpressionDimension extends Dimension {
   }
 
   mbql(): ExpressionReference {
-    return ["expression", this._expressionName, this._options];
+    return ["expression", this._expressionName, this._options || undefined];
   }
 
   name() {
@@ -1518,6 +1519,7 @@ export class AggregationDimension extends Dimension {
     return "int";
   }
 }
+
 export class TemplateTagDimension extends FieldDimension {
   constructor(tagName: string, metadata: Metadata, query: NativeQuery) {
     super(null, null, metadata, query, {
@@ -1624,6 +1626,7 @@ export class TemplateTagDimension extends FieldDimension {
     return "label";
   }
 }
+
 const DIMENSION_TYPES: typeof Dimension[] = [
   FieldDimension,
   ExpressionDimension,

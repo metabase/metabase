@@ -6,7 +6,6 @@ import {
   getNormalizedDimensionReference,
   hasStringFieldName,
   isAggregationReference,
-  isExpressionReference,
   isFieldReference,
   isValidDimensionReference,
 } from "metabase-lib/references";
@@ -27,11 +26,7 @@ export const getColumnKey = (
 
   fieldRef = getNormalizedDimensionReference(fieldRef);
 
-  if (
-    isFieldReference(fieldRef) ||
-    isExpressionReference(fieldRef) ||
-    isAggregationReference(fieldRef)
-  ) {
+  if (isFieldReference(fieldRef) || isAggregationReference(fieldRef)) {
     fieldRef = getBaseDimensionReference(fieldRef);
   }
 

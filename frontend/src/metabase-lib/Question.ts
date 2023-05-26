@@ -1169,7 +1169,7 @@ class QuestionInner {
     );
   }
 
-  // predicate function that dermines if the question is "dirty" compared to the given question
+  // predicate function that determines if the question is "dirty" compared to the given question
   isDirtyComparedTo(originalQuestion: Question) {
     if (!this.isSaved() && this.canRun() && originalQuestion == null) {
       // if it's new, then it's dirty if it is runnable
