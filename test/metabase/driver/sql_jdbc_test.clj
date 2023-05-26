@@ -246,17 +246,15 @@
               patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
           (testing "syncable-schemas works as expected"
             (testing " with an inclusion filter"
-              (mt/with-temp Database [db-filtered {:name    (format "Test %s DB with dataset inclusion filters" driver)
-                                                    :engine  driver
-                                                    :details (-> (mt/db)
-                                                                 :details
-                                                                 (assoc filter-type-prop "inclusion"
-                                                                        patterns-type-prop "public"))}]
+              (mt/with-temp Database [db-filtered {:engine  driver
+                                                   :details (-> (mt/db)
+                                                                :details
+                                                                (assoc filter-type-prop "inclusion"
+                                                                       patterns-type-prop "public"))}]
                 (is (= #{"public"}
                        (driver/syncable-schemas driver/*driver* db-filtered)))))
             (testing " with an exclusion filter"
-              (mt/with-temp Database [db-filtered {:name    (format "Test %s DB with dataset inclusion filters" driver)
-                                                   :engine  driver
+              (mt/with-temp Database [db-filtered {:engine  driver
                                                    :details (-> (mt/db)
                                                                 :details
                                                                 (assoc filter-type-prop "exclusion"
