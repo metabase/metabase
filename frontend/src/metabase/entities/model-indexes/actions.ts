@@ -25,10 +25,10 @@ export const updateModelIndexes =
       return;
     }
 
-    const existingIndexes: ModelIndex[] =
-      ModelIndexes.selectors.getIndexesForModel(getState(), {
-        modelId: model.id(),
-      });
+    const existingIndexes: ModelIndex[] = ModelIndexes.selectors.getList(
+      getState(),
+      { entityQuery: { model_id: model.id() } },
+    );
 
     const newFieldsToIndex = getFieldsToIndex(
       fieldsWithIndexFlags,
