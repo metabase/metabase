@@ -18,7 +18,7 @@ export const InlineOperatorContainer = styled.div`
 
 export const FieldNameContainer = styled.div`
   display: inline-flex;
-  align-items: flex-start;
+  align-items: flex-end;
 `;
 
 export const FieldIcon = styled(Icon)`
