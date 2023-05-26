@@ -200,9 +200,9 @@ export const fetchDashboard = createThunkAction(
         await dispatch(loadMetadataForDashboard(result.ordered_cards));
       }
 
-      // if results weren't loaded from the cache
-      // copy over any virtual cards from the dashcard to the underlying card/question
-      if (!entities) {
+      const isUsingCachedResults = entities != null;
+      if (!isUsingCachedResults) {
+        // copy over any virtual cards from the dashcard to the underlying card/question
         result.ordered_cards.forEach(card => {
           if (card.visualization_settings.virtual_card) {
             card.card = Object.assign(
