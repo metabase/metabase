@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import ObjectDetailDrill from "metabase/modes/components/drill/ObjectDetailDrill";
 import { ZOOM_IN_ROW } from "metabase/query_builder/actions";
 import {
   createSampleDatabase,
@@ -10,27 +9,66 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
+import { checkNotNull } from "metabase/core/utils/types";
+import type {
+  QuestionChangeClickAction,
+  ReduxClickAction,
+  ClickObject,
+} from "metabase/modes/types";
+import type {
+  StructuredDatasetQuery,
+  DatasetColumn,
+  RowValue,
+} from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
 import Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import { ObjectDetailDrill } from "./ObjectDetailDrill";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
-const ordersTable = metadata.table(ORDERS_ID);
-const orderIDField = metadata.field(ORDERS.ID);
-const orderIDColumn = metadata.field(ORDERS.ID).column();
+const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
+const orderIDField = checkNotNull(metadata.field(ORDERS.ID));
+const orderIDColumn = orderIDField.column();
 
 const DEFAULT_CELL_VALUE = 1;
+
+const DATA_VALUES = {
+  [ORDERS.ID]: "5",
+  [ORDERS.USER_ID]: "1",
+  [ORDERS.PRODUCT_ID]: "132",
+  [ORDERS.SUBTOTAL]: 127.88197029833711,
+  [ORDERS.TAX]: 7.03,
+  [ORDERS.TOTAL]: 134.9119702983371,
+  [ORDERS.DISCOUNT]: null,
+  [ORDERS.CREATED_AT]: "2018-10-10T03:34:47.309+03:00",
+  [ORDERS.QUANTITY]: 5,
+};
+
+const DATA = ordersTable.fields?.map(field => ({
+  col: field.column(),
+  value: DATA_VALUES[field.column().id as number],
+}));
 
 function setup({
   question = ordersTable.question(),
   column = orderIDColumn,
   value = DEFAULT_CELL_VALUE,
-  extraData,
+  extraData = undefined,
+  data = DATA,
+}: {
+  question?: Question;
+  column?: DatasetColumn;
+  value?: RowValue;
+  extraData?: ClickObject["extraData"];
+  data?: ClickObject["data"];
 } = {}) {
   const actions = ObjectDetailDrill({
     question,
-    clicked: { column, value, extraData },
+    clicked: { column, value, extraData, data },
   });
   return {
     actions,
@@ -70,15 +108,24 @@ describe("ObjectDetailDrill", () => {
     expect(actions).toHaveLength(0);
   });
 
-  it("should not be valid non-PK cells", () => {
+  it("should return PK action for non-PK cells", () => {
     const { actions: totalActions } = setup({
-      column: metadata.field(ORDERS.TOTAL).column(),
+      column: metadata.field(ORDERS.TOTAL)?.column(),
     });
+    expect(totalActions).toHaveLength(1);
+
+    const action = totalActions[0];
+    expect(action?.extra?.()).toEqual({ objectId: DATA_VALUES[ORDERS.ID] });
+
     const { actions: createdAtActions } = setup({
-      column: metadata.field(ORDERS.CREATED_AT).column(),
+      column: metadata.field(ORDERS.CREATED_AT)?.column(),
     });
-    expect(totalActions).toHaveLength(0);
-    expect(createdAtActions).toHaveLength(0);
+    expect(createdAtActions).toHaveLength(1);
+
+    const createdAtAction = createdAtActions[0];
+    expect(createdAtAction?.extra?.()).toEqual({
+      objectId: DATA_VALUES[ORDERS.ID],
+    });
   });
 
   it("should not be available for not editable queries", () => {
@@ -91,7 +138,7 @@ describe("ObjectDetailDrill", () => {
     });
     const fk = setup({
       question,
-      column: metadata.field(ORDERS.PRODUCT_ID).column(),
+      column: metadata.field(ORDERS.PRODUCT_ID)?.column(),
     });
 
     expect(pk.actions).toHaveLength(0);
@@ -101,7 +148,8 @@ describe("ObjectDetailDrill", () => {
   describe("PK cells", () => {
     describe("general", () => {
       const mockDispatch = jest.fn();
-      const mockGetState = () => ({ qb: { queryResults: {}, card: {} } });
+      const mockGetState = () =>
+        ({ qb: { queryResults: {}, card: {} } } as State);
       const { actions, cellValue } = setup({
         column: orderIDColumn,
       });
@@ -113,7 +161,7 @@ describe("ObjectDetailDrill", () => {
       });
 
       it("should return correct redux action", () => {
-        const [action] = actions;
+        const action = actions[0] as ReduxClickAction;
         action.action()(mockDispatch, mockGetState);
         expect(mockDispatch).toHaveBeenCalledWith({
           type: ZOOM_IN_ROW,
@@ -126,10 +174,7 @@ describe("ObjectDetailDrill", () => {
       describe("composite PK", () => {
         describe("default", () => {
           const question = ordersTable.question();
-          const orderTotalField = question
-            .query()
-            .table()
-            .fields.find(field => field.id === ORDERS.TOTAL);
+          const orderTotalField = checkNotNull(metadata.field(ORDERS.TOTAL));
           orderTotalField.semantic_type = SEMANTIC_TYPE.PK;
 
           const { actions, cellValue } = setup({
@@ -144,8 +189,11 @@ describe("ObjectDetailDrill", () => {
           });
 
           it("should apply '=' filter to one of the PKs on click", () => {
-            const [action] = actions;
-            expect(action.question().datasetQuery().query).toEqual({
+            const action = actions[0] as QuestionChangeClickAction;
+            expect(
+              (action.question().datasetQuery() as StructuredDatasetQuery)
+                .query,
+            ).toEqual({
               "source-table": ORDERS_ID,
               filter: ["=", orderIDField.reference(), cellValue],
             });
@@ -156,9 +204,9 @@ describe("ObjectDetailDrill", () => {
 
         describe("when table metadata is unavailable", () => {
           let question = ordersTable.question();
-          const fields = question.query().table().fields;
+          const fields = ordersTable.fields;
           question = question.setResultsMetadata({
-            columns: fields.map(field => {
+            columns: fields?.map(field => {
               if (field.id === ORDERS.TOTAL) {
                 return {
                   ...field,
@@ -168,8 +216,9 @@ describe("ObjectDetailDrill", () => {
               return field;
             }),
           });
-          question.query().isEditable = () => true;
-          question.query().table = () => null;
+          const query = question.query() as StructuredQuery;
+          query.isEditable = () => true;
+          query.table = () => null;
 
           const { actions, cellValue } = setup({
             question,
@@ -177,8 +226,11 @@ describe("ObjectDetailDrill", () => {
           });
 
           it("should fallback to result metadata info about columns if table is not available", () => {
-            const [action] = actions;
-            expect(action.question().datasetQuery().query).toEqual({
+            const action = actions[0] as QuestionChangeClickAction;
+            expect(
+              (action.question().datasetQuery() as StructuredDatasetQuery)
+                .query,
+            ).toEqual({
               "source-table": ORDERS_ID,
               filter: ["=", orderIDField.reference(), cellValue],
             });
@@ -207,7 +259,7 @@ describe("ObjectDetailDrill", () => {
         });
 
         it("should return correct URL to object detail", () => {
-          const [action] = actions;
+          const action = actions[0] as QuestionChangeClickAction;
           expect(action.question().getUrl()).toBe(
             `/question/${SAVED_QUESTION.slug()}`,
           );
@@ -238,9 +290,9 @@ describe("ObjectDetailDrill", () => {
       });
 
       it("should return correct action", () => {
-        const [action] = actions;
+        const action = actions[0] as QuestionChangeClickAction;
         expect(action.question()).toBe(SAVED_QUESTION);
-        expect(action.extra().objectId).toEqual(cellValue);
+        expect(action.extra?.().objectId).toEqual(cellValue);
       });
     });
   });
@@ -248,7 +300,7 @@ describe("ObjectDetailDrill", () => {
   describe("FK cells", () => {
     describe("with a FK column", () => {
       const { actions, cellValue } = setup({
-        column: metadata.field(ORDERS.PRODUCT_ID).column(),
+        column: metadata.field(ORDERS.PRODUCT_ID)?.column(),
       });
 
       it("should return object detail filter", () => {
@@ -258,16 +310,18 @@ describe("ObjectDetailDrill", () => {
       });
 
       it("should apply object detail filter correctly", () => {
-        const [action] = actions;
-        expect(action.question().datasetQuery().query).toEqual({
+        const action = actions[0] as QuestionChangeClickAction;
+        expect(
+          (action.question().datasetQuery() as StructuredDatasetQuery).query,
+        ).toEqual({
           "source-table": PRODUCTS_ID,
-          filter: ["=", metadata.field(PRODUCTS.ID).reference(), cellValue],
+          filter: ["=", metadata.field(PRODUCTS.ID)?.reference(), cellValue],
         });
       });
 
       it("should supply the foreign key as a return value from the extra() function", () => {
-        const [action] = actions;
-        expect(action.extra().objectId).toEqual(cellValue);
+        const action = actions[0] as QuestionChangeClickAction;
+        expect(action.extra?.().objectId).toEqual(cellValue);
       });
     });
 
@@ -276,7 +330,7 @@ describe("ObjectDetailDrill", () => {
         column: {
           semantic_type: SEMANTIC_TYPE.FK,
           fk_target_field_id: PRODUCTS.ID,
-        },
+        } as DatasetColumn,
       });
 
       it("should return object detail filter", () => {
@@ -286,15 +340,17 @@ describe("ObjectDetailDrill", () => {
       });
 
       it("should apply object detail filter correctly", () => {
-        const [action] = actions;
-        expect(action.question().datasetQuery().query).toEqual({
+        const action = actions[0] as QuestionChangeClickAction;
+        expect(
+          (action.question().datasetQuery() as StructuredDatasetQuery).query,
+        ).toEqual({
           "source-table": PRODUCTS_ID,
-          filter: ["=", metadata.field(PRODUCTS.ID).reference(), cellValue],
+          filter: ["=", metadata.field(PRODUCTS.ID)?.reference(), cellValue],
         });
       });
       it("should supply the foreign key as a return value from the extra() function", () => {
-        const [action] = actions;
-        expect(action.extra().objectId).toEqual(cellValue);
+        const action = actions[0] as QuestionChangeClickAction;
+        expect(action.extra?.().objectId).toEqual(cellValue);
       });
     });
   });

@@ -1,7 +1,8 @@
 import { isExpressionField } from "metabase-lib/queries/utils";
 
-export function compareToRestDrill({ question, clicked, enableXrays }) {
+export function automaticInsightsDrill({ question, clicked, enableXrays }) {
   const query = question.query();
+
   if (!question.isStructured() || !query.isEditable()) {
     return false;
   }
@@ -17,11 +18,23 @@ export function compareToRestDrill({ question, clicked, enableXrays }) {
   const isUnsupportedDrill =
     !clicked ||
     dimensions.length === 0 ||
-    // xrays must be enabled for this to work
     !enableXrays ||
     includesExpressionDimensions;
 
   return !isUnsupportedDrill;
+}
+
+export function automaticDashboardDrillUrl({ question, clicked }) {
+  const query = question.query();
+  const dimensions = (clicked && clicked.dimensions) || [];
+  const filters = query
+    .clearFilters() // clear existing filters so we don't duplicate them
+    .question()
+    .drillUnderlyingRecords(dimensions)
+    .query()
+    .filters();
+
+  return question.getAutomaticDashboardUrl(filters);
 }
 
 export function compareToRestDrillUrl({ question, clicked }) {
