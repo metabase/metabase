@@ -798,7 +798,7 @@ class TableInteractive extends Component {
                   <Icon
                     className="Icon mr1"
                     name={isAscending ? "chevronup" : "chevrondown"}
-                    size={8}
+                    size={10}
                   />
                 )}
                 {columnTitle}
@@ -806,7 +806,7 @@ class TableInteractive extends Component {
                   <Icon
                     className="Icon ml1"
                     name={isAscending ? "chevronup" : "chevrondown"}
-                    size={8}
+                    size={10}
                   />
                 )}
               </Ellipsified>,
