@@ -105,14 +105,14 @@ const defaultConfig = {
   videoUploadOnPasses: false,
   chromeWebSecurity: false,
   modifyObstructiveCode: false,
-};
-
-const mainConfig = {
-  ...defaultConfig,
   // New `specPattern` is the combination of the old:
   //   1. testFiles and
   //   2. integrationFolder
   specPattern: "e2e/test/**/*.cy.spec.js",
+};
+
+const mainConfig = {
+  ...defaultConfig,
   projectId: "KetpiS",
   viewportHeight: 800,
   viewportWidth: 1280,
