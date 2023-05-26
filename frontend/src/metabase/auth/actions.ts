@@ -81,9 +81,9 @@ export const loginGoogle = createAsyncThunk<
 });
 
 export const LOGOUT = "metabase/auth/LOGOUT";
-export const logout = createAsyncThunk<void, string, ThunkConfig>(
+export const logout = createAsyncThunk<void, string | undefined, ThunkConfig>(
   LOGOUT,
-  async (redirectUrl: string, { dispatch }) => {
+  async (redirectUrl, { dispatch }) => {
     await deleteSession();
     await dispatch(clearCurrentUser());
     await dispatch(refreshLocale()).unwrap();
