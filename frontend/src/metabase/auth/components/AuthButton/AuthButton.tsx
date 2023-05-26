@@ -1,7 +1,7 @@
 import React, { ReactNode } from "react";
 import { CardIcon, CardLink, CardText, TextLink } from "./AuthButton.styled";
 
-export interface AuthButtonProps {
+interface AuthButtonProps {
   link?: string;
   icon?: string;
   isCard?: boolean;
@@ -9,7 +9,7 @@ export interface AuthButtonProps {
   onClick?: () => void;
 }
 
-const AuthButton = ({
+export const AuthButton = ({
   link = "",
   icon,
   isCard,
@@ -27,6 +27,3 @@ const AuthButton = ({
     </TextLink>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AuthButton;

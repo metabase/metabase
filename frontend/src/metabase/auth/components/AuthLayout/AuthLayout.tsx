@@ -1,4 +1,6 @@
 import React, { ReactNode } from "react";
+import { useSelector } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
 import LogoIcon from "metabase/components/LogoIcon";
 import {
   LayoutBody,
@@ -7,15 +9,15 @@ import {
   LayoutRoot,
 } from "./AuthLayout.styled";
 
-export interface AuthLayoutProps {
-  showIllustration: boolean;
+interface AuthLayoutProps {
   children?: ReactNode;
 }
 
-const AuthLayout = ({
-  showIllustration,
-  children,
-}: AuthLayoutProps): JSX.Element => {
+export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
+  const showIllustration = useSelector(state =>
+    getSetting(state, "show-lighthouse-illustration"),
+  );
+
   return (
     <LayoutRoot>
       {showIllustration && <LayoutIllustration />}
@@ -26,6 +28,3 @@ const AuthLayout = ({
     </LayoutRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AuthLayout;

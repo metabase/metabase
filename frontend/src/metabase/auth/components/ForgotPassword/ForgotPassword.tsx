@@ -1,7 +1,11 @@
 import React, { useCallback, useState } from "react";
 import { t } from "ttag";
+import { Location } from "history";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
 import Button from "metabase/core/components/Button";
-import AuthLayout from "../../containers/AuthLayout";
+import { forgotPassword } from "../../actions";
+import { AuthLayout } from "../AuthLayout";
 import ForgotPasswordForm from "../ForgotPasswordForm";
 import {
   InfoBody,
@@ -14,26 +18,28 @@ import {
 type ViewType = "form" | "disabled" | "success";
 
 export interface ForgotPasswordProps {
-  canResetPassword: boolean;
-  initialEmail?: string;
-  onResetPassword: (email: string) => void;
+  location?: Location;
 }
 
-const ForgotPassword = ({
-  canResetPassword,
-  initialEmail,
-  onResetPassword,
+export const ForgotPassword = ({
+  location,
 }: ForgotPasswordProps): JSX.Element => {
+  const hasEmail = useSelector(state => getSetting(state, "email-configured?"));
+  const hasLdap = useSelector(state => getSetting(state, "ldap-enabled"));
+  const canResetPassword = hasEmail && !hasLdap;
+  const initialEmail = location?.query?.email;
+
   const [view, setView] = useState<ViewType>(
     canResetPassword ? "form" : "disabled",
   );
+  const dispatch = useDispatch();
 
   const handleSubmit = useCallback(
     async (email: string) => {
-      await onResetPassword(email);
+      await dispatch(forgotPassword(email)).unwrap();
       setView("success");
     },
-    [onResetPassword],
+    [dispatch],
   );
 
   return (
@@ -74,6 +80,3 @@ const ForgotPasswordDisabled = (): JSX.Element => {
     </InfoBody>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ForgotPassword;
