@@ -4,13 +4,13 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase-enterprise.sandbox.api.util :as mt.api.u]
    [metabase-enterprise.test :as met]
    [metabase.api.alert :as api.alert]
    [metabase.email.messages :as messages]
    [metabase.models
     :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.pulse :as pulse]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse]
    [metabase.pulse.test-util :as pulse.tu]
    [metabase.query-processor :as qp]
@@ -172,7 +172,7 @@
                                   recipients (-> pulse :channels first :recipients)]
                               (sort (map :id recipients))))]
         (mt/with-test-user :rasta
-          (with-redefs [mt.api.u/segmented-user? (constantly false)]
+          (with-redefs [premium-features/segmented-user? (constantly false)]
             (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
                    (-> (mt/user-http-request :rasta :get 200 "pulse/")
                        recipient-ids)))
@@ -182,7 +182,7 @@
                        vector
                        recipient-ids))))
 
-          (with-redefs [mt.api.u/segmented-user? (constantly true)]
+          (with-redefs [premium-features/segmented-user? (constantly true)]
             (is (= [(mt/user->id :rasta)]
                    (-> (mt/user-http-request :rasta :get 200 "pulse/")
                        recipient-ids)))
@@ -203,7 +203,7 @@
                     PulseChannelRecipient [_ {:pulse_channel_id pc-id, :user_id (mt/user->id :rasta)}]]
 
       (mt/with-test-user :rasta
-        (with-redefs [mt.api.u/segmented-user? (constantly true)]
+        (with-redefs [premium-features/segmented-user? (constantly true)]
           ;; Rasta, a sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]}))
@@ -212,7 +212,7 @@
         (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
                (->> (api.alert/email-channel (pulse/retrieve-pulse pulse-id)) :recipients (map :id) sort)))
 
-        (with-redefs [mt.api.u/segmented-user? (constantly false)]
+        (with-redefs [premium-features/segmented-user? (constantly false)]
           ;; Rasta, a non-sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]})

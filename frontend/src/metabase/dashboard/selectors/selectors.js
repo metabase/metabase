@@ -180,6 +180,9 @@ export const getCanShowAutoApplyFiltersToast = createSelector(
 export const getDocumentTitle = state =>
   state.dashboard.loadingControls.documentTitle;
 
+export const getisNavigatingBackToDashboard = state =>
+  state.dashboard.isNavigatingBackToDashboard;
+
 export const getIsBookmarked = (state, props) =>
   props.bookmarks.some(
     bookmark =>

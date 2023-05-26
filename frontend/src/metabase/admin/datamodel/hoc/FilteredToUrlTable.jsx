@@ -10,6 +10,9 @@ import Icon from "metabase/components/Icon";
 import FieldSet from "metabase/components/FieldSet";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 const FilteredToUrlTable = propName => ComposedComponent =>
   connect(null, { push })(
     class FilteredToUrlTable extends React.Component {

@@ -24,6 +24,7 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupTimelinesEndpoints,
+  setupModelIndexEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -125,6 +126,7 @@ const setup = async ({
   setupAlertsEndpoints(card, []);
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
+  setupModelIndexEndpoints(card.id, []);
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 

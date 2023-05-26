@@ -83,8 +83,7 @@ describe("getColumnKey", () => {
         field_ref: ["field", 1, { "join-alias": "x" }],
       };
       expect(getColumnKey(col)).toEqual(
-        // NOTE: not ideal, matches existing behavior, but should be ["field", 1, {"join-alias": "x"}]
-        JSON.stringify(["ref", ["field", 1, null]]),
+        JSON.stringify(["ref", ["field", 1, { "join-alias": "x" }]]),
       );
     });
   });

@@ -383,14 +383,14 @@
       (are [style expected] (= expected
                                (lib/display-name query -1 categories-name style))
         :default "Name"
-        :long    "Categories → Name")
+        :long    "Category → Name")
       (let [query' (lib/order-by query categories-name)]
         (testing "Implicitly joinable columns should NOT be given a join alias"
           (is (=? {:stages [{:order-by [[:asc {} [:field
                                                   (complement :join-alias)
                                                   (meta/id :categories :name)]]]}]}
                   query')))
-        (is (= "Venues, Sorted by Categories → Name ascending"
+        (is (= "Venues, Sorted by Category → Name ascending"
                (lib/describe-query query')))))))
 
 (deftest ^:parallel source-card-table-display-info-test

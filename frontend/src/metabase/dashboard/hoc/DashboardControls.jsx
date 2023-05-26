@@ -12,6 +12,8 @@ const TICK_PERIOD = 1; // seconds
 
 /* This contains some state for dashboard controls on both private and embedded dashboards.
  * It should probably be in Redux?
+ *
+ * @deprecated HOCs are deprecated
  */
 export default ComposedComponent =>
   connect(null, { replace })(
@@ -169,11 +171,11 @@ export default ComposedComponent =>
           await this.props.fetchDashboard(
             this.props.dashboardId,
             this.props.location.query,
-            true,
+            { preserveParameters: true },
           );
           this.props.fetchDashboardCardData({
             reload: true,
-            clear: false,
+            clearCache: false,
           });
         }
         this.setRefreshElapsed(this._refreshElapsed);
