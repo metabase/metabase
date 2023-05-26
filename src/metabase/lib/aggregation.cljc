@@ -13,6 +13,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
@@ -235,9 +236,11 @@
     stage-number :- :int]
    (some->> (not-empty (:aggregation (lib.util/query-stage query stage-number)))
             (into [] (map (fn [aggregation]
-                            (-> (lib.metadata.calculation/metadata query stage-number aggregation)
-                                (assoc :lib/source :source/aggregations
-                                       :lib/source-uuid (:lib/uuid (second aggregation))))))))))
+                            (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)]
+                              (-> metadata
+                                  (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
+                                  (assoc :lib/source :source/aggregations
+                                         :lib/source-uuid (:lib/uuid (second aggregation)))))))))))
 
 (def ^:private OperatorWithColumns
   [:merge

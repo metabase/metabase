@@ -10,6 +10,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -404,35 +405,48 @@
                     [:count {}]
                     [:sum {} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?]]]}]}
                 agg-query))
-        (is (=? [{:lib/type     :metadata/field,
-                  :base-type    :type/Integer,
-                  :name         "sum_double-price",
-                  :display-name "Sum of double-price",
-                  :lib/source   :source/aggregations}
-                 {:lib/type     :metadata/field,
-                  :base-type    :type/Integer,
-                  :name         "count",
-                  :display-name "Count",
-                  :lib/source   :source/aggregations}
-                 {:settings     {:is_priceless true},
-                  :lib/type     :metadata/field,
-                  :base-type    :type/Integer,
-                  :name         "sum_PRICE",
-                  :display-name "Sum of Price",
-                  :lib/source   :source/aggregations}]
+        (is (=? [{:lib/type       :metadata/field,
+                  :effective-type :type/Integer,
+                  :name           "sum_double-price",
+                  :display-name   "Sum of double-price",
+                  :lib/source     :source/aggregations}
+                 {:lib/type       :metadata/field,
+                  :effective-type :type/Integer,
+                  :name           "count",
+                  :display-name   "Count",
+                  :lib/source     :source/aggregations}
+                 {:settings       {:is_priceless true},
+                  :lib/type       :metadata/field,
+                  :effective-type :type/Integer,
+                  :name           "sum_PRICE",
+                  :display-name   "Sum of Price",
+                  :lib/source     :source/aggregations}]
                 (lib/aggregations-metadata agg-query)))))))
 
 (deftest ^:parallel preserve-field-settings-metadata-test
   (testing "Aggregation metadata should return the `:settings` for the field being aggregated, for some reason."
     (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                     (lib/aggregate (lib/sum (lib/field (meta/id :venues :price)))))]
-      (is (=? {:settings     {:is_priceless true}
-               :lib/type     :metadata/field
-               :base-type    :type/Integer
-               :name         "sum_PRICE"
-               :display-name "Sum of Price"
-               :lib/source   :source/aggregations}
+      (is (=? {:settings       {:is_priceless true}
+               :lib/type       :metadata/field
+               :effective-type :type/Integer
+               :name           "sum_PRICE"
+               :display-name   "Sum of Price"
+               :lib/source     :source/aggregations}
               (lib.metadata.calculation/metadata query (first (lib/aggregations-metadata query -1))))))))
+
+(deftest ^:parallel count-aggregation-type-test
+  (testing "Count aggregation should produce numeric columns"
+    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                    (lib/aggregate (lib/count)))
+          count-meta (first (lib/aggregations-metadata query -1))]
+      (is (=? {:lib/type       :metadata/field
+               :effective-type :type/Integer
+               :name           "count"
+               :display-name   "Count"
+               :lib/source     :source/aggregations}
+              count-meta))
+      (is (lib.types.isa/numeric? count-meta)))))
 
 (deftest ^:parallel var-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")

@@ -784,3 +784,11 @@
   (if (some? v)
     (assoc m k v)
     (dissoc m k)))
+
+(defn assoc-default
+  "Called like `(assoc m k v)`, this does [[assoc]] iff `m` does not contain `k`
+  and `v` is not nil."
+  [m k v]
+  (if (or (nil? v) (contains? m k))
+    m
+    (assoc m k v)))
