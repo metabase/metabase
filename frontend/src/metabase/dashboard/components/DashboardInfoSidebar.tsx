@@ -21,7 +21,6 @@ import FormField from "metabase/core/components/FormField";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
-import { useDispatch } from "metabase/lib/redux";
 import {
   DashboardInfoSidebarRoot,
   HistoryHeader,
