@@ -6,7 +6,6 @@ import { getIsLdapEnabled } from "../../selectors";
 import { AuthButton } from "../AuthButton";
 
 interface PasswordButtonProps {
-  isLdapEnabled: boolean;
   redirectUrl?: string;
 }
 
