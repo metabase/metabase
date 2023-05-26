@@ -3,10 +3,6 @@ import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, getIcon, waitFor } from "__support__/ui";
-import {
-  setupDatabasesEndpoints,
-  setupUnauthorizedDatabasesEndpoints,
-} from "__support__/server-mocks";
 
 import type { ActionDashboardCard, ParameterTarget } from "metabase-types/api";
 import {
@@ -16,9 +12,9 @@ import {
   createMockQueryAction,
   createMockImplicitQueryAction,
   createMockDashboard,
-  createMockDatabase,
 } from "metabase-types/api/mocks";
 
+import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
 import Action, { ActionProps } from "./Action";
 
 const DASHBOARD_ID = 123;
@@ -26,15 +22,12 @@ const DASHCARD_ID = 456;
 const ACTION_MODEL_ID = 777;
 const ACTION_EXEC_MOCK_PATH = `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`;
 
-const DATABASE_WITHOUT_ACTIONS = createMockDatabase({ id: 1 });
-const DATABASE = createMockDatabase({
-  id: 2,
-  settings: { "database-enable-actions": true },
-});
+const DATABASE_ID = 1;
 
 const ACTION = createMockQueryAction({
   name: "My Awesome Action",
-  database_id: DATABASE.id,
+  database_id: DATABASE_ID,
+  database_enabled_actions: true,
   parameters: [
     createMockActionParameter({
       id: "parameter_1",
@@ -85,25 +78,17 @@ function createMockActionDashboardCard(
   });
 }
 
-type SetupOpts = Partial<ActionProps> & {
-  hasDataPermissions?: boolean;
-};
+type SetupOpts = Partial<ActionProps>;
 
 async function setup({
   dashboard = createMockDashboard({ id: DASHBOARD_ID }),
   dashcard = createMockActionDashboardCard(),
   settings = {},
   parameterValues = {},
-  hasDataPermissions = true,
   ...props
 }: SetupOpts = {}) {
-  const databases = [DATABASE, DATABASE_WITHOUT_ACTIONS];
-
-  if (hasDataPermissions) {
-    setupDatabasesEndpoints(databases);
+  if (getActionIsEnabledInDatabase(dashcard)) {
     fetchMock.post(ACTION_EXEC_MOCK_PATH, { "rows-updated": [1] });
-  } else {
-    setupUnauthorizedDatabasesEndpoints(databases);
   }
 
   renderWithProviders(
@@ -113,9 +98,8 @@ async function setup({
       settings={settings}
       parameterValues={parameterValues}
       isSettings={false}
-      isEditing={false}
+      isEditingDashcard={false}
       dispatch={jest.fn()}
-      onVisualizationClick={jest.fn()}
       {...props}
     />,
   );
@@ -139,7 +123,7 @@ describe("Actions > ActionViz > Action", () => {
       await setup({
         dashcard: createMockActionDashboardCard({
           action: createMockQueryAction({
-            database_id: DATABASE_WITHOUT_ACTIONS.id,
+            database_enabled_actions: false,
           }),
         }),
       });
@@ -147,15 +131,6 @@ describe("Actions > ActionViz > Action", () => {
       expect(screen.getByRole("button")).toBeDisabled();
       expect(
         screen.getByLabelText(/actions are not enabled/i),
-      ).toBeInTheDocument();
-    });
-
-    it("should render a disabled state if the user doesn't have permissions to action database", async () => {
-      await setup({ hasDataPermissions: false });
-      expect(getIcon("bolt")).toBeInTheDocument();
-      expect(screen.getByRole("button")).toBeDisabled();
-      expect(
-        screen.getByLabelText(/don't have permission/i),
       ).toBeInTheDocument();
     });
 
@@ -209,7 +184,7 @@ describe("Actions > ActionViz > Action", () => {
       ];
 
       const action = createMockQueryAction({
-        database_id: DATABASE.id,
+        database_enabled_actions: true,
         parameters: [
           createMockActionParameter({
             id: parameterId,
@@ -358,7 +333,7 @@ describe("Actions > ActionViz > Action", () => {
           action: createMockImplicitQueryAction({
             name: "My Delete Action",
             kind: "row/delete",
-            database_id: DATABASE.id,
+            database_enabled_actions: true,
             parameters: [
               createMockActionParameter({
                 id: "1",
