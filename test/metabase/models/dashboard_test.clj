@@ -227,7 +227,7 @@
                                       :series  true}]}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
-        (dashboard-card/delete-dashboard-cards! [dashboard-card] dashboard-id (test.users/user->id :rasta))
+        (dashboard-card/delete-dashboard-cards! [(:id dashboard-card)])
         (t2/update! Dashboard dashboard-id
                     {:name               "Revert Test"
                      :auto_apply_filters false
