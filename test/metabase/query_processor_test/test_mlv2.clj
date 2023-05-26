@@ -34,10 +34,6 @@
   [legacy-query]
   (or
    *skip-conversion-tests*
-   ;; #29949: missing schema
-   (mbql.u/match-one legacy-query
-     :regex-match-first
-     "#29949")
    ;; #29958: `:convert-timezone` with 2 args is broken
    (mbql.u/match-one legacy-query
      [:convert-timezone _expr _source-timezone]
