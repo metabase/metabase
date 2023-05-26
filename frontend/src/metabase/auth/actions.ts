@@ -1,8 +1,8 @@
+import { createAsyncThunk } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 import { getIn } from "icepick";
 import { SessionApi, UtilApi } from "metabase/services";
-import MetabaseSettings from "metabase/lib/settings";
-import { createThunkAction } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
 import { loadLocalization } from "metabase/lib/i18n";
 import { deleteSession } from "metabase/lib/auth";
 import * as Urls from "metabase/lib/urls";
@@ -18,56 +18,69 @@ import {
 } from "./analytics";
 import { LoginData } from "./types";
 
+interface ThunkConfig {
+  state: State;
+}
+
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
-export const refreshLocale = createThunkAction(
+export const refreshLocale = createAsyncThunk<void, void, ThunkConfig>(
   REFRESH_LOCALE,
-  () => async (dispatch: any, getState: () => State) => {
+  async (_, { getState }) => {
     const userLocale = getUser(getState())?.locale;
-    const siteLocale = MetabaseSettings.get("site-locale");
+    const siteLocale = getSetting(getState(), "site-locale");
     await loadLocalization(userLocale ?? siteLocale ?? "en");
   },
 );
 
 export const REFRESH_SESSION = "metabase/auth/REFRESH_SESSION";
-export const refreshSession = createThunkAction(
+export const refreshSession = createAsyncThunk<void, void, ThunkConfig>(
   REFRESH_SESSION,
-  () => async (dispatch: any) => {
+  async (_, { dispatch }) => {
     await Promise.all([
       dispatch(refreshCurrentUser()),
       dispatch(refreshSiteSettings()),
     ]);
-    await dispatch(refreshLocale());
+    await dispatch(refreshLocale()).unwrap();
   },
 );
 
-export const LOGIN = "metabase/auth/LOGIN";
-export const login = createThunkAction(
-  LOGIN,
-  (data: LoginData, redirectUrl = "/") =>
-    async (dispatch: any) => {
-      await SessionApi.create(data);
-      await dispatch(refreshSession());
-      trackLogin();
+interface LoginPayload {
+  data: LoginData;
+  redirectUrl?: string;
+}
 
-      dispatch(push(redirectUrl));
-    },
+export const LOGIN = "metabase/auth/LOGIN";
+export const login = createAsyncThunk<void, LoginPayload, ThunkConfig>(
+  LOGIN,
+  async ({ data, redirectUrl = "/" }, { dispatch }) => {
+    await SessionApi.create(data);
+    await dispatch(refreshSession()).unwrap();
+    trackLogin();
+
+    dispatch(push(redirectUrl));
+  },
 );
+
+interface LoginGooglePayload {
+  token: string;
+  redirectUrl?: string;
+}
 
 export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
-export const loginGoogle = createThunkAction(
-  LOGIN_GOOGLE,
-  (token: string, redirectUrl = "/") =>
-    async (dispatch: any) => {
-      await SessionApi.createWithGoogleAuth({ token });
-      await dispatch(refreshSession());
-      trackLoginGoogle();
+export const loginGoogle = createAsyncThunk<
+  void,
+  LoginGooglePayload,
+  ThunkConfig
+>(LOGIN_GOOGLE, async ({ token, redirectUrl = "/" }, { dispatch }) => {
+  await SessionApi.createWithGoogleAuth({ token });
+  await dispatch(refreshSession()).unwrap();
+  trackLoginGoogle();
 
-      dispatch(push(redirectUrl));
-    },
-);
+  dispatch(push(redirectUrl));
+});
 
 export const LOGOUT = "metabase/auth/LOGOUT";
-export const logout = createThunkAction(LOGOUT, (redirectUrl: string) => {
+export const logout = createAsyncThunk(LOGOUT, (redirectUrl: string) => {
   return async (dispatch: any) => {
     await deleteSession();
     await dispatch(clearCurrentUser());
@@ -80,7 +93,7 @@ export const logout = createThunkAction(LOGOUT, (redirectUrl: string) => {
 });
 
 export const FORGOT_PASSWORD = "metabase/auth/FORGOT_PASSWORD";
-export const forgotPassword = createThunkAction(
+export const forgotPassword = createAsyncThunk(
   FORGOT_PASSWORD,
   (email: string) => async () => {
     await SessionApi.forgot_password({ email });
@@ -88,7 +101,7 @@ export const forgotPassword = createThunkAction(
 );
 
 export const RESET_PASSWORD = "metabase/auth/RESET_PASSWORD";
-export const resetPassword = createThunkAction(
+export const resetPassword = createAsyncThunk(
   RESET_PASSWORD,
   (token: string, password: string) => async (dispatch: any) => {
     await SessionApi.reset_password({ token, password });
@@ -111,7 +124,7 @@ export const validatePassword = async (password: string) => {
 };
 
 export const VALIDATE_PASSWORD_TOKEN = "metabase/auth/VALIDATE_TOKEN";
-export const validatePasswordToken = createThunkAction(
+export const validatePasswordToken = createAsyncThunk(
   VALIDATE_PASSWORD_TOKEN,
   (token: string) => async () => {
     const result = await SessionApi.password_reset_token_valid({ token });
