@@ -16,6 +16,9 @@ const REFRESH_MODE = {
   none: fn => fn,
 };
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
   ComposedComponent => {
     const displayName = ComposedComponent.displayName || ComposedComponent.name;

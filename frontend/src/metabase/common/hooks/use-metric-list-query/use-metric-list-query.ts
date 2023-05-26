@@ -13,6 +13,7 @@ export const useMetricListQuery = (
     fetchList: Metrics.actions.fetchList,
     getList: Metrics.selectors.getList,
     getLoading: Metrics.selectors.getLoading,
+    getLoaded: Metrics.selectors.getLoaded,
     getError: Metrics.selectors.getError,
   });
 };

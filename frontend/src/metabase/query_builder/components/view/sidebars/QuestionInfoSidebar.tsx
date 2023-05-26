@@ -9,7 +9,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 
 import Link from "metabase/core/components/Link";
-import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
+import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
 
 import Question from "metabase-lib/Question";
 
