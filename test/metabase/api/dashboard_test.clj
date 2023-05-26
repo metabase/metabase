@@ -1717,7 +1717,7 @@
 
 (deftest dashcard-action-create-update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (mt/with-actions-test-data
+    (mt/with-actions-test-data-and-actions-enabled
       (doseq [action-type [:http :implicit :query]]
         (mt/with-actions [{:keys [action-id]} {:type action-type :visualization_settings {:hello true}}]
           (testing (str "Creating dashcard with action: " action-type)
