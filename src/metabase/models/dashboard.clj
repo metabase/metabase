@@ -207,7 +207,7 @@
 (defn- revert-dashcards
   [dashboard-id user-id serialized-cards]
   (let [id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)
-        current-cards       (t2/select [DashboardCard :id :collection_id :size_x :size_y :row :col :card_id :dashboard_id]
+        current-cards       (t2/select [DashboardCard :id :size_x :size_y :row :col :card_id :dashboard_id]
                                        :dashboard_id dashboard-id)
         id->current-card    (zipmap (map :id current-cards) current-cards)
         current-card-ids    (set (map :id current-cards))

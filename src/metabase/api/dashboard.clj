@@ -568,7 +568,7 @@
      :created-tab-ids    (map :id to-create)
      :updated-tab-ids    (map :id to-update)
      :deleted-tab-ids    to-delete-ids
-     :total-num-tabs     (+ (count to-create) (count to-update))}))
+     :total-num-tabs     (reduce + (map count [to-create to-update]))}))
 
 (defn- create-dashcards!
   [dashboard dashcards]
@@ -645,7 +645,7 @@
   (when (seq deleted-tab-ids)
     (snowplow/track-event! ::snowplow/dashboard-tabs-deleted
                            api/*current-user-id*
-                           {:dashboard-id   (:id dashboard)
+                           {:dashboard-id   dashboard-id
                             :num-tabs       (count deleted-tab-ids)
                             :total-num-tabs total-num-tabs})
     (events/publish-event! :dashboard-remove-tabs
@@ -653,7 +653,7 @@
   (when (seq created-tab-ids)
     (snowplow/track-event! ::snowplow/dashboard-tabs-created
                            api/*current-user-id*
-                           {:dashboard-id   (:id dashboard)
+                           {:dashboard-id   dashboard-id
                             :num-tabs       (count created-tab-ids)
                             :total-num-tabs total-num-tabs})
     (events/publish-event! :dashboard-add-tabs
@@ -711,7 +711,7 @@
                 update-dashcards-stats     (do-update-dashcards! dashboard current-cards new-cards)]
             (reset! update-stats
                     (merge
-                      (select-keys update-tabs-stats [:created-tab-ids :updated-tab-ids :deleted-tab-ids])
+                      (select-keys update-tabs-stats [:created-tab-ids :updated-tab-ids :deleted-tab-ids :total-num-tabs])
                       (select-keys update-dashcards-stats [:created-dashcards :deleted-dashcards :updated-dashcards])))))
         (do-cards-and-tabs-updates-tracking! id @update-stats)
         true))
