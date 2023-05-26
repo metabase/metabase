@@ -2,7 +2,13 @@ import React from "react";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, getIcon, waitFor } from "__support__/ui";
+import {
+  getIcon,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import {
   setupDatabasesEndpoints,
   setupUnauthorizedDatabasesEndpoints,
@@ -258,6 +264,13 @@ describe("Actions > ActionViz > Action", () => {
       });
 
       userEvent.click(screen.getByRole("button", { name: "Click me" }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByTestId("action-form")).toBeInTheDocument();
+      userEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: action.name,
+        }),
+      );
 
       await waitFor(async () => {
         const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
