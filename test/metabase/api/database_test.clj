@@ -508,26 +508,31 @@
 (deftest card-autocomplete-suggestions-test
   (testing "GET /api/database/:id/card_autocomplete_suggestions"
     (mt/with-temp* [Collection [collection {:name "Maz Analytics"}]
-                    Card       [card-1 (card-with-native-query "Maz Quote Views Per Month")]
-                    Card       [card-2 (card-with-native-query "Maz Quote Views Per Day" :collection_id (:id collection))]]
-      (let [card->result {card-1 (assoc (select-keys card-1 [:id :name :dataset]) :collection_name nil)
-                          card-2 (assoc (select-keys card-2 [:id :name :dataset]) :collection_name (:name collection))}]
+                    Card       [card-1 (card-with-native-query "Maz Quote Views Per Month" :collection_id (:id collection))]
+                    Card       [card-2 (card-with-native-query "Maz Quote Views Per Day" :dataset true)]
+                    Card       [card-3 (card-with-native-query "Maz Quote Views Per Day")]]
+      (let [card->result {card-1 (assoc (select-keys card-1 [:id :name :dataset]) :collection_name (:name collection))
+                          card-2 (assoc (select-keys card-2 [:id :name :dataset]) :collection_name nil)
+                          card-3 (assoc (select-keys card-3 [:id :name :dataset]) :collection_name nil)}]
         (testing "exclude cards without perms"
           (mt/with-non-admin-groups-no-root-collection-perms
-            (is (= [(card->result card-2)]
+            (is (= [(card->result card-1)]
                    (mt/user-http-request :rasta :get 200
                                          (format "database/%d/card_autocomplete_suggestions" (mt/id))
                                          :query "maz"))))
           (testing "cards should match the query"
-            (doseq [[query expected-cards] {"QUOTE-views"              [card-2 card-1]
-                                            "per-day"                  [card-2]
-                                            (str (:id card-1))         [card-1]
-                                            (str (:id card-2) "-maz")  [card-2]
-                                            (str (:id card-2) "-kyle") []}]
-              (is (= (map card->result expected-cards)
-                     (mt/user-http-request :rasta :get 200
-                                           (format "database/%d/card_autocomplete_suggestions" (mt/id))
-                                           :query query)))))))
+            (doseq [[query expected-cards] [; in all these queries, card-2 should be first because it's a model,
+                                            ; followed by card-3 because it's created more recently than card-1
+                                            ["QUOTE-views" [card-2 card-3 card-1]]
+                                            ["per-day" [card-2 card-3]]
+                                            [(str (:id card-1)) [card-1]]
+                                            [(str (:id card-2) "-maz") [card-2]]
+                                            [(str (:id card-2) "-kyle") []]]]
+              (testing (format "query = %s" query)
+                (is (= (map card->result expected-cards)
+                       (mt/user-http-request :rasta :get 200
+                                             (format "database/%d/card_autocomplete_suggestions" (mt/id))
+                                             :query query))))))))
       (testing "should reject requests for databases for which the user has no perms"
         (mt/with-temp* [Database [{database-id :id}]
                         Card     [_ (card-with-native-query "Maz Quote Views Per Month" :database_id database-id)]]
