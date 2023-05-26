@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { getIn } from "icepick";
 import { SessionApi, UtilApi } from "metabase/services";
 import { getSetting } from "metabase/selectors/settings";
+import MetabaseSettings from "metabase/lib/settings";
 import { loadLocalization } from "metabase/lib/i18n";
 import { deleteSession } from "metabase/lib/auth";
 import * as Urls from "metabase/lib/urls";
@@ -80,35 +81,42 @@ export const loginGoogle = createAsyncThunk<
 });
 
 export const LOGOUT = "metabase/auth/LOGOUT";
-export const logout = createAsyncThunk(LOGOUT, (redirectUrl: string) => {
-  return async (dispatch: any) => {
+export const logout = createAsyncThunk<void, string, ThunkConfig>(
+  LOGOUT,
+  async (redirectUrl: string, { dispatch }) => {
     await deleteSession();
     await dispatch(clearCurrentUser());
-    await dispatch(refreshLocale());
+    await dispatch(refreshLocale()).unwrap();
     trackLogout();
 
     dispatch(push(Urls.login(redirectUrl)));
     window.location.reload(); // clears redux state and browser caches
-  };
-});
+  },
+);
 
 export const FORGOT_PASSWORD = "metabase/auth/FORGOT_PASSWORD";
 export const forgotPassword = createAsyncThunk(
   FORGOT_PASSWORD,
-  (email: string) => async () => {
+  async (email: string) => {
     await SessionApi.forgot_password({ email });
   },
 );
 
+interface ResetPasswordPayload {
+  token: string;
+  password: string;
+}
+
 export const RESET_PASSWORD = "metabase/auth/RESET_PASSWORD";
-export const resetPassword = createAsyncThunk(
-  RESET_PASSWORD,
-  (token: string, password: string) => async (dispatch: any) => {
-    await SessionApi.reset_password({ token, password });
-    await dispatch(refreshSession());
-    trackPasswordReset();
-  },
-);
+export const resetPassword = createAsyncThunk<
+  void,
+  ResetPasswordPayload,
+  ThunkConfig
+>(RESET_PASSWORD, async ({ token, password }, { dispatch }) => {
+  await SessionApi.reset_password({ token, password });
+  await dispatch(refreshSession()).unwrap();
+  trackPasswordReset();
+});
 
 export const validatePassword = async (password: string) => {
   const error = MetabaseSettings.passwordComplexityDescription(password);
@@ -123,15 +131,11 @@ export const validatePassword = async (password: string) => {
   }
 };
 
-export const VALIDATE_PASSWORD_TOKEN = "metabase/auth/VALIDATE_TOKEN";
-export const validatePasswordToken = createAsyncThunk(
-  VALIDATE_PASSWORD_TOKEN,
-  (token: string) => async () => {
-    const result = await SessionApi.password_reset_token_valid({ token });
-    const valid = getIn(result, ["valid"]);
+export const validatePasswordToken = async (token: string) => {
+  const result = await SessionApi.password_reset_token_valid({ token });
+  const valid = getIn(result, ["valid"]);
 
-    if (!valid) {
-      throw result;
-    }
-  },
-);
+  if (!valid) {
+    throw result;
+  }
+};
