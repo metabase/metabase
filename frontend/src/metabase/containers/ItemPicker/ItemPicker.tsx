@@ -36,6 +36,7 @@ interface OwnProps {
   style?: React.CSSProperties;
   onChange: (value: PickerValue) => void;
   initialOpenCollectionId?: CollectionId;
+  collectionFilter?: (collection: Collection) => boolean;
 }
 
 interface StateProps {
@@ -55,7 +56,7 @@ function canWriteToCollectionOrChildren(collection: Collection) {
 function mapStateToProps(state: State, props: OwnProps) {
   const entity = props.entity || Collections;
   return {
-    collectionsById: entity.selectors.getExpandedCollectionsById(state),
+    collectionsById: entity.selectors.getExpandedCollectionsById(state, props),
     getCollectionIcon: entity.objectSelectors.getIcon,
   };
 }

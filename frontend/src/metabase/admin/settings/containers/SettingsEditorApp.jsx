@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
+import { bindActionCreators } from "@reduxjs/toolkit";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -40,11 +41,17 @@ const mapStateToProps = (state, props) => {
   };
 };
 
-const mapDispatchToProps = {
-  initializeSettings,
-  updateSetting,
-  reloadSettings,
-};
+const mapDispatchToProps = dispatch => ({
+  ...bindActionCreators(
+    {
+      initializeSettings,
+      updateSetting,
+      reloadSettings,
+    },
+    dispatch,
+  ),
+  dispatch,
+});
 
 class SettingsEditorApp extends Component {
   layout = null; // the reference to AdminLayout
@@ -66,7 +73,8 @@ class SettingsEditorApp extends Component {
   }
 
   updateSetting = async (setting, newValue) => {
-    const { settingValues, updateSetting, reloadSettings } = this.props;
+    const { settingValues, updateSetting, reloadSettings, dispatch } =
+      this.props;
 
     this.saveStatusRef.current.setSaving();
 
@@ -99,6 +107,10 @@ class SettingsEditorApp extends Component {
 
       if (setting.disableDefaultUpdate) {
         await reloadSettings();
+      }
+
+      if (setting.postUpdateAction) {
+        await dispatch(setting.postUpdateAction());
       }
 
       this.saveStatusRef.current.setSaved();

@@ -7,7 +7,10 @@ import _ from "underscore";
 import { getUserAttributes } from "metabase/selectors/user";
 import { getLinkTargets } from "metabase/lib/click-behavior";
 
-// This HOC give access to data referenced in viz settings.
+/**
+ * This HOC gives access to data referenced in viz settings.
+ * @deprecated HOCs are deprecated
+ */
 const WithVizSettingsData = ComposedComponent => {
   return withRouter(
     connect(

@@ -93,8 +93,7 @@
 (defenterprise ensure-audit-db-installed!
   "OSS implementation of `audit-db/ensure-db-installed!`, which is an enterprise feature, so does nothing in the OSS
   version."
-  metabase-enterprise.audit-db
-  [])
+  metabase-enterprise.audit-db [] ::noop)
 
 (defn- init!*
   "General application initialization function which should be run once at application startup."

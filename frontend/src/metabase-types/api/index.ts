@@ -14,6 +14,7 @@ export * from "./group";
 export * from "./metabot";
 export * from "./metric";
 export * from "./models";
+export * from "./modelIndexes";
 export * from "./notifications";
 export * from "./permissions";
 export * from "./query";

@@ -3,7 +3,6 @@ import moment from "moment-timezone";
 import type { ComponentStory } from "@storybook/react";
 import DateSelector from "./DateSelector";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/DateSelector",
   component: DateSelector,
