@@ -159,9 +159,7 @@ You can find a filter's widget settings by clicking on a filter's **gear** icon 
 - [Search box](#search-box)
 - [Input box](#plain-input-box)
 
-All widget types will let you pick one or multiple selections depending on your [multi-select settings](#make-a-multi-select-filter).
-
-![Multi-select](./images/multi-select.png)
+The dropdown list and search box filters will display a menu with checkboxes for [multi-select filters](#make-a-multi-select-filter).
 
 ### Dropdown list
 
