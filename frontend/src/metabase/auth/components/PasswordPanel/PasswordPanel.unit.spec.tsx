@@ -30,9 +30,13 @@ const setup = ({ isGoogleAuthEnabled = false }: SetupOpts = {}) => {
   renderWithProviders(<PasswordPanel />, { storeInitialState: state });
 };
 
+const cleanUp = () => {
+  MetabaseSettings.set("google-auth-enabled", false);
+};
+
 describe("PasswordPanel", () => {
   afterEach(() => {
-    MetabaseSettings.set("google-auth-enabled", false);
+    cleanUp();
   });
 
   it("should login successfully", async () => {
