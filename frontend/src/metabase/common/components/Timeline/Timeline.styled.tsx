@@ -1,35 +1,30 @@
 import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
 
 export const TimelineContainer = styled.ul`
   position: relative;
-  margin-left: ${props => props.leftShift}px;
-  margin-bottom: ${props => props.bottomShift}px;
+  margin-left: 0.5rem;
+  margin-bottom: 0.5rem;
 `;
 
-export const TimelineItem = styled.li`
+export const TimelineEvent = styled.li`
   display: flex;
   align-items: start;
   justify-content: start;
-  transform: translateX(-${props => props.leftShift}px);
+  transform: translateX(-0.5rem);
   white-space: pre-line;
   width: 100%;
   margin-bottom: 1.5rem;
 `;
 
-export const ItemIcon = styled(Icon)`
-  position: relative;
-  color: ${props => (props.color ? color(props.color) : color("text-light"))};
-`;
-
-export const ItemBody = styled.div`
+export const EventBody = styled.div`
   margin-left: 0.5rem;
   flex: 1;
 `;
 
-export const ItemHeader = styled.div`
+export const EventHeader = styled.div`
   font-weight: 700;
   display: flex;
   justify-content: space-between;
@@ -46,15 +41,11 @@ export const Timestamp = styled.time`
   padding-bottom: 0.5rem;
 `;
 
-export const ItemFooter = styled.div`
-  margin-top: 0.5rem;
-`;
-
 // shift the border down slightly so that it doesn't appear above the top-most icon
 // also using a negative `bottom` to connect the border with the event icon beneath it
 export const Border = styled.div`
   position: absolute;
-  top: ${props => props.borderShift}px;
-  left: ${props => props.borderShift}px;
-  bottom: calc(-1rem - ${props => props.borderShift}px);
+  top: 0.5rem;
+  left: 0.5rem;
+  bottom: -1.5rem;
 `;

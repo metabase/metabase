@@ -2,7 +2,13 @@ import React from "react";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, getIcon, waitFor } from "__support__/ui";
+import {
+  getIcon,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 
 import type { ActionDashboardCard, ParameterTarget } from "metabase-types/api";
 import {
@@ -27,7 +33,6 @@ const DATABASE_ID = 1;
 const ACTION = createMockQueryAction({
   name: "My Awesome Action",
   database_id: DATABASE_ID,
-  database_enabled_actions: true,
   parameters: [
     createMockActionParameter({
       id: "parameter_1",
@@ -151,13 +156,29 @@ describe("Actions > ActionViz > Action", () => {
       expect(screen.getByRole("button")).toHaveTextContent("Please Click Me");
     });
 
-    it("clicking an action button should open a modal action form", async () => {
+    it("clicking an action button with parameters should open a modal action form", async () => {
       await setup();
 
       userEvent.click(screen.getByRole("button"));
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       expect(screen.getByLabelText("Parameter 1")).toBeInTheDocument();
+    });
+
+    it("clicking an action button without parameters should open a confirmation modal", async () => {
+      await setup({
+        dashcard: createMockActionDashboardCard({
+          action: createMockQueryAction({
+            database_id: DATABASE_ID,
+          }),
+          parameter_mappings: [],
+        }),
+      });
+
+      userEvent.click(screen.getByRole("button"));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByTestId("action-form")).toBeInTheDocument();
+      expect(screen.queryByLabelText(/^Parameter/)).not.toBeInTheDocument();
     });
 
     it("the modal should have the action name as a title", async () => {
@@ -184,7 +205,6 @@ describe("Actions > ActionViz > Action", () => {
       ];
 
       const action = createMockQueryAction({
-        database_enabled_actions: true,
         parameters: [
           createMockActionParameter({
             id: parameterId,
@@ -217,6 +237,13 @@ describe("Actions > ActionViz > Action", () => {
       });
 
       userEvent.click(screen.getByRole("button", { name: "Click me" }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByTestId("action-form")).toBeInTheDocument();
+      userEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: action.name,
+        }),
+      );
 
       await waitFor(async () => {
         const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
@@ -333,7 +360,6 @@ describe("Actions > ActionViz > Action", () => {
           action: createMockImplicitQueryAction({
             name: "My Delete Action",
             kind: "row/delete",
-            database_enabled_actions: true,
             parameters: [
               createMockActionParameter({
                 id: "1",

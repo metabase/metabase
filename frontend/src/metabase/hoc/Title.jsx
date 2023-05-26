@@ -15,6 +15,9 @@ const updateDocumentTitle = _.debounce(() => {
     .join(SEPARATOR);
 });
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 const title = documentTitleOrGetter => ComposedComponent =>
   class extends React.Component {
     static displayName =

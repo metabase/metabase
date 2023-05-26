@@ -369,6 +369,21 @@
             (let [curr-db (t2/select-one [Database :cache_ttl], :id db-id)]
               (is (= nil (:cache_ttl curr-db))))))))))
 
+(deftest enable-model-actions-with-user-controlled-scheduling-test
+  (testing "Should be able to enable/disable actions for a database with user-controlled scheduling (metabase#30699)"
+    (mt/with-temp Database [{db-id :id} {:details  {:let-user-control-scheduling true}
+                                         :settings {:database-enable-actions true}}]
+      (is (false? (get-in (mt/user-http-request :crowberto
+                                                :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:database-enable-actions false}})
+                          [:settings :database-enable-actions])))
+      (is (true? (get-in (mt/user-http-request :crowberto
+                                               :put 200
+                                               (format "database/%s" db-id)
+                                               {:settings {:database-enable-actions true}})
+                         [:settings :database-enable-actions]))))))
+
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
     (is (= (merge (dissoc (mt/object-defaults Database) :details)

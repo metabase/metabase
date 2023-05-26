@@ -87,6 +87,8 @@ export default class DimensionList extends Component {
       enableSubDimensions &&
       // Do not display sub dimension if this is an FK (metabase#16787)
       !item.dimension?.field().isFK() &&
+      // Or if this is a custom expression (metabase#11371)
+      !item.dimension?.isExpression() &&
       !surpressSubDimensions &&
       item.dimension.dimensions();
 

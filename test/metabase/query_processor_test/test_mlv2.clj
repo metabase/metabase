@@ -34,10 +34,6 @@
   [legacy-query]
   (or
    *skip-conversion-tests*
-   ;; #29949: missing schema
-   (mbql.u/match-one legacy-query
-     :regex-match-first
-     "#29949")
    ;; #29958: `:convert-timezone` with 2 args is broken
    (mbql.u/match-one legacy-query
      [:convert-timezone _expr _source-timezone]
@@ -62,13 +58,7 @@
      {:aggregation aggregations}
      (mbql.u/match-one aggregations
        :case
-       "#29935"))
-   ;; #29936: metadata for an `:aggregation` that is a `:metric`
-   (mbql.u/match-one legacy-query
-     {:aggregation aggregations}
-     (mbql.u/match-one aggregations
-       :metric
-       "#29936"))))
+       "#29935"))))
 
 (defn- test-mlv2-metadata [original-query _qp-metadata]
   {:pre [(map? original-query)]}

@@ -1,6 +1,7 @@
 import React from "react";
 
-/* fitViewport allows you to modify the top level classes on the react root node
+/**
+ * fitViewport allows you to modify the top level classes on the react root node
  * to set certain display properties that make it easier to create a view that will always
  * be the size of the viewport height.
  *
@@ -15,8 +16,8 @@ import React from "react";
  *
  * On an element that isn't the top level of a route.
  *
+ * @deprecated HOCs are deprecated
  */
-
 function fitViewport(ComposedComponent) {
   return class extends React.Component {
     static displayName = "FitViewport";
