@@ -120,7 +120,7 @@ export const DimensionListItem = ({
             onClick={handleAdd}
             aria-label="Add dimension"
           >
-            <Icon name="add" size={12} />
+            <Icon name="add" />
           </DimensionListItemAddButton>
         </Tooltip>
       )}
