@@ -4,8 +4,8 @@ import { getIn } from "icepick";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getSetting } from "metabase/selectors/settings";
 import { loginGoogle } from "../../actions";
+import { getGoogleClientId, getSiteLocale } from "../../selectors";
 import {
   GoogleButtonRoot,
   AuthError,
@@ -23,10 +23,8 @@ interface CredentialResponse {
 }
 
 export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
-  const clientId = useSelector(state =>
-    getSetting(state, "google-auth-client-id"),
-  );
-  const locale = useSelector(state => getSetting(state, "site-locale"));
+  const clientId = useSelector(getGoogleClientId);
+  const locale = useSelector(getSiteLocale);
   const [errors, setErrors] = useState<string[]>([]);
   const dispatch = useDispatch();
 

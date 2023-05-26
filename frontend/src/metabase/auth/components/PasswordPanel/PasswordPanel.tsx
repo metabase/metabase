@@ -1,9 +1,12 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
 import { login } from "../../actions";
-import { getExternalAuthProviders } from "../../selectors";
+import {
+  getExternalAuthProviders,
+  getHasSessionCookies,
+  getIsLdapEnabled,
+} from "../../selectors";
 import { LoginData } from "../../types";
 import { AuthButton } from "../AuthButton";
 import { LoginForm } from "../LoginForm";
@@ -15,10 +18,8 @@ interface PasswordPanelProps {
 
 export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
   const providers = useSelector(getExternalAuthProviders);
-  const isLdapEnabled = useSelector(state => getSetting(state, "ldap-enabled"));
-  const hasSessionCookies = useSelector(
-    state => getSetting(state, "session-cookies") ?? false,
-  );
+  const isLdapEnabled = useSelector(getIsLdapEnabled);
+  const hasSessionCookies = useSelector(getHasSessionCookies);
   const dispatch = useDispatch();
 
   const handleSubmit = useCallback(

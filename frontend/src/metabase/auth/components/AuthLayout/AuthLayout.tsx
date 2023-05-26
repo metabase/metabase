@@ -1,7 +1,7 @@
 import React, { ReactNode } from "react";
 import { useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
 import LogoIcon from "metabase/components/LogoIcon";
+import { getHasIllustration } from "../../selectors";
 import {
   LayoutBody,
   LayoutCard,
@@ -14,13 +14,11 @@ interface AuthLayoutProps {
 }
 
 export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
-  const showIllustration = useSelector(state =>
-    getSetting(state, "show-lighthouse-illustration"),
-  );
+  const hasIllustration = useSelector(getHasIllustration);
 
   return (
     <LayoutRoot>
-      {showIllustration && <LayoutIllustration />}
+      {hasIllustration && <LayoutIllustration />}
       <LayoutBody>
         <LogoIcon height={65} />
         <LayoutCard>{children}</LayoutCard>

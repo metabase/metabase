@@ -1,7 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { getSettings } from "metabase/selectors/settings";
+import { getSetting, getSettings } from "metabase/selectors/settings";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 import { AuthProvider } from "metabase/plugins/types";
+import { State } from "metabase-types/store";
 
 const EMPTY_PROVIDERS: AuthProvider[] = [];
 
@@ -16,3 +17,27 @@ export const getExternalAuthProviders = createSelector(
   [getAuthProviders],
   providers => providers.filter(provider => provider.name !== "password"),
 );
+
+export const getIsEmailConfigured = (state: State) => {
+  return getSetting(state, "email-configured?");
+};
+
+export const getIsLdapEnabled = (state: State) => {
+  return getSetting(state, "ldap-enabled");
+};
+
+export const getHasSessionCookies = (state: State) => {
+  return getSetting(state, "session-cookies") ?? false;
+};
+
+export const getHasIllustration = (state: State) => {
+  return getSetting(state, "show-lighthouse-illustration");
+};
+
+export const getSiteLocale = (state: State) => {
+  return getSetting(state, "site-locale");
+};
+
+export const getGoogleClientId = (state: State) => {
+  return getSetting(state, "google-auth-client-id");
+};

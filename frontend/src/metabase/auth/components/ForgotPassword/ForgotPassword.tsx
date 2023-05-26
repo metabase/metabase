@@ -2,9 +2,9 @@ import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import { Location } from "history";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
 import Button from "metabase/core/components/Button";
 import { forgotPassword } from "../../actions";
+import { getIsEmailConfigured, getIsLdapEnabled } from "../../selectors";
 import { AuthLayout } from "../AuthLayout";
 import ForgotPasswordForm from "../ForgotPasswordForm";
 import {
@@ -28,10 +28,8 @@ interface ForgotPasswordProps {
 export const ForgotPassword = ({
   location,
 }: ForgotPasswordProps): JSX.Element => {
-  const isEmailConfigured = useSelector(state =>
-    getSetting(state, "email-configured?"),
-  );
-  const isLdapEnabled = useSelector(state => getSetting(state, "ldap-enabled"));
+  const isEmailConfigured = useSelector(getIsEmailConfigured);
+  const isLdapEnabled = useSelector(getIsLdapEnabled);
   const canResetPassword = isEmailConfigured && !isLdapEnabled;
   const initialEmail = location?.query?.email;
 
