@@ -91,6 +91,11 @@
 ;; TODO - We already have a *query* dynamic var in metabase.query-processor.interface. Do we need this one too?
 (def ^:dynamic ^:private *query* nil)
 
+(def ^:dynamic ^:private *nesting-level*
+  "Used for tracking depth of nesting on which [[mbql->native-rec]] operates.
+  That is required eg. in `->lvalue :aggregation` call."
+  0)
+
 (def ^:dynamic ^:private *field-mappings*
   "The mapping from the fields to the projected names created
   by the nested query."
@@ -217,7 +222,7 @@
 ;;
 (defmethod ->lvalue :aggregation
   [[_ index]]
-  (annotate/aggregation-name (mbql.u/aggregation-at-index *query* index)))
+  (annotate/aggregation-name (mbql.u/aggregation-at-index *query* index *nesting-level*)))
 
 (defmethod ->lvalue :field
   [[_ id-or-name _props :as field]]
@@ -1342,14 +1347,15 @@
   (if-let [source-query (-> inner-query :source-query)]
     (let [compiled (or (when-let [nq (:native source-query)]
                          (cond
-                           (string? nq)
+                           (string? (:query nq))
                            (-> source-query
                                (dissoc :native)
-                               (assoc :query (parse-query-string nq)))
+                               (assoc :query (parse-query-string (:query nq))))
 
                            :else
                            nq))
-                       (mbql->native-rec source-query))
+                       (binding [*nesting-level* (inc *nesting-level*)]
+                         (mbql->native-rec source-query)))
           field-mappings (get-field-mappings source-query (:projections compiled))]
       (binding [*field-mappings* field-mappings]
         (merge compiled (add-aggregation-pipeline inner-query compiled))))
