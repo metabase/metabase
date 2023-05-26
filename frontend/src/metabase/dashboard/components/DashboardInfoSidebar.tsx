@@ -67,7 +67,6 @@ export function DashboardInfoSidebar({
     [saveDashboardAndCards, setDashboardAttribute],
   );
 
-  const dispatch = useDispatch();
   const handleToggleAutoApplyFilters = useCallback(
     (isAutoApplyingFilters: boolean) => {
       dispatch(toggleAutoApplyFilters(isAutoApplyingFilters));
