@@ -36,6 +36,9 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export default ComposedComponent =>
   connect(
     mapStateToProps,
