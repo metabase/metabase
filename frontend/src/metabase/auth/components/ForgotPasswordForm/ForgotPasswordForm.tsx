@@ -23,7 +23,7 @@ interface ForgotPasswordFormProps {
   onSubmit: (email: string) => void;
 }
 
-const ForgotPasswordForm = ({
+export const ForgotPasswordForm = ({
   initialEmail = "",
   onSubmit,
 }: ForgotPasswordFormProps): JSX.Element => {
@@ -66,6 +66,3 @@ const ForgotPasswordForm = ({
     </div>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ForgotPasswordForm;

@@ -5,6 +5,10 @@ export function setupPropertiesEndpoints(settings: Settings) {
   fetchMock.get("path:/api/session/properties", settings);
 }
 
+export function setupLoginEndpoints() {
+  fetchMock.post("path:/api/session", 204);
+}
+
 export function setupLogoutEndpoints() {
   fetchMock.delete("path:/api/session", 204);
 }

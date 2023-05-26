@@ -2,9 +2,9 @@ import React from "react";
 import { t } from "ttag";
 import { Location } from "history";
 import { useSelector } from "metabase/lib/redux";
+import { AuthProvider } from "metabase/plugins/types";
 import { AuthLayout } from "../AuthLayout";
 import { getAuthProviders } from "../../selectors";
-import { AuthProvider } from "../../types";
 import {
   ActionList,
   ActionListItem,

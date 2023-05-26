@@ -6,7 +6,7 @@ import Button from "metabase/core/components/Button";
 import { forgotPassword } from "../../actions";
 import { getIsEmailConfigured, getIsLdapEnabled } from "../../selectors";
 import { AuthLayout } from "../AuthLayout";
-import ForgotPasswordForm from "../ForgotPasswordForm";
+import { ForgotPasswordForm } from "../ForgotPasswordForm";
 import {
   InfoBody,
   InfoIcon,

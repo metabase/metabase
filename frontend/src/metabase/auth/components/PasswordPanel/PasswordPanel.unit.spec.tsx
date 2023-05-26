@@ -1,19 +1,45 @@
 import React from "react";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { render, screen, waitFor } from "__support__/ui";
-import { AuthProvider } from "metabase/auth/types";
-import PasswordPanel, { PasswordPanelProps } from "./PasswordPanel";
+import MetabaseSettings from "metabase/lib/settings";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
+import { setupLoginEndpoints } from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { PasswordPanel } from "./PasswordPanel";
 
-const NO_REDIRECT_URL_PARAM = undefined;
+const TEST_EMAIL = "user@example.test";
+const TEST_PASSWORD = "password";
+
+interface SetupOpts {
+  isGoogleAuthEnabled?: boolean;
+}
+
+const setup = ({ isGoogleAuthEnabled = false }: SetupOpts = {}) => {
+  const state = createMockState({
+    settings: createMockSettingsState({
+      "google-auth-enabled": isGoogleAuthEnabled,
+    }),
+  });
+
+  MetabaseSettings.set("google-auth-enabled", isGoogleAuthEnabled);
+
+  setupLoginEndpoints();
+  renderWithProviders(<PasswordPanel />, { storeInitialState: state });
+};
 
 describe("PasswordPanel", () => {
-  it("should login successfully", async () => {
-    const props = getProps();
-    const data = { username: "user@example.test", password: "password" };
+  afterEach(() => {
+    MetabaseSettings.set("google-auth-enabled", false);
+  });
 
-    render(<PasswordPanel {...props} />);
-    userEvent.type(screen.getByLabelText("Email address"), data.username);
-    userEvent.type(screen.getByLabelText("Password"), data.password);
+  it("should login successfully", async () => {
+    setup();
+
+    userEvent.type(screen.getByLabelText("Email address"), TEST_EMAIL);
+    userEvent.type(screen.getByLabelText("Password"), TEST_PASSWORD);
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
@@ -22,35 +48,14 @@ describe("PasswordPanel", () => {
     userEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() => {
-      expect(props.onLogin).toHaveBeenCalledWith(
-        { ...data, remember: true },
-        NO_REDIRECT_URL_PARAM,
-      );
+      expect(fetchMock.done("path:/api/session")).toBe(true);
     });
   });
 
   it("should render a link to reset the password and a list of auth providers", () => {
-    const props = getProps({ providers: [getAuthProvider()] });
-
-    render(<PasswordPanel {...props} />);
+    setup({ isGoogleAuthEnabled: true });
 
     expect(screen.getByText(/forgotten my password/)).toBeInTheDocument();
     expect(screen.getByText("Sign in with Google")).toBeInTheDocument();
   });
 });
-
-const getProps = (opts?: Partial<PasswordPanelProps>): PasswordPanelProps => ({
-  providers: [],
-  isLdapEnabled: false,
-  hasSessionCookies: false,
-  onLogin: jest.fn(),
-  ...opts,
-});
-
-const getAuthProvider = (opts?: Partial<AuthProvider>): AuthProvider => ({
-  name: "google",
-  Button: AuthButtonMock,
-  ...opts,
-});
-
-const AuthButtonMock = () => <a href="/">Sign in with Google</a>;

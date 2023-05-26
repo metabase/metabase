@@ -25,7 +25,9 @@ interface ResetPasswordProps {
   params: ResetPasswordQueryParams;
 }
 
-const ResetPassword = ({ params }: ResetPasswordProps): JSX.Element | null => {
+export const ResetPassword = ({
+  params,
+}: ResetPasswordProps): JSX.Element | null => {
   const { token } = params;
   const [view, setView] = useState<ViewType>("none");
   const dispatch = useDispatch();
@@ -78,6 +80,3 @@ const ResetPasswordExpired = (): JSX.Element => {
     </InfoBody>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ResetPassword;
