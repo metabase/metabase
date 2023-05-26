@@ -62,13 +62,7 @@
      {:aggregation aggregations}
      (mbql.u/match-one aggregations
        :case
-       "#29935"))
-   ;; #29936: metadata for an `:aggregation` that is a `:metric`
-   (mbql.u/match-one legacy-query
-     {:aggregation aggregations}
-     (mbql.u/match-one aggregations
-       :metric
-       "#29936"))))
+       "#29935"))))
 
 (defn- test-mlv2-metadata [original-query _qp-metadata]
   {:pre [(map? original-query)]}
