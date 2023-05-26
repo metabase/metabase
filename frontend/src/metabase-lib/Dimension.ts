@@ -1181,7 +1181,10 @@ export class ExpressionDimension extends Dimension {
   }
 
   mbql(): ExpressionReference {
-    return ["expression", this._expressionName, this._options || undefined];
+    if (this._options) {
+      return ["expression", this._expressionName, this._options];
+    }
+    return ["expression", this._expressionName];
   }
 
   name() {
