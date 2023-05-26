@@ -28,7 +28,7 @@ function CloseIcon({
 }) {
   return (
     <CloseIconContainer className={className} onClick={onClick}>
-      <Icon name="close" size={12} />
+      <Icon name="close" />
     </CloseIconContainer>
   );
 }
