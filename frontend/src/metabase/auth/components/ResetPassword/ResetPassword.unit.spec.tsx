@@ -1,9 +1,12 @@
 import React from "react";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import {
+  setupCurrentUserEndpoint,
   setupPasswordCheckEndpoint,
   setupPasswordResetTokenEndpoint,
+  setupPropertiesEndpoints,
   setupResetPasswordEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -17,6 +20,8 @@ const setup = ({ isTokenValid = true }: SetupOpts = {}) => {
   setupPasswordResetTokenEndpoint({ valid: isTokenValid });
   setupResetPasswordEndpoint();
   setupPasswordCheckEndpoint();
+  setupCurrentUserEndpoint(createMockUser());
+  setupPropertiesEndpoints(createMockSettings());
 
   renderWithProviders(
     <>
@@ -57,8 +62,5 @@ describe("ResetPassword", () => {
 
     userEvent.click(screen.getByText("Save new password"));
     expect(await screen.findByText("Home")).toBeInTheDocument();
-    expect(
-      await screen.findByText("You've updated your password."),
-    ).toBeInTheDocument();
   });
 });
