@@ -228,7 +228,7 @@
         (revision/revert! :entity Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id))
 
       (testing "we have 4 revisions after revert"
-        (is (= [{:description "removed a card.", :is_creation false, :is_reversion true}
+        (is (= [{:description nil, :is_creation false, :is_reversion true}
                 {:description "removed a card.", :is_creation false, :is_reversion false}
                 {:description "added a card.", :is_creation false, :is_reversion false}
                 {:description "rearranged the cards.", :is_creation true, :is_reversion false}]
