@@ -28,9 +28,11 @@ interface ForgotPasswordProps {
 export const ForgotPassword = ({
   location,
 }: ForgotPasswordProps): JSX.Element => {
-  const hasEmail = useSelector(state => getSetting(state, "email-configured?"));
-  const hasLdap = useSelector(state => getSetting(state, "ldap-enabled"));
-  const canResetPassword = hasEmail && !hasLdap;
+  const isEmailConfigured = useSelector(state =>
+    getSetting(state, "email-configured?"),
+  );
+  const isLdapEnabled = useSelector(state => getSetting(state, "ldap-enabled"));
+  const canResetPassword = isEmailConfigured && !isLdapEnabled;
   const initialEmail = location?.query?.email;
 
   const [view, setView] = useState<ViewType>(
