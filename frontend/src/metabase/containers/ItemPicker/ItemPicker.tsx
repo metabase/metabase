@@ -146,7 +146,6 @@ function ItemPicker<T>({
       if (!value || !item) {
         return false;
       }
-      console.log(value);
       const isSameModel = item.model === value.model || models.length === 1;
       return isSameModel && getItemId(item) === getItemId(value);
     },
@@ -197,7 +196,7 @@ function ItemPicker<T>({
         item.model === "collection" &&
         isRootCollection(item as unknown as Collection)
       ) {
-        onChange({ id: null, model: "collection" } as PickerItem<T>);
+        onChange({ id: null, model: "collection" } as unknown as PickerItem<T>);
       } else {
         onChange(item);
       }
