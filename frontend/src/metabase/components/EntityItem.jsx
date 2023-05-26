@@ -166,7 +166,9 @@ function EntityItemMenu({
   return (
     <EntityMenuContainer align="center">
       <EntityMenu
-        className={cx(className, "hover-child")}
+        triggerAriaLabel={t`Actions`}
+        className={className}
+        closedClassNames="hover-child hover-child--smooth"
         triggerIcon="ellipsis"
         items={actions}
       />
