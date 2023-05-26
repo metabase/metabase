@@ -277,9 +277,18 @@
    [:is-breakout-column {:optional true} [:maybe :boolean]]
    ;; does this column occur in the order-by clause?
    [:is-order-by-column {:optional true} [:maybe :boolean]]
+   ;; for joins
+   [:name {:optional true} :string]
    ;; for aggregation operators
    [:column-name {:optional true} :string]
-   [:description {:optional true} :string]])
+   [:description {:optional true} :string]
+   [:short-name {:optional true} :string]
+   [:requires-column {:optional true} :boolean]
+   [:selected {:optional true} :boolean]
+   ;; for binning and bucketing
+   [:default {:optional true} :boolean]
+   ;; for order by
+   [:direction {:optional true} [:enum :asc :desc]]])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
@@ -322,6 +331,8 @@
         :is-from-join           (= source :source/joins)
         :is-calculated          (= source :source/expressions)
         :is-implicitly-joinable (= source :source/implicitly-joinable)})
+     (when-let [selected (:selected? x-metadata)]
+       {:selected selected})
      (select-keys x-metadata [:breakout-position :order-by-position]))))
 
 (defmethod display-info-method :default
