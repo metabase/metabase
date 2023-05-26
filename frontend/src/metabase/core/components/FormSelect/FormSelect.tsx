@@ -12,6 +12,7 @@ export interface FormSelectProps<TValue, TOption = SelectOption<TValue>>
   extends Omit<SelectProps<TValue, TOption>, "value"> {
   name: string;
   title?: string;
+  actions?: ReactNode;
   description?: ReactNode;
   optional?: boolean;
 }
@@ -24,6 +25,7 @@ const FormSelect = forwardRef(function FormSelect<
     name,
     className,
     title,
+    actions,
     description,
     onChange,
     optional,
@@ -48,6 +50,7 @@ const FormSelect = forwardRef(function FormSelect<
       ref={ref}
       className={className}
       title={title}
+      actions={actions}
       description={description}
       htmlFor={id}
       error={touched ? error : undefined}
