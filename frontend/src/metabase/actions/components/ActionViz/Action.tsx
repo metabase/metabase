@@ -33,7 +33,8 @@ interface OwnProps {
   dispatch: Dispatch;
 }
 
-export type ActionProps = VisualizationProps & OwnProps;
+export type ActionProps = Pick<VisualizationProps, "settings" | "isSettings"> &
+  OwnProps;
 
 function ActionComponent({
   dashcard,

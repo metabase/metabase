@@ -78,16 +78,13 @@ function createMockActionDashboardCard(
   });
 }
 
-type SetupOpts = Partial<ActionProps> & {
-  hasDataPermissions?: boolean;
-};
+type SetupOpts = Partial<ActionProps>;
 
 async function setup({
   dashboard = createMockDashboard({ id: DASHBOARD_ID }),
   dashcard = createMockActionDashboardCard(),
   settings = {},
   parameterValues = {},
-  hasDataPermissions = true,
   ...props
 }: SetupOpts = {}) {
   if (getActionIsEnabledInDatabase(dashcard)) {
@@ -101,9 +98,8 @@ async function setup({
       settings={settings}
       parameterValues={parameterValues}
       isSettings={false}
-      isEditing={false}
+      isEditingDashcard={false}
       dispatch={jest.fn()}
-      onVisualizationClick={jest.fn()}
       {...props}
     />,
   );
