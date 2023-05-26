@@ -1,30 +1,31 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
-import AuthButton from "../AuthButton";
-import LoginForm from "../LoginForm";
-import { AuthProvider, LoginData } from "../../types";
-import { ActionListItem, ActionList } from "./PasswordPanel.styled";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
+import { login } from "../../actions";
+import { getExternalAuthProviders } from "../../selectors";
+import { LoginData } from "../../types";
+import { AuthButton } from "../AuthButton";
+import { LoginForm } from "../LoginForm";
+import { ActionList, ActionListItem } from "./PasswordPanel.styled";
 
-export interface PasswordPanelProps {
-  providers?: AuthProvider[];
+interface PasswordPanelProps {
   redirectUrl?: string;
-  isLdapEnabled: boolean;
-  hasSessionCookies: boolean;
-  onLogin: (data: LoginData, redirectUrl?: string) => void;
 }
 
-const PasswordPanel = ({
-  providers = [],
-  redirectUrl,
-  isLdapEnabled,
-  hasSessionCookies,
-  onLogin,
-}: PasswordPanelProps) => {
+export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
+  const providers = useSelector(getExternalAuthProviders);
+  const isLdapEnabled = useSelector(state => getSetting(state, "ldap-enabled"));
+  const hasSessionCookies = useSelector(
+    state => getSetting(state, "session-cookies") ?? false,
+  );
+  const dispatch = useDispatch();
+
   const handleSubmit = useCallback(
     async (data: LoginData) => {
-      await onLogin(data, redirectUrl);
+      await dispatch(login({ data, redirectUrl })).unwrap();
     },
-    [onLogin, redirectUrl],
+    [dispatch, redirectUrl],
   );
 
   return (
@@ -49,6 +50,3 @@ const PasswordPanel = ({
     </div>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default PasswordPanel;
