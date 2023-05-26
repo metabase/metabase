@@ -27,6 +27,7 @@ export interface Collection {
   archived: boolean;
   children?: Collection[];
   authority_level?: "official" | null;
+  type?: "instance-analytics" | null;
 
   parent_id?: CollectionId;
   personal_owner_id?: UserId;
