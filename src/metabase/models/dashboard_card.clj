@@ -170,7 +170,7 @@
   (into {}
         (filter (fn [[k v]]
                   (not= v (get old k)))
-         new)))
+                new)))
 
 (s/defn update-dashboard-card!
   "Updates an existing DashboardCard including all DashboardCardSeries.
