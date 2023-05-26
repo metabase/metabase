@@ -27,15 +27,15 @@ import type {
 import ItemPickerView from "./ItemPickerView";
 import { ScrollAwareLoadingAndErrorWrapper } from "./ItemPicker.styled";
 
-interface OwnProps {
-  value?: PickerValue;
+interface OwnProps<T> {
+  value?: PickerValue<T>;
   models: PickerModel[];
   entity?: typeof Collections; // collections/snippets entity
   showSearch?: boolean;
   showScroll?: boolean;
   className?: string;
   style?: React.CSSProperties;
-  onChange: (value: PickerValue) => void;
+  onChange: (value: PickerValue<T>) => void;
   initialOpenCollectionId?: CollectionId;
   collectionFilter?: (collection: Collection) => boolean;
 }
@@ -45,7 +45,7 @@ interface StateProps {
   getCollectionIcon: (collection: Collection) => IconProps;
 }
 
-type Props = OwnProps & StateProps;
+type Props<T> = OwnProps<T> & StateProps;
 
 function canWriteToCollectionOrChildren(collection: Collection) {
   return (
@@ -54,7 +54,7 @@ function canWriteToCollectionOrChildren(collection: Collection) {
   );
 }
 
-function mapStateToProps(state: State, props: OwnProps) {
+function mapStateToProps<T>(state: State, props: OwnProps<T>) {
   const entity = props.entity || Collections;
   return {
     collectionsById: entity.selectors.getExpandedCollectionsById(state, props),
@@ -62,11 +62,11 @@ function mapStateToProps(state: State, props: OwnProps) {
   };
 }
 
-function getEntityLoaderType(state: State, props: OwnProps) {
+function getEntityLoaderType<T>(state: State, props: OwnProps<T>) {
   return props.entity?.name ?? "collections";
 }
 
-function getItemId(item: PickerItem | PickerValue) {
+function getItemId<T>(item: PickerItem<T> | PickerValue<T>) {
   if (!item) {
     return;
   }
@@ -76,7 +76,7 @@ function getItemId(item: PickerItem | PickerValue) {
   return item.id;
 }
 
-function ItemPicker({
+function ItemPicker<T>({
   value,
   models,
   collectionsById,
@@ -87,7 +87,7 @@ function ItemPicker({
   onChange,
   getCollectionIcon,
   initialOpenCollectionId = "root",
-}: Props) {
+}: Props<T>) {
   const [openCollectionId, setOpenCollectionId] = useState<CollectionId>(
     initialOpenCollectionId,
   );
@@ -116,7 +116,7 @@ function ItemPicker({
         model: "collection",
       }));
 
-    return collectionItems as CollectionPickerItem[];
+    return collectionItems as CollectionPickerItem<T>[];
   }, [openCollection, models]);
 
   const crumbs = useMemo(
@@ -142,10 +142,11 @@ function ItemPicker({
   }, [models, searchString, openCollectionId]);
 
   const checkIsItemSelected = useCallback(
-    (item: PickerItem) => {
+    (item: PickerItem<T>) => {
       if (!value || !item) {
         return false;
       }
+      console.log(value);
       const isSameModel = item.model === value.model || models.length === 1;
       return isSameModel && getItemId(item) === getItemId(value);
     },
@@ -153,7 +154,7 @@ function ItemPicker({
   );
 
   const checkCollectionMaybeHasChildren = useCallback(
-    (collection: CollectionPickerItem) => {
+    (collection: CollectionPickerItem<T>) => {
       if (isPickingNotCollection) {
         // Non-collection models (e.g. questions, dashboards)
         // are loaded on-demand so we don't know ahead of time
@@ -174,7 +175,7 @@ function ItemPicker({
   );
 
   const checkHasWritePermissionForItem = useCallback(
-    (item: PickerItem) => {
+    (item: PickerItem<T>) => {
       // if user is selecting a collection, they must have a `write` access to it
       if (models.includes("collection") && item.model === "collection") {
         return item.can_write;
@@ -191,12 +192,12 @@ function ItemPicker({
   );
 
   const handleChange = useCallback(
-    (item: PickerItem) => {
+    (item: PickerItem<T>) => {
       if (
         item.model === "collection" &&
         isRootCollection(item as unknown as Collection)
       ) {
-        onChange({ id: null, model: "collection" });
+        onChange({ id: null, model: "collection" } as PickerItem<T>);
       } else {
         onChange(item);
       }
@@ -238,15 +239,28 @@ function ItemPicker({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  entityObjectLoader({
+// export default _.compose(
+//   entityObjectLoader({
+//     id: "root",
+//     entityType: getEntityLoaderType,
+//     loadingAndErrorWrapper: false,
+//   }),
+//   entityListLoader({
+//     entityType: getEntityLoaderType,
+//     loadingAndErrorWrapper: false,
+//   }),
+//   connect(mapStateToProps),
+// )(ItemPicker);
+
+export default (function <T>() {
+  return entityObjectLoader({
     id: "root",
     entityType: getEntityLoaderType,
     loadingAndErrorWrapper: false,
-  }),
-  entityListLoader({
-    entityType: getEntityLoaderType,
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps),
-)(ItemPicker);
+  })(
+    entityListLoader({
+      entityType: getEntityLoaderType,
+      loadingAndErrorWrapper: false,
+    }),
+  )(connect(mapStateToProps)(ItemPicker<T>));
+} as React.FC);

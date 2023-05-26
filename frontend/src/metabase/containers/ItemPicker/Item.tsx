@@ -3,23 +3,23 @@ import _ from "underscore";
 
 import { Icon, IconName, IconProps } from "metabase/core/components/Icon";
 
-import type { PickerItem, PickerItemId } from "./types";
+import type { PickerItem } from "./types";
 
 import { ItemRoot, ItemContent, ItemTitle, ExpandButton } from "./Item.styled";
 
-interface Props {
-  item: PickerItem;
+interface Props<T> {
+  item: PickerItem<T>;
   name: string;
   icon: IconName | IconProps;
   color: string;
   selected: boolean;
   canSelect: boolean;
   hasChildren?: boolean;
-  onChange: (item: PickerItem) => void;
-  onChangeOpenCollectionId?: (id: PickerItemId) => void;
+  onChange: (item: PickerItem<T>) => void;
+  onChangeOpenCollectionId?: (id: T) => void;
 }
 
-function Item({
+function Item<T>({
   item,
   name,
   icon,
@@ -29,7 +29,7 @@ function Item({
   hasChildren,
   onChange,
   onChangeOpenCollectionId,
-}: Props) {
+}: Props<T>) {
   const handleClick = useMemo(() => {
     if (canSelect) {
       return () => onChange(item);

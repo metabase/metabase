@@ -4,12 +4,10 @@ import type { Collection } from "metabase-types/api";
 
 export type PickerModel = "card" | "collection" | "dataset" | "dashboard";
 
-export type PickerItemId = string | number | null;
+export type PickerValue<T> = { id: T; model: PickerModel };
 
-export type PickerValue = { id: PickerItemId; model: PickerModel };
-
-export type PickerItem = {
-  id: PickerItemId;
+export type PickerItem<T> = {
+  id: T;
   model: PickerModel;
   collection_id: Collection["id"];
   can_write: boolean;
@@ -20,7 +18,7 @@ export type PickerItem = {
   getIcon: () => IconProps;
 };
 
-export type CollectionPickerItem = PickerItem & Collection;
+export type CollectionPickerItem<T> = PickerItem<T> & Collection;
 
 export type SearchQuery = {
   q?: string;
