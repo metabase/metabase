@@ -11,13 +11,17 @@ import EditableText from "metabase/core/components/EditableText";
 import { Dashboard } from "metabase-types/api";
 import { getUser } from "metabase/selectors/user";
 
-import { revertToRevision } from "metabase/dashboard/actions";
+import {
+  revertToRevision,
+  toggleAutoApplyFilters,
+} from "metabase/dashboard/actions";
 
 import Toggle from "metabase/core/components/Toggle";
 import FormField from "metabase/core/components/FormField";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
+import { useDispatch } from "metabase/lib/redux";
 import {
   DashboardInfoSidebarRoot,
   HistoryHeader,
@@ -64,12 +68,12 @@ export function DashboardInfoSidebar({
     [saveDashboardAndCards, setDashboardAttribute],
   );
 
+  const dispatch = useDispatch();
   const handleToggleAutoApplyFilters = useCallback(
     (isAutoApplyingFilters: boolean) => {
-      setDashboardAttribute("auto_apply_filters", isAutoApplyingFilters);
-      saveDashboardAndCards(true);
+      dispatch(toggleAutoApplyFilters(isAutoApplyingFilters));
     },
-    [saveDashboardAndCards, setDashboardAttribute],
+    [dispatch],
   );
 
   const autoApplyFilterToggleId = useUniqueId();
