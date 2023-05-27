@@ -7,7 +7,6 @@
 
 (defn- query [uuid-1 uuid-2]
   {:lib/type :mbql/query
-   :type     :pipeline
    :database 1
    :stages   [{:lib/type     :mbql.stage/mbql
                :source-table 2
@@ -53,7 +52,6 @@
          (lib.schema.util/collect-uuids
           {:lib/type :mbql/query
            :database 1
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table 2
                        :lib/options  {:lib/uuid "f590f35f-9224-45f1-8334-422f15fc4abd"}}]}))))

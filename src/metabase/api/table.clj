@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.card :refer [Card]]
+   [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.interface :as mi]
@@ -139,7 +140,7 @@
 (def ^:private time-options
   [[minute-str "minute"]
    [hour-str "hour"]
-   [(deferred-tru "Minute of Hour") "minute-of-hour"]])
+   [(deferred-tru "Minute of hour") "minute-of-hour"]])
 
 (def ^:private datetime-options
   [[minute-str "minute"]
@@ -149,14 +150,14 @@
    [(deferred-tru "Month") "month"]
    [(deferred-tru "Quarter") "quarter"]
    [(deferred-tru "Year") "year"]
-   [(deferred-tru "Minute of Hour") "minute-of-hour"]
-   [(deferred-tru "Hour of Day") "hour-of-day"]
-   [(deferred-tru "Day of Week") "day-of-week"]
-   [(deferred-tru "Day of Month") "day-of-month"]
-   [(deferred-tru "Day of Year") "day-of-year"]
-   [(deferred-tru "Week of Year") "week-of-year"]
-   [(deferred-tru "Month of Year") "month-of-year"]
-   [(deferred-tru "Quarter of Year") "quarter-of-year"]])
+   [(deferred-tru "Minute of hour") "minute-of-hour"]
+   [(deferred-tru "Hour of day") "hour-of-day"]
+   [(deferred-tru "Day of week") "day-of-week"]
+   [(deferred-tru "Day of month") "day-of-month"]
+   [(deferred-tru "Day of year") "day-of-year"]
+   [(deferred-tru "Week of year") "week-of-year"]
+   [(deferred-tru "Month of year") "month-of-year"]
+   [(deferred-tru "Quarter of year") "quarter-of-year"]])
 
 (def ^:private date-options
   [[day-str "day"]
@@ -164,12 +165,12 @@
    [(deferred-tru "Month") "month"]
    [(deferred-tru "Quarter") "quarter"]
    [(deferred-tru "Year") "year"]
-   [(deferred-tru "Day of Week") "day-of-week"]
-   [(deferred-tru "Day of Month") "day-of-month"]
-   [(deferred-tru "Day of Year") "day-of-year"]
-   [(deferred-tru "Week of Year") "week-of-year"]
-   [(deferred-tru "Month of Year") "month-of-year"]
-   [(deferred-tru "Quarter of Year") "quarter-of-year"]])
+   [(deferred-tru "Day of week") "day-of-week"]
+   [(deferred-tru "Day of month") "day-of-month"]
+   [(deferred-tru "Day of year") "day-of-year"]
+   [(deferred-tru "Week of year") "week-of-year"]
+   [(deferred-tru "Month of year") "month-of-year"]
+   [(deferred-tru "Quarter of year") "quarter-of-year"]])
 
 (def ^:private dimension-options
   (let [default-entry [auto-bin-str ["default"]]]
@@ -266,10 +267,11 @@
 (def ^:private coordinate-default-index
   (dimension-index-for-type :type/Coordinate #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
-(defn- supports-numeric-binning? [driver]
-  (and driver (driver/supports? driver :binning)))
+(defn- supports-numeric-binning? [db]
+  (and db (driver/database-supports? (:engine db) :binning db)))
 
-(defn- assoc-field-dimension-options [driver {:keys [base_type semantic_type fingerprint] :as field}]
+;; TODO: Remove all this when the FE is fully ported to [[metabase.lib.binning/available-binning-strategies]].
+(defn- assoc-field-dimension-options [{:keys [base_type semantic_type fingerprint] :as field} db]
   (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
         [default-option all-options] (cond
                                        (types/field-is-type? :type/Time field)
@@ -283,13 +285,13 @@
 
                                        (and min_value max_value
                                             (isa? semantic_type :type/Coordinate)
-                                            (supports-numeric-binning? driver))
+                                            (supports-numeric-binning? db))
                                        [coordinate-default-index coordinate-dimension-indexes]
 
                                        (and min_value max_value
                                             (isa? base_type :type/Number)
                                             (not (isa? semantic_type :Relation/*))
-                                            (supports-numeric-binning? driver))
+                                            (supports-numeric-binning? db))
                                        [numeric-default-index numeric-dimension-indexes]
 
                                        :else
@@ -298,11 +300,11 @@
            :default_dimension_option default-option
            :dimension_options        all-options)))
 
-(defn- assoc-dimension-options [resp driver]
+(defn- assoc-dimension-options [resp db]
   (-> resp
       (assoc :dimension_options dimension-options-for-response)
       (update :fields (fn [fields]
-                        (mapv #(assoc-field-dimension-options driver %) fields)))))
+                        (mapv #(assoc-field-dimension-options % db) fields)))))
 
 (defn- format-fields-for-response [resp]
   (update resp :fields
@@ -319,13 +321,13 @@
   (if (Boolean/parseBoolean include-editable-data-model?)
     (api/write-check table)
     (api/read-check table))
-  (let [driver                    (driver.u/database->driver (:db_id table))
+  (let [db                        (t2/select-one Database :id (:db_id table))
         include-sensitive-fields? (cond-> include-sensitive-fields? (string? include-sensitive-fields?) Boolean/parseBoolean)
         include-hidden-fields?    (cond-> include-hidden-fields? (string? include-hidden-fields?) Boolean/parseBoolean)]
     (-> table
         (hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
         (m/dissoc-in [:db :details])
-        (assoc-dimension-options driver)
+        (assoc-dimension-options db)
         format-fields-for-response
         (update :fields (partial filter (fn [{visibility-type :visibility_type}]
                                           (case (keyword visibility-type)
@@ -357,7 +359,7 @@
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
    database."
   [card-id database-id metadata]
-  (let [add-field-dimension-options #(assoc-field-dimension-options (driver.u/database->driver database-id) %)
+  (let [db (t2/select-one Database :id database-id)
         underlying (m/index-by :id (when-let [ids (seq (keep :id metadata))]
                                      (t2/select Field :id [:in ids])))
         fields (for [{col-id :id :as col} metadata]
@@ -374,7 +376,7 @@
                       ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
                       ;; the dimension options
                       :semantic_type (keyword (:semantic_type col)))
-                     add-field-dimension-options))
+                     (assoc-field-dimension-options db)))
         field->annotated (let [with-ids (filter (comp number? :id) fields)]
                            (zipmap with-ids (hydrate with-ids [:target :has_field_values] :has_field_values)))]
     (map #(field->annotated % %) fields)))
@@ -430,11 +432,12 @@
                                                              :order-by [[:id :desc]]
                                                              :limit    1}
                                                             :id id)
-                                           first :status)]
+                                           first :status)
+        db (t2/select-one Database :id database_id)]
     (-> (assoc card :moderated_status moderated-status)
         api/read-check
         (card->virtual-table :include-fields? true)
-        (assoc-dimension-options (driver.u/database->driver database_id))
+        (assoc-dimension-options db)
         remove-nested-pk-fk-semantic-types)))
 
 (api/defendpoint GET "/card__:id/fks"

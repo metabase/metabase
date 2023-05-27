@@ -17,7 +17,7 @@ export default class MetricItem extends Component {
       <tr>
         <td className="px1 py1 text-wrap">
           <span className="flex align-center">
-            <Icon {...metric.getIcon()} className="mr1 text-medium" />
+            <Icon name="sum" className="mr1 text-medium" />
             <span className="text-dark text-bold">{metric.name}</span>
           </span>
         </td>

@@ -44,9 +44,9 @@
             (throw (ex-info (format "Unknown ingestion target: %s" path)
                             {:path path :world mapped})))))))
 
-;;; WARNING for test authors: [[extract/extract-metabase]] returns a lazy reducible value. To make sure you don't
+;;; WARNING for test authors: [[extract/extract]] returns a lazy reducible value. To make sure you don't
 ;;; confound your tests with data from your dev appdb, remember to eagerly
-;;; `(into [] (extract/extract-metabase ...))` in these tests.
+;;; `(into [] (extract/extract ...))` in these tests.
 
 (deftest load-basics-test
   (testing "a simple, fresh collection is imported"
@@ -56,7 +56,7 @@
         (testing "extraction succeeds"
           (ts/with-source-db
             (ts/create! Collection :name "Basic Collection" :entity_id eid1)
-            (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+            (reset! serialized (into [] (serdes.extract/extract {})))
             (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
                         (and (= model "Collection") (= id eid1)))
                       @serialized))))
@@ -93,7 +93,7 @@
             (reset! grandchild (ts/create! Collection
                                            :name "Grandchild Collection"
                                            :location (format "/%d/%d/" (:id @parent) (:id @child))))
-            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
+            (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "deserialization into a database that already has the parent, but with a different ID"
           (ts/with-dest-db
@@ -135,7 +135,7 @@
             (reset! t2s  (ts/create! Table    :name "posts" :db_id (:id @db2s))) ; Deliberately the same name!
             (reset! f1s  (ts/create! Field    :name "Target Field" :table_id (:id @t1s)))
             (reset! f2s  (ts/create! Field    :name "Foreign Key"  :table_id (:id @t2s) :fk_target_field_id (:id @f1s)))
-            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
+            (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "serialization of databases is based on the :name"
           (is (= #{(:name @db1s) (:name @db2s) "test-data"} ; TODO I'm not sure where the `test-data` one comes from.
@@ -163,6 +163,7 @@
             (reset! db2d (t2/select-one Database :name (:name @db2s)))
 
             (is (= 3 (t2/count Database)))
+            (is (every? #(= "complete" (:initial_sync_status %)) (t2/select Database)))
             (is (= #{"db1" "db2" "test-data"}
                    (t2/select-fn-set :name Database)))
             (is (= #{(:id @db1d) (:id @db2d)}
@@ -213,7 +214,7 @@
                                                                    :aggregation  [[:count]]}
                                                         :database (:id @db1s)}
                                         :display        :line))
-            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
+            (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "the serialized form is as desired"
           (is (= {:type  :query
@@ -293,7 +294,7 @@
                                                      :aggregation [[:count]]
                                                      :filter [:< [:field (:id @field1s) nil] 18]}
                                         :creator_id (:id @user1s)))
-            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
+            (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "exported form is properly converted"
           (is (= {:source-table ["my-db" nil "customers"]
@@ -369,7 +370,7 @@
                                          :definition {:source-table (:id @table1s)
                                                       :aggregation [[:sum [:field (:id @field1s) nil]]]}
                                          :creator_id (:id @user1s)))
-            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
+            (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "exported form is properly converted"
           (is (= {:source-table ["my-db" nil "orders"]
@@ -492,7 +493,7 @@
                                                                  :card_id (:id @card1s)
                                                                  :target [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}]))
 
-            (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+            (reset! serialized (into [] (serdes.extract/extract {})))
             (let [card (-> @serialized (by-model "Card") first)
                   dash (-> @serialized (by-model "Dashboard") first)]
               (testing "exported :parameter_mappings are properly converted"
@@ -613,7 +614,7 @@
             (testing "expecting 3 events"
               (is (= 3 (t2/count TimelineEvent))))
 
-            (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+            (reset! serialized (into [] (serdes.extract/extract {})))
 
             (let [timelines (by-model @serialized "Timeline")
                   timeline1 (first (filter #(= (:entity_id %) (:entity_id @timeline1s)) timelines))
@@ -703,7 +704,7 @@
             (reset! user2s    (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
             (reset! metric1s  (ts/create! Metric :name "Large Users"       :creator_id (:id @user1s) :definition {:aggregation [[:count]]}))
             (reset! metric2s  (ts/create! Metric :name "Support Headaches" :creator_id (:id @user2s) :definition {:aggregation [[:count]]}))
-            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
+            (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "exported form is properly converted"
           (is (= "tom@bost.on"
@@ -778,7 +779,7 @@
           (reset! fv2s     (ts/create! FieldValues :field_id (:id @field2s)
                                        :values ["CONSTRUCTION" "DAYLIGHTING" "DELIVERY" "HAULING"]))
 
-          (reset! serialized (into [] (serdes.extract/extract-metabase {:include-field-values true})))
+          (reset! serialized (into [] (serdes.extract/extract {:include-field-values true})))
 
           (testing "the expected fields are serialized"
             (is (= 1
@@ -952,7 +953,7 @@
                                             :type          :query
                                             :dataset_query "wow"
                                             :database_id   (:id db)})]
-            (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+            (reset! serialized (into [] (serdes.extract/extract {})))
             (let [action-serialized (first (filter (fn [{[{:keys [model id]}] :serdes/meta}]
                                                      (and (= model "Action") (= id eid)))
                                                    @serialized))]

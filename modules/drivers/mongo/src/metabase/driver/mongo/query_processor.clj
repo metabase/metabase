@@ -91,6 +91,11 @@
 ;; TODO - We already have a *query* dynamic var in metabase.query-processor.interface. Do we need this one too?
 (def ^:dynamic ^:private *query* nil)
 
+(def ^:dynamic ^:private *nesting-level*
+  "Used for tracking depth of nesting on which [[mbql->native-rec]] operates.
+  That is required eg. in `->lvalue :aggregation` call."
+  0)
+
 (def ^:dynamic ^:private *field-mappings*
   "The mapping from the fields to the projected names created
   by the nested query."
@@ -217,7 +222,7 @@
 ;;
 (defmethod ->lvalue :aggregation
   [[_ index]]
-  (annotate/aggregation-name (mbql.u/aggregation-at-index *query* index)))
+  (annotate/aggregation-name (mbql.u/aggregation-at-index *query* index *nesting-level*)))
 
 (defmethod ->lvalue :field
   [[_ id-or-name _props :as field]]
@@ -391,7 +396,7 @@
 
 (defmethod ->rvalue :absolute-datetime
   [[_ t unit]]
-  (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
+  (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (qp.store/database))
                                    "UTC"))
         t           (condp = (class t)
                      java.time.LocalDate      t
@@ -425,7 +430,7 @@
 (defmethod ->rvalue :relative-datetime
   [[_ amount unit]]
   (let [t (-> (t/zoned-date-time)
-              (t/with-zone-same-instant (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
+              (t/with-zone-same-instant (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (qp.store/database))
                                                        "UTC"))))]
     ($date-from-string
      (t/offset-date-time
@@ -1049,7 +1054,16 @@
          (extract-aggregations (first args) parent-name aggregations-seen)
 
          (aggregation-op op)
-         (let [aggr-name (str parent-name "~" (annotate/aggregation-name aggr-expr))]
+         (let [aliases-taken (set (vals aggregations-seen))
+               aggr-name (annotate/aggregation-name aggr-expr)
+               desired-alias (str parent-name "~" aggr-name)
+               ;; find a free alias by appending increasing integers
+               ;; to the desired alias
+               aggr-name (some (fn [suffix]
+                                 (let [alias (str desired-alias suffix)]
+                                   (when-not (aliases-taken alias)
+                                     alias)))
+                               (cons "" (iterate inc 1)))]
            [(str \$ aggr-name) (assoc aggregations-seen aggr-expr aggr-name)])
 
          :else
@@ -1061,7 +1075,7 @@
      [aggr-expr aggregations-seen])))
 
 (defn- simplify-extracted-aggregations
-  "Simplifies the extracted aggregation ()for `aggr-name` if the expression
+  "Simplifies the extracted aggregation for `aggr-name` if the expression
   contains only a single top-level aggregation. In this case there is no
   need for namespacing and `aggr-name` can be used as the name of the group
   introduced for the aggregation.
@@ -1333,14 +1347,15 @@
   (if-let [source-query (-> inner-query :source-query)]
     (let [compiled (or (when-let [nq (:native source-query)]
                          (cond
-                           (string? nq)
+                           (string? (:query nq))
                            (-> source-query
                                (dissoc :native)
-                               (assoc :query (parse-query-string nq)))
+                               (assoc :query (parse-query-string (:query nq))))
 
                            :else
                            nq))
-                       (mbql->native-rec source-query))
+                       (binding [*nesting-level* (inc *nesting-level*)]
+                         (mbql->native-rec source-query)))
           field-mappings (get-field-mappings source-query (:projections compiled))]
       (binding [*field-mappings* field-mappings]
         (merge compiled (add-aggregation-pipeline inner-query compiled))))

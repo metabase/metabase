@@ -17,7 +17,6 @@
 (deftest ^:parallel col-info-field-ids-test
   (testing "make sure columns are coming back the way we'd expect for :field clauses"
     (let [query {:lib/type     :mbql/query
-                 :type         :pipeline
                  :stages       [{:lib/type     :mbql.stage/mbql
                                  :lib/options  {:lib/uuid "0311c049-4973-4c2a-8153-1e2c887767f9"}
                                  :source-table (meta/id :venues)
@@ -35,30 +34,26 @@
       (let [query (lib.tu/venues-query-with-last-stage
                    {:aggregation [[:*
                                    {}
-                                   0.9
+                                   0.8
                                    [:avg {} (lib.tu/field-clause :venues :price)]]
                                   [:*
                                    {}
                                    0.8
                                    [:avg {} (lib.tu/field-clause :venues :price)]]]})]
-        (is (=? [{:base_type    :type/Float
-                  :name         "0_9_times_avg_price"
-                  :display_name "0.9 × Average of Price"}
-                 {:base_type    :type/Float
-                  :name         "0_8_times_avg_price"
-                  :display_name "0.8 × Average of Price"}]
+        (is (=? [{:base-type                :type/Float
+                  :name                     "0_8_times_avg_PRICE"
+                  :display-name             "0.8 × Average of Price"
+                  :lib/source-column-alias  "0_8_times_avg_PRICE"
+                  :lib/desired-column-alias "0_8_times_avg_PRICE"}
+                 {:base-type                :type/Float
+                  :name                     "0_8_times_avg_PRICE"
+                  :display-name             "0.8 × Average of Price"
+                  :lib/source-column-alias  "0_8_times_avg_PRICE"
+                  :lib/desired-column-alias "0_8_times_avg_PRICE_2"}]
                 (lib.metadata.calculation/metadata query -1 query)))))))
 
 (deftest ^:parallel stage-display-name-card-source-query
-  (let [query {:lib/type     :mbql/query
-               :lib/metadata (lib.tu/mock-metadata-provider
-                              {:cards [{:id   1
-                                        :name "My Card"}]})
-               :type         :pipeline
-               :database     (meta/id)
-               :stages       [{:lib/type     :mbql.stage/mbql
-                               :lib/options  {:lib/uuid (str (random-uuid))}
-                               :source-table "card__1"}]}]
+  (let [query (lib.tu/query-with-card-source-table)]
     (is (= "My Card"
            (lib.metadata.calculation/display-name query -1 query)))))
 
@@ -103,51 +98,68 @@
                     (lib/join (-> (lib/join-clause (lib/table (meta/id :categories)))
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all))
-                              (lib/=
-                               (lib/field "VENUES" "CATEGORY_ID")
-                               (-> (lib/field "CATEGORIES" "ID") (lib/with-join-alias "Cat")))))]
-      (is (=? {:stages [{:joins       [{:alias     "Cat"
-                                        :stages    [{:source-table (meta/id :categories)}]
-                                        :condition [:=
-                                                    {}
-                                                    [:field {} (meta/id :venues :category-id)]
-                                                    [:field {:join-alias "Cat"} (meta/id :categories :id)]]
-                                        :fields    :all}]
+                              [(lib/=
+                                 (lib/field "VENUES" "CATEGORY_ID")
+                                 (-> (lib/field "CATEGORIES" "ID") (lib/with-join-alias "Cat")))]))]
+      (is (=? {:stages [{:joins       [{:alias      "Cat"
+                                        :stages     [{:source-table (meta/id :categories)}]
+                                        :conditions [[:=
+                                                      {}
+                                                      [:field {} (meta/id :venues :category-id)]
+                                                      [:field {:join-alias "Cat"} (meta/id :categories :id)]]]
+                                        :fields     :all}]
                          :expressions {"ID + 1" [:+ {} [:field {} (meta/id :venues :id)] 1]
                                        "ID + 2" [:+ {} [:field {} (meta/id :venues :id)] 2]}}]}
               query))
-      (is (=? [{:id (meta/id :venues :id),          :name "ID",          :lib/source :source/table-defaults}
-               {:id (meta/id :venues :name),        :name "NAME",        :lib/source :source/table-defaults}
-               {:id (meta/id :venues :category-id), :name "CATEGORY_ID", :lib/source :source/table-defaults}
-               {:id (meta/id :venues :latitude),    :name "LATITUDE",    :lib/source :source/table-defaults}
-               {:id (meta/id :venues :longitude),   :name "LONGITUDE",   :lib/source :source/table-defaults}
-               {:id (meta/id :venues :price),       :name "PRICE",       :lib/source :source/table-defaults}
-               {:name "ID + 1", :lib/source :source/expressions}
-               {:name "ID + 2", :lib/source :source/expressions}
-               {:id           (meta/id :categories :id)
-                :name         "ID_2"
-                :lib/source   :source/joins
-                :source_alias "Cat"
-                :display_name "Categories → ID"}
-               {:id           (meta/id :categories :name)
-                :name         "NAME_2"
-                :lib/source   :source/joins
-                :source_alias "Cat"
-                :display_name "Categories → Name"}]
-              (lib.metadata.calculation/metadata query))))))
+      (let [metadata (lib.metadata.calculation/metadata query)]
+        (is (=? [{:id (meta/id :venues :id), :name "ID", :lib/source :source/table-defaults}
+                 {:id (meta/id :venues :name), :name "NAME", :lib/source :source/table-defaults}
+                 {:id (meta/id :venues :category-id), :name "CATEGORY_ID", :lib/source :source/table-defaults}
+                 {:id (meta/id :venues :latitude), :name "LATITUDE", :lib/source :source/table-defaults}
+                 {:id (meta/id :venues :longitude), :name "LONGITUDE", :lib/source :source/table-defaults}
+                 {:id (meta/id :venues :price), :name "PRICE", :lib/source :source/table-defaults}
+                 {:name "ID + 1", :lib/source :source/expressions}
+                 {:name "ID + 2", :lib/source :source/expressions}
+                 {:id                       (meta/id :categories :id)
+                  :name                     "ID"
+                  :lib/source               :source/joins
+                  :source_alias             "Cat"
+                  :display-name             "ID"
+                  :lib/source-column-alias  "ID"
+                  :lib/desired-column-alias "Cat__ID"}
+                 {:id                       (meta/id :categories :name)
+                  :name                     "NAME"
+                  :lib/source               :source/joins
+                  :source_alias             "Cat"
+                  :display-name             "Name"
+                  :lib/source-column-alias  "NAME"
+                  :lib/desired-column-alias "Cat__NAME"}]
+                metadata))
+        (testing ":long display names"
+          (is (= ["ID"
+                  "Name"
+                  "Category ID"
+                  "Latitude"
+                  "Longitude"
+                  "Price"
+                  "ID + 1"
+                  "ID + 2"
+                  "Categories → ID"
+                  "Categories → Name"]
+                 (mapv #(lib.metadata.calculation/display-name query -1 % :long) metadata))))))))
 
 (deftest ^:parallel metadata-with-fields-only-include-expressions-in-fields-test
   (testing "If query includes :fields, only return expressions that are in :fields"
     (let [query     (query-with-expressions)
-          id-plus-1 (first (lib/expressions query))]
+          id-plus-1 (first (lib/expressions-metadata query))]
       (is (=? {:lib/type     :metadata/field
-               :base_type    :type/Integer
+               :base-type    :type/Integer
                :name         "ID + 1"
-               :display_name "ID + 1"
+               :display-name "ID + 1"
                :lib/source   :source/expressions}
               id-plus-1))
       (let [query' (-> query
-                       (lib/fields [id-plus-1]))]
+                       (lib/with-fields [id-plus-1]))]
         (is (=? {:stages [{:expressions {"ID + 1" [:+ {} [:field {} (meta/id :venues :id)] 1]
                                          "ID + 2" [:+ {} [:field {} (meta/id :venues :id)] 2]}
                            :fields      [[:expression {} "ID + 1"]]}]}
@@ -162,3 +174,93 @@
             (let [[id-plus-1] (lib.metadata.calculation/metadata query')]
               (is (=? [:expression {:base-type :type/Integer, :effective-type :type/Integer} "ID + 1"]
                       (lib/ref id-plus-1))))))))))
+
+(deftest ^:parallel query-with-source-card-include-implicit-columns-test
+  (testing "visible-columns should include implicitly joinable columns when the query has a source Card (#30046)"
+    (doseq [varr [#'lib.tu/query-with-card-source-table
+                  #'lib.tu/query-with-card-source-table-with-result-metadata]
+            :let [query (varr)]]
+      (testing (pr-str varr)
+        (is (=? [{:name                     "USER_ID"
+                  :display-name             "User ID"
+                  :base-type                :type/Integer
+                  :lib/source               :source/card
+                  :lib/desired-column-alias "USER_ID"}
+                 {:name                     "count"
+                  :display-name             "Count"
+                  :base-type                :type/Integer
+                  :lib/source               :source/card
+                  :lib/desired-column-alias "count"}
+                 {:name                     "ID"
+                  :display-name             "ID"
+                  :base-type                :type/BigInteger
+                  :lib/source               :source/implicitly-joinable
+                  :lib/desired-column-alias "USERS__via__USER_ID__ID"}
+                 {:name                     "NAME"
+                  :display-name             "Name"
+                  :base-type                :type/Text
+                  :lib/source               :source/implicitly-joinable
+                  :lib/desired-column-alias "USERS__via__USER_ID__NAME"}
+                 {:name                     "LAST_LOGIN"
+                  :display-name             "Last Login"
+                  :base-type                :type/DateTime
+                  :lib/source               :source/implicitly-joinable
+                  :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"}]
+                (lib.metadata.calculation/visible-columns query)))))))
+
+(deftest ^:parallel do-not-propagate-temporal-units-to-next-stage-text
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "CHECKINS")
+                  (lib/with-fields [(lib/with-temporal-bucket (lib/field (meta/id :checkins :date)) :year)])
+                  lib/append-stage)
+        cols (lib.metadata.calculation/visible-columns query)]
+    (is (= [nil]
+           (map lib/temporal-bucket cols)))
+    (is (=? [[:field
+              (fn expected-opts? [opts]
+                (and
+                 ;; should retain the effective type of `:type/Integer` since `:year` is an extraction operation.
+                 (= (:base-type opts) :type/Date)
+                 (= (:effective-type opts) :type/Integer)
+                 (not (:temporal-unit opts))))
+              "DATE"]]
+            (map lib/ref cols)))))
+
+(deftest ^:parallel fields-should-not-hide-joined-fields
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/with-fields [(lib/field (meta/id :venues :id))
+                                    (lib/field (meta/id :venues :name))])
+                  (lib/join (-> (lib/join-clause (lib/table (meta/id :categories)))
+                                (lib/with-join-alias "Cat")
+                                (lib/with-join-fields :all))
+                            [(lib/= (lib/field "VENUES" "CATEGORY_ID")
+                                    (lib/field "CATEGORIES" "ID"))])
+                  (lib/append-stage))]
+    (is (=? [{:base-type :type/BigInteger,
+              :semantic-type :type/PK,
+              :name "ID",
+              :lib/source :source/previous-stage
+              :effective-type :type/BigInteger,
+              :lib/desired-column-alias "ID",
+              :display-name "ID"}
+             {:base-type :type/Text,
+              :semantic-type :type/Name,
+              :name "NAME",
+              :lib/source :source/previous-stage,
+              :effective-type :type/Text,
+              :lib/desired-column-alias "NAME",
+              :display-name "Name"}
+             {:base-type :type/BigInteger,
+              :semantic-type :type/PK,
+              :name "ID",
+              :lib/source :source/previous-stage
+              :effective-type :type/BigInteger,
+              :lib/desired-column-alias "Cat__ID",
+              :display-name "ID"}
+             {:base-type :type/Text,
+              :semantic-type :type/Name,
+              :name "NAME",
+              :lib/source :source/previous-stage
+              :effective-type :type/Text,
+              :lib/desired-column-alias "Cat__NAME",
+              :display-name "Name"}]
+            (lib.metadata.calculation/visible-columns query)))))

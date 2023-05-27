@@ -9,7 +9,7 @@ import React, {
 
 import _ from "underscore";
 import cx from "classnames";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton, {
@@ -330,6 +330,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Uncontrollable()(Select);
 
 export interface OptionSectionProps {

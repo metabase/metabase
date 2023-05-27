@@ -19,7 +19,7 @@ Fetch a single `Setting`.
 
 ### PARAMS:
 
-*  **`key`** string with length >= 1
+*  **`key`** value must be a non-blank string.
 
 ## `PUT /api/setting/`
 

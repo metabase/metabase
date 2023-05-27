@@ -7,8 +7,8 @@
    [metabase.models.permissions :as perms]
    [metabase.moderation :as moderation]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 (def statuses
@@ -19,25 +19,32 @@
   "Schema of valid statuses"
   (apply s/enum statuses))
 
-;; TODO: Appears to be unused, remove?
-(def ReviewChanges
-  "Schema for a ModerationReview that's being updated (so most keys are optional)"
-  {(s/optional-key :id)                  su/IntGreaterThanZero
-   (s/optional-key :moderated_item_id)   su/IntGreaterThanZero
-   (s/optional-key :moderated_item_type) moderation/moderated-item-types
-   (s/optional-key :status)              Statuses
-   (s/optional-key :text)                (s/maybe s/Str)
-   s/Any                                 s/Any})
+;;; currently unused, but I'm leaving this in commented out because it serves as documentation
+(comment
+  (def ReviewChanges
+    "Schema for a ModerationReview that's being updated (so most keys are optional)"
+    {(s/optional-key :id)                  su/IntGreaterThanZero
+     (s/optional-key :moderated_item_id)   su/IntGreaterThanZero
+     (s/optional-key :moderated_item_type) moderation/moderated-item-types
+     (s/optional-key :status)              Statuses
+     (s/optional-key :text)                (s/maybe s/Str)
+     s/Any                                 s/Any}))
 
-(models/defmodel ModerationReview :moderation_review)
+(def ModerationReview
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/ModerationReview)
 
-;;; TODO: this is wrong, but what should it be?
-(derive ModerationReview ::perms/use-parent-collection-perms)
+(methodical/defmethod t2/table-name :model/ModerationReview [_model] :moderation_review)
 
-(mi/define-methods
- ModerationReview
- {:properties (constantly {::mi/timestamped? true})
-  :types      (constantly {:moderated_item_type :keyword})})
+(doto :model/ModerationReview
+  (derive :metabase/model)
+  ;;; TODO: this is wrong, but what should it be?
+  (derive ::perms/use-parent-collection-perms)
+  (derive :hook/timestamped?))
+
+(t2/deftransforms :model/ModerationReview
+  {:moderated_item_type mi/transform-keyword})
 
 (def max-moderation-reviews
   "The amount of moderation reviews we will keep on hand."

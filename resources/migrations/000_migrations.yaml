@@ -14312,7 +14312,6 @@ databaseChangeLog:
       id: v47.00-001
       author: calherries
       comment: Added 0.47.0 -- set base-type to type/JSON for JSON database-types for postgres and mysql
-      validCheckSum: ANY
       changes:
         - sql:
             sql: >-
@@ -14363,6 +14362,34 @@ databaseChangeLog:
                 UPDATE SET f.base_type = updates.base_type;
 
   - changeSet:
+      id: v47.00-002
+      author: calherries
+      comment: Added 0.47.0 - Add json_unfolding column to metabase_field
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: 'Enable/disable JSON unfolding for a field'
+                name: json_unfolding
+                type: boolean
+                defaultValueBoolean: false
+                constraints:
+                  nullable: false
+            tableName: metabase_field
+
+  - changeSet:
+      id: v47.00-003
+      author: calherries
+      comment: Added 0.47.0 - Populate metabase_field.json_unfolding based on base_type
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET json_unfolding = true
+              WHERE base_type = 'type/JSON';
+      rollback: # nothing to do, since json_unfolding is new in 47
+
+  - changeSet:
       id: v47.00-004
       author: qnkhuat
       comment: Added 0.47.0 - Add auto_incremented to metabase_field
@@ -14378,8 +14405,400 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v47.00-005
+      author: winlost
+      comment: Added 0.47.0 - Add auto_apply_filters to dashboard
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: auto_apply_filters
+                  type: boolean
+                  remarks: Whether or not to auto-apply filters on a dashboard
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
 
-# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+  - changeSet:
+      id: v47.00-006
+      author: qnkhuat
+      comment: Added 0.47.0 - Add dashboard_tab table
+      changes:
+        - createTable:
+            tableName: dashboard_tab
+            remarks: "Join table connecting dashboard to dashboardcards"
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The dashboard that a tab is on
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_dashboard
+                    referencedColumnNames: id
+                    foreignKeyName: fk_dashboard_tab_ref_dashboard_id
+                    deleteCascade: true
+              - column:
+                  name: name
+                  remarks: Displayed name of the tab
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  remarks: Position of the tab with respect to others tabs in dashboard
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: created_at
+                  remarks: The timestamp at which the tab was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp at which the tab was last updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-007
+      author: qnkhuat
+      comment: Added 0.47.0 -- add report_dashboardcard.dashboard_tab_id
+      changes:
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: dashboard_tab_id
+                  type: int
+                  remarks: The referenced tab id that dashcard is on, it's nullable for dashboard with no tab
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v47.00-008
+      author: qnkhuat
+      comment: Added 0.47.0 -- add report_dashboardcard.dashboard_tab_id fk constraint
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            baseColumnNames: dashboard_tab_id
+            referencedTableName: dashboard_tab
+            referencedColumnNames: id
+            constraintName: fk_report_dashboardcard_ref_dashboard_tab_id
+            deleteCascade: true
+
+  - changeSet:
+      id: v47.00-009
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - sql:
+            sql: UPDATE core_user SET sso_source = 'google' WHERE google_auth = true;
+      rollback:
+        - sql:
+            sql: UPDATE core_user SET google_auth = true, sso_source = NULL WHERE sso_source = 'google';
+
+  - changeSet:
+      id: v47.00-010
+      author: tsmacdonald
+      comment: Added 0.47.0 - Make metabase_table.name long enough for H2 names
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: name
+            newDataType: varchar(256)
+      rollback: # no rollback needed, varchar(256) is backwards compatible
+
+  - changeSet:
+      id: v47.00-011
+      author: tsmacdonald
+      comment: Added 0.47.0 - Make metabase_table.display_name long enough for H2 names
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: display_name
+            newDataType: varchar(256)
+      rollback: # no rollback needed, varchar(256) is backwards compatible
+
+  - changeSet:
+      id: v47.00-012
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - dropColumn:
+            tableName: core_user
+            columnName: google_auth
+      rollback:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: google_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-013
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - sql:
+            sql: UPDATE core_user SET sso_source = 'ldap' WHERE ldap_auth = true;
+      rollback:
+        - sql:
+            sql: UPDATE core_user SET ldap_auth = true, sso_source = NULL WHERE sso_source = 'ldap';
+
+  - changeSet:
+      id: v47.00-014
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - dropColumn:
+            tableName: core_user
+            columnName: ldap_auth
+      rollback:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: ldap_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-015
+      author: escherize
+      comment: added 0.47.0 - Add is_audit to metabase_database
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_audit
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: 'Only the app db, visible to admins via auditing should have this set true.'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-016
+      author: calherres
+      comment: Added 0.47.0 - Migrate the report_card.visualization_settings.column_settings field refs from legacy format
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
+
+  - changeSet:
+      id: v47.00-018
+      author: dpsutton
+      comment: Indexed Entities information table
+      changes:
+        - createTable:
+            tableName: model_index
+            remarks: 'Used to keep track of which models have indexed columns.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: 'The ID of the indexed model.'
+              - column:
+                  name: pk_ref
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the primary key field ref.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value_ref
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the label field ref.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schedule
+                  type: ${text.type}
+                  remarks: 'The cron schedule for when value syncing should happen.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: state
+                  type: ${text.type}
+                  remarks: 'The status of the index: initializing, indexed, error, overflow.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: indexed_at
+                  type: ${timestamp_type}
+                  remarks: 'When the status changed'
+                  constraints:
+                    nullable: true
+              - column:
+                  name: error
+                  type: ${text.type}
+                  remarks: 'The error message if the status is error.'
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: 'The timestamp of when these changes were made.'
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: 'ID of the user who created the event'
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_model_index_creator_id
+                    deleteCascade: true
+      rollback:
+        - dropTable:
+            tableName: model_index
+
+  - changeSet:
+      id: v47.00-019
+      author: dpsutton
+      comment: Indexed Entities values table
+      changes:
+        - createTable:
+            tableName: model_index_value
+            remarks: 'Used to keep track of the values indexed in a model'
+            columns:
+              - column:
+                  name: model_index_id
+                  type: int
+                  remarks: 'The ID of the indexed model.'
+              - column:
+                  name: model_pk
+                  type: int
+                  remarks: 'The primary key of the indexed value'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: ${text.type}
+                  remarks: 'The label to display identifying the indexed value.'
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: model_index_value
+
+  - changeSet:
+      id: v47.00-020
+      author: dpsutton
+      comment: Add unique constraint on index_id and pk
+      changes:
+        - addUniqueConstraint:
+            tableName: model_index_value
+            constraintName: unique_model_index_value_model_index_id_model_pk
+            columnNames: model_index_id, model_pk
+      rollback:
+        - dropUniqueConstraint:
+            tableName: model_index_value
+            constraintName: unique_model_index_value_model_index_id_model_pk
+
+  - changeSet:
+      id: v47.00-023
+      author: dpsutton
+      comment: Added 0.47.0 -- model_index index
+      changes:
+        - createIndex:
+            tableName: model_index
+            columns:
+              - column:
+                  name: model_id
+            indexName: idx_model_index_model_id
+
+  - changeSet:
+      id: v47.00-024
+      author: dpsutton
+      comment: Added 0.47.0 -- model_index foriegn key to report_card
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: model_index
+            baseColumnNames: model_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_model_index_model_id
+            nullable: false
+            deleteCascade: true
+
+  - changeSet:
+      id: v47.00-025
+      author: dpsutton
+      comment: Added 0.47.0 -- model_index_value foriegn key to model_index
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: model_index_value
+            baseColumnNames: model_index_id
+            referencedTableName: model_index
+            referencedColumnNames: id
+            constraintName: fk_model_index_value_model_id
+            nullable: false
+            deleteCascade: true
+
+  - changeSet:
+      id: v47.00-027
+      author: calherres
+      comment: Added 0.47.0 - Migrate field_ref in report_card.result_metadata from legacy format
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyResultMetadataFieldRefs"
+
+  - changeSet:
+      id: v47.00-028
+      author: calherres
+      comment: Added 0.47.0 - Add join-alias to the report_card.visualization_settings.column_settings field refs
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.AddJoinAliasToVisualizationSettingsFieldRefs"
+
+  - changeSet:
+      id: v47.00-029
+      author: qnkhuat
+      comment: Added 0.47.0 - Stack cards vertically for dashboard with tabs on downgrade
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DowngradeDashboardTab"
+
+  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
 #

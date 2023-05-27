@@ -94,6 +94,9 @@ function ModelActionListItem({
         <div>
           <ActionTitle to={actionUrl}>{action.name}</ActionTitle>
           <ActionSubtitle>
+            {action.type === "implicit" && (
+              <ActionSubtitlePart>{t`Basic action`}</ActionSubtitlePart>
+            )}
             {action.public_uuid && (
               <ActionSubtitlePart>{t`Public action form`}</ActionSubtitlePart>
             )}
@@ -137,4 +140,5 @@ function ModelActionListItem({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelActionListItem;

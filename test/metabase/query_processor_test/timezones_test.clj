@@ -114,7 +114,7 @@
   "Map with different types of native params queries, used in test below. Key is a description of the type of native
   params in the query."
   []
-  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+  (sql.qp/with-driver-honey-sql-version driver/*driver*
     {"variable w/ single date"
      {:native     {:query         (honeysql->sql
                                    {:select   (mapv #(sql.qp/maybe-wrap-unaliased-expr (field-identifier :users %))

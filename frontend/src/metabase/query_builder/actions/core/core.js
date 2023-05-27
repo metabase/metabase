@@ -15,7 +15,10 @@ import { openUrl } from "metabase/redux/app";
 
 import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
+import { ModelIndexes } from "metabase/entities/model-indexes";
+
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import Revision from "metabase/entities/revisions";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
@@ -225,7 +228,12 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
-    rerunQuery = rerunQuery || getIsResultDirty(getState());
+    if (question.isDataset()) {
+      await dispatch(ModelIndexes.actions.updateModelIndexes(question));
+      question = ModelIndexes.actions.cleanIndexFlags(question);
+    }
+
+    rerunQuery = rerunQuery ?? getIsResultDirty(getState());
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
@@ -264,9 +272,10 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     dispatch({ type: API_UPDATE_QUESTION, payload: updatedQuestion.card() });
 
+    const metadataOptions = { reload: question.isDataset() };
+    await dispatch(loadMetadataForCard(question.card(), metadataOptions));
+
     if (rerunQuery) {
-      const metadataOptions = { reload: question.isDataset() };
-      await dispatch(loadMetadataForCard(question.card(), metadataOptions));
       dispatch(runQuestionQuery());
     }
   };
@@ -285,7 +294,7 @@ export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
   revision => {
     return async dispatch => {
-      await revision.revert();
+      await dispatch(Revision.objectActions.revert(revision));
       await dispatch(reloadCard());
     };
   },

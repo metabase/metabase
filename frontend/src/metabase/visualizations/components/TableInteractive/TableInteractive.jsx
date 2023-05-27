@@ -403,7 +403,7 @@ class TableInteractive extends Component {
 
   getHeaderClickedObject(columnIndex) {
     try {
-      return this._getHeaderClickedObjectCached(
+      return getTableHeaderClickedObject(
         this.props.data,
         columnIndex,
         this.props.isPivoted,
@@ -412,10 +412,6 @@ class TableInteractive extends Component {
     } catch (e) {
       console.error(e);
     }
-  }
-  // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
-  _getHeaderClickedObjectCached(data, columnIndex, isPivoted, query) {
-    return getTableHeaderClickedObject(data, columnIndex, isPivoted, query);
   }
 
   visualizationIsClickable(clicked) {
@@ -1109,6 +1105,7 @@ class TableInteractive extends Component {
 
       setTimeout(() => {
         const end = Date.now();
+        // eslint-disable-next-line no-console
         console.log(end - start);
         start = end;
 
@@ -1131,7 +1128,6 @@ export default _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   memoizeClass(
     "_getCellClickedObjectCached",
-    "_getHeaderClickedObjectCached",
     "_visualizationIsClickableCached",
     "getCellBackgroundColor",
     "getCellFormattedValue",

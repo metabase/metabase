@@ -1,4 +1,5 @@
 export * from "./core";
+export * from "./downloading";
 export * from "./models";
 export * from "./native";
 export * from "./navigation";

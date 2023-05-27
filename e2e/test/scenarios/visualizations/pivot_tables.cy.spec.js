@@ -40,6 +40,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   it("should be created from an ad-hoc question", () => {
     visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
     cy.findByTestId("viz-settings-button").click();
@@ -65,9 +66,11 @@ describe("scenarios > visualizations > pivot tables", () => {
     createAndVisitTestQuestion();
 
     // Switch to "ordinary" table
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
     cy.icon("table").should("be.visible").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(`Started from ${QUESTION_NAME}`);
 
     cy.log("Assertions on a table itself");
@@ -86,29 +89,42 @@ describe("scenarios > visualizations > pivot tables", () => {
   it("should allow drill through on cells", () => {
     createAndVisitTestQuestion();
     // open drill-through menu
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("783").click();
     // drill through to orders list
-    cy.findByText("View these Orders").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("See these Orders").click();
     // filters are applied
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Source is Affiliate");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Category is Doohickey");
     // data loads
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("45.04");
   });
 
   it("should allow drill through on left/top header values", () => {
     createAndVisitTestQuestion();
     // open drill-through menu and filter to that value
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Doohickey").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("=").click());
     // filter is applied
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Category is Doohickey");
     // filter out affiliate as a source
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Affiliate").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("≠").click());
     // filter is applied and value is gone from the left header
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Source is not Affiliate");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Affiliate").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3,193"); // new grand total
   });
 
@@ -125,6 +141,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     dragField(1, 0);
 
     // One field should now be empty
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Drag fields here");
 
     cy.log("Implicit assertions on a table itself");
@@ -194,25 +211,37 @@ describe("scenarios > visualizations > pivot tables", () => {
       },
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("215"); // see a non-subtotal value
 
     // click to collapse rows
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Doohickey").parent().find(".Icon-dash").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1,352"); // subtotal is still there
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("215").should("not.exist"); // value is hidden
 
     // click to uncollapse
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Totals for Doohickey").parent().find(".Icon-add").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("215"); // ...and it's back!
 
     // collapse the column
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product → Category").parent().find(".Icon-dash").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("215").should("not.exist"); // value is hidden
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("294").should("not.exist"); // value in another section is also hidden
 
     // uncollapse Doohickey
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Totals for Doohickey").parent().find(".Icon-add").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("215"); // value in doohickey is visible
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("294").should("not.exist"); // the other one is still hidden
   });
 
@@ -256,14 +285,20 @@ describe("scenarios > visualizations > pivot tables", () => {
     };
 
     visitQuestionAdhoc(questionDetails);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1162").should("be.visible");
     // Collapse "User ID" column
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User ID").parent().find(".Icon-dash").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Totals for 1162").should("be.visible");
 
     //Expanding the grouped column should still work
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Totals for 1162").parent().find(".Icon-add").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1162").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("34").should("be.visible");
   });
 
@@ -280,8 +315,10 @@ describe("scenarios > visualizations > pivot tables", () => {
       },
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3,520"); // check for one of the subtotals
 
     // open settings
@@ -290,12 +327,15 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     // Confirm that Product -> Category doesn't have the option to hide subtotals
     openColumnSettings(/Product → Category/);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show totals").should("not.be.visible");
 
     // turn off subtotals for User -> Source
     openColumnSettings(/Users? → Source/);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show totals").parent().find("input").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3,520").should("not.exist"); // the subtotal has disappeared!
   });
 
@@ -310,7 +350,9 @@ describe("scenarios > visualizations > pivot tables", () => {
       },
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("899").should("not.exist"); // confirm that "Affiliate" is collapsed
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3,520"); // affiliate subtotal is visible
 
     // open settings
@@ -318,15 +360,19 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     // turn off subtotals for User -> Source
     openColumnSettings(/Users? → Source/);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show totals").parent().find("input").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3,520").should("not.exist"); // the subtotal isn't there
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("899"); // Affiliate is no longer collapsed
   });
 
   it("should allow column formatting", () => {
     visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
     cy.findByTestId("viz-settings-button").click();
@@ -334,10 +380,12 @@ describe("scenarios > visualizations > pivot tables", () => {
     openColumnSettings(/Users? → Source/);
 
     cy.log("New panel for the column options");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Column title/);
 
     cy.log("Change the title for this column");
     cy.get("input[id=column_title]").clear().type("ModifiedTITLE").blur();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
     cy.get(".Visualization").within(() => {
       cy.findByText("ModifiedTITLE");
@@ -347,6 +395,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   it("should allow value formatting", () => {
     visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
     cy.findByTestId("viz-settings-button").click();
@@ -354,13 +403,19 @@ describe("scenarios > visualizations > pivot tables", () => {
     openColumnSettings(/Count/);
 
     cy.log("New panel for the column options");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column title");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Style");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Separator style");
 
     cy.log("Change the value formatting");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Normal").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Percent").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
     cy.get(".Visualization").within(() => {
       cy.findByText("78,300%");
@@ -370,12 +425,14 @@ describe("scenarios > visualizations > pivot tables", () => {
   it("should not allow sorting of value fields", () => {
     visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
     cy.findByTestId("viz-settings-button").click();
     assertOnPivotSettings();
     openColumnSettings(/Count/);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Sort order/).should("not.be.visible");
   });
 
@@ -408,12 +465,16 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     // sort descending
     cy.icon("arrow_down").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("158 – 160");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("8 – 10").should("not.exist");
 
     // sort ascending
     cy.icon("arrow_up").realClick();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("8 – 10");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("158 – 160").should("not.exist");
   });
 
@@ -428,6 +489,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       visualization_settings: {},
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pivot tables can only be used with aggregated queries.");
   });
 
@@ -455,15 +517,21 @@ describe("scenarios > visualizations > pivot tables", () => {
       });
 
       // value headings
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sum of Total");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sum of Twice Total");
 
       // check values in the table
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("42,156.87"); // sum of total for 2016
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("84,313.74"); // sum of "twice total" for 2016
 
       // check grand totals
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1,510,621.68"); // sum of total grand total
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("3,021,243.37"); // sum of "twice total" grand total
     });
 
@@ -488,51 +556,33 @@ describe("scenarios > visualizations > pivot tables", () => {
         display: "pivot",
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("category_foo");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Doohickeyfoo");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("42"); // count of Doohickeyfoo
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("200"); // grand total
     });
   });
 
   describe("dashboards", () => {
     beforeEach(() => {
-      cy.log("Create a question");
-      cy.request("POST", "/api/card", {
-        name: QUESTION_NAME,
-        dataset_query: testQuery,
-        display: "pivot",
-        visualization_settings: {},
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.createDashboard({ name: DASHBOARD_NAME }).then(
-          ({ body: { id: DASHBOARD_ID } }) => {
-            cy.log("Add previously created question to that dashboard");
-            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cardId: QUESTION_ID,
-              row: 0,
-              col: 0,
-              size_x: 12,
-              size_y: 8,
-            }).then(({ body: { id: DASH_CARD_ID } }) => {
-              cy.log("Resize the dashboard card");
-              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cards: [
-                  {
-                    id: DASH_CARD_ID,
-                    card_id: QUESTION_ID,
-                    row: 0,
-                    col: 0,
-                    size_x: 12,
-                    size_y: 8,
-                  },
-                ],
-              });
-              cy.log("Open the dashboard");
-              visitDashboard(DASHBOARD_ID);
-            });
-          },
-        );
-      });
+      cy.createQuestionAndDashboard({
+        questionDetails: {
+          name: QUESTION_NAME,
+          query: testQuery.query,
+          display: "pivot",
+        },
+        dashboardDetails: {
+          name: DASHBOARD_NAME,
+        },
+        cardDetails: {
+          size_x: 12,
+          size_y: 8,
+        },
+      }).then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id));
     });
 
     it("should display a pivot table on a dashboard (metabase#14465)", () => {
@@ -541,11 +591,17 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     it("should allow filtering drill through (metabase#14632)", () => {
       assertOnPivotFields();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Google").click(); // open drill-through menu
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       popover().within(() => cy.findByText("=").click()); // drill with additional filter
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Source is Google"); // filter was added
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row totals"); // it's still a pivot table
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1,027"); // primary data value
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("3,798"); // subtotal value
     });
   });
@@ -554,56 +610,38 @@ describe("scenarios > visualizations > pivot tables", () => {
     beforeEach(() => {
       cy.viewport(1400, 800); // Row totals on embed preview was getting cut off at the normal width
       cy.log("Create a question");
-      cy.request("POST", "/api/card", {
-        name: QUESTION_NAME,
-        dataset_query: testQuery,
-        display: "pivot",
-        visualization_settings: {},
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.log("Enable sharing");
-        cy.request("POST", `/api/card/${QUESTION_ID}/public_link`);
 
-        cy.log("Enable embedding");
-        cy.request("PUT", `/api/card/${QUESTION_ID}`, {
+      cy.createQuestionAndDashboard({
+        questionDetails: {
+          name: QUESTION_NAME,
+          query: testQuery.query,
+          display: "pivot",
+        },
+        dashboardDetails: {
+          name: DASHBOARD_NAME,
+        },
+        cardDetails: {
+          size_x: 12,
+          size_y: 8,
+        },
+      }).then(({ body: { card_id, dashboard_id } }) => {
+        cy.log("Enable sharing on card");
+        cy.request("POST", `/api/card/${card_id}/public_link`);
+
+        cy.log("Enable embedding on card");
+        cy.request("PUT", `/api/card/${card_id}`, {
           enable_embedding: true,
         });
 
-        cy.createDashboard({ name: DASHBOARD_NAME }).then(
-          ({ body: { id: DASHBOARD_ID } }) => {
-            cy.log("Add previously created question to that dashboard");
-            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cardId: QUESTION_ID,
-              row: 0,
-              col: 0,
-              size_x: 12,
-              size_y: 8,
-            }).then(({ body: { id: DASH_CARD_ID } }) => {
-              cy.log("Resize the dashboard card");
-              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cards: [
-                  {
-                    id: DASH_CARD_ID,
-                    card_id: QUESTION_ID,
-                    row: 0,
-                    col: 0,
-                    size_x: 12,
-                    size_y: 8,
-                  },
-                ],
-              });
-            });
+        cy.log("Enable sharing on dashboard");
+        cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`);
 
-            cy.log("Enable sharing");
-            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/public_link`);
+        cy.log("Enable embedding on dashboard");
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          enable_embedding: true,
+        });
 
-            cy.log("Enable embedding");
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-              enable_embedding: true,
-            });
-          },
-        );
-
-        visitQuestion(QUESTION_ID);
+        visitQuestion(card_id);
       });
     });
 
@@ -611,11 +649,13 @@ describe("scenarios > visualizations > pivot tables", () => {
       describe(test.case, () => {
         beforeEach(() => {
           cy.visit("collection/root");
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(test.subject).click();
           cy.icon("share").click();
         });
 
         it("should display pivot table in a public link", () => {
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Public link")
             .parent()
             .find("input")
@@ -629,15 +669,19 @@ describe("scenarios > visualizations > pivot tables", () => {
 
         // Skipped to avoid flake
         it.skip("should display pivot table in an embed preview", () => {
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(/Embed in your application/).click();
           // we use preview endpoints when MB is iframed in itself
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(test.subject);
           getIframeBody().within(assertOnPivotFields);
         });
 
         it("should display pivot table in an embed URL", () => {
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(/Embed in your application/).click();
 
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Publish").click();
 
           // visit the iframe src directly to ensure it's not sing preview endpoints
@@ -653,6 +697,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   it("should open the download popover (metabase#14750)", () => {
     createAndVisitTestQuestion();
     cy.icon("download").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("Download full results"));
   });
 
@@ -678,8 +723,11 @@ describe("scenarios > visualizations > pivot tables", () => {
       visitQuestion(QUESTION_ID);
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Grand totals");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Row totals");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("200");
   });
 
@@ -719,6 +767,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       display: "line",
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
     leftSidebar().within(() => {
       // This part is still failing. Uncomment when fixed.
@@ -783,12 +832,18 @@ describe("scenarios > visualizations > pivot tables", () => {
       },
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("November 9, 2016");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("November 10, 2016");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("November 11, 2016");
     collapseRowsFor("Created At: Day");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Totals for November 9, 2016");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Totals for November 10, 2016");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Totals for November 11, 2016");
 
     function collapseRowsFor(column_name) {
@@ -876,13 +931,18 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
 
     cy.findByTestId("viz-settings-button").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Conditional Formatting").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add a rule").click();
     cy.findByTestId("conditional-formatting-value-input").type("70");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("is equal to").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("is less than or equal to").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("[data-testid=pivot-table-cell]", "65.09").should(
       "have.css",
       "background-color",

@@ -26,4 +26,5 @@ const NewItemButton = ({ collectionId }: NewItemButtonProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default NewItemButton;

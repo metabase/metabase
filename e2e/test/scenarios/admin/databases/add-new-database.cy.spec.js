@@ -19,6 +19,7 @@ describe("admin > database > add", () => {
 
     cy.visit("/admin/databases/create");
     // should display a setup help card
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Need help connecting?");
 
     cy.findByLabelText("Database type").click();
@@ -29,7 +30,7 @@ describe("admin > database > add", () => {
       if (isEE) {
         // EE should ship with Oracle and Vertica as options
         cy.findByText("Oracle");
-        // cy.findByText("Vertica");
+        cy.findByText("Vertica");
       }
       cy.findByText("H2").click();
     });
@@ -40,7 +41,9 @@ describe("admin > database > add", () => {
     // should surface an error if the connection string is invalid
     cy.button("Save").click();
     cy.wait("@createDatabase");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(": check your connection string");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Implicitly relative file paths are not allowed.");
 
     // should be able to recover from an error and add database with the correct connection string
@@ -56,8 +59,10 @@ describe("admin > database > add", () => {
 
   describe("external databases", { tags: "@external" }, () => {
     it("should add Postgres database and redirect to listing (metabase#12972, metabase#14334, metabase#17450)", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("PostgreSQL").click({ force: true });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Show advanced options").click();
 
       // Reproduces (metabase#14334)
@@ -66,6 +71,7 @@ describe("admin > database > add", () => {
         "aria-checked",
         "true",
       );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Additional JDBC connection string options");
       // Reproduces (metabase#17450)
       cy.findByLabelText("Choose when syncs and scans happen")
@@ -143,6 +149,7 @@ describe("admin > database > add", () => {
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("We're taking a look at your database!");
       cy.findByLabelText("close icon").click();
 
@@ -169,8 +176,11 @@ describe("admin > database > add", () => {
     });
 
     it("should add Mongo database and redirect to listing", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("MongoDB").click({ force: true });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Show advanced options").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Additional connection string options");
 
       typeAndBlurUsingLabel("Display name", "QA Mongo4");
@@ -181,6 +191,7 @@ describe("admin > database > add", () => {
       typeAndBlurUsingLabel("Password", "metasample123");
       typeAndBlurUsingLabel("Authentication database (optional)", "admin");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").should("not.be.disabled").click();
 
       cy.wait("@createDatabase");
@@ -200,7 +211,9 @@ describe("admin > database > add", () => {
     it("should add Mongo database via the connection string", () => {
       const connectionString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("MongoDB").click({ force: true });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Paste a connection string").click();
       typeAndBlurUsingLabel("Display name", "QA Mongo4");
       cy.findByLabelText("Port").should("not.exist");
@@ -211,6 +224,7 @@ describe("admin > database > add", () => {
         },
       );
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").should("not.be.disabled").click();
 
       cy.wait("@createDatabase");
@@ -228,8 +242,11 @@ describe("admin > database > add", () => {
     });
 
     it("should add MySQL database and redirect to listing", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("MySQL").click({ force: true });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Show advanced options").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Additional JDBC connection string options");
 
       typeAndBlurUsingLabel("Display name", "QA MySQL8");
@@ -246,6 +263,7 @@ describe("admin > database > add", () => {
         "allowPublicKeyRetrieval=true",
       );
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").should("not.be.disabled").click();
 
       cy.wait("@createDatabase");

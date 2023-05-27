@@ -10,7 +10,7 @@
 
 (driver/register! ::tz-driver, :abstract? true)
 
-(defmethod driver/supports? [::tz-driver :set-timezone] [_ _] true)
+(defmethod driver/database-supports? [::tz-driver :set-timezone] [_driver _feature _db] true)
 
 (defn- wrap-value-literals
   {:style/indent 0}

@@ -8,7 +8,7 @@ import {
   openQuestionActions,
   questionInfoButton,
   rightSidebar,
-  appbar,
+  appBar,
   getCollectionIdFromSlug,
 } from "e2e/support/helpers";
 
@@ -22,28 +22,38 @@ describe("scenarios > question > saved", () => {
     openOrdersTable();
     cy.icon("notebook").click();
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     popover().findByText("Total").click();
     // Save the question
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     modal().within(() => {
       cy.findByText("Save").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").should("not.exist");
 
     // Add a filter in order to be able to save question again
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
     popover()
       .findByText(/^Total$/)
       .click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Equal to").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Greater than").click();
     cy.findByPlaceholderText("Enter a number").type("60");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
     // Save question - opens "Save question" modal
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     modal().within(() => {
@@ -55,7 +65,11 @@ describe("scenarios > question > saved", () => {
         "**When there is no question name, it shouldn't be possible to save**",
       );
       cy.findByText("Save as new question").click();
-      cy.findByLabelText("Name").should("be.empty");
+      cy.findByLabelText("Name")
+        .click()
+        .type("{selectall}{backspace}", { delay: 50 })
+        .blur();
+      cy.findByLabelText("Name: required").should("be.empty");
       cy.findByLabelText("Description").should("be.empty");
       cy.get("@saveButton").should("be.disabled");
 
@@ -72,17 +86,22 @@ describe("scenarios > question > saved", () => {
     cy.findAllByText("Orders"); // question and table name appears
 
     // filter to only orders with quantity=100
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("Filter by this column").click());
     popover().within(() => {
       cy.findByPlaceholderText("Search the list").type("100");
       cy.findByText("100").click();
       cy.findByText("Add filter").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 100");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 2 rows"); // query updated
 
     // check that save will give option to replace
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     modal().within(() => {
       cy.findByText('Replace original question, "Orders"');
@@ -91,9 +110,13 @@ describe("scenarios > question > saved", () => {
     });
 
     // click "Started from Orders" and check that the original question is restored
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Started from").within(() => cy.findByText("Orders").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing first 2,000 rows"); // query updated
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Started from").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 100").should("not.exist");
   });
 
@@ -142,20 +165,25 @@ describe("scenarios > question > saved", () => {
       cy.findByTestId("question-revert-button").click();
     });
 
-    cy.findByText(/reverted to an earlier revision/i);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(/reverted to an earlier version/i);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/This is a question/i).should("not.exist");
   });
 
   it("should show table name in header with a table info popover on hover", () => {
     visitQuestion(1);
     cy.findByTestId("question-table-badges").trigger("mouseenter");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("9 columns");
   });
 
   it("should show collection breadcrumbs for a saved question in the root collection", () => {
     visitQuestion(1);
-    appbar().within(() => cy.findByText("Our analytics").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    appBar().within(() => cy.findByText("Our analytics").click());
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
   });
 
@@ -165,8 +193,10 @@ describe("scenarios > question > saved", () => {
     });
 
     visitQuestion(1);
-    appbar().within(() => cy.findByText("Second collection").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    appBar().within(() => cy.findByText("Second collection").click());
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
   });
 
@@ -179,7 +209,7 @@ describe("scenarios > question > saved", () => {
       cy.button("Done").click();
     });
 
-    appbar().within(() => {
+    appBar().within(() => {
       cy.findByText("Started from").should("be.visible");
       cy.findByText("Orders").click();
       cy.findByText("Started from").should("not.exist");
@@ -190,6 +220,7 @@ describe("scenarios > question > saved", () => {
     cy.signIn("readonly");
     visitQuestion(1);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Tax")
       .closest(".TableInteractive-headerCellData")
       .as("headerCell")

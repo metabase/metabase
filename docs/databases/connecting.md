@@ -45,6 +45,10 @@ For provider-specific connection details, like connecting to a PostgreSQL data w
 
 - [AWS's Relational Database Service (RDS)](./connections/aws-rds.md)
 
+## Granting database privileges
+
+For Metabase to connect, query, or write to your database, you must give Metabase a database user account with the correct database privileges. See [Database roles, users, and privileges](./users-roles-privileges.md).
+
 ## Syncing and scanning databases
 
 See [Syncing and scanning](./sync-scan.md).

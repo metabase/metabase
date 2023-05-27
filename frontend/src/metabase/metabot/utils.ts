@@ -4,7 +4,9 @@ import Database from "metabase-lib/metadata/Database";
 export const canUseMetabotOnDatabase = (database: Database) => {
   return (
     database.features.includes("nested-queries") &&
-    database.canWrite() &&
-    getEngineNativeType(database.engine) === "sql"
+    canGenerateQueriesForDatabase(database)
   );
 };
+
+export const canGenerateQueriesForDatabase = (database: Database) =>
+  database.canWrite() && getEngineNativeType(database.engine) === "sql";

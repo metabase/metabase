@@ -32,12 +32,13 @@ const EntityMenuItem = ({
   onClose,
 }: EntityMenuItemProps): JSX.Element | null => {
   if (link && action) {
-    return <div />;
+    // You cannot specify both action and link props!
+    return null;
   }
 
   const content = (
     <MenuItemContent disabled={disabled}>
-      {icon && <MenuItemIcon name={icon} />}
+      {icon && <MenuItemIcon name={icon} size={16} />}
       <MenuItemTitle>{title}</MenuItemTitle>
     </MenuItemContent>
   );
@@ -140,4 +141,5 @@ const LinkMenuItem = ({
   </Tooltip>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EntityMenuItem;

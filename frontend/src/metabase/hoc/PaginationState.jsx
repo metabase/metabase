@@ -1,6 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 const paginationState = () => ComposedComponent =>
   class extends React.Component {
     constructor(props) {

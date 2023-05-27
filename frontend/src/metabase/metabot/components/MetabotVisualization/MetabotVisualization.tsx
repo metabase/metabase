@@ -1,39 +1,42 @@
 import React from "react";
 import { connect } from "react-redux";
 import { checkNotNull } from "metabase/core/utils/types";
+import { getMetadata } from "metabase/selectors/metadata";
 import MetabotMode from "metabase/modes/components/modes/MetabotMode";
-import { Dataset } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
-import { getQueryResults, getQuestion } from "../../selectors";
+import Metadata from "metabase-lib/metadata/Metadata";
+import { getQueryResultsError, getRawSeries } from "../../selectors";
 import { FullVisualization } from "./MetabotVisualization.styled";
 
 interface StateProps {
-  question: Question;
-  queryResults: [Dataset];
+  rawSeries: unknown[];
+  error: unknown;
+  metadata: Metadata;
 }
 
 type MetabotVisualizationProps = StateProps;
 
 const mapStateToProps = (state: State): StateProps => ({
-  question: checkNotNull(getQuestion(state)),
-  queryResults: checkNotNull(getQueryResults(state)),
+  rawSeries: checkNotNull(getRawSeries(state)),
+  metadata: getMetadata(state),
+  error: getQueryResultsError(state),
 });
 
 const MetabotVisualization = ({
-  question,
-  queryResults: [result],
+  rawSeries,
+  metadata,
+  error,
 }: MetabotVisualizationProps) => {
-  const card = question.card();
-
   return (
     <FullVisualization
+      showTitle
       mode={MetabotMode}
-      rawSeries={[{ card, data: result && result.data }]}
-      error={result && result.error}
-      metadata={question.metadata()}
+      rawSeries={rawSeries}
+      metadata={metadata}
+      error={error}
     />
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(MetabotVisualization);

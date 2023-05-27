@@ -1,10 +1,12 @@
 (ns metabase.lib.js.metadata
   (:require
+   [clojure.core.protocols]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [goog]
    [goog.object :as gobject]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -25,27 +27,35 @@
   (when obj
     (gobject/get obj k)))
 
-(defn- obj->clj [xform obj]
-  (if-let [plain-object (some-> (object-get obj "_plainObject")
-                                js->clj
-                                not-empty)]
-    (into {} xform plain-object)
-    (into {}
-          (comp
-           (map (fn [k]
-                  [k (object-get obj k)]))
-           ;; ignore values that are functions
-           (remove (fn [[_k v]]
-                     (= (goog/typeOf v) "function")))
-           xform)
-          (gobject/getKeys obj))))
+(defn- obj->clj
+  "Convert a JS object of *any* class to a ClojureScript object."
+  [xform obj]
+  (if (map? obj)
+    ;; already a ClojureScript object.
+    (into {} xform obj)
+    ;; has a plain-JavaScript `_plainObject` attached: apply `xform` to it and call it a day
+    (if-let [plain-object (some-> (object-get obj "_plainObject")
+                                  js->clj
+                                  not-empty)]
+      (into {} xform plain-object)
+      ;; otherwise do things the hard way and convert an arbitrary object into a Cljs map. (`js->clj` doesn't work on
+      ;; arbitrary classes other than `Object`)
+      (into {}
+            (comp
+             (map (fn [k]
+                    [k (object-get obj k)]))
+             ;; ignore values that are functions
+             (remove (fn [[_k v]]
+                       (= (goog/typeOf v) "function")))
+             xform)
+            (gobject/getKeys obj)))))
 
 ;;; this intentionally does not use the lib hierarchy since it's not dealing with MBQL/lib keys
-(defmulti ^:private excluded-fields
+(defmulti ^:private excluded-keys
   {:arglists '([object-type])}
   keyword)
 
-(defmethod excluded-fields :default
+(defmethod excluded-keys :default
   [_]
   nil)
 
@@ -65,22 +75,27 @@
   nil)
 
 (defmulti ^:private lib-type
+  "The metadata type that should be attached the sorts of metadatas with the `:lib/type` key, e.g. `:metadata/table`."
   {:arglists '([object-type])}
   keyword)
 
 (defn- parse-object-xform [object-type]
-  (let [excluded-fields-set (excluded-fields object-type)
-        parse-field         (parse-field-fn object-type)]
-    (comp (map (fn [[k v]]
-                 [(keyword k) v]))
-          (if (empty? excluded-fields-set)
-            identity
-            (remove (fn [[k _v]]
-                      (contains? excluded-fields-set k))))
-          (if-not parse-field
-            identity
-            (map (fn [[k v]]
-                   [k (parse-field k v)]))))))
+  (let [excluded-keys-set (excluded-keys object-type)
+        parse-field       (parse-field-fn object-type)]
+    (comp
+     ;; convert keys to kebab-case keywords
+     (map (fn [[k v]]
+            [(keyword (u/->kebab-case-en k)) v]))
+     ;; remove [[excluded-keys]]
+     (if (empty? excluded-keys-set)
+       identity
+       (remove (fn [[k _v]]
+                 (contains? excluded-keys-set k))))
+     ;; parse each key with its [[parse-field-fn]]
+     (if-not parse-field
+       identity
+       (map (fn [[k v]]
+              [k (parse-field k v)]))))))
 
 (defn- parse-object-fn [object-type]
   (let [xform         (parse-object-xform object-type)
@@ -116,7 +131,7 @@
   [_object-type]
   :metadata/database)
 
-(defmethod excluded-fields :database
+(defmethod excluded-keys :database
   [_object-type]
   #{:tables :fields})
 
@@ -124,9 +139,9 @@
   [_object-type]
   (fn [k v]
     (case k
-      :dbms_version       (js->clj v :keywordize-keys true)
+      :dbms-version       (js->clj v :keywordize-keys true)
       :features           (into #{} (map keyword) v)
-      :native_permissions (keyword v)
+      :native-permissions (keyword v)
       v)))
 
 (defmethod parse-objects-default-key :database
@@ -137,18 +152,18 @@
   [_object-type]
   :metadata/table)
 
-(defmethod excluded-fields :table
+(defmethod excluded-keys :table
   [_object-type]
-  #{:database :fields :segments :metrics :dimension_options})
+  #{:database :fields :segments :metrics :dimension-options})
 
 (defmethod parse-field-fn :table
   [_object-type]
   (fn [k v]
     (case k
-      :entity_type         (keyword v)
-      :field_order         (keyword v)
-      :initial_sync_status (keyword v)
-      :visibility_type     (keyword v)
+      :entity-type         (keyword v)
+      :field-order         (keyword v)
+      :initial-sync-status (keyword v)
+      :visibility-type     (keyword v)
       v)))
 
 (defmethod parse-objects :table
@@ -164,12 +179,12 @@
   [_object-type]
   :metadata/field)
 
-(defmethod excluded-fields :field
+(defmethod excluded-keys :field
   [_object-type]
   #{:_comesFromEndpoint
     :database
-    :default_dimension_option
-    :dimension_options
+    :default-dimension-option
+    :dimension-options
     :dimensions
     :metrics
     :table})
@@ -178,13 +193,13 @@
   [_object-type]
   (fn [k v]
     (case k
-      :base_type         (keyword v)
-      :coercion_strategy (keyword v)
-      :effective_type    (keyword v)
+      :base-type         (keyword v)
+      :coercion-strategy (keyword v)
+      :effective-type    (keyword v)
       :fingerprint       (walk/keywordize-keys v)
-      :has_field_values  (keyword v)
-      :semantic_type     (keyword v)
-      :visibility_type   (keyword v)
+      :has-field-values  (keyword v)
+      :semantic-type     (keyword v)
+      :visibility-type   (keyword v)
       v)))
 
 (defmethod parse-objects-default-key :field
@@ -195,27 +210,44 @@
   [_object-type]
   :metadata/card)
 
-(defmethod excluded-fields :card
+(defmethod excluded-keys :card
   [_object-type]
   #{:database
     :dimension_options
     :table})
 
+(defn- parse-fields [fields]
+  (mapv (parse-object-fn :field) fields))
+
 (defmethod parse-field-fn :card
   [_object-type]
-  (fn [_k v]
-    v))
+  (fn [k v]
+    (case k
+      :result-metadata (if ((some-fn sequential? array?) v)
+                         (parse-fields v)
+                         (js->clj v :keywordize-keys true))
+      :fields          (parse-fields v)
+      :visibility-type (keyword v)
+      :dataset-query   (js->clj v :keywordize-keys true)
+      ;; this is not complete, add more stuff as needed.
+      v)))
+
+(defn- unwrap-card
+  "Sometimes a card is stored in the metadata as some sort of weird object where the thing we actually want is under the
+  key `_card` (not sure why), but if it is just unwrap it and then parse it normally."
+  [obj]
+  (or (object-get obj "_card")
+      obj))
 
 (defmethod parse-objects :card
   [object-type metadata]
-  (let [parse-card (parse-object-fn object-type)]
+  (let [parse-card (comp (parse-object-fn object-type) unwrap-card)]
     (merge
      (obj->clj (comp (filter (fn [[k _v]]
                                (str/starts-with? k "card__")))
                      (map (fn [[s v]]
-                            (when-let [[_ id-str] (re-find #"^card__(\d+)$" s)]
-                              (let [id (parse-long id-str)]
-                                [id (delay (assoc (parse-card v) :id id))])))))
+                            (when-let [id (lib.util/string-table-id->card-id s)]
+                              [id (delay (assoc (parse-card v) :id id))]))))
                (object-get metadata "tables"))
      (obj->clj (comp (map (fn [[k v]]
                             [(parse-long k) (delay (parse-card v))])))
@@ -225,7 +257,7 @@
   [_object-type]
   :metadata/metric)
 
-(defmethod excluded-fields :metric
+(defmethod excluded-keys :metric
   [_object-type]
   #{:database :table})
 
@@ -242,7 +274,7 @@
   [_object-type]
   :metadata/segment)
 
-(defmethod excluded-fields :segment
+(defmethod excluded-keys :segment
   [_object-type]
   #{:database :table})
 
@@ -292,19 +324,19 @@
 (defn- tables [metadata database-id]
   (for [[_id table-delay]  (some-> metadata :tables deref)
         :let               [a-table (some-> table-delay deref)]
-        :when              (and a-table (= (:db_id a-table) database-id))]
+        :when              (and a-table (= (:db-id a-table) database-id))]
     a-table))
 
 (defn- fields [metadata table-id]
   (for [[_id field-delay]  (some-> metadata :fields deref)
         :let               [a-field (some-> field-delay deref)]
-        :when              (and a-field (= (:table_id a-field) table-id))]
+        :when              (and a-field (= (:table-id a-field) table-id))]
     a-field))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
-  [database-id metadata]
-  (let [metadata (parse-metadata metadata)]
+  [database-id unparsed-metadata]
+  (let [metadata (parse-metadata unparsed-metadata)]
     (log/debug "Created metadata provider for metadata")
     (reify lib.metadata.protocols/MetadataProvider
       (database [_this]            (database metadata database-id))
@@ -314,4 +346,15 @@
       (segment  [_this segment-id] (segment  metadata segment-id))
       (card     [_this card-id]    (card     metadata card-id))
       (tables   [_this]            (tables   metadata database-id))
-      (fields   [_this table-id]   (fields   metadata table-id)))))
+      (fields   [_this table-id]   (fields   metadata table-id))
+
+      ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
+      ;; thing at once.
+      clojure.core.protocols/Datafiable
+      (datafy [_this]
+        (walk/postwalk
+         (fn [form]
+           (if (delay? form)
+             (deref form)
+             form))
+         metadata)))))

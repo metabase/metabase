@@ -6,7 +6,6 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -19,10 +18,8 @@
 (deftest ^:parallel expression-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type :pipeline
            :stages [{:lib/type :mbql.stage/mbql
                      :source-table (meta/id :venues)
-                     :lib/options {:lib/uuid string?}
                      :expressions {"myadd" [:+ {:lib/uuid string?}
                                             1
                                             [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]}}]}
@@ -51,8 +48,8 @@
                           (lib/ceil float-field) :type/Integer
                           (lib/floor float-field) :type/Integer
                           (lib/round float-field) :type/Integer
-                          (lib/power int-field float-field) :type/Number
-                          (lib/interval 1 :month) :type/Integer ;; Need an interval type
+                          (lib/power int-field float-field) :type/Float
+                          (lib/interval 1 :month) :type/Interval
                           #_#_(lib/relative-datetime "2020-01-01" :default) :type/DateTime
                           (lib/time "08:00:00" :hour) :type/Time
                           #_#_(lib/absolute-datetime "2020-01-01" :default) :type/DateTimeWithTZ
@@ -82,14 +79,14 @@
         (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                         (lib/expression "myexpr" expr))
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
-          (is (mc/validate ::lib.schema/query query))
-          (is (mc/validate ::schema.common/external-op resolved))
-          (is (= typ (lib.schema.expression/type-of resolved))))))))
+          (testing (pr-str resolved)
+            (is (mc/validate ::lib.schema/query query))
+            (is (= typ (lib.schema.expression/type-of resolved)))))))))
 
 (deftest ^:parallel col-info-expression-ref-test
-  (is (=? {:base_type    :type/Integer
+  (is (=? {:base-type    :type/Integer
            :name         "double-price"
-           :display_name "double-price"
+           :display-name "double-price"
            :lib/source   :source/expressions}
           (lib.metadata.calculation/metadata
            (lib.tu/venues-query-with-last-stage
@@ -108,8 +105,8 @@
                                             [:interval {:lib/uuid (str (random-uuid))} -1 :month]]}
                 :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
     (is (=? [{:name         "prev_month"
-              :display_name "prev_month"
-              :base_type    :type/DateTime
+              :display-name "prev_month"
+              :base-type    :type/DateTime
               :lib/source   :source/expressions}]
             (lib.metadata.calculation/metadata query)))))
 
@@ -119,7 +116,7 @@
                 (lib.tu/field-clause :checkins :date {:base-type :type/Date})
                 -1
                 :day]]
-    (is (= "date_minus_1_day"
+    (is (= "DATE_minus_1_day"
            (lib.metadata.calculation/column-name lib.tu/venues-query -1 clause)))
     (is (= "Date - 1 day"
            (lib.metadata.calculation/display-name lib.tu/venues-query -1 clause)))))
@@ -141,7 +138,7 @@
 
 (deftest ^:parallel coalesce-names-test
   (let [clause [:coalesce {} (lib.tu/field-clause :venues :name) "<Venue>"]]
-    (is (= "name"
+    (is (= "NAME"
            (lib.metadata.calculation/column-name lib.tu/venues-query -1 clause)))
     (is (= "Name"
            (lib.metadata.calculation/display-name lib.tu/venues-query -1 clause)))))
@@ -164,8 +161,8 @@
     (testing "Uses the first clause"
       (testing "Gets the type information from the field"
         (is (=? {:name         "expr"
-                 :display_name "expr"
-                 :base_type    :type/Text}
+                 :display-name "expr"
+                 :base-type    :type/Text}
                 (infer-first [:coalesce
                               {:lib/uuid (str (random-uuid))}
                               (lib.tu/field-clause :venues :name)
@@ -174,9 +171,9 @@
           (is (not (contains? (infer-first [:coalesce {:lib/uuid (str (random-uuid))} (lib.tu/field-clause :venues :name) "bar"])
                               :id)))))
       (testing "Gets the type information from the literal"
-        (is (=? {:base_type    :type/Text
+        (is (=? {:base-type    :type/Text
                  :name         "expr"
-                 :display_name "expr"}
+                 :display-name "expr"}
                 (infer-first [:coalesce {:lib/uuid (str (random-uuid))} "bar" (lib.tu/field-clause :venues :name)])))))))
 
 (deftest ^:parallel infer-case-test
@@ -184,8 +181,8 @@
     (testing "Uses first available type information"
       (testing "From a field"
         (is (=? {:name         "expr"
-                 :display_name "expr"
-                 :base_type    :type/Text}
+                 :display-name "expr"
+                 :base-type    :type/Text}
                 (infer-first [:coalesce
                               {:lib/uuid (str (random-uuid))}
                               (lib.tu/field-clause :venues :name)
@@ -196,9 +193,9 @@
                           :id))))))))
 
 (deftest ^:parallel col-info-for-temporal-expression-test
-  (is (=? {:base_type    :type/DateTime
+  (is (=? {:base-type    :type/DateTime
            :name         "last-login-plus-2"
-           :display_name "last-login-plus-2"
+           :display-name "last-login-plus-2"
            :lib/source   :source/expressions}
           (lib.metadata.calculation/metadata
            (lib.tu/venues-query-with-last-stage
@@ -229,8 +226,9 @@
               arg-2 [1 1.0]
               :let  [clause [tag {:lib/uuid (str (random-uuid))} field arg-2]]]
         (testing (str \newline (pr-str clause))
-          (is (= :type/*
-                 (lib.schema.expression/type-of clause)))
+          (testing "assume :type/Number for refs with unknown types (#29946)"
+            (is (= :type/Number
+                   (lib.schema.expression/type-of clause))))
           (is (= (condp = arg-2
                    1   :type/Integer
                    1.0 :type/Number)
@@ -247,7 +245,7 @@
 (deftest ^:parallel expressions-names-test
   (testing "expressions should include the original expression name"
     (is (=? [{:name         "expr"
-              :display_name "expr"}]
+              :display-name "expr"}]
             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
-                lib/expressions)))))
+                lib/expressions-metadata)))))

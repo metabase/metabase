@@ -1,7 +1,6 @@
 (ns metabase.models.interface
   (:require
    [buddy.core.codecs :as codecs]
-   [camel-snake-kebab.core :as csk]
    [cheshire.core :as json]
    [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
@@ -25,6 +24,8 @@
    [taoensso.nippy :as nippy]
    [toucan.models :as models]
    [toucan2.core :as t2]
+   [toucan2.model :as t2.model]
+   [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.util :as t2.u])
@@ -227,10 +228,6 @@
     (blob->bytes v)
     v))
 
-(models/add-type! :secret-value
-  :in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
-  :out (comp encryption/maybe-decrypt maybe-blob->bytes))
-
 (defn decompress
   "Decompress `compressed-bytes`."
   [compressed-bytes]
@@ -373,6 +370,119 @@
   :args ::define-hydration-method
   :ret  any?)
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Toucan 2 Extensions                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; --- transforms methods
+(def transform-metabase-query
+  "Transform for metabase-query."
+  {:in  (comp json-in maybe-normalize)
+   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization)})
+
+(def normalize-field-ref
+  "Normalize the field ref. Ensure it's well-formed mbql, not just json."
+  (comp #'mbql.normalize/canonicalize-mbql-clauses
+        #'mbql.normalize/normalize-tokens))
+
+(def transform-field-ref
+  "Transform field refs"
+  {:in  json-in
+   :out (comp (catch-normalization-exceptions normalize-field-ref) json-out-with-keywordization)})
+
+(defn- result-metadata-out
+  "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
+  [metadata]
+  (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
+    (seq (map mbql.normalize/normalize-source-metadata metadata))))
+
+(def transform-result-metadata
+  "Transform for card.result_metadata like columns."
+  {:in  json-in
+   :out result-metadata-out})
+
+(def transform-keyword
+  "Transform for keywords."
+  {:in  u/qualified-name
+   :out keyword})
+
+(def transform-json
+  "Transform for json."
+  {:in  json-in
+   :out json-out-with-keywordization})
+
+(def transform-json-no-keywordization
+  "Transform for json-no-keywordization"
+  {:in  json-in
+   :out json-out-without-keywordization})
+
+(def transform-encrypted-json
+  "Transform for encrypted json."
+  {:in  encrypted-json-in
+   :out cached-encrypted-json-out})
+
+(def transform-visualization-settings
+  "Transform for viz-settings."
+  {:in  (comp json-in migrate-viz-settings)
+   :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
+
+(def transform-parameters-list
+  "Transform for parameters list."
+  {:in  (comp json-in normalize-parameters-list)
+   :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
+
+(def transform-secret-value
+  "Transform for secret value."
+  {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
+   :out (comp encryption/maybe-decrypt maybe-blob->bytes)})
+
+(def transform-encrypted-text
+  "Transform for encrypted text."
+  {:in  encryption/maybe-encrypt
+   :out encryption/maybe-decrypt})
+
+(def transform-cron-string
+  "Transform for encrypted json."
+  {:in  validate-cron-string
+   :out identity})
+
+;; --- predefined hooks
+
+(t2/define-before-insert :hook/timestamped?
+  [instance]
+  (-> instance
+      add-updated-at-timestamp
+      add-created-at-timestamp))
+
+(t2/define-before-update :hook/timestamped?
+  [instance]
+  (-> instance
+      add-updated-at-timestamp))
+
+(t2/define-before-insert :hook/created-at-timestamped?
+  [instance]
+  (-> instance
+      add-created-at-timestamp))
+
+(t2/define-before-insert :hook/updated-at-timestamped?
+  [instance]
+  (-> instance
+      add-updated-at-timestamp))
+
+(t2/define-before-insert :hook/entity-id
+  [instance]
+  (-> instance
+      add-entity-id))
+
+;; --- helper fns
+(defn pre-update-changes
+  "Returns the changes used for pre-update hooks.
+  This is to match the input of pre-update for toucan1 methods"
+  [row]
+  (t2.protocols/with-current row (merge (t2.model/primary-key-values-map row)
+                                        (t2.protocols/changes row))))
+
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
@@ -590,6 +700,6 @@
 (reset! t2.hydrate/global-error-on-unknown-key true)
 
 (methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration :default
-  "In Metabase the FK key used for automagic hydration should use underscores (work around unstream Toucan 2 issue)."
+  "In Metabase the FK key used for automagic hydration should use underscores (work around upstream Toucan 2 issue)."
   [_original-model dest-key _hydrated-key]
-  [(csk/->snake_case (keyword (str (name dest-key) "_id")))])
+  [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])

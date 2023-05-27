@@ -41,7 +41,14 @@ const LegendCaption = ({
       </LegendLabel>
       <LegendRightContent>
         {description && (
-          <Tooltip tooltip={<Markdown>{description}</Markdown>} maxWidth="22em">
+          <Tooltip
+            tooltip={
+              <Markdown disallowHeading unstyleLinks>
+                {description}
+              </Markdown>
+            }
+            maxWidth="22em"
+          >
             <LegendDescriptionIcon className="hover-child hover-child--smooth" />
           </Tooltip>
         )}

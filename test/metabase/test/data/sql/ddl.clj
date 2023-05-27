@@ -113,5 +113,5 @@
 
 (defmethod insert-rows-ddl-statements :sql/test-extensions
   [driver table-identifier row-or-rows]
-  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+  (sql.qp/with-driver-honey-sql-version driver
     [(sql.qp/format-honeysql driver (insert-rows-honeysql-form driver table-identifier row-or-rows))]))

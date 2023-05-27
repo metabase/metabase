@@ -10,7 +10,10 @@ export default class AdminHeader extends Component {
         <div className="MetadataEditor-headerSection float-left h2 text-medium">
           {this.props.title}
         </div>
-        <div className="MetadataEditor-headerSection absolute right float-right top bottom flex layout-centered">
+        <div
+          className="MetadataEditor-headerSection absolute right float-right top bottom flex layout-centered"
+          role="status"
+        >
           <SaveStatus ref={this.props.saveStatusRef} />
         </div>
       </div>

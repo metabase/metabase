@@ -77,7 +77,14 @@ export const ScalarTitle = ({ title, description, onClick }) => (
     </ScalarTitleContent>
     {description && description.length > 0 && (
       <ScalarDescriptionContainer className="hover-child">
-        <Tooltip tooltip={<Markdown>{description}</Markdown>} maxWidth="22em">
+        <Tooltip
+          tooltip={
+            <Markdown disallowHeading unstyleLinks>
+              {description}
+            </Markdown>
+          }
+          maxWidth="22em"
+        >
           <Icon name="info_outline" />
         </Tooltip>
       </ScalarDescriptionContainer>

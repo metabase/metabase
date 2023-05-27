@@ -212,6 +212,7 @@ function isDefaultOption<TValue>(
   return typeof option === "object";
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(Radio, {
   RadioGroupVariants: [RadioGroupBubble, RadioGroupNormal],
   RadioLabelVariants: [RadioLabelBubble, RadioLabelNormal],

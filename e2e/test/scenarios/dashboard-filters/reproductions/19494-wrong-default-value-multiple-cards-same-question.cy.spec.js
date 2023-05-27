@@ -4,6 +4,7 @@ import {
   editDashboard,
   saveDashboard,
   visitDashboard,
+  updateDashboardCards,
 } from "e2e/support/helpers";
 
 const filter1 = {
@@ -27,13 +28,25 @@ describe("issue 19494", () => {
     restore();
     cy.signInAsAdmin();
 
-    // Add another "Orders" question to the existing "Orders in a dashboard" dashboard
-    cy.request("POST", "/api/dashboard/1/cards", {
-      cardId: 1,
-      row: 0,
-      col: 0,
-      size_x: 9,
-      size_y: 9,
+    // Add two "Orders" questions to the existing "Orders in a dashboard" dashboard
+    updateDashboardCards({
+      dashboard_id: 1,
+      cards: [
+        {
+          card_id: 1,
+          row: 0,
+          col: 0,
+          size_x: 8,
+          size_y: 8,
+        },
+        {
+          card_id: 1,
+          row: 0,
+          col: 8,
+          size_x: 8,
+          size_y: 8,
+        },
+      ],
     });
 
     // Add two dashboard filters (not yet connected to any of the cards)
@@ -58,9 +71,11 @@ describe("issue 19494", () => {
     saveDashboard();
 
     checkAppliedFilter("Card 1 Filter", "Doohickey");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("148.23");
 
     checkAppliedFilter("Card 2 Filter", "Gizmo");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("110.93");
   });
 });

@@ -46,6 +46,7 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("(empty)").should("not.exist");
     });
 
@@ -58,6 +59,7 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("(empty)");
     });
   });
@@ -79,7 +81,9 @@ describe("scenarios > visualizations > bar chart", () => {
       });
 
       cy.get(".bar").should("have.length", 5); // there are six bars when null isn't filtered
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1,800"); // correct data has this on the y-axis
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("16,000").should("not.exist"); // If nulls are included the y-axis stretches much higher
     });
   });
@@ -187,7 +191,9 @@ describe("scenarios > visualizations > bar chart", () => {
           cy.icon("eye_outline").click();
         });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Product").click();
 
       cy.findByTestId("filter-field-Category").within(() => {
@@ -202,6 +208,7 @@ describe("scenarios > visualizations > bar chart", () => {
         cy.findByText("Gadget").click();
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Apply Filters").click();
 
       getDraggableElements().should("have.length", 3);
@@ -298,8 +305,10 @@ describe("scenarios > visualizations > bar chart", () => {
       });
 
       cy.findAllByTestId("legend-item").findByText("Doohickey").click();
-      cy.findByText("View these Products").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("See these Products").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Category is Doohickey").should("be.visible");
     });
   });
@@ -329,10 +338,13 @@ describe("scenarios > visualizations > bar chart", () => {
     cy.findByTestId("viz-settings-button").click();
     cy.get("[data-testid^=draggable-item]").should("have.length", 100);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID is less than 101").click();
     cy.findByDisplayValue("101").type("{backspace}2");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Update filter").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "This chart type doesn't support more than 100 series of data.",
     );

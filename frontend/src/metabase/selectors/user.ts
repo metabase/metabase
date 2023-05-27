@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 
 import type { State } from "metabase-types/store";
@@ -29,4 +29,9 @@ export const getUserAttributes = createSelector(
 export const getUserPersonalCollectionId = createSelector(
   [getUser],
   user => user?.personal_collection_id,
+);
+
+export const getUserRedirectHomepageToDashboard = createSelector(
+  [getUser],
+  user => user?.custom_homepage?.dashboard_id || null,
 );

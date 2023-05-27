@@ -141,7 +141,7 @@
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
   fetching themselves. Needed to power the admin page."
-  (into default-user-columns [:google_auth :ldap_auth :sso_source :is_active :updated_at :login_attributes :locale]))
+  (into default-user-columns [:sso_source :is_active :updated_at :login_attributes :locale]))
 
 (def non-admin-or-self-visible-columns
   "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
@@ -163,7 +163,8 @@
   :pre-update     pre-update
   :post-select    post-select
   :types          (constantly {:login_attributes :json-no-keywordization
-                               :settings         :encrypted-json})})
+                               :settings         :encrypted-json
+                               :sso_source       :keyword})})
 
 (defmethod serdes/hash-fields User
   [_user]
@@ -181,17 +182,6 @@
   {:id                                su/IntGreaterThanZero
    ;; is_group_manager only included if `advanced-permissions` is enabled
    (schema/optional-key :is_group_manager) schema/Bool})
-
-(schema/defn user-group-memberships :- (schema/maybe [UserGroupMembership])
-  "Return a list of group memberships a User belongs to.
-  Group membership is a map  with 2 keys [:id :is_group_manager], in which `is_group_manager` will only returned if
-  advanced-permissions is available."
-  [user-or-id]
-  (when user-or-id
-    (let [selector (cond-> [PermissionsGroupMembership [:group_id :id]]
-                     (premium-features/enable-advanced-permissions?)
-                     (conj :is_group_manager))]
-      (t2/select selector :user_id (u/the-id user-or-id)))))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -287,8 +277,7 @@
    :email                                  su/Email
    (schema/optional-key :password)         (schema/maybe su/NonBlankString)
    (schema/optional-key :login_attributes) (schema/maybe LoginAttributes)
-   (schema/optional-key :google_auth)      schema/Bool
-   (schema/optional-key :ldap_auth)        schema/Bool})
+   (schema/optional-key :sso_source)       (schema/maybe su/NonBlankString)})
 
 (def DefaultUser
   "Standard form of a user (for consumption by the frontend and such)"
@@ -330,7 +319,7 @@
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
   [new-user :- NewUser]
-  (u/prog1 (insert-new-user! (assoc new-user :google_auth true))
+  (u/prog1 (insert-new-user! (assoc new-user :sso_source "google"))
     ;; send an email to everyone including the site admin if that's set
     (when (integrations.common/send-new-sso-user-admin-email?)
       (classloader/require 'metabase.email.messages)
@@ -344,7 +333,7 @@
    (-> new-user
        ;; We should not store LDAP passwords
        (dissoc :password)
-       (assoc :ldap_auth true))))
+       (assoc :sso_source "ldap"))))
 
 ;;; TODO -- it seems like maybe this should just be part of the [[pre-update]] logic whenever `:password` changes; then
 ;;; we can remove this function altogether.

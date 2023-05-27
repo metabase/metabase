@@ -58,7 +58,7 @@ describe("MetricForm", () => {
   });
 
   it("should render markdown in description", () => {
-    const DESCRIPTION = "# header";
+    const DESCRIPTION = "[link](https://metabase.com)";
 
     render(
       <Scalar
@@ -72,8 +72,8 @@ describe("MetricForm", () => {
     userEvent.hover(getIcon("info_outline"));
 
     expect(
-      within(screen.getByRole("tooltip")).getByRole("heading"),
-    ).toHaveTextContent("header");
+      within(screen.getByRole("tooltip")).getByRole("link"),
+    ).toHaveTextContent("link");
   });
 
   it("should render compact if normal formatting is >6 characters", () => {

@@ -31,4 +31,5 @@ function ModelDetailLink({ model, ...props }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelDetailLink;

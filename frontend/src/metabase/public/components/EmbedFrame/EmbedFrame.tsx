@@ -13,9 +13,14 @@ import { isWithinIframe, initializeIframeResizer } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
 
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import FilterApplyButton from "metabase/parameters/components/FilterApplyButton";
 
-import type { Dashboard, Parameter, ParameterId } from "metabase-types/api";
-import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
+import type {
+  Dashboard,
+  Parameter,
+  ParameterId,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import Question from "metabase-lib/Question";
@@ -28,10 +33,13 @@ import {
   ContentContainer,
   Header,
   Body,
+  ParametersWidgetContainer,
   Footer,
   ActionButtonsContainer,
 } from "./EmbedFrame.styled";
 import "./EmbedFrame.css";
+
+type ParameterValues = Record<ParameterId, ParameterValueOrArray>;
 
 interface OwnProps {
   className?: string;
@@ -42,7 +50,8 @@ interface OwnProps {
   actionButtons?: JSX.Element[];
   footerVariant?: FooterVariant;
   parameters?: Parameter[];
-  parameterValues?: Record<ParameterId, ParameterValueOrArray>;
+  parameterValues?: ParameterValues;
+  draftParameterValues?: ParameterValues;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
   children: React.ReactNode;
 }
@@ -83,6 +92,7 @@ function EmbedFrame({
   hasEmbedBranding,
   parameters,
   parameterValues,
+  draftParameterValues,
   setParameterValue,
 }: Props) {
   const [hasInnerScroll, setInnerScroll] = useState(true);
@@ -128,19 +138,22 @@ function EmbedFrame({
               />
             )}
             {hasParameters && (
-              <div className="flex">
+              <ParametersWidgetContainer>
                 <SyncedParametersList
                   className="mt1"
                   question={question}
                   dashboard={dashboard}
                   parameters={getValuePopulatedParameters(
                     parameters,
-                    parameterValues,
+                    _.isEmpty(draftParameterValues)
+                      ? parameterValues
+                      : draftParameterValues,
                   )}
                   setParameterValue={setParameterValue}
                   hideParameters={hide_parameters}
                 />
-              </div>
+                {dashboard && <FilterApplyButton />}
+              </ParametersWidgetContainer>
             )}
           </Header>
         )}
@@ -160,4 +173,5 @@ function EmbedFrame({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(connect(mapStateToProps), withRouter)(EmbedFrame);

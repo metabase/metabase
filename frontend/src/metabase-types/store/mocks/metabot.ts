@@ -1,4 +1,4 @@
-import { MetabotState } from "metabase-types/store";
+import { MetabotState, MetabotUiControls } from "metabase-types/store";
 
 export const createMockMetabotState = (
   opts?: Partial<MetabotState>,
@@ -13,5 +13,13 @@ export const createMockMetabotState = (
   feedbackType: null,
   promptTemplateVersions: null,
   cancelQueryDeferred: null,
+  uiControls: createMockMetabotUiControls(),
+  ...opts,
+});
+
+export const createMockMetabotUiControls = (
+  opts?: Partial<MetabotUiControls>,
+): MetabotUiControls => ({
+  isShowingRawTable: false,
   ...opts,
 });

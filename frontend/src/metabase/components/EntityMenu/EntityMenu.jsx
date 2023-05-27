@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { Motion, spring } from "react-motion";
+import cx from "classnames";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
@@ -51,23 +52,36 @@ class EntityMenu extends Component {
       triggerIcon,
       triggerProps,
       className,
+      openClassNames,
+      closedClassNames,
       tooltip,
       trigger,
+      renderTrigger,
       targetOffsetY,
       triggerAriaLabel,
+      tooltipPlacement,
     } = this.props;
     const { open, menuItemContent } = this.state;
     return (
-      <Container className={className} open={open} ref={this.rootRef}>
-        <EntityMenuTrigger
-          ariaLabel={triggerAriaLabel}
-          trigger={trigger}
-          icon={triggerIcon}
-          onClick={this.toggleMenu}
-          open={open}
-          tooltip={tooltip}
-          triggerProps={triggerProps}
-        />
+      <Container
+        className={cx(className, open ? openClassNames : closedClassNames)}
+        open={open}
+        ref={this.rootRef}
+      >
+        {renderTrigger ? (
+          renderTrigger({ open, onClick: this.toggleMenu })
+        ) : (
+          <EntityMenuTrigger
+            ariaLabel={triggerAriaLabel}
+            trigger={trigger}
+            icon={triggerIcon}
+            onClick={this.toggleMenu}
+            open={open}
+            tooltip={tooltip}
+            tooltipPlacement={tooltipPlacement}
+            triggerProps={triggerProps}
+          />
+        )}
         <Popover
           target={this.rootRef.current}
           isOpen={open}

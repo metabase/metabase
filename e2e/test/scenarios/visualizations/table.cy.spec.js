@@ -15,15 +15,52 @@ describe("scenarios > visualizations > table", () => {
     cy.signInAsNormalUser();
   });
 
+  function joinTable(table) {
+    cy.findByText("Join data").click();
+    popover().findByText(table).click();
+  }
+
+  function selectFromDropdown(option, clickOpts) {
+    popover().last().findByText(option).click(clickOpts);
+  }
+
+  it("should allow changing column title when the field ref is the same except for the join-alias", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    openOrdersTable({ mode: "notebook" });
+    joinTable("Orders");
+    selectFromDropdown("ID");
+    selectFromDropdown("User ID");
+    visualize();
+
+    function headerCells() {
+      return cy.findAllByTestId("header-cell");
+    }
+
+    // Rename the first ID column, and make sure the second one is not updated
+    headerCells().findByText("ID").click();
+    popover().within(() => {
+      cy.findByText("Filter by this column");
+      cy.icon("gear").click();
+      cy.findByTestId("column_title").type(" updated");
+      // This defocuses the input, which triggers the update
+      cy.get("#column_title").click();
+    });
+    // click somewhere else to close the popover
+    headerCells().last().click();
+    headerCells().findAllByText("ID updated").should("have.length", 1);
+  });
+
   it("should allow to display any column as link with extrapolated url and text", () => {
     openPeopleTable({ limit: 2 });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("City").click();
 
     popover().within(() => {
       cy.icon("gear").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Link").click();
 
     cy.findByTestId("link_text").type("{{C");
@@ -43,6 +80,7 @@ describe("scenarios > visualizations > table", () => {
       })
       .blur();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Wood River 1 fixed text").should(
       "have.attr",
       "href",
@@ -173,6 +211,7 @@ describe("scenarios > visualizations > table", () => {
   it("should show the field metadata popover for a foreign key field (metabase#19577)", () => {
     openOrdersTable({ limit: 2 });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID").trigger("mouseenter");
 
     popover().within(() => {
@@ -195,6 +234,7 @@ describe("scenarios > visualizations > table", () => {
   it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
     openPeopleTable({ limit: 2 });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("City").click();
     popover().within(() => {
       cy.icon("arrow_up");
@@ -205,6 +245,7 @@ describe("scenarios > visualizations > table", () => {
       cy.findByText("Distinct values");
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("City").click();
     // Although arbitrary waiting is considered an anti-pattern and a really bad practice, I couldn't find any other way to reproduce this issue.
     // Cypress is too fast and is doing the assertions in that split second while popover is reloading which results in a false positive result.

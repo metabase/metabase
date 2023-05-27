@@ -44,7 +44,9 @@ To allow all domains, leave the field empty (allowing all domains is the default
 
 To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2"). 
 
-This setting doesn't affect existing subscriptions.
+You can also set this property using the environment variable [`MB_SUBSCRIPTION_ALLOWED_DOMAINS`](../configuring-metabase/environment-variables.md#mb_subscription_allowed_domains).
+
+> This setting doesn't affect existing subscriptions and alerts.
 
 ## Anonymous tracking
 

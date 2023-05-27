@@ -6,8 +6,57 @@ export function selectDashboardFilter(selection, filterName) {
   popover().contains(filterName).click({ force: true });
 }
 
+export function getDashboardCards() {
+  return cy.get(".DashCard");
+}
+
 export function getDashboardCard(index = 0) {
-  return cy.get(".DashCard").eq(index);
+  return getDashboardCards().eq(index);
+}
+
+function getDashCardApiUrl(dashId) {
+  return `/api/dashboard/${dashId}/cards`;
+}
+
+const DEFAULT_CARD = {
+  id: -1,
+  row: 0,
+  col: 0,
+  size_x: 8,
+  size_y: 8,
+  visualization_settings: {},
+  parameter_mappings: [],
+};
+
+export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
+  return cy
+    .request("PUT", getDashCardApiUrl(dashboard_id), {
+      cards: [
+        {
+          ...DEFAULT_CARD,
+          card_id,
+          ...card,
+        },
+      ],
+    })
+    .then(response => ({
+      ...response,
+      body: response.body.cards[0],
+    }));
+}
+/**
+ * Replaces all the cards on a dashboard with the array given in the `cards` parameter.
+ * Can be used to remove cards (exclude from array), or add/update them.
+ */
+export function updateDashboardCards({ dashboard_id, cards }) {
+  let id = -1;
+  return cy.request("PUT", getDashCardApiUrl(dashboard_id), {
+    cards: cards.map(card => ({ ...DEFAULT_CARD, id: id--, ...card })),
+  });
+}
+
+export function getDashboardCardMenu(index = 0) {
+  return getDashboardCard(index).findByTestId("dashcard-menu");
 }
 
 export function showDashboardCardActions(index = 0) {
@@ -54,4 +103,8 @@ export function addTextBox(string, options = {}) {
   cy.findByPlaceholderText(
     "You can use Markdown here, and include variables {{like_this}}",
   ).type(string, options);
+}
+
+export function openQuestionsSidebar() {
+  cy.findByLabelText("Add questions").click();
 }

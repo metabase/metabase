@@ -3,6 +3,7 @@ import {
   visitEmbeddedPage,
   filterWidget,
   popover,
+  getDashboardCard,
 } from "e2e/support/helpers";
 
 import {
@@ -52,7 +53,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       });
 
       cy.findByRole("heading", { name: nativeDashboardDetails.name });
-      cy.get(".Card").contains(nativeQuestionDetails.name);
+      getDashboardCard().contains(nativeQuestionDetails.name);
 
       cy.get(".bar").should("have.length", 49);
 
@@ -95,6 +96,83 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           cy.findByText("Anchorage").click();
           cy.button("Add filter").click();
         });
+
+      cy.location("search").should("eq", "?state=AK&city=Anchorage");
+
+      cy.get(".bar").should("have.length", 1).realHover();
+
+      popover().within(() => {
+        testPairedTooltipValues("STATE", "AK");
+        testPairedTooltipValues("Count", "1");
+      });
+    });
+
+    it("works when both filters are enabled and their values are set through UI with auto-apply filters disabled", () => {
+      cy.get("@dashboardId").then(dashboard_id => {
+        const payload = {
+          resource: { dashboard: dashboard_id },
+          params: {},
+        };
+
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          auto_apply_filters: false,
+        });
+
+        visitEmbeddedPage(payload);
+      });
+
+      cy.findByRole("heading", { name: nativeDashboardDetails.name });
+      getDashboardCard().contains(nativeQuestionDetails.name);
+
+      cy.get(".bar").should("have.length", 49);
+
+      assertOnXYAxisLabels({ xLabel: "STATE", yLabel: "count" });
+
+      getXAxisValues()
+        .should("have.length", 49)
+        .and("contain", "TX")
+        .and("contain", "AK");
+
+      openFilterOptions("State");
+
+      cy.button("Apply").should("not.exist");
+
+      popover().within(() => {
+        cy.findByText("AK").click();
+        cy.button("Add filter").click();
+      });
+
+      cy.button("Apply").should("be.visible").click();
+      cy.button("Apply").should("not.exist");
+
+      cy.location("search").should("eq", "?state=AK");
+
+      getXAxisValues()
+        .should("have.length", 1)
+        .and("contain", "AK")
+        .and("not.contain", "TX");
+
+      cy.get(".bar").should("have.length", 1).realHover();
+
+      popover().within(() => {
+        testPairedTooltipValues("STATE", "AK");
+        testPairedTooltipValues("Count", "68");
+      });
+
+      openFilterOptions("City");
+
+      popover()
+        .last()
+        .within(() => {
+          cy.findByPlaceholderText("Search by City").type("An");
+          cy.findByText("Kiana");
+          cy.findByText("Anacoco").should("not.exist");
+          cy.findByText("Anchorage").click();
+          cy.button("Add filter").click();
+        });
+
+      cy.button("Apply").should("be.visible").click();
+      cy.button("Apply").should("not.exist");
 
       cy.location("search").should("eq", "?state=AK&city=Anchorage");
 

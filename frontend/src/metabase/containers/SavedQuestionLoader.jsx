@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import _ from "underscore";
 import { useAsync } from "react-use";
-import { useSelector, useDispatch } from "react-redux";
 
+import { useSelector, useDispatch } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -36,21 +36,26 @@ import Question from "metabase-lib/Question";
  *
  * @example
  */
-const SavedQuestionLoader = ({ children, card, error, loading }) => {
+const SavedQuestionLoader = ({
+  children,
+  question: loadedQuestion,
+  error,
+  loading,
+}) => {
   const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
   const [question, setQuestion] = useState(null);
 
   const cardMetadataState = useAsync(async () => {
-    if (card?.id == null) {
+    if (loadedQuestion?.id() == null) {
       return;
     }
 
-    await dispatch(loadMetadataForCard(card));
-  }, [card?.id]);
+    await dispatch(loadMetadataForCard(loadedQuestion.card()));
+  }, [loadedQuestion?.id()]);
 
   useEffect(() => {
-    if (card?.id == null) {
+    if (loadedQuestion?.id() == null) {
       return;
     }
 
@@ -63,9 +68,9 @@ const SavedQuestionLoader = ({ children, card, error, loading }) => {
     }
 
     if (!question) {
-      setQuestion(new Question(card, metadata));
+      setQuestion(new Question(loadedQuestion.card(), metadata));
     }
-  }, [card, metadata, cardMetadataState, question]);
+  }, [loadedQuestion, metadata, cardMetadataState, question]);
 
   return (
     children?.({
@@ -80,6 +85,5 @@ export default _.compose(
   Questions.load({
     id: (_state, props) => props.questionId,
     loadingAndErrorWrapper: false,
-    entityAlias: "card",
   }),
 )(SavedQuestionLoader);

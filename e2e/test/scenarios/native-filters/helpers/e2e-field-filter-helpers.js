@@ -33,7 +33,7 @@ export function setWidgetStringFilter(value) {
 }
 
 /**
- * Selectes value from the field values list filter widget
+ * Selects value from the field values list filter widget
  *
  * @param {string} value
  */

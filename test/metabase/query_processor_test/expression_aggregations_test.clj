@@ -143,6 +143,23 @@
                  {:aggregation [[:+ [:max $price] [:min [:- $price $id]]]]
                   :breakout    [$price]})))))))
 
+(deftest integer-aggregation-division-test
+  (testing "division of two sum aggregations (#30262)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+      (mt/dataset sample-dataset
+        (testing "expression parts not selected"
+          (is (= [[27]]
+                 (mt/formatted-rows [int]
+                   (mt/run-mbql-query orders
+                     {:aggregation [[:/ [:sum $product_id] [:sum $quantity]]]})))))
+        (testing "expression parts also selected"
+         (is (= [[1885900 69540 27]]
+                (mt/formatted-rows [int int int]
+                  (mt/run-mbql-query orders
+                    {:aggregation [[:sum $product_id]
+                                   [:sum $quantity]
+                                   [:/ [:sum $product_id] [:sum $quantity]]]})))))))))
+
 (deftest aggregation-without-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "aggregation w/o field"

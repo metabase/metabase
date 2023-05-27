@@ -1,4 +1,5 @@
 import {
+  addOrUpdateDashboardCard,
   editDashboard,
   popover,
   restore,
@@ -50,9 +51,12 @@ describe("issue 23024", () => {
 
     cy.icon("filter").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Text or Category").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Is").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column to filter on")
       .parent()
       .within(() => {
@@ -66,12 +70,9 @@ describe("issue 23024", () => {
 function addModelToDashboardAndVisit() {
   cy.createDashboard().then(({ body: { id } }) => {
     cy.get("@modelId").then(cardId => {
-      cy.request("POST", `/api/dashboard/${id}/cards`, {
-        cardId,
-        row: 0,
-        col: 0,
-        size_x: 16,
-        size_y: 10,
+      addOrUpdateDashboardCard({
+        dashboard_id: id,
+        card_id: cardId,
       });
     });
 

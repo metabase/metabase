@@ -1,7 +1,20 @@
 jest.doMock("metabase/lib/dom");
+
+import { createMockMetadata } from "__support__/metadata";
 import * as dom from "metabase/lib/dom";
-import { getCleanNativeQuestion } from "metabase-lib/mocks";
+import {
+  createSampleDatabase,
+  createEmptyAdHocNativeCard,
+} from "metabase-types/api/mocks/presets";
+import Question from "metabase-lib/Question";
 import NativeDrillFallback from "./NativeDrillFallback";
+
+function getQuestion() {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
+  return new Question(createEmptyAdHocNativeCard(), metadata);
+}
 
 describe("NativeDrillFallback", () => {
   let isWithinIframeSpy: jest.SpyInstance;
@@ -17,7 +30,7 @@ describe("NativeDrillFallback", () => {
   it("should return native drill fallback element on native questions", async () => {
     isWithinIframeSpy.mockReturnValue(false);
 
-    const question = getCleanNativeQuestion();
+    const question = getQuestion();
     const result = NativeDrillFallback({ question });
 
     expect(result).toHaveLength(1);
@@ -27,7 +40,7 @@ describe("NativeDrillFallback", () => {
   it("should not return native drill fallback element on native questions when the app is in iframe", async () => {
     isWithinIframeSpy.mockReturnValue(true);
 
-    const question = getCleanNativeQuestion();
+    const question = getQuestion();
     const result = NativeDrillFallback({ question });
 
     expect(result).toHaveLength(0);

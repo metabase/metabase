@@ -137,6 +137,8 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "available-locales": null,
   "cloud-gateway-ips": null,
   "custom-formatting": {},
+  "custom-homepage": false,
+  "custom-homepage-dashboard": null,
   "deprecation-notice-version": undefined,
   "email-configured?": false,
   "enable-embedding": false,
@@ -198,5 +200,9 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   version: createMockVersion(),
   "version-info": createMockVersionInfo(),
   "version-info-last-checked": null,
+  "uploads-enabled": false,
+  "uploads-database-id": null,
+  "uploads-table-prefix": null,
+  "uploads-schema-name": null,
   ...opts,
 });

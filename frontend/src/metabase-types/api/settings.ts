@@ -177,6 +177,8 @@ export interface Settings {
   "available-locales": LocaleData[] | null;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
+  "custom-homepage": boolean;
+  "custom-homepage-dashboard": number | null;
   "deprecation-notice-version"?: string;
   "email-configured?": boolean;
   "embedding-secret-key"?: string;
@@ -240,6 +242,10 @@ export interface Settings {
   version: Version;
   "version-info": VersionInfo | null;
   "version-info-last-checked": string | null;
+  "uploads-enabled": boolean;
+  "uploads-database-id": number | null;
+  "uploads-schema-name": string | null;
+  "uploads-table-prefix": string | null;
 }
 
 export type SettingKey = keyof Settings;

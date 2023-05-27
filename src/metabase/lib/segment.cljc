@@ -6,13 +6,13 @@
    [metabase.shared.util.i18n :as i18n]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/segment
-  [_query _stage-number segment-metadata]
-  (or ((some-fn :display_name :name) segment-metadata)
+  [_query _stage-number segment-metadata _style]
+  (or ((some-fn :display-name :name) segment-metadata)
       (i18n/tru "[Unknown Segment]")))
 
 (defmethod lib.metadata.calculation/display-name-method :segment
-  [query stage-number [_tag _opts segment-id-or-name]]
+  [query stage-number [_tag _opts segment-id-or-name] style]
   (or (when (integer? segment-id-or-name)
         (when-let [segment-metadata (lib.metadata/segment query segment-id-or-name)]
-          (lib.metadata.calculation/display-name query stage-number segment-metadata)))
+          (lib.metadata.calculation/display-name query stage-number segment-metadata style)))
       (i18n/tru "[Unknown Segment]")))

@@ -1,4 +1,9 @@
-import { restore, describeEE, openNativeEditor, openOrdersTable } from "e2e/support/helpers";
+import {
+  restore,
+  describeEE,
+  openNativeEditor,
+  openOrdersTable,
+} from "e2e/support/helpers";
 
 describeEE("audit > ad-hoc", () => {
   describe("native query", () => {
@@ -21,6 +26,7 @@ describeEE("audit > ad-hoc", () => {
     it("should appear in audit log (metabase#16845 metabase-enterprise#486)", () => {
       cy.visit("/admin/audit/members/log");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Native")
         .parent()
         .parent()
@@ -32,6 +38,7 @@ describeEE("audit > ad-hoc", () => {
       cy.url().should("include", "/admin/audit/query/");
 
       cy.get(".PageTitle").contains("Query");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Open in Metabase");
       cy.get(".ace_content").contains("SELECT 123");
     });
@@ -39,7 +46,7 @@ describeEE("audit > ad-hoc", () => {
 
   describe("notebook query", () => {
     beforeEach(() => {
-      cy.intercept('/api/dataset').as('dataset');
+      cy.intercept("/api/dataset").as("dataset");
 
       restore();
 
@@ -47,8 +54,8 @@ describeEE("audit > ad-hoc", () => {
       cy.signInAsNormalUser();
       openOrdersTable();
 
-      cy.button('Visualize').click();
-      cy.wait('@dataset');
+      cy.button("Visualize").click();
+      cy.wait("@dataset");
 
       // Sign in as admin to be able to access audit logs in tests
       cy.signInAsAdmin();
@@ -57,6 +64,7 @@ describeEE("audit > ad-hoc", () => {
     it("should appear in audit log #29456", () => {
       cy.visit("/admin/audit/members/log");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("GUI")
         .parent()
         .parent()
@@ -68,10 +76,11 @@ describeEE("audit > ad-hoc", () => {
       cy.url().should("include", "/admin/audit/query/");
 
       cy.get(".PageTitle").contains("Query");
-      cy.findByText("Open in Metabase").should('be.visible');
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Open in Metabase").should("be.visible");
 
-      cy.findByTestId('read-only-notebook').within(() => {
-        cy.findByTestId('data-step-cell').within(() => {
+      cy.findByTestId("read-only-notebook").within(() => {
+        cy.findByTestId("data-step-cell").within(() => {
           cy.findByText("Orders");
         });
         cy.findByText(/Filter/i).should("not.exist");

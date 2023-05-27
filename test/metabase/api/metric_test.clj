@@ -269,21 +269,21 @@
                                               :object   {:name       "c"
                                                          :definition {:filter [:and [:> 1 25]]}}
                                               :message  "updated"}]]
-      (is (= [{:is_reversion false
-               :is_creation  false
-               :message      "updated"
-               :user         (-> (user-details (mt/fetch-user :crowberto))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         {:name {:before "b" :after "c"}}
-               :description  "renamed this Metric from \"b\" to \"c\"."}
-              {:is_reversion false
-               :is_creation  true
-               :message      nil
-               :user         (-> (user-details (mt/fetch-user :rasta))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         {:name       {:after "b"}
-                              :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
-               :description  nil}]
+      (is (=? [{:is_reversion false
+                :is_creation  false
+                :message      "updated"
+                :user         (-> (user-details (mt/fetch-user :crowberto))
+                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                :diff         {:name {:before "b" :after "c"}}
+                :description  "renamed this Metric from \"b\" to \"c\"."}
+               {:is_reversion false
+                :is_creation  true
+                :message      nil
+                :user         (-> (user-details (mt/fetch-user :rasta))
+                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                :diff         {:name       {:after "b"}
+                               :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
+                :description  "created this."}]
              (for [revision (mt/user-http-request :rasta :get 200 (format "metric/%d/revisions" id))]
                (dissoc revision :timestamp :id)))))))
 
@@ -351,39 +351,39 @@
                                                                                     :query    {:filter [:= [:field 10 nil] 20]}}}
                                                :message  "updated"}]]
     (testing "API response"
-      (is (= {:is_reversion true
-              :is_creation  false
-              :message      nil
-              :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
-              :diff         {:name {:before "Changed Metric Name"
-                                    :after  "One Metric to rule them all, one metric to define them"}}
-              :description  "renamed this Metric from \"Changed Metric Name\" to \"One Metric to rule them all, one metric to define them\"."}
-             (dissoc (mt/user-http-request
-                      :crowberto :post 200 (format "metric/%d/revert" id) {:revision_id revision-id}) :id :timestamp))))
-    (testing "full list of final revisions, first one should be same as the revision returned by the endpoint"
-      (is (= [{:is_reversion true
+      (is (=? {:is_reversion true
                :is_creation  false
                :message      nil
                :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
                :diff         {:name {:before "Changed Metric Name"
                                      :after  "One Metric to rule them all, one metric to define them"}}
-               :description  "renamed this Metric from \"Changed Metric Name\" to \"One Metric to rule them all, one metric to define them\"."}
-              {:is_reversion false
-               :is_creation  false
-               :message      "updated"
-               :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
-               :diff         {:name {:after  "Changed Metric Name"
-                                     :before "One Metric to rule them all, one metric to define them"}}
-               :description  "renamed this Metric from \"One Metric to rule them all, one metric to define them\" to \"Changed Metric Name\"."}
-              {:is_reversion false
-               :is_creation  true
-               :message      nil
-               :user         (dissoc (user-details (mt/fetch-user :rasta)) :email :date_joined :last_login :is_superuser :is_qbnewb)
-               :diff         {:name        {:after "One Metric to rule them all, one metric to define them"}
-                              :description {:after "One metric to bring them all, and in the DataModel bind them"}
-                              :definition  {:after {:database 123
-                                                    :query    {:filter ["=" ["field" 10 nil] 20]}}}}
-               :description  nil}]
+               :description  "reverted to an earlier version."}
+             (dissoc (mt/user-http-request
+                      :crowberto :post 200 (format "metric/%d/revert" id) {:revision_id revision-id}) :id :timestamp))))
+    (testing "full list of final revisions, first one should be same as the revision returned by the endpoint"
+      (is (=? [{:is_reversion true
+                :is_creation  false
+                :message      nil
+                :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
+                :diff         {:name {:before "Changed Metric Name"
+                                      :after  "One Metric to rule them all, one metric to define them"}}
+                :description  "reverted to an earlier version."}
+               {:is_reversion false
+                :is_creation  false
+                :message      "updated"
+                :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
+                :diff         {:name {:after  "Changed Metric Name"
+                                      :before "One Metric to rule them all, one metric to define them"}}
+                :description  "renamed this Metric from \"One Metric to rule them all, one metric to define them\" to \"Changed Metric Name\"."}
+               {:is_reversion false
+                :is_creation  true
+                :message      nil
+                :user         (dissoc (user-details (mt/fetch-user :rasta)) :email :date_joined :last_login :is_superuser :is_qbnewb)
+                :diff         {:name        {:after "One Metric to rule them all, one metric to define them"}
+                               :description {:after "One metric to bring them all, and in the DataModel bind them"}
+                               :definition  {:after {:database 123
+                                                     :query    {:filter ["=" ["field" 10 nil] 20]}}}}
+                :description  "created this."}]
              (for [revision (mt/user-http-request
                              :crowberto :get 200 (format "metric/%d/revisions" id))]
                (dissoc revision :timestamp :id)))))))
@@ -412,7 +412,7 @@
                {:name                   "Metric B"
                 :id                     id-2
                 :creator                {}
-                :definition_description "Venues, Sum of Name, Filtered by Price equals 4 and Segment"}]
+                :definition_description "Venues, Sum of Category → Name, Filtered by Price equals 4 and Segment"}]
               (filter (fn [{metric-id :id}]
                         (contains? #{id-1 id-2 id-3} metric-id))
                       (mt/user-http-request :rasta :get 200 "metric/")))))))

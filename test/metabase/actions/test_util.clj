@@ -104,6 +104,13 @@
   [dataset-definition & body]
   `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym)) ~dataset-definition) (fn [] ~@body)))
 
+(defmacro with-empty-db
+  "Sets the current dataset to a freshly created db that gets destroyed at the conclusion of `body`.
+   Use this to test destructive actions that may modify the data."
+  {:style/indent :defn}
+  [& body]
+  `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym))) (fn [] ~@body)))
+
 (deftest with-actions-test-data-test
   (datasets/test-drivers (qp.test/normal-drivers-with-feature :actions/custom)
     (dotimes [i 2]

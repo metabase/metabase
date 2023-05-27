@@ -63,6 +63,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
     it("should work", () => {
       cy.findAllByText("Doohickey");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Category").click();
       popover().within(() => {
         cy.findByText("Gadget").click();
@@ -70,6 +71,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
       });
 
       // verify that the filter is applied
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Doohickey").should("not.exist");
     });
   });
@@ -120,6 +122,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
     });
 
     it("should work", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("City").click();
       popover().within(() => {
         cy.get("input").type("Flagstaff{enter}");
@@ -191,6 +194,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
     it("should work", () => {
       cy.findAllByText("Doohickey");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Category").click();
       popover().within(() => {
         cy.findByText("Gadget").click();
@@ -198,6 +202,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
       });
 
       // verify that the filter is applied
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Doohickey").should("not.exist");
     });
   });

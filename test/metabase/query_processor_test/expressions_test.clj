@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor-test.test-mlv2 :as qp-test.mlv2]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -359,17 +360,21 @@
                                        [:field (mt/id :lots-of-fields :b) nil]]}
                      :fields      (into [[:expression "c"]]
                                         (for [{:keys [id]} (t2/select [Field :id]
-                                                             :table_id (mt/id :lots-of-fields)
-                                                             :id       [:not-in #{(mt/id :lots-of-fields :a)
-                                                                                  (mt/id :lots-of-fields :b)}]
-                                                             {:order-by [[:name :asc]]})]
+                                                                      :table_id (mt/id :lots-of-fields)
+                                                                      :id       [:not-in #{(mt/id :lots-of-fields :a)
+                                                                                           (mt/id :lots-of-fields :b)}]
+                                                                      {:order-by [[:name :asc]]})]
                                           [:field id nil]))})]
-        (t2/with-call-count [call-count-fn]
-          (mt/with-native-query-testing-context query
-            (is (= 1
-                   (-> (qp/process-query query) mt/rows ffirst))))
-          (testing "# of app DB calls should not be some insane number"
-            (is (< (call-count-fn) 20))))))))
+        ;; skip the MLv2 conversion tests here since they use
+        ;; the [[metabase.lib.metadata.jvm/application-database-metadata-provider]] which makes tons of DB calls
+        ;; that aren't actually done IRL, and we don't want to include that in the DB call count
+        (binding [qp-test.mlv2/*skip-conversion-tests* true]
+          (t2/with-call-count [call-count-fn]
+            (mt/with-native-query-testing-context query
+              (is (= 1
+                     (-> (qp/process-query query) mt/rows ffirst))))
+            (testing "# of app DB calls should not be some insane number"
+              (is (< (call-count-fn) 20)))))))))
 
 (deftest expression-with-slashes
   (mt/test-drivers (disj
@@ -408,7 +413,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use expression with same column name as table (#14267)"
       (mt/dataset sample-dataset
-        (let [query (mt/mbql-query-no-test products
+        (let [query (mt/mbql-query products
                       {:expressions {:CATEGORY [:concat $category "2"]}
                        :breakout    [:expression :CATEGORY]
                        :aggregation [:count]

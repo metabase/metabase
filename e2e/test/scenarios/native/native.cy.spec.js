@@ -26,12 +26,14 @@ describe("scenarios > question > native", () => {
   it("lets you create and run a SQL question", () => {
     openNativeEditor().type("select count(*) from orders");
     runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("18,760");
   });
 
   it("displays an error", () => {
     openNativeEditor().type("select * from not_a_table");
     runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
@@ -42,6 +44,7 @@ describe("scenarios > question > native", () => {
         "{shift}{leftarrow}".repeat(19), // highlight back to the front
     );
     runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "ORD" not found');
   });
 
@@ -51,6 +54,7 @@ describe("scenarios > question > native", () => {
     });
     cy.get("input[placeholder*='Stars']").type("3");
     runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 168 rows");
   });
 
@@ -66,6 +70,7 @@ describe("scenarios > question > native", () => {
     cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
     runQuery();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
     modal().within(() => {
@@ -80,14 +85,17 @@ describe("scenarios > question > native", () => {
       });
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
   });
 
   it("can save a question with no rows", () => {
     openNativeEditor().type("select * from people where false");
     runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("No results!");
     cy.icon("contract").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
     modal().within(() => {
@@ -122,6 +130,7 @@ describe("scenarios > question > native", () => {
       });
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This has a value");
 
     FILTERS.forEach(operator => {
@@ -185,6 +194,7 @@ describe("scenarios > question > native", () => {
 
     runQuery();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
     modal().within(() => {
@@ -197,6 +207,7 @@ describe("scenarios > question > native", () => {
         expect(requestBody?.parameters?.length).to.equal(2);
       });
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
 
     // Now load the question again and parameters[] should still be there
@@ -223,6 +234,7 @@ describe("scenarios > question > native", () => {
       { autorun: false },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Here's where your results will appear").should("be.visible");
   });
 
@@ -235,6 +247,7 @@ describe("scenarios > question > native", () => {
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/where CATEGORY='Gadget'/).should("be.visible");
   });
 
@@ -246,6 +259,7 @@ describe("scenarios > question > native", () => {
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/missing required parameters/).should("be.visible");
   });
 
@@ -267,15 +281,102 @@ describe("scenarios > question > native", () => {
 
     cy.button("View the SQL").click();
     cy.wait("@datasetNative");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/FROM "PUBLIC"."ORDERS"/).should("be.visible");
 
     cy.button("Convert this question to SQL").click();
     runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 1 row").should("be.visible");
+  });
+
+  describe("prompts", () => {
+    const PROMPT = "orders count";
+    const PROMPT_RESPONSE = { sql: "select count(*) from orders" };
+
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
+      cy.intercept(
+        "POST",
+        "/api/metabot/database/**/query",
+        PROMPT_RESPONSE,
+      ).as("databasePrompt");
+    });
+
+    it("allows generate sql queries from natural language prompts", () => {
+      cy.intercept(
+        "POST",
+        "/api/metabot/database/**/query",
+        PROMPT_RESPONSE,
+      ).as("databasePrompt");
+
+      openNativeEditor();
+      ensureDatabasePickerIsHidden();
+
+      cy.findByLabelText("Ask a question").click();
+
+      cy.findByPlaceholderText("Ask anything...")
+        .focus()
+        .type(`${PROMPT}{enter}`);
+
+      runQuery();
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("18,760");
+
+      cy.findByLabelText("Close").click();
+      cy.findByDisplayValue(PROMPT).should("not.exist");
+    });
+
+    it("shows an error when an sql query cannot be generated", () => {
+      const errorMessage = "Could not generate a query for a given prompt";
+      cy.intercept("POST", "/api/metabot/database/**/query", {
+        body: {
+          message: errorMessage,
+        },
+        statusCode: 400,
+      }).as("databasePrompt");
+
+      openNativeEditor();
+      ensureDatabasePickerIsHidden();
+
+      cy.findByLabelText("Ask a question").click();
+
+      cy.findByPlaceholderText("Ask anything...")
+        .focus()
+        .type(`${PROMPT}{enter}`);
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(errorMessage);
+      cy.button("Try again").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(errorMessage);
+      cy.button("Rephrase").click();
+
+      cy.intercept(
+        "POST",
+        "/api/metabot/database/**/query",
+        PROMPT_RESPONSE,
+      ).as("databasePrompt");
+
+      cy.findByDisplayValue(PROMPT).type(" fixed{enter}");
+      cy.wait("@databasePrompt");
+
+      runQuery();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("18,760");
+    });
   });
 });
 
 const runQuery = () => {
-  cy.get(".NativeQueryEditor .Icon-play").click();
+  cy.findByTestId("native-query-editor-container").within(() => {
+    cy.button("Get Answer").click();
+  });
   cy.wait("@dataset");
 };
+
+function ensureDatabasePickerIsHidden() {
+  cy.get("#DatabasePicker").should("not.exist");
+}

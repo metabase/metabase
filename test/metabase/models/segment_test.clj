@@ -131,7 +131,7 @@
                                                                    [:and
                                                                     [:= $price 4]
                                                                     [:= $category_id->categories.name "BBQ"]]}))}]
-    (is (= "Filtered by Price equals 4 and Name equals \"BBQ\""
+    (is (= "Filtered by Price equals 4 and Category → Name equals \"BBQ\""
            (:definition_description (t2/hydrate segment :definition_description))))
     (testing "Segments that reference other Segments (inception)"
       (t2.with-temp/with-temp [Segment segment-2 {:name "Segment 2"

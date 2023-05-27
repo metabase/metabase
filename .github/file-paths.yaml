@@ -7,14 +7,15 @@ ci: &ci
 
 shared_sources: &shared_sources
   - "shared/src/**"
+  - "src/metabase/lib/**"
 
 shared_specs: &shared_specs
   - "shared/test/**"
 
 frontend_sources: &frontend_sources
   - *shared_sources
-  - "enterprise/frontend/**"
-  - "frontend/!(test)/**"
+  - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+  - "frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
   - "yarn.lock"
   - "**/tsconfig*.json"
   - "package.json"
@@ -101,3 +102,8 @@ i18n:
   - *default
   - *ci
   - *sources
+
+visualizations:
+  - "frontend/src/metabase/visualizations/**"
+  - "frontend/src/metabase/static-viz/**"
+  - "src/metabase/pulse/**"

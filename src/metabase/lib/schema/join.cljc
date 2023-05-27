@@ -37,12 +37,15 @@
    {:gen/fmap #(str % "-" (random-uuid))}
    ::common/non-blank-string])
 
+(mr/def ::conditions
+  [:sequential {:min 1} [:ref ::expression/boolean]])
+
 (mr/def ::join
   [:map
    [:lib/type    [:= :mbql/join]]
    [:lib/options ::common/options]
    [:stages      [:ref :metabase.lib.schema/stages]]
-   [:condition   [:ref ::expression/boolean]]
+   [:conditions  ::conditions]
    [:fields {:optional true} ::fields]
    [:alias  {:optional true} ::alias]])
 

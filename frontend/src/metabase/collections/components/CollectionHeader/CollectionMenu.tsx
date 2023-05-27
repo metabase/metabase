@@ -69,6 +69,7 @@ const CollectionMenu = ({
         items={items}
         triggerIcon="ellipsis"
         tooltip={t`Move, archive, and more...`}
+        tooltipPlacement="bottom"
       />
     );
   } else {
@@ -76,4 +77,5 @@ const CollectionMenu = ({
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CollectionMenu;

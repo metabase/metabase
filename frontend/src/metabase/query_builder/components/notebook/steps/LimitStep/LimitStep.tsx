@@ -13,13 +13,15 @@ function LimitStep({
   color,
   updateQuery,
 }: NotebookStepUiComponentProps) {
-  const limit = Lib.currentLimit(topLevelQuery, step.stageIndex);
+  const { stageIndex } = step;
+
+  const limit = Lib.currentLimit(topLevelQuery, stageIndex);
   const value = typeof limit === "number" ? limit : "";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const nextLimit = parseInt(e.target.value, 0);
     if (nextLimit >= 1) {
-      updateQuery(Lib.limit(topLevelQuery, step.stageIndex, nextLimit));
+      updateQuery(Lib.limit(topLevelQuery, stageIndex, nextLimit));
     }
   };
 
@@ -37,4 +39,5 @@ function LimitStep({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default LimitStep;

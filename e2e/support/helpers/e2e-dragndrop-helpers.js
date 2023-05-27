@@ -37,3 +37,11 @@ export function dragField(startIndex, dropIndex) {
         });
     });
 }
+
+export function dragAndDrop(subjectAlias, targetAlias) {
+  const dataTransfer = new DataTransfer();
+
+  cy.get("@" + subjectAlias).trigger("dragstart", { dataTransfer });
+  cy.get("@" + targetAlias).trigger("drop", { dataTransfer });
+  cy.get("@" + subjectAlias).trigger("dragend");
+}

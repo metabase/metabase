@@ -3,6 +3,7 @@
   (:require
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]
    [pretty.core :as pretty]
@@ -10,25 +11,44 @@
 
 (defn- metadata-type->model [metadata-type]
   (case metadata-type
-    :metadata/database :metabase.models.database/Database
-    :metadata/table    :metabase.models.table/Table
-    :metadata/field    :metabase.models.field/Field
-    :metadata/card     :metabase.models.card/Card
+    :metadata/database :model/Database
+    :metadata/table    :model/Table
+    :metadata/field    :model/Field
+    :metadata/card     :model/Card
     :metadata/metric   :metabase.models.metric/Metric
     :metadata/segment  :metabase.models.segment/Segment))
+
+(defn- instance->metadata [instance metadata-type]
+  (some-> instance
+          (update-keys u/->kebab-case-en)
+          (assoc :lib/type metadata-type)))
 
 (defn- fetch-instance [metadata-type id]
   {:pre [(integer? id)]}
   (let [model (metadata-type->model metadata-type)]
     (log/debugf "Fetching %s %d" model id)
-    (when-some [instance (t2/select-one model :id id)]
-      (assoc instance :lib/type metadata-type))))
+    (instance->metadata (t2/select-one model :id id) metadata-type)))
 
 (defn- bulk-instances [metadata-type ids]
   (let [model (metadata-type->model metadata-type)]
     (log/debugf "Fetching instances of %s with ID in %s" model (pr-str (sort ids)))
     (for [instance (t2/select model :id [:in ids])]
-      (assoc instance :lib/type metadata-type))))
+      (instance->metadata instance metadata-type))))
+
+(defn- tables [database-id]
+  (when-not database-id
+    (throw (ex-info (format "Cannot use %s with %s with a nil Database ID"
+                            `lib.metadata.protocols/tables
+                            `UncachedApplicationDatabaseMetadataProvider)
+                    {})))
+  (log/debugf "Fetching all Tables for Database %d" database-id)
+  (mapv #(instance->metadata % :metadata/table)
+        (t2/select :model/Table :db_id database-id)))
+
+(defn- fields [table-id]
+  (log/debugf "Fetching all Fields for Table %d" table-id)
+  (mapv #(instance->metadata % :metadata/field)
+        (t2/select :model/Field :table_id table-id)))
 
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider
@@ -47,19 +67,10 @@
   (segment [_this segment-id] (fetch-instance :metadata/segment segment-id))
 
   (tables [_this]
-    (when-not database-id
-      (throw (ex-info (format "Cannot use %s with %s with a nil Database ID"
-                              `lib.metadata.protocols/tables
-                              `UncachedApplicationDatabaseMetadataProvider)
-                      {})))
-    (log/debugf "Fetching all Tables for Database %d" database-id)
-    (mapv #(assoc % :lib/type :metadata/table)
-          (t2/select :metabase.models.table/Table :db_id database-id)))
+    (tables database-id))
 
   (fields [_this table-id]
-    (log/debugf "Fetching all Fields for Table %d" table-id)
-    (mapv #(assoc % :lib/type :metadata/field)
-          (t2/select :table_id table-id)))
+    (fields table-id))
 
   lib.metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]

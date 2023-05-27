@@ -5,7 +5,6 @@
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
-   [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.interface :as mi]
@@ -14,24 +13,43 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
-(models/defmodel DashboardCard :report_dashboardcard)
+(def DashboardCard
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+   We'll keep this till we replace all the DashboardCard symbol in our codebase."
+  :model/DashboardCard)
 
-(doto DashboardCard
+(methodical/defmethod t2/table-name :model/DashboardCard [_model] :report_dashboardcard)
+
+(doto :model/DashboardCard
+  (derive :metabase/model)
   (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive ::mi/write-policy.full-perms-for-perms-set)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id))
+
+(t2/deftransforms :model/DashboardCard
+  {:parameter_mappings     mi/transform-parameters-list
+   :visualization_settings mi/transform-visualization-settings})
+
+(t2/define-before-insert :model/DashboardCard
+ [dashcard]
+ (merge {:parameter_mappings     []
+         :visualization_settings {}} dashcard))
 
 (declare series)
 
 ;;; Return the set of permissions required to `read-or-write` this DashboardCard. If `:card` and `:series` are already
 ;;; hydrated this method doesn't need to make any DB calls.
-(defmethod mi/perms-objects-set DashboardCard
+(defmethod mi/perms-objects-set :model/DashboardCard
   [dashcard read-or-write]
   (let [card   (or (:card dashcard)
                    (t2/select-one [Card :dataset_query] :id (u/the-id (:card_id dashcard))))
@@ -39,19 +57,6 @@
                    (series dashcard))]
     (apply set/union (mi/perms-objects-set card read-or-write) (for [series-card series]
                                                                  (mi/perms-objects-set series-card read-or-write)))))
-
-(defn- pre-insert [dashcard]
-  (let [defaults {:parameter_mappings     []
-                  :visualization_settings {}}]
-    (merge defaults dashcard)))
-
-(mi/define-methods
- DashboardCard
- {:properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id    true})
-  :types      (constantly {:parameter_mappings     :parameters-list
-                           :visualization_settings :visualization-settings})
-  :pre-insert pre-insert})
 
 (defn from-parsed-json
   "Convert a map with dashboard-card into a Toucan instance assuming it came from parsed JSON and the map keys have
@@ -69,12 +74,12 @@
    true
    ```"
   [dashboard-card]
-  (t2/instance DashboardCard
+  (t2/instance :model/DashboardCard
                (-> dashboard-card
                    (m/update-existing :parameter_mappings mi/normalize-parameters-list)
                    (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
 
-(defmethod serdes/hash-fields DashboardCard
+(defmethod serdes/hash-fields :model/DashboardCard
   [_dashboard-card]
   [(serdes/hydrated-hash :card) ; :card is optional, eg. text cards
    (comp serdes/identity-hash
@@ -86,12 +91,6 @@
 
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
-
-(defn dashboard
-  "Return the Dashboard associated with the DashboardCard."
-  [{:keys [dashboard_id]}]
-  {:pre [(integer? dashboard_id)]}
-  (t2/select-one 'Dashboard, :id dashboard_id))
 
 (mi/define-simple-hydration-method series
   :series
@@ -109,7 +108,7 @@
 (s/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
   [id :- su/IntGreaterThanZero]
-  (-> (t2/select-one DashboardCard :id id)
+  (-> (t2/select-one :model/DashboardCard :id id)
       (hydrate :series)))
 
 (defn dashcard->multi-cards
@@ -135,24 +134,23 @@
                                 [:= :newcard.archived false]
                                 [:= :dashcard.id (:id dashcard)]]}))
 
-(s/defn update-dashboard-card-series!
-  "Update the DashboardCardSeries for a given DashboardCard and return the updated DashboardCardSeries.
-   `card-ids` should be a definitive collection of *all* IDs of cards for the dashboard card in the desired order.
+(defn update-dashboard-cards-series!
+  "Batch update the DashboardCardSeries for multiple DashboardCards.
+  Each `card-ids` list should be a definitive collection of *all* IDs of cards for the dashboard card in the desired order.
 
-   *  If an ID in `card-ids` has no corresponding existing DashboardCardSeries object, one will be created.
-   *  If an existing DashboardCardSeries has no corresponding ID in `card-ids`, it will be deleted.
-   *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
-  {:arglists '([dashboard-card card-ids])}
-  [{:keys [id]} :- {:id su/IntGreaterThanZero, s/Keyword s/Any}
-   card-ids     :- [su/IntGreaterThanZero]]
-  ;; first off, just delete all series on the dashboard card (we add them again below)
-  (t2/delete! DashboardCardSeries :dashboardcard_id id)
-  ;; now just insert all of the series that were given to us
-  (when (seq card-ids)
-    (let [cards (map-indexed (fn [i card-id]
-                               {:dashboardcard_id id, :card_id card-id, :position i})
-                             card-ids)]
-      (t2/insert! DashboardCardSeries cards))))
+  *  If an ID in `card-ids` has no corresponding existing DashboardCardSeries object, one will be created.
+  *  If an existing DashboardCardSeries has no corresponding ID in `card-ids`, it will be deleted.
+  *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
+  {:arglists '([dashcard-id->card-ids])}
+  [dashcard-id->card-ids]
+  (when (seq dashcard-id->card-ids)
+    ;; first off, just delete all series on the dashboard card (we add them again below)
+    (t2/delete! DashboardCardSeries :dashboardcard_id [:in (keys dashcard-id->card-ids)])
+    ;; now just insert all of the series that were given to us
+    (when-let [card-series (seq (for [[dashcard-id card-ids] dashcard-id->card-ids
+                                      [i card-id]            (map-indexed vector card-ids)]
+                                  {:dashboardcard_id dashcard-id, :card_id card-id, :position i}))]
+      (t2/insert! DashboardCardSeries card-series))))
 
 (def ^:private DashboardCardUpdates
   {:id                                      su/IntGreaterThanZero
@@ -179,7 +177,7 @@
    old-dashboard-card                        :- DashboardCardUpdates]
   (t2/with-transaction [_conn]
    (let [update-ks (cond-> [:action_id :row :col :size_x :size_y
-                            :parameter_mappings :visualization_settings]
+                            :parameter_mappings :visualization_settings :dashboard_tab_id]
                     ;; Allow changing card_id for action dashcards, but not for card dashcards.
                     ;; This is to preserve the existing behavior of questions and card_id
                     ;; I don't know why card_id couldn't be changed for cards though.
@@ -187,10 +185,10 @@
          updates (shallow-updates (select-keys dashboard-card update-ks)
                                   (select-keys old-dashboard-card update-ks))]
      (when (seq updates)
-       (t2/update! DashboardCard id updates))
+       (t2/update! :model/DashboardCard id updates))
      (when (not= (:series dashboard-card [])
                  (:series old-dashboard-card []))
-       (update-dashboard-card-series! dashboard-card (:series dashboard-card)))
+       (update-dashboard-cards-series! {(:id dashboard-card) (:series dashboard-card)}))
      nil)))
 
 (def ParamMapping
@@ -201,48 +199,42 @@
    s/Keyword     s/Any})
 
 (def ^:private NewDashboardCard
-  {:dashboard_id                            su/IntGreaterThanZero
-   (s/optional-key :card_id)                (s/maybe su/IntGreaterThanZero)
-   (s/optional-key :action_id)              (s/maybe su/IntGreaterThanZero)
+  ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys
+  [:map
+   [:dashboard_id                            ms/PositiveInt]
+   [:action_id              {:optional true} [:maybe ms/PositiveInt]]
    ;; TODO - use ParamMapping. Breaks too many tests right now tho
-   (s/optional-key :parameter_mappings)     (s/maybe [#_ParamMapping su/Map])
-   (s/optional-key :visualization_settings) (s/maybe su/Map)
-   ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys
-   s/Keyword                                s/Any})
+   [:parameter_mappings     {:optional true} [:maybe [:sequential map?]]]
+   [:visualization_settings {:optional true} [:maybe map?]]
+   [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
-(s/defn create-dashboard-card!
+(mu/defn create-dashboard-cards!
   "Create a new DashboardCard by inserting it into the database along with all associated pieces of data such as
-   DashboardCardSeries. Returns the newly created DashboardCard or throws an Exception."
-  [dashboard-card :- NewDashboardCard]
-  (let [{:keys [dashboard_id card_id action_id parameter_mappings visualization_settings size_x size_y row col series]
-         :or   {series []}} dashboard-card]
+  DashboardCardSeries. Returns the newly created DashboardCard or throws an Exception."
+  [dashboard-cards :- [:sequential NewDashboardCard]]
+  (when (seq dashboard-cards)
     (t2/with-transaction [_conn]
-      (let [dashboard-card (first (t2/insert-returning-instances!
-                                    DashboardCard
-                                    :dashboard_id           dashboard_id
-                                    :card_id                card_id
-                                    :action_id              action_id
-                                    :size_x                 size_x
-                                    :size_y                 size_y
-                                    :row                    row
-                                    :col                    col
-                                    :parameter_mappings     (or parameter_mappings [])
-                                    :visualization_settings (or visualization_settings {})))]
-       ;; add series to the DashboardCard
-       (update-dashboard-card-series! dashboard-card series)
-       ;; return the full DashboardCard
-       (retrieve-dashboard-card (:id dashboard-card))))))
+      (let [dashboard-card-ids (t2/insert-returning-pks!
+                                 DashboardCard
+                                 (for [dashcard dashboard-cards]
+                                   (merge {:parameter_mappings []
+                                           :visualization_settings {}}
+                                          (select-keys dashcard
+                                                       [:dashboard_id :card_id :action_id :size_x :size_y :row :col
+                                                        :parameter_mappings :visualization_settings :dashboard_tab_id]))))]
+        ;; add series to the DashboardCard
+        (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
+        ;; return the full DashboardCard
+        (-> (t2/select DashboardCard :id [:in dashboard-card-ids])
+            (hydrate :series))))))
 
-(defn delete-dashboard-card!
-  "Delete a DashboardCard."
-  [dashboard-card user-id]
-  {:pre [(map? dashboard-card)
-         (integer? user-id)]}
-  (let [{:keys [id]} (dashboard dashboard-card)]
-    (t2/with-transaction [_conn]
-      (t2/delete! PulseCard :dashboard_card_id (:id dashboard-card))
-      (t2/delete! DashboardCard :id (:id dashboard-card)))
-    (events/publish-event! :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))
+(defn delete-dashboard-cards!
+  "Delete DashboardCards of a Dasbhoard."
+  [dashboard-card-ids]
+  {:pre [(coll? dashboard-card-ids)]}
+  (t2/with-transaction [_conn]
+    (t2/delete! PulseCard :dashboard_card_id [:in dashboard-card-ids])
+    (t2/delete! DashboardCard :id [:in dashboard-card-ids])))
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 
@@ -358,10 +350,14 @@
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 ;; DashboardCards are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.
+;; If the parent dashboard has tabs, the dashcards are inlined under each DashboardTab, which are inlined on the Dashboard.
 ;; However, we can reuse some of the serdes machinery (especially load-one!) by implementing a few serdes methods.
 (defmethod serdes/generate-path "DashboardCard" [_ dashcard]
-  [(serdes/infer-self-path "Dashboard" (t2/select-one 'Dashboard :id (:dashboard_id dashcard)))
-   (serdes/infer-self-path "DashboardCard" dashcard)])
+  (remove nil?
+          [(serdes/infer-self-path "Dashboard" (t2/select-one 'Dashboard :id (:dashboard_id dashcard)))
+           (when (:dashboard_tab_id dashcard)
+             (serdes/infer-self-path "DashboardTab" (t2/select-one :model/DashboardTab :id (:dashboard_tab_id dashcard))))
+           (serdes/infer-self-path "DashboardCard" dashcard)]))
 
 (defmethod serdes/load-xform "DashboardCard"
   [dashcard]
@@ -370,6 +366,7 @@
       (update :card_id                serdes/*import-fk* 'Card)
       (update :action_id              serdes/*import-fk* 'Action)
       (update :dashboard_id           serdes/*import-fk* 'Dashboard)
+      (update :dashboard_tab_id       serdes/*import-fk* :model/DashboardTab)
       (update :created_at             #(if (string? %) (u.date/parse %) %))
       (update :parameter_mappings     serdes/import-parameter-mappings)
       (update :visualization_settings serdes/import-visualization-settings)))

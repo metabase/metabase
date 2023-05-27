@@ -52,7 +52,7 @@
    schema :- [:maybe :string] ; I think technically some DBs like SQL Server support empty schema and table names
    table  :- :string]
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
-  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+  (sql.qp/with-driver-honey-sql-version driver
     (let [tru      (sql.qp/->honeysql driver true)
           table    (sql.qp/->honeysql driver (hx/identifier :table schema table))
           honeysql (case (long hx/*honey-sql-version*)

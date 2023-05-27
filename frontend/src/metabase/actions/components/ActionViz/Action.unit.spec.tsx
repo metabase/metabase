@@ -2,14 +2,19 @@ import React from "react";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, getIcon, waitFor } from "__support__/ui";
+import {
+  getIcon,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import {
   setupDatabasesEndpoints,
   setupUnauthorizedDatabasesEndpoints,
 } from "__support__/server-mocks";
 
-import type { ActionDashboardCard } from "metabase-types/api";
-import type { ParameterTarget } from "metabase-types/types/Parameter";
+import type { ActionDashboardCard, ParameterTarget } from "metabase-types/api";
 import {
   createMockActionDashboardCard as _createMockActionDashboardCard,
   createMockActionParameter,
@@ -39,15 +44,29 @@ const ACTION = createMockQueryAction({
   parameters: [
     createMockActionParameter({
       id: "parameter_1",
-      type: "type/Text",
+      name: "Parameter 1",
+      type: "string/=",
       target: ["variable", ["template-tag", "1"]],
     }),
     createMockActionParameter({
       id: "parameter_2",
-      type: "type/Integer",
+      name: "Parameter 2",
+      type: "number/=",
       target: ["variable", ["template-tag", "2"]],
     }),
   ],
+  visualization_settings: {
+    fields: {
+      parameter_1: createMockFieldSettings({
+        fieldType: "string",
+        inputType: "string",
+      }),
+      parameter_2: createMockFieldSettings({
+        fieldType: "number",
+        inputType: "number",
+      }),
+    },
+  },
 });
 
 function createMockActionDashboardCard(
@@ -163,13 +182,29 @@ describe("Actions > ActionViz > Action", () => {
       expect(screen.getByRole("button")).toHaveTextContent("Please Click Me");
     });
 
-    it("clicking an action button should open a modal action form", async () => {
+    it("clicking an action button with parameters should open a modal action form", async () => {
       await setup();
 
       userEvent.click(screen.getByRole("button"));
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       expect(screen.getByLabelText("Parameter 1")).toBeInTheDocument();
+    });
+
+    it("clicking an action button without parameters should open a confirmation modal", async () => {
+      await setup({
+        dashcard: createMockActionDashboardCard({
+          action: createMockQueryAction({
+            database_id: DATABASE.id,
+          }),
+          parameter_mappings: [],
+        }),
+      });
+
+      userEvent.click(screen.getByRole("button"));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByTestId("action-form")).toBeInTheDocument();
+      expect(screen.queryByLabelText(/^Parameter/)).not.toBeInTheDocument();
     });
 
     it("the modal should have the action name as a title", async () => {
@@ -229,6 +264,13 @@ describe("Actions > ActionViz > Action", () => {
       });
 
       userEvent.click(screen.getByRole("button", { name: "Click me" }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByTestId("action-form")).toBeInTheDocument();
+      userEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: action.name,
+        }),
+      );
 
       await waitFor(async () => {
         const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);

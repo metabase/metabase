@@ -41,8 +41,10 @@ describe("issue 18996", () => {
       visitDashboard(dashboard_id);
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Rows \d+-\d+ of 10/).should("be.visible");
     cy.icon("chevronright").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Rows \d+-\d+ of 10/).should("be.visible");
   });
 });

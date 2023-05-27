@@ -24,6 +24,7 @@ import {
   NewActionButton,
 } from "./ActionPicker.styled";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ActionPicker({
   models,
   actions,
@@ -135,7 +136,7 @@ function ModelActionPicker({
         )}
       </ModelCollapseSection>
       {isActionCreatorOpen && (
-        <Modal wide onClose={closeModal}>
+        <Modal wide onClose={closeModal} closeOnClickOutside>
           <ActionCreator
             modelId={model.id}
             databaseId={model.database_id}

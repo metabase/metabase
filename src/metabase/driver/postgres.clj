@@ -27,15 +27,19 @@
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
+   (java.io StringReader)
    (java.sql ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
-   (java.util Date UUID)))
+   (java.util Date UUID)
+   (org.postgresql.copy CopyManager)
+   (org.postgresql.jdbc PgConnection)))
 
 (set! *warn-on-reflection* true)
 
@@ -46,11 +50,16 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
-(defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ database]
-  (let [json-setting (get-in database [:details :json-unfolding])
-        ;; If not set at all, default to true, actually
-        setting-nil? (nil? json-setting)]
-    (or json-setting setting-nil?)))
+(doseq [[feature supported?] {:convert-timezone true
+                              :datetime-diff    true
+                              :now              true
+                              :persist-models   true
+                              :schemas          true}]
+  (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
+
+(defmethod driver/database-supports? [:postgres :nested-field-columns]
+  [_driver _feat db]
+  (driver.common/json-unfolding-default db))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -58,31 +67,21 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
-(defmethod driver/database-supports? [:postgres :datetime-diff]
-  [_driver _feat _db]
-  true)
-
-(defmethod driver/database-supports? [:postgres :persist-models]
-  [_driver _feat _db]
-  true)
-
 (defmethod driver/database-supports? [:postgres :persist-models-enabled]
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
 
-(defmethod driver/database-supports? [:postgres :convert-timezone]
-  [_driver _feat _db]
-  true)
-
-(defmethod driver/database-supports? [:postgres :now]
-  [_driver _feat _db]
-  true)
-
-(doseq [feature [:actions :actions/custom]]
+(doseq [feature [:actions :actions/custom :uploads]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
     (= driver :postgres)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             metabase.driver impls                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 (defmethod driver/humanize-connection-error-message :postgres
   [_ message]
@@ -241,7 +240,7 @@
   ;; I tried to write this with Malli but couldn't figure out how to make it work. See
   ;; https://metaboat.slack.com/archives/CKZEMT1MJ/p1676076592468909
   [_fn [amount unit]]
-  {:pre [(int? amount)
+  {:pre [(number? amount)
          (#{:millisecond :second :minute :hour :day :week :month :year} unit)]}
   [(format "INTERVAL '%s %s'" (num amount) (name unit))])
 
@@ -702,6 +701,8 @@
                 (sql-jdbc.common/handle-additional-options it details-map))]
     props))
 
+(defmethod sql-jdbc.sync/excluded-schemas :postgres [_driver] #{"information_schema" "pg_catalog"})
+
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres
   [_]
   "SET SESSION TIMEZONE TO %s;")
@@ -754,3 +755,67 @@
   [driver prepared-statement i t]
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
     (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
+
+(defmethod driver/upload-type->database-type :postgres
+  [_driver upload-type]
+  (case upload-type
+    ::upload/varchar_255 "VARCHAR(255)"
+    ::upload/text        "TEXT"
+    ::upload/int         "INTEGER"
+    ::upload/float       "FLOAT"
+    ::upload/boolean     "BOOLEAN"
+    ::upload/date        "DATE"
+    ::upload/datetime    "TIMESTAMP"))
+
+(defmethod driver/table-name-length-limit :postgres
+  [_driver]
+  ;; https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
+  ;; This could be incorrect if Postgres has been compiled with a value for NAMEDATALEN other than the default (64), but
+  ;; that seems unlikely and there's not an easy way to find out.
+  63)
+
+(defn- format-copy
+  [_clause table]
+  [(str "COPY " (sql/format-entity table))])
+
+(sql/register-clause! ::copy format-copy :insert-into)
+
+(defn- format-from-stdin
+  [_clause delimiter]
+  [(str "FROM STDIN NULL " delimiter)])
+
+(sql/register-clause! ::from-stdin format-from-stdin :from)
+
+(defn- sanitize-value
+  ;; Per https://www.postgresql.org/docs/current/sql-copy.html#id-1.9.3.55.9.2
+  ;; "Backslash characters (\) can be used in the COPY data to quote data characters that might otherwise be taken as
+  ;; row or column delimiters. In particular, the following characters must be preceded by a backslash if they appear
+  ;; as part of a column value: backslash itself, newline, carriage return, and the current delimiter character."
+  [v]
+  (if (string? v)
+    (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
+                                   "\n" "\\n"
+                                   "\r" "\\r"
+                                   "\t" "\\t"})
+    v))
+
+(defn- row->tsv
+  [row]
+  (->> row
+       (map sanitize-value)
+       (str/join "\t")))
+
+(defmethod driver/insert-into :postgres
+  [driver db-id table-name column-names values]
+  (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (let [copy-manager (CopyManager. (.unwrap (jdbc/get-connection conn) PgConnection))
+          [sql & _]    (sql/format {::copy       (keyword table-name)
+                                    :columns     (map keyword column-names)
+                                    ::from-stdin "''"}
+                                   :quoted true
+                                   :dialect (sql.qp/quote-style driver))
+          tsvs         (->> values
+                            (map row->tsv)
+                            (str/join "\n")
+                            (StringReader.))]
+      (.copyIn copy-manager ^String sql tsvs))))

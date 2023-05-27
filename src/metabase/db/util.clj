@@ -6,25 +6,26 @@
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.models :as models]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model]))
+
+(defn toucan-model?
+  "Check if `model` is a toucan model."
+  [model]
+  (or
+    ;; toucan 2 models
+    (isa? model :metabase/model)
+    ;; toucan 1 models
+    (isa? model :toucan1/model)))
 
 (defn primary-key
   "Replacement of [[mdb.u/primary-key]], this is used to make the transition to toucan 2 easier.
   In toucan2, every keyword can be a model so if `model` is a keyword, returns as is, otherwise calls [[mdb.u/primary-key]]."
   [model]
   (if (keyword? model)
-   (first (t2/primary-keys :m/card))
+   (first (t2/primary-keys model))
    #_{:clj-kondo/ignore [:discouraged-var]}
    (models/primary-key model)))
-
-(defn resolve-model
-  "Replacement of [[mb.models/resolve-model]], this is used to make the transition to toucan 2 easier.
-  In toucan2, every keyword can be a model so if `model` is a keyword, returns as is, otherwise calls [[toucan1.db/resolve-model]]."
-  [model]
-  (if (keyword? model)
-    model
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (db/resolve-model model)))
 
 (defn join
   "Convenience for generating a HoneySQL `JOIN` clause.
@@ -33,7 +34,7 @@
        (mdb/join [FieldValues :field_id] [Field :id])
        :active true)"
   [[source-entity fk] [dest-entity pk]]
-  {:left-join [(t2/table-name (resolve-model dest-entity))
+  {:left-join [(t2/table-name (t2.model/resolve-model dest-entity))
                [:= (db/qualify source-entity fk) (db/qualify dest-entity pk)]]})
 
 (def ^:private NamespacedKeyword

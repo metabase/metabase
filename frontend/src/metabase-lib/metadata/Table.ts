@@ -1,46 +1,52 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-
+import _ from "underscore";
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import Question from "../Question"; // eslint-disable-line import/order
 import { singularize } from "metabase/lib/formatting";
-import type { Table as ITable, TableId } from "metabase-types/api";
+import type { NormalizedTable } from "metabase-types/api";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { getAggregationOperators } from "metabase-lib/operators/utils";
-import { createLookupByProperty, memoizeClass } from "metabase-lib/utils";
-import Base from "./Base";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Metadata from "./Metadata";
 import type Schema from "./Schema";
 import type Field from "./Field";
+import type ForeignKey from "./ForeignKey";
 import type Database from "./Database";
 import type Metric from "./Metric";
 import type Segment from "./Segment";
 
-/**
- * @typedef { import("./Metadata").SchemaName } SchemaName
- * @typedef { import("./Metadata").EntityType } EntityType
- * @typedef { import("./Metadata").StructuredQuery } StructuredQuery
- */
-
-/** This is the primary way people interact with tables */
-
-class TableInner extends Base {
-  id: TableId;
-  name: string;
-  description?: string;
-  fks?: any[];
+interface Table
+  extends Omit<
+    NormalizedTable,
+    "db" | "schema" | "fields" | "fks" | "segments" | "metrics"
+  > {
+  db?: Database;
   schema?: Schema;
-  display_name: string;
-  schema_name: string;
-  db_id: number;
-  fields: Field[];
-  metrics: Metric[];
-  segments: Segment[];
+  fields?: Field[];
+  fks?: ForeignKey[];
+  segments?: Segment[];
+  metrics?: Metric[];
   metadata?: Metadata;
-  db?: Database | undefined | null;
+}
 
-  getPlainObject(): ITable {
+class Table {
+  private readonly _plainObject: NormalizedTable;
+
+  constructor(table: NormalizedTable) {
+    this._plainObject = table;
+    this.aggregationOperators = _.memoize(this.aggregationOperators);
+    this.aggregationOperatorsLookup = _.memoize(
+      this.aggregationOperatorsLookup,
+    );
+    this.fieldsLookup = _.memoize(this.fieldsLookup);
+    Object.assign(this, table);
+  }
+
+  getPlainObject(): NormalizedTable {
     return this._plainObject;
+  }
+
+  getFields() {
+    return this.fields ?? [];
   }
 
   isVirtualCard() {
@@ -48,7 +54,9 @@ class TableInner extends Base {
   }
 
   hasSchema() {
-    return (this.schema_name && this.db && this.db.schemas.length > 1) || false;
+    return (
+      (this.schema_name && this.db && this.db.getSchemas().length > 1) || false
+    );
   }
 
   // Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `table.db`)
@@ -77,20 +85,18 @@ class TableInner extends Base {
     return match ? parseInt(match[1]) : null;
   }
 
-  /**
-   * @returns {StructuredQuery}
-   */
   query(query = {}) {
-    return this.question()
-      .query()
-      .updateQuery(q => ({ ...q, ...query }));
+    return (this.question().query() as StructuredQuery).updateQuery(q => ({
+      ...q,
+      ...query,
+    }));
   }
 
   dimensions() {
-    return this.fields.map(field => field.dimension());
+    return this.getFields().map(field => field.dimension());
   }
 
-  displayName({ includeSchema } = {}) {
+  displayName({ includeSchema }: { includeSchema?: boolean } = {}) {
     return (
       (includeSchema && this.schema ? this.schema.displayName() + "." : "") +
       this.display_name
@@ -107,7 +113,7 @@ class TableInner extends Base {
   }
 
   dateFields() {
-    return this.fields.filter(field => field.isDate());
+    return this.getFields().filter(field => field.isDate());
   }
 
   // AGGREGATIONS
@@ -116,16 +122,18 @@ class TableInner extends Base {
   }
 
   aggregationOperatorsLookup() {
-    return createLookupByProperty(this.aggregationOperators(), "short");
+    return Object.fromEntries(
+      this.aggregationOperators().map(op => [op.short, op]),
+    );
   }
 
-  aggregationOperator(short) {
+  aggregationOperator(short: string) {
     return this.aggregationOperatorsLookup()[short];
   }
 
   // FIELDS
   fieldsLookup() {
-    return createLookupByProperty(this.fields, "id");
+    return Object.fromEntries(this.getFields().map(field => [field.id, field]));
   }
 
   // @deprecated: use fieldsLookup
@@ -139,22 +147,25 @@ class TableInner extends Base {
 
   connectedTables(): Table[] {
     const fks = this.fks || [];
-    return fks.map(fk => new Table(fk.origin.table));
+    return fks
+      .map(fk => fk.origin?.table)
+      .filter(table => table != null) as Table[];
   }
 
   foreignTables(): Table[] {
-    if (!Array.isArray(this.fields)) {
+    const fields = this.getFields();
+    if (!fields) {
       return [];
     }
-    return this.fields
+    return fields
       .filter(field => field.isFK() && field.fk_target_field_id)
-      .map(field => this.metadata.field(field.fk_target_field_id)?.table)
-      .filter(Boolean);
+      .map(field => this.metadata?.field(field.fk_target_field_id)?.table)
+      .filter(Boolean) as Table[];
   }
 
   primaryKeys(): { field: Field; index: number }[] {
-    const pks = [];
-    this.fields.forEach((field, index) => {
+    const pks: { field: Field; index: number }[] = [];
+    this.getFields().forEach((field, index) => {
       if (field.isPK()) {
         pks.push({ field, index });
       }
@@ -163,15 +174,11 @@ class TableInner extends Base {
   }
 
   clone() {
-    const plainObject = this.getPlainObject();
-    const newTable = new Table(this);
-    newTable._plainObject = plainObject;
-    return newTable;
+    const table = new Table(this.getPlainObject());
+    Object.assign(table, this);
+    return table;
   }
 }
 
-export default class Table extends memoizeClass<TableInner>(
-  "aggregationOperators",
-  "aggregationOperatorsLookup",
-  "fieldsLookup",
-)(TableInner) {}
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Table;

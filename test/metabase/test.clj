@@ -49,7 +49,8 @@
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
    [toucan.util.test :as tt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model]))
 
 (set! *warn-on-reflection* true)
 
@@ -98,6 +99,7 @@
   with-actions-test-data
   with-actions-test-data-tables
   with-actions-test-data-and-actions-enabled
+  with-empty-db
   with-temp-test-data]
 
  [data
@@ -107,7 +109,6 @@
   format-name
   id
   mbql-query
-  mbql-query-no-test
   native-query
   query
   run-mbql-query
@@ -271,7 +272,6 @@
   defdataset
   dispatch-on-driver-with-test-extensions
   get-dataset-definition
-  has-questionable-timezone-support?
   has-test-extensions?
   metabase-instance
   sorts-nil-first?
@@ -420,14 +420,4 @@
    (fn [toucan-model]
      (hawk.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
      (initialize/initialize-if-needed! :db)
-     (mdb.u/resolve-model toucan-model))))
-
-(defmacro disable-flaky-test-when-running-driver-tests-in-ci
-  "Only run `body` when we're not running driver tests in CI (i.e., `DRIVERS` and `CI` are both not set). Perfect for
-  disabling those damn flaky tests that cause CI to fail all the time. You should obviously only do this for things
-  that have nothing to do with drivers but tend to flake anyway."
-  {:style/indent 0}
-  [& body]
-  `(when (and (not (seq (env/env :drivers)))
-              (not (seq (env/env :ci))))
-     ~@body))
+     (t2.model/resolve-model toucan-model))))

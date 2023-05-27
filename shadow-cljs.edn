@@ -16,8 +16,10 @@
                 :compiler-options {:reader-features #{:cljs-dev}}}
    :compiler-options {:reader-features #{:cljs-release}}
    :entries    [metabase.domain-entities.queries.util
+                metabase.lib.column-group
                 metabase.lib.js
                 metabase.lib.limit
+                metabase.lib.types.isa
                 metabase.mbql.js
                 metabase.shared.formatting.constants
                 metabase.shared.formatting.date

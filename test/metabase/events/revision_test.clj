@@ -44,9 +44,11 @@
    :visualization_settings {}})
 
 (defn- dashboard->revision-object [dashboard]
-  {:description  nil
-   :cache_ttl    nil
-   :name         (:name dashboard)})
+  {:collection_id      (:collection_id dashboard)
+   :description        nil
+   :cache_ttl          nil
+   :auto_apply_filters true
+   :name               (:name dashboard)})
 
 (deftest card-create-test
   (testing ":card-create"

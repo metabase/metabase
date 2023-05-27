@@ -1,11 +1,19 @@
 import fetchMock from "fetch-mock";
 import { Card, DatabaseId } from "metabase-types/api";
 
-export function setupMetabotModelEndpoint(modelId: number, card: Card) {
-  fetchMock.post(`path:/api/metabot/model/${modelId}`, {
-    card,
-    prompt_template_versions: [],
-  });
+export function setupMetabotModelEndpoint(
+  modelId: number,
+  card: Card,
+  overwriteRoutes = false,
+) {
+  fetchMock.post(
+    `path:/api/metabot/model/${modelId}`,
+    {
+      card,
+      prompt_template_versions: [],
+    },
+    { overwriteRoutes },
+  );
 }
 
 export function setupMetabotDatabaseEndpoint(

@@ -133,4 +133,9 @@
   Expand the object when we need more metadata."
   [object]
   {:cached       (:cached object)
-   :ignore_cache (:ignore_cache object)})
+   :ignore_cache (:ignore_cache object)
+   ;; the :context key comes from qp middleware:
+   ;; `metabase.query-processor.middleware.process-userland-query/add-and-save-execution-info-xform!`
+   ;; and is important for distinguishing view events triggered when pinned cards are 'viewed'
+   ;; when a user opens a collection.
+   :context      (:context object)})

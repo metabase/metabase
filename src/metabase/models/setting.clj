@@ -89,8 +89,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.models :as models]
    [toucan2.core :as t2])
   (:import
    (clojure.lang Keyword Symbol)
@@ -137,20 +137,71 @@
 
 (declare admin-writable-site-wide-settings get-value-of-type set-value-of-type!)
 
-(models/defmodel Setting :setting)
+(def Setting
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Setting)
 
-(mi/define-methods
- Setting
- {:types       (constantly {:value :encrypted-text})
-  :primary-key (constantly :key)})
+(methodical/defmethod t2/table-name :model/Setting [_model] :setting)
 
-(defmethod serdes/hash-fields Setting
+(doto :model/Setting
+  (derive :metabase/model))
+
+(methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
+
+(t2/deftransforms :model/Setting
+  {:value mi/transform-encrypted-text})
+
+(defmethod serdes/hash-fields :model/Setting
   [_setting]
   [:key])
 
+(def ^:private exported-settings
+  '#{application-colors
+     application-favicon-url
+     application-font
+     application-font-files
+     application-logo-url
+     application-name
+     available-fonts
+     available-locales
+     available-timezones
+     breakout-bins-num
+     custom-formatting
+     custom-geojson
+     custom-geojson-enabled
+     enable-content-management?
+     enable-embedding
+     enable-nested-queries
+     enable-sandboxes?
+     enable-whitelabeling?
+     enable-xrays
+     hide-embed-branding?
+     humanization-strategy
+     landing-page
+     loading-message
+     max-results-bare-rows
+     native-query-autocomplete-match-style
+     persisted-models-enabled
+     report-timezone
+     report-timezone-long
+     report-timezone-short
+     search-typeahead-enabled
+     show-homepage-data
+     show-homepage-pin-message
+     show-homepage-xrays
+     show-lighthouse-illustration
+     show-metabot
+     site-locale
+     site-name
+     source-address-header
+     start-of-week
+     subscription-allowed-domains})
+
 (defmethod serdes/extract-all "Setting" [_model _opts]
   (for [{:keys [key value]} (admin-writable-site-wide-settings
-                             :getter (partial get-value-of-type :string))]
+                             :getter (partial get-value-of-type :string))
+        :when (contains? exported-settings (symbol key))]
     {:serdes/meta [{:model "Setting" :id (name key)}]
      :key key
      :value value}))

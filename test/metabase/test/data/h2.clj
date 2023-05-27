@@ -69,7 +69,8 @@
   (str
    ;; Create a non-admin account 'GUEST' which will be used from here on out
    "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';\n"
-
+   ;; Grant permissions for DDL statements
+   "GRANT ALTER ANY SCHEMA TO GUEST;"
    ;; Set DB_CLOSE_DELAY here because only admins are allowed to do it, so we can't set it via the connection string.
    ;; Set it to to -1 (no automatic closing)
    "SET DB_CLOSE_DELAY -1;"))

@@ -2,7 +2,7 @@ import React from "react";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 
@@ -33,7 +33,7 @@ function setup({
   renderWithProviders(<CreateCollectionForm onCancel={onCancel} />, {
     storeInitialState: {
       currentUser: user,
-      entities: createEntitiesState({
+      entities: createMockEntitiesState({
         collections: [ROOT_COLLECTION],
       }),
     },

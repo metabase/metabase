@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Fragment } from "react";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { isRootCollection } from "metabase/collections/utils";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
@@ -46,14 +46,14 @@ export const CollectionBreadcrumbs = ({
       </>
     ) : (
       parts.map(collection => (
-        <>
+        <Fragment key={collection.id}>
           <CollectionBadge
             collectionId={collection.id}
             inactiveColor="text-medium"
             isSingleLine
           />
           <PathSeparator>/</PathSeparator>
-        </>
+        </Fragment>
       ))
     );
 
@@ -69,4 +69,5 @@ export const CollectionBreadcrumbs = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CollectionBreadcrumbs;

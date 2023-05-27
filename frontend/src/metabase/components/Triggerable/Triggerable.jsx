@@ -9,9 +9,12 @@ import Tooltip from "metabase/core/components/Tooltip";
 
 const Trigger = styled.a``;
 
-// higher order component that takes a component which takes props "isOpen" and optionally "onClose"
-// and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
-
+/**
+ * higher order component that takes a component which takes props "isOpen" and optionally "onClose"
+ * and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
+ *
+ * @deprecated HOCs are deprecated - use Modal + useState
+ */
 const Triggerable = ComposedComponent =>
   class extends Component {
     static displayName =

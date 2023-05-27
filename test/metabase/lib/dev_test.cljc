@@ -20,9 +20,7 @@
 (deftest ^:parallel query-for-table-name-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
-                       :lib/options  {:lib/uuid string?}
                        :source-table (meta/id :venues)}]}
           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
               (dissoc :lib/metadata)))))

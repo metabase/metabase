@@ -16,7 +16,8 @@
     :fields   [(meta/field-metadata :venues :price)]
     :metrics  [{:id         100
                 :name       "My Metric"
-                :definition {:aggregation [[:sum [:field (meta/id :venues :price) nil]]]
+                :definition {:source-table (meta/id :venues)
+                             :aggregation [[:sum [:field (meta/id :venues :price) nil]]]
                              :filter      [:= [:field (meta/id :venues :price) nil] 4]}}]}))
 
 (deftest ^:parallel metric-display-name-test
@@ -39,6 +40,6 @@
                     (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} "ga:totalEvents"]))]
       (is (=? [{:lib/type     :metadata/field
                 :name         "metric"
-                :display_name "[Unknown Metric]"
-                :base_type    :type/*}]
+                :display-name "[Unknown Metric]"
+                :base-type    :type/*}]
               (lib.metadata.calculation/metadata query -1 query))))))

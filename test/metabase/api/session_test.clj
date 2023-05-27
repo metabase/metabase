@@ -8,11 +8,8 @@
    [metabase.driver.h2 :as h2]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [LoginHistory
-            PermissionsGroup
-            PermissionsGroupMembership
-            Session
-            User]]
+    :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Pulse
+            PulseChannel Session User]]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.server.middleware.session :as mw.session]
@@ -82,10 +79,13 @@
                            "exception")
                     (s/one (s/eq "Authentication endpoint error")
                            "log message")]
-                   (first (mt/with-log-messages-for-level :error
-                            (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))))))))
+                   (->> (mt/with-log-messages-for-level :error
+                          (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))
+                        ;; geojson can throw errors and we want the authentication error
+                        (filter (fn [[_log-level _error message]] (= message "Authentication endpoint error")))
+                        first))))))
 
-(deftest login-validation-test
+(deftest ^:parallel login-validation-test
   (testing "POST /api/session"
     (testing "Test for required params"
       (is (= {:errors {:username "value must be a non-blank string."}}
@@ -147,25 +147,23 @@
 
 (deftest failure-threshold-throttling-test
   (testing "Test that source based throttling kicks in after the login failure threshold (50) has been reached"
-    ;; disable this when we're testing drivers since it tends to F L A K E.
-    (mt/disable-flaky-test-when-running-driver-tests-in-ci
-      (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
-                                                                              [:username :ip-address])
-                    public-settings/source-address-header (constantly "x-forwarded-for")]
-        (dotimes [n 50]
-          (let [response    (send-login-request (format "user-%d" n)
-                                                {"x-forwarded-for" "10.1.2.3"})
-                status-code (:status response)]
-            (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
-        (let [error (fn []
-                      (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
-                          :body
-                          json/parse-string
-                          (get-in ["errors" "username"])))]
-          (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
-                   (error)))
-          (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
-                   (error))))))))
+    (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
+                                                                            [:username :ip-address])
+                  public-settings/source-address-header (constantly "x-forwarded-for")]
+      (dotimes [n 50]
+        (let [response    (send-login-request (format "user-%d" n)
+                                              {"x-forwarded-for" "10.1.2.3"})
+              status-code (:status response)]
+          (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
+      (let [error (fn []
+                    (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
+                        :body
+                        json/parse-string
+                        (get-in ["errors" "username"])))]
+        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
+                 (error)))
+        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
+                 (error)))))))
 
 (deftest failure-threshold-per-request-source
   (testing "The same as above, but ensure that throttling is done on a per request source basis."
@@ -488,3 +486,59 @@
              clojure.lang.ExceptionInfo
              #"Password did not match stored password"
              (#'api.session/login (:email user) "password" device-info)))))))
+
+;;; ------------------------------------------- TESTS FOR UNSUBSCRIBING NONUSERS STUFF --------------------------------------------
+
+(deftest unsubscribe-test
+  (testing "POST /pulse/unsubscribe"
+    (let [email "test@metabase.com"]
+      (testing "Invalid hash"
+        (is (= "Invalid hash."
+               (mt/client :post 400 "session/pulse/unsubscribe" {:pulse-id 1
+                                                                 :email    email
+                                                                 :hash     "fake-hash"}))))
+
+      (testing "Valid hash but not email"
+        (mt/with-temp* [Pulse        [{pulse-id :id} {}]
+                        PulseChannel [_ {:pulse_id pulse-id}]]
+          (is (= "Email for pulse-id doesnt exist."
+                 (mt/client :post 400 "session/pulse/unsubscribe" {:pulse-id pulse-id
+                                                                   :email    email
+                                                                   :hash     (api.session/generate-hash pulse-id email)})))))
+
+      (testing "Valid hash and email"
+        (mt/with-temp* [Pulse        [{pulse-id :id} {}]
+                        PulseChannel [_ {:pulse_id     pulse-id
+                                         :channel_type "email"
+                                         :details      {:emails [email]}}]]
+          (is (= {:status "success"}
+                 (mt/client :post 200 "session/pulse/unsubscribe" {:pulse-id pulse-id
+                                                                   :email    email
+                                                                   :hash     (api.session/generate-hash pulse-id email)}))))))))
+
+(deftest unsubscribe-undo-test
+  (testing "POST /pulse/unsubscribe/undo"
+    (let [email "test@metabase.com"]
+      (testing "Invalid hash"
+        (is (= "Invalid hash."
+               (mt/client :post 400 "session/pulse/unsubscribe/undo" {:pulse-id 1
+                                                                      :email    email
+                                                                      :hash     "fake-hash"}))))
+
+      (testing "Valid hash and email doesn't exist"
+        (mt/with-temp* [Pulse        [{pulse-id :id} {}]
+                        PulseChannel [_ {:pulse_id pulse-id}]]
+          (is (= {:status "success"}
+                 (mt/client :post 200 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
+                                                                        :email    email
+                                                                        :hash     (api.session/generate-hash pulse-id email)})))))
+
+      (testing "Valid hash and email already exists"
+        (mt/with-temp* [Pulse        [{pulse-id :id} {}]
+                        PulseChannel [_ {:pulse_id     pulse-id
+                                         :channel_type "email"
+                                         :details      {:emails [email]}}]]
+          (is (= "Email for pulse-id already exists."
+                 (mt/client :post 400 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
+                                                                        :email    email
+                                                                        :hash     (api.session/generate-hash pulse-id email)}))))))))

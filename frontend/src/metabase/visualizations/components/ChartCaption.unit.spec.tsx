@@ -4,20 +4,38 @@ import userEvent from "@testing-library/user-event";
 import { render, screen, getIcon } from "__support__/ui";
 
 import { Card, Series } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDataset,
+} from "metabase-types/api/mocks";
 import ChartCaption from "./ChartCaption";
 
 type Props = ComponentPropsWithoutRef<typeof ChartCaption>;
 
 const getSeries = ({ card }: { card?: Card } = {}): Series => {
   const cols = [
-    { name: "col 1", display_name: "col 1", source: "source" },
-    { name: "col 2", display_name: "col 2", source: "source" },
+    createMockColumn({
+      name: "col 1",
+      display_name: "col 1",
+      source: "source",
+    }),
+    createMockColumn({
+      name: "col 2",
+      display_name: "col 2",
+      source: "source",
+    }),
   ];
   const series: Series = [
     {
       card: card ?? createMockCard({ name: "" }),
-      data: { rows: [["foo", 1]], cols, rows_truncated: 0 },
+      ...createMockDataset({
+        data: {
+          rows: [["foo", 1]],
+          cols,
+          rows_truncated: 0,
+        },
+      }),
     },
   ];
 
@@ -60,13 +78,13 @@ describe("ChartCaption", () => {
   it("should render markdown in description", () => {
     setup({
       series: getSeries({ card: createMockCard({ name: "card name" }) }),
-      settings: { "card.description": "# header" },
+      settings: { "card.description": "[link](https://metabase.com)" },
     });
 
     userEvent.hover(getIcon("info"));
 
-    const tooltipContent = screen.getByRole("heading");
+    const tooltipContent = screen.getByRole("link");
     expect(tooltipContent).toBeInTheDocument();
-    expect(tooltipContent).toHaveTextContent("header");
+    expect(tooltipContent).toHaveTextContent("link");
   });
 });

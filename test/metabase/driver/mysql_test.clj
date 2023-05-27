@@ -438,60 +438,69 @@
                     :database-type "timestamp",
                     :base-type :type/DateTime,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "1234123412314"]}
                    {:name "json_bit → boop",
                     :database-type "timestamp",
                     :base-type :type/DateTime,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "boop"]}
                    {:name "json_bit → genres",
                     :database-type "text",
                     :base-type :type/Array,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "genres"]}
                    {:name "json_bit → 1234",
                     :database-type "bigint",
                     :base-type :type/Integer,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "1234"]}
                    {:name "json_bit → doop",
                     :database-type "text",
                     :base-type :type/Text,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "doop"]}
                    {:name "json_bit → noop",
                     :database-type "timestamp",
                     :base-type :type/DateTime,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "noop"]}
                    {:name "json_bit → zoop",
                     :database-type "timestamp",
                     :base-type :type/DateTime,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "zoop"]}
                    {:name "json_bit → published",
                     :database-type "text",
                     :base-type :type/Text,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "published"]}
                    {:name "json_bit → title",
                     :database-type "text",
                     :base-type :type/Text,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "title"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
                    :mysql
                    (mt/db)
-                   {:name "json"}))))))))
+                   {:name "json" :id (mt/id "json")}))))))))
 
 (deftest big-nested-field-column-test
   (mt/test-driver :mysql
@@ -502,7 +511,7 @@
                  (count (sql-jdbc.sync/describe-nested-field-columns
                          :mysql
                          (mt/db)
-                         {:name "big_json"})))))))))
+                         {:name "big_json" :id (mt/id "big_json")})))))))))
 
 (deftest json-query-test
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
@@ -589,12 +598,14 @@
                     :database-type     "boolean"
                     :base-type         :type/Boolean
                     :database-position 0
+                    :json-unfolding    false
                     :visibility-type   :normal
                     :nfc-path          [:jsoncol "mybool"]}
                    {:name              "jsoncol → myint"
                     :database-type     "double precision"
                     :base-type         :type/Number
                     :database-position 0
+                    :json-unfolding    false
                     :visibility-type   :normal
                     :nfc-path          [:jsoncol "myint"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
@@ -602,35 +613,21 @@
                   (mt/db)
                   (t2/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
 
-(deftest can-shut-off-json-unwrapping
-  (mt/test-driver :mysql
-    ;; in here we fiddle with the mysql db details
-    (let [db (t2/select-one Database :id (mt/id))]
-      (try
-        (t2/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding true)})
-        (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
-        (t2/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding false)})
-        (is (= false (driver/database-supports? :mysql :nested-field-columns (mt/db))))
-        (t2/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding nil)})
-        (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
-        ;; un fiddle with the mysql db details.
-        (finally (t2/update! Database (mt/id) {:details (:details db)}))))))
-
-(deftest ddl-execute-with-timeout-test1
-  (mt/test-driver :mysql
-    (mt/dataset json
-      (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-        (is (thrown-with-msg?
-             Exception
-             #"Killed mysql process id [\d,]+ due to timeout."
-             (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))))))
-
 (deftest ddl-execute-with-timeout-test
   (mt/test-driver :mysql
     (mt/dataset json
       (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-        (is (thrown-with-msg?
-              Exception
-              #"Killed mysql process id [\d,]+ due to timeout."
-              (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
-        (is (some? (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))
+        (testing "When the query takes longer that the timeout, it is killed."
+          (is (thrown-with-msg?
+                Exception
+                #"Killed mysql process id [\d,]+ due to timeout."
+                (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"]))))
+        (testing "When the query takes less time than the timeout, it is successful."
+          (is (some? (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"]))))))))
+
+(deftest syncable-schemas-test
+  (mt/test-driver :mysql
+    (testing "`syncable-schemas` should return an empty set because mysql doesn't support schemas"
+      (mt/with-empty-db
+        (is (= #{}
+               (driver/syncable-schemas driver/*driver* (mt/id))))))))

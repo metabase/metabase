@@ -2,12 +2,17 @@ import React from "react";
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseTest } from "__support__/enterprise";
-import { metadata } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, getIcon } from "__support__/ui";
 
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
 
 import SavedQuestionHeaderButton from "./SavedQuestionHeaderButton";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 function setup({ question }) {
   const onSave = jest.fn();

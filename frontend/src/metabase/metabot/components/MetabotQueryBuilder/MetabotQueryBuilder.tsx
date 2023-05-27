@@ -6,16 +6,19 @@ import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { Dataset } from "metabase-types/api";
 import { MetabotQueryStatus, State } from "metabase-types/store";
 import {
+  getIsVisualized,
   getQueryError,
   getQueryResults,
   getQueryStatus,
 } from "../../selectors";
-import MetabotFeedback from "../MetabotFeedback";
 import MetabotQueryEditor from "../MetabotQueryEditor";
 import MetabotVisualization from "../MetabotVisualization";
+import MetabotFeedback from "../MetabotFeedback";
+import MetabotDisplayToggle from "../MetabotDisplayToggle";
 import {
   ErrorStateMessage,
   ErrorStateRoot,
+  QueryFooterRoot,
   IdleStateIcon,
   IdleStateRoot,
   QueryBuilderRoot,
@@ -27,6 +30,7 @@ interface StateProps {
   queryStatus: MetabotQueryStatus;
   queryResults: [Dataset] | null;
   queryError: unknown;
+  isVisualized: boolean;
 }
 
 type MetabotQueryBuilderProps = StateProps;
@@ -36,6 +40,7 @@ const mapStateToProps = (state: State): StateProps => ({
   queryStatus: getQueryStatus(state),
   queryResults: getQueryResults(state),
   queryError: getQueryError(state),
+  isVisualized: getIsVisualized(state),
 });
 
 const MetabotQueryBuilder = ({
@@ -43,6 +48,7 @@ const MetabotQueryBuilder = ({
   queryStatus,
   queryResults,
   queryError,
+  isVisualized,
 }: MetabotQueryBuilderProps) => {
   const isRunning = queryStatus === "running";
   const hasResults = queryResults != null;
@@ -60,7 +66,7 @@ const MetabotQueryBuilder = ({
       ) : (
         <QueryIdleState />
       )}
-      {hasResults && <MetabotFeedback />}
+      {hasResults && <QueryFooter isVisualized={isVisualized} />}
     </QueryBuilderRoot>
   );
 };
@@ -96,4 +102,18 @@ const QueryErrorState = ({ queryError }: QueryErrorStateProps) => {
   );
 };
 
+interface QueryFooterProps {
+  isVisualized: boolean;
+}
+
+const QueryFooter = ({ isVisualized }: QueryFooterProps) => {
+  return (
+    <QueryFooterRoot>
+      <MetabotFeedback />
+      {isVisualized && <MetabotDisplayToggle />}
+    </QueryFooterRoot>
+  );
+};
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(MetabotQueryBuilder);

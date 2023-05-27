@@ -10,7 +10,7 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/settings"
-  "Update Google Sign-In related settings. You must be a superuser or have `setting` permission to do this."
+  "Update Google Sign-In related settings. You must be a superuser to do this."
   [:as {{:keys [google-auth-client-id google-auth-enabled google-auth-auto-create-accounts-domain]} :body}]
   {google-auth-client-id                   (s/maybe s/Str)
    google-auth-enabled                     (s/maybe s/Bool)

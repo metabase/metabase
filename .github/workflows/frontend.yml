@@ -70,7 +70,7 @@ jobs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: 'cljs'
-    - run: yarn build-quick:cljs
+    - run: yarn build:cljs
       name: Compile CLJS
     - run: yarn type-check
       name: Check types
@@ -131,6 +131,7 @@ jobs:
         uses: chromaui/action@v1
         env:
           PUBLISH_CHROMATIC: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          STORYBOOK_BUILD_TIMEOUT: 900000
         if: env.PUBLISH_CHROMATIC != null
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

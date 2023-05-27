@@ -16,6 +16,9 @@ const DEFAULT_FILTER_OPTIONS = (value, option) => {
 
 const DEFAULT_OPTION_IS_EQUAL = (a, b) => a === b;
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export default ({
     optionFilter = DEFAULT_FILTER_OPTIONS,
     optionIsEqual = DEFAULT_OPTION_IS_EQUAL,

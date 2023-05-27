@@ -1,4 +1,9 @@
-import { popover, restore, visitDashboard } from "e2e/support/helpers";
+import {
+  addOrUpdateDashboardCard,
+  popover,
+  restore,
+  visitDashboard,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -33,6 +38,7 @@ describe("issue 25322", () => {
       throttleFieldValuesRequest(dashboard_id);
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameterDetails.name).click();
     popover().findByTestId("loading-spinner").should("exist");
   });
@@ -44,35 +50,19 @@ const createDashboard = () => {
     .then(({ body: { id: card_id } }) => {
       cy.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboard_id } }) => {
-          cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
-            cardId: card_id,
-            row: 0,
-            col: 0,
-            size_x: 4,
-            size_y: 4,
-          }).then(({ body: { id: dashcard_id } }) => {
-            cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-              cards: [
+          addOrUpdateDashboardCard({
+            dashboard_id,
+            card_id,
+            card: {
+              parameter_mappings: [
                 {
-                  id: dashcard_id,
                   card_id,
-                  row: 0,
-                  col: 0,
-                  size_x: 4,
-                  size_y: 4,
-                  parameter_mappings: [
-                    {
-                      card_id,
-                      parameter_id: parameterDetails.id,
-                      target: ["dimension", ["field", ORDERS.STATE, null]],
-                    },
-                  ],
+                  parameter_id: parameterDetails.id,
+                  target: ["dimension", ["field", ORDERS.STATE, null]],
                 },
               ],
-            }).then(() => {
-              return { dashboard_id };
-            });
-          });
+            },
+          }).then(() => ({ dashboard_id }));
         },
       );
     });

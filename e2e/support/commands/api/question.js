@@ -106,7 +106,7 @@ function question(
     if (loadMetadata || visitQuestion) {
       dataset
         ? cy.intercept("POST", `/api/dataset`).as("dataset")
-        : // We need to use the wildcard becase endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
+        : // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
           cy
             .intercept("POST", `/api/card/**/${body.id}/query`)
             .as(interceptAlias);

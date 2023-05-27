@@ -24,6 +24,29 @@
         {:status-code 400
          :message     message})))))
 
+(defn- infer-sql-or-throw
+  "An http-friendly version of infer-sql that throws a useful error if it fails to produce sql."
+  [context question]
+  (or
+   (metabot/infer-sql context)
+   (throw
+    (let [message (format
+                   "Query '%s' didn't produce any SQL. Perhaps try a more detailed query."
+                   question)]
+      (ex-info
+       message
+       {:status-code 400
+        :message     message})))))
+
+(defn- add-viz-to-dataset
+  "Given a calling context and resulting dataset, add a more interesting visual to the card."
+  [context {:keys [bot-sql] :as dataset}]
+  (let [context (assoc context :sql bot-sql :prompt_task :infer_viz)
+        {:keys [template prompt_template_version]} (metabot/infer-viz context)]
+    (cond-> (update dataset :card merge template)
+      prompt_template_version
+      (update :prompt_template_versions conj prompt_template_version))))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/model/:model-id"
   "Ask Metabot to generate a SQL query given a prompt about a given model."
@@ -38,21 +61,13 @@
         _       (check-database-support (:database_id model))
         context {:model       (metabot-util/denormalize-model model)
                  :user_prompt question
-                 :prompt_task :infer_sql}]
-    (or
-     (metabot/infer-sql context)
-     (throw
-      (let [message (format
-                     "Query '%s' didn't produce any SQL. Perhaps try a more detailed query."
-                     question)]
-        (ex-info
-         message
-         {:status-code 400
-          :message     message}))))))
+                 :prompt_task :infer_sql}
+        dataset (infer-sql-or-throw context question)]
+    (add-viz-to-dataset context dataset)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/database/:database-id"
-  "Ask Metabot to generate a SQL query given a prompt about a given database."
+  "Ask Metabot to generate a native question given a prompt about a given database."
   [database-id :as {{:keys [question]} :body}]
   {database-id su/IntGreaterThanZero
    question    su/NonBlankString}
@@ -66,19 +81,9 @@
                  :user_prompt question
                  :prompt_task :infer_model}]
     (if-some [model (metabot/infer-model context)]
-      (or
-       (metabot/infer-sql (merge
-                           context
-                           {:model       model
-                            :prompt_task :infer_sql}))
-       (throw
-        (let [message (format
-                       "Query '%s' didn't produce any SQL. Perhaps try a more detailed query."
-                       question)]
-          (ex-info
-           message
-           {:status-code 400
-            :message     message}))))
+      (let [context (merge context {:model model :prompt_task :infer_sql})
+            dataset (infer-sql-or-throw context question)]
+        (add-viz-to-dataset context dataset))
       (throw
        (let [message (format
                       (str/join
@@ -90,6 +95,23 @@
           message
           {:status-code 400
            :message     message}))))))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/database/:database-id/query"
+  "Ask Metabot to generate a SQL query given a prompt about a given database."
+  [database-id :as {{:keys [question]} :body}]
+  {database-id su/IntGreaterThanZero
+   question    su/NonBlankString}
+  (log/infof
+   "Metabot '/api/metabot/database/%s/query' being called with prompt: '%s'"
+   database-id
+   question)
+  (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
+        _       (check-database-support (:id database))
+        context {:database    (metabot-util/denormalize-database database)
+                 :user_prompt question
+                 :prompt_task :infer_native_sql}]
+    (metabot/infer-native-sql-query context)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/feedback"

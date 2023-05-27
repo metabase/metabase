@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import _ from "underscore";
 import { CreateQueryActionParams } from "metabase/entities/actions";
 
 import type {
+  Card,
   ActionFormSettings,
   DatabaseId,
   NativeDatasetQuery,
@@ -10,7 +12,6 @@ import type {
   WritebackParameter,
   WritebackQueryAction,
 } from "metabase-types/api";
-import type { Card as LegacyCard } from "metabase-types/types/Card";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 
@@ -19,7 +20,7 @@ import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/
 
 import { getDefaultFormSettings } from "../../../../utils";
 
-import { ActionContext } from "../ActionContext";
+import { ActionContext, ActionContextType } from "../ActionContext";
 import type { ActionContextProviderProps, EditorBodyProps } from "../types";
 
 import {
@@ -54,15 +55,24 @@ function newQuestion(metadata: Metadata, databaseId?: DatabaseId) {
 
 function convertActionToQuestionCard(
   action: WritebackQueryAction,
-): LegacyCard<NativeDatasetQuery> {
+): Card<NativeDatasetQuery> {
   return {
     id: action.id,
     name: action.name,
     description: action.description,
-    dataset_query: action.dataset_query as NativeDatasetQuery,
+    dataset_query: action.dataset_query,
     display: "action",
     visualization_settings:
       action.visualization_settings as VisualizationSettings,
+
+    dataset: false,
+    can_write: true,
+    public_uuid: null,
+    collection_id: null,
+    result_metadata: [],
+    cache_ttl: null,
+    last_query_start: null,
+    archived: false,
   };
 }
 
@@ -176,12 +186,17 @@ function QueryActionContextProvider({
     [query, handleQueryChange],
   );
 
+  const isDirty = useMemo(() => {
+    return canSave && !_.isEqual(action, initialAction);
+  }, [action, canSave, initialAction]);
+
   const value = useMemo(
-    () => ({
+    (): ActionContextType => ({
       action,
       formSettings,
       isNew,
       canSave,
+      isDirty,
       ui: {
         canRename: true,
         canChangeFieldSettings: true,
@@ -195,8 +210,8 @@ function QueryActionContextProvider({
       formSettings,
       isNew,
       canSave,
+      isDirty,
       handleActionChange,
-      setFormSettings,
       renderEditorBody,
     ],
   );
@@ -206,4 +221,5 @@ function QueryActionContextProvider({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QueryActionContextProvider;

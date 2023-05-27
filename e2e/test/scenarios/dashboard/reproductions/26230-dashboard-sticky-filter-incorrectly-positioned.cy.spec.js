@@ -1,4 +1,8 @@
-import { restore, visitDashboard } from "e2e/support/helpers";
+import {
+  addOrUpdateDashboardCard,
+  restore,
+  visitDashboard,
+} from "e2e/support/helpers";
 
 describe("issue 26230", () => {
   beforeEach(() => {
@@ -74,21 +78,22 @@ function bookmarkDashboard(dashboardId) {
 }
 
 function createTextDashcard(id) {
-  cy.request("POST", `/api/dashboard/${id}/cards`, {
-    cardId: null,
-    col: 0,
-    row: 0,
-    size_x: 4,
-    size_y: 20,
-    visualization_settings: {
-      virtual_card: {
-        name: null,
-        display: "text",
-        visualization_settings: {},
-        dataset_query: {},
-        archived: false,
+  addOrUpdateDashboardCard({
+    dashboard_id: id,
+    card_id: null,
+    card: {
+      size_x: 4,
+      size_y: 20,
+      visualization_settings: {
+        virtual_card: {
+          name: null,
+          display: "text",
+          visualization_settings: {},
+          dataset_query: {},
+          archived: false,
+        },
+        text: "I am a tall card",
       },
-      text: "I am a tall card",
     },
   });
 }

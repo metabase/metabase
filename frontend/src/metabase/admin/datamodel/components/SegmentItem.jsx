@@ -17,7 +17,7 @@ export default class SegmentItem extends Component {
       <tr className="mt1 mb3">
         <td className="px1 py1 text-wrap">
           <span className="flex align-center">
-            <Icon {...segment.getIcon()} className="mr1 text-medium" />
+            <Icon name="segment" className="mr1 text-medium" />
             <span className="text-dark text-bold">{segment.name}</span>
           </span>
         </td>

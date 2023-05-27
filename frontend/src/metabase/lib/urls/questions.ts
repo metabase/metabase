@@ -3,23 +3,20 @@ import slugg from "slugg";
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { CardId } from "metabase-types/api";
-import { Card as BaseCard } from "metabase-types/types/Card";
+import { CardId, Card as SavedCard } from "metabase-types/api";
 import Question, { QuestionCreatorOpts } from "metabase-lib/Question";
 
 import { appendSlug, extractQueryParams } from "./utils";
 
-type Card = Partial<BaseCard> & {
-  id?: number | string;
-  card_id?: string;
-  name?: string;
+type Card = Partial<SavedCard> & {
+  card_id?: CardId | string;
   model?: "card" | "dataset";
-  dataset?: boolean;
 };
 
 export const newQuestionFlow = () => "/question/new";
 
 export type QuestionUrlBuilderParams = {
+  mode?: "view" | "notebook";
   hash?: Card | string;
   query?: Record<string, unknown> | string;
   objectId?: number | string;
@@ -27,7 +24,12 @@ export type QuestionUrlBuilderParams = {
 
 export function question(
   card: Card | null,
-  { hash = "", query = "", objectId }: QuestionUrlBuilderParams = {},
+  {
+    mode = "view",
+    hash = "",
+    query = "",
+    objectId,
+  }: QuestionUrlBuilderParams = {},
 ) {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
@@ -74,7 +76,9 @@ export function question(
     path = appendSlug(path, slugg(name));
   }
 
-  if (objectId) {
+  if (mode === "notebook") {
+    path = `${path}/notebook`;
+  } else if (objectId) {
     path = `${path}/${objectId}`;
   }
 

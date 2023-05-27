@@ -1,5 +1,7 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
+
+import { createMockMetadata } from "__support__/metadata";
 import {
   fireEvent,
   renderWithProviders,
@@ -11,26 +13,33 @@ import {
   setupUnauthorizedDatabasesEndpoints,
 } from "__support__/server-mocks";
 
-import type { Dataset, DatasetQuery } from "metabase-types/api";
-import { createMockDataset } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { checkNotNull } from "metabase/core/utils/types";
+
+import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
+import {
+  createMockDataset,
+  createMockStructuredDatasetQuery,
+} from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  createAdHocCard,
+  createSavedStructuredCard,
+  createAdHocNativeCard,
+  createSavedNativeCard,
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
+import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
-import type Question from "metabase-lib/Question";
+import Question from "metabase-lib/Question";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import {
-  getSavedStructuredQuestion,
-  getAdHocQuestion,
-  getSavedNativeQuestion,
-  getUnsavedNativeQuestion,
-} from "metabase-lib/mocks";
 
 import QuestionRowCount from "./QuestionRowCount";
 
 type SetupOpts = {
-  question: Question;
+  question: Card | UnsavedCard;
   result?: Dataset;
   isResultDirty?: boolean;
   isReadOnly?: boolean;
@@ -38,8 +47,10 @@ type SetupOpts = {
 
 function patchQuestion(question: Question) {
   if (question.isStructured()) {
-    const query = question.query() as StructuredQuery;
-    return query.sort(["asc", ["field", 1, null]]).question();
+    const query = question._getMLv2Query();
+    const [sampleColumn] = Lib.orderableColumns(query);
+    const nextQuery = Lib.orderBy(query, sampleColumn);
+    return question.setDatasetQuery(Lib.toLegacyQuery(nextQuery));
   } else {
     const query = question.query() as NativeQuery;
     return query.setQueryText("SELECT * FROM __ORDERS__").question();
@@ -47,12 +58,20 @@ function patchQuestion(question: Question) {
 }
 
 async function setup({
-  question,
+  question: card,
   result = createMockDataset(),
   isResultDirty = false,
   isReadOnly = false,
 }: SetupOpts) {
   const databases = [createSampleDatabase()];
+  const metadata = createMockMetadata({
+    databases,
+    questions: "id" in card ? [card] : [],
+  });
+  const question =
+    "id" in card
+      ? checkNotNull(metadata.question(card.id))
+      : new Question(card, metadata);
 
   if (isReadOnly) {
     setupUnauthorizedDatabasesEndpoints(databases);
@@ -61,7 +80,7 @@ async function setup({
   }
 
   const lastRunQuestion = isResultDirty ? patchQuestion(question) : question;
-  const lastRunDatasetQuery = lastRunQuestion.datasetQuery() as DatasetQuery;
+  const lastRunDatasetQuery = lastRunQuestion.datasetQuery();
 
   result.json_query = lastRunDatasetQuery;
 
@@ -80,36 +99,40 @@ async function setup({
   return { rowCount };
 }
 
+function getDatasetQueryWithLimit(limit: number) {
+  return createMockStructuredDatasetQuery({
+    database: SAMPLE_DB_ID,
+    query: { "source-table": ORDERS_ID, limit },
+  });
+}
+
 describe("QuestionRowCount", () => {
   describe("structured query", () => {
     [
-      { question: getAdHocQuestion(), type: "ad-hoc" },
-      { question: getSavedStructuredQuestion(), type: "saved" },
-    ].forEach(({ question, type }) => {
+      { getCard: createAdHocCard, type: "ad-hoc" },
+      { getCard: createSavedStructuredCard, type: "saved" },
+    ].forEach(({ getCard, type }) => {
       describe(type, () => {
         it("shows real row count when limit isn't set", async () => {
           const { rowCount } = await setup({
-            question,
+            question: getCard(),
             result: createMockDataset({ row_count: 80 }),
           });
           expect(rowCount).toHaveTextContent("Showing 80 rows");
         });
 
         it("shows real row count when results are not dirty", async () => {
-          const query = question.query() as StructuredQuery;
           const { rowCount } = await setup({
-            question: query.updateLimit(25).question(),
+            question: getCard({ dataset_query: getDatasetQueryWithLimit(25) }),
             result: createMockDataset({ row_count: 80 }),
             isResultDirty: false,
           });
-
           expect(rowCount).toHaveTextContent("Showing 80 rows");
         });
 
         it("shows applied limit if results are dirty", async () => {
-          const query = question.query() as StructuredQuery;
           const { rowCount } = await setup({
-            question: query.updateLimit(25).question(),
+            question: getCard({ dataset_query: getDatasetQueryWithLimit(25) }),
             result: createMockDataset(),
             isResultDirty: true,
           });
@@ -118,9 +141,10 @@ describe("QuestionRowCount", () => {
         });
 
         it("shows real row count when limit is above the hard limit", async () => {
-          const query = question.query() as StructuredQuery;
           const { rowCount } = await setup({
-            question: query.updateLimit(HARD_ROW_LIMIT + 1).question(),
+            question: getCard({
+              dataset_query: getDatasetQueryWithLimit(HARD_ROW_LIMIT + 1),
+            }),
             result: createMockDataset({ row_count: 321 }),
           });
 
@@ -128,7 +152,7 @@ describe("QuestionRowCount", () => {
         });
 
         it("allows setting a limit", async () => {
-          const { rowCount } = await setup({ question });
+          const { rowCount } = await setup({ question: getCard() });
 
           userEvent.click(rowCount);
           const input = await screen.findByPlaceholderText("Pick a limit");
@@ -141,9 +165,8 @@ describe("QuestionRowCount", () => {
         });
 
         it("allows updating a limit", async () => {
-          const query = question.query() as StructuredQuery;
           const { rowCount } = await setup({
-            question: query.updateLimit(25).question(),
+            question: getCard({ dataset_query: getDatasetQueryWithLimit(25) }),
           });
 
           userEvent.click(rowCount);
@@ -157,9 +180,8 @@ describe("QuestionRowCount", () => {
         });
 
         it("allows resetting a limit", async () => {
-          const query = question.query() as StructuredQuery;
           const { rowCount } = await setup({
-            question: query.updateLimit(25).question(),
+            question: getCard({ dataset_query: getDatasetQueryWithLimit(25) }),
           });
 
           userEvent.click(rowCount);
@@ -175,7 +197,10 @@ describe("QuestionRowCount", () => {
         });
 
         it("doesn't allow managing limit if query is read-only", async () => {
-          const { rowCount } = await setup({ question, isReadOnly: true });
+          const { rowCount } = await setup({
+            question: getCard(),
+            isReadOnly: true,
+          });
 
           expect(
             screen.queryByRole("button", { name: "Row count" }),
@@ -191,25 +216,28 @@ describe("QuestionRowCount", () => {
 
   describe("native query", () => {
     [
-      { question: getUnsavedNativeQuestion(), type: "ad-hoc" },
-      { question: getSavedNativeQuestion(), type: "saved" },
-    ].forEach(({ question, type }) => {
+      { getCard: createAdHocNativeCard, type: "ad-hoc" },
+      { getCard: createSavedNativeCard, type: "saved" },
+    ].forEach(({ getCard, type }) => {
       describe(type, () => {
         it("doesn't show anything when results are dirty", async () => {
-          const { rowCount } = await setup({ question, isResultDirty: true });
+          const { rowCount } = await setup({
+            question: getCard(),
+            isResultDirty: true,
+          });
           expect(rowCount).toBeEmptyDOMElement();
         });
 
         it("shows the real row count", async () => {
           const result = createMockDataset({ row_count: 744 });
-          const { rowCount } = await setup({ question, result });
+          const { rowCount } = await setup({ question: getCard(), result });
 
           expect(rowCount).toHaveTextContent("Showing 744 rows");
         });
 
         it("shows the hard limit", async () => {
           const result = createMockDataset({ row_count: HARD_ROW_LIMIT });
-          const { rowCount } = await setup({ question, result });
+          const { rowCount } = await setup({ question: getCard(), result });
 
           expect(rowCount).toHaveTextContent(
             `Showing first ${HARD_ROW_LIMIT} rows`,
@@ -221,13 +249,16 @@ describe("QuestionRowCount", () => {
             row_count: 70,
             data: { rows_truncated: 1000 },
           });
-          const { rowCount } = await setup({ question, result });
+          const { rowCount } = await setup({ question: getCard(), result });
 
           expect(rowCount).toHaveTextContent("Showing first 70 rows");
         });
 
         it("doesn't allow managing limit", async () => {
-          const { rowCount } = await setup({ question, isReadOnly: true });
+          const { rowCount } = await setup({
+            question: getCard(),
+            isReadOnly: true,
+          });
 
           expect(
             screen.queryByRole("button", { name: "Row count" }),

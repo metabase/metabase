@@ -56,12 +56,12 @@
   [metadata-provider :- lib.metadata/MetadataProvider
    {table-id :table_id, :keys [definition], :as _segment}]
   (when (seq definition)
-    (when-let [{database-id :db_id} (when table-id (lib.metadata.protocols/table metadata-provider table-id))]
+    (when-let [{database-id :db-id} (when table-id (lib.metadata.protocols/table metadata-provider table-id))]
       (try
         (let [definition (merge {:source-table table-id}
                                 definition)
               query      (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
-          (lib/describe-top-level-key query :filter))
+          (lib/describe-top-level-key query :filters))
         (catch Throwable e
           (log/error e (tru "Error calculating Segment description: {0}" (ex-message e)))
           nil)))))

@@ -16,6 +16,7 @@
   buddy/buddy-sign                          {:mvn/version "3.4.333"}            ; JSON Web Tokens; High-Level message signing library
   camel-snake-kebab/camel-snake-kebab       {:mvn/version "0.4.3"}              ; util functions for converting between camel, snake, and kebob case
   cheshire/cheshire                         {:mvn/version "5.11.0"}             ; fast JSON encoding (used by Ring JSON middleware)
+  clj-bom/clj-bom                           {:mvn/version "0.1.2"}              ; handle BOMs in imported CSVs
   clj-commons/iapetos                       {:mvn/version "0.1.13"}             ; prometheus metrics
   clj-http/clj-http                         {:mvn/version "3.12.3"              ; HTTP client
                                              :exclusions  [commons-codec/commons-codec
@@ -81,7 +82,7 @@
                                              :exclusions  [org.clojure/data.avl]}
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "2.1.0"}              ; EE SAML integration
+  metabase/saml20-clj                       {:mvn/version "2.2.1"}              ; EE SAML integration.
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
   metosin/malli                             {:mvn/version "0.10.2"}             ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.0.0"}              ; NanoID generator for generating entity_ids
@@ -127,6 +128,7 @@
   org.clojure/java.jmx                      {:mvn/version "1.0.0"}              ; JMX bean library, for exporting diagnostic info
   org.clojure/math.combinatorics            {:mvn/version "0.1.6"}              ; combinatorics functions
   org.clojure/math.numeric-tower            {:mvn/version "0.0.5"}              ; math functions like `ceil`
+  org.clojure/tools.cli                     {:mvn/version "1.0.214"}            ; command-line argument parsing
   org.clojure/tools.logging                 {:mvn/version "1.2.4"}              ; logging framework
   org.clojure/tools.macro                   {:mvn/version "0.1.5"}              ; local macros
   org.clojure/tools.namespace               {:mvn/version "1.4.4"}
@@ -204,7 +206,7 @@
     clj-kondo/clj-kondo          {:mvn/version "2023.02.17"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
-    djblue/portal                {:mvn/version "0.37.0"}                    ; ui for inspecting values
+    djblue/portal                {:mvn/version "0.40.0"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
     io.github.metabase/hawk      {:sha "45ed36008014f9ac1ea66beb56fb1c4c39f8342b"}
     jonase/eastwood              {:mvn/version "1.3.0"}                     ; inspects namespaces and reports possible problems using tools.analyzer
@@ -263,8 +265,7 @@
   :run
   {:main-opts ["-m" "metabase.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=dev"
-               "-Djava.awt.headless=true"                   ; prevent Java icon from randomly popping up in macOS dock
-               "-Dmb.jetty.port=3000"]}
+               "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
 
   ;; alias for CI-specific options.
   :ci
@@ -413,7 +414,6 @@
                                    "./deps.edn"
                                    "./package.json"
                                    "./shadow-cljs.edn"
-                                   ".circleci"
                                    ".clj-kondo"
                                    ".github"
                                    "bin"
@@ -568,6 +568,13 @@
   ;;    :update-version-info
   :build/release
   {:exec-fn release/release}
+
+  ;; Only in the CI for now: publish EBS artifact
+  ;; FIXME: remove after full release automation on CI
+  ;;
+  ;;    clojure -X:build:build/publish-ebs
+  :build/publish-ebs
+  {:exec-fn release/publish-ebs}
 
   ;; extra paths and deps for working on build scripts, or running the tests.
   :build-dev

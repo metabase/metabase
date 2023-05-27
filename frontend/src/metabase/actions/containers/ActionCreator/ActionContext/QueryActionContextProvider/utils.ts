@@ -4,8 +4,9 @@ import type {
   InputSettingType,
   Parameter,
   ParameterType,
+  TemplateTag,
+  TemplateTagType,
 } from "metabase-types/api";
-import type { TemplateTag, TemplateTagType } from "metabase-types/types/Query";
 
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";

@@ -15,6 +15,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
+   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -49,7 +50,8 @@
                               :actions/custom            true
                               :datetime-diff             true
                               :now                       true
-                              :test/jvm-timezone-setting false}]
+                              :test/jvm-timezone-setting false
+                              :uploads                   true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -169,11 +171,23 @@
     (boolean
      ;; Command types are organized with all DDL commands listed first, so all ddl commands are before ALTER_SEQUENCE.
      ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java#L297
+     ;; This doesn't list all the possible commands, but it lists the most common and useful ones.
      (and (every? #{CommandInterface/INSERT
                     CommandInterface/MERGE
                     CommandInterface/TRUNCATE_TABLE
                     CommandInterface/UPDATE
                     CommandInterface/DELETE
+                    CommandInterface/CREATE_TABLE
+                    CommandInterface/DROP_TABLE
+                    CommandInterface/CREATE_SCHEMA
+                    CommandInterface/DROP_SCHEMA
+                    CommandInterface/ALTER_TABLE_RENAME
+                    CommandInterface/ALTER_TABLE_ADD_COLUMN
+                    CommandInterface/ALTER_TABLE_DROP_COLUMN
+                    CommandInterface/ALTER_TABLE_ALTER_COLUMN_CHANGE_TYPE
+                    CommandInterface/ALTER_TABLE_ALTER_COLUMN_NOT_NULL
+                    CommandInterface/ALTER_TABLE_ALTER_COLUMN_DROP_NOT_NULL
+                    CommandInterface/ALTER_TABLE_ALTER_COLUMN_RENAME
                     ;; Read-only commands might not make sense for actions, but they are allowed
                     CommandInterface/SELECT ; includes SHOW, TABLE, VALUES
                     CommandInterface/EXPLAIN
@@ -453,7 +467,8 @@
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
   {:pre [(map? details)]}
-  (mdb.spec/spec :h2 (update details :db connection-string-set-safe-options)))
+  (mdb.spec/spec :h2 (cond-> details
+                       (string? (:db details)) (update :db connection-string-set-safe-options))))
 
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]
@@ -503,3 +518,19 @@
       (do (log/error (tru "SSH tunnel can only be established for H2 connections using the TCP protocol"))
           db-details))
     db-details))
+
+(defmethod driver/upload-type->database-type :h2
+  [_driver upload-type]
+  (case upload-type
+    ::upload/varchar_255 "VARCHAR"
+    ::upload/text        "VARCHAR"
+    ::upload/int         "INTEGER"
+    ::upload/float       "DOUBLE PRECISION"
+    ::upload/boolean     "BOOLEAN"
+    ::upload/date        "DATE"
+    ::upload/datetime    "TIMESTAMP"))
+
+(defmethod driver/table-name-length-limit :h2
+  [_driver]
+  ;; http://www.h2database.com/html/advanced.html#limits_limitations
+  256)
