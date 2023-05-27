@@ -358,6 +358,8 @@ describe("scenarios > question > joined questions", () => {
 
     cy.get(".dot").eq(2).click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Automatic insights…").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("X-ray").click();
 
     cy.wait("@xray").then(xhr => {

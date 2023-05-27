@@ -350,7 +350,7 @@ describeEE("formatting > sandboxes", () => {
           cy.get(".bar").eq(0).click({ force: true });
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("View these Orders").click();
+        cy.findByText("See these Orders").click();
 
         cy.log("Reported failing on v1.37.0.2");
         cy.wait("@dataset").then(xhr => {
@@ -427,7 +427,7 @@ describeEE("formatting > sandboxes", () => {
         cy.get(".bar").eq(0).click({ force: true });
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("View these Orders").click();
+      cy.findByText("See these Orders").click();
 
       cy.wait("@dataset");
       cy.log("Reported failing on v1.36.4");
@@ -720,7 +720,7 @@ describeEE("formatting > sandboxes", () => {
           cy.get(".bar").eq(1).click({ force: true });
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("View these Orders").click();
+        cy.findByText("See these Orders").click();
 
         cy.wait("@dataset").then(xhr => {
           expect(xhr.response.body.error).not.to.exist;
