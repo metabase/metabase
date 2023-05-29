@@ -15,7 +15,7 @@ import { ResetPasswordData } from "../../types";
 import { ResetPasswordForm } from "../ResetPasswordForm";
 import { InfoBody, InfoMessage, InfoTitle } from "./ResetPassword.styled";
 
-type ViewType = "none" | "form" | "success" | "expired";
+type ViewType = "none" | "form" | "expired";
 
 interface ResetPasswordQueryParams {
   token: string;
