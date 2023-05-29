@@ -5,15 +5,15 @@ import { useDispatch } from "metabase/lib/redux";
 import { AuthButton } from "metabase/auth/components/AuthButton";
 import { loginSSO } from "../../actions";
 
-interface SSOButtonProps {
+interface SsoButtonProps {
   isCard?: boolean;
   redirectUrl?: string;
 }
 
-export const SSOButton = ({
+export const SsoButton = ({
   isCard,
   redirectUrl,
-}: SSOButtonProps): JSX.Element => {
+}: SsoButtonProps): JSX.Element => {
   const isEmbedded = isWithinIframe();
   const dispatch = useDispatch();
 

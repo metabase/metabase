@@ -4,7 +4,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 import { renderWithProviders, waitFor } from "__support__/ui";
-import { SSOButton } from "./SSOButton";
+import { SsoButton } from "./SsoButton";
 
 const SITE_URL = "http://metabase.test";
 
@@ -23,7 +23,7 @@ const setup = () => {
     href: `${SITE_URL}/auth/login`,
   });
 
-  renderWithProviders(<SSOButton />, { storeInitialState: state });
+  renderWithProviders(<SsoButton />, { storeInitialState: state });
 };
 
 describe("SSOButton", () => {
