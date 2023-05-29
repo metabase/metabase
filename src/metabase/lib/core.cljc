@@ -81,7 +81,8 @@
   [lib.breakout
    breakout
    breakoutable-columns
-   breakouts]
+   breakouts
+   breakouts-metadata]
   [lib.column-group
    columns-group-columns
    group-columns]

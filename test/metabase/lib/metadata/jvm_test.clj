@@ -8,7 +8,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.test :as mt]))
+   [metabase.models :refer [Card]]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest ^:parallel fetch-field-test
   (let [field (#'lib.metadata.jvm/fetch-instance :metadata/field (mt/id :categories :id))]
@@ -83,3 +85,30 @@
                 :display-name "Sum"
                 :source_alias "Orders"}]
               (lib.metadata.calculation/metadata mlv2-query))))))
+
+(deftest ^:synchronized source-question-metadata-test
+  (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues
+                                             {:joins
+                                              [{:source-table $$categories
+                                                :condition    [:= $category_id &c.categories.id]
+                                                :fields       :all
+                                                :alias        "c"}]})}]
+    (let [mlv2-query (lib/saved-question-query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                               (dissoc (update-keys card u/->kebab-case-en)
+                                                       :result-metadata))
+          breakouts  (lib/breakoutable-columns mlv2-query)
+          agg-query  (-> mlv2-query
+                         (lib/breakout (second breakouts))
+                         (lib/breakout (peek breakouts)))]
+      (is (=? [{:name "NAME"
+                :display-name "Name"
+                :long-display-name "Name"
+                :effective-type :type/Text
+                :semantic-type :type/Name}
+               {:name "NAME"
+                :display-name "Name"
+                :long-display-name "Categories → Name"
+                :effective-type :type/Text
+                :semantic-type :type/Name}]
+              (map #(lib/display-info agg-query %)
+                   (lib.metadata.calculation/metadata agg-query)))))))
