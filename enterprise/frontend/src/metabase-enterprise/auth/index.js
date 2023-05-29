@@ -17,7 +17,7 @@ import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTi
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import SettingsJWTForm from "./components/SettingsJWTForm";
-import SSOButton from "./containers/SSOButton";
+import { SSOButton } from "./components/SSOButton";
 import JwtAuthCard from "./containers/JwtAuthCard";
 import SamlAuthCard from "./containers/SamlAuthCard";
 

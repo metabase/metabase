@@ -1,26 +1,30 @@
 import React, { useCallback, useEffect } from "react";
 import { t } from "ttag";
+import { isWithinIframe } from "metabase/lib/dom";
+import { useDispatch } from "metabase/lib/redux";
 import { AuthButton } from "metabase/auth/components/AuthButton";
+import { loginSSO } from "../../actions";
 
-export interface SSOButtonProps {
+interface SSOButtonProps {
   isCard?: boolean;
-  isEmbedded?: boolean;
   redirectUrl?: string;
-  onLogin: (redirectUrl?: string) => void;
 }
 
-const SSOButton = ({
+export const SSOButton = ({
   isCard,
-  isEmbedded,
   redirectUrl,
-  onLogin,
 }: SSOButtonProps): JSX.Element => {
+  const isEmbedded = isWithinIframe();
+  const dispatch = useDispatch();
+
   const handleLogin = useCallback(() => {
-    onLogin(redirectUrl);
-  }, [onLogin, redirectUrl]);
+    dispatch(loginSSO(redirectUrl));
+  }, [dispatch, redirectUrl]);
 
   useEffect(() => {
-    isEmbedded && handleLogin();
+    if (isEmbedded) {
+      handleLogin();
+    }
   }, [isEmbedded, handleLogin]);
 
   return (
@@ -29,6 +33,3 @@ const SSOButton = ({
     </AuthButton>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SSOButton;

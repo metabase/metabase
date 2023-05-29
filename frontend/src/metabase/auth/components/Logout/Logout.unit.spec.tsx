@@ -5,9 +5,8 @@ import { renderWithProviders, waitFor } from "__support__/ui";
 import { Logout } from "./Logout";
 
 const setup = () => {
-  const location = window.location;
   jest.spyOn(window, "location", "get").mockReturnValue({
-    ...location,
+    ...window.location,
     reload: jest.fn(),
   });
 
