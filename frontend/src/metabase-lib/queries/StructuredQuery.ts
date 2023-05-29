@@ -553,9 +553,9 @@ class StructuredQueryInner extends AtomicQuery {
     return ML.orderBys(query).length > 0;
   }
 
-  hasLimit() {
+  hasLimit(stageIndex = this.queries().length - 1) {
     const query = this.getMLv2Query();
-    return ML.hasLimit(query);
+    return ML.hasLimit(query, stageIndex);
   }
 
   hasFields() {
@@ -1064,9 +1064,9 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * @deprecated use metabase-lib v2's limit function
    */
-  updateLimit(limit: Limit) {
+  updateLimit(limit: Limit, stageIndex = this.queries().length - 1) {
     const query = this.getMLv2Query();
-    const nextQuery = ML.limit(query, limit);
+    const nextQuery = ML.limit(query, stageIndex, limit);
     return this.updateWithMLv2(nextQuery);
   }
 
