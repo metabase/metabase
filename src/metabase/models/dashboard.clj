@@ -191,7 +191,7 @@
             current-card    (id->current-card dashcard-id)]
         (cond
           ;; If card is in current-cards but not serialized-cards then we need to delete it
-          (not serialized-card) (dashboard-card/delete-dashboard-card! current-card user-id)
+          (not serialized-card) (dashboard-card/delete-dashboard-card! (:id current-card))
 
           ;; If card is in serialized-cards but not current-cards we need to add it
           (not current-card) (dashboard-card/create-dashboard-card! (assoc serialized-card
