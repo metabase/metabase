@@ -54,12 +54,12 @@ export function AggregateStep({
   };
 
   const handleRemoveAggregation = (aggregation: Lib.AggregationClause) => {
-    const nextQuery = Lib.removeClause(topLevelQuery, aggregation);
+    const nextQuery = Lib.removeClause(topLevelQuery, stageIndex, aggregation);
     updateQuery(nextQuery);
   };
 
   const renderAggregationName = (aggregation: Lib.AggregationClause) =>
-    Lib.displayInfo(topLevelQuery, aggregation).displayName;
+    Lib.displayInfo(topLevelQuery, stageIndex, aggregation).displayName;
 
   return (
     <ClauseStep
@@ -73,6 +73,7 @@ export function AggregateStep({
       renderPopover={aggregation => (
         <AggregationPicker
           query={topLevelQuery}
+          stageIndex={stageIndex}
           operators={operators}
           onSelect={newAggregation => {
             const isUpdate = aggregation != null;

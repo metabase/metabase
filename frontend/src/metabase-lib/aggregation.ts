@@ -5,6 +5,7 @@ import {
   aggregate as _aggregate,
   aggregations as _aggregations,
   aggregation_clause,
+  selected_aggregation_operators,
 } from "cljs/metabase.lib.aggregation";
 import type {
   AggregationClause,
@@ -13,11 +14,9 @@ import type {
   Query,
 } from "./types";
 
-const DEFAULT_STAGE_INDEX = -1;
-
 export function availableAggregationOperators(
   query: Query,
-  stageIndex = DEFAULT_STAGE_INDEX,
+  stageIndex: number,
 ): AggregationOperator[] {
   return to_array(available_aggregation_operators(query, stageIndex));
 }
@@ -28,18 +27,24 @@ export function aggregationOperatorColumns(
   return to_array(aggregation_operator_columns(operator));
 }
 
-declare function Aggregate(query: Query, clause: AggregationClause): Query;
-declare function Aggregate(
+export function selectedAggregationOperators(
+  operators: AggregationOperator[],
+  clause: AggregationClause,
+): AggregationOperator[] {
+  return to_array(selected_aggregation_operators(operators, clause));
+}
+
+export function aggregate(
   query: Query,
   stageIndex: number,
   clause: AggregationClause,
-): Query;
-
-export const aggregate: typeof Aggregate = _aggregate;
+): Query {
+  return _aggregate(query, stageIndex, clause);
+}
 
 export function aggregations(
   query: Query,
-  stageIndex = DEFAULT_STAGE_INDEX,
+  stageIndex: number,
 ): AggregationClause[] {
   return to_array(_aggregations(query, stageIndex));
 }

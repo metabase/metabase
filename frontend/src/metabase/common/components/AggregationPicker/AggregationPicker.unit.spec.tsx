@@ -6,19 +6,20 @@ import { createQuery } from "metabase-lib/test-helpers";
 import { AggregationPicker } from "./AggregationPicker";
 
 function setup({ query = createQuery() } = {}) {
-  const operators = Lib.availableAggregationOperators(query);
+  const operators = Lib.availableAggregationOperators(query, 0);
   const onSelect = jest.fn();
 
   function handleSelect(clause: Lib.AggregationClause) {
-    const nextQuery = Lib.aggregate(query, clause);
-    const aggregations = Lib.aggregations(nextQuery);
+    const nextQuery = Lib.aggregate(query, 0, clause);
+    const aggregations = Lib.aggregations(nextQuery, 0);
     const recentAggregation = aggregations[aggregations.length - 1];
-    onSelect(Lib.displayInfo(nextQuery, recentAggregation));
+    onSelect(Lib.displayInfo(nextQuery, 0, recentAggregation));
   }
 
   render(
     <AggregationPicker
       query={query}
+      stageIndex={0}
       operators={operators}
       onSelect={handleSelect}
     />,
