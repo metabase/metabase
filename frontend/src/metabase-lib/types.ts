@@ -69,14 +69,17 @@ export type ColumnDisplayInfo = {
 
   breakoutPosition?: number;
   orderByPosition?: number;
+  selected?: boolean; // used in aggregations
 };
 
 export type AggregationOperatorDisplayInfo = {
   columnName: string;
   displayName: string;
   description: string;
-  short: string;
+  shortName: string;
   requiresColumn: boolean;
+
+  selected?: boolean;
 };
 
 export type ClauseDisplayInfo = Pick<
