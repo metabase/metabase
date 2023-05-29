@@ -5,7 +5,6 @@ import Tab from "../Tab";
 
 import TabList from "./TabList";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/TabList",
   component: TabList,

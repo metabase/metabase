@@ -5,7 +5,6 @@ import styled from "@emotion/styled";
 import { ICON_PATHS } from "metabase/icon_paths";
 import Icon from "./Icon";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Components/Icon",
   component: Icon,

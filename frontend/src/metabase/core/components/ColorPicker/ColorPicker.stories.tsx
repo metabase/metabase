@@ -4,7 +4,6 @@ import { useArgs } from "@storybook/client-api";
 import { color } from "metabase/lib/colors";
 import ColorPicker from "./ColorPicker";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/ColorPicker",
   component: ColorPicker,
