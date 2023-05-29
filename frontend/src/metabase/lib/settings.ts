@@ -64,7 +64,7 @@ class MetabaseSettings {
   }
 
   /**
-   * @deprecated use getSetting(state, "key")
+   * @deprecated use getSetting(state, key)
    */
   get<T extends SettingKey>(key: T): Partial<Settings>[T] {
     return this._settings[key];
