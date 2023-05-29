@@ -186,12 +186,11 @@
   [query stage-number [_coalesce _opts expr _null-expr]]
   (lib.metadata.calculation/column-name query stage-number expr))
 
-(defn- unique-name? [query stage-number expression-name]
-  (let [stage (lib.util/query-stage query stage-number)
-        cols  (lib.metadata.calculation/visible-columns query stage-number stage)
-        names (set (for [{col :name} cols]
-                     (u/lower-case-en col)))]
-    (not (names (u/lower-case-en expression-name)))))
+(defn- conflicting-name? [query stage-number expression-name]
+  (let [stage     (lib.util/query-stage query stage-number)
+        cols      (lib.metadata.calculation/visible-columns query stage-number stage)
+        expr-name (u/lower-case-en expression-name)]
+    (some #(-> % :name u/lower-case-en (= expr-name)) cols)))
 
 (mu/defn expression :- ::lib.schema/query
   "Adds an expression to query."
@@ -199,7 +198,7 @@
    (expression query -1 expression-name an-expression-clause))
   ([query stage-number expression-name an-expression-clause]
    (let [stage-number (or stage-number -1)]
-     (when-not (unique-name? query stage-number expression-name)
+     (when (conflicting-name? query stage-number expression-name)
        (throw (ex-info "Expression name conflicts with a column in the same query stage"
                        {:expression-name expression-name})))
      (lib.util/update-query-stage
