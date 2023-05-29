@@ -562,7 +562,7 @@ class QuestionInner {
 
   pivot(
     breakouts: (Breakout | Dimension | Field)[] = [],
-    dimensions = [],
+    dimensions: Dimension[] = [],
   ): Question {
     return pivot(this, breakouts, dimensions) || this;
   }

@@ -16,8 +16,12 @@ const mapDispatchToProps = {
   _routeless_goBack: goBack,
 };
 
-// this higher order component wraps any component (typically a fullscreen modal) with an "onClose"
-// prop, injects an entry in the browser history, and closes the component if the back button is pressed
+/**
+ * this higher order component wraps any component (typically a fullscreen modal) with an "onClose"
+ * prop, injects an entry in the browser history, and closes the component if the back button is pressed
+ *
+ * @deprecated HOCs are deprecated
+ */
 export default (
   ComposedComponent,
   // clone the state object otherwise the state will be replaced rather than pushed

@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import { assocIn } from "icepick";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { normalizeFieldRef } from "metabase-lib/queries/utils/dataset";
@@ -64,12 +65,14 @@ function normalizeColumnSettings(columnSettings) {
 }
 
 export function getStoredSettingsForSeries(series) {
-  const storedSettings =
+  let storedSettings =
     (series && series[0] && series[0].card.visualization_settings) || {};
   if (storedSettings.column_settings) {
     // normalize any settings stored under old style keys: [ref, [fk->, 1, 2]]
-    storedSettings.column_settings = normalizeColumnSettings(
-      storedSettings.column_settings,
+    storedSettings = assocIn(
+      storedSettings,
+      ["column_settings"],
+      normalizeColumnSettings(storedSettings.column_settings),
     );
   }
   return storedSettings;

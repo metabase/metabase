@@ -40,7 +40,7 @@ describe("scenarios > x-rays", () => {
     cy.findByText(/^Some insights about/).should("not.exist");
   });
 
-  it.skip("should work on questions with explicit joins (metabase#13112)", () => {
+  it("should work on questions with explicit joins (metabase#13112)", () => {
     const PRODUCTS_ALIAS = "Products";
 
     cy.createQuestion(
@@ -76,6 +76,9 @@ describe("scenarios > x-rays", () => {
     cy.get(".dot")
       .eq(23) // Random dot
       .click({ force: true });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Automatic insights…").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("X-ray").click();
 
@@ -110,6 +113,9 @@ describe("scenarios > x-rays", () => {
 
       cy.button("Done").click();
       cy.get(".bar").first().click({ force: true });
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Automatic insights…").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(action).click();
 
@@ -144,9 +150,13 @@ describe("scenarios > x-rays", () => {
       });
 
       cy.get(".bar").first().click();
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Automatic insights…").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(action).click();
       cy.wait("@xray");
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("null").should("not.exist");
     });

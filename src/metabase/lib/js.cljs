@@ -338,3 +338,18 @@
   [[available-binning-strategies]] to get `available-aggregation`."
   [aggregation-operator]
   (to-array (lib.core/aggregation-operator-columns aggregation-operator)))
+
+(defn ^:export fields
+  "Get the current `:fields` in a query. Unlike the lib core version, this will return an empty sequence if `:fields` is
+  not specified rather than `nil` for JS-friendliness."
+  ([a-query]
+   (fields a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/fields a-query stage-number))))
+
+(defn ^:export with-fields
+  "Specify the `:fields` for a query. Pass an empty sequence or `nil` to remove `:fields`."
+  ([a-query new-fields]
+   (with-fields a-query -1 new-fields))
+  ([a-query stage-number new-fields]
+   (lib.core/with-fields a-query stage-number new-fields)))

@@ -200,15 +200,18 @@ export const fetchDashboard = createThunkAction(
         await dispatch(loadMetadataForDashboard(result.ordered_cards));
       }
 
-      // copy over any virtual cards from the dashcard to the underlying card/question
-      result.ordered_cards.forEach(card => {
-        if (card.visualization_settings.virtual_card) {
-          card.card = Object.assign(
-            card.card || {},
-            card.visualization_settings.virtual_card,
-          );
-        }
-      });
+      const isUsingCachedResults = entities != null;
+      if (!isUsingCachedResults) {
+        // copy over any virtual cards from the dashcard to the underlying card/question
+        result.ordered_cards.forEach(card => {
+          if (card.visualization_settings.virtual_card) {
+            card.card = Object.assign(
+              card.card || {},
+              card.visualization_settings.virtual_card,
+            );
+          }
+        });
+      }
 
       if (result.param_values) {
         dispatch(addParamValues(result.param_values));

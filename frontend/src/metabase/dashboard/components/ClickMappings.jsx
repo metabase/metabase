@@ -265,7 +265,11 @@ function TargetWithSource({
   );
 }
 
-// TODO: Extract this to a more general HOC. It can probably also take care of withTableMetadataLoaded.
+/**
+ * TODO: Extract this to a more general HOC. It can probably also take care of withTableMetadataLoaded.
+ *
+ * @deprecated HOCs are deprecated
+ */
 function loadQuestionMetadata(getQuestion) {
   return ComposedComponent => {
     class MetadataLoader extends React.Component {
