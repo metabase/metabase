@@ -1056,9 +1056,9 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * @deprecated use metabase-lib v2's currentLimit function
    */
-  limit(): Limit {
+  limit(stageIndex = this.queries().length - 1): Limit {
     const query = this.getMLv2Query();
-    return ML.currentLimit(query);
+    return ML.currentLimit(query, stageIndex);
   }
 
   /**
