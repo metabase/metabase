@@ -169,7 +169,7 @@ If you're not seeing the **Dropdown list** option, and your dashboard filter is 
 
 - **A column from a table or GUI-based model**: The dropdown filter widget must be enabled from Metabase's **Admin settings**. See [Data model admin settings: changing the filter widget](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter).
 
-- **A column from a SQL-based model**: Go to your [model's metadata settings](../data-modeling/models#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
+- **A column from a SQL-based model**: Go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
 
 ### Search box
 
