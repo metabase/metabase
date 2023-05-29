@@ -40,6 +40,7 @@ import {
   getBaseDimensionReference,
   BASE_DIMENSION_REFERENCE_OMIT_OPTIONS,
 } from "metabase-lib/references";
+import { normalize } from "metabase-lib/queries/utils/normalize";
 
 /**
  * A dimension option returned by the query_metadata API
@@ -1181,10 +1182,7 @@ export class ExpressionDimension extends Dimension {
   }
 
   mbql(): ExpressionReference {
-    if (this._options) {
-      return ["expression", this._expressionName, this._options];
-    }
-    return ["expression", this._expressionName];
+    return normalize(["expression", this._expressionName, this._options]);
   }
 
   name() {
