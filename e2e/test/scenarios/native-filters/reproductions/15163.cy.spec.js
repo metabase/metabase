@@ -56,8 +56,8 @@ const dashboardDetails = {
               card_id,
               row: 0,
               col: 0,
-              size_x: 10,
-              size_y: 8,
+              size_x: 13,
+              size_y: 11,
               series: [],
               visualization_settings: {
                 "card.title": "New Title",

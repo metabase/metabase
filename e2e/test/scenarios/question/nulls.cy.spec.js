@@ -82,8 +82,8 @@ describe("scenarios > question > null", () => {
         ],
       },
       cardDetails: {
-        size_x: 8,
-        size_y: 6,
+        size_x: 11,
+        size_y: 8,
       },
     }).then(({ body: { card_id, dashboard_id } }) => {
       addOrUpdateDashboardCard({
@@ -134,8 +134,8 @@ describe("scenarios > question > null", () => {
           updateDashboardCards({
             dashboard_id: DASHBOARD_ID,
             cards: [
-              { card_id: Q1_ID, row: 0, col: 0, size_x: 6, size_y: 4 },
-              { card_id: Q2_ID, row: 0, col: 6, size_x: 6, size_y: 4 },
+              { card_id: Q1_ID, row: 0, col: 0, size_x: 8, size_y: 7 },
+              { card_id: Q2_ID, row: 0, col: 6, size_x: 8, size_y: 7 },
             ],
           });
 

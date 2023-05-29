@@ -79,8 +79,8 @@ function createQuestionsAndDashboard() {
                 card_id,
                 row: 0,
                 col: 0,
-                size_x: 12,
-                size_y: 10,
+                size_x: 16,
+                size_y: 13,
               },
             ],
           });

@@ -87,8 +87,8 @@ describeEE("issue 24966", () => {
             card_id,
             col: 0,
             row: 0,
-            size_x: 12,
-            size_y: 8,
+            size_x: 16,
+            size_y: 11,
             parameter_mappings: [
               {
                 parameter_id: dashboardFilter.id,

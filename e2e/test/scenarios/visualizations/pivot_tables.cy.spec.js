@@ -579,8 +579,8 @@ describe("scenarios > visualizations > pivot tables", () => {
           name: DASHBOARD_NAME,
         },
         cardDetails: {
-          size_x: 12,
-          size_y: 8,
+          size_x: 16,
+          size_y: 11,
         },
       }).then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id));
     });
@@ -621,8 +621,8 @@ describe("scenarios > visualizations > pivot tables", () => {
           name: DASHBOARD_NAME,
         },
         cardDetails: {
-          size_x: 12,
-          size_y: 8,
+          size_x: 16,
+          size_y: 11,
         },
       }).then(({ body: { card_id, dashboard_id } }) => {
         cy.log("Enable sharing on card");

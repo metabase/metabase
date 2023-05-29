@@ -155,8 +155,8 @@ function setup() {
                   card_id: questionId,
                   row: 0,
                   col: 0,
-                  size_x: 12,
-                  size_y: 10,
+                  size_x: 16,
+                  size_y: 13,
                   parameter_mappings: [
                     {
                       parameter_id: CATEGORY_FILTER_PARAMETER_ID,
@@ -268,8 +268,8 @@ function createTargetDashboard() {
               card_id,
               row: 0,
               col: 0,
-              size_x: 12,
-              size_y: 10,
+              size_x: 16,
+              size_y: 13,
               parameter_mappings: [
                 {
                   parameter_id: "dd19ec03",

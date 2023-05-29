@@ -72,8 +72,8 @@ describe.skip("issue 15860", () => {
         ],
       },
       cardDetails: {
-        size_x: 8,
-        size_y: 6,
+        size_x: 11,
+        size_y: 8,
       },
     }).then(({ body: { card_id: q1, dashboard_id } }) => {
       // Create a second question with the same source table
@@ -89,8 +89,8 @@ describe.skip("issue 15860", () => {
               card_id: q2,
               row: 0,
               col: 8,
-              size_x: 10,
-              size_y: 6,
+              size_x: 13,
+              size_y: 8,
               parameter_mappings: [
                 {
                   parameter_id: q2IdFilter.id,

@@ -82,8 +82,8 @@ function addMarkdownDashboard(name, alias) {
         row: 0,
         col: 0,
         // Full width markdown title
-        size_x: 18,
-        size_y: 2,
+        size_x: 24,
+        size_y: 3,
         visualization_settings: markdownCard,
       },
     });
@@ -132,8 +132,8 @@ function addMultiDashboard(name, alias) {
         row: 0,
         col: 0,
         // Full width markdown title
-        size_x: 18,
-        size_y: 2,
+        size_x: 24,
+        size_y: 3,
         visualization_settings: markdownCard,
       },
     });
@@ -143,7 +143,7 @@ function addMultiDashboard(name, alias) {
         addOrUpdateDashboardCard({
           card_id,
           dashboard_id,
-          card: { row: 2, col: 0, size_x: 9, size_y: 8 },
+          card: { row: 2, col: 0, size_x: 12, size_y: 8 },
         });
       },
     );
@@ -152,7 +152,7 @@ function addMultiDashboard(name, alias) {
       addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
-        card: { row: 2, col: 10, size_x: 9, size_y: 8 },
+        card: { row: 2, col: 10, size_x: 12, size_y: 8 },
       });
     });
 
@@ -160,7 +160,7 @@ function addMultiDashboard(name, alias) {
       addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
-        card: { row: 11, col: 0, size_x: 12, size_y: 8 },
+        card: { row: 11, col: 0, size_x: 16, size_y: 8 },
       });
     });
 
@@ -168,7 +168,7 @@ function addMultiDashboard(name, alias) {
       addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
-        card: { row: 11, col: 12, size_x: 6, size_y: 8 },
+        card: { row: 11, col: 12, size_x: 8, size_y: 8 },
       });
     });
 

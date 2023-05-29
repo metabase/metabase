@@ -22,8 +22,8 @@ const DEFAULT_CARD = {
   id: -1,
   row: 0,
   col: 0,
-  size_x: 8,
-  size_y: 8,
+  size_x: 11,
+  size_y: 11,
   visualization_settings: {},
   parameter_mappings: [],
 };

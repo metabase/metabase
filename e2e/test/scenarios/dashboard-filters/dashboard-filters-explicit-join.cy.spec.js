@@ -49,8 +49,8 @@ describe("scenarios > dashboard > filters", () => {
         const { card_id, dashboard_id } = dashboardCard;
 
         const updatedCardDetails = {
-          size_x: 16,
-          size_y: 10,
+          size_x: 21,
+          size_y: 13,
           parameter_mappings: [
             {
               parameter_id: filter.id,

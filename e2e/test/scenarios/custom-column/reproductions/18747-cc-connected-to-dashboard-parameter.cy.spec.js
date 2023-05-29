@@ -28,8 +28,8 @@ describe("issue 18747", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 12,
-              size_y: 8,
+              size_x: 16,
+              size_y: 11,
             },
           ],
         }).then(() => {

@@ -62,8 +62,8 @@ const mapParameterToDashboardCard = ({ id, card_id, dashboard_id }) => {
         card_id,
         row: 0,
         col: 0,
-        size_x: 18,
-        size_y: 10,
+        size_x: 24,
+        size_y: 13,
         parameter_mappings: [
           {
             card_id,

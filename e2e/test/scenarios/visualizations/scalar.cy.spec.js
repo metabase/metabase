@@ -41,8 +41,8 @@ describe("scenarios > visualizations > scalar", () => {
           display: "scalar",
         },
         cardDetails: {
-          size_x: 4,
-          size_y: 4,
+          size_x: 5,
+          size_y: 5,
         },
       }).then(({ body: { dashboard_id } }) => {
         visitDashboard(dashboard_id);

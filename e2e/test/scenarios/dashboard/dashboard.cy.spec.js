@@ -405,8 +405,8 @@ describe("scenarios > dashboard", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          size_x: 12,
-          size_y: 8,
+          size_x: 16,
+          size_y: 11,
           parameter_mappings: [
             {
               parameter_id: FILTER_ID,
@@ -466,8 +466,8 @@ describe("scenarios > dashboard", () => {
                 card_id: 1,
                 row: 0,
                 col: 0,
-                size_x: 12,
-                size_y: 8,
+                size_x: 16,
+                size_y: 11,
                 series: [],
                 visualization_settings: {
                   column_settings: {
@@ -511,8 +511,8 @@ describe("scenarios > dashboard", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          size_x: 12,
-          size_y: 20,
+          size_x: 16,
+          size_y: 27,
           series: [],
           visualization_settings: {},
           parameter_mappings: [],
@@ -626,8 +626,8 @@ describe("scenarios > dashboard", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          size_x: 12,
-          size_y: 8,
+          size_x: 16,
+          size_y: 11,
           parameter_mappings: [
             {
               parameter_id: FILTER_ID,
