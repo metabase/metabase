@@ -18,6 +18,14 @@ export function suggestedName(query: Query): string {
   return ML.suggestedName(query);
 }
 
+export function appendStage(query: Query): Query {
+  return ML.append_stage(query);
+}
+
+export function dropStage(query: Query, stageIndex: number): Query {
+  return ML.drop_stage(query, stageIndex);
+}
+
 export function removeClause(
   query: Query,
   stageIndex: number,
