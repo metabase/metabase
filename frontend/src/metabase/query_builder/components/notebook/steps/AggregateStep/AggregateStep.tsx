@@ -74,7 +74,11 @@ export function AggregateStep({
         <AggregationPicker
           query={topLevelQuery}
           stageIndex={stageIndex}
-          operators={operators}
+          operators={
+            aggregation
+              ? Lib.selectedAggregationOperators(operators, aggregation)
+              : operators
+          }
           onSelect={newAggregation => {
             const isUpdate = aggregation != null;
             if (isUpdate) {

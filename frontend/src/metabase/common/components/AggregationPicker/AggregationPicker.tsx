@@ -7,7 +7,13 @@ import Icon from "metabase/components/Icon";
 import * as Lib from "metabase-lib";
 
 import QueryColumnPicker from "../QueryColumnPicker";
-import { InfoIconContainer } from "./AggregationPicker.styled";
+import {
+  ColumnPickerContainer,
+  ColumnPickerHeaderContainer,
+  ColumnPickerHeaderTitleContainer,
+  ColumnPickerHeaderTitle,
+  InfoIconContainer,
+} from "./AggregationPicker.styled";
 
 const DEFAULT_MAX_HEIGHT = 610;
 
@@ -41,7 +47,12 @@ export function AggregationPicker({
   onClose,
 }: AggregationPickerProps) {
   const [operator, setOperator] = useState<Lib.AggregationOperator | null>(
-    null,
+    getInitialOperator(query, stageIndex, operators),
+  );
+
+  const operatorInfo = useMemo(
+    () => (operator ? Lib.displayInfo(query, stageIndex, operator) : null),
+    [query, stageIndex, operator],
   );
 
   const sections = useMemo(() => {
@@ -61,6 +72,11 @@ export function AggregationPicker({
     return sections;
   }, [query, stageIndex, operators]);
 
+  const checkIsItemSelected = useCallback(
+    (item: OperatorListItem) => item.selected,
+    [],
+  );
+
   const handleOperatorSelect = useCallback(
     (item: OperatorListItem) => {
       if (item.requiresColumn) {
@@ -74,6 +90,10 @@ export function AggregationPicker({
     [onSelect, onClose],
   );
 
+  const handleResetOperator = useCallback(() => {
+    setOperator(null);
+  }, []);
+
   const handleColumnSelect = useCallback(
     (column: Lib.ColumnMetadata) => {
       if (!operator) {
@@ -86,19 +106,24 @@ export function AggregationPicker({
     [operator, onSelect, onClose],
   );
 
-  if (operator) {
+  if (operator && operatorInfo?.requiresColumn) {
     const columns = Lib.aggregationOperatorColumns(operator);
     const columnGroups = Lib.groupColumns(columns);
     return (
-      <QueryColumnPicker
-        className={className}
-        query={query}
-        stageIndex={stageIndex}
-        columnGroups={columnGroups}
-        maxHeight={maxHeight}
-        onSelect={handleColumnSelect}
-        onClose={onClose}
-      />
+      <ColumnPickerContainer className={className}>
+        <ColumnPickerHeader onClick={handleResetOperator}>
+          {operatorInfo.displayName}
+        </ColumnPickerHeader>
+        <QueryColumnPicker
+          query={query}
+          stageIndex={stageIndex}
+          columnGroups={columnGroups}
+          maxHeight={maxHeight}
+          checkIsColumnSelected={checkColumnSelected}
+          onSelect={handleColumnSelect}
+          onClose={onClose}
+        />
+      </ColumnPickerContainer>
     );
   }
 
@@ -109,10 +134,28 @@ export function AggregationPicker({
       maxHeight={maxHeight}
       alwaysExpanded={false}
       onChange={handleOperatorSelect}
+      itemIsSelected={checkIsItemSelected}
       renderItemName={renderItemName}
       renderItemDescription={omitItemDescription}
       renderItemExtra={renderItemExtra}
     />
+  );
+}
+
+function ColumnPickerHeader({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <ColumnPickerHeaderContainer>
+      <ColumnPickerHeaderTitleContainer onClick={onClick}>
+        <Icon name="chevronleft" size={18} />
+        <ColumnPickerHeaderTitle>{children}</ColumnPickerHeaderTitle>
+      </ColumnPickerHeaderTitleContainer>
+    </ColumnPickerHeaderContainer>
   );
 }
 
@@ -132,6 +175,17 @@ function renderItemExtra(item: OperatorListItem) {
   );
 }
 
+function getInitialOperator(
+  query: Lib.Query,
+  stageIndex: number,
+  operators: Lib.AggregationOperator[],
+) {
+  const operator = operators.find(
+    operator => Lib.displayInfo(query, stageIndex, operator).selected,
+  );
+  return operator ?? null;
+}
+
 function getOperatorListItem(
   query: Lib.Query,
   stageIndex: number,
@@ -142,4 +196,8 @@ function getOperatorListItem(
     ...operatorInfo,
     operator,
   };
+}
+
+function checkColumnSelected(columnInfo: Lib.ColumnDisplayInfo) {
+  return !!columnInfo.selected;
 }
