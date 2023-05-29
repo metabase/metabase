@@ -8,9 +8,9 @@ export function createDatasetQuery(
 ): DatasetQuery {
   const tableId = question.tableId();
   const collection =
-    typeof tableId === "number"
-      ? question.metadata().tables[tableId]?.name
-      : undefined;
+    tableId === null || typeof tableId === "undefined"
+      ? undefined
+      : question.metadata().tables[tableId]?.name;
 
   return {
     type: "native",
