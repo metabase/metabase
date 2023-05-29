@@ -15,7 +15,7 @@ export interface DatasetColumn {
   name: string;
   display_name: string;
   description: string | null;
-  source?: string;
+  source: string;
   coercion_strategy: string | null;
   visibility_type: FieldVisibilityType;
   table_id: TableId;
@@ -34,6 +34,9 @@ export interface DatasetColumn {
   };
   settings?: Record<string, any>;
   fingerprint: FieldFingerprint | null;
+
+  // model with customized metadata
+  fk_target_field_id?: FieldId | null;
 }
 
 export interface ResultsMetadata {

@@ -4,6 +4,7 @@ export * from "./column_types";
 export * from "./comparison";
 export * from "./metadata";
 export * from "./breakout";
+export * from "./fields";
 export * from "./limit";
 export * from "./order_by";
 export * from "./query";

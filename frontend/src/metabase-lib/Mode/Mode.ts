@@ -26,7 +26,7 @@ export default class Mode {
   actionsForClick(
     clicked: ClickObject | undefined,
     settings: Record<string, any>,
-    extraData: Record<string, any>,
+    extraData?: Record<string, any>,
   ): ClickAction[] {
     const mode = this._queryMode;
     const question = this._question;
