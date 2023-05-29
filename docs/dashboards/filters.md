@@ -132,7 +132,7 @@ For example, you might want to set a default filter value like "Active", so that
 1. In dashboard edit mode, click your filter's **gear** icon. 
 2. From the sidebar, find **Users can pick** and select "Multiple values".
 
-A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [Search box](#search-box) will let people click on checkboxes to select their filter values.
+A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [Search box](#search-box) will display a list of values with checkboxes.
 
 ### Change a filter's selectable values
 
@@ -158,11 +158,11 @@ You can also set up a dashboard question to [update a filter on click](./interac
 
 ## Filter widgets
 
-The filter widget is the little box at the top of your dashboard which people will use to enter their filter values. 
+The filter widget is the little box at the top of your dashboard which people will use to enter their filter values.
 
-You can find a filter's widget settings by from dashboard edit mode (**pencil** icon), then clicking on a filter widget's **gear** icon.
+You can find a filter's widget settings from dashboard edit mode (**pencil** icon), then clicking on a filter widget's **gear** icon.
 
-From the filter settings sidebar, you'll find the widget types under **How should people filter on this column?**
+From the filter settings sidebar, you'll find the widget types under **How should people filter on this column?**:
 
 - [Dropdown list](#dropdown-list)
 - [Search box](#search-box)
@@ -170,23 +170,23 @@ From the filter settings sidebar, you'll find the widget types under **How shoul
 
 ### Dropdown list
 
-A list of all of the possible values in a column, with checkboxes for [multi-select filters](#make-a-multi-select-filter). Use the dropdown widget if you want the list of values to load instantly (from cache).
+A list of all of the possible values in a column. People can use checkboxes to select more than one value on [multi-select filters](#make-a-multi-select-filter). You should choose the dropdown widget if you want the list of filter values to load instantly (from cache).
 
-If you're not seeing the **Dropdown list** option, and your dashboard filter is based on:
+If you're not seeing the **Dropdown list** option, and your dashboard filter is based on a column from a:
 
-- A column from a **table or model**: an admin will need to [enable the widget type](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) from Metabase's **Admin settings**.
+- **Table or GUI model**: an admin will need to [enable the widget type](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) from Metabase's **Admin settings**.
 
-- A column from a **SQL model**: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
+- **SQL model**: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
 
 ### Search box
 
-A search box that offers a list of matching filter values as you type. The suggestions list will display checkboxes for [multi-select filters](#make-a-multi-select-filter).
+A search box that suggests a list of matching filter values as you type. The suggestion list will display checkboxes for [multi-select filters](#make-a-multi-select-filter).
 
 The search box is a good choice for most columns containing labels, categories, statuses, and so on. This is the default filter widget for columns with less than 100 unique values.
 
 ### Plain input box
 
-An input box that lets people enter plain text without a list of suggested values.
+An input box that lets people enter plain text (no suggestion list).
 
 Useful for filtering columns that contain free text, such as comments or descriptions. The input box is the default filter widget for columns with more than 100 unique values.
 
