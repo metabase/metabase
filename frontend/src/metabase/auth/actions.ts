@@ -53,12 +53,15 @@ interface LoginPayload {
 export const LOGIN = "metabase/auth/LOGIN";
 export const login = createAsyncThunk<void, LoginPayload, ThunkConfig>(
   LOGIN,
-  async ({ data, redirectUrl = "/" }, { dispatch }) => {
-    await SessionApi.create(data);
-    await dispatch(refreshSession()).unwrap();
-    trackLogin();
-
-    dispatch(push(redirectUrl));
+  async ({ data, redirectUrl = "/" }, { dispatch, rejectWithValue }) => {
+    try {
+      await SessionApi.create(data);
+      await dispatch(refreshSession()).unwrap();
+      trackLogin();
+      dispatch(push(redirectUrl));
+    } catch (error) {
+      return rejectWithValue(error);
+    }
   },
 );
 
@@ -72,33 +75,46 @@ export const loginGoogle = createAsyncThunk<
   void,
   LoginGooglePayload,
   ThunkConfig
->(LOGIN_GOOGLE, async ({ credential, redirectUrl = "/" }, { dispatch }) => {
-  await SessionApi.createWithGoogleAuth({ token: credential });
-  await dispatch(refreshSession()).unwrap();
-  trackLoginGoogle();
-
-  dispatch(push(redirectUrl));
-});
+>(
+  LOGIN_GOOGLE,
+  async ({ credential, redirectUrl = "/" }, { dispatch, rejectWithValue }) => {
+    try {
+      await SessionApi.createWithGoogleAuth({ token: credential });
+      await dispatch(refreshSession()).unwrap();
+      trackLoginGoogle();
+      dispatch(push(redirectUrl));
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  },
+);
 
 export const LOGOUT = "metabase/auth/LOGOUT";
 export const logout = createAsyncThunk<void, string | undefined, ThunkConfig>(
   LOGOUT,
-  async (redirectUrl, { dispatch }) => {
-    await deleteSession();
-    await dispatch(clearCurrentUser());
-    await dispatch(refreshLocale()).unwrap();
-    trackLogout();
-
-    dispatch(push(Urls.login(redirectUrl)));
-    window.location.reload(); // clears redux state and browser caches
+  async (redirectUrl, { dispatch, rejectWithValue }) => {
+    try {
+      await deleteSession();
+      await dispatch(clearCurrentUser());
+      await dispatch(refreshLocale()).unwrap();
+      trackLogout();
+      dispatch(push(Urls.login(redirectUrl)));
+      window.location.reload(); // clears redux state and browser caches
+    } catch (error) {
+      return rejectWithValue(error);
+    }
   },
 );
 
 export const FORGOT_PASSWORD = "metabase/auth/FORGOT_PASSWORD";
 export const forgotPassword = createAsyncThunk(
   FORGOT_PASSWORD,
-  async (email: string) => {
-    await SessionApi.forgot_password({ email });
+  async (email: string, { rejectWithValue }) => {
+    try {
+      await SessionApi.forgot_password({ email });
+    } catch (error) {
+      return rejectWithValue(error);
+    }
   },
 );
 
@@ -112,11 +128,18 @@ export const resetPassword = createAsyncThunk<
   void,
   ResetPasswordPayload,
   ThunkConfig
->(RESET_PASSWORD, async ({ token, password }, { dispatch }) => {
-  await SessionApi.reset_password({ token, password });
-  await dispatch(refreshSession()).unwrap();
-  trackPasswordReset();
-});
+>(
+  RESET_PASSWORD,
+  async ({ token, password }, { dispatch, rejectWithValue }) => {
+    try {
+      await SessionApi.reset_password({ token, password });
+      await dispatch(refreshSession()).unwrap();
+      trackPasswordReset();
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  },
+);
 
 export const validatePassword = async (password: string) => {
   const error = MetabaseSettings.passwordComplexityDescription(password);
