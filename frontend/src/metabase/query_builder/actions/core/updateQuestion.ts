@@ -141,6 +141,7 @@ export const updateQuestion = (
     if (queryBuilderMode === "dataset" && !newQuestion.isDataset()) {
       newQuestion = newQuestion.setDataset(true);
     }
+
     const queryResult = getFirstQueryResult(getState());
     newQuestion = newQuestion.syncColumnsAndSettings(
       currentQuestion,
