@@ -59,7 +59,7 @@ export function AggregateStep({
   };
 
   const renderAggregationName = (aggregation: Lib.AggregationClause) =>
-    Lib.displayInfo(topLevelQuery, stageIndex, aggregation).displayName;
+    Lib.displayInfo(topLevelQuery, stageIndex, aggregation).longDisplayName;
 
   return (
     <ClauseStep
