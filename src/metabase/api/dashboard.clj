@@ -274,45 +274,60 @@
              :uncopied discard}
             copy)))
 
+(defn- duplicate-tabs
+  [new-dashboard existing-tabs]
+  (let [new-tab-ids (t2/insert-returning-pks! :model/DashboardTab
+                                              (for [tab existing-tabs]
+                                                (-> tab
+                                                  (assoc :dashboard_id (:id new-dashboard))
+                                                  (dissoc :id :entity_id :created_at :updated_at))))]
+    (zipmap (map :id existing-tabs) new-tab-ids)))
+
 (defn update-cards-for-copy
-  "Update ordered-cards in a dashboard for copying. If shallow copy, returns the cards. If deep copy, replaces ids with
-  id from the newly-copied cards. If there is no new id, it means user lacked curate permissions for the cards
+  "Update ordered-cards in a dashboard for copying.
+  If the dashboard has tabs, fixup the tab ids in ordered-cards to point to the new tabs.
+  Then If shallow copy, returns the cards. If deep copy, replaces ids with id from the newly-copied cards.
+  If there is no new id, it means user lacked curate permissions for the cards
   collections and it is omitted. Dashboard-id is only needed for useful errors."
-  [dashboard-id ordered-cards deep? id->new-card]
+  [dashboard-id ordered-cards deep? id->new-card id->new-tab-id]
   (when (and deep? (nil? id->new-card))
     (throw (ex-info (tru "No copied card information found")
                     {:user-id api/*current-user-id*
                      :dashboard-id dashboard-id})))
-  (if-not deep?
-    ordered-cards
-    (keep (fn [dashboard-card]
-            (cond
-              ;; text cards need no manipulation
-              (nil? (:card_id dashboard-card))
-              dashboard-card
+  (let [ordered-cards (if (seq id->new-tab-id)
+                        (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
+                             ordered-cards)
+                        ordered-cards)]
+    (if-not deep?
+      ordered-cards
+      (keep (fn [dashboard-card]
+              (cond
+                ;; text cards need no manipulation
+                (nil? (:card_id dashboard-card))
+                dashboard-card
 
-              ;; if we didn't duplicate, it doesn't go in the dashboard
-              (not (id->new-card (:card_id dashboard-card)))
-              nil
+                ;; if we didn't duplicate, it doesn't go in the dashboard
+                (not (id->new-card (:card_id dashboard-card)))
+                nil
 
-              :else
-              (let [new-id (fn [id]
-                             (-> id id->new-card :id))]
-                (-> dashboard-card
-                    (update :card_id new-id)
-                    (assoc :card (-> dashboard-card :card_id id->new-card))
-                    (m/update-existing :parameter_mappings
-                                       (fn [pms]
-                                         (keep (fn [pm]
-                                                 (m/update-existing pm :card_id new-id))
-                                               pms)))
-                    (m/update-existing :series
-                                       (fn [series]
-                                         (keep (fn [card]
-                                                 (when-let [id' (new-id (:id card))]
-                                                   (assoc card :id id')))
-                                               series)))))))
-          ordered-cards)))
+                :else
+                (let [new-id (fn [id]
+                               (-> id id->new-card :id))]
+                  (-> dashboard-card
+                      (update :card_id new-id)
+                      (assoc :card (-> dashboard-card :card_id id->new-card))
+                      (m/update-existing :parameter_mappings
+                                         (fn [pms]
+                                           (keep (fn [pm]
+                                                   (m/update-existing pm :card_id new-id))
+                                                 pms)))
+                      (m/update-existing :series
+                                         (fn [series]
+                                           (keep (fn [card]
+                                                   (when-let [id' (new-id (:id card))]
+                                                     (assoc card :id id')))
+                                                 series)))))))
+            ordered-cards))))
 
 (api/defendpoint POST "/:from-dashboard-id/copy"
   "Copy a Dashboard."
@@ -342,12 +357,16 @@
                         (let [dash (first (t2/insert-returning-instances! :model/Dashboard dashboard-data))
                               {id->new-card :copied uncopied :uncopied}
                               (when is_deep_copy
-                                (duplicate-cards existing-dashboard collection_id))]
+                                (duplicate-cards existing-dashboard collection_id))
+
+                              id->new-tab-id (when-let [existing-tabs (seq (:ordered_tabs existing-dashboard))]
+                                               (duplicate-tabs dash existing-tabs))]
                           (reset! new-cards (vals id->new-card))
                           (when-let [dashcards (seq (update-cards-for-copy from-dashboard-id
                                                                            (:ordered_cards existing-dashboard)
                                                                            is_deep_copy
-                                                                           id->new-card))]
+                                                                           id->new-card
+                                                                           id->new-tab-id))]
                             (api/check-500 (dashboard/add-dashcards! dash dashcards)))
                           (cond-> dash
                             (seq uncopied)
