@@ -288,7 +288,7 @@ export type ExpressionReference = [
   (ReferenceOptions | null)?,
 ];
 
-type FieldLiteral = [
+export type FieldLiteral = [
   "field",
   string,
   ReferenceOptions & { "base-type": string },

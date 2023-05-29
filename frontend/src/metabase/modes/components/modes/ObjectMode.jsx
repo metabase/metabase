@@ -1,4 +1,4 @@
-import ObjectDetailDrill from "../drill/ObjectDetailDrill";
+import { ObjectDetailDrill } from "../drill/ObjectDetailDrill";
 
 const ObjectMode = {
   name: "object",

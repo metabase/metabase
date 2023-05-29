@@ -29,16 +29,6 @@
   place, [[metabase.models.query.permissions-test/invalid-queries-test]]."
   false)
 
-(defn- skip-conversion-tests?
-  "Whether to skip conversion tests against a `legacy-query`."
-  [legacy-query]
-  (or
-   *skip-conversion-tests*
-   ;; #29958: `:convert-timezone` with 2 args is broken
-   (mbql.u/match-one legacy-query
-     [:convert-timezone _expr _source-timezone]
-     "#29958")))
-
 (defn- skip-metadata-calculation-tests? [legacy-query]
   (or
    ;; #29907: wrong column name for joined columns in `:breakout`
@@ -62,7 +52,7 @@
 
 (defn- test-mlv2-metadata [original-query _qp-metadata]
   {:pre [(map? original-query)]}
-  (when-not (or (skip-conversion-tests? original-query)
+  (when-not (or *skip-conversion-tests*
                 (skip-metadata-calculation-tests? original-query))
     (do-with-legacy-query-testing-context
      original-query
@@ -82,7 +72,7 @@
               (is (any? mlv2-metadata)))))))))))
 
 (defn- test-mlv2-conversion [query]
-  (when-not (skip-conversion-tests? query)
+  (when-not *skip-conversion-tests*
     (do-with-legacy-query-testing-context
      query
      (^:once fn* []
