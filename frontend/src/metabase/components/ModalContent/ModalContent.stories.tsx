@@ -19,7 +19,7 @@ const Template: ComponentStory<typeof ModalContent> = args => {
 
 const args = {
   id: "id",
-  title: "Modal title",
+  title: "Long Modal title Long Modal title Long Modal title Long Modal title",
   centeredTitle: false,
   children: <>Content</>,
   fullPageModal: false,

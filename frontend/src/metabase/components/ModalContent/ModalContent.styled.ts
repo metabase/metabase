@@ -2,17 +2,26 @@ import styled from "@emotion/styled";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
-export const ActionsWrapper = styled.div`
-  position: absolute;
-  top: 0;
-  right: 0;
-  padding: 1.5rem;
+export const HeaderContainer = styled.div`
+  padding: 2rem;
+  width: 100%;
 
-  z-index: 2;
+  flex-shrink: 0;
 
   display: flex;
   flex-direction: row;
   gap: 0.5rem;
+
+  align-items: flex-start;
+`;
+
+export const ActionsWrapper = styled.div`
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+
+  margin-top: -0.5rem;
+  margin-right: -0.5rem;
 `;
 
 export const ActionIcon = styled(Icon)`
