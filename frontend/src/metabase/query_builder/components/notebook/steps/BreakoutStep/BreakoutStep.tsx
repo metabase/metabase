@@ -35,10 +35,10 @@ function BreakoutStep({
 
     const filteredColumns = columns.filter(column => {
       const isSelected =
-        clause && Lib.isClauseColumn(topLevelQuery, clause, column);
+        clause && Lib.isClauseColumn(topLevelQuery, stageIndex, clause, column);
 
-      const isAlreadyUsed =
-        Lib.displayInfo(topLevelQuery, column).breakoutPosition != null;
+      const columnInfo = Lib.displayInfo(topLevelQuery, stageIndex, column);
+      const isAlreadyUsed = columnInfo.breakoutPosition != null;
 
       return isSelected || !isAlreadyUsed;
     });
@@ -70,7 +70,7 @@ function BreakoutStep({
   };
 
   const renderBreakoutName = (clause: Lib.BreakoutClause) =>
-    Lib.displayInfo(topLevelQuery, clause).longDisplayName;
+    Lib.displayInfo(topLevelQuery, stageIndex, clause).longDisplayName;
 
   return (
     <ClauseStep
@@ -86,6 +86,7 @@ function BreakoutStep({
           <BreakoutColumnPicker
             query={topLevelQuery}
             clause={breakout}
+            stageIndex={stageIndex}
             columnGroups={getColumnGroups(breakout)}
             hasBucketing
             onSelect={(column: Lib.ColumnMetadata) => {

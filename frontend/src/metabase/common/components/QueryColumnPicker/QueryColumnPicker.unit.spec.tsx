@@ -18,7 +18,7 @@ function createQueryWithBreakout() {
   const [column] = Lib.breakoutableColumns(plainQuery, 0);
   const query = Lib.breakout(plainQuery, 0, column);
   const [clause] = Lib.breakouts(query, 0);
-  const clauseInfo = Lib.displayInfo(query, clause);
+  const clauseInfo = Lib.displayInfo(query, 0, clause);
   return { query, clause, clauseInfo };
 }
 

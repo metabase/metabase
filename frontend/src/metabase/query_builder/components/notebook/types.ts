@@ -25,7 +25,6 @@ export interface NotebookStep {
   id: string;
   type: NotebookStepType;
   stageIndex: number;
-  isLastStage: boolean;
   itemIndex: number | null;
   topLevelQuery: Query;
   query: StructuredQuery;

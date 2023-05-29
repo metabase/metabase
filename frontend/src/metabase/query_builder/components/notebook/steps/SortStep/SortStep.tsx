@@ -25,7 +25,7 @@ function SortStep({
 
     const filteredColumns = columns.filter(column => {
       const isSelected =
-        clause && Lib.isClauseColumn(topLevelQuery, clause, column);
+        clause && Lib.isClauseColumn(topLevelQuery, 0, clause, column);
 
       const columnInfo = Lib.displayInfo(topLevelQuery, stageIndex, column);
       const isAlreadyUsed = columnInfo.orderByPosition != null;

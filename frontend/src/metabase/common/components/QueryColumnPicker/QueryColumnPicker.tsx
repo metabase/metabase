@@ -74,20 +74,20 @@ function QueryColumnPicker({
   const handleSelectColumn = useCallback(
     (item: ColumnListItem) => {
       const isSameColumn =
-        clause && Lib.isClauseColumn(query, clause, item.column);
+        clause && Lib.isClauseColumn(query, stageIndex, clause, item.column);
       if (isSameColumn) {
         onClose?.();
       } else {
         handleSelect(item.column);
       }
     },
-    [query, clause, handleSelect, onClose],
+    [query, stageIndex, clause, handleSelect, onClose],
   );
 
   const checkIsItemSelected = useCallback(
     (item: ColumnListItem) =>
-      clause && Lib.isClauseColumn(query, clause, item.column),
-    [query, clause],
+      clause && Lib.isClauseColumn(query, stageIndex, clause, item.column),
+    [query, stageIndex, clause],
   );
 
   const renderItemExtra = useCallback(
@@ -106,6 +106,7 @@ function QueryColumnPicker({
         return (
           <BinningStrategyPickerPopover
             query={query}
+            stageIndex={stageIndex}
             selectedBucket={selectedBucket}
             buckets={binningStrategies}
             withDefaultBucket={!clause}
@@ -123,6 +124,7 @@ function QueryColumnPicker({
         return (
           <TemporalBucketPickerPopover
             query={query}
+            stageIndex={stageIndex}
             selectedBucket={selectedBucket}
             buckets={temporalBuckets}
             withDefaultBucket={!clause}
@@ -135,7 +137,7 @@ function QueryColumnPicker({
 
       return null;
     },
-    [query, clause, hasBucketing, handleSelect],
+    [query, stageIndex, clause, hasBucketing, handleSelect],
   );
 
   return (
@@ -201,7 +203,7 @@ function getColumnListItem(
 
   if (hasBucketing && binningStrategies.length > 0) {
     const defaultBucket = binningStrategies.find(
-      bucket => Lib.displayInfo(query, bucket).default,
+      bucket => Lib.displayInfo(query, stageIndex, bucket).default,
     );
     return {
       ...displayInfo,
@@ -211,7 +213,7 @@ function getColumnListItem(
 
   if (hasBucketing && temporalBuckets.length > 0) {
     const defaultBucket = temporalBuckets.find(
-      bucket => Lib.displayInfo(query, bucket).default,
+      bucket => Lib.displayInfo(query, stageIndex, bucket).default,
     );
     return {
       ...displayInfo,

@@ -47,10 +47,19 @@ declare function DisplayInfoFn(
 ): OrderByClauseDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
+  stageIndex: number,
   breakoutClause: BreakoutClause,
 ): BreakoutClauseDisplayInfo;
-declare function DisplayInfoFn(query: Query, clause: Clause): ClauseDisplayInfo;
-declare function DisplayInfoFn(query: Query, bucket: Bucket): BucketDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  clause: Clause,
+): ClauseDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  bucket: Bucket,
+): BucketDisplayInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema

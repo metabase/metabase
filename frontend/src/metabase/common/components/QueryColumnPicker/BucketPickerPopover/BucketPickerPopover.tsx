@@ -10,6 +10,7 @@ import {
 
 export interface BucketPickerPopoverProps {
   query: Lib.Query;
+  stageIndex: number;
   selectedBucket?: Lib.Bucket | null;
   buckets: Lib.Bucket[];
   withDefaultBucket?: boolean;
@@ -25,6 +26,7 @@ type ListItem = Lib.BucketDisplayInfo & {
 export function BucketPickerPopover({
   selectedBucket,
   query,
+  stageIndex,
   buckets,
   withDefaultBucket = true,
   triggerLabel,
@@ -34,10 +36,10 @@ export function BucketPickerPopover({
   const displayableItems: ListItem[] = useMemo(
     () =>
       buckets.map(bucket => ({
-        ...Lib.displayInfo(query, bucket),
+        ...Lib.displayInfo(query, stageIndex, bucket),
         bucket,
       })),
-    [query, buckets],
+    [query, stageIndex, buckets],
   );
 
   const defaultBucket = useMemo(
@@ -50,9 +52,9 @@ export function BucketPickerPopover({
       if (!selectedBucket && withDefaultBucket) {
         return false;
       }
-      return Lib.isSameBucket(query, item.bucket, selectedBucket);
+      return Lib.isSameBucket(query, stageIndex, item.bucket, selectedBucket);
     },
-    [query, selectedBucket, withDefaultBucket],
+    [query, stageIndex, selectedBucket, withDefaultBucket],
   );
 
   const triggerContentBucket = useMemo(() => {
@@ -63,7 +65,7 @@ export function BucketPickerPopover({
   }, [selectedBucket, withDefaultBucket, defaultBucket]);
 
   const triggerContentBucketDisplayInfo = triggerContentBucket
-    ? Lib.displayInfo(query, triggerContentBucket)
+    ? Lib.displayInfo(query, stageIndex, triggerContentBucket)
     : undefined;
 
   return (

@@ -14,39 +14,39 @@ function createQueryWithBreakout() {
   const initialQuery = createQuery();
   const findColumn = columnFinder(
     initialQuery,
-    Lib.breakoutableColumns(initialQuery),
+    Lib.breakoutableColumns(initialQuery, 0),
   );
   const column = findColumn("ORDERS", "TAX");
-  const query = Lib.breakout(initialQuery, column);
-  return { query, columnInfo: Lib.displayInfo(query, column) };
+  const query = Lib.breakout(initialQuery, 0, column);
+  return { query, columnInfo: Lib.displayInfo(query, 0, column) };
 }
 
 function createQueryWithBinning(bucketName = "10 bins") {
   const initialQuery = createQuery();
   const findColumn = columnFinder(
     initialQuery,
-    Lib.breakoutableColumns(initialQuery),
+    Lib.breakoutableColumns(initialQuery, 0),
   );
   const column = findColumn("ORDERS", "TAX");
   const bucket = findBinningStrategy(initialQuery, column, bucketName);
   const columnWithBinning = Lib.withBinning(column, bucket);
-  const query = Lib.breakout(initialQuery, columnWithBinning);
-  return { query, columnInfo: Lib.displayInfo(query, columnWithBinning) };
+  const query = Lib.breakout(initialQuery, 0, columnWithBinning);
+  return { query, columnInfo: Lib.displayInfo(query, 0, columnWithBinning) };
 }
 
 function createQueryWithTemporalBreakout() {
   const initialQuery = createQuery();
   const findColumn = columnFinder(
     initialQuery,
-    Lib.breakoutableColumns(initialQuery),
+    Lib.breakoutableColumns(initialQuery, 0),
   );
   const column = findColumn("ORDERS", "CREATED_AT");
   const bucket = findTemporalBucket(initialQuery, column, "Quarter");
   const columnWithTemporalBucket = Lib.withTemporalBucket(column, bucket);
-  const query = Lib.breakout(initialQuery, columnWithTemporalBucket);
+  const query = Lib.breakout(initialQuery, 0, columnWithTemporalBucket);
   return {
     query,
-    columnInfo: Lib.displayInfo(query, column),
+    columnInfo: Lib.displayInfo(query, 0, column),
   };
 }
 
@@ -72,8 +72,8 @@ function setup(step = createMockNotebookStep()) {
 
   function getRecentBreakoutClause() {
     const query = getNextQuery();
-    const clause = Lib.breakouts(query)[0];
-    return Lib.displayInfo(query, clause);
+    const clause = Lib.breakouts(query, 0)[0];
+    return Lib.displayInfo(query, 0, clause);
   }
 
   return {
@@ -144,7 +144,7 @@ describe("BreakoutStep", () => {
     userEvent.click(getIcon("close"));
 
     const nextQuery = getNextQuery();
-    expect(Lib.breakouts(nextQuery)).toHaveLength(0);
+    expect(Lib.breakouts(nextQuery, 0)).toHaveLength(0);
   });
 
   describe("bucketing", () => {

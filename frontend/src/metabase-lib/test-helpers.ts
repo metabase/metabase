@@ -73,7 +73,7 @@ export const findBinningStrategy = (
 ) => {
   const buckets = ML.availableBinningStrategies(query, column);
   const bucket = buckets.find(
-    bucket => ML.displayInfo(query, bucket).displayName === bucketName,
+    bucket => ML.displayInfo(query, 0, bucket).displayName === bucketName,
   );
   if (!bucket) {
     throw new Error(`Could not find binning strategy ${bucketName}`);
@@ -88,7 +88,7 @@ export const findTemporalBucket = (
 ) => {
   const buckets = ML.availableTemporalBuckets(query, column);
   const bucket = buckets.find(
-    bucket => ML.displayInfo(query, bucket).displayName === bucketName,
+    bucket => ML.displayInfo(query, 0, bucket).displayName === bucketName,
   );
   if (!bucket) {
     throw new Error(`Could not find temporal bucket ${bucketName}`);
