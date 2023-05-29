@@ -12,7 +12,7 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 
-import type { Card, DatasetQuery, WritebackAction } from "metabase-types/api";
+import type { Card, WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
@@ -56,7 +56,7 @@ export async function setup({
   });
 
   setupDatabasesEndpoints([database]);
-  setupCardsEndpoints([model].filter(Boolean) as Card<DatasetQuery>[]);
+  setupCardsEndpoints(model ? [model] : []);
 
   if (action) {
     fetchMock.get(`path:/api/action/${action.id}`, action);
