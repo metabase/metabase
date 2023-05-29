@@ -259,7 +259,6 @@ text.value-label-white {
 
 .LineAreaBarChart .dc-chart .event-axis .event-icon {
   fill: var(--color-text-light);
-  stroke: var(--color-text-light);
   shape-rendering: geometricPrecision;
 }
 
