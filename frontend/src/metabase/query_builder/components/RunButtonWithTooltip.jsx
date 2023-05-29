@@ -25,7 +25,7 @@ export default function RunButtonWithTooltip({
   ...props
 }) {
   return (
-    <Tooltip tooltip={getTooltip(props)}>
+    <Tooltip tooltip={getTooltip(props)} placement="top">
       <RunButton {...props} />
     </Tooltip>
   );
