@@ -450,7 +450,7 @@ function ViewTitleHeaderRightSide(props) {
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
   const getRunButtonLabel = useCallback(
-    () => (isRunning ? t`Cancel` : t`Run query`),
+    () => (isRunning ? t`Cancel` : t`Refresh`),
     [isRunning],
   );
 
