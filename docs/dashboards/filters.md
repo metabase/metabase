@@ -125,10 +125,14 @@ In dashboard edit mode, click on the grabber handle (six dots) on the left side 
 1. In dashboard edit mode, click your filter's **gear** icon. 
 2. From the sidebar, choose a value from the **Default value** input field.
 
+For example, you might want to set a default filter value like "Active", so that when people load your dashboard, they only see data for "Active" records (not "Inactive", "Cancelled", etc).
+
 ### Make a multi-select filter
 
 1. In dashboard edit mode, click your filter's **gear** icon. 
 2. From the sidebar, find **Users can pick** and select "Multiple values".
+
+A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [Search box](#search-box) will let people click on checkboxes to select their filter values.
 
 ### Change a filter's selectable values
 
@@ -170,9 +174,9 @@ A list of all of the possible values in a column, with checkboxes for [multi-sel
 
 If you're not seeing the **Dropdown list** option, and your dashboard filter is based on:
 
-- **A column from a table or GUI-based model**: an admin will need to [enable the widget type](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) from Metabase's **Admin settings**.
+- A column from a **table or model**: an admin will need to [enable the widget type](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) from Metabase's **Admin settings**.
 
-- **A column from a SQL-based model**: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
+- A column from a **SQL model**: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
 
 ### Search box
 
