@@ -19,7 +19,7 @@ function createAggregatedQuery() {
   );
   const quantity = findColumn("ORDERS", "QUANTITY");
   const clause = Lib.aggregationClause(average, quantity);
-  return Lib.aggregate(initialQuery, clause);
+  return Lib.aggregate(initialQuery, 0, clause);
 }
 
 function setup(step = createMockNotebookStep()) {
@@ -44,8 +44,8 @@ function setup(step = createMockNotebookStep()) {
 
   function getRecentAggregationClause() {
     const query = getNextQuery();
-    const [clause] = Lib.aggregations(query);
-    return Lib.displayInfo(query, clause);
+    const [clause] = Lib.aggregations(query, 0);
+    return Lib.displayInfo(query, 0, clause);
   }
 
   return {
@@ -94,7 +94,7 @@ describe("AggregateStep", () => {
 
     const nextQuery = getNextQuery();
     const clause = getRecentAggregationClause();
-    expect(Lib.aggregations(nextQuery)).toHaveLength(1);
+    expect(Lib.aggregations(nextQuery, 0)).toHaveLength(1);
     expect(clause).toEqual(
       expect.objectContaining({
         name: "count",
@@ -111,6 +111,6 @@ describe("AggregateStep", () => {
     userEvent.click(getIcon("close"));
 
     const nextQuery = getNextQuery();
-    expect(Lib.aggregations(nextQuery)).toHaveLength(0);
+    expect(Lib.aggregations(nextQuery, 0)).toHaveLength(0);
   });
 });
