@@ -36,10 +36,10 @@ function FormModelPicker({
   const [{ value }, { error, touched }, { setValue }] = useField(name);
   const formFieldRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(MIN_POPOVER_WIDTH);
-  const isActionFromModel = typeof value === "number";
+  const isModelSelected = typeof value === "number";
   const { data: model } = useQuestionQuery({
     id: value,
-    enabled: isActionFromModel,
+    enabled: isModelSelected,
   });
 
   useEffect(() => {
@@ -61,7 +61,7 @@ function FormModelPicker({
         ref={formFieldRef}
       >
         <SelectButton onClick={handleShowPopover}>
-          {isActionFromModel ? model?.displayName() : placeholder}
+          {isModelSelected ? model?.displayName() : placeholder}
         </SelectButton>
       </FormField>
     ),
@@ -74,7 +74,7 @@ function FormModelPicker({
       className,
       style,
       model,
-      isActionFromModel,
+      isModelSelected,
     ],
   );
 
