@@ -237,9 +237,11 @@
     stage-number :- :int]
    (some->> (not-empty (:aggregation (lib.util/query-stage query stage-number)))
             (into [] (map (fn [aggregation]
-                            (-> (lib.metadata.calculation/metadata query stage-number aggregation)
-                                (assoc :lib/source :source/aggregations
-                                       :lib/source-uuid (:lib/uuid (second aggregation))))))))))
+                            (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)]
+                              (-> metadata
+                                  (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
+                                  (assoc :lib/source :source/aggregations
+                                         :lib/source-uuid (:lib/uuid (second aggregation)))))))))))
 
 (def ^:private OperatorWithColumns
   [:merge
