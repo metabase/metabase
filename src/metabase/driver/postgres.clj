@@ -26,6 +26,7 @@
    [metabase.models.field :as field]
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.upload :as upload]
    [metabase.util :as u]
@@ -50,11 +51,12 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
-(doseq [[feature supported?] {:convert-timezone true
-                              :datetime-diff    true
-                              :now              true
-                              :persist-models   true
-                              :schemas          true}]
+(doseq [[feature supported?] {:convert-timezone         true
+                              :datetime-diff            true
+                              :now                      true
+                              :persist-models           true
+                              :schemas                  true
+                              :connection-impersonation true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -823,3 +825,13 @@
                              (str/join "\n")
                              (StringReader.))]
        (.copyIn copy-manager ^String sql tsvs)))))
+
+;;; ------------------------------------------------- User Impersonation --------------------------------------------------
+
+(defmethod qp.util/set-role-statement :postgres
+  [_ role]
+  (format "SET ROLE %s;" role))
+
+(defmethod qp.util/default-database-role :postgres
+  [_ _]
+  "NONE")
