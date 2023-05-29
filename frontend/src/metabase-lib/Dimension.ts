@@ -399,11 +399,16 @@ export default class Dimension {
     return this._query && this._query.dimensionForSourceQuery(this);
   }
 
+  getOptions() {
+    return this._options;
+  }
+
   /**
    * Get an option from the field options map, if there is one.
    */
   getOption(k: string): any {
-    return this._options && this._options[k];
+    const options = this.getOptions();
+    return options?.[k];
   }
 
   /*
