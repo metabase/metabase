@@ -285,7 +285,7 @@ export type ForeignFieldReference = [
 export type ExpressionReference = [
   "expression",
   ExpressionName,
-  ReferenceOptions | null,
+  ReferenceOptions | null | undefined,
 ];
 
 type FieldLiteral = [

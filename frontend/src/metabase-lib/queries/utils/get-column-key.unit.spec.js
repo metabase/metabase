@@ -41,7 +41,7 @@ describe("getColumnKey", () => {
           source: "aggregation",
           field_ref: fieldRefEnabled ? ["aggregation", 0] : undefined,
         };
-        expect(getColumnKey(col, [col])).toEqual(
+        expect(getColumnKey(col)).toEqual(
           // NOTE: not ideal, matches existing behavior, but should be ["aggregation", 0]
           JSON.stringify(["name", "foo"]),
         );
@@ -54,7 +54,7 @@ describe("getColumnKey", () => {
             ? ["field", "foo", { "base-type": "type/Integer" }]
             : undefined,
         };
-        expect(getColumnKey(col, [col])).toEqual(
+        expect(getColumnKey(col)).toEqual(
           // NOTE: not ideal, matches existing behavior, but should be ["field", "foo", {"base-type": "type/Integer"}]
           JSON.stringify(["name", "foo"]),
         );
