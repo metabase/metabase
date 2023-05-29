@@ -289,6 +289,10 @@ export default class Dimension {
     return new Field();
   }
 
+  getMLv1CompatibleDimension() {
+    return this;
+  }
+
   /**
    * The `name` appearing in the column object (except duplicates would normally be suffxied)
    */
@@ -849,6 +853,12 @@ export class FieldDimension extends Dimension {
     // Despite being unable to find a field, we _might_ still have enough data to know a few things about it.
     // For example, if we have an mbql field reference, it might contain a `base-type`
     return this._createFallbackField();
+  }
+
+  getMLv1CompatibleDimension() {
+    return this.isIntegerFieldId()
+      ? this.withoutOptions("base-type", "effective-type")
+      : this;
   }
 
   tableId() {
