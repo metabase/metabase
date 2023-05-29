@@ -110,27 +110,34 @@ export const submitDatabase = createAsyncThunk<
   DatabaseData,
   DatabaseData,
   ThunkConfig
->(SUBMIT_DATABASE, async (database: DatabaseData, { getState }) => {
-  const token = getSetupToken(getState());
-  const sslDetails = { ...database.details, ssl: true };
-  const sslDatabase = { ...database, details: sslDetails };
-  const nonSslDetails = { ...database.details, ssl: false };
-  const nonSslDatabase = { ...database, database: nonSslDetails };
+>(
+  SUBMIT_DATABASE,
+  async (database: DatabaseData, { getState, rejectWithValue }) => {
+    const token = getSetupToken(getState());
+    const sslDetails = { ...database.details, ssl: true };
+    const sslDatabase = { ...database, details: sslDetails };
+    const nonSslDetails = { ...database.details, ssl: false };
+    const nonSslDatabase = { ...database, database: nonSslDetails };
 
-  if (!token) {
-    return database;
-  }
+    if (!token) {
+      return database;
+    }
 
-  try {
-    await validateDatabase(token, sslDatabase);
-    trackDatabaseStepCompleted(sslDatabase.engine);
-    return sslDatabase;
-  } catch (error) {
-    await validateDatabase(token, nonSslDatabase);
-    trackDatabaseStepCompleted(nonSslDatabase.engine);
-    return nonSslDatabase;
-  }
-});
+    try {
+      await validateDatabase(token, sslDatabase);
+      trackDatabaseStepCompleted(database.engine);
+      return sslDatabase;
+    } catch (error1) {
+      try {
+        await validateDatabase(token, nonSslDatabase);
+        trackDatabaseStepCompleted(database.engine);
+        return nonSslDatabase;
+      } catch (error2) {
+        return rejectWithValue(error2);
+      }
+    }
+  },
+);
 
 export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
 export const submitUserInvite = createAsyncThunk(
@@ -162,7 +169,7 @@ export const updateTracking = createAsyncThunk(
 export const SUBMIT_SETUP = "metabase/setup/SUBMIT_SETUP";
 export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
   SUBMIT_SETUP,
-  async (_, { getState }) => {
+  async (_, { getState, rejectWithValue }) => {
     const token = getSetupToken(getState());
     const locale = getLocale(getState());
     const user = getUser(getState());
@@ -170,18 +177,22 @@ export const submitSetup = createAsyncThunk<void, void, ThunkConfig>(
     const invite = getInvite(getState());
     const isTrackingAllowed = getIsTrackingAllowed(getState());
 
-    await SetupApi.create({
-      token,
-      user,
-      database,
-      invite,
-      prefs: {
-        site_name: user?.site_name,
-        site_locale: locale?.code,
-        allow_tracking: isTrackingAllowed.toString(),
-      },
-    });
+    try {
+      await SetupApi.create({
+        token,
+        user,
+        database,
+        invite,
+        prefs: {
+          site_name: user?.site_name,
+          site_locale: locale?.code,
+          allow_tracking: isTrackingAllowed.toString(),
+        },
+      });
 
-    MetabaseSettings.set("setup-token", null);
+      MetabaseSettings.set("setup-token", null);
+    } catch (error) {
+      return rejectWithValue(error);
+    }
   },
 );
