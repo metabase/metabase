@@ -787,8 +787,17 @@
 
 (defn assoc-default
   "Called like `(assoc m k v)`, this does [[assoc]] iff `m` does not contain `k`
-  and `v` is not nil."
-  [m k v]
-  (if (or (nil? v) (contains? m k))
-    m
-    (assoc m k v)))
+  and `v` is not nil. Can be called with multiple key value pairs. If a key occurs
+  more than once, only the first occurrence with a non-nil value is used."
+  ([m k v]
+   (if (or (nil? v) (contains? m k))
+     m
+     (assoc m k v)))
+  ([m k v & kvs]
+    (let [ret (assoc-default m k v)]
+      (if kvs
+        (if (next kvs)
+          (recur ret (first kvs) (second kvs) (nnext kvs))
+          (throw (ex-info "assoc-default expects an even number of key-values"
+                          {:kvs kvs})))
+        ret))))
