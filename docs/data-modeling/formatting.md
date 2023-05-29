@@ -14,7 +14,7 @@ There are Metabase users around the world, each with different preferences for h
 
 ## Field-level formatting
 
-You can override the global defaults for a specific field by going to the `Data Model` section of the Admin Panel, selecting the database and table of the field in question, and clicking the gear icon on the far right of the screen next to that field to go to its options page, then clicking on the `Formatting` tab.
+You can override the global defaults for a specific field by going to the `Table Metadata` section of the Admin Panel, selecting the database and table of the field in question, and clicking the gear icon on the far right of the screen next to that field to go to its options page, then clicking on the `Formatting` tab.
 
 The options you'll see here will depend on the field's type. They're generally the same options as in the global formatting settings, with a few additions:
 
