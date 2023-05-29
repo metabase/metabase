@@ -103,7 +103,7 @@ To access a filter's settings:
 From this filter editing view, you can wire up individual dashboard cards to the filter, or use the settings in the sidebar to:
 
 - [Remove a filter](#remove-a-filter)
-- [Reorder filter widgets](#reorder-filters)
+- [Reorder filter widgets](#reorder-filter-widgets)
 - [Set a default filter value](#set-a-default-filter-value)
 - [Make a multi-select filter](#make-a-multi-select-filter)
 - [Change the filter widget type](#filter-widgets)
