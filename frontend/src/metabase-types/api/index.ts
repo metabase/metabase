@@ -21,6 +21,7 @@ export * from "./query";
 export * from "./revision";
 export * from "./schema";
 export * from "./segment";
+export * from "./session";
 export * from "./settings";
 export * from "./setup";
 export * from "./slack";
