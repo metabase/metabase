@@ -121,6 +121,38 @@
 (defmacro ^:private with-dashboards-in-writeable-collection [dashboards-or-ids & body]
   `(do-with-dashboards-in-a-collection perms/grant-collection-readwrite-permissions! ~dashboards-or-ids (fn [] ~@body)))
 
+(defn- do-with-simple-dashboard-with-tabs
+  [f]
+  (t2.with-temp/with-temp
+    [Dashboard           {dashboard-id :id} {}
+
+     Card                {card-id-1 :id}    {}
+
+     Card                {card-id-2 :id}    {}
+     :model/DashboardTab {dashtab-id-1 :id} {:name         "Tab 1"
+                                             :dashboard_id dashboard-id
+                                             :position     0}
+     :model/DashboardTab {dashtab-id-2 :id} {:name         "Tab 2"
+                                             :dashboard_id dashboard-id
+                                             :position     1}
+     DashboardCard       {dashcard-id-1 :id} {:dashboard_id     dashboard-id
+                                              :card_id          card-id-1
+                                              :dashboard_tab_id dashtab-id-1}
+     DashboardCard       {dashcard-id-2 :id} {:dashboard_id     dashboard-id
+                                              :card_id          card-id-2
+                                              :dashboard_tab_id dashtab-id-2}]
+    (f {:dashboard-id  dashboard-id
+        :card-id-1     card-id-1
+        :card-id-2     card-id-1
+        :dashtab-id-1  dashtab-id-1
+        :dashtab-id-2  dashtab-id-2
+        :dashcard-id-1 dashcard-id-1
+        :dashcard-id-2 dashcard-id-2})))
+
+(defmacro ^:private with-simple-dashboard-with-tabs
+  "Create a simple dashboard with 2 tabs and 2 cards in each tab and run `body` with the dashboard and cards ids bound to"
+  [[bindings] & body]
+  `(do-with-simple-dashboard-with-tabs (fn [~bindings] ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     /api/dashboard/* AUTHENTICATION Tests                                      |
@@ -1080,8 +1112,6 @@
                      (set (map :name cards-in-coll)))
                   "Cards should have \"-- Duplicate\" appended"))))))))
 
-(declare with-simple-dashboard-with-tabs)
-
 (deftest copy-dashboard-with-tab-test
   (testing "POST /api/dashboard/:id/copy"
     (testing "for a dashboard that has tabs"
@@ -1343,40 +1373,6 @@
                                                              (format "dashboard/%d/cards" dashboard-id)
                                                              {:cards        [new-dashcard-info]
                                                               :ordered_tabs []}))}))))))
-
-(defn- do-with-simple-dashboard-with-tabs
-  [f]
-  (t2.with-temp/with-temp
-    [Dashboard           {dashboard-id :id} {}
-
-     Card                {card-id-1 :id}    {}
-
-     Card                {card-id-2 :id}    {}
-     :model/DashboardTab {dashtab-id-1 :id} {:name         "Tab 1"
-                                             :dashboard_id dashboard-id
-                                             :position     0}
-     :model/DashboardTab {dashtab-id-2 :id} {:name         "Tab 2"
-                                             :dashboard_id dashboard-id
-                                             :position     1}
-     DashboardCard       {dashcard-id-1 :id} {:dashboard_id     dashboard-id
-                                              :card_id          card-id-1
-                                              :dashboard_tab_id dashtab-id-1}
-     DashboardCard       {dashcard-id-2 :id} {:dashboard_id     dashboard-id
-                                              :card_id          card-id-2
-                                              :dashboard_tab_id dashtab-id-2}]
-    (f {:dashboard-id  dashboard-id
-        :card-id-1     card-id-1
-        :card-id-2     card-id-1
-        :dashtab-id-1  dashtab-id-1
-        :dashtab-id-2  dashtab-id-2
-        :dashcard-id-1 dashcard-id-1
-        :dashcard-id-2 dashcard-id-2})))
-
-(defmacro ^:private with-simple-dashboard-with-tabs
-  "Create a simple dashboard with 2 tabs and 2 cards in each tab and run `body` with the dashboard and cards ids bound to"
-  [[bindings] & body]
-  `(do-with-simple-dashboard-with-tabs (fn [~bindings] ~@body)))
-
 (deftest e2e-update-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
        (t2.with-temp/with-temp
