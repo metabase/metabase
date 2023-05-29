@@ -98,12 +98,12 @@ Before we **Save** our changes, we can edit our filter's settings.
 To access a filter's settings:
 
 1. Click the **pencil** icon to enter dashboard editing mode.
-2. Click the **gear** icon button on the filter you want to change.
+2. Click the **gear** icon on the filter you want to edit.
 
-From this filter editing mode, you can wire up individual cards to the filter, or use the sidebar settings to:
+From this filter editing view, you can wire up individual dashboard cards to the filter, or use the settings in the sidebar to:
 
 - [Remove a filter](#remove-a-filter)
-- [Reorder filters](#reorder-filters)
+- [Reorder filter widgets](#reorder-filters)
 - [Set a default filter value](#set-a-default-filter-value)
 - [Make a multi-select filter](#make-a-multi-select-filter)
 - [Change the filter widget type](#filter-widgets)
@@ -116,9 +116,9 @@ From this filter editing mode, you can wire up individual cards to the filter, o
 
 If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard edit mode without saving your changes.
 
-### Reorder filters
+### Reorder filter widgets
 
-In dashboard edit mode, click on the grabber handle (six dots) on the left side of a filter, then drag the filter to a different position.
+In dashboard edit mode, click on the grabber handle (six dots) on the left side of a filter widget, then drag the widget to a different position.
 
 ### Set a default filter value
 
@@ -128,18 +128,21 @@ In dashboard edit mode, click on the grabber handle (six dots) on the left side 
 ### Make a multi-select filter
 
 1. In dashboard edit mode, click your filter's **gear** icon. 
-2. From the sidebar, choose **Users can pick** > "Multiple values".
+2. From the sidebar, find **Users can pick** and select "Multiple values".
 
 ### Change a filter's selectable values
 
 1. In dashboard edit mode, click your filter's **gear** icon. 
-2. From the sidebar, find "How should users filter on this column".
-3. Click on the **Dropdown list**, then click **Edit** to specify where the values should come from:
+2. From the sidebar, find **How should users filter on this column?**.
+3. Select "Dropdown list".\*
+4. Click **Edit** (to the right of "Dropdown list") to specify where the values should come from:
     - From connected fields
     - From another model or question
     - Custom list
 
 ![Selectable values](./images/selectable-values.png)
+
+\* If you don't see "Dropdown list" as an option, go to [Filter widgets: Dropdown list](#dropdown-list) for more info.
 
 ## Using filters
 
@@ -153,11 +156,11 @@ You can also set up a dashboard question to [update a filter on click](./interac
 
 The filter widget is the little box at the top of your dashboard which people will use to enter their filter values. 
 
-You can find a filter's widget settings by going to dashboard edit mode (pencil icon), then clicking on the filter widget's **gear** icon. 
+You can find a filter's widget settings by from dashboard edit mode (**pencil** icon), then clicking on a filter widget's **gear** icon.
 
-From the filter settings sidebar, you'll find the widget types under **How should people filter on this column?**:
+From the filter settings sidebar, you'll find the widget types under **How should people filter on this column?**
 
-- [Dropdown list](#dropdown-list) (you'll only see this option if an admin has enabled it from the [Data Model settings](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter))
+- [Dropdown list](#dropdown-list)
 - [Search box](#search-box)
 - [Input box](#plain-input-box)
 
@@ -167,9 +170,9 @@ A list of all of the possible values in a column, with checkboxes for [multi-sel
 
 If you're not seeing the **Dropdown list** option, and your dashboard filter is based on:
 
-- **A column from a table or GUI-based model**: The dropdown filter widget must be enabled from Metabase's **Admin settings**. See [Data model admin settings: changing the filter widget](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter).
+- **A column from a table or GUI-based model**: an admin will need to [enable the widget type](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) from Metabase's **Admin settings**.
 
-- **A column from a SQL-based model**: Go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
+- **A column from a SQL-based model**: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
 
 ### Search box
 
