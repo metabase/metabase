@@ -843,7 +843,7 @@
 
 (defenterprise add-impersonations-to-permissions-graph
   "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is.."
-   metabase-enterprise.advanced-permissions.models.connection-impersonation
+  metabase-enterprise.advanced-permissions.models.connection-impersonation
   [graph]
   graph)
 
@@ -1145,6 +1145,12 @@
   metabase-enterprise.sandbox.models.permissions.delete-sandboxes
   [_])
 
+(defenterprise ^:private delete-impersonations-if-needed-after-permissions-change!
+  "Delete connection impersonation policies that are no longer needed after the permissions graph is updated. This is
+  EE-specific -- OSS impl is a no-op, since connection impersonation is an EE-only feature."
+  metabase-enterprise.advanced-permissions.models.connection-impersonation
+  [_])
+
 ;;; ----------------------------------------------- Graph Updating Fns -----------------------------------------------
 
 (defn ee-permissions-exception
@@ -1436,6 +1442,7 @@
         (doseq [[group-id changes] new]
           (update-group-permissions! group-id changes))
         (save-perms-revision! PermissionsRevision (:revision old-graph) old new)
+        (delete-impersonations-if-needed-after-permissions-change! new)
         (delete-gtaps-if-needed-after-permissions-change! new)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
