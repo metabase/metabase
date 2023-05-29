@@ -18,6 +18,7 @@ export interface UseEntityListOwnProps<TItem, TQuery = never> {
     options: EntityQueryOptions<TQuery>,
   ) => TItem[] | undefined;
   getLoading: (state: State, options: EntityQueryOptions<TQuery>) => boolean;
+  getLoaded: (state: State, options: EntityQueryOptions<TQuery>) => boolean;
   getError: (state: State, options: EntityQueryOptions<TQuery>) => unknown;
 }
 
@@ -43,21 +44,23 @@ export const useEntityListQuery = <TItem, TQuery = never>(
     fetchList,
     getList,
     getLoading,
+    getLoaded,
     getError,
   }: UseEntityListOwnProps<TItem, TQuery>,
 ): UseEntityListQueryResult<TItem> => {
   const options = { entityQuery };
   const data = useSelector(state => getList(state, options));
   const isLoading = useSelector(state => getLoading(state, options));
+  const isLoaded = useSelector(state => getLoaded(state, options));
   const error = useSelector(state => getError(state, options));
 
   const dispatch = useDispatch();
   useDeepCompareEffect(() => {
-    if (enabled) {
+    if (enabled && !isLoaded) {
       const action = dispatch(fetchList(entityQuery, { reload }));
       Promise.resolve(action).catch(() => undefined);
     }
-  }, [dispatch, fetchList, entityQuery, reload, enabled]);
+  }, [dispatch, fetchList, entityQuery, reload, enabled, isLoaded]);
 
   return { data, isLoading, error };
 };

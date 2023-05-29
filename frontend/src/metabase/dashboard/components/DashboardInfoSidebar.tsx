@@ -1,18 +1,14 @@
-import React, { useCallback, useMemo } from "react";
-import _ from "underscore";
+import React, { useCallback } from "react";
 import { t } from "ttag";
-import { connect } from "react-redux";
 
 import { PLUGIN_CACHING } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 
-import DefaultTimeline from "metabase/components/Timeline";
+import { Timeline } from "metabase/common/components/Timeline";
 import EditableText from "metabase/core/components/EditableText";
 
-import { Dashboard, Revision as RevisionType, User } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import Revision from "metabase/entities/revisions";
-import { getRevisionEventsForTimeline } from "metabase/lib/revisions";
+import { Dashboard } from "metabase-types/api";
 import { getUser } from "metabase/selectors/user";
 
 import {
@@ -23,7 +19,8 @@ import {
 import Toggle from "metabase/core/components/Toggle";
 import FormField from "metabase/core/components/FormField";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import { useDispatch } from "metabase/lib/redux";
+import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
+import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
 import {
   DashboardInfoSidebarRoot,
   HistoryHeader,
@@ -37,20 +34,19 @@ interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
   setDashboardAttribute: (name: string, value: DashboardAttributeType) => void;
   saveDashboardAndCards: (preserveParameters?: boolean) => void;
-  revisions: RevisionType[];
-  currentUser: User;
-  revertToRevision: (revision: RevisionType) => void;
 }
 
-const DashboardInfoSidebar = ({
+export function DashboardInfoSidebar({
   dashboard,
   setDashboardAttribute,
   saveDashboardAndCards,
-  revisions,
-  currentUser,
-  revertToRevision,
-}: DashboardInfoSidebarProps) => {
-  const canWrite = dashboard.can_write;
+}: DashboardInfoSidebarProps) {
+  const { data: revisions } = useRevisionListQuery({
+    query: { model_type: "dashboard", model_id: dashboard.id },
+  });
+
+  const currentUser = useSelector(getUser);
+  const dispatch = useDispatch();
 
   const showCaching =
     PLUGIN_CACHING.isEnabled() && MetabaseSettings.get("enable-query-caching");
@@ -71,21 +67,11 @@ const DashboardInfoSidebar = ({
     [saveDashboardAndCards, setDashboardAttribute],
   );
 
-  const dispatch = useDispatch();
   const handleToggleAutoApplyFilters = useCallback(
     (isAutoApplyingFilters: boolean) => {
       dispatch(toggleAutoApplyFilters(isAutoApplyingFilters));
     },
     [dispatch],
-  );
-
-  const events = useMemo(
-    () =>
-      getRevisionEventsForTimeline(revisions, {
-        currentUser,
-        canWrite,
-      }),
-    [revisions, currentUser, canWrite],
   );
 
   const autoApplyFilterToggleId = useUniqueId();
@@ -129,33 +115,13 @@ const DashboardInfoSidebar = ({
 
       <ContentSection>
         <HistoryHeader>{t`History`}</HistoryHeader>
-        <DefaultTimeline
-          items={events}
+        <Timeline
+          events={getTimelineEvents({ revisions, currentUser })}
           data-testid="dashboard-history-list"
-          revertFn={revertToRevision}
+          revert={revision => dispatch(revertToRevision(revision))}
+          canWrite={dashboard.can_write}
         />
       </ContentSection>
     </DashboardInfoSidebarRoot>
   );
-};
-
-const mapStateToProps = (state: State) => ({
-  currentUser: getUser(state),
-});
-
-const mapDispatchToProps = {
-  revertToRevision,
-};
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Revision.loadList({
-    query: (state: State, props: DashboardInfoSidebarProps) => ({
-      model_type: "dashboard",
-      model_id: props.dashboard.id,
-    }),
-    wrapped: true,
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(DashboardInfoSidebar);
+}

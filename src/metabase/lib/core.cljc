@@ -60,6 +60,7 @@
    aggregations
    aggregations-metadata
    available-aggregation-operators
+   selected-aggregation-operators
    count
    avg
    count-where

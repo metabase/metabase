@@ -518,7 +518,8 @@
                              (and (empty? search-id) (not-empty search-name))
                              [:like [:lower :report_card.name] (str "%" search-name "%")])]
                 :left-join [[:collection :collection] [:= :collection.id :report_card.collection_id]]
-                :order-by [[:report_card.id :desc]]
+                :order-by [[:dataset :desc]         ; prioritize models
+                           [:report_card.id :desc]] ; then most recently created
                 :limit    50})))
 
 (defn- autocomplete-fields [db-id search-string limit]
@@ -902,6 +903,11 @@
                                    :caveats            caveats
                                    :points_of_interest points_of_interest
                                    :auto_run_queries   auto_run_queries}
+                                  ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
+                                  (when (seq settings)
+                                    {:settings (into {}
+                                                     (remove (fn [[_k v]] (nil? v)))
+                                                     (merge (:settings existing-database) settings))})
                                   (cond
                                     ;; transition back to metabase managed schedules. the schedule
                                     ;; details, even if provided, are ignored. database is the
@@ -912,15 +918,7 @@
 
                                     ;; if user is controlling schedules
                                     (:let-user-control-scheduling details)
-                                    (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))
-
-                                    ;; upsert settings with a PATCH-style update. `nil` key means unset
-                                    ;; the Setting.
-                                    (seq settings)
-                                    {:settings (into {}
-                                                     (remove (fn [[_k v]] (nil? v)))
-                                                     (merge (:settings existing-database)
-                                                            settings))})))
+                                    (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules)))))
         ;; do nothing in the case that user is not in control of
         ;; scheduling. leave them as they are in the db
 
