@@ -96,7 +96,7 @@ export default class Filter extends MBQLClause {
   isValid() {
     if (this.isStandard()) {
       // has an operator name and dimension or expression
-      const dimension = this.dimension();
+      const dimension = this.getMLv1CompatibleDimension();
 
       if (!dimension && isExpression(this[1])) {
         return true;

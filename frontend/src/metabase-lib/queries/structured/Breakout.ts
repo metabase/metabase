@@ -46,7 +46,12 @@ export default class Breakout extends MBQLClause {
    */
   isValid() {
     const query = this.query();
-    return !query || query.breakoutOptions(this).hasDimension(this.dimension());
+    return (
+      !query ||
+      query
+        .breakoutOptions(this)
+        .hasDimension(this.getMLv1CompatibleDimension())
+    );
   }
 
   /**
