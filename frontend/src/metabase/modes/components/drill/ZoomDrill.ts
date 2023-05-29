@@ -1,23 +1,33 @@
-import { t } from "ttag";
+import type {
+  ClickActionProps,
+  QuestionChangeClickAction,
+} from "metabase/modes/types";
 import {
-  zoomDrill,
+  getNextZoomDrilldown,
+  getZoomDrillTitle,
   zoomDrillQuestion,
 } from "metabase-lib/queries/drills/zoom-drill";
-import type { Drill } from "../../types";
 
-const ZoomDrill: Drill = ({ question, clicked }) => {
-  if (!zoomDrill({ question, clicked })) {
+const ZoomDrill = ({
+  question,
+  clicked,
+}: ClickActionProps): QuestionChangeClickAction[] => {
+  const result = getNextZoomDrilldown(question, clicked);
+
+  if (!result) {
     return [];
   }
+
+  const { dimensions, drilldown } = result;
 
   return [
     {
       name: "timeseries-zoom",
-      title: t`Zoom in`,
+      title: getZoomDrillTitle(dimensions, drilldown),
       section: "zoom",
       icon: "zoom_in",
       buttonType: "horizontal",
-      question: () => zoomDrillQuestion({ question, clicked }),
+      question: () => zoomDrillQuestion(question, dimensions, drilldown),
     },
   ];
 };

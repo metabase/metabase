@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { Motion, spring } from "react-motion";
+import cx from "classnames";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
@@ -51,6 +52,8 @@ class EntityMenu extends Component {
       triggerIcon,
       triggerProps,
       className,
+      openClassNames,
+      closedClassNames,
       tooltip,
       trigger,
       renderTrigger,
@@ -60,7 +63,11 @@ class EntityMenu extends Component {
     } = this.props;
     const { open, menuItemContent } = this.state;
     return (
-      <Container className={className} open={open} ref={this.rootRef}>
+      <Container
+        className={cx(className, open ? openClassNames : closedClassNames)}
+        open={open}
+        ref={this.rootRef}
+      >
         {renderTrigger ? (
           renderTrigger({ open, onClick: this.toggleMenu })
         ) : (

@@ -1,11 +1,8 @@
-import React from "react";
 import { t } from "ttag";
 import { isWithinIframe } from "metabase/lib/dom";
 import { getEngineNativeType } from "metabase/lib/engine";
+import type { RegularClickAction, Drill } from "metabase/modes/types";
 import { nativeDrillFallback } from "metabase-lib/queries/drills/native-drill-fallback";
-
-import type { ClickAction, Drill } from "../../../types";
-import { DrillMessage, DrillRoot } from "./NativeDrillFallback.styled";
 
 const NativeDrillFallback: Drill = ({ question }) => {
   const drill = nativeDrillFallback({ question });
@@ -25,16 +22,10 @@ const NativeDrillFallback: Drill = ({ question }) => {
       name: "fallback-native",
       section: "info",
       buttonType: "info",
-      title: (
-        <DrillRoot>
-          <DrillMessage>
-            {isSql
-              ? t`Drill-through doesn’t work on SQL questions.`
-              : t`Drill-through doesn’t work on native questions.`}
-          </DrillMessage>
-        </DrillRoot>
-      ),
-    } as ClickAction,
+      title: isSql
+        ? t`Drill-through doesn’t work on SQL questions.`
+        : t`Drill-through doesn’t work on native questions.`,
+    } as RegularClickAction,
   ];
 };
 

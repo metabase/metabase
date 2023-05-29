@@ -1,9 +1,6 @@
 import { assocIn } from "icepick";
 import moment from "moment-timezone";
 import { createMockMetadata } from "__support__/metadata";
-
-import UnderlyingRecordsDrill from "metabase/modes/components/drill/UnderlyingRecordsDrill";
-
 import {
   createSampleDatabase,
   ORDERS,
@@ -11,28 +8,16 @@ import {
   PEOPLE,
   PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/selectors/metadata";
+import UnderlyingRecordsDrill from "./UnderlyingRecordsDrill";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
 const ordersTable = metadata.table(ORDERS_ID);
-
-function getActionProps(query, value) {
-  return {
-    question: query.question(),
-    clicked: {
-      column: query.aggregationDimensions()[0].column(),
-      value: 42,
-      dimensions: [
-        {
-          column: query.breakouts()[0].dimension().column(),
-          value: value,
-        },
-      ],
-    },
-  };
-}
 
 describe("UnderlyingRecordsDrill", () => {
   it("should not be valid for top level actions", () => {
@@ -49,6 +34,7 @@ describe("UnderlyingRecordsDrill", () => {
       .breakout(["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]);
     const actions = UnderlyingRecordsDrill(getActionProps(query, value));
     expect(actions).toHaveLength(1);
+
     const q = actions[0].question();
     expect(q.query().query()).toEqual({
       "source-table": ORDERS_ID,
@@ -180,4 +166,75 @@ describe("UnderlyingRecordsDrill", () => {
     });
     expect(q.display()).toEqual("table");
   });
+
+  describe("title", () => {
+    it('should return "See these records" title for entities with title longer than 20 chars', () => {
+      const actions = UnderlyingRecordsDrill(setup("LongLongLongTableTitle"));
+      expect(actions).toHaveLength(1);
+
+      const [action] = actions;
+      if (!("title" in action)) {
+        throw new Error("Received unexpected action type");
+      }
+
+      expect(action.title).toEqual("See these records");
+    });
+
+    it("should contain entity title for entities shorter than 21 chars", () => {
+      const actions = UnderlyingRecordsDrill(setup("SomeTitle"));
+      expect(actions).toHaveLength(1);
+
+      const [action] = actions;
+      expect(action.title).toEqual("See these SomeTitles");
+    });
+  });
 });
+
+function getActionProps(query, value) {
+  return {
+    question: query.question(),
+    clicked: {
+      column: query.aggregationDimensions()[0].column(),
+      value: 42,
+      dimensions: [
+        {
+          column: query.breakouts()[0].dimension().column(),
+          value: value,
+        },
+      ],
+    },
+  };
+}
+
+function getMockTable(tableDisplayName) {
+  const state = createMockState({
+    entities: createMockEntitiesState({
+      databases: [createSampleDatabase()],
+    }),
+  });
+
+  const metadata = getMetadata(state);
+  const table = metadata.table(ORDERS_ID);
+
+  table.display_name = tableDisplayName;
+
+  return table;
+}
+
+function setup(tableDisplayName) {
+  const table = getMockTable(tableDisplayName);
+
+  return {
+    question: table.newQuestion(),
+    clicked: {
+      column: table.fields[0].column(),
+      value: 42,
+      dimensions: [
+        {
+          column: table.fields[0].column(),
+          value: 42,
+        },
+      ],
+    },
+  };
+}
