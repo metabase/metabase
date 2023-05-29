@@ -13,7 +13,7 @@ import {
 } from "metabase/redux/requests";
 
 // convenience
-export { combineReducers, compose } from "@reduxjs/toolkit";
+export { combineReducers, compose, AnyAction } from "@reduxjs/toolkit";
 export { handleActions, createAction } from "redux-actions";
 
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether

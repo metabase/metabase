@@ -11,6 +11,7 @@ import { createMockQueryBuilderState } from "./qb";
 import { createMockSettingsState } from "./settings";
 import { createMockSetupState } from "./setup";
 import { createMockUploadState } from "./upload";
+import { createMockUndoState } from "./undo";
 
 export const createMockState = (opts?: Partial<State>): State => ({
   admin: createMockAdminState(),
@@ -25,5 +26,6 @@ export const createMockState = (opts?: Partial<State>): State => ({
   settings: createMockSettingsState(),
   setup: createMockSetupState(),
   upload: createMockUploadState(),
+  undo: createMockUndoState(),
   ...opts,
 });

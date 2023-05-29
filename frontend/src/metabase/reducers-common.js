@@ -5,7 +5,7 @@ import app from "metabase/redux/app";
 import embed from "metabase/redux/embed";
 import requests from "metabase/redux/requests";
 import settings from "metabase/redux/settings";
-import undo from "metabase/redux/undo";
+import { undoReducer as undo } from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
 // eslint-disable-next-line import/no-named-as-default
 import entities, { enhanceRequestsReducer } from "metabase/redux/entities";

@@ -1,7 +1,8 @@
 import _ from "underscore";
-
-import { createThunkAction } from "metabase/lib/redux";
+import { createThunkAction, AnyAction } from "metabase/lib/redux";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { Dispatch, GetState, State } from "metabase-types/store";
+import { Undo } from "metabase-types/store/undo";
 
 const ADD_UNDO = "metabase/questions/ADD_UNDO";
 const DISMISS_UNDO = "metabase/questions/DISMISS_UNDO";
@@ -9,8 +10,8 @@ const PERFORM_UNDO = "metabase/questions/PERFORM_UNDO";
 
 let nextUndoId = 0;
 
-export const addUndo = createThunkAction(ADD_UNDO, undo => {
-  return (dispatch, getState) => {
+export const addUndo = createThunkAction(ADD_UNDO, (undo: Partial<Undo>) => {
+  return (dispatch: Dispatch) => {
     const { icon = "check", timeout = 5000 } = undo;
     const id = undo.id ?? nextUndoId++;
     if (timeout) {
@@ -20,13 +21,13 @@ export const addUndo = createThunkAction(ADD_UNDO, undo => {
   };
 });
 
-function getUndo(state, undoId) {
+function getUndo(state: State, undoId: number) {
   return _.findWhere(state.undo, { id: undoId });
 }
 
 export const dismissUndo = createThunkAction(
   DISMISS_UNDO,
-  (undoId, track = true) => {
+  (undoId: number, track = true) => {
     return () => {
       if (track) {
         MetabaseAnalytics.trackStructEvent("Undo", "Dismiss Undo");
@@ -36,10 +37,10 @@ export const dismissUndo = createThunkAction(
   },
 );
 
-export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
-  return (dispatch, getState) => {
+export const performUndo = createThunkAction(PERFORM_UNDO, (undoId: number)  => {
+  return (dispatch: Dispatch, getState: GetState) => {
     const undo = getUndo(getState(), undoId);
-    if (!undo.actionLabel) {
+    if (!undo?.actionLabel) {
       MetabaseAnalytics.trackStructEvent("Undo", "Perform Undo");
     }
     if (undo) {
@@ -49,7 +50,8 @@ export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
   };
 });
 
-export default function (state = [], { type, payload, error }) {
+
+export const undoReducer = (state: Undo[] = [], { type, payload, error }: AnyAction) => {
   if (type === ADD_UNDO) {
     if (error) {
       console.warn("ADD_UNDO", payload);

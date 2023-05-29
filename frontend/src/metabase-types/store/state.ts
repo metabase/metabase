@@ -10,6 +10,7 @@ import { ParametersState } from "./parameters";
 import { SettingsState } from "./settings";
 import { SetupState } from "./setup";
 import { FileUploadState } from "./upload";
+import { UndoState} from "./undo";
 
 export interface State {
   admin: AdminState;
@@ -24,6 +25,7 @@ export interface State {
   settings: SettingsState;
   setup: SetupState;
   upload: FileUploadState;
+  undo: UndoState;
 }
 
 export type Dispatch<T = any> = (action: T) => void;
