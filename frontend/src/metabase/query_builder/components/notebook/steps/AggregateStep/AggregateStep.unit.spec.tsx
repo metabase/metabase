@@ -10,14 +10,17 @@ import {
 import { createMockNotebookStep } from "../../test-utils";
 import { AggregateStep } from "./AggregateStep";
 
-function createAggregatedQuery() {
+function createAggregatedQuery({
+  table = "ORDERS",
+  column = "QUANTITY",
+}: { table?: string; column?: string } = {}) {
   const initialQuery = createQuery();
   const average = findAggregationOperator(initialQuery, "avg");
   const findColumn = columnFinder(
     initialQuery,
     Lib.aggregationOperatorColumns(average),
   );
-  const quantity = findColumn("ORDERS", "QUANTITY");
+  const quantity = findColumn(table, column);
   const clause = Lib.aggregationClause(average, quantity);
   return Lib.aggregate(initialQuery, 0, clause);
 }
@@ -66,6 +69,18 @@ describe("AggregateStep", () => {
   it("should render correctly with an aggregation", () => {
     setup(createMockNotebookStep({ topLevelQuery: createAggregatedQuery() }));
     expect(screen.getByText("Average of Quantity")).toBeInTheDocument();
+  });
+
+  it("should use foreign key name for foreign table columns", () => {
+    setup(
+      createMockNotebookStep({
+        topLevelQuery: createAggregatedQuery({
+          table: "PRODUCTS",
+          column: "RATING",
+        }),
+      }),
+    );
+    expect(screen.getByText("Average of Product → Rating")).toBeInTheDocument();
   });
 
   it("should add an aggregation with a basic operator", () => {
