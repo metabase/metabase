@@ -10,7 +10,7 @@ redirect_from:
 
 Have you ever found yourself in a situation where it seems like you need to create nearly identical copies of the same dashboard, with just one different variable? Maybe you have an Earnings dashboard, but you want to see the data for each city your business is in, or maybe you have a KPI dashboard that you want to see broken out by month.
 
-Instead of creating duplicate dashboards, you can add filter widgets to let people change variables for cards on a dashboard.
+Instead of creating duplicate dashboards, you can add [filter widgets](#filter-widgets) to let people change variables for cards on a dashboard.
 
 ## Adding a new filter
 
@@ -143,7 +143,7 @@ In dashboard edit mode, click on the grabber handle (six dots) on the left side 
 
 ## Using filters
 
-Once you’ve added a filter to your dashboard, just click on the filter to select a value and activate the filter. To stop filtering, just click the blue X.
+Once you’ve added a filter to your dashboard, just click on the filter widget to select a value and activate the filter. To stop filtering, just click the blue X.
 
 ![Using a filter](./images/use-filter.png)
 
@@ -153,31 +153,35 @@ You can also set up a dashboard question to [update a filter on click](./interac
 
 The filter widget is the little box at the top of your dashboard which people will use to enter their filter values. 
 
-You can find a filter's widget settings by clicking on a filter's **gear** icon in dashboard edit mode. From the filter settings sidebar, you'll find the widget types under **How should people filter on this column?**:
+You can find a filter's widget settings by going to dashboard edit mode (pencil icon), then clicking on the filter widget's **gear** icon. 
 
-- [Dropdown list](#dropdown-list)
+From the filter settings sidebar, you'll find the widget types under **How should people filter on this column?**:
+
+- [Dropdown list](#dropdown-list) (you'll only see this option if an admin has enabled it from the [Data Model settings](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter))
 - [Search box](#search-box)
 - [Input box](#plain-input-box)
 
-The dropdown list and search box filters will display a menu with checkboxes for [multi-select filters](#make-a-multi-select-filter).
-
 ### Dropdown list
 
-A list of all of the possible values in a column (with checkboxes if you have a [multi-select filter](#make-a-multi-select-filter)).
+A list of all of the possible values in a column, with checkboxes for [multi-select filters](#make-a-multi-select-filter). Use the dropdown widget if you want the list of values to load instantly (from cache).
 
-If your dashboard filter is based on:
+If you're not seeing the **Dropdown list** option, and your dashboard filter is based on:
 
-- **A column from a table or GUI-based model**: The dropdown filter widget must be set from Metabase's **Admin settings**. See [Data model admin settings: changing the filter widget](../data-modeling/metadata-editing.md).
+- **A column from a table or GUI-based model**: The dropdown filter widget must be enabled from Metabase's **Admin settings**. See [Data model admin settings: changing the filter widget](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter).
 
 - **A column from a SQL-based model**: Go to your [model's metadata settings](../data-modeling/models#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
 
 ### Search box
 
-A search box that offers a list of matching filter values as you type.
+A search box that offers a list of matching filter values as you type. The suggestions list will display checkboxes for [multi-select filters](#make-a-multi-select-filter).
+
+The search box is a good choice for most columns containing labels, categories, statuses, and so on. This is the default filter widget for columns with less than 100 unique values.
 
 ### Plain input box
 
-An input box that lets people enter any text (without suggesting values from the column).
+An input box that lets people enter plain text without a list of suggested values.
+
+Useful for filtering columns that contain free text, such as comments or descriptions. The input box is the default filter widget for columns with more than 100 unique values.
 
 ## Linking filters
 
