@@ -1,14 +1,22 @@
 import React, { Component, ReactNode } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-import Icon from "metabase/components/Icon";
+import { ActionIcon, ActionsWrapper } from "./ModalContent.styled";
 
 interface ModalContentProps extends CommonModalProps {
   id?: string;
   title: string;
-  onClose?: () => void;
-  className?: string;
   footer?: ReactNode;
+  children: ReactNode;
+  headerActions?: ModalHeaderAction[];
+
+  className?: string;
+  onClose?: () => void;
+}
+
+interface ModalHeaderAction {
+  icon: string;
+  onClick: () => void;
 }
 
 interface CommonModalProps {
@@ -30,6 +38,13 @@ export default class ModalContent extends Component<ModalContentProps> {
     fullPageModal: PropTypes.bool,
     // standard modal
     formModal: PropTypes.bool,
+
+    headerActions: PropTypes.arrayOf(
+      PropTypes.shape({
+        icon: PropTypes.string,
+        onClick: PropTypes.func,
+      }),
+    ),
   };
 
   static defaultProps = {
@@ -54,7 +69,10 @@ export default class ModalContent extends Component<ModalContentProps> {
       className,
       fullPageModal,
       formModal,
+      headerActions,
     } = this.props;
+
+    const hasActions = !!headerActions?.length || !!onClose;
 
     return (
       <div
@@ -67,14 +85,26 @@ export default class ModalContent extends Component<ModalContentProps> {
           { pb4: formModal && !footer },
         )}
       >
-        {onClose && (
-          <Icon
-            className="text-light text-medium-hover cursor-pointer absolute z2 m2 p2 top right"
-            name="close"
-            size={fullPageModal ? 24 : 16}
-            onClick={onClose}
-          />
+        {hasActions && (
+          <ActionsWrapper>
+            {headerActions?.map(({ icon, onClick }) => (
+              <ActionIcon
+                key={icon}
+                name={icon}
+                size={fullPageModal ? 24 : 16}
+                onClick={onClick}
+              />
+            ))}
+            {onClose && (
+              <ActionIcon
+                name="close"
+                size={fullPageModal ? 24 : 16}
+                onClick={onClose}
+              />
+            )}
+          </ActionsWrapper>
         )}
+
         {title && (
           <ModalHeader
             fullPageModal={fullPageModal}
