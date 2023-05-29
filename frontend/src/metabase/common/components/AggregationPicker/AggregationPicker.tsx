@@ -14,6 +14,7 @@ const DEFAULT_MAX_HEIGHT = 610;
 interface AggregationPickerProps {
   className?: string;
   query: Lib.Query;
+  stageIndex: number;
   operators: Lib.AggregationOperator[];
   maxHeight?: number;
   onSelect: (operator: Lib.AggregationClause) => void;
@@ -33,6 +34,7 @@ type Section = {
 export function AggregationPicker({
   className,
   query,
+  stageIndex,
   operators,
   maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
@@ -49,13 +51,15 @@ export function AggregationPicker({
     if (hasOperators) {
       sections.push({
         name: t`Basic Metrics`,
-        items: operators.map(operator => getOperatorListItem(query, operator)),
+        items: operators.map(operator =>
+          getOperatorListItem(query, stageIndex, operator),
+        ),
         icon: "table2",
       });
     }
 
     return sections;
-  }, [query, operators]);
+  }, [query, stageIndex, operators]);
 
   const handleOperatorSelect = useCallback(
     (item: OperatorListItem) => {
@@ -89,6 +93,7 @@ export function AggregationPicker({
       <QueryColumnPicker
         className={className}
         query={query}
+        stageIndex={stageIndex}
         columnGroups={columnGroups}
         maxHeight={maxHeight}
         onSelect={handleColumnSelect}
@@ -129,9 +134,10 @@ function renderItemExtra(item: OperatorListItem) {
 
 function getOperatorListItem(
   query: Lib.Query,
+  stageIndex: number,
   operator: Lib.AggregationOperator,
 ): OperatorListItem {
-  const operatorInfo = Lib.displayInfo(query, operator);
+  const operatorInfo = Lib.displayInfo(query, stageIndex, operator);
   return {
     ...operatorInfo,
     operator,
