@@ -1,7 +1,9 @@
 import { useEffect } from "react";
+import { t } from "ttag";
 import { replace } from "react-router-redux";
 import { isSmallScreen } from "metabase/lib/dom";
 import { openNavbar } from "metabase/redux/app";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   useDatabaseListQuery,
@@ -50,6 +52,19 @@ export const HomePage = (): JSX.Element => {
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  if (dashboardId) {
+    dispatch(
+      addUndo({
+        message: t`Your admin has set this dashboard as your homepage`,
+        icon: "info",
+        timeout: 10000,
+        actions: [dismissUndo],
+        actionLabel: t`Got it`,
+        hideDismiss: true,
+      }),
+    );
   }
 
   return (
