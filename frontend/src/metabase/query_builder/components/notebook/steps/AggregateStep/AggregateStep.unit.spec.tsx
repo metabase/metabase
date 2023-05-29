@@ -90,6 +90,7 @@ describe("AggregateStep", () => {
     );
 
     userEvent.click(screen.getByText("Average of Quantity"));
+    userEvent.click(screen.getByText("Average of ...")); // go back to operator selection
     userEvent.click(screen.getByText("Count of rows"));
 
     const nextQuery = getNextQuery();
@@ -99,6 +100,25 @@ describe("AggregateStep", () => {
       expect.objectContaining({
         name: "count",
         displayName: "Count",
+      }),
+    );
+  });
+
+  it("should change an aggregation column", () => {
+    const { getNextQuery, getRecentAggregationClause } = setup(
+      createMockNotebookStep({ topLevelQuery: createAggregatedQuery() }),
+    );
+
+    userEvent.click(screen.getByText("Average of Quantity"));
+    userEvent.click(screen.getByText("Total"));
+
+    const nextQuery = getNextQuery();
+    const clause = getRecentAggregationClause();
+    expect(Lib.aggregations(nextQuery, 0)).toHaveLength(1);
+    expect(clause).toEqual(
+      expect.objectContaining({
+        name: "avg_TOTAL",
+        displayName: "Average of Total",
       }),
     );
   });
