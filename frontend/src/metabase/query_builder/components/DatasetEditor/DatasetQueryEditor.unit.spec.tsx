@@ -1,25 +1,14 @@
 import { screen } from "@testing-library/react";
-import React from "react";
-
 import fetchMock from "fetch-mock";
+import React from "react";
 import _ from "underscore";
-import {
-  setupAlertsEndpoints,
-  setupBookmarksEndpoints,
-  setupCardDataset,
-  setupCardEndpoints,
-  setupCardQueryEndpoints,
-  setupDatabasesEndpoints,
-  setupModelIndexEndpoints,
-  setupSearchEndpoints,
-  setupTimelinesEndpoints,
-} from "__support__/server-mocks";
+
+import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import { Card, Collection, Dataset } from "metabase-types/api";
+import { Card, Collection } from "metabase-types/api";
 import {
   createMockCard,
-  createMockDataset,
   createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -28,23 +17,38 @@ import { checkNotNull } from "metabase/core/utils/types";
 import DatasetQueryEditor from "metabase/query_builder/components/DatasetEditor/DatasetQueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
-import Metadata from "metabase-lib/metadata/Metadata";
 
 const TEST_DB = createSampleDatabase();
+
 const TEST_NATIVE_CARD = createMockCard({
   dataset_query: createMockNativeDatasetQuery({
     database: TEST_DB.id,
   }),
 });
 
+const ROOT_COLLECTION = {
+  id: "root",
+  name: "Our analytics",
+  can_write: true,
+} as Collection;
+
 interface SetupOpts {
   card?: Card;
-  dataset?: Dataset;
   isActive: boolean;
 }
 
-function makeQuery(metadata: Metadata) {
-  return new NativeQuery(
+const setup = async ({ card = TEST_NATIVE_CARD, isActive }: SetupOpts) => {
+  setupDatabasesEndpoints([TEST_DB]);
+
+  const storeInitialState = createMockState({
+    entities: createMockEntitiesState({
+      databases: [createSampleDatabase()],
+      questions: [card],
+    }),
+  });
+
+  const metadata = getMetadata(storeInitialState);
+  const query = new NativeQuery(
     checkNotNull(metadata.database(TEST_DB.id)).question(),
     {
       type: "native",
@@ -55,38 +59,6 @@ function makeQuery(metadata: Metadata) {
       },
     },
   );
-}
-
-const ROOT_COLLECTION = {
-  id: "root",
-  name: "Our analytics",
-  can_write: true,
-} as Collection;
-
-const setup = async ({
-  card = TEST_NATIVE_CARD,
-  dataset = createMockDataset(),
-  isActive,
-}: SetupOpts) => {
-  setupDatabasesEndpoints([TEST_DB]);
-  setupCardDataset(dataset);
-  setupCardEndpoints(card);
-  setupCardQueryEndpoints(card, dataset);
-  setupSearchEndpoints([]);
-  setupAlertsEndpoints(card, []);
-  setupBookmarksEndpoints([]);
-  setupTimelinesEndpoints([]);
-  setupModelIndexEndpoints(card.id, []);
-
-  const storeInitialState = createMockState({
-    entities: createMockEntitiesState({
-      databases: [createSampleDatabase()],
-      questions: [card],
-    }),
-  });
-
-  const metadata = getMetadata(storeInitialState);
-  const query = makeQuery(metadata);
   const question = checkNotNull(metadata.question(card.id));
 
   renderWithProviders(
