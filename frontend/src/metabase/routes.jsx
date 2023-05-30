@@ -14,10 +14,10 @@ import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
 import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
 
 // auth containers
-import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp";
-import LoginApp from "metabase/auth/containers/LoginApp";
-import LogoutApp from "metabase/auth/containers/LogoutApp";
-import ResetPasswordApp from "metabase/auth/containers/ResetPasswordApp";
+import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
+import { Login } from "metabase/auth/components/Login";
+import { Logout } from "metabase/auth/components/Logout";
+import { ResetPassword } from "metabase/auth/components/ResetPassword";
 
 /* Dashboards */
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
@@ -131,12 +131,12 @@ export const getRoutes = store => (
       <Route path="/auth">
         <IndexRedirect to="/auth/login" />
         <Route component={IsNotAuthenticated}>
-          <Route path="login" title={t`Login`} component={LoginApp} />
-          <Route path="login/:provider" title={t`Login`} component={LoginApp} />
+          <Route path="login" title={t`Login`} component={Login} />
+          <Route path="login/:provider" title={t`Login`} component={Login} />
         </Route>
-        <Route path="logout" component={LogoutApp} />
-        <Route path="forgot_password" component={ForgotPasswordApp} />
-        <Route path="reset_password/:token" component={ResetPasswordApp} />
+        <Route path="logout" component={Logout} />
+        <Route path="forgot_password" component={ForgotPassword} />
+        <Route path="reset_password/:token" component={ResetPassword} />
       </Route>
 
       {/* MAIN */}
