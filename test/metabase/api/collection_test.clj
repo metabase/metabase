@@ -1450,7 +1450,8 @@
                         :location          (s/eq "/")
                         :entity_id         (s/maybe su/NanoIdString)
                         :namespace         (s/eq nil)
-                        :created_at        java.time.temporal.Temporal}
+                        :created_at        java.time.temporal.Temporal
+                        :type              (s/maybe s/Str)}
                        (mt/user-http-request :crowberto :post 200 "collection"
                                              {:name "foo", :color "#f38630", :authority_level "official"})))
           (testing "But they have to be valid types"
