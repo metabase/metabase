@@ -186,6 +186,14 @@
   [query stage-number [_tag _opts expr]]
   (type-of query stage-number expr))
 
+(defmethod type-of-method :lib.type-of/type-is-temporal-type-of-first-arg
+  [query stage-number [_tag _opts expr :as clause]]
+  (if (string? expr)
+    ;; If a string, get the type filtered by this expression (eg. `:datetime-add`).
+    (lib.schema.expresssion/type-of clause)
+    ;; Otherwise, just get the type of this first arg.
+    (type-of query stage-number expr)))
+
 (defmulti metadata-method
   "Impl for [[metadata]]. Implementations that call [[display-name]] should use the `:default` display name style."
   {:arglists '([query stage-number x])}
