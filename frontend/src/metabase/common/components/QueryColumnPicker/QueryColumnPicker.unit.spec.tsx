@@ -7,22 +7,25 @@ import QueryColumnPicker from "./QueryColumnPicker";
 
 type SetupOpts = {
   query?: Lib.Query;
+  stageIndex?: number;
   columnGroups?: Lib.ColumnGroup[];
 };
 
 function setup({
   query = createQuery(),
-  columnGroups = Lib.groupColumns(Lib.orderableColumns(query)),
+  stageIndex = 0,
+  columnGroups = Lib.groupColumns(Lib.orderableColumns(query, stageIndex)),
 }: SetupOpts = {}) {
   const onSelect = jest.fn();
   const onClose = jest.fn();
 
-  const [sampleColumn] = Lib.orderableColumns(query);
-  const sampleColumnInfo = Lib.displayInfo(query, sampleColumn);
+  const [sampleColumn] = Lib.orderableColumns(query, stageIndex);
+  const sampleColumnInfo = Lib.displayInfo(query, stageIndex, sampleColumn);
 
   render(
     <QueryColumnPicker
       query={query}
+      stageIndex={stageIndex}
       columnGroups={columnGroups}
       onSelect={onSelect}
       onClose={onClose}
