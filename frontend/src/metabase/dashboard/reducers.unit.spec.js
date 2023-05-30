@@ -24,6 +24,7 @@ describe("dashboard reducers", () => {
       dashcardData: {},
       dashcards: {},
       isAddParameterPopoverOpen: false,
+      isNavigatingBackToDashboard: false,
       isEditing: null,
       loadingDashCards: {
         dashcardIds: [],

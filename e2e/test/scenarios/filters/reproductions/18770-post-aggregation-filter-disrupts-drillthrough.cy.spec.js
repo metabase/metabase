@@ -41,7 +41,7 @@ describe.skip("issue 18770", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("4,784").click();
     popover()
-      .should("contain", "View these Orders")
+      .should("contain", "See these Orders")
       .and("contain", "Break out by a…")
       .and("contain", "Filter by this value")
       .and("contain", "Automatic explorations");

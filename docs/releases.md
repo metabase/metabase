@@ -15,15 +15,19 @@ See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase
 
 ## Metabase Enterprise Edition releases
 
+- [v1.46.4](https://github.com/metabase/metabase/releases/tag/v1.46.4)
+- [v1.46.3](https://github.com/metabase/metabase/releases/tag/v1.46.3)
 - [v1.46.2](https://github.com/metabase/metabase/releases/tag/v1.46.2)
 - [v1.46.1](https://github.com/metabase/metabase/releases/tag/v1.46.1)
 - [v1.46.0](https://github.com/metabase/metabase/releases/tag/v1.46.0)
+- [v1.45.4](https://github.com/metabase/metabase/releases/tag/v1.45.4)
 - [v1.45.3.1](https://github.com/metabase/metabase/releases/tag/v1.45.3.1)
 - [v1.45.3](https://github.com/metabase/metabase/releases/tag/v1.45.3)
 - [v1.45.2.1](https://github.com/metabase/metabase/releases/tag/v1.45.2.1)
 - [v1.45.2](https://github.com/metabase/metabase/releases/tag/v1.45.2)
 - [v1.45.1](https://github.com/metabase/metabase/releases/tag/v1.45.1)
 - [v1.45.0](https://github.com/metabase/metabase/releases/tag/v1.45.0)
+- [v1.44.7](https://github.com/metabase/metabase/releases/tag/v1.44.7)
 - [v1.44.6.1](https://github.com/metabase/metabase/releases/tag/v1.44.6.1)
 - [v1.44.6](https://github.com/metabase/metabase/releases/tag/v1.44.6)
 - [v1.44.5](https://github.com/metabase/metabase/releases/tag/v1.44.5)
@@ -101,15 +105,19 @@ See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase
 
 ## Metabase Open Source Edition releases
 
+- [v0.46.4](https://github.com/metabase/metabase/releases/tag/v0.46.4)
+- [v0.46.3](https://github.com/metabase/metabase/releases/tag/v0.46.3)
 - [v0.46.2](https://github.com/metabase/metabase/releases/tag/v0.46.2)
 - [v0.46.1](https://github.com/metabase/metabase/releases/tag/v0.46.1)
 - [v0.46.0](https://github.com/metabase/metabase/releases/tag/v0.46.0)
+- [v0.45.4](https://github.com/metabase/metabase/releases/tag/v0.45.4)
 - [v0.45.3.1](https://github.com/metabase/metabase/releases/tag/v0.45.3.1)
 - [v0.45.3](https://github.com/metabase/metabase/releases/tag/v0.45.3)
 - [v0.45.2.1](https://github.com/metabase/metabase/releases/tag/v0.45.2.1)
 - [v0.45.2](https://github.com/metabase/metabase/releases/tag/v0.45.2)
 - [v0.45.1](https://github.com/metabase/metabase/releases/tag/v0.45.1)
 - [v0.45.0](https://github.com/metabase/metabase/releases/tag/v0.45.0)
+- [v0.44.7](https://github.com/metabase/metabase/releases/tag/v0.44.7)
 - [v0.44.6.1](https://github.com/metabase/metabase/releases/tag/v0.44.6.1)
 - [v0.44.6](https://github.com/metabase/metabase/releases/tag/v0.44.6)
 - [v0.44.5](https://github.com/metabase/metabase/releases/tag/v0.44.5)

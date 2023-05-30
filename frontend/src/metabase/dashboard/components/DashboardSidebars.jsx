@@ -8,7 +8,7 @@ import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
-import DashboardInfoSidebar from "./DashboardInfoSidebar";
+import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
 import { ActionSidebar } from "./ActionSidebar";
 

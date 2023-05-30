@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
@@ -30,6 +30,7 @@ export interface DatabaseFormProps {
   onSubmit?: (values: DatabaseData) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
+  setIsDirty?: (isDirty: boolean) => void;
 }
 
 const DatabaseForm = ({
@@ -41,6 +42,7 @@ const DatabaseForm = ({
   onSubmit,
   onCancel,
   onEngineChange,
+  setIsDirty,
 }: DatabaseFormProps): JSX.Element => {
   const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
   const [engineKey, setEngineKey] = useState(initialEngineKey);
@@ -88,6 +90,7 @@ const DatabaseForm = ({
         isCachingEnabled={isCachingEnabled}
         onEngineChange={handleEngineChange}
         onCancel={onCancel}
+        setIsDirty={setIsDirty}
       />
     </FormProvider>
   );
@@ -102,6 +105,7 @@ interface DatabaseFormBodyProps {
   isCachingEnabled: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
   onCancel?: () => void;
+  setIsDirty?: (isDirty: boolean) => void;
 }
 
 const DatabaseFormBody = ({
@@ -113,8 +117,13 @@ const DatabaseFormBody = ({
   isCachingEnabled,
   onEngineChange,
   onCancel,
+  setIsDirty,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values } = useFormikContext<DatabaseData>();
+  const { values, dirty } = useFormikContext<DatabaseData>();
+
+  useEffect(() => {
+    setIsDirty?.(dirty);
+  }, [dirty, setIsDirty]);
 
   const fields = useMemo(() => {
     return engine ? getVisibleFields(engine, values, isAdvanced) : [];
@@ -139,18 +148,24 @@ const DatabaseFormBody = ({
         <DatabaseDetailField key={field.name} field={field} />
       ))}
       {isCachingEnabled && <PLUGIN_CACHING.DatabaseCacheTimeField />}
-      <DatabaseFormFooter isAdvanced={isAdvanced} onCancel={onCancel} />
+      <DatabaseFormFooter
+        isDirty={dirty}
+        isAdvanced={isAdvanced}
+        onCancel={onCancel}
+      />
     </Form>
   );
 };
 
 interface DatabaseFormFooterProps {
   isAdvanced: boolean;
+  isDirty: boolean;
   onCancel?: () => void;
 }
 
 const DatabaseFormFooter = ({
   isAdvanced,
+  isDirty,
   onCancel,
 }: DatabaseFormFooterProps) => {
   const { values } = useFormikContext<DatabaseData>();
@@ -159,7 +174,11 @@ const DatabaseFormFooter = ({
   if (isAdvanced) {
     return (
       <div>
-        <FormSubmitButton title={isNew ? t`Save` : t`Save changes`} primary />
+        <FormSubmitButton
+          disabled={!isDirty}
+          title={isNew ? t`Save` : t`Save changes`}
+          primary
+        />
         <FormErrorMessage />
       </div>
     );

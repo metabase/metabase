@@ -107,7 +107,6 @@ const ViewFooter = ({
         }
         right={[
           QuestionRowCount.shouldRender({
-            question,
             result,
             isObjectDetail,
           }) && <QuestionRowCount key="row_count" className="mx1" />,

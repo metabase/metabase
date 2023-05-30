@@ -27,6 +27,7 @@ export interface NativeDatasetQuery {
 
   // Database is null when missing data permissions to the database
   database: DatabaseId | null;
+  parameters?: unknown[];
 }
 
 export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
@@ -287,7 +288,7 @@ export type ExpressionReference = [
   ReferenceOptions | null,
 ];
 
-type FieldLiteral = [
+export type FieldLiteral = [
   "field",
   string,
   ReferenceOptions & { "base-type": string },

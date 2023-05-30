@@ -14,7 +14,6 @@ import TabLink from "../TabLink";
 import { Sortable } from "../Sortable";
 import { TabRow } from "./TabRow";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/TabRow",
   component: TabRow,

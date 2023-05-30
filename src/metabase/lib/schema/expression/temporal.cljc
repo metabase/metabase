@@ -7,16 +7,23 @@
    [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  #?@
+  (:clj
+   [(:import
+     (java.time ZoneId))]
+   :cljs
+   [(:require
+     ["moment" :as moment]
+     ["moment-timezone" :as mtz])]))
 
-(mbql-clause/define-tuple-mbql-clause :interval
+#?(:cljs
+   ;; so the moment-timezone stuff gets loaded
+   (comment mtz/keep-me))
+
+(mbql-clause/define-tuple-mbql-clause :interval :- :type/Interval
   :int
   ::temporal-bucketing/unit.date-time.interval)
-
-;; FIXME Interval produces a fixed type but we have no :type/Interval
-(defmethod expression/type-of* :interval
-  [[_tag _opts n _unit]]
-  (expression/type-of n))
 
 ;;; TODO -- we should constrain this so that you can only use a Date unit if expr is a date, etc.
 (doseq [op [:datetime-add :datetime-subtract]]
@@ -39,19 +46,35 @@
                               :get-day :get-day-of-week
                               :get-month :get-quarter :get-year}]
   (mbql-clause/define-tuple-mbql-clause temporal-extract-op :- :type/Integer
-  #_:datetime [:schema [:ref ::expression/temporal]]))
+    #_:datetime [:schema [:ref ::expression/temporal]]))
 
-(mbql-clause/define-tuple-mbql-clause :get-week :- :type/Integer
-  #_:datetime [:schema [:ref ::expression/temporal]]
-  ;; TODO should this be in the options map?
-  #_:mode [:maybe [:enum :iso :us :instance]])
+(mr/def ::get-week-mode
+  [:enum :iso :us :instance])
 
-(mbql-clause/define-tuple-mbql-clause :convert-timezone
-  #_:datetime [:schema [:ref ::expression/temporal]]
-  ;; TODO could be better specified - perhaps with a build time macro to inline the timezones?
-  ;; NOT expressions?
-  #_:target [:string]
-  #_:source [:maybe [:string]])
+(mbql-clause/define-catn-mbql-clause :get-week :- :type/Integer
+  [:datetime [:schema [:ref ::expression/temporal]]]
+  ;; TODO : the mode should probably go in the options map in modern MBQL rather than have it be a separate positional
+  ;; argument. But we can't refactor everything in one go, so that will have to be a future refactor.
+  [:mode     [:? [:schema [:ref ::get-week-mode]]]])
+
+(mr/def ::timezone-id
+  [:and
+
+   ::common/non-blank-string
+   (into [:enum
+          {:error/message "valid timezone ID"
+           :error/fn      (fn [{:keys [value]} _]
+                            (str "invalid timezone ID: " (pr-str value)))}]
+         (sort
+          #?( ;; 600 timezones on java 17
+             :clj (ZoneId/getAvailableZoneIds)
+             ;; 596 timezones on moment-timezone 0.5.38
+             :cljs (.names (.-tz moment)))))])
+
+(mbql-clause/define-catn-mbql-clause :convert-timezone
+  [:datetime [:schema [:ref ::expression/temporal]]]
+  [:target   [:schema [:ref ::timezone-id]]]
+  [:source   [:? [:schema [:ref ::timezone-id]]]])
 
 (lib.hierarchy/derive :convert-timezone :lib.type-of/type-is-type-of-first-arg)
 
@@ -101,7 +124,7 @@
                [:= :default]
                [:ref ::temporal-bucketing/unit.date-time]]]]]])
 
-(defmethod expression/type-of* :absolute-datetime
+(defmethod expression/type-of-method :absolute-datetime
   [[_tag _opts value unit]]
   (or
    ;; if value is `:current`, then infer the type based on the unit. Date unit = `:type/Date`. Anything else =

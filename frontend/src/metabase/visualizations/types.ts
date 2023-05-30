@@ -5,7 +5,7 @@ import {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { ClickObject } from "metabase-lib/queries/drills/types";
+import type { ClickObject } from "metabase/modes/types";
 
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;

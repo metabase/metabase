@@ -166,7 +166,7 @@ describe("scenarios > question > saved", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/reverted to an earlier revision/i);
+    cy.findByText(/reverted to an earlier version/i);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/This is a question/i).should("not.exist");
   });

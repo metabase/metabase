@@ -17,6 +17,7 @@
     :refer [Action
             Card
             Collection
+            Database
             Dashboard
             DashboardCard
             DashboardCardSeries
@@ -1590,6 +1591,43 @@
                                                        :row     1})
                                       :ordered_tabs (dashboard/ordered-tabs dashboard-id)})))))))
 
+(deftest update-tabs-track-snowplow-test
+  (t2.with-temp/with-temp
+    [Dashboard               {dashboard-id :id}  {}
+     :model/DashboardTab     {dashtab-id-1 :id}  {:name "Tab 1" :dashboard_id dashboard-id :position 0}
+     :model/DashboardTab     {dashtab-id-2 :id}  {:name "Tab 2" :dashboard_id dashboard-id :position 1}
+     :model/DashboardTab     _                   {:name "Tab 3" :dashboard_id dashboard-id :position 2}]
+    (testing "create and delete tabs events are tracked"
+      (snowplow-test/with-fake-snowplow-collector
+        (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                              {:ordered_tabs  [{:id   dashtab-id-1
+                                                :name "Tab 1 edited"}
+                                               {:id   dashtab-id-2
+                                                :name "Tab 2"}
+                                               {:id   -1
+                                                :name "New tab 1"}
+                                               {:id   -2
+                                                :name "New tab 2"}]
+                               :cards         []})
+        (is (= [{:data {"dashboard_id"   dashboard-id
+                        "num_tabs"       2
+                        "total_num_tabs" 4
+                        "event"          "dashboard_tabs_created"}
+                 :user-id (str (mt/user->id :rasta))}
+                {:data {"dashboard_id"   dashboard-id
+                        "num_tabs"       1
+                        "total_num_tabs" 4
+                        "event"          "dashboard_tabs_deleted"},
+                 :user-id (str (mt/user->id :rasta))}]
+               (take-last 2 (snowplow-test/pop-event-data-and-user-id!))))))
+
+    (testing "send nothing if tabs are unchanged"
+      (snowplow-test/with-fake-snowplow-collector
+        (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                              {:ordered_tabs  (dashboard/ordered-tabs dashboard-id)
+                               :cards         []})
+        (is (= 0 (count (snowplow-test/pop-event-data-and-user-id!))))))))
+
 ;;; -------------------------------------- Create dashcards tests ---------------------------------------
 
 (deftest simple-creation-with-no-additional-series-test
@@ -1699,10 +1737,23 @@
                                                            :ordered_tabs []}))))
               (is (partial= {:ordered_cards [{:action (cond-> {:visualization_settings {:hello true}
                                                                :type (name action-type)
-                                                               :parameters [{:id "id"}]}
+                                                               :parameters [{:id "id"}]
+                                                               :database_enabled_actions true}
                                                               (#{:query :implicit} action-type)
                                                               (assoc :database_id (mt/id)))}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))
+
+(deftest dashcard-action-database-enabled-actions-test
+  (testing "database_enabled_actions should hydrate according to database-enable-actions setting"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (mt/with-actions-test-data
+        (doseq [enable? [true false]]
+          (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions enable?}}
+            (mt/with-actions [{:keys [action-id]} {:type :query :visualization_settings {:hello true}}]
+              (mt/with-temp* [Dashboard     [{dashboard-id :id}]
+                              DashboardCard [_ {:action_id action-id, :dashboard_id dashboard-id}]]
+                (is (partial= {:ordered_cards [{:action {:database_enabled_actions enable?}}]}
+                              (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))))))))
 
 (deftest add-card-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id/cards"
@@ -2007,25 +2058,27 @@
                                                              :card_id 123
                                                              :series  [8 9]}]}
                                   :message  "updated"}]]
-      (is (= [{:is_reversion false
-               :is_creation  false
-               :message      "updated"
-               :user         (-> (user-details (mt/fetch-user :crowberto))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         {:before {:name        "b"
-                                       :description nil
-                                       :cards       [{:series nil, :size_y 4, :size_x 4}]}
-                              :after  {:name        "c"
-                                       :description "something"
-                                       :cards       [{:series [8 9], :size_y 3, :size_x 5}]}}
-               :description  "renamed it from \"b\" to \"c\", added a description, rearranged the cards and added some series to card 123."}
-              {:is_reversion false
-               :is_creation  true
-               :message      nil
-               :user         (-> (user-details (mt/fetch-user :rasta))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         nil
-               :description  "added a card."}]
+      (is (= [{:is_reversion          false
+               :is_creation           false
+               :message               "updated"
+               :user                  (-> (user-details (mt/fetch-user :crowberto))
+                                          (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff                  {:before {:name        "b"
+                                                :description nil
+                                                :cards       [{:series nil, :size_y 4, :size_x 4}]}
+                                       :after  {:name        "c"
+                                                :description "something"
+                                                :cards       [{:series [8 9], :size_y 3, :size_x 5}]}}
+               :has_multiple_changes true
+               :description          "added a description and renamed it from \"b\" to \"c\", rearranged the cards and added some series to card 123."}
+              {:is_reversion         false
+               :is_creation          true
+               :message              nil
+               :user                 (-> (user-details (mt/fetch-user :rasta))
+                                         (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff                 nil
+               :has_multiple_changes false
+               :description          "created this."}]
              (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
                       (dissoc revision :timestamp :id))))))))
 
@@ -2037,10 +2090,10 @@
 (deftest revert-dashboard-test
   (testing "POST /api/dashboard/:id/revert"
     (testing "parameter validation"
-      (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
-             (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {})))
-      (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
-             (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {:revision_id "foobar"}))))
+      (is (= {:revision_id "value must be an integer greater than zero."}
+             (:errors (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {}))))
+      (is (= {:revision_id "value must be an integer greater than zero."}
+             (:errors (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {:revision_id "foobar"})))))
     (mt/with-temp* [Dashboard [{dashboard-id :id}]
                     Revision  [{revision-id :id} {:model       "Dashboard"
                                                   :model_id    dashboard-id
@@ -2055,41 +2108,45 @@
                                                              :description nil
                                                              :cards       []}
                                                   :message  "updated"}]]
-      (is (= {:is_reversion true
-              :is_creation  false
-              :message      nil
-              :user         (-> (user-details (mt/fetch-user :crowberto))
-                                (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-              :diff         {:before {:name "b"}
-                             :after  {:name "a"}}
-              :description  "renamed it from \"b\" to \"a\"."}
+      (is (= {:is_reversion         true
+              :is_creation          false
+              :message              nil
+              :user                 (-> (user-details (mt/fetch-user :crowberto))
+                                        (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+              :diff                 {:before {:name "b"}
+                                     :after  {:name "a"}}
+              :has_multiple_changes false
+              :description          "reverted to an earlier version."}
              (dissoc (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/revert" dashboard-id)
                                            {:revision_id revision-id})
                      :id :timestamp)))
 
-      (is (= [{:is_reversion true
-               :is_creation  false
-               :message      nil
-               :user         (-> (user-details (mt/fetch-user :crowberto))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         {:before {:name "b"}
-                              :after  {:name "a"}}
-               :description  "renamed it from \"b\" to \"a\"."}
-              {:is_reversion false
-               :is_creation  false
-               :message      "updated"
-               :user         (-> (user-details (mt/fetch-user :crowberto))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         {:before {:name "a"}
-                              :after  {:name "b"}}
-               :description  "renamed it from \"a\" to \"b\"."}
-              {:is_reversion false
-               :is_creation  true
-               :message      nil
-               :user         (-> (user-details (mt/fetch-user :rasta))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         nil
-               :description  "rearranged the cards."}]
+      (is (= [{:is_reversion         true
+               :is_creation          false
+               :message              nil
+               :user                 (-> (user-details (mt/fetch-user :crowberto))
+                                         (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff                 {:before {:name "b"}
+                                      :after  {:name "a"}}
+               :has_multiple_changes false
+               :description          "reverted to an earlier version."}
+              {:is_reversion         false
+               :is_creation          false
+               :message              "updated"
+               :user                 (-> (user-details (mt/fetch-user :crowberto))
+                                         (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff                 {:before {:name "a"}
+                                      :after  {:name "b"}}
+               :has_multiple_changes false
+               :description          "renamed this Dashboard from \"a\" to \"b\"."}
+              {:is_reversion         false
+               :is_creation          true
+               :message              nil
+               :user                 (-> (user-details (mt/fetch-user :rasta))
+                                         (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff                 nil
+               :has_multiple_changes false
+               :description          "created this."}]
              (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
                       (dissoc revision :timestamp :id))))))))
 

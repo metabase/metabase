@@ -4,11 +4,10 @@ import React, {
   useRef,
   useMemo,
   useCallback,
+  useEffect,
 } from "react";
 import { t } from "ttag";
 import cx from "classnames";
-
-import { useMount } from "react-use";
 
 import { getScrollY } from "metabase/lib/dom";
 import { Dashboard } from "metabase-types/api";
@@ -105,12 +104,12 @@ function DashboardHeaderView({
     [setDashboardAttribute, onSave, isEditing],
   );
 
-  useMount(() => {
+  useEffect(() => {
     const timerId = setTimeout(() => {
       setShowSubHeader(false);
     }, 4000);
     return () => clearTimeout(timerId);
-  });
+  }, []);
 
   return (
     <div>

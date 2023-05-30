@@ -14,3 +14,47 @@
                                    "TOTAL"]))]
       (is (= "Venues, Sorted by Total ascending"
              (lib.metadata.calculation/suggested-name query))))))
+
+(deftest ^:parallel long-display-name-test
+  (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
+        results (->> query
+                     lib.metadata.calculation/visible-columns
+                     (map (comp :long-display-name #(lib/display-info query 0 %))))]
+    (is (= ["ID" "Name" "Category ID" "Latitude" "Longitude" "Price" "Category → ID" "Category → Name"]
+           results)))
+
+  (let [query (lib/query-for-table-name meta/metadata-provider "ORDERS")
+        results (->> query
+                     lib.metadata.calculation/visible-columns
+                     (map (comp :long-display-name #(lib/display-info query 0 %))))]
+    (is (= ["ID"
+            "User ID"
+            "Product ID"
+            "Subtotal"
+            "Tax"
+            "Total"
+            "Discount"
+            "Created At"
+            "Quantity"
+            "User → ID"
+            "User → Address"
+            "User → Email"
+            "User → Password"
+            "User → Name"
+            "User → City"
+            "User → Longitude"
+            "User → State"
+            "User → Source"
+            "User → Birth Date"
+            "User → Zip"
+            "User → Latitude"
+            "User → Created At"
+            "Product → ID"
+            "Product → Ean"
+            "Product → Title"
+            "Product → Category"
+            "Product → Vendor"
+            "Product → Price"
+            "Product → Rating"
+            "Product → Created At"]
+           results))))

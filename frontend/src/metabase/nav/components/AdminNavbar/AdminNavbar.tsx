@@ -56,6 +56,7 @@ export const AdminNavbar = ({
         <AdminExitLink
           to="/"
           data-metabase-event="Navbar;Exit Admin"
+          data-testid="exit-admin"
         >{t`Exit admin`}</AdminExitLink>
       </MobileHide>
     </AdminNavbarRoot>

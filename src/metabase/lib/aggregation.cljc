@@ -4,14 +4,17 @@
    [clojure.math :as math]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
@@ -190,8 +193,9 @@
    ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)))
 
 (lib.common/defop count       [] [x])
-(lib.common/defop avg         [x])
+(lib.common/defop cum-count   [] [x])
 (lib.common/defop count-where [x y])
+(lib.common/defop avg         [x])
 (lib.common/defop distinct    [x])
 (lib.common/defop max         [x])
 (lib.common/defop median      [x])
@@ -200,6 +204,7 @@
 (lib.common/defop share       [x])
 (lib.common/defop stddev      [x])
 (lib.common/defop sum         [x])
+(lib.common/defop cum-sum     [x])
 (lib.common/defop sum-where   [x y])
 (lib.common/defop var         [x])
 
@@ -232,6 +237,117 @@
     stage-number :- :int]
    (some->> (not-empty (:aggregation (lib.util/query-stage query stage-number)))
             (into [] (map (fn [aggregation]
-                            (-> (lib.metadata.calculation/metadata query stage-number aggregation)
-                                (assoc :lib/source :source/aggregations
-                                       :lib/source-uuid (:lib/uuid (second aggregation))))))))))
+                            (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)]
+                              (-> metadata
+                                  (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
+                                  (assoc :lib/source :source/aggregations
+                                         :lib/source-uuid (:lib/uuid (second aggregation)))))))))))
+
+(def ^:private OperatorWithColumns
+  [:merge
+   ::lib.schema.aggregation/operator
+   [:map
+    [:columns {:optional true} [:sequential lib.metadata/ColumnMetadata]]]])
+
+(defmethod lib.metadata.calculation/display-name-method :mbql.aggregation/operator
+  [_query _stage-number {:keys [display-info]} _display-name-style]
+  (:display-name (display-info)))
+
+(defmethod lib.metadata.calculation/display-info-method :mbql.aggregation/operator
+  [_query _stage-number {:keys [display-info requires-column? selected?] short-name :short}]
+  (cond-> (assoc (display-info)
+                 :short-name (u/qualified-name short-name)
+                 :requires-column requires-column?)
+    (some? selected?) (assoc :selected selected?)))
+
+(mu/defn aggregation-operator-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+  "Returns the columns for which `aggregation-operator` is applicable."
+  [aggregation-operator :- OperatorWithColumns]
+  (:columns aggregation-operator))
+
+(mu/defn available-aggregation-operators :- [:maybe [:sequential OperatorWithColumns]]
+  "Returns the available aggegation operators for the stage with `stage-number` of `query`.
+  If `stage-number` is omitted, uses the last stage."
+  ([query]
+   (available-aggregation-operators query -1))
+
+  ([query :- ::lib.schema/query
+    stage-number :- :int]
+   (let [db-features (or (:features (lib.metadata/database query)) #{})
+         stage (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+         with-columns (fn [{:keys [requires-column? supported-field] :as operator}]
+                        (cond
+                          (not requires-column?)
+                          operator
+
+                          (= supported-field :any)
+                          (assoc operator :columns columns)
+
+                          :else
+                          (when-let [cols (->> columns
+                                               (filterv #(lib.types.isa/field-type? supported-field %))
+                                               not-empty)]
+                            (assoc operator :columns cols))))]
+     (not-empty
+      (into []
+            (comp (filter (fn [op]
+                            (let [feature (:driver-feature op)]
+                              (or (nil? feature) (db-features feature)))))
+                  (keep with-columns)
+                  (map #(assoc % :lib/type :mbql.aggregation/operator)))
+            lib.schema.aggregation/aggregation-operators)))))
+
+(mu/defn aggregation-clause
+  "Returns a standalone aggregation clause for an `aggregation-operator` and
+  a `column`.
+  For aggregations requiring an argument `column` is mandatory, otherwise
+  it is optional."
+  ([aggregation-operator :- ::lib.schema.aggregation/operator]
+   (if-not (:requires-column? aggregation-operator)
+     {:lib/type :lib/external-op
+      :operator (:short aggregation-operator)}
+     (throw (ex-info (lib.util/format "aggregation operator %s requires an argument"
+                                      (:short aggregation-operator))
+                     {:aggregation-operator aggregation-operator}))))
+
+  ([aggregation-operator :- ::lib.schema.aggregation/operator
+    column]
+   {:lib/type :lib/external-op
+    :operator (:short aggregation-operator)
+    :args [column]}))
+
+(def ^:private SelectedColumnMetadata
+  [:merge
+   lib.metadata/ColumnMetadata
+   [:map
+    [:selected? {:optional true} :boolean]]])
+
+(def ^:private SelectedOperatorWithColumns
+  [:merge
+   ::lib.schema.aggregation/operator
+   [:map
+    [:columns {:optional true} [:sequential SelectedColumnMetadata]]
+    [:selected? {:optional true} :boolean]]])
+
+(mu/defn selected-aggregation-operators :- [:maybe [:sequential SelectedOperatorWithColumns]]
+  "Mark the operator and the column (if any) in `agg-operators` selected by `agg-clause`."
+  [agg-operators :- [:maybe [:sequential OperatorWithColumns]]
+   agg-clause]
+  (when (seq agg-operators)
+    (let [[op _ agg-col] agg-clause]
+      (mapv (fn [agg-op]
+              (cond-> agg-op
+                (= (:short agg-op) op)
+                (-> (assoc :selected? true)
+                    (m/update-existing
+                     :columns
+                     (fn [cols]
+                       (mapv (fn [col]
+                               (let [a-ref (lib.ref/ref col)]
+                                 (cond-> col
+                                   (or (lib.equality/= a-ref agg-col)
+                                       (lib.equality/= a-ref (lib.util/with-default-effective-type agg-col)))
+                                   (assoc :selected? true))))
+                             cols))))))
+            agg-operators))))
