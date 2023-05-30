@@ -3,7 +3,7 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import AccordionList from "metabase/core/components/AccordionList";
+import { AccordionList } from "metabase/core/components/AccordionList";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 const SECTIONS = [

@@ -5,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import Tables from "metabase/entities/tables";
 import Icon from "metabase/components/Icon/Icon";
-import AccordionList from "metabase/core/components/AccordionList";
+import { AccordionList } from "metabase/core/components/AccordionList";
 import Grabber from "metabase/components/Grabber";
 import {
   SortableContainer,

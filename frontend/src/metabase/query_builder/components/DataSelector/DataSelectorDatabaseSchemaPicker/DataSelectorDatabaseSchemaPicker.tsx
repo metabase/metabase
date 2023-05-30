@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { isSyncCompleted } from "metabase/lib/syncing";
 
 import Icon from "metabase/components/Icon";
-import AccordionList from "metabase/core/components/AccordionList";
+import { AccordionList } from "metabase/core/components/AccordionList";
 import Database from "metabase-lib/metadata/Database";
 import Schema from "metabase-lib/metadata/Schema";
 

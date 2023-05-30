@@ -2,7 +2,7 @@
 import React from "react";
 import { t } from "ttag";
 
-import AccordionList from "metabase/core/components/AccordionList";
+import { AccordionList } from "metabase/core/components/AccordionList";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 

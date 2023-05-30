@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 
-import AccordionList from "metabase/core/components/AccordionList";
+import { AccordionList } from "metabase/core/components/AccordionList";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import Icon from "metabase/components/Icon";
 import { singularize } from "metabase/lib/formatting";

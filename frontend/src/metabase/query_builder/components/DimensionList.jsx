@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import AccordionList from "metabase/core/components/AccordionList";
+import { AccordionList } from "metabase/core/components/AccordionList";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/core/components/Tooltip";
