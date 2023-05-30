@@ -4,6 +4,7 @@ import { DatabaseId } from "./database";
 import { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
 import { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import { DownloadPermission } from "./permissions";
+import { ParameterOptions } from "./parameters";
 import { TableId } from "./table";
 
 export type RowValue = string | number | null | boolean;
@@ -14,7 +15,7 @@ export interface DatasetColumn {
   name: string;
   display_name: string;
   description: string | null;
-  source?: string;
+  source: string;
   coercion_strategy: string | null;
   visibility_type: FieldVisibilityType;
   table_id: TableId;
@@ -33,6 +34,9 @@ export interface DatasetColumn {
   };
   settings?: Record<string, any>;
   fingerprint: FieldFingerprint | null;
+
+  // model with customized metadata
+  fk_target_field_id?: FieldId | null;
 }
 
 export interface ResultsMetadata {
@@ -99,6 +103,7 @@ export interface TemplateTag {
   "widget-type"?: string;
   required?: boolean;
   default?: string;
+  options?: ParameterOptions;
 
   // Card template specific
   "card-id"?: number;

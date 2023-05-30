@@ -34,7 +34,7 @@ interface ResetPasswordFormProps {
   onSubmit: (data: ResetPasswordData) => void;
 }
 
-const ResetPasswordForm = ({
+export const ResetPasswordForm = ({
   onValidatePassword,
   onSubmit,
 }: ResetPasswordFormProps): JSX.Element => {
@@ -86,6 +86,3 @@ const ResetPasswordForm = ({
     </div>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ResetPasswordForm;

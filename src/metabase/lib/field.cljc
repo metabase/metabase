@@ -190,12 +190,22 @@
                                (u.humanization/name->human-readable-name :simple field-name))
         join-display-name  (when (= style :long)
                              (or
-                              (when fk-field-id
-                                (let [table (lib.metadata/table query table-id)]
-                                  (lib.metadata.calculation/display-name query stage-number table style)))
-                              (when join-alias
-                                (let [join (lib.join/resolve-join query stage-number join-alias)]
-                                  (lib.metadata.calculation/display-name query stage-number join style)))))
+                               (when fk-field-id
+
+                                 ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
+                                 ;; "ID" dropped instead.
+                                 ;; This is very intentional: one table might have several FKs to one foreign table, each with different
+                                 ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
+                                 ;; See #30109 for more details.
+                                 (if-let [field (lib.metadata/field query fk-field-id)]
+                                   (-> (lib.metadata.calculation/display-info query stage-number field)
+                                       :display-name
+                                       lib.util/strip-id)
+                                   (let [table (lib.metadata/table query table-id)]
+                                     (lib.metadata.calculation/display-name query stage-number table style))))
+                               (when join-alias
+                                 (let [join (lib.join/resolve-join query stage-number join-alias)]
+                                   (lib.metadata.calculation/display-name query stage-number join style)))))
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)]
@@ -432,7 +442,7 @@
     (:name field-metadata)))
 
 (defn with-fields
-  "Specify the `:fields` for a query."
+  "Specify the `:fields` for a query. Pass `nil` or an empty sequence to remove `:fields`."
   ([xs]
    (fn [query stage-number]
      (with-fields query stage-number xs)))
@@ -446,10 +456,11 @@
                                    (x query stage-number)
                                    x)))
                   xs)]
-     (lib.util/update-query-stage query stage-number assoc :fields xs))))
+     (lib.util/update-query-stage query stage-number u/assoc-dissoc :fields (not-empty xs)))))
 
 (defn fields
-  "Fetches the `:fields` for a query."
+  "Fetches the `:fields` for a query. Returns `nil` if there are no `:fields`. `:fields` should never be empty; this is
+  enforced by the Malli schema."
   ([query]
    (fields query -1))
   ([query stage-number]

@@ -311,12 +311,33 @@
   [& options]
   (first (apply select-actions nil options)))
 
+(defn- map-assoc-database-enable-actions
+  "Adds a boolean field `:database-enabled-actions` to each action according to the `database-enable-actions` setting for
+   the action's database."
+  [actions]
+  (let [action-ids (map :id actions)
+        get-database-enable-actions (fn [db]
+                                      (boolean (some-> db :settings (#(json/parse-string % true)) :database-enable-actions)))
+        id->database-enable-actions (into {}
+                                          (map (juxt :id get-database-enable-actions))
+                                          (t2/query {:select [:action.id :db.settings]
+                                                     :from   :action
+                                                     :join   [[:report_card :card] [:= :card.id :action.model_id]
+                                                              [:metabase_database :db] [:= :db.id :card.database_id]]
+                                                     :where  [:in :action.id action-ids]}))]
+    (map (fn [action]
+           (assoc action :database_enabled_actions (get id->database-enable-actions (:id action))))
+         actions)))
+
 (mi/define-batched-hydration-method dashcard-action
   :dashcard/action
-  "Hydrates action from DashboardCards."
+  "Hydrates actions from DashboardCards. Adds a boolean field `:database-enabled-actions` to each action according to the
+   `database-enable-actions` setting for the action's database."
   [dashcards]
   (let [actions-by-id (when-let [action-ids (seq (keep :action_id dashcards))]
-                        (m/index-by :id (select-actions nil :id [:in action-ids])))]
+                        (->> (select-actions nil :id [:in action-ids])
+                             map-assoc-database-enable-actions
+                             (m/index-by :id)))]
     (for [dashcard dashcards]
       (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard))))))
 

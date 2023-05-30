@@ -1,15 +1,13 @@
 import { useEffect } from "react";
+import { useDispatch } from "metabase/lib/redux";
+import { logout } from "../../actions";
 
-interface LogoutProps {
-  onLogout: () => void;
-}
+export const Logout = (): JSX.Element | null => {
+  const dispatch = useDispatch();
 
-const Logout = ({ onLogout }: LogoutProps): JSX.Element | null => {
   useEffect(() => {
-    onLogout();
-  }, [onLogout]);
+    dispatch(logout());
+  }, [dispatch]);
+
   return null;
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Logout;

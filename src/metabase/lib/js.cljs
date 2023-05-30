@@ -93,6 +93,16 @@
   [query-map]
   (-> query-map convert/->legacy-MBQL fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
+(defn ^:export append-stage
+  "Adds a new blank stage to the end of the pipeline"
+  [a-query]
+  (lib.core/append-stage a-query))
+
+(defn ^:export drop-stage
+  "Drops the final stage in the pipeline"
+  [a-query]
+  (lib.core/drop-stage a-query))
+
 (defn ^:export orderable-columns
   "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To
   add an order by, pass the result to [[order-by]]."
@@ -328,3 +338,38 @@
   [[available-binning-strategies]] to get `available-aggregation`."
   [aggregation-operator]
   (to-array (lib.core/aggregation-operator-columns aggregation-operator)))
+
+(defn ^:export filterable-columns
+  "Get the available filterable columns for the stage with `stage-number` of
+  the query `a-query`.
+  If `stage-number` is omitted, the last stage is used."
+  ([a-query]
+   (filterable-columns a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/filterable-columns a-query stage-number))))
+
+(defn ^:export filterable-column-operators
+  "Returns the operators for which `filterable-column` is applicable."
+  [filterable-column]
+  (to-array (lib.core/filterable-column-operators filterable-column)))
+
+(defn ^:export filter-clause
+  "Returns a standalone filter clause for a `filter-operator`,
+  a `column`, and arguments."
+  [filter-operator column & args]
+  (apply lib.core/filter-clause filter-operator column args))
+
+(defn ^:export fields
+  "Get the current `:fields` in a query. Unlike the lib core version, this will return an empty sequence if `:fields` is
+  not specified rather than `nil` for JS-friendliness."
+  ([a-query]
+   (fields a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/fields a-query stage-number))))
+
+(defn ^:export with-fields
+  "Specify the `:fields` for a query. Pass an empty sequence or `nil` to remove `:fields`."
+  ([a-query new-fields]
+   (with-fields a-query -1 new-fields))
+  ([a-query stage-number new-fields]
+   (lib.core/with-fields a-query stage-number new-fields)))

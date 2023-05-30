@@ -18,7 +18,7 @@ Return an automagic dashboard for entity `entity` with id `id`.
 
 *  **`entity-id-or-query`** 
 
-*  **`show`** invalid show value
+*  **`show`** nullable must equal all
 
 ## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query`
 
@@ -159,7 +159,7 @@ Return a list of candidates for automagic dashboards orderd by interestingness.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ---
 

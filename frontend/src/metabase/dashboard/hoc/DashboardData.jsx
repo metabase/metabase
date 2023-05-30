@@ -13,6 +13,7 @@ import {
   getSlowCards,
   getParameters,
   getParameterValues,
+  getisNavigatingBackToDashboard,
 } from "metabase/dashboard/selectors";
 
 import * as dashboardActions from "metabase/dashboard/actions";
@@ -24,6 +25,7 @@ const mapStateToProps = (state, props) => {
     slowCards: getSlowCards(state, props),
     parameters: getParameters(state, props),
     parameterValues: getParameterValues(state, props),
+    isNavigatingBackToDashboard: getisNavigatingBackToDashboard(state),
   };
 };
 
@@ -34,6 +36,9 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export default ComposedComponent =>
   connect(
     mapStateToProps,
@@ -48,12 +53,19 @@ export default ComposedComponent =>
           setErrorPage,
           location,
           dashboardId,
+          isNavigatingBackToDashboard,
         } = props;
 
-        initialize();
+        initialize({ clearCache: !isNavigatingBackToDashboard });
+
         try {
-          await fetchDashboard(dashboardId, location && location.query);
-          await fetchDashboardCardData({ reload: false, clear: true });
+          await fetchDashboard(dashboardId, location && location.query, {
+            clearCache: !isNavigatingBackToDashboard,
+          });
+          await fetchDashboardCardData({
+            reload: false,
+            clearCache: !isNavigatingBackToDashboard,
+          });
         } catch (error) {
           console.error(error);
           setErrorPage(error);
@@ -74,7 +86,10 @@ export default ComposedComponent =>
         } else if (
           !_.isEqual(this.props.parameterValues, nextProps.parameterValues)
         ) {
-          this.props.fetchDashboardCardData({ reload: false, clear: true });
+          this.props.fetchDashboardCardData({
+            reload: false,
+            clearCache: true,
+          });
         }
       }
 

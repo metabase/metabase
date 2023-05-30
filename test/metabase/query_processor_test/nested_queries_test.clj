@@ -97,6 +97,20 @@
                     :aggregation  [:count]
                     :breakout     [$price]}))))))))
 
+(deftest mbql-source-query-aggregation-order-by-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+    (testing "Source query with aggregation and order by produces expected results (#30874)."
+      (is (= [[50 10] [7 10] [40 9]]
+             (mt/formatted-rows [int int]
+               (mt/run-mbql-query venues
+                 {:source-query {:source-table $$venues
+                                 :aggregation  [:count]
+                                 :breakout     [$category_id]
+                                 :order-by     [[:desc [:aggregation 0]]]}
+                  :order-by [[:desc *count/Integer]
+                             [:desc $category_id]]
+                  :limit 3})))))))
+
 (deftest breakout-fk-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
     (testing "Test including a breakout of a nested query column that follows an FK"
@@ -363,24 +377,25 @@
                       :limit        10}}))
       (str "make sure that dots in field literal identifiers get handled properly so you can't reference fields "
            "from other tables using them"))
-  (is (= (honeysql->sql
-          {:select [[:source.ID :ID]
-                    [:source.NAME :NAME]
-                    [:source.CATEGORY_ID :CATEGORY_ID]
-                    [:source.LATITUDE :LATITUDE]
-                    [:source.LONGITUDE :LONGITUDE]
-                    [:source.PRICE :PRICE]]
-           :from   [[venues-source-honeysql :source]]
-           :where  [:and
-                    [:>= [:raw "\"source\".\"BIRD.ID\""] (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
-                    [:< [:raw "\"source\".\"BIRD.ID\""]  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
-           :limit  [:inline 10]})
-         (qp/compile
-          (mt/mbql-query venues
-            {:source-query {:source-table $$venues}
-             :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
-             :limit        10})))
-      "make sure that field-literals work as DateTimeFields"))
+  (mt/with-temporary-setting-values [start-of-week :sunday]
+    (is (= (honeysql->sql
+            {:select [[:source.ID :ID]
+                      [:source.NAME :NAME]
+                      [:source.CATEGORY_ID :CATEGORY_ID]
+                      [:source.LATITUDE :LATITUDE]
+                      [:source.LONGITUDE :LONGITUDE]
+                      [:source.PRICE :PRICE]]
+             :from   [[venues-source-honeysql :source]]
+             :where  [:and
+                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
+                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
+             :limit  [:inline 10]})
+           (qp/compile
+            (mt/mbql-query venues
+              {:source-query {:source-table $$venues}
+               :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
+               :limit        10})))
+        "make sure that field-literals work as DateTimeFields")))
 
 (deftest aggregatation-references-test
   (testing "make sure that aggregation references match up to aggregations from the same level they're from"

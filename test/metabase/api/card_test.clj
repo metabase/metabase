@@ -16,6 +16,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
    [metabase.models
     :refer [CardBookmark
@@ -53,7 +54,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io ByteArrayInputStream)
    (java.util UUID)
@@ -213,9 +215,9 @@
       (is (= true
              (card-returned? :database (mt/id) card-1)))
       (is (= false
-             (card-returned? :database db        card-1)))
+             (card-returned? :database db      card-1)))
       (is (= true
-             (card-returned? :database db        card-2))))))
+             (card-returned? :database db      card-2))))))
 
 
 (deftest authentication-test
@@ -397,6 +399,229 @@
         (is (= #{"Card 1" "Card 3" "Card 4"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
                                                            :f :using_model :model_id model-id))))))))
+
+(deftest get-series-for-card-permission-test
+  (t2.with-temp/with-temp
+    [:model/Card {card-id :id} {:name          "Card"
+                                :display       "line"
+                                :collection_id (t2/select-one-pk Collection :personal_owner_id (mt/user->id :crowberto))}]
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 (format "card/%d/series" card-id))))
+
+    (is (seq? (mt/user-http-request :crowberto :get 200 (format "card/%d/series" card-id))))))
+
+(deftest get-series-for-card-type-check-test
+  (testing "400 if the card's display is not comptaible"
+    (t2.with-temp/with-temp
+      [:model/Card {card-id :id} {:name    "Card"
+                                  :display "table"}]
+      (is (= "Card with type table is not compatible to have series"
+             (:message (mt/user-http-request :crowberto :get 400 (format "card/%d/series" card-id)))))))
+
+  (testing "404 if the card does not exsits"
+    (is (= "Not found."
+           (mt/user-http-request :crowberto :get 404 (format "card/%d/series" Integer/MAX_VALUE))))))
+
+(deftest get-series-check-compatibility-test
+  (let [simple-mbql-chart-query (fn [attrs]
+                                  (merge (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
+                                                                  :breakout    [$venues.category_id]}))
+                                         {:visualization_settings {:graph.metrics    ["sum"]
+                                                                   :graph.dimensions ["CATEGORY_ID"]}}
+                                         attrs))]
+    (t2.with-temp/with-temp
+      [;; comptaible cards
+       :model/Card line    (simple-mbql-chart-query {:name "A Line"   :display :line})
+       :model/Card bar     (simple-mbql-chart-query {:name "A Bar"    :display :bar})
+       :model/Card area    (simple-mbql-chart-query {:name "An Area"  :display :area})
+       :model/Card scalar  (merge (mt/card-with-source-metadata-for-query
+                                    (mt/mbql-query venues {:aggregation [[:count]]}))
+                                  {:name "A Scalar 1" :display :scalar})
+       :model/Card scalar-2(merge (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query venues {:aggregation [[:count]]}))
+                                  {:name "A Scalar 2" :display :scalar})
+
+       :model/Card native  (merge (mt/card-with-source-metadata-for-query (mt/native-query {:query "select sum(price) from venues;"}))
+                                  {:name       "A Native query"
+                                   :display    :scalar
+                                   :query_type "native"})
+
+       ;; compatible but user doesn't have access so should not be readble
+       :model/Card _       (simple-mbql-chart-query {:name "A Line with no access"   :display :line})
+       ;; incomptabile cards
+       :model/Card pie     (simple-mbql-chart-query {:name "A pie" :display :pie})
+       :model/Card table   (simple-mbql-chart-query {:name "A table" :display :table})
+       :model/Card native-2(merge (mt/card-with-source-metadata-for-query (mt/native-query {:query "select sum(price) from venues;"}))
+                                  {:name       "A Native query table"
+                                   :display    :table
+                                   :query_type "native"})]
+      (with-cards-in-readable-collection [line bar area scalar scalar-2 native pie table native-2]
+       (doseq [[card-id display-type expected]
+               [[(:id line)   :line   #{"A Native query" "An Area" "A Bar"}]
+                [(:id bar)    :bar    #{"A Native query" "An Area" "A Line"}]
+                [(:id area)   :area   #{"A Native query" "A Bar" "A Line"}]
+                [(:id scalar) :scalar #{"A Native query" "A Scalar 2"}]]]
+         (testing (format "Card with display-type=%s should have compatible cards correctly returned" display-type)
+           (let [returned-card-names (set (map :name (mt/user-http-request :rasta :get 200 (format "/card/%d/series" card-id))))]
+             (is (set/subset? expected returned-card-names))
+             (is (not (contains? returned-card-names #{"A pie" "A table" "A Line with no access"}))))))))))
+
+(deftest paging-and-filtering-works-for-series-card-test
+  (let [simple-mbql-chart-query (fn [attrs]
+                                  (merge (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
+                                                                  :breakout    [$venues.category_id]}))
+                                         {:visualization_settings {:graph.metrics    ["sum"]
+                                                                   :graph.dimensions ["CATEGORY_ID"]}}
+                                         attrs))]
+    (t2.with-temp/with-temp
+      [:model/Card card   (simple-mbql-chart-query {:name "Captain Toad" :display :line})
+       :model/Card card1  (simple-mbql-chart-query {:name "Luigi 1"  :display :line})
+       :model/Card _      (simple-mbql-chart-query {:name "Luigi 2"  :display :line})
+       :model/Card _      (simple-mbql-chart-query {:name "Luigi 3"  :display :line})
+       :model/Card card4  (simple-mbql-chart-query {:name "Luigi 4"  :display :line})
+       :model/Card _      (simple-mbql-chart-query {:name "Luigi 5"  :display :line})
+       :model/Card _      (simple-mbql-chart-query {:name "Luigi 6"  :display :line})
+       :model/Card card7  (simple-mbql-chart-query {:name "Luigi 7"  :display :line})
+       :model/Card card8  (simple-mbql-chart-query {:name "Luigi 8"  :display :line})]
+      (testing "filter by name works"
+        (is (true? (every? #(str/includes? % "Toad")
+                         (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card)) :query "toad")
+                              (map :name)))))
+
+        (testing "exclude ids works"
+          (testing "with single id"
+            (is (true?
+                  (every?
+                    #(not (#{(:id card) (:id card8)} %))
+                    (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
+                                               :query "luigi" :exclude_ids (:id card8))
+                         (map :id))))))
+          (testing "with multiple ids"
+            (is (true?
+                  (every?
+                    #(not (#{(:id card) (:id card7) (:id card8)} %))
+                    (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
+                                               :query "luigi" :exclude_ids (:id card7) :exclude_ids (:id card8))
+                         (map :id)))))))
+
+        (testing "with limit and sort by id descending"
+          (is (= ["Luigi 8" "Luigi 7" "Luigi 6" "Luigi 5"]
+                 (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
+                                            :query "luigi" :limit 4)
+                      (map :name))))
+
+          (testing "and paging works too"
+            (is (= ["Luigi 3" "Luigi 2" "Luigi 1"]
+                   (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
+                                              :query "luigi" :limit 10 :last_cursor (:id card4))
+                        (map :name)))))
+
+          (testing "And returning empty list if reaches there are nothing..."
+            (is (= []
+                   (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
+                                              :query "luigi" :limit 10 :last_cursor (:id card1))
+                        (map :name))))))))))
+
+(def ^:private millisecond-card
+  {:name                   "Card with dimension is unixtimestmap"
+   :visualization_settings {:graph.dimensions ["timestamp"]
+                            :graph.metrics ["severity"]}
+
+   :display                :line
+   :result_metadata        [{:base_type :type/BigInteger
+                             :coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
+                             :effective_type :type/DateTime
+                             :display_name "Timestamp"
+                             :name "timestamp"
+                             :unit "week"}
+                            {:base_type :type/Integer
+                             :display_name "count"
+                             :name "severity"
+                             :semantic_type :type/Number}]})
+
+(deftest sereies-are-compatible-test
+  (mt/dataset sample-dataset
+    (testing "area-line-bar charts"
+      (t2.with-temp/with-temp
+        [:model/Card datetime-card       (merge (mt/card-with-source-metadata-for-query
+                                                  (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
+                                                                         :breakout    [!month.orders.created_at]}))
+                                                {:visualization_settings {:graph.metrics    ["sum"]
+                                                                          :graph.dimensions ["CREATED_AT"]}}
+                                                {:name    "datetime card"
+                                                 :display :line})
+         :model/Card number-card         (merge (mt/card-with-source-metadata-for-query
+                                                  (mt/mbql-query orders {:aggregation [:count]
+                                                                         :breakout    [$orders.quantity]}))
+                                                {:visualization_settings {:graph.metrics    ["count"]
+                                                                          :graph.dimensions ["QUANTITY"]}}
+                                                {:name    "number card"
+                                                 :display :line})
+         :model/Card without-metric-card (merge (mt/card-with-source-metadata-for-query
+                                                  (mt/mbql-query orders {:breakout    [!month.orders.created_at]}))
+                                                {:visualization_settings {:graph.dimensions ["CREATED_AT"]}}
+                                                {:name    "card has no metric"
+                                                 :display :line})
+         :model/Card combo-card          (merge (mt/card-with-source-metadata-for-query
+                                                  (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
+                                                                         :breakout    [!month.orders.created_at]}))
+                                                {:visualization_settings {:graph.metrics    ["sum"]
+                                                                          :graph.dimensions ["CREATED_AT"]}}
+                                                {:name    "table card"
+                                                 :display :combo})]
+        (testing "2 datetime cards can be combined"
+          (is (true? (api.card/series-are-compatible? datetime-card datetime-card))))
+
+        (testing "2 number cards can be combined"
+          (is (true? (api.card/series-are-compatible? number-card number-card))))
+
+        (testing "number card can't be combined with datetime cards"
+          (is (false? (api.card/series-are-compatible? number-card datetime-card)))
+          (is (false? (api.card/series-are-compatible? datetime-card number-card))))
+
+        (testing "can combine series with UNIX millisecond timestamp and datetime"
+          (is (true? (api.card/series-are-compatible? millisecond-card datetime-card)))
+          (is (true? (api.card/series-are-compatible? datetime-card millisecond-card))))
+
+        (testing "can't combines series with UNIX milliseceond timestamp and number"
+          (is (false? (api.card/series-are-compatible? millisecond-card number-card)))
+          (is (false? (api.card/series-are-compatible? number-card millisecond-card))))
+
+        (testing "second card must has a metric"
+          (is (false? (api.card/series-are-compatible? datetime-card without-metric-card))))
+
+        (testing "can't combine card of any other types rather than line/bar/area"
+          (is (nil? (api.card/series-are-compatible? datetime-card combo-card)))))))
+
+  (testing "scalar test"
+    (t2.with-temp/with-temp
+      [:model/Card scalar-1       (merge (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query venues {:aggregation [[:count]]}))
+                                         {:name "A Scalar 1" :display :scalar})
+       :model/Card scalar-2       (merge (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query venues {:aggregation [[:count]]}))
+                                         {:name "A Scalar 2" :display :scalar})
+
+       :model/Card scalar-2-cols  (merge (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query venues {:aggregation [[:count]
+                                                                                [:sum $venues.price]]}))
+                                         {:name "A Scalar with 2 columns" :display :scalar})
+       :model/Card line-card       (merge (mt/card-with-source-metadata-for-query
+                                            (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
+                                                                   :breakout    [$venues.category_id]}))
+                                          {:visualization_settings {:graph.metrics    ["sum"]
+                                                                    :graph.dimensions ["CATEGORY_ID"]}}
+                                          {:name "Line card" :display :line})]
+      (testing "2 scalars with 1 column can be combined"
+        (is (true? (api.card/series-are-compatible? scalar-1 scalar-2))))
+      (testing "can't be combined if either one of 2 cards has more than one column"
+        (is (false? (api.card/series-are-compatible? scalar-1 scalar-2-cols)))
+        (is (false? (api.card/series-are-compatible? scalar-2-cols scalar-2))))
+
+      (testing "can only be cominbed with scalar cards"
+        (is (false? (api.card/series-are-compatible? scalar-1 line-card)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
@@ -2702,3 +2927,36 @@
                      java.lang.Exception
                      #"^You do not have curate permissions for this Collection\.$"
                      (upload-example-csv! nil)))))))))))
+
+(defn- find-schema-filters-prop [driver]
+  (first (filter (fn [conn-prop]
+                   (= :schema-filters (keyword (:type conn-prop))))
+                 (driver/connection-properties driver))))
+
+(deftest upload-csv!-schema-doesnt-sync-test
+  ;; Just test with postgres because failure should be independent of the driver
+  (mt/test-driver :postgres
+    (mt/with-empty-db
+      (let [driver             (driver.u/database->driver (mt/db))
+            schema-filter-prop (find-schema-filters-prop driver)
+            filter-type-prop   (keyword (str (:name schema-filter-prop) "-type"))
+            patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
+        (t2/update! Database (mt/id) {:details (-> (mt/db)
+                                                   :details
+                                                   (assoc filter-type-prop "exclusion"
+                                                          patterns-type-prop "public"))})
+        (mt/with-temporary-setting-values [uploads-enabled     true
+                                           uploads-database-id (mt/id)
+                                           uploads-schema-name "public"]
+          (testing "Upload should fail if table can't be found after sync, for example because of schema filters"
+            (try (upload-example-csv! nil)
+                 (catch Exception e
+                   (is (= {:status-code 422}
+                          (.getData e)))
+                   (is (re-matches #"^The CSV file was uploaded to public\.example(.*) but the table could not be found on sync\.$"
+                                   (.getMessage e))))))
+          (testing "\nThe table should be deleted"
+            (is (false? (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
+                          (-> (jdbc/query (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+                                          ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public')"])
+                              first :exists))))))))))

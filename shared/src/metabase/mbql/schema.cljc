@@ -1145,7 +1145,9 @@
     :dimension   field
     ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
     ;; are allowed to be specified for it.
-    :widget-type (s/recursive #'WidgetType)}))
+    :widget-type (s/recursive #'WidgetType)
+    ;; optional map to be appended to filter clause
+    (s/optional-key :options) {s/Keyword s/Any}}))
 
 (def raw-value-template-tag-types
   "Set of valid values of `:type` for raw value template tags."

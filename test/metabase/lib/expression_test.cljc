@@ -49,7 +49,7 @@
                           (lib/floor float-field) :type/Integer
                           (lib/round float-field) :type/Integer
                           (lib/power int-field float-field) :type/Float
-                          (lib/interval 1 :month) :type/Integer ;; Need an interval type
+                          (lib/interval 1 :month) :type/Interval
                           #_#_(lib/relative-datetime "2020-01-01" :default) :type/DateTime
                           (lib/time "08:00:00" :hour) :type/Time
                           #_#_(lib/absolute-datetime "2020-01-01" :default) :type/DateTimeWithTZ
@@ -226,8 +226,9 @@
               arg-2 [1 1.0]
               :let  [clause [tag {:lib/uuid (str (random-uuid))} field arg-2]]]
         (testing (str \newline (pr-str clause))
-          (is (= :type/*
-                 (lib.schema.expression/type-of clause)))
+          (testing "assume :type/Number for refs with unknown types (#29946)"
+            (is (= :type/Number
+                   (lib.schema.expression/type-of clause))))
           (is (= (condp = arg-2
                    1   :type/Integer
                    1.0 :type/Number)
@@ -247,4 +248,17 @@
               :display-name "expr"}]
             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
-                lib/expressions-metadata)))))
+                lib/expressions-metadata))))
+  (testing "collisions with other column names are detected and rejected"
+    (let [query (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+          ex    (try
+                  (lib/expression query "ID" (lib/field "CATEGORIES" "NAME"))
+                  nil
+                  (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
+                    e))]
+      (is (some? ex)
+          "Expected adding a conflicting expression to throw")
+      (is (= "Expression name conflicts with a column in the same query stage"
+             (ex-message ex)))
+      (is (= {:expression-name "ID"}
+             (ex-data ex))))))
