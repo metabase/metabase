@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Icon from "metabase/components/Icon";

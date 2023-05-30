@@ -13,7 +13,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 
-import Input from "metabase/core/components/Input";
+import { Input } from "metabase/core/components/Input";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 
 import {

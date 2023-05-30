@@ -1,5 +1,5 @@
 import React from "react";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import { InitialSyncStatus } from "metabase-types/api";
 import {
   StatusRoot,

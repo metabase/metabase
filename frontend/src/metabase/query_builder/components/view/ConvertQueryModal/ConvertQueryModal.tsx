@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import { getEngineNativeType } from "metabase/lib/engine";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import { checkNotNull } from "metabase/core/utils/types";
 import {
   getNativeQueryFn,

@@ -6,7 +6,7 @@ import { t } from "ttag";
 import { AccordionList } from "metabase/core/components/AccordionList";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import { FieldDimension } from "metabase-lib/Dimension";
 
 import { DimensionPicker } from "./DimensionPicker";

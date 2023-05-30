@@ -1,13 +1,13 @@
 import React, { forwardRef } from "react";
 
-import FormInputWidget from "metabase/core/components/FormInput";
-import FormTextAreaWidget from "metabase/core/components/FormTextArea";
+import { FormInputWidget } from "metabase/core/components/FormInput";
+import { FormTextAreaWidget } from "metabase/core/components/FormTextArea";
 import FormRadioWidget, {
   FormRadioProps,
 } from "metabase/core/components/FormRadio";
-import FormSelectWidget from "metabase/core/components/FormSelect";
-import FormNumericInputWidget from "metabase/core/components/FormNumericInput";
-import FormBooleanWidget from "metabase/core/components/FormToggle";
+import { FormSelectWidget } from "metabase/core/components/FormSelect";
+import { FormNumericInputWidget } from "metabase/core/components/FormNumericInput";
+import { FormBooleanWidget } from "metabase/core/components/FormToggle";
 
 import type { InputComponentType } from "metabase-types/api";
 import type { ActionFormFieldProps } from "metabase/actions/types";

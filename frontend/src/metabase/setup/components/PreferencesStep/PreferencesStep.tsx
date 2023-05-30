@@ -3,7 +3,7 @@ import { t, jt } from "ttag";
 import { getIn } from "icepick";
 import Settings from "metabase/lib/settings";
 import ActionButton from "metabase/components/ActionButton";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import {

@@ -3,7 +3,7 @@ import { useField } from "formik";
 import { t } from "ttag";
 import SchedulePicker from "metabase/components/SchedulePicker";
 import { ScheduleSettings, ScheduleType } from "metabase-types/api";
-import FormField from "metabase/core/components/FormField";
+import { FormField } from "metabase/core/components/FormField";
 
 const DEFAULT_SCHEDULE: ScheduleSettings = {
   schedule_day: "mon",

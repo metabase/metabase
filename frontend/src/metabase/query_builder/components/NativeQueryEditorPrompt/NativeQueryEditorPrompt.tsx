@@ -8,11 +8,11 @@ import React, {
 import { t } from "ttag";
 import { useAsyncFn } from "react-use";
 import Icon from "metabase/components/Icon";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { DatabaseId } from "metabase-types/api";
 import { MetabotApi } from "metabase/services";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { Deferred, defer } from "metabase/lib/promise";
 import {

@@ -5,7 +5,7 @@ import cx from "classnames";
 
 import Confirm from "metabase/components/Confirm";
 import EditBar from "metabase/components/EditBar";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 
 import PermissionsConfirm from "../PermissionsConfirm";
 

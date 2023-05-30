@@ -8,7 +8,7 @@ import { color } from "metabase/lib/colors";
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import { Grid } from "metabase/components/Grid";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 
 import User from "metabase/entities/users";

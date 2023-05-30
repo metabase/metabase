@@ -4,7 +4,7 @@ import { Link } from "react-router";
 
 import cx from "classnames";
 import Icon from "metabase/components/Icon";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import S from "./Breadcrumbs.css";
 
 // TODO: merge with BrowserCrumbs

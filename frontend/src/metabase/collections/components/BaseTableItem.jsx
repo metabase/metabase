@@ -6,11 +6,11 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import EntityItem from "metabase/components/EntityItem";
 import DateTime from "metabase/components/DateTime";
-import Tooltip from "metabase/core/components/Tooltip";
-import Markdown from "metabase/core/components/Markdown";
+import { Tooltip } from "metabase/core/components/Tooltip";
+import { Markdown } from "metabase/core/components/Markdown";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 
 import { color } from "metabase/lib/colors";

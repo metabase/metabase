@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import { color, alpha, lighten } from "metabase/lib/colors";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 

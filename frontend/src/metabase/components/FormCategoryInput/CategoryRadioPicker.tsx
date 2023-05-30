@@ -2,7 +2,7 @@ import React from "react";
 import { connect } from "react-redux";
 import { useMount } from "react-use";
 
-import Radio from "metabase/core/components/Radio";
+import { Radio } from "metabase/core/components/Radio";
 import Fields from "metabase/entities/fields";
 
 import { State } from "metabase-types/store";

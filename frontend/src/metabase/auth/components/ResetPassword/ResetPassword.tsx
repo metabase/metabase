@@ -3,8 +3,8 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
+import { Button } from "metabase/core/components/Button";
+import { Link } from "metabase/core/components/Link";
 import { AuthLayout } from "../AuthLayout";
 import {
   resetPassword,

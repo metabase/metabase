@@ -5,9 +5,9 @@ import cx from "classnames";
 
 import * as Urls from "metabase/lib/urls";
 import EntityMenu from "metabase/components/EntityMenu";
-import Swapper from "metabase/core/components/Swapper";
-import CheckBox from "metabase/core/components/CheckBox";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Swapper } from "metabase/core/components/Swapper";
+import { CheckBox } from "metabase/core/components/CheckBox";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import {
   isPreviewShown,

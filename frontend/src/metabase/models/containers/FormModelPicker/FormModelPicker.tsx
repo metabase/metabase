@@ -9,8 +9,8 @@ import { t } from "ttag";
 import { useField } from "formik";
 
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import FormField from "metabase/core/components/FormField";
-import SelectButton from "metabase/core/components/SelectButton";
+import { FormField } from "metabase/core/components/FormField";
+import { SelectButton } from "metabase/core/components/SelectButton";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { useQuestionQuery } from "metabase/common/hooks";
 import type { CardId } from "metabase-types/api";

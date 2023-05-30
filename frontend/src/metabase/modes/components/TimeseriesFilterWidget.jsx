@@ -5,8 +5,8 @@ import cx from "classnames";
 import _ from "underscore";
 import DatePicker from "metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton from "metabase/core/components/SelectButton";
-import Button from "metabase/core/components/Button";
+import { SelectButton } from "metabase/core/components/SelectButton";
+import { Button } from "metabase/core/components/Button";
 
 import * as Card from "metabase-lib/queries/utils/card";
 import { generateTimeFilterValuesDescriptions } from "metabase-lib/queries/utils/query-time";

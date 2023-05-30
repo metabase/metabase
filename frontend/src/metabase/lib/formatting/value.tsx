@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import Mustache from "mustache";
 import moment, { Moment } from "moment-timezone";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import { renderLinkTextForClick } from "metabase/lib/formatting/link";
 import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
 import {

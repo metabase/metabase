@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
+import { Button } from "metabase/core/components/Button";
+import { Link } from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 

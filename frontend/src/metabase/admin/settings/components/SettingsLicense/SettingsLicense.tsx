@@ -1,8 +1,8 @@
 import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import Button from "metabase/core/components/Button";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { Button } from "metabase/core/components/Button";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { State } from "metabase-types/store";
 import { ExplorePlansIllustration } from "./ExplorePlansIllustration";

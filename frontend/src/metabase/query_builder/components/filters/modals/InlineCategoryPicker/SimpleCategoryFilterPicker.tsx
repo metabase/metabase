@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import Checkbox from "metabase/core/components/CheckBox";
+import { CheckBox } from "metabase/core/components/CheckBox";
 
 import type Filter from "metabase-lib/queries/structured/Filter";
 
@@ -46,7 +46,7 @@ export function SimpleCategoryFilterPicker({
     <PickerContainer data-testid="category-picker">
       <PickerGrid multiColumn={hasShortOptions} rows={rows}>
         {options.map(([option, displayOption]) => (
-          <Checkbox
+          <CheckBox
             key={option?.toString() ?? "empty"}
             checked={filterValues.includes(option)}
             onChange={e => handleChange(option, e.target.checked)}

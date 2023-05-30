@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import * as Urls from "metabase/lib/urls";

@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Select from "metabase/core/components/Select";
+import { Select } from "metabase/core/components/Select";
 
 import Databases from "metabase/entities/databases";
 

@@ -2,8 +2,8 @@ import React, { ChangeEvent, useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import Button from "metabase/core/components/Button";
-import Input from "metabase/core/components/Input";
+import { Button } from "metabase/core/components/Button";
+import { Input } from "metabase/core/components/Input";
 import ModalContent from "metabase/components/ModalContent";
 import DataPicker, {
   DataPickerDataType,

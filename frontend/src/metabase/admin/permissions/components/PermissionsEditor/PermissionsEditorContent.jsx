@@ -7,7 +7,7 @@ import Text from "metabase/components/type/Text";
 import EmptyState from "metabase/components/EmptyState";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import Input from "metabase/core/components/Input";
+import { Input } from "metabase/core/components/Input";
 import { PermissionsTable } from "../PermissionsTable";
 
 import { PermissionsEditorBreadcrumbs } from "./PermissionsEditorBreadcrumbs";

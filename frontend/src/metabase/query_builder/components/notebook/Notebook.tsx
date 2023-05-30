@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import Questions from "metabase/entities/questions";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";

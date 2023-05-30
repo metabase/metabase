@@ -5,7 +5,7 @@ import { t, jt } from "ttag";
 import * as Urls from "metabase/lib/urls";
 
 import Icon from "metabase/components/Icon";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 
 import Schema from "metabase/entities/schemas";
 import Database from "metabase/entities/databases";

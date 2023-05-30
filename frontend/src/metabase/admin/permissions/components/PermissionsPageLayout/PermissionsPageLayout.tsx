@@ -5,7 +5,7 @@ import { push } from "react-router-redux";
 import { Route, Router, withRouter } from "react-router";
 
 import { Location } from "history";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import fitViewport from "metabase/hoc/FitViewPort";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";

@@ -5,7 +5,7 @@ import { updateIn } from "icepick";
 import MetabaseSettings from "metabase/lib/settings";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 
 if (hasPremiumFeature("embedding")) {
   MetabaseSettings.hideEmbedBranding = () => true;

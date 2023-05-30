@@ -6,7 +6,7 @@ import { t, jt, ngettext, msgid } from "ttag";
 import cx from "classnames";
 import ActionButton from "metabase/components/ActionButton";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import Icon from "metabase/components/Icon";
 import * as MetabaseAnalytics from "metabase/lib/analytics";

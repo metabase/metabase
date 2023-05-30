@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import { Collection } from "metabase-types/api";
 import { FileUpload } from "metabase-types/store/upload";
 

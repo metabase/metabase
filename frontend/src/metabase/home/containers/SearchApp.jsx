@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import PropTypes from "prop-types";
 
 import { jt, t } from "ttag";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 
 import Search from "metabase/entities/search";
 

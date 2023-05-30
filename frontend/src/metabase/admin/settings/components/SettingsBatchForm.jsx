@@ -7,7 +7,7 @@ import _ from "underscore";
 import Collapse from "react-collapse";
 import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import MetabaseUtils from "metabase/lib/utils";
 import { updateSettings as defaultUpdateSettings } from "../settings";

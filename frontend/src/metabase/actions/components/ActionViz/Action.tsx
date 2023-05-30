@@ -1,7 +1,7 @@
 import React, { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import { executeRowAction } from "metabase/dashboard/actions";
 import { getEditingDashcardId } from "metabase/dashboard/selectors";
 import type { VisualizationProps } from "metabase/visualizations/types";

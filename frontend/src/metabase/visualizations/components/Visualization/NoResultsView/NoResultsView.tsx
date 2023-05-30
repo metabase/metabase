@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 
 import NoResults from "assets/img/no_results.svg";
 import { Root, ShortMessage } from "./NoResultsView.styled";

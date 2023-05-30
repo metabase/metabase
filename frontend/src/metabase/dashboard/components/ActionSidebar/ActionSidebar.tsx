@@ -8,12 +8,12 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import Button from "metabase/core/components/Button";
-import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
-import FormInput from "metabase/core/components/FormInput";
-import FormSelect from "metabase/core/components/FormSelect";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Button } from "metabase/core/components/Button";
+import { Form } from "metabase/core/components/Form";
+import { FormProvider } from "metabase/core/components/FormProvider";
+import { FormInput } from "metabase/core/components/FormInput";
+import { FormSelect } from "metabase/core/components/FormSelect";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import {
   FieldLabel,
   FieldLabelContainer,

@@ -7,7 +7,7 @@ import { merge } from "icepick";
 import { usePrevious } from "react-use";
 
 import ActionButton from "metabase/components/ActionButton";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import Confirm from "metabase/components/Confirm";
 

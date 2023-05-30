@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Radio from "metabase/core/components/Radio";
+import { Radio } from "metabase/core/components/Radio";
 import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 
 const propTypes = {

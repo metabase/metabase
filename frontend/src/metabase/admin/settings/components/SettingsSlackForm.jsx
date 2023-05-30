@@ -7,9 +7,9 @@ import { t, jt } from "ttag";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseUtils from "metabase/lib/utils";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import { updateSlackSettings } from "../settings";
 import SettingsSetting from "./SettingsSetting";
 

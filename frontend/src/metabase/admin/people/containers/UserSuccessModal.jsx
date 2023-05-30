@@ -9,8 +9,8 @@ import { push } from "react-router-redux";
 import MetabaseSettings from "metabase/lib/settings";
 import User from "metabase/entities/users";
 
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
+import { Button } from "metabase/core/components/Button";
+import { Link } from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
 import { getUserTemporaryPassword } from "../selectors";

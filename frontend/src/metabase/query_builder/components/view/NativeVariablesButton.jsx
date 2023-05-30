@@ -5,7 +5,7 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 

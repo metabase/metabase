@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import moment, { Moment } from "moment-timezone";
 import { t } from "ttag";
-import TimeInput from "metabase/core/components/TimeInput";
+import { TimeInput } from "metabase/core/components/TimeInput";
 import Calendar from "metabase/components/Calendar";
 import {
   SelectorFooter,

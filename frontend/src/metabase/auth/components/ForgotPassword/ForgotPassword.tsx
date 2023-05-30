@@ -2,7 +2,7 @@ import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import { Location } from "history";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import { forgotPassword } from "../../actions";
 import { getIsEmailConfigured, getIsLdapEnabled } from "../../selectors";
 import { AuthLayout } from "../AuthLayout";

@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import CopyToClipboard from "react-copy-to-clipboard";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 
 export default class CopyWidget extends Component {
   constructor(props) {

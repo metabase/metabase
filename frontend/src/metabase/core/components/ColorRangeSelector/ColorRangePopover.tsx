@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import _ from "underscore";
-import ColorPill from "metabase/core/components/ColorPill";
+import { ColorPill } from "metabase/core/components/ColorPill";
 import ColorRangeToggle from "./ColorRangeToggle";
 import {
   PopoverColorList,

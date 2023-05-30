@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import User from "metabase/entities/users";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import Text from "metabase/components/type/Text";
 

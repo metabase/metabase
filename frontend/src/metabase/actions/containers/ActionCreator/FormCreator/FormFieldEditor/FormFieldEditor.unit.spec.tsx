@@ -8,7 +8,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import FormProvider from "metabase/core/components/FormProvider";
+import { FormProvider } from "metabase/core/components/FormProvider";
 import { getDefaultFieldSettings } from "metabase/actions/utils";
 import type { FieldSettings } from "metabase-types/api";
 import FormFieldEditor, { FormFieldEditorProps } from "./FormFieldEditor";

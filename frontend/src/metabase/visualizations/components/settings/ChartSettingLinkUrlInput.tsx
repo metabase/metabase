@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import AutocompleteInput from "metabase/core/components/AutocompleteInput";
+import { AutocompleteInput } from "metabase/core/components/AutocompleteInput";
 
 interface ChartSettingLinkUrlInputProps {
   value: string;

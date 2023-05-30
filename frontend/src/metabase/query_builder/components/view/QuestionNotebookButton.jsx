@@ -4,8 +4,8 @@ import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-import Tooltip from "metabase/core/components/Tooltip";
-import Button from "metabase/core/components/Button";
+import { Tooltip } from "metabase/core/components/Tooltip";
+import { Button } from "metabase/core/components/Button";
 
 export default function QuestionNotebookButton({
   className,

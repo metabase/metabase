@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import { StoreIcon, StoreIconRoot, StoreIconWrapper } from "./StoreLink.styled";
 
 const StoreLink = () => {

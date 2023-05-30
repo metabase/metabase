@@ -1,7 +1,7 @@
 import React, { forwardRef, ReactNode, Ref, useCallback } from "react";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import FormField from "metabase/core/components/FormField";
+import { FormField } from "metabase/core/components/FormField";
 
 import type Field from "metabase-lib/metadata/Field";
 

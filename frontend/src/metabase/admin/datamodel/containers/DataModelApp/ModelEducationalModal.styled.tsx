@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 
 export const Content = styled.div`
   display: flex;

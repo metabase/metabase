@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import FormMessage from "metabase/components/form/FormMessage";
 import { ModalMessage } from "./UnsubscribeUserForm.styled";

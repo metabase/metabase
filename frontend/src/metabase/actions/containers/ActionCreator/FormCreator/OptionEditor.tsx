@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 
 import type { FieldType, FieldValueOptions } from "metabase-types/api";

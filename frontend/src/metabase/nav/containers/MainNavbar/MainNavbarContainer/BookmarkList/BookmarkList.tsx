@@ -8,7 +8,7 @@ import {
 } from "metabase/components/sortable";
 import CollapseSection from "metabase/components/CollapseSection";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 
 import { Bookmark } from "metabase-types/api";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";

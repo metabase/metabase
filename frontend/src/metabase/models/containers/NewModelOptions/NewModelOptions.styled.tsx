@@ -3,7 +3,7 @@ import {
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import { GridItem } from "metabase/components/Grid";
 import { color } from "metabase/lib/colors";
 

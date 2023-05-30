@@ -2,7 +2,7 @@
 import React, { useMemo } from "react";
 import cx from "classnames";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 
 import { formatValue } from "metabase/lib/formatting";
 import {

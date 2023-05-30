@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 import { color } from "metabase/lib/colors";
-import EditableText from "metabase/core/components/EditableText";
+import { EditableText } from "metabase/core/components/EditableText";
 import FormField from "metabase/core/components/FormField/FormField";
 
 export const DashboardInfoSidebarRoot = styled.aside`

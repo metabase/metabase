@@ -2,14 +2,14 @@ import React, { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import Button from "metabase/core/components/Button";
-import Form from "metabase/core/components/Form";
-import FormFooter from "metabase/core/components/FormFooter";
-import FormProvider from "metabase/core/components/FormProvider";
-import FormInput from "metabase/core/components/FormInput";
-import FormTextArea from "metabase/core/components/FormTextArea";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import { Button } from "metabase/core/components/Button";
+import { Form } from "metabase/core/components/Form";
+import { FormFooter } from "metabase/core/components/FormFooter";
+import { FormProvider } from "metabase/core/components/FormProvider";
+import { FormInput } from "metabase/core/components/FormInput";
+import { FormTextArea } from "metabase/core/components/FormTextArea";
+import { FormSubmitButton } from "metabase/core/components/FormSubmitButton";
+import { FormErrorMessage } from "metabase/core/components/FormErrorMessage";
 
 import * as Errors from "metabase/core/utils/errors";
 

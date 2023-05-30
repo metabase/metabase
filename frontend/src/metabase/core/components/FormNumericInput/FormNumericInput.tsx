@@ -4,7 +4,7 @@ import { useUniqueId } from "metabase/hooks/use-unique-id";
 import NumericInput, {
   NumericInputProps,
 } from "metabase/core/components/NumericInput";
-import FormField from "metabase/core/components/FormField";
+import { FormField } from "metabase/core/components/FormField";
 
 export interface FormNumericInputProps
   extends Omit<

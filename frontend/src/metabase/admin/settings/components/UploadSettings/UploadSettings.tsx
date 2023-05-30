@@ -12,9 +12,9 @@ import { updateSettings } from "metabase/admin/settings/settings";
 
 import type { State } from "metabase-types/store";
 
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import Select, { SelectChangeEvent } from "metabase/core/components/Select";
-import Input from "metabase/core/components/Input";
+import { Input } from "metabase/core/components/Input";
 import ActionButton from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";
 

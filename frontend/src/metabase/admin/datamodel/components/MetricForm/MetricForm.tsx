@@ -4,7 +4,7 @@ import { useFormik } from "formik";
 import type { FieldInputProps } from "formik";
 import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import FieldSet from "metabase/components/FieldSet";
 import { Metric, StructuredQuery } from "metabase-types/api";
 import useBeforeUnload from "metabase/hooks/use-before-unload";

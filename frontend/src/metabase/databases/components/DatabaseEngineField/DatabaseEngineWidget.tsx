@@ -7,8 +7,8 @@ import React, {
 } from "react";
 import { jt, t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
-import Input from "metabase/core/components/Input";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { Input } from "metabase/core/components/Input";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { getEngineLogo } from "../../utils/engine";
 import { EngineOption } from "../../types";

@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
-import NumericInput from "metabase/core/components/NumericInput";
+import { NumericInput } from "metabase/core/components/NumericInput";
 
 interface ValuesPickerContainerProps {
   fieldWidth?: string;

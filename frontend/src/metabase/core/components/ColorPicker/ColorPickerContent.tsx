@@ -1,6 +1,6 @@
 import React, { forwardRef, HTMLAttributes, Ref, useCallback } from "react";
 import { ColorState } from "react-color";
-import ColorInput from "metabase/core/components/ColorInput";
+import { ColorInput } from "metabase/core/components/ColorInput";
 import ColorPickerControls from "./ColorPickerControls";
 import { ContentContainer } from "./ColorPicker.styled";
 

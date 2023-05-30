@@ -5,7 +5,7 @@ import cx from "classnames";
 import styled from "@emotion/styled";
 import { isObscured } from "metabase/lib/dom";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 
 const Trigger = styled.a``;
 

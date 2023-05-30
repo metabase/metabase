@@ -1,9 +1,9 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import EntityMenu from "metabase/components/EntityMenu";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";

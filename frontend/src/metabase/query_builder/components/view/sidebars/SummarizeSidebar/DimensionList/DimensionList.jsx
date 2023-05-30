@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 
-import Input from "metabase/core/components/Input";
+import { Input } from "metabase/core/components/Input";
 import { DimensionListItem } from "./DimensionListItem";
 import {
   DimensionListTableName,

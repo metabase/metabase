@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 
-import FormField from "metabase/core/components/FormField";
+import { FormField } from "metabase/core/components/FormField";
 import { SegmentedControl } from "metabase/components/SegmentedControl";
 
 import { REGULAR_COLLECTION, OFFICIAL_COLLECTION } from "../constants";

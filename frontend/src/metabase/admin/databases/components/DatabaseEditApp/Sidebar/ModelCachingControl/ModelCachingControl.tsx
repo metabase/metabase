@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { t, jt } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import ActionButton from "metabase/components/ActionButton";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 

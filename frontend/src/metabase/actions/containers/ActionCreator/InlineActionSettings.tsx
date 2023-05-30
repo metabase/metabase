@@ -12,11 +12,11 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import Tooltip from "metabase/core/components/Tooltip";
-import Button from "metabase/core/components/Button";
-import Toggle from "metabase/core/components/Toggle";
-import FormField from "metabase/core/components/FormField";
-import TextArea from "metabase/core/components/TextArea";
+import { Tooltip } from "metabase/core/components/Tooltip";
+import { Button } from "metabase/core/components/Button";
+import { Toggle } from "metabase/core/components/Toggle";
+import { FormField } from "metabase/core/components/FormField";
+import { TextArea } from "metabase/core/components/TextArea";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { getUserIsAdmin } from "metabase/selectors/user";

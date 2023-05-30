@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from "react";
 
-import Input from "metabase/core/components/Input";
+import { Input } from "metabase/core/components/Input";
 
 export default function ListSearchField({ autoFocus, ...props }) {
   const inputRef = useRef();

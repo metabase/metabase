@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { Timeline } from "metabase/common/components/Timeline";
-import EditableText from "metabase/core/components/EditableText";
+import { EditableText } from "metabase/core/components/EditableText";
 
 import { Dashboard } from "metabase-types/api";
 import { getUser } from "metabase/selectors/user";
@@ -16,8 +16,8 @@ import {
   toggleAutoApplyFilters,
 } from "metabase/dashboard/actions";
 
-import Toggle from "metabase/core/components/Toggle";
-import FormField from "metabase/core/components/FormField";
+import { Toggle } from "metabase/core/components/Toggle";
+import { FormField } from "metabase/core/components/FormField";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";

@@ -1,7 +1,7 @@
 import React, { forwardRef } from "react";
 import PropTypes from "prop-types";
 import { formDomOnlyProps } from "metabase/lib/redux";
-import Input from "metabase/core/components/Input";
+import { Input } from "metabase/core/components/Input";
 
 // Important: do NOT use this as an input of type="file"
 // For file inputs, See component FormTextFileWidget.tsx

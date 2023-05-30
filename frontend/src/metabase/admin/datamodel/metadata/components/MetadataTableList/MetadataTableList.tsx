@@ -16,7 +16,7 @@ import * as Urls from "metabase/lib/urls";
 import Tables from "metabase/entities/tables";
 import Icon from "metabase/components/Icon/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import {
   DatabaseId,
   SchemaId,

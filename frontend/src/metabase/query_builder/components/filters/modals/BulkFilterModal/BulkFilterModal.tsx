@@ -5,9 +5,9 @@ import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
 
 import { pluralize } from "metabase/lib/formatting";
 
-import Button from "metabase/core/components/Button";
-import Tab from "metabase/core/components/Tab";
-import TabContent from "metabase/core/components/TabContent";
+import { Button } from "metabase/core/components/Button";
+import { Tab } from "metabase/core/components/Tab";
+import { TabContent } from "metabase/core/components/TabContent";
 import Icon from "metabase/components/Icon";
 import Question from "metabase-lib/Question";
 import StructuredQuery, {

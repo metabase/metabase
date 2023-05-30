@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
-import Link from "metabase/core/components/Link";
-import Input from "metabase/core/components/Input";
+import { Link } from "metabase/core/components/Link";
+import { Input } from "metabase/core/components/Input";
 
 export const ModalRoot = styled.div`
   display: flex;

@@ -6,7 +6,7 @@ import { connect } from "react-redux";
 import * as Urls from "metabase/lib/urls";
 
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
-import Radio from "metabase/core/components/Radio";
+import { Radio } from "metabase/core/components/Radio";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import SearchInput from "../components/SearchInput";

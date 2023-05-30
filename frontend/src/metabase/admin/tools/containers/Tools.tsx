@@ -4,7 +4,7 @@ import { Location } from "history";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import Radio from "metabase/core/components/Radio";
+import { Radio } from "metabase/core/components/Radio";
 
 import { State } from "metabase-types/store";
 

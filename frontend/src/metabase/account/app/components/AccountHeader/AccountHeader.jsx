@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import Radio from "metabase/core/components/Radio";
+import { Radio } from "metabase/core/components/Radio";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
 import {

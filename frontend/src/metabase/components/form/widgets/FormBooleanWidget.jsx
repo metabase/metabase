@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import Toggle from "metabase/core/components/Toggle";
+import { Toggle } from "metabase/core/components/Toggle";
 
 const FormBooleanWidget = ({ field }) => (
   <Toggle

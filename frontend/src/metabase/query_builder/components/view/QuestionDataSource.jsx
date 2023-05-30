@@ -7,7 +7,7 @@ import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 
 import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
 import {

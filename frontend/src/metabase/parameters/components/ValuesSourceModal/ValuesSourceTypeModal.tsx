@@ -8,13 +8,13 @@ import React, {
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import Radio, { RadioOption } from "metabase/core/components/Radio";
 import Select, {
   Option,
   SelectChangeEvent,
 } from "metabase/core/components/Select";
-import SelectButton from "metabase/core/components/SelectButton";
+import { SelectButton } from "metabase/core/components/SelectButton";
 import ModalContent from "metabase/components/ModalContent";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Tables from "metabase/entities/tables";

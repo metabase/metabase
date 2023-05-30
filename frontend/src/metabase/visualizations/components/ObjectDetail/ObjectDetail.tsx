@@ -11,7 +11,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 

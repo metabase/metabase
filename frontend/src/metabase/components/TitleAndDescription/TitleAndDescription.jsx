@@ -3,7 +3,7 @@ import React from "react";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 
 const TitleAndDescription = ({ title, description, className }) => (
   <div className={cx("flex align-center", className)}>

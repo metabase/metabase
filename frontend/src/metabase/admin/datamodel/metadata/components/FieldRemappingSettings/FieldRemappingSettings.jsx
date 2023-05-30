@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Select from "metabase/core/components/Select";
+import { Select } from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 

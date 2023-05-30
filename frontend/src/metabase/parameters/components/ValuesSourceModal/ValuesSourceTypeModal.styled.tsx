@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import TextArea from "metabase/core/components/TextArea";
+import { TextArea } from "metabase/core/components/TextArea";
 import { ModalBody } from "metabase/parameters/components/ValuesSourceModal/ValuesSourceModal.styled";
 
 export const ModalBodyWithPane = styled(ModalBody)`

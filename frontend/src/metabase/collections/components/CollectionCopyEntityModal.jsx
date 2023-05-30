@@ -8,7 +8,7 @@ import * as Urls from "metabase/lib/urls";
 import withToast from "metabase/hoc/Toast";
 import { entityTypeForObject } from "metabase/lib/schema";
 
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 
 import Dashboards from "metabase/entities/dashboards";
 import Collections from "metabase/entities/collections";

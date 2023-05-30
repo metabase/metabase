@@ -5,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import Aggregation from "metabase-lib/queries/structured/Aggregation";

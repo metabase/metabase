@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import { DatabaseId } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";

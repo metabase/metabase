@@ -2,7 +2,7 @@ import React, { useCallback, ChangeEvent } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 
 import type {
   ConcreteFieldReference,

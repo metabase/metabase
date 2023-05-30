@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
 
-import Input from "metabase/core/components/Input";
+import { Input } from "metabase/core/components/Input";
 import SearchResults from "metabase/nav/components/SearchResults";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 

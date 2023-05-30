@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import Card from "metabase/components/Card";
 import PageHeading from "metabase/components/type/PageHeading";

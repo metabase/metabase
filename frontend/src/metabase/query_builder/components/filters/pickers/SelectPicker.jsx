@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import CheckBox from "metabase/core/components/CheckBox";
+import { CheckBox } from "metabase/core/components/CheckBox";
 import ListSearchField from "metabase/components/ListSearchField";
 
 import { capitalize } from "metabase/lib/formatting";

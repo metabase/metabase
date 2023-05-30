@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import { alpha, color, lighten } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 

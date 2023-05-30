@@ -6,7 +6,7 @@ import {
   getStatusIcon,
 } from "metabase-enterprise/moderation/service";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 
 const { color: verifiedIconColor } = getStatusIcon(MODERATION_STATUS.verified);
 

@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
-import ColorRange from "metabase/core/components/ColorRange";
-import Button from "metabase/core/components/Button";
+import { ColorRange } from "metabase/core/components/ColorRange";
+import { Button } from "metabase/core/components/Button";
 
 export const ToggleRoot = styled.div`
   display: flex;

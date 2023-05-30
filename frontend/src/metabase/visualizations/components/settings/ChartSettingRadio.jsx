@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import Radio from "metabase/core/components/Radio";
+import { Radio } from "metabase/core/components/Radio";
 
 const ChartSettingRadio = ({ value, onChange, options = [], className }) => (
   <Radio

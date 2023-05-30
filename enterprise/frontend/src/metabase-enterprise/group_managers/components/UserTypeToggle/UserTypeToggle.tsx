@@ -3,7 +3,7 @@ import { t } from "ttag";
 // eslint-disable-next-line import/named
 import { Placement } from "tippy.js";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import Icon from "metabase/components/Icon";
 import { UserTypeToggleRoot } from "./UserTypeToggle.styled";
 

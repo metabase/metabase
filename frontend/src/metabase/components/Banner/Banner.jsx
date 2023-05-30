@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import Markdown from "metabase/core/components/Markdown";
+import { Markdown } from "metabase/core/components/Markdown";
 import { BannerRoot } from "metabase/components/Banner/Banner.styled";
 
 const propTypes = {

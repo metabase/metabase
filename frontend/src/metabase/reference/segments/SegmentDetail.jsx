@@ -12,7 +12,7 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import Detail from "metabase/reference/components/Detail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import Formula from "metabase/reference/components/Formula";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";

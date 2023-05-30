@@ -5,7 +5,7 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import MetabaseSettings from "metabase/lib/settings";

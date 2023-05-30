@@ -6,7 +6,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton from "metabase/core/components/SelectButton";
+import { SelectButton } from "metabase/core/components/SelectButton";
 
 const MIN_POPOVER_WIDTH = 300;
 

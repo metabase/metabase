@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import Card from "metabase/components/Card";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 
 import { getCollectionIcon } from "metabase/entities/collections";
 

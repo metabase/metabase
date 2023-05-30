@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { alpha, color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import Markdown from "metabase/core/components/Markdown";
+import { Markdown } from "metabase/core/components/Markdown";
 
 export interface CardRootProps {
   isSelected?: boolean;

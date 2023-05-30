@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import type { VisualizationProps } from "metabase/visualizations/types";
 

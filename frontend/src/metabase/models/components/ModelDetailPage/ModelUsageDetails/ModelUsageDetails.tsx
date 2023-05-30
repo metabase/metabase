@@ -1,8 +1,8 @@
 import React from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
+import { Button } from "metabase/core/components/Button";
+import { Link } from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
 
 import * as Urls from "metabase/lib/urls";

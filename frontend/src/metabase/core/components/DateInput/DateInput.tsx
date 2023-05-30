@@ -11,7 +11,7 @@ import React, {
 } from "react";
 import moment, { Moment } from "moment-timezone";
 import { t } from "ttag";
-import Input from "metabase/core/components/Input";
+import { Input } from "metabase/core/components/Input";
 
 const DATE_FORMAT = "MM/DD/YYYY";
 const TIME_FORMAT_12 = "h:mm A";

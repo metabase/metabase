@@ -3,7 +3,7 @@ import React from "react";
 import cx from "classnames";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
-import ColorSelector from "metabase/core/components/ColorSelector";
+import { ColorSelector } from "metabase/core/components/ColorSelector";
 
 export default function ChartSettingColorPicker(props) {
   const { value, onChange, className, pillSize } = props;

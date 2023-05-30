@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 
 import { SidebarItem } from "../SidebarItem";
 

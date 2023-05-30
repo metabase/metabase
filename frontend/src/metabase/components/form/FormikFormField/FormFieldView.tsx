@@ -1,7 +1,7 @@
 import React from "react";
 import cx from "classnames";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 
 import { BaseFieldDefinition } from "metabase-types/forms";
 

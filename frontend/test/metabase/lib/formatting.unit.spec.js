@@ -12,7 +12,7 @@ import {
   slugify,
   getCurrencySymbol,
 } from "metabase/lib/formatting";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import { TYPE } from "metabase-lib/types/constants";
 
 describe("formatting", () => {

@@ -3,7 +3,7 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import TokenField, { parseNumberValue } from "metabase/components/TokenField";
-import NumericInput from "metabase/core/components/NumericInput";
+import { NumericInput } from "metabase/core/components/NumericInput";
 import {
   WidgetRoot,
   WidgetLabel,

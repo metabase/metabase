@@ -8,7 +8,7 @@ import React, {
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import Input, { InputProps } from "metabase/core/components/Input";
-import FormField from "metabase/core/components/FormField";
+import { FormField } from "metabase/core/components/FormField";
 
 export interface FormInputProps
   extends Omit<

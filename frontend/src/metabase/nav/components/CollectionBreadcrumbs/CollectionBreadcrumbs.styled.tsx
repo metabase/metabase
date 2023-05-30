@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 
 export const PathContainer = styled.div`
   display: flex;

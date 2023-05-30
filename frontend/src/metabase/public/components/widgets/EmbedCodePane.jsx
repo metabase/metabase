@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 
 import { t, jt } from "ttag";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import {
   getPublicEmbedOptions,
   getSignedEmbedOptions,

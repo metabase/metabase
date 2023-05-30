@@ -8,7 +8,7 @@ import Database from "metabase/entities/databases";
 import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
 import { Grid } from "metabase/components/Grid";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 
 import TableBrowser from "metabase/browse/containers/TableBrowser";
 import * as Urls from "metabase/lib/urls";

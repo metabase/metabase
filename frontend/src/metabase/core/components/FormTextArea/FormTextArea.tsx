@@ -8,7 +8,7 @@ import React, {
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import TextArea, { TextAreaProps } from "metabase/core/components/TextArea";
-import FormField from "metabase/core/components/FormField";
+import { FormField } from "metabase/core/components/FormField";
 
 export interface FormTextAreaProps
   extends Omit<

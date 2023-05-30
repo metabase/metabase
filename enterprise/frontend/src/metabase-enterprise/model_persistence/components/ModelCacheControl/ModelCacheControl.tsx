@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import { delay } from "metabase/lib/promise";

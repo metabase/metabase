@@ -5,8 +5,8 @@ import { t } from "ttag";
 import _ from "underscore";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 
-import Link from "metabase/core/components/Link";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { Link } from "metabase/core/components/Link";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
@@ -23,7 +23,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
 import { getAccentColors } from "metabase/lib/colors/groups";
-import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
+import { ColorRangeSelector } from "metabase/core/components/ColorRangeSelector";
 import {
   isNumeric,
   isLatitude,

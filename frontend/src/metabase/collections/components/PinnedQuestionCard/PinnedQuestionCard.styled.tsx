@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import StaticSkeleton from "metabase/visualizations/components/skeletons/StaticSkeleton";
 import { LegendLabel } from "metabase/visualizations/components/legend/LegendCaption.styled";

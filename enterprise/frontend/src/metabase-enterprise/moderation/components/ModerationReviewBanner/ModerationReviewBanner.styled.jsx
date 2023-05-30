@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 
 export const Container = styled.div`
   padding: 1rem 0;

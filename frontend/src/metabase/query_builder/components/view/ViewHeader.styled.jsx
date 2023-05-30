@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
+import { Button } from "metabase/core/components/Button";
+import { Link } from "metabase/core/components/Link";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
 import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";

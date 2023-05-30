@@ -3,11 +3,11 @@ import { t } from "ttag";
 
 import type { FormikHelpers } from "formik";
 
-import Button from "metabase/core/components/Button";
-import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import { Button } from "metabase/core/components/Button";
+import { Form } from "metabase/core/components/Form";
+import { FormProvider } from "metabase/core/components/FormProvider";
+import { FormSubmitButton } from "metabase/core/components/FormSubmitButton";
+import { FormErrorMessage } from "metabase/core/components/FormErrorMessage";
 
 import useActionForm from "metabase/actions/hooks/use-action-form";
 import {

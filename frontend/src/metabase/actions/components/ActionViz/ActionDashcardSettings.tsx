@@ -2,7 +2,7 @@ import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import EmptyState from "metabase/components/EmptyState";
 
 import MetabaseSettings from "metabase/lib/settings";

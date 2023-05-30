@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import { LocaleData } from "metabase-types/api";
 import { Locale } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";

@@ -4,8 +4,8 @@ import PropTypes from "prop-types";
 
 import cx from "classnames";
 import Icon, { iconPropTypes } from "metabase/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Tooltip } from "metabase/core/components/Tooltip";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 
 import { IconContainer } from "./LegendItem.styled";
 

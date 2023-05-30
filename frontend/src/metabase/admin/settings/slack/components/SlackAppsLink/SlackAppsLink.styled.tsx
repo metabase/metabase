@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 
 export const LinkRoot = styled(ExternalLink)`
   display: inline-flex;

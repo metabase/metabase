@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import Form from "metabase/core/components/Form";
+import { Form } from "metabase/core/components/Form";
 import { color } from "metabase/lib/colors";
 
 export const GoogleForm = styled(Form)`

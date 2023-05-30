@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Toggle from "metabase/core/components/Toggle";
+import { Toggle } from "metabase/core/components/Toggle";
 
 export default class PulseEditSkip extends Component {
   static propTypes = {

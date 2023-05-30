@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import ModelDetailLink from "metabase/models/components/ModelDetailLink";

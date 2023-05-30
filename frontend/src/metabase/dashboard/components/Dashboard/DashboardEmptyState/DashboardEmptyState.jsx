@@ -2,8 +2,8 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Link from "metabase/core/components/Link";
-import Button from "metabase/core/components/Button";
+import { Link } from "metabase/core/components/Link";
+import { Button } from "metabase/core/components/Button";
 import EmptyState from "metabase/components/EmptyState";
 import { Container } from "./DashboardEmptyState.styled";
 

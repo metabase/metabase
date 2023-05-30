@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import { InputSize } from "../../style/types";
 import {
   InputField,

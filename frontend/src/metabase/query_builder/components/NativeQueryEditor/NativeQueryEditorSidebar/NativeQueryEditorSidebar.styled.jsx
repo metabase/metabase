@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import { space } from "metabase/styled-components/theme";
 
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";

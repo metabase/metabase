@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link/Link";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import { Collection } from "metabase-types/api";
 import { CollectionHeaderButton } from "./CollectionHeader.styled";
 

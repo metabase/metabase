@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import Input from "metabase/core/components/Input";
+import { Input } from "metabase/core/components/Input";
 import { color } from "metabase/lib/colors";
 
 export const NativeQueryEditorPromptRoot = styled.div`

@@ -1,6 +1,6 @@
 import React, { FocusEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
-import Input from "metabase/core/components/Input";
+import { Input } from "metabase/core/components/Input";
 import { FontFile } from "metabase-types/api";
 import { FontFileOption, FontFilesSetting } from "./types";
 import { FONT_OPTIONS, getFontFiles, getFontUrls } from "./utils";

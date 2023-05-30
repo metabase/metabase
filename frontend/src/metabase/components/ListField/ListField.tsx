@@ -3,7 +3,7 @@ import _ from "underscore";
 import { t } from "ttag";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import Checkbox from "metabase/core/components/CheckBox";
+import { CheckBox } from "metabase/core/components/CheckBox";
 import EmptyState from "metabase/components/EmptyState";
 
 import Input, { InputProps } from "metabase/core/components/Input";
@@ -131,7 +131,7 @@ const ListField = ({
       <OptionsList isDashboardFilter={isDashboardFilter}>
         {filteredOptions.map((option, index) => (
           <OptionContainer key={index}>
-            <Checkbox
+            <CheckBox
               data-testid={`${option[0]}-filter-value`}
               checkedColor={
                 checkedColor ?? isDashboardFilter ? "brand" : "filter"

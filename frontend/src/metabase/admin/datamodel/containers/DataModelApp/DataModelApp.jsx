@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 
-import Radio from "metabase/core/components/Radio";
+import { Radio } from "metabase/core/components/Radio";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { ModelEducationalModal } from "./ModelEducationalModal";

@@ -5,10 +5,10 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import { SegmentedControl } from "metabase/components/SegmentedControl";
-import CheckBox from "metabase/core/components/CheckBox";
+import { CheckBox } from "metabase/core/components/CheckBox";
 import Label from "metabase/components/type/Label";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
-import Toggle from "metabase/core/components/Toggle";
+import { Toggle } from "metabase/core/components/Toggle";
 
 export default class EmailAttachmentPicker extends Component {
   DEFAULT_ATTACHMENT_TYPE = "csv";

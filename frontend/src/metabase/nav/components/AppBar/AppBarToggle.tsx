@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import { isMac } from "metabase/lib/browser";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import { SidebarButton, SidebarIcon } from "./AppBarToggle.styled";
 
 export interface AppBarToggleProps {

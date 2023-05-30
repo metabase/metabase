@@ -1,6 +1,6 @@
 import React from "react";
 
-import CheckBox from "metabase/core/components/CheckBox";
+import { CheckBox } from "metabase/core/components/CheckBox";
 import { Card } from "metabase-types/api";
 import {
   QuestionListItemRoot,

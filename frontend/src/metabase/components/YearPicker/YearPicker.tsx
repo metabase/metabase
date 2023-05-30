@@ -1,7 +1,7 @@
 import React, { ChangeEvent } from "react";
 
 import _ from "underscore";
-import Select from "metabase/core/components/Select";
+import { Select } from "metabase/core/components/Select";
 
 const YEARS = _.range(new Date().getFullYear(), 1900, -1);
 

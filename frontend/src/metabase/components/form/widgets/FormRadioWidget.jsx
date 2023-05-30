@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import styled from "@emotion/styled";
-import Radio from "metabase/core/components/Radio";
+import { Radio } from "metabase/core/components/Radio";
 
 const StyledRadio = styled(Radio)`
   font-weight: bold;

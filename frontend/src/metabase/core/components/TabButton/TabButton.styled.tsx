@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 
 export interface TabButtonProps {
   isSelected?: boolean;

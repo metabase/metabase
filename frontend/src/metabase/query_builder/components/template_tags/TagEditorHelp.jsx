@@ -2,8 +2,8 @@
 import React from "react";
 import { t, jt } from "ttag";
 import Code from "metabase/components/Code";
-import Button from "metabase/core/components/Button";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { Button } from "metabase/core/components/Button";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import Utils from "metabase/lib/utils";
 

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import Radio from "metabase/core/components/Radio";
+import { Radio } from "metabase/core/components/Radio";
 
 import { color } from "metabase/lib/colors";
 

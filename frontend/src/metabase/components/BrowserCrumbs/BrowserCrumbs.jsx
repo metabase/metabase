@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 
 import { color } from "metabase/lib/colors";
 import { BrowserCrumbsItem, BrowserCrumbsRoot } from "./BrowserCrumbs.styled";

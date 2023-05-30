@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
+import { Button } from "metabase/core/components/Button";
+import { Link } from "metabase/core/components/Link";
 
 import { Container, HeadingContainer } from "./AdminPaneLayout.styled";
 

@@ -6,7 +6,7 @@ import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingI
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   HostingCTAContent,

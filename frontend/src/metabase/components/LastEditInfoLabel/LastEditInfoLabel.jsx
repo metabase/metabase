@@ -7,7 +7,7 @@ import moment from "moment-timezone";
 import { getUser } from "metabase/selectors/user";
 import { getFullName } from "metabase/lib/user";
 import { TextButton } from "metabase/components/Button.styled";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import DateTime from "metabase/components/DateTime";
 
 function mapStateToProps(state) {

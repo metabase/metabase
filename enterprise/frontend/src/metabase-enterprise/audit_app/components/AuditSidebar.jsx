@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { IndexLink } from "react-router";
 import cx from "classnames";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 
 const AuditSidebarSection = ({ title, children }) => (
   <div className="pb2">

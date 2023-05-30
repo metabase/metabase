@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import React, { Component, forwardRef } from "react";
 import styled from "@emotion/styled";
 import { color, hover, space, SpaceProps } from "styled-system";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import { loadIcon } from "metabase/icon_paths";
 import { color as c } from "metabase/lib/colors";
 import { stripLayoutProps } from "metabase/lib/utils";

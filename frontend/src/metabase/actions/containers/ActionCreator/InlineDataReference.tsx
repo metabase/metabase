@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
-import Button from "metabase/core/components/Button";
+import { Tooltip } from "metabase/core/components/Tooltip";
+import { Button } from "metabase/core/components/Button";
 
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 

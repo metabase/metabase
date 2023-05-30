@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { t } from "ttag";
 import ToggleLarge from "metabase/components/ToggleLarge";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import AdvancedSettingsPane from "./AdvancedSettingsPane";
 import PreviewPane from "./PreviewPane";

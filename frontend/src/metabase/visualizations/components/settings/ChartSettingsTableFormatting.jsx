@@ -10,15 +10,15 @@ import {
   getStatusColorRanges,
 } from "metabase/lib/colors/groups";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import Select, { Option } from "metabase/core/components/Select";
-import Radio from "metabase/core/components/Radio";
-import Toggle from "metabase/core/components/Toggle";
-import ColorRange from "metabase/core/components/ColorRange";
-import ColorSelector from "metabase/core/components/ColorSelector";
-import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
-import Input from "metabase/core/components/Input";
+import { Radio } from "metabase/core/components/Radio";
+import { Toggle } from "metabase/core/components/Toggle";
+import { ColorRange } from "metabase/core/components/ColorRange";
+import { ColorSelector } from "metabase/core/components/ColorSelector";
+import { ColorRangeSelector } from "metabase/core/components/ColorRangeSelector";
+import { Input } from "metabase/core/components/Input";
 
 import NumericInput from "metabase/components/NumericInput";
 

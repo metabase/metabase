@@ -2,8 +2,8 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-import Button from "metabase/core/components/Button";
-import CheckBox from "metabase/core/components/CheckBox";
+import { Button } from "metabase/core/components/Button";
+import { CheckBox } from "metabase/core/components/CheckBox";
 
 type OptionButtonProps = {
   primaryColor?: string;

@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import Card from "metabase/components/Card";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import { alpha, color } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { space } from "metabase/styled-components/theme";

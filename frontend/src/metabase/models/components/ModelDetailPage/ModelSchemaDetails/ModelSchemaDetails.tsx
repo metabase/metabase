@@ -1,8 +1,8 @@
 import React, { useCallback, useMemo } from "react";
 import { t, ngettext, msgid } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
+import { Button } from "metabase/core/components/Button";
+import { Link } from "metabase/core/components/Link";
 
 import * as Urls from "metabase/lib/urls";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";

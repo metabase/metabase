@@ -7,7 +7,7 @@ import { connect } from "react-redux";
 import { Link } from "react-router";
 
 import Schemas from "metabase/entities/schemas";
-import Toggle from "metabase/core/components/Toggle";
+import { Toggle } from "metabase/core/components/Toggle";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/core/components/Select";
 

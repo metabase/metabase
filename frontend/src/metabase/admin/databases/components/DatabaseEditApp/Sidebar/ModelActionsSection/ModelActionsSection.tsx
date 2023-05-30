@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 
-import Toggle from "metabase/core/components/Toggle";
+import { Toggle } from "metabase/core/components/Toggle";
 import { getResponseErrorMessage } from "metabase/core/utils/errors";
 
 import {

@@ -5,7 +5,7 @@ import _ from "underscore";
 import { t } from "ttag";
 import ModalContent from "metabase/components/ModalContent";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 
 interface ConfirmContentProps {
   title: string;

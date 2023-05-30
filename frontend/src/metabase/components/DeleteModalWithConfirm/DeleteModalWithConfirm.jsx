@@ -5,7 +5,7 @@ import cx from "classnames";
 import _ from "underscore";
 
 import ModalContent from "metabase/components/ModalContent";
-import CheckBox from "metabase/core/components/CheckBox";
+import { CheckBox } from "metabase/core/components/CheckBox";
 
 import { CheckboxLabel } from "./DeleteModalWithConfirm.styled";
 

@@ -8,7 +8,7 @@ import {
 
 import EntityItem from "metabase/components/EntityItem";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 

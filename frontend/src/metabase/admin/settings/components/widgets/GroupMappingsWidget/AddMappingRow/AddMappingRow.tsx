@@ -2,7 +2,7 @@ import React, { useState } from "react";
 
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 
 import type { MappingsType } from "metabase/admin/types";
 

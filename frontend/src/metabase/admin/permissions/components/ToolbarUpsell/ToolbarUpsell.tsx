@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { jt, t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { State } from "metabase-types/store";

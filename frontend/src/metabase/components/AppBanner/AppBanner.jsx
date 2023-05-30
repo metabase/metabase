@@ -3,7 +3,7 @@ import React from "react";
 import { jt, t } from "ttag";
 import { connect } from "react-redux";
 import Banner from "metabase/components/Banner";
-import ExternalLink from "metabase/core/components/Link";
+import { ExternalLink } from "metabase/core/components/Link";
 import MetabaseSettings from "metabase/lib/settings";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";

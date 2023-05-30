@@ -5,7 +5,7 @@ import {
   space,
 } from "metabase/styled-components/theme";
 import Card from "metabase/components/Card";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import { GridItem } from "metabase/components/Grid";
 
 export const TableGridItem = styled(GridItem)`

@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 
 import * as Urls from "metabase/lib/urls";
-import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Button } from "metabase/core/components/Button";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
@@ -17,7 +17,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { State } from "metabase-types/store";
 import { color } from "metabase/lib/colors";
 
-import BookmarkToggle from "metabase/core/components/BookmarkToggle";
+import { BookmarkToggle } from "metabase/core/components/BookmarkToggle";
 import { getSetting } from "metabase/selectors/settings";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import Question from "metabase-lib/Question";

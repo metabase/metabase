@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import { SetupFooterRoot } from "./SetupHelp.styled";
 
 const SetupHelp = (): JSX.Element => {

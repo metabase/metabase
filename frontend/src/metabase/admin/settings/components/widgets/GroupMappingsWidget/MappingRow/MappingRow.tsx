@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isAdminGroup } from "metabase/lib/groups";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import Icon from "metabase/components/Icon";
 import Confirm from "metabase/components/Confirm";
 

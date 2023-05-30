@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import { t, jt } from "ttag";
 
-import CheckBox from "metabase/core/components/CheckBox";
+import { CheckBox } from "metabase/core/components/CheckBox";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getFilterOptions,

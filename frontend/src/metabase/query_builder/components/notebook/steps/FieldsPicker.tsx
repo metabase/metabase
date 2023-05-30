@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import CheckBox from "metabase/core/components/CheckBox";
+import { CheckBox } from "metabase/core/components/CheckBox";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 
 import type Dimension from "metabase-lib/Dimension";

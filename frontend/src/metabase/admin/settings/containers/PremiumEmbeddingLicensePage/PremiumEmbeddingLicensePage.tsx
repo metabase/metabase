@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import { connect } from "react-redux";
 import moment from "moment-timezone";
 import AdminLayout from "metabase/components/AdminLayout";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { SettingDefinition } from "metabase-types/api";
 import { State } from "metabase-types/store";

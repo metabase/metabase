@@ -4,10 +4,10 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import CheckBox from "metabase/core/components/CheckBox";
+import { CheckBox } from "metabase/core/components/CheckBox";
 import Icon from "metabase/components/Icon";
-import Swapper from "metabase/core/components/Swapper";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Swapper } from "metabase/core/components/Swapper";
+import { Tooltip } from "metabase/core/components/Tooltip";
 
 import { color as c } from "metabase/lib/colors";
 import { ItemIcon, ItemIconContainer } from "./ArchivedItem.styled";

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import Input from "metabase/core/components/Input";
+import { Input } from "metabase/core/components/Input";
 
 export const QuestionPickerRoot = styled.div`
   padding: 1rem;

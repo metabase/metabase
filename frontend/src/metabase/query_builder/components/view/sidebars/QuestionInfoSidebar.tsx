@@ -1,14 +1,14 @@
 import React from "react";
 import { t } from "ttag";
 
-import EditableText from "metabase/core/components/EditableText";
+import { EditableText } from "metabase/core/components/EditableText";
 
 import { PLUGIN_MODERATION, PLUGIN_CACHING } from "metabase/plugins";
 
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
 
 import Question from "metabase-lib/Question";

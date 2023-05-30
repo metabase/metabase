@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { color, lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 
 export const EngineSearchRoot = styled.div`

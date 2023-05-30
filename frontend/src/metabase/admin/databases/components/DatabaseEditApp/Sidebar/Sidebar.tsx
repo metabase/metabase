@@ -1,7 +1,7 @@
 import React, { useCallback, useRef } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";

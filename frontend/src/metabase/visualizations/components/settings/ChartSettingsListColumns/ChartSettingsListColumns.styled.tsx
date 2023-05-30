@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import Select from "metabase/core/components/Select";
+import { Select } from "metabase/core/components/Select";
 
 import { color } from "metabase/lib/colors";
 

@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import NumericInput from "metabase/core/components/NumericInput";
+import { NumericInput } from "metabase/core/components/NumericInput";
 
 export const TimeInputRoot = styled.div`
   display: flex;

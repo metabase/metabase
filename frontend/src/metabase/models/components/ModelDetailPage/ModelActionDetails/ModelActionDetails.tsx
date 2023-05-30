@@ -3,8 +3,8 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
+import { Button } from "metabase/core/components/Button";
+import { Link } from "metabase/core/components/Link";
 
 import Actions from "metabase/entities/actions";
 import Databases from "metabase/entities/databases";

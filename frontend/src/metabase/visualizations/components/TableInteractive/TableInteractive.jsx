@@ -12,9 +12,9 @@ import { Grid, ScrollSync } from "react-virtualized";
 import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/core/components/Tooltip";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
+import { Button } from "metabase/core/components/Button";
+import { Tooltip } from "metabase/core/components/Tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
 import {
@@ -30,7 +30,7 @@ import { getQueryBuilderMode } from "metabase/query_builder/selectors";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
 import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";

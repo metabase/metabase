@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import AdminHeader from "metabase/components/AdminHeader";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 
 import { fetchJobInfo } from "../jobInfo";
 import {

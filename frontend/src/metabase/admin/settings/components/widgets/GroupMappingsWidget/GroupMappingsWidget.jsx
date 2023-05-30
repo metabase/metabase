@@ -7,7 +7,7 @@ import AdminContentTable from "metabase/components/AdminContentTable";
 import { isDefaultGroup } from "metabase/lib/groups";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 
 import SettingToggle from "../SettingToggle";
 import AddMappingRow from "./AddMappingRow";

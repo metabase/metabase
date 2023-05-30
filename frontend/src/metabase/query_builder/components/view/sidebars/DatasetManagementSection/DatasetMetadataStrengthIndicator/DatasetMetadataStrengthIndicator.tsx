@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import { useHoverDirty } from "react-use";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 
 import { color } from "metabase/lib/colors";
 import Question from "metabase-lib/Question";

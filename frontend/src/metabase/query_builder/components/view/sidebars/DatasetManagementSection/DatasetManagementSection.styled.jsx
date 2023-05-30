@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import DefaultButton from "metabase/core/components/Button";
+import { DefaultButton } from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 
 export const SectionTitle = styled.span`

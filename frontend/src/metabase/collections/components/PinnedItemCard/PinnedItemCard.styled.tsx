@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import Card from "metabase/components/Card";
 
 export const ItemCard = styled(Card)``;

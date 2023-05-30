@@ -9,8 +9,8 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 import { useToggle } from "metabase/hooks/use-toggle";
-import Link from "metabase/core/components/Link";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Link } from "metabase/core/components/Link";
+import { Tooltip } from "metabase/core/components/Tooltip";
 
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";

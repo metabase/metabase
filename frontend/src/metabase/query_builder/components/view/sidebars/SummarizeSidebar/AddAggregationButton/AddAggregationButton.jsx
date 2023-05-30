@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";

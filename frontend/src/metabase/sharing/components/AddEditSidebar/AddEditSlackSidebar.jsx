@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon";
 import SchedulePicker from "metabase/containers/SchedulePicker";
 import SendTestPulse from "metabase/components/SendTestPulse";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import Toggle from "metabase/core/components/Toggle";
+import { Toggle } from "metabase/core/components/Toggle";
 
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 

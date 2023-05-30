@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { alpha, color } from "metabase/lib/colors";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import {
   breakpointMinLarge,
   breakpointMinSmall,

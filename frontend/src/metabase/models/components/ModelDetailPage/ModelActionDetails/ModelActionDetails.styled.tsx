@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import Alert from "metabase/core/components/Alert";
+import { Alert } from "metabase/core/components/Alert";
 import EntityMenu from "metabase/components/EntityMenu";
 import { breakpointMaxMedium } from "metabase/styled-components/theme";
 

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 
-import AutocompleteInput from "metabase/core/components/AutocompleteInput";
+import { AutocompleteInput } from "metabase/core/components/AutocompleteInput";
 import { Channel, ChannelSpec } from "metabase-types/api";
 
 const CHANNEL_FIELD_NAME = "channel";

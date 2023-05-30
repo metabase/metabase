@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import { NotebookCell } from "./NotebookCell";
 
 export const FieldPickerContentContainer = styled.div`

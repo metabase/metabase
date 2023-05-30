@@ -5,7 +5,7 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CopyWidget from "metabase/components/CopyWidget";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import Form, {
   FormField,
   FormSubmit,

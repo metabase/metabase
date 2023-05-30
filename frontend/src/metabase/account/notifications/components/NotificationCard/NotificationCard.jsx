@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import Settings from "metabase/lib/settings";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import {
   canArchive,
   formatChannel,

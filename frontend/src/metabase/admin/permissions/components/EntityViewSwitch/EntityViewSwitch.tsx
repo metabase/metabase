@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import Radio from "metabase/core/components/Radio";
+import { Radio } from "metabase/core/components/Radio";
 import { EntityViewSwitchRoot } from "./EntityViewSwitch.styled";
 
 type EntityView = "group" | "database";

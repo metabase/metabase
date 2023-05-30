@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import EditableText from "metabase/core/components/EditableText";
+import { EditableText } from "metabase/core/components/EditableText";
 
 import { color } from "metabase/lib/colors";
 

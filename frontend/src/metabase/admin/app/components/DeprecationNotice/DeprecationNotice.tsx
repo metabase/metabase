@@ -1,6 +1,6 @@
 import React from "react";
 import { jt, t } from "ttag";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import {
   NoticeCloseIcon,
   NoticeContent,

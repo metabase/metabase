@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList";
 
 import { color } from "metabase/lib/colors";

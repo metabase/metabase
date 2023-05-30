@@ -13,7 +13,7 @@ import Table from "metabase/visualizations/visualizations/Table";
 
 import EmptyState from "metabase/components/EmptyState";
 import Icon from "metabase/components/Icon";
-import CheckBox from "metabase/core/components/CheckBox";
+import { CheckBox } from "metabase/core/components/CheckBox";
 import NoResults from "assets/img/no_results.svg";
 import { getRowValuesByColumns, getColumnName } from "../lib/mode";
 import { RemoveRowButton } from "./AuditTableVisualization.styled";

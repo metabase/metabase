@@ -2,7 +2,7 @@ import React from "react";
 import { jt, t } from "ttag";
 import Settings from "metabase/lib/settings";
 import HelpCard from "metabase/components/HelpCard";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 
 export interface DatabaseHelpCardProps {
   className?: string;

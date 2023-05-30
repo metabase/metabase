@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { keyframes } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 
 const expandKeyframes = keyframes`
   50% {

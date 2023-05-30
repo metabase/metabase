@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import { CaveatText } from "./CaveatMessage.styled";
 
 function CaveatMessage() {

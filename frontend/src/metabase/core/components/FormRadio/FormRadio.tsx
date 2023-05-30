@@ -1,7 +1,7 @@
 import React, { forwardRef, Key, ReactNode, Ref } from "react";
 import { useField } from "formik";
 import Radio, { RadioOption, RadioProps } from "metabase/core/components/Radio";
-import FormField from "metabase/core/components/FormField";
+import { FormField } from "metabase/core/components/FormField";
 
 export interface FormRadioProps<
   TValue extends Key = string,

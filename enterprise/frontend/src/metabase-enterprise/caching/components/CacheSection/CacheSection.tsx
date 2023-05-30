@@ -2,9 +2,9 @@ import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
-import NumericInput from "metabase/core/components/NumericInput";
+import { NumericInput } from "metabase/core/components/NumericInput";
 import { color } from "metabase/lib/colors";
 
 import { normalizeCacheTTL } from "../../utils";

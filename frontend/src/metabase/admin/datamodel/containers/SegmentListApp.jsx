@@ -8,8 +8,8 @@ import Segments from "metabase/entities/segments";
 import SegmentItem from "metabase/admin/datamodel/components/SegmentItem";
 import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
 
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
+import { Button } from "metabase/core/components/Button";
+import { Link } from "metabase/core/components/Link";
 
 class SegmentListAppInner extends React.Component {
   render() {

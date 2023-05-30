@@ -1,8 +1,8 @@
 import React from "react";
 import { t } from "ttag";
 
-import TabContent from "metabase/core/components/TabContent";
-import TabLink from "metabase/core/components/TabLink";
+import { TabContent } from "metabase/core/components/TabContent";
+import { TabLink } from "metabase/core/components/TabLink";
 
 import * as Urls from "metabase/lib/urls";
 

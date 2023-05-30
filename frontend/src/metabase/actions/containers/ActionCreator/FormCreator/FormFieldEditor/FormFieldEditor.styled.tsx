@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
-import FormField from "metabase/core/components/FormField";
-import Radio from "metabase/core/components/Radio";
+import { FormField } from "metabase/core/components/FormField";
+import { Radio } from "metabase/core/components/Radio";
 import Icon from "metabase/components/Icon";
 
 import { space } from "metabase/styled-components/theme";

@@ -7,7 +7,7 @@ import { t } from "ttag";
 import L from "metabase/components/List/List.css";
 
 import Icon from "metabase/components/Icon";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import S from "./ReferenceHeader.css";
 
 const ReferenceHeader = ({

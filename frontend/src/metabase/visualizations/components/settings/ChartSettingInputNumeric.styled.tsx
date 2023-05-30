@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import Input from "metabase/core/components/Input";
+import { Input } from "metabase/core/components/Input";
 import { numericInputReset } from "metabase/core/style/input";
 
 export const ChartSettingNumericInput = styled(Input)`

@@ -9,7 +9,7 @@ import React, {
   Ref,
   useRef,
 } from "react";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import {
   DEFAULT_CHECKED_COLOR,
   DEFAULT_ICON_PADDING,

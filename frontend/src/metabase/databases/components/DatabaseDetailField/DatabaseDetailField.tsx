@@ -1,11 +1,11 @@
 import React from "react";
 import { EngineField } from "metabase-types/api";
-import FormNumericInput from "metabase/core/components/FormNumericInput";
-import FormFileInput from "metabase/core/components/FormFileInput";
-import FormInput from "metabase/core/components/FormInput";
-import FormSelect from "metabase/core/components/FormSelect";
-import FormTextArea from "metabase/core/components/FormTextArea";
-import FormToggle from "metabase/core/components/FormToggle";
+import { FormNumericInput } from "metabase/core/components/FormNumericInput";
+import { FormFileInput } from "metabase/core/components/FormFileInput";
+import { FormInput } from "metabase/core/components/FormInput";
+import { FormSelect } from "metabase/core/components/FormSelect";
+import { FormTextArea } from "metabase/core/components/FormTextArea";
+import { FormToggle } from "metabase/core/components/FormToggle";
 import DatabaseInfoField from "../DatabaseInfoField";
 import DatabaseSectionField from "../DatabaseSectionField";
 import { FIELD_OVERRIDES } from "../../constants";

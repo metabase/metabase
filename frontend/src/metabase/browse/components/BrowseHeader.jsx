@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 import { BrowseHeaderContent, BrowseHeaderRoot } from "./BrowseHeader.styled";

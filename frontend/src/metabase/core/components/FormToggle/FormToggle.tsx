@@ -2,7 +2,7 @@ import React, { forwardRef, ReactNode, Ref, useCallback } from "react";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import Toggle, { ToggleProps } from "metabase/core/components/Toggle";
-import FormField from "metabase/core/components/FormField";
+import { FormField } from "metabase/core/components/FormField";
 
 export interface FormToggleProps extends Omit<ToggleProps, "value" | "onBlur"> {
   name: string;

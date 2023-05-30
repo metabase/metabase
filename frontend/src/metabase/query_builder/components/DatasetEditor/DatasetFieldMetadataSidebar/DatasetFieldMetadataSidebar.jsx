@@ -10,7 +10,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import { usePrevious } from "react-use";
 
-import Radio from "metabase/core/components/Radio";
+import { Radio } from "metabase/core/components/Radio";
 
 import {
   field_visibility_types,

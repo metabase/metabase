@@ -5,7 +5,7 @@ import { useUniqueId } from "metabase/hooks/use-unique-id";
 import DateWidget, {
   DateWidgetProps,
 } from "metabase/core/components/DateWidget";
-import FormField from "metabase/core/components/FormField";
+import { FormField } from "metabase/core/components/FormField";
 
 export interface FormDateInputProps
   extends Omit<

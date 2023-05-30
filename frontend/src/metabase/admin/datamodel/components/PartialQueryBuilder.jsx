@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Link from "metabase/core/components/Link";
+import { Link } from "metabase/core/components/Link";
 import { getMetadata } from "metabase/selectors/metadata";
 import Tables from "metabase/entities/tables";
 import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";

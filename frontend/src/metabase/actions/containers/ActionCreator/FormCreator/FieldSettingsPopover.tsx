@@ -1,9 +1,9 @@
 import React, { ChangeEvent, useMemo } from "react";
 import { t } from "ttag";
 
-import Input from "metabase/core/components/Input";
-import Radio from "metabase/core/components/Radio";
-import Toggle from "metabase/core/components/Toggle";
+import { Input } from "metabase/core/components/Input";
+import { Radio } from "metabase/core/components/Radio";
+import { Toggle } from "metabase/core/components/Toggle";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
 import { useUniqueId } from "metabase/hooks/use-unique-id";

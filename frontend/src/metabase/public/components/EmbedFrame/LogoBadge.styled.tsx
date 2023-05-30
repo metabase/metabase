@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 import { breakpointMinMedium } from "metabase/styled-components/theme";
 

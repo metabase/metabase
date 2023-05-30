@@ -6,8 +6,8 @@ import React, {
   useState,
 } from "react";
 import { Moment } from "moment-timezone";
-import DateInput from "metabase/core/components/DateInput";
-import DateSelector from "metabase/core/components/DateSelector";
+import { DateInput } from "metabase/core/components/DateInput";
+import { DateSelector } from "metabase/core/components/DateSelector";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 export type DateWidgetAttributes = Omit<

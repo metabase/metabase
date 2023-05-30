@@ -7,7 +7,7 @@ import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metab
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 
 import Icon from "metabase/components/Icon";
-import Toggle from "metabase/core/components/Toggle";
+import { Toggle } from "metabase/core/components/Toggle";
 import SchedulePicker from "metabase/containers/SchedulePicker";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";

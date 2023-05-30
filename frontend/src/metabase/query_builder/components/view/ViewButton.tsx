@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import { color, alpha } from "metabase/lib/colors";
 
 type Props = {

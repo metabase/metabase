@@ -9,7 +9,7 @@ import {
   breakpointMinSmall,
   breakpointMaxMedium,
 } from "metabase/styled-components/theme";
-import EditableText from "metabase/core/components/EditableText";
+import { EditableText } from "metabase/core/components/EditableText";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 interface TypeForItemsThatRespondToNavBarOpen {

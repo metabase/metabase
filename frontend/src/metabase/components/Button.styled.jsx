@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import PropTypes from "prop-types";
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 
 const FONT_SIZE_VARIANTS = {

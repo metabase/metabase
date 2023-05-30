@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/core/components/Tooltip";
 import { getUser } from "metabase/selectors/user";
 import { getSetting } from "metabase/selectors/settings";
 import { User } from "metabase-types/api";

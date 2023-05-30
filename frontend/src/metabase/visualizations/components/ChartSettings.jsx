@@ -4,8 +4,8 @@ import { assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import Radio from "metabase/core/components/Radio";
+import { Button } from "metabase/core/components/Button";
+import { Radio } from "metabase/core/components/Radio";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 

@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
+import { Button } from "metabase/core/components/Button";
 
 import CustomFormMessage from "./CustomFormMessage";
 import CustomFormSubmit from "./CustomFormSubmit";

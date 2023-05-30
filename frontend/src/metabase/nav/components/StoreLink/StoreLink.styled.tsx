@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { color, darken } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import Icon, { IconWrapper } from "metabase/components/Icon";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { ExternalLink } from "metabase/core/components/ExternalLink";
 
 export const StoreIconRoot = styled(ExternalLink)`
   margin-right: ${space(1)};

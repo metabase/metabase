@@ -6,7 +6,7 @@ import Select, {
   SelectOption,
   SelectProps,
 } from "metabase/core/components/Select";
-import FormField from "metabase/core/components/FormField";
+import { FormField } from "metabase/core/components/FormField";
 
 export interface FormSelectProps<TValue, TOption = SelectOption<TValue>>
   extends Omit<SelectProps<TValue, TOption>, "value"> {
