@@ -174,9 +174,9 @@ A list of all of the possible values in a column. People can use checkboxes to s
 
 If you're not seeing the **Dropdown list** option, and your dashboard filter is based on a column from a:
 
-- **Table or GUI model**: an admin will need to [enable the widget type](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) from Metabase's **Admin settings**.
+- Table or GUI model: an admin will need to [enable the dropdown widget](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) for that column from Metabase's **Admin settings**.
 
-- **SQL model**: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
+- SQL model: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
 
 ### Search box
 
@@ -188,7 +188,7 @@ The search box is a good choice for most columns containing labels, categories, 
 
 An input box that lets people enter plain text (no suggestion list).
 
-Useful for filtering columns that contain free text, such as comments or descriptions. The input box is the default filter widget for columns with more than 100 unique values.
+Useful for looking up partial matches (such as the ["contains" filter](#text-or-category-filter)) in columns that contain free text, such as comments or descriptions. The input box is the default filter widget for columns with more than 100 unique values.
 
 ## Linking filters
 
