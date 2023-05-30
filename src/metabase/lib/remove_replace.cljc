@@ -6,7 +6,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.mbql.util.match :as mbql.match]
    [metabase.util.malli :as mu]))
 
 (defn- stage-paths
@@ -26,13 +26,32 @@
 (declare remove-local-references)
 (declare remove-stage-references)
 
+(defn- update-breakout-order-by
+  [query stage-number [target-op {:keys [temporal-unit binning]} target-ref-id] new-binning new-temporal-unit]
+  (if-let [[order-by-idx _] (->> (lib.util/query-stage query stage-number)
+                                 :order-by
+                                 m/indexed
+                                 (m/find-first (fn [[_idx [_dir _ ordered-clause]]]
+                                                 (and (= (first ordered-clause) target-op)
+                                                      (= (:temporal-unit (second ordered-clause)) temporal-unit)
+                                                      (= (:binning (second ordered-clause)) binning)
+                                                      (= (last ordered-clause) target-ref-id)))))]
+
+    (lib.util/update-query-stage
+      query stage-number
+      update-in [:order-by order-by-idx 2 1]
+      (comp #(m/remove-vals nil? %) merge)
+      {:temporal-unit new-temporal-unit
+       :binning new-binning})
+    query))
+
 (defn- remove-replace-location
   [query stage-number unmodified-query-for-stage location target-clause remove-replace-fn]
   (let [result (lib.util/update-query-stage query stage-number
                                              remove-replace-fn location target-clause)
         target-uuid (lib.util/clause-uuid target-clause)]
     (if (not= query result)
-      (mbql.u/match-one location
+      (mbql.match/match-one location
         [:expressions expr-name]
         (-> result
             (remove-local-references
@@ -71,7 +90,7 @@
                                         [sub-loc]
                                         sub-loc)]
                           (->> clauses
-                               (keep #(mbql.u/match-one sub-loc
+                               (keep #(mbql.match/match-one sub-loc
                                         [target-op _ target-ref-id] [location %]))))))
                     (stage-paths query stage-number))]
     (reduce
@@ -94,7 +113,7 @@
         query))
     query))
 
-(defn- remove-replace* [query stage-number target-clause remove-replace-fn]
+(defn- remove-replace* [query stage-number target-clause remove-or-replace replacement]
   (binding [mu/*enforce* false]
     (let [target-clause (lib.common/->op-arg query stage-number target-clause)
           stage (lib.util/query-stage query stage-number)
@@ -107,7 +126,26 @@
                                target-uuid (lib.util/clause-uuid target-clause)]
                            (when (some (comp #{target-uuid} :lib/uuid second) clauses)
                              possible-location))))
-                     (stage-paths query stage-number))]
+                     (stage-paths query stage-number))
+          replace? (= :replace remove-or-replace)
+          replacement-clause (when replace?
+                               (lib.common/->op-arg query stage-number replacement))
+          remove-replace-fn (if replace?
+                              #(lib.util/replace-clause %1 %2 %3 replacement-clause)
+                              lib.util/remove-clause)
+          query (cond-> query
+                  ;; Keep order in sync by if we are just changing binning or bucketing
+                  (and replace?
+                       (= [:breakout] location)
+                       (and (= (first target-clause)
+                               (first replacement-clause))
+                            (= (last target-clause)
+                               (last replacement-clause))))
+                  (update-breakout-order-by
+                    stage-number
+                    target-clause
+                    (:binning (second replacement-clause))
+                    (:temporal-unit (second replacement-clause))))]
       (if location
         (remove-replace-location query stage-number query location target-clause remove-replace-fn)
         query))))
@@ -120,7 +158,7 @@
   ([query :- :metabase.lib.schema/query
     stage-number :- :int
     target-clause]
-   (remove-replace* query stage-number target-clause lib.util/remove-clause)))
+   (remove-replace* query stage-number target-clause :remove nil)))
 
 (mu/defn replace-clause :- :metabase.lib.schema/query
   "Replaces the `target-clause` with `new-clause` in the `query` stage."
@@ -132,5 +170,4 @@
     stage-number :- :int
     target-clause
     new-clause]
-   (let [replacement (lib.common/->op-arg query stage-number new-clause)]
-     (remove-replace* query stage-number target-clause #(lib.util/replace-clause %1 %2 %3 replacement)))))
+   (remove-replace* query stage-number target-clause :replace new-clause)))
