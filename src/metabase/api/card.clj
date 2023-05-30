@@ -1153,6 +1153,10 @@ saved later when it is ready."
         _                 (upload/load-from-csv driver db-id schema+table-name csv-file)
         _                 (sync/sync-database! database)
         table-id          (t2/select-one-fn :id Table :db_id db-id :%lower.name table-name)]
+    (when (nil? table-id)
+      (driver/drop-table driver db-id table-name)
+      (throw (ex-info (tru "The CSV file was uploaded to {0} but the table could not be found on sync." schema+table-name)
+                      {:status-code 422})))
     (create-card!
      {:collection_id          collection-id,
       :dataset                true
