@@ -1081,23 +1081,23 @@
                 (quot row 4)))})
 
 (deftest migrate-grid-from-18-to-24-test
-  (impl/test-migrations ["v47.00-030" "v47.00-031"] [_migrate!]
+  (impl/test-migrations ["v47.00-031" "v47.00-032"] [_migrate!]
     (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
           migrate!     (partial db.setup/migrate! db-type data-source)
           user         (create-raw-user! (tu.random/random-email))
           dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
                                                                           :creator_id (:id user)}))
-          cases        (for [[col, row, size_x, size_y] [[0, 15, 12, 8],
-                                                         [12, 7, 6, 8],
-                                                         [5, 2, 5, 3],
-                                                         [0, 25, 7, 10,],
-                                                         [0, 2, 5, 3],
-                                                         [6, 7, 6, 8,],
-                                                         [7, 25 ,11 ,10],
-                                                         [0, 7, 6, 4,],
-                                                         [0, 23, 18, 2],
-                                                         [0, 5, 18, 2],
-                                                         [0, 0, 18 ,2],]]
+          cases        (for [[col row size_x size_y] [[0  15 12 8]
+                                                      [12 7  6  8]
+                                                      [5  2  5  3]
+                                                      [0  25 7  10]
+                                                      [0  2  5  3]
+                                                      [6  7  6  8]
+                                                      [7  25 11 10]
+                                                      [0  7  6  4]
+                                                      [0  23 18 2]
+                                                      [0  5  18 2]
+                                                      [0  0  18 2]]]
                          {:row    row
                           :col    col
                           :size_x size_x
@@ -1106,10 +1106,12 @@
                                                  (map #(merge % {:dashboard_id dashboard-id
                                                                  :visualization_settings {}
                                                                  :parameter_mappings     {}}) cases))]
-      (migrate! :up)
-      (is (= (map migrate18-to-24 cases)
-             (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y]) :model/DashboardCard :id [:in dashcard-ids])))
+      (testing "forward migration migrate correclty"
+        (migrate! :up)
+        (is (= (map migrate18-to-24 cases)
+               (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y]) :model/DashboardCard :id [:in dashcard-ids]))))
 
-      (migrate! :down 46)
-      (is (= (->> cases (map migrate18-to-24) (map migrate24-to-18))
-             (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y]) :model/DashboardCard :id [:in dashcard-ids]))))))
+      (testing "downgrade works correctly"
+        (migrate! :down 46)
+        (is (= (->> cases (map migrate18-to-24) (map migrate24-to-18))
+               (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y]) :model/DashboardCard :id [:in dashcard-ids])))))))
