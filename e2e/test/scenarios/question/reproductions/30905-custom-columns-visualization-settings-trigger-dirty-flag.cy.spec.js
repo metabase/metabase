@@ -13,26 +13,6 @@ const question = {
     },
   },
 };
-
-function saveModifiedQuestion() {
-  cy.findByTestId("qb-header-action-panel").within(() => {
-    cy.findByText("Save").click();
-  });
-  modal().within(() => {
-    cy.findByText(/Replace original question/i).should("exist");
-    cy.findByText("Save").click();
-  });
-
-  cy.findByTestId("qb-header-action-panel").within(() => {
-    cy.findByText("Save").should("not.exist");
-  });
-}
-
-function goToExpressionSidebarVisualizationSettings() {
-  cy.findByTestId("viz-settings-button").click();
-  cy.findByTestId(`${EXPRESSION_NAME}-settings-button`).click();
-}
-
 describe("Custom columns visualization settings", () => {
   beforeEach(() => {
     restore();
@@ -94,3 +74,22 @@ describe("Custom columns visualization settings", () => {
     saveModifiedQuestion();
   });
 });
+
+function saveModifiedQuestion() {
+  cy.findByTestId("qb-header-action-panel").within(() => {
+    cy.findByText("Save").click();
+  });
+  modal().within(() => {
+    cy.findByText(/Replace original question/i).should("exist");
+    cy.findByText("Save").click();
+  });
+
+  cy.findByTestId("qb-header-action-panel").within(() => {
+    cy.findByText("Save").should("not.exist");
+  });
+}
+
+function goToExpressionSidebarVisualizationSettings() {
+  cy.findByTestId("viz-settings-button").click();
+  cy.findByTestId(`${EXPRESSION_NAME}-settings-button`).click();
+}
