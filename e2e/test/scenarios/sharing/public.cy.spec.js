@@ -12,6 +12,25 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
+const questionDetails = {
+  name: "sql param",
+  native: {
+    query: "select count(*) from products where {{c}}",
+    "template-tags": {
+      c: {
+        id: "e126f242-fbaa-1feb-7331-21ac59f021cc",
+        name: "c",
+        "display-name": "Category",
+        type: "dimension",
+        dimension: ["field", PRODUCTS.CATEGORY, null],
+        default: null,
+        "widget-type": "category",
+      },
+    },
+  },
+  display: "scalar",
+};
+
 const COUNT_ALL = "200";
 const COUNT_DOOHICKEY = "42";
 
@@ -30,24 +49,7 @@ describe("scenarios > public", () => {
     cy.signInAsAdmin();
 
     // setup parameterized question
-    cy.createNativeQuestion({
-      name: "sql param",
-      native: {
-        query: "select count(*) from products where {{c}}",
-        "template-tags": {
-          c: {
-            id: "e126f242-fbaa-1feb-7331-21ac59f021cc",
-            name: "c",
-            "display-name": "Category",
-            type: "dimension",
-            dimension: ["field", PRODUCTS.CATEGORY, null],
-            default: null,
-            "widget-type": "category",
-          },
-        },
-      },
-      display: "scalar",
-    }).then(({ body }) => {
+    cy.createNativeQuestion(questionDetails).then(({ body }) => {
       questionId = body.id;
     });
   });
