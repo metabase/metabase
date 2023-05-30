@@ -1,4 +1,5 @@
 import React, { forwardRef } from "react";
+import cx from "classnames";
 import Tooltip from "../Tooltip";
 import { Icons } from "./icons";
 
@@ -26,13 +27,13 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
   }: IconProps,
   ref,
 ) {
-  const IconComponent = Icons[name] ?? Icons["unknown"];
+  const IconComponent = Icons[name].component ?? Icons["unknown"].component;
 
   const icon = (
     <IconComponent
       ref={ref}
       aria-label={`${name} icon`}
-      className={className}
+      className={cx(`Icon Icon-${name}`, className)}
       style={style}
       width={size}
       height={size}

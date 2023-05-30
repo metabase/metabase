@@ -257,8 +257,10 @@ text.value-label-white {
   pointer-events: all;
 }
 
-.LineAreaBarChart .dc-chart .event-axis .event-icon {
+/* Overrides dc.js styles */
+.LineAreaBarChart .dc-chart .event-axis .event-icon path {
   fill: var(--color-text-light);
+  stroke: unset;
   shape-rendering: geometricPrecision;
 }
 
@@ -266,9 +268,8 @@ text.value-label-white {
   fill: var(--color-text-light);
 }
 
-.LineAreaBarChart .dc-chart .event-axis .event-tick.hover .event-icon {
+.LineAreaBarChart .dc-chart .event-axis .event-tick.hover .event-icon path {
   fill: var(--color-brand);
-  stroke: var(--color-brand);
 }
 
 .LineAreaBarChart .dc-chart .event-axis .event-tick.hover .event-text {
