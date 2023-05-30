@@ -285,7 +285,12 @@
       add-first-login
       maybe-add-advanced-permissions
       maybe-add-sso-source
-      add-custom-homepage-info))
+      add-custom-homepage-info
+
+      ;; TODO: add dismissed things
+      (assoc :dismissed_toasts
+             (rand-nth [{"custom-homepage-changed" false}
+                        {"custom-homepage-changed" true}]))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
