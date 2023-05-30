@@ -34,9 +34,17 @@ const ROOT_COLLECTION = {
 
 interface SetupOpts {
   card?: Card;
+  height?: number;
+  isActive: boolean;
+  readOnly?: boolean;
 }
 
-const setup = async ({ card = TEST_NATIVE_CARD }: SetupOpts = {}) => {
+const setup = ({
+  card = TEST_NATIVE_CARD,
+  height = 300,
+  isActive,
+  readOnly = false,
+}: SetupOpts) => {
   setupDatabasesEndpoints([TEST_DB]);
 
   const storeInitialState = createMockState({
@@ -59,7 +67,18 @@ const setup = async ({ card = TEST_NATIVE_CARD }: SetupOpts = {}) => {
   );
   const question = checkNotNull(metadata.question(card.id));
 
-  return { query, question };
+  const { rerender } = renderWithProviders(
+    <DatasetQueryEditor
+      isActive={isActive}
+      height={height}
+      query={query}
+      question={question}
+      readOnly={readOnly}
+      onResizeStop={_.noop}
+    />,
+  );
+
+  return { query, question, rerender };
 };
 
 describe("DatasetQueryEditor", () => {
@@ -68,57 +87,33 @@ describe("DatasetQueryEditor", () => {
     fetchMock.get("path:/api/native-query-snippet", () => []);
   });
 
-  it("renders sidebar when query tab is active", async () => {
-    const { query, question } = await setup();
-
-    renderWithProviders(
-      <DatasetQueryEditor
-        isActive={true}
-        height={300}
-        query={query}
-        question={question}
-        readOnly={false}
-        onResizeStop={_.noop}
-      />,
-    );
+  it("renders sidebar when query tab is active", () => {
+    setup({ isActive: true });
 
     expect(
       screen.getByTestId("native-query-editor-sidebar"),
     ).toBeInTheDocument();
+
+    expect(screen.getByTestId("native-query-editor-container")).toBeVisible();
   });
 
-  it("does not render sidebar when query tab is inactive", async () => {
-    const { query, question } = await setup();
-
-    renderWithProviders(
-      <DatasetQueryEditor
-        isActive={false}
-        height={300}
-        query={query}
-        question={question}
-        readOnly={false}
-        onResizeStop={_.noop}
-      />,
-    );
+  it("does not render sidebar when query tab is inactive", () => {
+    setup({ isActive: false });
 
     expect(
       screen.queryByTestId("native-query-editor-sidebar"),
     ).not.toBeInTheDocument();
+
+    expect(
+      screen.getByTestId("native-query-editor-container"),
+    ).not.toBeVisible();
   });
 
-  it("re-renders DatasetQueryEditor when isActive prop changes", async () => {
-    const { query, question } = await setup();
-
-    const { rerender } = renderWithProviders(
-      <DatasetQueryEditor
-        isActive={true}
-        height={0}
-        query={query}
-        question={question}
-        readOnly={false}
-        onResizeStop={_.noop}
-      />,
-    );
+  it("re-renders DatasetQueryEditor when height is 0 and isActive prop changes", async () => {
+    const { query, question, rerender } = await setup({
+      height: 0,
+      isActive: true,
+    });
 
     expect(
       screen.getByTestId("native-query-editor-sidebar"),
