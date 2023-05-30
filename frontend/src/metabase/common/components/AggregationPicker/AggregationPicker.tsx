@@ -4,7 +4,10 @@ import { t } from "ttag";
 import AccordionList from "metabase/core/components/AccordionList";
 import { Icon } from "metabase/core/components/Icon";
 
+import type { Aggregation as LegacyAggregationClause } from "metabase-types/api";
 import * as Lib from "metabase-lib";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Metric from "metabase-lib/metadata/Metric";
 
 import QueryColumnPicker from "../QueryColumnPicker";
 import {
@@ -22,8 +25,10 @@ interface AggregationPickerProps {
   query: Lib.Query;
   stageIndex: number;
   operators: Lib.AggregationOperator[];
+  legacyQuery: StructuredQuery;
   maxHeight?: number;
   onSelect: (operator: Lib.AggregationClause) => void;
+  onSelectLegacy: (operator: LegacyAggregationClause) => void;
   onClose?: () => void;
 }
 
@@ -31,19 +36,27 @@ type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
   operator: Lib.AggregationOperator;
 };
 
+type ListItem = OperatorListItem | Metric;
+
 type Section = {
   name: string;
-  items: OperatorListItem[];
+  items: ListItem[];
   icon?: string;
 };
+
+function isOperatorListItem(item: ListItem): item is OperatorListItem {
+  return !(item instanceof Metric);
+}
 
 export function AggregationPicker({
   className,
   query,
   stageIndex,
   operators,
+  legacyQuery,
   maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
+  onSelectLegacy,
   onClose,
 }: AggregationPickerProps) {
   const [operator, setOperator] = useState<Lib.AggregationOperator | null>(
@@ -57,9 +70,9 @@ export function AggregationPicker({
 
   const sections = useMemo(() => {
     const sections: Section[] = [];
-    const hasOperators = operators.length > 0;
+    const metrics = legacyQuery.table()?.getMetrics() || [];
 
-    if (hasOperators) {
+    if (operators.length > 0) {
       sections.push({
         name: t`Basic Metrics`,
         items: operators.map(operator =>
@@ -69,8 +82,16 @@ export function AggregationPicker({
       });
     }
 
+    if (metrics.length > 0) {
+      sections.push({
+        name: t`Common Metrics`,
+        items: metrics,
+        icon: "star_outline",
+      });
+    }
+
     return sections;
-  }, [query, stageIndex, operators]);
+  }, [query, legacyQuery, stageIndex, operators]);
 
   const checkIsItemSelected = useCallback(
     (item: OperatorListItem) => item.selected,
@@ -106,6 +127,25 @@ export function AggregationPicker({
     [operator, onSelect, onClose],
   );
 
+  const handleMetricSelect = useCallback(
+    (metric: Metric) => {
+      onSelectLegacy(metric.aggregationClause());
+      onClose?.();
+    },
+    [onSelectLegacy, onClose],
+  );
+
+  const handleChange = useCallback(
+    (item: ListItem) => {
+      if (isOperatorListItem(item)) {
+        handleOperatorSelect(item);
+      } else {
+        handleMetricSelect(item);
+      }
+    },
+    [handleOperatorSelect, handleMetricSelect],
+  );
+
   if (operator && operatorInfo?.requiresColumn) {
     const columns = Lib.aggregationOperatorColumns(operator);
     const columnGroups = Lib.groupColumns(columns);
@@ -134,7 +174,7 @@ export function AggregationPicker({
       sections={sections}
       maxHeight={maxHeight}
       alwaysExpanded={false}
-      onChange={handleOperatorSelect}
+      onChange={handleChange}
       itemIsSelected={checkIsItemSelected}
       renderItemName={renderItemName}
       renderItemDescription={omitItemDescription}
@@ -160,20 +200,23 @@ function ColumnPickerHeader({
   );
 }
 
-function renderItemName(item: OperatorListItem) {
-  return item.displayName;
+function renderItemName(item: ListItem) {
+  return isOperatorListItem(item) ? item.displayName : item.displayName();
 }
 
 function omitItemDescription() {
   return null;
 }
 
-function renderItemExtra(item: OperatorListItem) {
-  return (
-    <InfoIconContainer>
-      <Icon name="question" size={20} tooltip={item.description} />
-    </InfoIconContainer>
-  );
+function renderItemExtra(item: ListItem) {
+  if (item.description) {
+    return (
+      <InfoIconContainer>
+        <Icon name="question" size={20} tooltip={item.description} />
+      </InfoIconContainer>
+    );
+  }
+  return null;
 }
 
 function getInitialOperator(
