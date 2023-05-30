@@ -68,7 +68,7 @@
       ;; That is ok, the persisted-info will be marked inactive and the next refresh will try again.
       (execute-with-timeout! conn
                              db-spec
-                             (.toMillis (t/seconds 30))
+                             (.toMillis (t/minutes 10))
                              (into [(sql.ddl/create-table-sql database definition query)] params))
       {:state :success})))
 
