@@ -136,8 +136,11 @@
 (defn do-update-tabs!
   "Given current tabs and new tabs, do the necessary create/update/delete to apply new tab changes.
   Returns:
-  - a map of temporary tab ID to the new real tab ID
-  - a list of deleted tab ids"
+  - `old->new-tab-id`: a map from tab IDs in `new-tabs` to newly created tab IDs
+  - `created-tab-ids`
+  - `updated-tab-ids`
+  - `deleted-tab-ids`
+  - `total-num-tabs`: the total number of active tabs after the operation."
   [dashboard-id current-tabs new-tabs]
   (let [{:keys [to-create
                 to-update
@@ -154,7 +157,7 @@
     (when (seq to-update)
       (update-tabs! current-tabs to-update))
     {:old->new-tab-id old->new-tab-id
-     :created-tab-ids (map :id to-create)
+     :created-tab-ids (vals old->new-tab-id)
      :updated-tab-ids (map :id to-update)
      :deleted-tab-ids to-delete-ids
      :total-num-tabs  (reduce + (map count [to-create to-update]))}))
