@@ -621,13 +621,9 @@
   ;; https://dev.mysql.com/doc/refman/8.0/en/identifier-length.html
   64)
 
-(defn- sanitize-file-name
-  [name]
-  (str/replace name #"[^\w/\\.\s\-]" ""))
-
 (defn- format-load
   [_clause [file-path table-name]]
-  [(format "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" (sanitize-file-name file-path) (sql/format-entity table-name))])
+  [(format "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" file-path (sql/format-entity table-name))])
 
 (sql/register-clause! ::load format-load :insert-into)
 
