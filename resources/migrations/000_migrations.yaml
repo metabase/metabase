@@ -14808,14 +14808,14 @@ databaseChangeLog:
           # new_size_y = size_y + (size_y + row) // 3 - (row // 3)
           # new_row = row + (row // 3)
           - sql:
-              dbms: postgresql,h2
+              dbms: postgresql
               sql: >-
                   update report_dashboardcard set size_x = size_x + floor(cast(size_x + col + 1  as decimal) / 3) - floor(cast(col + 1 as decimal) / 3);
                   update report_dashboardcard set col    = col + floor(cast(col + 1 as decimal) / 3);
                   update report_dashboardcard set size_y = size_y + floor(cast(size_y + row as decimal) / 3) - floor(cast(row as decimal) / 3);
                   update report_dashboardcard set row    = row + floor(cast(row as decimal) / 3);
           - sql:
-              dbms: mysql,mariadb
+              dbms: mysql,mariadb,h2
               sql: >-
                   update report_dashboardcard set size_x = size_x + floor(cast(size_x + col + 1  as decimal) / 3) - floor(cast(col + 1 as decimal) / 3);
                   update report_dashboardcard set col    = col + floor(cast(col + 1 as decimal) / 3);
@@ -14828,7 +14828,7 @@ databaseChangeLog:
           # new_size_y = size_y - ((size_y + row) // 4 - y // 4)
           # new_col = col - col // 4
           - sql:
-              dbms: postgresql,h2
+              dbms: postgresql
               sql: >-
                   update report_dashboardcard set size_x = size_x - (floor(cast(size_x + col as decimal) / 4) - floor(cast(col as decimal) / 4));
                   update report_dashboardcard set col    = col - floor(cast(col as decimal) / 4);
@@ -14836,7 +14836,7 @@ databaseChangeLog:
                   update report_dashboardcard set row    = row - floor(cast(row as decimal) / 4);
 
           - sql:
-              dbms: mysql,mariadb
+              dbms: mysql,mariadb,h2
               sql: >-
                   update report_dashboardcard set size_x = size_x - (floor(cast(size_x + col as decimal) / 4) - floor(cast(col as decimal) / 4));
                   update report_dashboardcard set col    = col - floor(cast(col as decimal) / 4);
