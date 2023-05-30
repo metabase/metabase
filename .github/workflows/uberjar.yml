@@ -87,8 +87,10 @@ jobs:
     steps:
     - name: Extract and clean branch name
       shell: bash
-      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/} | sed 's/[^-._a-zA-Z0-9]/-/g')"
+      run: echo "branch=$(echo $GITHUB_REF_NAME | sed 's/[^-._a-zA-Z0-9]/-/g')" >> $GITHUB_OUTPUT
       id: extract_branch
+    - name: Verify the intended tag of the container image
+      run: echo "Container image will be tagged as ${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}"
     - name: Check out the code (Dockerfile needed)
       uses: actions/checkout@v3
       with:
@@ -203,8 +205,10 @@ jobs:
     steps:
       - name: Extract and clean branch name
         shell: bash
-        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/} | sed 's/[^-._a-zA-Z0-9]/-/g')"
+        run: echo "branch=$(echo $GITHUB_REF_NAME | sed 's/[^-._a-zA-Z0-9]/-/g')" >> $GITHUB_OUTPUT
         id: extract_branch
+      - name: Verify the intended tag of the container image
+        run: echo "Container image will be tagged as ${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}"
       - name: Check out the code (Dockerfile needed)
         uses: actions/checkout@v3
         with:
