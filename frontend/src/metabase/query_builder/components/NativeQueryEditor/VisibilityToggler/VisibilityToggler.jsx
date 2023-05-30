@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { Container, Span } from "./VisibilityToggler.styled";
 
 const propTypes = {

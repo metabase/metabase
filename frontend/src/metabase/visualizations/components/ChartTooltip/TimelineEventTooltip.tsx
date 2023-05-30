@@ -1,5 +1,5 @@
 import React from "react";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { HoveredTimelineEvent } from "./types";
 import {
   TimelineEventDate,

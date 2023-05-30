@@ -6,7 +6,7 @@ import _ from "underscore";
 import Color from "color";
 import cx from "classnames";
 import { formatValue } from "metabase/lib/formatting";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import { color } from "metabase/lib/colors";
 

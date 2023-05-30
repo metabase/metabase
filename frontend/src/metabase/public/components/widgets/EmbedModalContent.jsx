@@ -5,7 +5,7 @@ import { titleize } from "inflection";
 import { t } from "ttag";
 
 import _ from "underscore";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import {
   getSignedPreviewUrl,

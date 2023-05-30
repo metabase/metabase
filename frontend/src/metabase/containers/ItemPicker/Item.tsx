@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 
-import Icon, { IconProps } from "metabase/components/Icon";
+import { Icon, IconProps } from "metabase/core/components/Icon";
 
 import type { PickerItem, PickerItemId } from "./types";
 

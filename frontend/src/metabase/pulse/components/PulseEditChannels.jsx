@@ -8,7 +8,7 @@ import { t } from "ttag";
 import SchedulePicker from "metabase/containers/SchedulePicker";
 import ActionButton from "metabase/components/ActionButton";
 import Toggle from "metabase/core/components/Toggle";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import SlackChannelField from "metabase/sharing/components/SlackChannelField";
 

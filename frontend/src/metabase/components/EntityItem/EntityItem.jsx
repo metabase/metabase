@@ -8,7 +8,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/core/components/Swapper";
 import CheckBox from "metabase/core/components/CheckBox";
 import Ellipsified from "metabase/core/components/Ellipsified";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import {
   isPreviewShown,
   isFullyParametrized,

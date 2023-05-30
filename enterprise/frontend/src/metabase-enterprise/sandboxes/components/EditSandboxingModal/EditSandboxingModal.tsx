@@ -7,7 +7,7 @@ import QuestionPicker from "metabase/containers/QuestionPicker";
 import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import Radio from "metabase/core/components/Radio";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import EntityName from "metabase/entities/containers/EntityName";
 
 import QuestionLoader from "metabase/containers/QuestionLoader";

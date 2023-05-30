@@ -4,7 +4,8 @@ import { t } from "ttag";
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
-import Icon, { IconWrapper } from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
+import { IconWrapper } from "metabase/components/Icon";
 
 export default function PaginationControls({
   page,

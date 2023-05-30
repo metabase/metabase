@@ -9,7 +9,7 @@ import * as MetabaseCore from "metabase/lib/core";
 
 import S from "metabase/components/List/List.css";
 import Select from "metabase/core/components/Select";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { isTypeFK } from "metabase-lib/types/utils/isa";
 import F from "./Field.css";
 

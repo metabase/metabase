@@ -6,7 +6,7 @@ import cx from "classnames";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import Card from "metabase/components/Card";
 import S from "metabase/components/List/List.css";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 const ListItem = ({ name, description, placeholder, url, icon }) => (
   <li className="relative">

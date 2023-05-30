@@ -8,7 +8,7 @@ import Task from "metabase/entities/tasks";
 
 import PaginationControls from "metabase/components/PaginationControls";
 import AdminHeader from "metabase/components/AdminHeader";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 import {

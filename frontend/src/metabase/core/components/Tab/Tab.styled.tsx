@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { color, alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { focusOutlineStyle } from "metabase/core/style/input";
 
 export interface TabProps {

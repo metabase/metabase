@@ -8,7 +8,7 @@ import cx from "classnames";
 import { getDateStyleFromSettings } from "metabase/lib/time";
 import Calendar from "metabase/components/Calendar";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import ExpandingContent from "metabase/components/ExpandingContent";
 import HoursMinutesInput from "../DatePicker/HoursMinutesInput";
 

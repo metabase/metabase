@@ -1,7 +1,7 @@
 import React, { HTMLAttributes } from "react";
 import { t } from "ttag";
 
-import { IconProps } from "metabase/components/Icon";
+import { IconProps } from "metabase/core/components/Icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 
 import type {

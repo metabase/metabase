@@ -4,7 +4,7 @@ import React from "react";
 import cx from "classnames";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
 
 import AlertListPopoverContent from "../AlertListPopoverContent";

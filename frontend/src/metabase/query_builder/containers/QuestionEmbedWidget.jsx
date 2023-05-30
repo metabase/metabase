@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 

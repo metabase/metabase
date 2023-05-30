@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";
-import { IconProps } from "metabase/components/Icon";
+import { IconProps } from "metabase/core/components/Icon";
 
 import {
   FullWidthLink,

@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 
 import { ICON_PATHS, loadIcon, parseViewBox } from "metabase/icon_paths";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 // find the first icon with a non standard viewBox
 const NON_STANDARD_VIEWBOX_ICON = Object.keys(ICON_PATHS).find(key => {

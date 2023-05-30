@@ -6,7 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import Database from "metabase/entities/databases";
 import EntityItem from "metabase/components/EntityItem";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { Grid } from "metabase/components/Grid";
 import {
   isVirtualCardId,

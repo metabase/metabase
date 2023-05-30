@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 
 import type { DashboardOrderedCard, ClickBehavior } from "metabase-types/api";

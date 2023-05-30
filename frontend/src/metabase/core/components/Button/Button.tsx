@@ -10,7 +10,7 @@ import styled from "@emotion/styled";
 import { color, space } from "styled-system";
 import type { SpaceProps } from "styled-system";
 import _ from "underscore";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import {
   ButtonContent,
   ButtonRoot,

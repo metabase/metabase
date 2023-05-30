@@ -11,7 +11,7 @@ import { Grid, ScrollSync } from "react-virtualized";
 
 import "./TableInteractive.css";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";

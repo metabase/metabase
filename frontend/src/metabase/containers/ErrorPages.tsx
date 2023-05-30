@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 
 import type { ErrorDetailsProps } from "metabase/components/ErrorDetails/types";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
 import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
 

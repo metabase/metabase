@@ -5,7 +5,7 @@ import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 import { usePrevious } from "react-use";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import PaginationControls from "metabase/components/PaginationControls";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 

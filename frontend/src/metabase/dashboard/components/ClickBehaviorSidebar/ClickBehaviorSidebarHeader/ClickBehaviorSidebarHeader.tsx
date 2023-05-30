@@ -1,7 +1,7 @@
 import React from "react";
 import { t, jt } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import type { DashboardOrderedCard, DatasetColumn } from "metabase-types/api";
 

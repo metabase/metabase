@@ -4,7 +4,7 @@ import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 
 const SnippetSidebarButton = ({
