@@ -70,7 +70,9 @@ export function AggregationPicker({
 
   const sections = useMemo(() => {
     const sections: Section[] = [];
-    const metrics = legacyQuery.table()?.getMetrics() || [];
+
+    const unfilteredMetrics = legacyQuery.table()?.getMetrics() ?? [];
+    const metrics = unfilteredMetrics.filter(metric => !metric.archived);
 
     if (operators.length > 0) {
       sections.push({
