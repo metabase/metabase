@@ -183,6 +183,7 @@ function ActionCreator({
 }
 
 function ensureAceEditorClosed() {
+  // @ts-expect-error — `ace` isn't typed yet
   const editor = window.ace?.edit(ACE_ELEMENT_ID);
   editor?.completer?.popup?.hide();
 }

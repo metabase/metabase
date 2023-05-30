@@ -1,6 +1,5 @@
 interface Window {
   MetabaseBootstrap: any;
-  ace: any;
 }
 
 // This allows importing static SVGs from TypeScript files
