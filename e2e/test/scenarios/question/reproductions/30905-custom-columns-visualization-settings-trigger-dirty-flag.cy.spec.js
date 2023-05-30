@@ -14,6 +14,25 @@ const question = {
   },
 };
 
+function saveModifiedQuestion() {
+  cy.findByTestId("qb-header-action-panel").within(() => {
+    cy.findByText("Save").click();
+  });
+  modal().within(() => {
+    cy.findByText(/Replace original question/i).should("exist");
+    cy.findByText("Save").click();
+  });
+
+  cy.findByTestId("qb-header-action-panel").within(() => {
+    cy.findByText("Save").should("not.exist");
+  });
+}
+
+function goToExpressionSidebarVisualizationSettings() {
+  cy.findByTestId("viz-settings-button").click();
+  cy.findByTestId(`${EXPRESSION_NAME}-settings-button`).click();
+}
+
 describe("Custom columns visualization settings", () => {
   beforeEach(() => {
     restore();
@@ -25,21 +44,53 @@ describe("Custom columns visualization settings", () => {
     });
   });
 
-  it("should not show 'Save' after modifying visualization settings for a custom column", () => {
-    cy.findByTestId("viz-settings-button").click();
-    cy.findByTestId(`${EXPRESSION_NAME}-settings-button`).click();
+  it("should not show 'Save' after modifying minibar settings for a custom column", () => {
+    goToExpressionSidebarVisualizationSettings();
     popover().within(() => {
-      cy.get("#show_mini_bar").parent().findByRole("switch").click();
+      const miniBarSwitch = cy
+        .get("#show_mini_bar")
+        .parent()
+        .findByRole("switch");
+      miniBarSwitch.click();
+      miniBarSwitch.should("be.checked");
     });
-    cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.findByText("Save").click();
-    });
-    modal().within(() => {
-      cy.findByText("Save").click();
+    saveModifiedQuestion();
+  });
+
+  it("should not show 'Save' after text formatting visualization settings", () => {
+    goToExpressionSidebarVisualizationSettings();
+
+    popover().within(() => {
+      const viewAsDropdown = cy
+        .get("#view_as")
+        .parent()
+        .findByTestId("select-button");
+      viewAsDropdown.click();
     });
 
-    cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.findByText("Save").should("not.exist");
+    cy.findByLabelText("Email link").click();
+
+    popover().within(() => {
+      cy.findByText("Email link").should("exist");
     });
+
+    saveModifiedQuestion();
+  });
+
+  it("should not show 'Save' after saving viz settings from the custom column dropdown", () => {
+    cy.findAllByTestId("header-cell").contains(EXPRESSION_NAME).click();
+    popover().within(() => {
+      cy.findByRole("button", { name: /gear icon/i }).click();
+    });
+    popover().within(() => {
+      const miniBarSwitch = cy
+        .get("#show_mini_bar")
+        .parent()
+        .findByRole("switch");
+      miniBarSwitch.click();
+      miniBarSwitch.should("be.checked");
+    });
+
+    saveModifiedQuestion();
   });
 });
