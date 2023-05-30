@@ -3,21 +3,28 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config :as config]
+   [metabase.core :as mbc]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models :refer [Database]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.util.honeysql-extensions :as hx]))
+   [toucan2.core :as t2]))
+
+;; TODO: remove hx from this test
+#_{:clj-kondo/ignore [:discouraged-namespace]}
+(require '[metabase.util.honeysql-extensions :as hx])
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :each (fn [thunk]
                       ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these tests.
+                      #_{:clj-kondo/ignore [:unresolved-var]}
                       (binding [hx/*honey-sql-version* 2]
                         (thunk))))
 
@@ -281,3 +288,23 @@
       (mt/with-empty-db
         (is (= #{"PUBLIC"}
                (driver/syncable-schemas driver/*driver* (mt/id))))))))
+
+(deftest syncable-audit-db-test
+  (mt/test-driver :h2
+    (when config/ee-available?
+      (let [audit-db-expected-id 13371337
+            original-audit-db    (t2/select-one 'Database :is_audit true)]
+        (is (not= ::mbc/noop (mbc/ensure-audit-db-installed!))
+            "Make sure we call the right ensure-audit-db-installed! impl")
+        (try
+          (testing "spec obtained from audit db has no connection string, and that works OK."
+            (let [audit-db-id (t2/select-one-fn :id 'Database :is_audit true)]
+              (is (= audit-db-expected-id audit-db-id))
+              (let [audit-db-pooled-spec (metabase.driver.sql-jdbc.connection/db->pooled-connection-spec audit-db-id)]
+                (is (= "com.mchange.v2.c3p0.PoolBackedDataSource" (pr-str (type (:datasource audit-db-pooled-spec)))))
+                (let [spec (sql-jdbc.conn/connection-details->spec :h2 audit-db-pooled-spec)]
+                  (is (= #{:classname :subprotocol :subname :datasource}
+                         (set (keys spec))))))))
+          (finally
+            (t2/delete! Database :is_audit true)
+            (when original-audit-db (mbc/ensure-audit-db-installed!))))))))

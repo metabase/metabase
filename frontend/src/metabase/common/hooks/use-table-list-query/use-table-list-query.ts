@@ -14,6 +14,7 @@ export const useTableListQuery = (
     fetchList: Tables.actions.fetchList,
     getList: Tables.selectors.getList,
     getLoading: Tables.selectors.getLoading,
+    getLoaded: Tables.selectors.getLoaded,
     getError: Tables.selectors.getError,
   });
 };

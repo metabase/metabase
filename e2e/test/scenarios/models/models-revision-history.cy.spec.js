@@ -23,7 +23,7 @@ describe("scenarios > models > revision history", () => {
     cy.location("pathname").should("match", /^\/question\/3/);
     cy.get(".LineAreaBarChart");
 
-    revertTo("^Turned this into a model");
+    revertTo("You edited this");
     cy.wait("@modelQuery3");
 
     cy.location("pathname").should("match", /^\/model\/3/);

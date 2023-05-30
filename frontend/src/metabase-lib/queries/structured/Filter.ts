@@ -119,7 +119,7 @@ export default class Filter extends MBQLClause {
       if (operator) {
         const args = this.arguments();
 
-        // has the mininum number of arguments
+        // has the minimum number of arguments
         if (args.length < operator.fields.length) {
           return false;
         }

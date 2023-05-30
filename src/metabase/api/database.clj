@@ -518,7 +518,8 @@
                              (and (empty? search-id) (not-empty search-name))
                              [:like [:lower :report_card.name] (str "%" search-name "%")])]
                 :left-join [[:collection :collection] [:= :collection.id :report_card.collection_id]]
-                :order-by [[:report_card.id :desc]]
+                :order-by [[:dataset :desc]         ; prioritize models
+                           [:report_card.id :desc]] ; then most recently created
                 :limit    50})))
 
 (defn- autocomplete-fields [db-id search-string limit]
@@ -902,6 +903,11 @@
                                    :caveats            caveats
                                    :points_of_interest points_of_interest
                                    :auto_run_queries   auto_run_queries}
+                                  ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
+                                  (when (seq settings)
+                                    {:settings (into {}
+                                                     (remove (fn [[_k v]] (nil? v)))
+                                                     (merge (:settings existing-database) settings))})
                                   (cond
                                     ;; transition back to metabase managed schedules. the schedule
                                     ;; details, even if provided, are ignored. database is the
@@ -912,15 +918,7 @@
 
                                     ;; if user is controlling schedules
                                     (:let-user-control-scheduling details)
-                                    (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))
-
-                                    ;; upsert settings with a PATCH-style update. `nil` key means unset
-                                    ;; the Setting.
-                                    (seq settings)
-                                    {:settings (into {}
-                                                     (remove (fn [[_k v]] (nil? v)))
-                                                     (merge (:settings existing-database)
-                                                            settings))})))
+                                    (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules)))))
         ;; do nothing in the case that user is not in control of
         ;; scheduling. leave them as they are in the db
 
@@ -966,10 +964,10 @@
 ;; Currently these match the titles of the admin UI buttons that call these endpoints
 
 ;; Should somehow trigger sync-database/sync-database!
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/sync_schema"
+(api/defendpoint POST "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
   [id]
+  {id ms/PositiveInt}
   ;; just wrap this in a future so it happens async
   (let [db (api/write-check (t2/select-one Database :id id))]
     (future
@@ -998,10 +996,10 @@
   true)
 
 ;; Should somehow trigger cached-values/cache-field-values-for-database!
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/rescan_values"
+(api/defendpoint POST "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [id]
+  {id ms/PositiveInt}
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (t2/select-one Database :id id))]
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
