@@ -5,7 +5,7 @@ import {
   TabButton as BaseTabButton,
   RenameableTabButtonProps,
 } from "metabase/core/components/TabButton";
-import { BaseButton } from "metabase/core/components/Button";
+import { Button as BaseButton } from "metabase/core/components/Button";
 
 export const Container = styled.div`
   display: flex;
