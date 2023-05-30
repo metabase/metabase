@@ -790,11 +790,13 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * @param includedBreakout The breakout to include in the options even if it's already used. If true, include all options.
    * @param fieldFilter An option @type {Field} predicate to filter out options
+   * @param isValidation Temporary flag to ensure MLv1 and MLv2 compat during query clean phase
    * @returns @type {DimensionOptions} that can be used as breakouts, excluding used breakouts, unless @param {breakout} is provided.
    */
   breakoutOptions(
     includedBreakout?: any,
     fieldFilter: FieldFilterFn = () => true,
+    isValidation = false,
   ): DimensionOptions {
     // the collection of field dimensions
     const breakoutDimensions =
@@ -804,13 +806,18 @@ class StructuredQueryInner extends AtomicQuery {
             .filter(breakout => !_.isEqual(breakout, includedBreakout))
             .map(breakout => breakout.dimension());
 
-    return this.dimensionOptionsForValidation(
-      dimension =>
+    function filter(dimension: Dimension) {
+      return (
         fieldFilter(dimension.field()) &&
         !breakoutDimensions.some(breakoutDimension =>
           breakoutDimension.isSameBaseDimension(dimension),
-        ),
-    );
+        )
+      );
+    }
+
+    return isValidation
+      ? this.dimensionOptionsForValidation(filter)
+      : this.dimensionOptions(filter);
   }
 
   /**
