@@ -14,9 +14,12 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 import { checkNotNull } from "metabase/core/utils/types";
-import DatasetQueryEditor from "metabase/query_builder/components/DatasetEditor/DatasetQueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
+
+const { NativeQueryEditor } = jest.requireActual(
+  "metabase/query_builder/components/NativeQueryEditor",
+);
 
 const TEST_DB = createSampleDatabase();
 
@@ -39,7 +42,7 @@ interface SetupOpts {
   readOnly?: boolean;
 }
 
-const setup = ({
+const setup = async ({
   card = TEST_NATIVE_CARD,
   height = 300,
   isActive,
@@ -67,6 +70,10 @@ const setup = ({
   );
   const question = checkNotNull(metadata.question(card.id));
 
+  const { default: DatasetQueryEditor } = await import(
+    "metabase/query_builder/components/DatasetEditor/DatasetQueryEditor"
+  );
+
   const { rerender } = renderWithProviders(
     <DatasetQueryEditor
       isActive={isActive}
@@ -85,32 +92,38 @@ describe("DatasetQueryEditor", () => {
   beforeEach(() => {
     fetchMock.get("path:/api/collection", [ROOT_COLLECTION]);
     fetchMock.get("path:/api/native-query-snippet", () => []);
+
+    jest.unmock("metabase/query_builder/components/NativeQueryEditor");
+
+    jest
+      .spyOn(NativeQueryEditor.prototype, "loadAceEditor")
+      .mockImplementation(_.noop);
   });
 
-  it("renders sidebar when query tab is active", () => {
-    setup({ isActive: true });
+  it("renders sidebar when query tab is active", async () => {
+    await setup({ isActive: true });
 
     expect(
       screen.getByTestId("native-query-editor-sidebar"),
     ).toBeInTheDocument();
   });
 
-  it("shows the native query editor container when query tab is active", () => {
-    setup({ isActive: true });
+  it("shows the native query editor container when query tab is active", async () => {
+    await setup({ isActive: true });
 
     expect(screen.getByTestId("native-query-editor-container")).toBeVisible();
   });
 
-  it("does not render sidebar when query tab is inactive", () => {
-    setup({ isActive: false });
+  it("does not render sidebar when query tab is inactive", async () => {
+    await setup({ isActive: false });
 
     expect(
       screen.queryByTestId("native-query-editor-sidebar"),
     ).not.toBeInTheDocument();
   });
 
-  it("hides the native query editor container when query tab is inactive", () => {
-    setup({ isActive: false });
+  it("hides the native query editor container when query tab is inactive", async () => {
+    await setup({ isActive: false });
 
     expect(
       screen.getByTestId("native-query-editor-container"),
@@ -126,6 +139,10 @@ describe("DatasetQueryEditor", () => {
     expect(
       screen.getByTestId("native-query-editor-sidebar"),
     ).toBeInTheDocument();
+
+    const { default: DatasetQueryEditor } = await import(
+      "metabase/query_builder/components/DatasetEditor/DatasetQueryEditor"
+    );
 
     rerender(
       <DatasetQueryEditor
