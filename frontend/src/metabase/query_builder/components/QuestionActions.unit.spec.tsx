@@ -41,7 +41,6 @@ function setup({ card = TEST_STRUCTURED_CARD } = {}) {
       turnDatasetIntoQuestion={jest.fn()}
       onInfoClick={jest.fn()}
       onModelPersistenceChange={jest.fn()}
-      isModerator={false}
     />,
     { storeInitialState: state },
   );
@@ -60,6 +59,7 @@ describe("Question Actions | Icons", () => {
 
         await userEvent.hover(screen.getByRole("button", { name: label }));
         const tooltip = screen.getByRole("tooltip", { name: tooltipText });
+        expect(tooltip).toHaveAttribute("data-placement", "top");
         expect(tooltip).toHaveTextContent(tooltipText);
       });
     });

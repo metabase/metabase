@@ -53,7 +53,6 @@ interface Props {
   turnDatasetIntoQuestion: () => void;
   onInfoClick: () => void;
   onModelPersistenceChange: () => void;
-  isModerator: boolean;
 }
 
 const QuestionActions = ({
