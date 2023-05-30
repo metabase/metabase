@@ -20,7 +20,7 @@ const aggTetherOptions = {
 };
 
 export function AggregateStep({
-  query,
+  query: legacyQuery,
   topLevelQuery,
   step,
   color,
@@ -74,7 +74,12 @@ export function AggregateStep({
       renderPopover={(aggregation, index) => (
         <AggregationPicker
           query={topLevelQuery}
-          legacyQuery={query}
+          legacyQuery={legacyQuery}
+          legacyClause={
+            typeof index === "number"
+              ? legacyQuery.aggregations()[index]
+              : undefined
+          }
           stageIndex={stageIndex}
           operators={
             aggregation
@@ -92,9 +97,11 @@ export function AggregateStep({
           onSelectLegacy={newLegacyAggregation => {
             const isUpdate = aggregation != null && typeof index === "number";
             if (isUpdate) {
-              updateQuery(query.updateAggregation(index, newLegacyAggregation));
+              updateQuery(
+                legacyQuery.updateAggregation(index, newLegacyAggregation),
+              );
             } else {
-              updateQuery(query.aggregate(newLegacyAggregation));
+              updateQuery(legacyQuery.aggregate(newLegacyAggregation));
             }
           }}
         />
