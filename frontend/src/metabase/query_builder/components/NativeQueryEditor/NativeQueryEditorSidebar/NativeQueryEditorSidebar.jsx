@@ -77,7 +77,7 @@ const NativeQueryEditorSidebar = props => {
   const canRunQuery = runQuery && cancelQuery;
 
   return (
-    <Container>
+    <Container data-testid="native-query-editor-sidebar">
       {canUsePromptInput && features.promptInput && !isPromptInputVisible ? (
         <Tooltip tooltip={t`Ask a question`}>
           <SidebarButton
