@@ -654,9 +654,7 @@
 
 (defn- get-global-variable
   "The value of the given global variable in the DB. Does not do any type coercion, so, e.g., booleans come back as
-  \"ON\" and \"OFF\".
-
-  Only public for testing purposes."
+  \"ON\" and \"OFF\"."
   [db-id var-name]
   (:value
    (first
