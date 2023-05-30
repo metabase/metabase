@@ -1,11 +1,10 @@
 import React from "react";
 import { t } from "ttag";
-import type { UniqueIdentifier } from "@dnd-kit/core";
 
 import { TabRow } from "metabase/core/components/TabRow";
-import { SelectedTabId, StoreDashboardTab } from "metabase-types/store";
-
+import { SelectedTabId } from "metabase-types/store";
 import { Sortable } from "metabase/core/components/Sortable";
+
 import {
   Container,
   Tab,
@@ -42,9 +41,6 @@ export function DashboardTabs({ isEditing }: DashboardTabsProps) {
         onChange={selectTab}
         itemIds={tabs.map(tab => tab.id)}
         handleDragEnd={moveTab}
-        renderDragOverlayChildren={activeId => (
-          <DragOverlayTab tabs={tabs} activeId={activeId} />
-        )}
       >
         {showPlaceholder ? (
           <PlaceholderTab
@@ -80,20 +76,4 @@ export function DashboardTabs({ isEditing }: DashboardTabsProps) {
       </TabRow>
     </Container>
   );
-}
-
-function DragOverlayTab({
-  tabs,
-  activeId,
-}: {
-  tabs: StoreDashboardTab[];
-  activeId: UniqueIdentifier;
-}) {
-  const parsedId = typeof activeId === "number" ? activeId : parseInt(activeId);
-  const tab = tabs.find(tab => tab.id === parsedId);
-  if (!tab) {
-    return null;
-  }
-
-  return <PlaceholderTab label={tab.name} />;
 }

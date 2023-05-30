@@ -22,7 +22,6 @@ interface TabRowProps<T> extends TabListProps<T> {
     activeId: UniqueIdentifier,
     overId: UniqueIdentifier,
   ) => void;
-  renderDragOverlayChildren?: (activeId: UniqueIdentifier) => JSX.Element;
 }
 
 function TabRowInner<T>({
@@ -31,7 +30,6 @@ function TabRowInner<T>({
   children,
   itemIds,
   handleDragEnd,
-  renderDragOverlayChildren,
   ...props
 }: TabRowProps<T>) {
   const tabListRef = useRef<HTMLDivElement>(null);
