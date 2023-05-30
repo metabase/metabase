@@ -6,6 +6,8 @@ import { Icon } from "metabase/core/components/Icon";
 
 import type { Aggregation as LegacyAggregationClause } from "metabase-types/api";
 import * as Lib from "metabase-lib";
+import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
+import type LegacyAggregation from "metabase-lib/queries/structured/Aggregation";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Metric from "metabase-lib/metadata/Metric";
 
@@ -26,6 +28,7 @@ interface AggregationPickerProps {
   stageIndex: number;
   operators: Lib.AggregationOperator[];
   legacyQuery: StructuredQuery;
+  legacyClause?: LegacyAggregation;
   maxHeight?: number;
   onSelect: (operator: Lib.AggregationClause) => void;
   onSelectLegacy: (operator: LegacyAggregationClause) => void;
@@ -54,6 +57,7 @@ export function AggregationPicker({
   stageIndex,
   operators,
   legacyQuery,
+  legacyClause,
   maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
   onSelectLegacy,
@@ -96,8 +100,16 @@ export function AggregationPicker({
   }, [query, legacyQuery, stageIndex, operators]);
 
   const checkIsItemSelected = useCallback(
-    (item: OperatorListItem) => item.selected,
-    [],
+    (item: ListItem) => {
+      if (isOperatorListItem(item)) {
+        return item.selected;
+      }
+      if (legacyClause) {
+        return AGGREGATION.getMetric(legacyClause) === item.id;
+      }
+      return false;
+    },
+    [legacyClause],
   );
 
   const handleOperatorSelect = useCallback(
