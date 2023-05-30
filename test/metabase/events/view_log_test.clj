@@ -118,6 +118,34 @@
                   {:model "card" :model_id (u/the-id dataset)}]
                  recent-views))))))))
 
+(deftest user-dismissed-toasts-setting-test
+  (testing "user-dismissed-toasts! updates user-dismissed-toasts"
+    (binding [metabase.models.setting/*user-local-values* (delay (atom {:user_dismissed_toasts []}))]
+      (is (= false (:custom_homepage_changed (view-log/user-dismissed-toasts))))
+      (view-log/user-dismissed-toasts! [:add :custom_homepage_changed])
+      (is (= true (:custom_homepage_changed (view-log/user-dismissed-toasts))))
+      (view-log/user-dismissed-toasts! [:remove :custom_homepage_changed])
+      (is (= false (:custom_homepage_changed (view-log/user-dismissed-toasts)))))))
+
+(deftest user-dismissed-toasts-api-test
+  (testing "User's dismissed toasts are updated when POSTs are sent to api/user/:id/dismissed/:toast-name"
+    (mt/with-test-user :crowberto
+      (view-log/user-dismissed-toasts! [:remove :custom_homepage_changed]))
+    (is (false? (-> (mt/user-http-request :crowberto :get 200 "user/current")
+                    (get-in [:dismissed_toasts :custom_homepage_changed]))))
+    (is (= {:success true}
+           (mt/user-http-request :crowberto :post 200
+                                 (str "user/" (mt/user->id :crowberto) "/dismissed/custom_homepage_changed"))))
+    (is (true? (-> (mt/user-http-request :crowberto :get 200 "user/current")
+                   (get-in [:dismissed_toasts :custom_homepage_changed]))))))
+
+(deftest user-dismissed-toasts-for-other-users-test
+  (testing "User cannot affect another's dismissed toasts."
+    (mt/user-http-request :crowberto :post 403
+                          (str "user/" (mt/user->id :rasta) "/dismissed/custom_homepage_changed"))
+        (mt/user-http-request :crowberto :post 403
+                              (str "user/" (+ (mt/user->id :crowberto) (rand-int 100) 1) "/dismissed/custom_homepage_changed"))))
+
 (deftest most-recently-viewed-dashboard-test
   (t2.with-temp/with-temp [Dashboard dash {:name "Look at this Distinguished Dashboard!"}]
     (mt/with-model-cleanup [ViewLog]

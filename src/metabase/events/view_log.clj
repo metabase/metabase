@@ -2,6 +2,7 @@
   (:require
    [clojure.core.async :as a]
    [java-time :as t]
+   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.db.connection :as mdb.connection]
    [metabase.events :as events]
@@ -11,6 +12,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (def ^:private view-log-topics
@@ -104,6 +106,37 @@
                                   (recent-views-from-view-log api/*current-user-id*))]
                   (setting/set-value-of-type! :json :user-recent-views views)
                   views)))))
+
+(def toast-name-enum
+  "Names of pages that can have toasts, or other popups dismissed. Dismissed toasts should not be shown again."
+  [:enum
+   :custom_homepage_changed])
+
+(mu/defn user-dismissed-toasts-setter
+  "Setter for user-dismissed-toasts"
+  [[op :- [:enum :add :remove]
+    toast-name :- toast-name-enum]]
+  (let [old (or (setting/get-value-of-type :json :user-dismissed-toasts) [])
+        new (vec
+             (distinct
+              (case op
+                :remove (remove #{(name toast-name)} old)
+                :add (conj old (name toast-name)))))]
+    (log/fatal (pr-str [old toast-name new]))
+    (setting/set-value-of-type! :json :user-dismissed-toasts new)
+    new))
+
+(defsetting user-dismissed-toasts
+  (deferred-tru "Toast names where the user has dismissed the toast.")
+  :user-local :only
+  :type :json
+  ;; This will produce a map with all toast-name-enums as keys, and true for each toast-name iff it has been dismissed.
+  :getter (fn [] (merge
+                 (zipmap (mc/children toast-name-enum) (repeat false))
+                 (zipmap
+                  (mapv keyword (setting/get-value-of-type :json :user-dismissed-toasts))
+                  (repeat true))))
+  :setter user-dismissed-toasts-setter)
 
 ;; TODO: remove this setting as part of Audit V2 project.
 (defsetting most-recently-viewed-dashboard

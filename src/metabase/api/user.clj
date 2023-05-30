@@ -10,6 +10,7 @@
    [metabase.api.ldap :as api.ldap]
    [metabase.api.session :as api.session]
    [metabase.email.messages :as messages]
+   [metabase.events.view-log :as view-log]
    [metabase.integrations.google :as google]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -26,6 +27,7 @@
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as s]
@@ -275,8 +277,7 @@
     (assoc user :custom_homepage (when valid?
                                    {:dashboard_id id}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/current"
+(api/defendpoint GET "/current"
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
@@ -286,11 +287,7 @@
       maybe-add-advanced-permissions
       maybe-add-sso-source
       add-custom-homepage-info
-
-      ;; TODO: add dismissed things
-      (assoc :dismissed_toasts
-             (rand-nth [{"custom-homepage-changed" false}
-                        {"custom-homepage-changed" true}]))))
+      (assoc :dismissed_toasts (view-log/user-dismissed-toasts))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
@@ -493,6 +490,14 @@
                               {:modal modal
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
     (api/check-500 (pos? (t2/update! User id {k false}))))
+  {:success true})
+
+(api/defendpoint POST "/:user-id/dismissed/:toast-name"
+  [user-id toast-name]
+  {user-id ms/PositiveInt
+   toast-name view-log/toast-name-enum}
+  (api/check-403 (= user-id api/*current-user-id*))
+  (view-log/user-dismissed-toasts! [:add toast-name])
   {:success true})
 
 #_{:clj-kondo/ignore [:deprecated-var]}
