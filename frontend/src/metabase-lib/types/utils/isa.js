@@ -187,6 +187,9 @@ export const isDescription = field =>
 export const isComment = field =>
   field && isa(field.semantic_type, TYPE.Comment);
 
+export const isLongText = field =>
+  field && (isComment(field) || isDescription(field));
+
 export const isID = field => isFK(field) || isPK(field);
 
 export const isURL = field => field && isa(field.semantic_type, TYPE.URL);
