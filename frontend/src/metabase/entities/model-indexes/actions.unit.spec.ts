@@ -37,9 +37,9 @@ describe("Entities > model-indexes > actions", () => {
         createMockField(),
       ]);
 
-      const cleanedQuestion = cleanIndexFlags(model);
+      const cleanedFields = cleanIndexFlags(model.getResultMetadata());
 
-      cleanedQuestion.getResultMetadata().forEach((field: any) => {
+      cleanedFields.forEach((field: any) => {
         expect(field?.should_index).toBeUndefined();
       });
     });
@@ -50,7 +50,7 @@ describe("Entities > model-indexes > actions", () => {
         createMockField({ should_index: true }),
       ]);
 
-      cleanIndexFlags(model);
+      cleanIndexFlags(model.getResultMetadata());
 
       model.getResultMetadata().forEach((field: any) => {
         expect(field?.should_index).toBe(true);
