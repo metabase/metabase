@@ -8,7 +8,10 @@ import {
 } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
 
-import { isExpressionField } from "metabase-lib/queries/utils/field-ref";
+import {
+  isExpressionField,
+  isSameField,
+} from "metabase-lib/queries/utils/field-ref";
 import { FieldDimension } from "metabase-lib/Dimension";
 // Drill-down progressions are defined as a series of steps, where each step has one or more dimension <-> breakout
 // transforms.
@@ -451,7 +454,13 @@ function columnToFieldDimension(column, metadata) {
     return;
   }
 
-  const dimension = new FieldDimension(column.id, null, metadata);
+  let dimension = new FieldDimension(column.id, null, metadata);
+  // When aggregating fields from foreign keys, `dimension`'s options could be
+  // missing `source-field`, so if `dimension` still is the same field as `column.field_ref`,
+  // try parsing the `ref_field` directly as it might contain missing options.
+  if (isSameField(column.field_ref, dimension.mbql())) {
+    dimension = FieldDimension.parseMBQL(column.field_ref, metadata);
+  }
 
   if (column.unit) {
     return dimension.withTemporalUnit(column.unit);

@@ -3,10 +3,10 @@ import {
   openQuestionActions,
   popover,
   sidebar,
+  openColumnOptions,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { openColumnOptions } from "./helpers/e2e-models-metadata-helpers";
 
 const { PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 

@@ -1,13 +1,28 @@
 import React from "react";
-import { render } from "@testing-library/react";
-import Logout from "./Logout";
+import fetchMock from "fetch-mock";
+import { setupLogoutEndpoint } from "__support__/server-mocks";
+import { renderWithProviders, waitFor } from "__support__/ui";
+import { Logout } from "./Logout";
+
+const setup = () => {
+  jest.spyOn(window, "location", "get").mockReturnValue({
+    ...window.location,
+    reload: jest.fn(),
+  });
+
+  setupLogoutEndpoint();
+  renderWithProviders(<Logout />);
+};
 
 describe("Logout", () => {
-  it("should logout on mount", () => {
-    const onLogout = jest.fn();
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
 
-    render(<Logout onLogout={onLogout} />);
+  it("should logout on mount", async () => {
+    setup();
 
-    expect(onLogout).toHaveBeenCalled();
+    await waitFor(() => expect(fetchMock.done("path:/api/session")).toBe(true));
+    await waitFor(() => expect(window.location.reload).toHaveBeenCalled());
   });
 });

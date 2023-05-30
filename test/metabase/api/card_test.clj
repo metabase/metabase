@@ -16,6 +16,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
    [metabase.models
     :refer [CardBookmark
@@ -2926,3 +2927,36 @@
                      java.lang.Exception
                      #"^You do not have curate permissions for this Collection\.$"
                      (upload-example-csv! nil)))))))))))
+
+(defn- find-schema-filters-prop [driver]
+  (first (filter (fn [conn-prop]
+                   (= :schema-filters (keyword (:type conn-prop))))
+                 (driver/connection-properties driver))))
+
+(deftest upload-csv!-schema-doesnt-sync-test
+  ;; Just test with postgres because failure should be independent of the driver
+  (mt/test-driver :postgres
+    (mt/with-empty-db
+      (let [driver             (driver.u/database->driver (mt/db))
+            schema-filter-prop (find-schema-filters-prop driver)
+            filter-type-prop   (keyword (str (:name schema-filter-prop) "-type"))
+            patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
+        (t2/update! Database (mt/id) {:details (-> (mt/db)
+                                                   :details
+                                                   (assoc filter-type-prop "exclusion"
+                                                          patterns-type-prop "public"))})
+        (mt/with-temporary-setting-values [uploads-enabled     true
+                                           uploads-database-id (mt/id)
+                                           uploads-schema-name "public"]
+          (testing "Upload should fail if table can't be found after sync, for example because of schema filters"
+            (try (upload-example-csv! nil)
+                 (catch Exception e
+                   (is (= {:status-code 422}
+                          (.getData e)))
+                   (is (re-matches #"^The CSV file was uploaded to public\.example(.*) but the table could not be found on sync\.$"
+                                   (.getMessage e))))))
+          (testing "\nThe table should be deleted"
+            (is (false? (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
+                          (-> (jdbc/query (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+                                          ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public')"])
+                              first :exists))))))))))
