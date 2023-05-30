@@ -58,8 +58,15 @@ const TEST_METRIC = createMockMetric({
   },
 });
 
-const PRODUCT_METRIC = createMockMetric({
+const ARCHIVED_METRIC = createMockMetric({
   id: 2,
+  table_id: ORDERS_ID,
+  name: "Archived Metric",
+  archived: true,
+});
+
+const PRODUCT_METRIC = createMockMetric({
+  id: 3,
   table_id: PRODUCTS_ID,
   name: "Average Rating",
   definition: {
@@ -325,6 +332,11 @@ describe("AggregationPicker", () => {
       expect(screen.getByRole("tooltip")).toHaveTextContent(
         TEST_METRIC.description,
       );
+    });
+
+    it("shouldn't display archived metrics", () => {
+      setupMetrics({ metrics: [TEST_METRIC, ARCHIVED_METRIC] });
+      expect(screen.queryByText(ARCHIVED_METRIC.name)).not.toBeInTheDocument();
     });
 
     it("should allow picking a metric", () => {
