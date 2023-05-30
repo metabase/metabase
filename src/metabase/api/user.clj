@@ -500,6 +500,14 @@
   (view-log/user-dismissed-toasts! [:add toast-name])
   {:success true})
 
+(api/defendpoint DELETE "/:user-id/dismissed/:toast-name"
+  [user-id toast-name]
+  {user-id ms/PositiveInt
+   toast-name view-log/toast-name-enum}
+  (api/check-403 (= user-id api/*current-user-id*))
+  (view-log/user-dismissed-toasts! [:remove toast-name])
+  {:success true})
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/send_invite"
   "Resend the user invite email for a given user."
