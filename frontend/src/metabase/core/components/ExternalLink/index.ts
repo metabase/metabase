@@ -1,2 +1,3 @@
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export { default } from "./ExternalLink";
+export { default as ExternalLink } from "./ExternalLink";
