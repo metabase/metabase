@@ -1,24 +1,18 @@
 import React from "react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { createMockCollectionItem } from "metabase-types/api/mocks";
-import { setupSearchEndpoints } from "__support__/server-mocks";
+import { createMockRecentItem } from "metabase-types/api/mocks";
+import { setupRecentViewsEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import { useSearchListQuery } from "./use-search-list-query";
+import { useRecentItemListQuery } from "./use-recent-item-list";
 
-const TEST_ITEM = createMockCollectionItem();
+const TEST_ITEM = createMockRecentItem();
 
 const TestComponent = () => {
-  const {
-    data = [],
-    isLoading,
-    error,
-  } = useSearchListQuery({
-    query: { models: TEST_ITEM.model },
-  });
+  const { data = [], isLoading, error } = useRecentItemListQuery();
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -26,19 +20,19 @@ const TestComponent = () => {
 
   return (
     <div>
-      {data.map(item => (
-        <div key={item.id}>{item.name}</div>
+      {data.map((item, index) => (
+        <div key={index}>{item.model_object.name}</div>
       ))}
     </div>
   );
 };
 
 const setup = () => {
-  setupSearchEndpoints([TEST_ITEM]);
+  setupRecentViewsEndpoints([TEST_ITEM]);
   renderWithProviders(<TestComponent />);
 };
 
-describe("useSearchListQuery", () => {
+describe("useRecentItemListQuery", () => {
   it("should be initially loading", () => {
     setup();
     expect(screen.getByText("Loading...")).toBeInTheDocument();
@@ -47,6 +41,6 @@ describe("useSearchListQuery", () => {
   it("should show data from the response", async () => {
     setup();
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
-    expect(screen.getByText(TEST_ITEM.name)).toBeInTheDocument();
+    expect(screen.getByText(TEST_ITEM.model_object.name)).toBeInTheDocument();
   });
 });
