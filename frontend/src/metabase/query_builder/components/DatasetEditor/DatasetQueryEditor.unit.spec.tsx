@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 import React from "react";
 
+import fetchMock from "fetch-mock";
 import _ from "underscore";
 import {
   setupAlertsEndpoints,
@@ -15,7 +16,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import { Card, Dataset } from "metabase-types/api";
+import { Card, Collection, Dataset } from "metabase-types/api";
 import {
   createMockCard,
   createMockDataset,
@@ -56,6 +57,12 @@ function makeQuery(metadata: Metadata) {
   );
 }
 
+const ROOT_COLLECTION = {
+  id: "root",
+  name: "Our analytics",
+  can_write: true,
+} as Collection;
+
 const setup = async ({
   card = TEST_NATIVE_CARD,
   dataset = createMockDataset(),
@@ -95,6 +102,11 @@ const setup = async ({
 };
 
 describe("DatasetQueryEditor", () => {
+  beforeEach(() => {
+    fetchMock.get("path:/api/collection", [ROOT_COLLECTION]);
+    fetchMock.get("path:/api/native-query-snippet", () => []);
+  });
+
   it("renders sidebar when query tab is active", async () => {
     await setup({ isActive: true });
 
