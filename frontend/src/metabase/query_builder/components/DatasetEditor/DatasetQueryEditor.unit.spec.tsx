@@ -93,6 +93,10 @@ describe("DatasetQueryEditor", () => {
     expect(
       screen.getByTestId("native-query-editor-sidebar"),
     ).toBeInTheDocument();
+  });
+
+  it("shows the native query editor container when query tab is active", () => {
+    setup({ isActive: true });
 
     expect(screen.getByTestId("native-query-editor-container")).toBeVisible();
   });
@@ -103,6 +107,10 @@ describe("DatasetQueryEditor", () => {
     expect(
       screen.queryByTestId("native-query-editor-sidebar"),
     ).not.toBeInTheDocument();
+  });
+
+  it("hides the native query editor container when query tab is inactive", () => {
+    setup({ isActive: false });
 
     expect(
       screen.getByTestId("native-query-editor-container"),
