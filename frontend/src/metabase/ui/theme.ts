@@ -1,13 +1,21 @@
 import type { MantineThemeOverride } from "@mantine/core";
-import generatedTheme from "../../../../styles/js/test";
+import { colors as mbColors } from "metabase/lib/colors";
+// import generatedTheme from "../../../../styles/js/test";
 
 export const theme: MantineThemeOverride = {
-  ...generatedTheme,
+  // ...generatedTheme,
+  colors: {
+    brand: [mbColors.brand],
+    fg: ["red", "blue"],
+    text: ["509ee3"],
+  },
+
+  primaryColor: "brand",
 
   focusRingStyles: {
     styles(theme) {
       return {
-        outline: `2px solid ${theme.colors.ocean[1]}`,
+        outline: `2px solid ${theme.colors.fg[1]}`,
       };
     },
   },
@@ -17,7 +25,7 @@ export const theme: MantineThemeOverride = {
       styles(theme) {
         return {
           label: {
-            color: theme.colors.orion[6],
+            color: theme.colors.text[0],
             fontWeight: "bold",
             marginBottom: "0.2rem",
           },
@@ -34,11 +42,11 @@ export const theme: MantineThemeOverride = {
               },
             },
             "&[data-hovered]": {
-              backgroundColor: theme.colors.fog[1],
+              backgroundColor: theme.colors.brand[0],
             },
           },
           ".mantine-Select-separatorLabel": {
-            color: theme.colors.ocean[7],
+            color: theme.colors.text[0],
           },
         };
       },
