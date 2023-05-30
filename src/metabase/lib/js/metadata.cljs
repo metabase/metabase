@@ -253,6 +253,7 @@
          ;; _plainObject can contain field names in the field property
          ;; instead of the field objects themselves.  Removing this
          ;; property makes sure we parse the real fields.
+         gobject/clone
          (doto (gobject/remove "_plainObject"))
          parse-card
          (assoc :id id))
