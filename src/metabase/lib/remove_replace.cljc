@@ -26,23 +26,37 @@
 (declare remove-local-references)
 (declare remove-stage-references)
 
-(defn- update-breakout-order-by
-  [query stage-number [target-op {:keys [temporal-unit binning]} target-ref-id] new-binning new-temporal-unit]
-  (if-let [[order-by-idx _] (->> (lib.util/query-stage query stage-number)
-                                 :order-by
-                                 m/indexed
-                                 (m/find-first (fn [[_idx [_dir _ ordered-clause]]]
-                                                 (and (= (first ordered-clause) target-op)
-                                                      (= (:temporal-unit (second ordered-clause)) temporal-unit)
-                                                      (= (:binning (second ordered-clause)) binning)
-                                                      (= (last ordered-clause) target-ref-id)))))]
+(defn- find-matching-order-by-index
+  [query stage-number [target-op {:keys [temporal-unit binning]} target-ref-id]]
+  (->> (lib.util/query-stage query stage-number)
+       :order-by
+       m/indexed
+       (m/find-first (fn [[_idx [_dir _ ordered-clause]]]
+                       (and (= (first ordered-clause) target-op)
+                            (= (:temporal-unit (second ordered-clause)) temporal-unit)
+                            (= (:binning (second ordered-clause)) binning)
+                            (= (last ordered-clause) target-ref-id))))
+       first))
 
+(defn- sync-order-by-options-with-breakout
+  [query stage-number target-clause new-options]
+  (if-let [order-by-idx (find-matching-order-by-index query stage-number target-clause)]
     (lib.util/update-query-stage
       query stage-number
       update-in [:order-by order-by-idx 2 1]
       (comp #(m/remove-vals nil? %) merge)
-      {:temporal-unit new-temporal-unit
-       :binning new-binning})
+      new-options)
+    query))
+
+(defn- remove-breakout-order-by
+  [query stage-number target-clause]
+  (if-let [order-by-idx (find-matching-order-by-index query stage-number target-clause)]
+    (lib.util/update-query-stage
+      query
+      stage-number
+      lib.util/remove-clause
+      [:order-by]
+      (get-in (lib.util/query-stage query stage-number) [:order-by order-by-idx]))
     query))
 
 (defn- remove-replace-location
@@ -133,19 +147,26 @@
           remove-replace-fn (if replace?
                               #(lib.util/replace-clause %1 %2 %3 replacement-clause)
                               lib.util/remove-clause)
-          query (cond-> query
-                  ;; Keep order in sync by if we are just changing binning or bucketing
-                  (and replace?
-                       (= [:breakout] location)
-                       (and (= (first target-clause)
-                               (first replacement-clause))
-                            (= (last target-clause)
-                               (last replacement-clause))))
-                  (update-breakout-order-by
+          changing-breakout? (= [:breakout] location)
+          sync-breakout-ordering? (and replace?
+                                    changing-breakout?
+                                    (and (= (first target-clause)
+                                            (first replacement-clause))
+                                         (= (last target-clause)
+                                            (last replacement-clause))))
+          query (cond
+                  sync-breakout-ordering?
+                  (sync-order-by-options-with-breakout
+                    query
                     stage-number
                     target-clause
-                    (:binning (second replacement-clause))
-                    (:temporal-unit (second replacement-clause))))]
+                    (select-keys (second replacement-clause) [:binning :temporal-unit]))
+
+                  changing-breakout?
+                  (remove-breakout-order-by query stage-number target-clause)
+
+                  :else
+                  query)]
       (if location
         (remove-replace-location query stage-number query location target-clause remove-replace-fn)
         query))))

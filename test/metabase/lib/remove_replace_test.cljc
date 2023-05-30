@@ -390,9 +390,9 @@
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "a"] 1))
                   (lib/replace-clause 0 expr-a (lib/field "VENUES" "PRICE"))))))))
 
-(deftest ^:parallel replace-breakout-binned-or-bucketed-test
+(deftest ^:parallel replace-order-by-breakout-col-test
   (testing "issue #30980"
-    (testing "Bucketing"
+    (testing "Bucketing should keep order-by in sync"
       (let [query (lib/query-for-table-name meta/metadata-provider "USERS")
             breakout-col (->> (lib/breakoutable-columns query)
                               (m/find-first (comp #{"LAST_LOGIN"} :name)))
@@ -411,7 +411,7 @@
             q4 (lib/replace-clause q3 (first (lib/breakouts q3)) month)]
         (is (= :day (:temporal-unit (second (last (first (lib/order-bys q3)))))))
         (is (= :month (:temporal-unit (second (last (first (lib/order-bys q4)))))))))
-    (testing "Binning"
+    (testing "Binning should keep in order-by in sync"
       (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
             breakout-col (->> (lib/breakoutable-columns query)
                               (m/find-first (comp #{"PRICE"} :name)))
@@ -430,7 +430,7 @@
             q4 (lib/replace-clause q3 (first (lib/breakouts q3)) ten)]
         (is (= 100 (:num-bins (:binning (second (last (first (lib/order-bys q3))))))))
         (is (= 10 (:num-bins (:binning (second (last (first (lib/order-bys q4))))))))))
-    (testing "Replace the correct order-by bin when multiple"
+    (testing "Replace the correct order-by bin when there are multiple"
       (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
             breakout-col (->> (lib/breakoutable-columns query)
                               (m/find-first (comp #{"PRICE"} :name)))
@@ -466,4 +466,37 @@
                 (map (comp :binning second last)
                      (-> q3
                          (lib/replace-clause ten-breakout fiddy)
-                         lib/order-bys))))))))
+                         lib/order-bys))))))
+    (testing "Replacing with a new field should remove the order by"
+      (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
+            breakout-col (->> (lib/breakoutable-columns query)
+                              (m/find-first (comp #{"PRICE"} :name)))
+            new-breakout-col (->> (lib/breakoutable-columns query)
+                                  (m/find-first (comp #{"NAME"} :name)))
+            ten (->> (lib/available-binning-strategies query breakout-col)
+                     (m/find-first (comp #{"10 bins"} :display-name))
+                     (lib/with-binning breakout-col))
+            q2 (-> query
+                   (lib/breakout ten))
+            cols (lib/orderable-columns q2)
+            q3 (-> q2
+                   (lib/order-by (first cols)))
+            ten-breakout (first (lib/breakouts q3))]
+        (is (nil?
+              (-> q3
+                  (lib/replace-clause ten-breakout new-breakout-col)
+                  lib/order-bys)))))
+    (testing "Removing a breakout should remove the order by"
+      (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
+            breakout-col (->> (lib/breakoutable-columns query)
+                              (m/find-first (comp #{"PRICE"} :name)))
+            q2 (-> query
+                   (lib/breakout breakout-col))
+            cols (lib/orderable-columns q2)
+            q3 (-> q2
+                   (lib/order-by (first cols)))
+            ten-breakout (first (lib/breakouts q3))]
+        (is (nil?
+              (-> q3
+                  (lib/remove-clause ten-breakout)
+                  lib/order-bys)))))))
