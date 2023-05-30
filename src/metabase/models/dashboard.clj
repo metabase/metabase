@@ -36,7 +36,8 @@
    [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 (def Dashboard
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
@@ -185,24 +186,7 @@
       (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
                            (-> (select-keys dashboard-card [:dashboard_tab_id :size_x :size_y :row :col :id :card_id])
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))
-      (assoc :tabs (map #(select-keys % [:id :name :position :dashboard_id]) (ordered-tabs dashboard)))))
-
-(defn- revert-tabs
-  [dashboard-id serialized-tabs]
-  (let [current-tabs                       (t2/select [:model/DashboardTab :id :name :position]
-                                                      :dashboard_id dashboard-id)
-        current-tab-ids                    (set (map :id current-tabs))
-        serialized-tab-ids                 (set (map :id serialized-tabs))
-        [delete-ids create-ids update-ids] (diff current-tab-ids serialized-tab-ids)
-        _                                  (when (seq delete-ids) (dashboard-tab/delete-tabs! (seq delete-ids)))
-        to-create-tabs                     (filter #(contains? create-ids (:id %)) serialized-tabs)
-        new-tab-ids                        (when (seq to-create-tabs)
-                                             (t2/insert-returning-pks! :model/DashboardTab to-create-tabs))
-        id->serialized-tab                 (zipmap (map :id serialized-tabs) serialized-tabs)
-        id->current-tab                    (zipmap (map :id current-tabs) current-tabs)]
-       (when (seq update-ids)
-         (dashboard-tab/update-tabs! (map id->current-tab update-ids) (map id->serialized-tab update-ids)))
-   {:old-id->new-id  (zipmap (map :id to-create-tabs) new-tab-ids)}))
+      (assoc :tabs (map #(dissoc % :created_at :updated_at :entity_id) (ordered-tabs dashboard)))))
 
 (defn- revert-dashcards
   [dashboard-id user-id serialized-cards]
@@ -228,16 +212,18 @@
   ;; Update the dashboard description / name / permissions
   (t2/update! :model/Dashboard dashboard-id (dissoc serialized-dashboard :cards :tabs))
   ;; Now update the tabs and cards as needed
-  (let [serialized-cards         (:cards serialized-dashboard)
-        {:keys [old-id->new-id]} (revert-tabs dashboard-id (:tabs serialized-dashboard))
-        serialized-cards         (cond->> serialized-cards
-                                   ;; in case reverting result in new tabs being created,
-                                   ;; we need to remap the tab-id
-                                   (seq old-id->new-id)
-                                   (map (fn [card]
-                                          (if-let [new-tab-id (get old-id->new-id (:dashboard_tab_id card))]
-                                            (assoc card :dashboard_tab_id new-tab-id)
-                                            card))))]
+  (let [serialized-cards          (:cards serialized-dashboard)
+        current-tabs              (t2/select-fn-vec #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
+                                                    :model/DashboardTab :dashboard_id dashboard-id)
+        {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
+        serialized-cards          (cond->> serialized-cards
+                                    ;; in case reverting result in new tabs being created,
+                                    ;; we need to remap the tab-id
+                                    (seq old->new-tab-id)
+                                    (map (fn [card]
+                                           (if-let [new-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
+                                             (assoc card :dashboard_tab_id new-tab-id)
+                                             card))))]
     (revert-dashcards dashboard-id user-id serialized-cards))
   serialized-dashboard)
 

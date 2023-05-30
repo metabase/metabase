@@ -227,7 +227,15 @@
               {:tabs [{:id 0 :name "First tab" :position 0}
                       {:id 1 :name "Second tab" :position 1}]}
               {:tabs [{:id 1 :name "First tab" :position 0}
-                      {:id 0 :name "Second tab" :position 1}]}))))))
+                      {:id 0 :name "Second tab" :position 1}]}))))
+   (is (= "modified the tabs."
+          (build-sentence
+            (revision/diff-strings
+              Dashboard
+              {:tabs [{:id 0 :name "First tab" :position 0}
+                      {:id 1 :name "Second tab" :position 1}]}
+              {:tabs [{:id 1 :name "First tab new name" :position 0}
+                      {:id 0 :name "Second tab new name" :position 1}]}))))))
 
 (deftest revert-dashboard!-test
   (tt/with-temp* [Dashboard           [{dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}]

@@ -109,7 +109,7 @@
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
-              :object       (assoc (dashboard->revision-object dashboard) :cards [])
+              :object       (dashboard->revision-object dashboard)
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
@@ -255,7 +255,7 @@
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
-              :object       (assoc (dashboard->revision-object dashboard) :tabs [])
+              :object       (dashboard->revision-object dashboard)
               :is_reversion false
               :is_creation  false}
              (mt/derecordize

@@ -1,5 +1,7 @@
 (ns metabase.models.dashboard-tab
   (:require
+   [clojure.data :refer [diff]]
+   [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util.date-2 :as u.date]
@@ -78,12 +80,21 @@
 
 ;;; -------------------------------------------------- CRUD fns ------------------------------------------------------
 
+(mu/defn create-tabs! :- [:map-of neg-int? pos-int?]
+  "Create the new tabs and returned a mapping from temporary tab ID to the new tab ID."
+  [dashboard-id :- ms/PositiveInt
+   new-tabs     :- [:sequential [:map [:id neg-int?]]]]
+  (let [new-tab-ids (t2/insert-returning-pks! :model/DashboardTab (->> new-tabs
+                                                                       (map #(dissoc % :id))
+                                                                       (map #(assoc % :dashboard_id dashboard-id))))]
+    (zipmap (map :id new-tabs) new-tab-ids)))
+
 (mu/defn update-tabs! :- nil?
   "Updates tabs of a dashboard if changed."
   [current-tabs :- [:sequential [:map [:id ms/PositiveInt]]]
    new-tabs     :- [:sequential [:map [:id ms/PositiveInt]]]]
   (let [update-ks       [:name :position]
-        id->current-tab (group-by :id current-tabs)
+        id->current-tab (m/index-by :id current-tabs)
         to-update-tabs  (filter
                           ;; filter out tabs that haven't changed
                           (fn [new-tab]
@@ -102,3 +113,48 @@
   (when (seq tab-ids)
     (t2/delete! :model/DashboardTab :id [:in tab-ids]))
   nil)
+
+(mu/defn classify-changes :- [:map
+                              [:to-create [:maybe [:sequential [:map [:id ms/Int]]]]]
+                              [:to-update [:maybe [:sequential [:map [:id ms/Int]]]]]
+                              [:to-delete [:maybe [:sequential [:map [:id ms/Int]]]]]]
+  "Given 2 lists of seq maps of changes, where each map an has an `id` key,
+  return a map of 3 keys: `:to-create`, `:to-update`, `:to-delete`.
+
+  Where:
+    :to-create is a list of maps that ids in `new-items`
+    :to-update is a list of maps that has ids in both `current-items` and `new-items`
+    :to delete is a list of maps that has ids only in `current-items`"
+  [current-items :- [:maybe [:sequential [:map [:id ms/PositiveInt]]]]
+   new-items     :- [:maybe [:sequential [:map [:id ms/Int]]]]]
+  (let [[delete-ids create-ids update-ids] (diff (set (map :id current-items))
+                                                 (set (map :id new-items)))]
+    {:to-create (when (seq create-ids) (filter #(create-ids (:id %)) new-items))
+     :to-delete (when (seq delete-ids) (filter #(delete-ids (:id %)) current-items))
+     :to-update (when (seq update-ids) (filter #(update-ids (:id %)) new-items))}))
+
+(defn do-update-tabs!
+  "Given current tabs and new tabs, do the necessary create/update/delete to apply new tab changes.
+  Returns:
+  - a map of temporary tab ID to the new real tab ID
+  - a list of deleted tab ids"
+  [dashboard-id current-tabs new-tabs]
+  (let [{:keys [to-create
+                to-update
+                to-delete]} (classify-changes current-tabs new-tabs)
+        to-delete-ids       (map :id to-delete)
+        _                   (when-let [to-delete-ids (seq to-delete-ids)]
+                              (delete-tabs! to-delete-ids))
+        old->new-tab-id     (when (seq to-create)
+                              (let [new-tab-ids (t2/insert-returning-pks! :model/DashboardTab
+                                                                          (->> to-create
+                                                                               (map #(dissoc % :id))
+                                                                               (map #(assoc % :dashboard_id dashboard-id))))]
+                                (zipmap (map :id to-create) new-tab-ids)))]
+    (when (seq to-update)
+      (update-tabs! current-tabs to-update))
+    {:old->new-tab-id old->new-tab-id
+     :created-tab-ids (map :id to-create)
+     :updated-tab-ids (map :id to-update)
+     :deleted-tab-ids to-delete-ids
+     :total-num-tabs  (reduce + (map count [to-create to-update]))}))

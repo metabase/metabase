@@ -1985,7 +1985,7 @@
             (is (= 1
                    (t2/count :model/DashboardTab :dashboard_id dashboard-id)))))))
     (testing "prune"
-      (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-2]}]
+      (with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
         (testing "we have 2 tabs, each has 1 card to begin with"
           (is (= 2
                  (t2/count DashboardCard, :dashboard_id dashboard-id)))
@@ -1996,7 +1996,7 @@
                 (mt/user-http-request :rasta :put 200
                                       (format "dashboard/%d/cards" dashboard-id)
                                       {:ordered_tabs []
-                                       :cards (remove #(= (:dashboard_tab_id %) dashtab-id-2) (current-cards dashboard-id))})))
+                                       :cards        []})))
         (testing "dashboard should be empty"
           (testing "0 card left"
             (is (= 0
@@ -2005,14 +2005,6 @@
             (is (= 0
                    (t2/count :model/DashboardTab :dashboard_id dashboard-id)))))))))
 
-(deftest classify-changes-test
-  (testing "classify correctly"
-    (is (= {:to-update [{:id 2 :name "c3"} {:id 4 :name "c4"}]
-            :to-delete [{:id 1 :name "c1"} {:id 3 :name "c3"}]
-            :to-create [{:id -1 :name "-c1"}]}
-           (#'api.dashboard/classify-changes
-             [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
-             [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        GET /api/dashboard/:id/revisions                                        |

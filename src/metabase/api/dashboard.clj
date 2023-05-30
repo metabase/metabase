@@ -514,62 +514,6 @@
                                          (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
     (check-parameter-mapping-permissions new-mappings)))
 
-(mu/defn ^:private classify-changes :- [:map
-                                        [:to-create [:sequential [:map [:id ms/NegativeInt]]]]
-                                        [:to-update [:sequential [:map [:id ms/PositiveInt]]]]
-                                        [:to-delete [:sequential [:map [:id ms/PositiveInt]]]]]
-  "Given 2 lists of seq maps of changes, where each map an has an `id` key,
-  return a map of 3 keys: `:to-create`, `:to-update`, `:to-delete`.
-
-  Where:
-    :to-create is a list of maps that has negative ids in `new-items`
-    :to-update is a list of maps that has ids in both `current-items` and `new-items`
-    :to delete is a list of maps that has ids only in `current-items`"
-  [current-items :- [:sequential [:map [:id ms/PositiveInt]]]
-   new-items     :- [:sequential [:map [:id ms/Int]]]]
-  (let [new-change-ids     (set (map :id new-items))
-        to-create          (filter (comp neg? :id) new-items)
-        ;; to-update items are new items with id in the current items
-        to-update          (filter (comp pos? :id) new-items)
-        ;; to delete items in current but not new items
-        to-delete          (remove (comp new-change-ids :id) current-items)]
-    {:to-update to-update
-     :to-delete to-delete
-     :to-create to-create}))
-
-(mu/defn create-tabs! :- [:map-of neg-int? pos-int?]
-  "Create the new tabs and returned a mapping from temporary tab ID to the new tab ID."
-  [dashboard-id :- ms/PositiveInt
-   new-tabs     :- [:sequential [:map [:id neg-int?]]]]
-  (let [new-tab-ids (t2/insert-returning-pks! :model/DashboardTab (->> new-tabs
-                                                                       (map #(dissoc % :id))
-                                                                       (map #(assoc % :dashboard_id dashboard-id))))]
-    (zipmap (map :id new-tabs) new-tab-ids)))
-
-(defn ^:private do-update-tabs!
-  "Given current tabs and new tabs, do the necessary create/update/delete to apply new tab changes.
-  Returns:
-  - a map of temporary tab ID to the new real tab ID
-  - a list of deleted tab ids"
-  [dashboard current-tabs new-tabs]
-  (when-not (= (range (count new-tabs))
-               (sort (map :position new-tabs)))
-    (throw (ex-info (tru "Tab positions must be sequential and start at 0")
-                    {:status-code 400})))
-  (let [{:keys [to-create to-update to-delete]} (classify-changes current-tabs new-tabs)
-        to-delete-ids                           (map :id to-delete)
-        _                                       (when-let [to-delete-ids (seq to-delete-ids)]
-                                                  (dashboard-tab/delete-tabs! to-delete-ids))
-        temp-tab-id->tab-id                     (when (seq to-create)
-                                                  (create-tabs! (:id dashboard) to-create))
-        _                                       (when (seq to-update)
-                                                  (dashboard-tab/update-tabs! (:ordered_tabs dashboard) to-update))]
-    {:temp->real-tab-ids temp-tab-id->tab-id
-     :created-tab-ids    (map :id to-create)
-     :updated-tab-ids    (map :id to-update)
-     :deleted-tab-ids    to-delete-ids
-     :total-num-tabs     (reduce + (map count [to-create to-update]))}))
-
 (defn- create-dashcards!
   [dashboard dashcards]
   (doseq [{:keys [card_id]} dashcards
@@ -594,11 +538,11 @@
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
-  (let [{:keys [to-create to-update to-delete]} (classify-changes current-cards new-cards)]
+  (let [{:keys [to-create to-update to-delete]} (dashboard-tab/classify-changes current-cards new-cards)]
     {:deleted-dashcards (when (seq to-delete)
                           (delete-dashcards! (map :id to-delete)))
-     :created-dashcards  (when (seq to-create)
-                           (create-dashcards! dashboard to-create))
+     :created-dashcards (when (seq to-create)
+                          (create-dashcards! dashboard to-create))
      :updated-dashcards (when (seq to-update)
                           (update-dashcards! dashboard to-update))}))
 
@@ -693,22 +637,22 @@
     (api/check-500
       (let [update-stats (atom nil)]
         (t2/with-transaction [_conn]
-          (let [{:keys [temp->real-tab-ids
+          (let [{:keys [old->new-tab-id
                         deleted-tab-ids]
-                 :as update-tabs-stats}    (do-update-tabs! dashboard (:ordered_tabs dashboard) new-tabs)
-                deleted-tab-ids            (set deleted-tab-ids)
-                current-cards              (cond->> (:ordered_cards dashboard)
-                                             (seq deleted-tab-ids)
-                                             (remove (fn [card]
-                                                       (contains? deleted-tab-ids (:dashboard_tab_id card)))))
-                new-cards                  (cond->> cards
-                                             ;; fixup the temporary tab ids with the real ones
-                                             (seq temp->real-tab-ids)
-                                             (map (fn [card]
-                                                    (if-let [real-tab-id (get temp->real-tab-ids (:dashboard_tab_id card))]
-                                                      (assoc card :dashboard_tab_id real-tab-id)
-                                                      card))))
-                update-dashcards-stats     (do-update-dashcards! dashboard current-cards new-cards)]
+                 :as update-tabs-stats}  (dashboard-tab/do-update-tabs! (:id dashboard) (:ordered_tabs dashboard) new-tabs)
+                deleted-tab-ids          (set deleted-tab-ids)
+                current-cards            (cond->> (:ordered_cards dashboard)
+                                           (seq deleted-tab-ids)
+                                           (remove (fn [card]
+                                                     (contains? deleted-tab-ids (:dashboard_tab_id card)))))
+                new-cards                (cond->> cards
+                                           ;; fixup the temporary tab ids with the real ones
+                                           (seq old->new-tab-id)
+                                           (map (fn [card]
+                                                  (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
+                                                    (assoc card :dashboard_tab_id real-tab-id)
+                                                    card))))
+                update-dashcards-stats   (do-update-dashcards! dashboard current-cards new-cards)]
             (reset! update-stats
                     (merge
                       (select-keys update-tabs-stats [:created-tab-ids :updated-tab-ids :deleted-tab-ids :total-num-tabs])
