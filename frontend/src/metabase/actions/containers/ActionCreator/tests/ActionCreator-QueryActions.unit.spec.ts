@@ -49,17 +49,6 @@ describe("ActionCreator > Query Actions", () => {
     });
 
     describe("Save Modal", () => {
-      const originalAce = window.ace;
-
-      beforeAll(() => {
-        window.ace = {
-          edit: jest.fn(),
-        };
-      });
-      afterAll(() => {
-        window.ace = originalAce;
-      });
-
       it("should show default message in model picker", async () => {
         await setup({ model: null });
 
