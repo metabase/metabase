@@ -7,7 +7,7 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import { useRecentItemListQuery } from "./use-recent-item-list";
+import { useRecentItemListQuery } from "./use-recent-item-list-query";
 
 const TEST_ITEM = createMockRecentItem();
 
