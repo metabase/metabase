@@ -215,7 +215,7 @@
 (defmethod excluded-keys :card
   [_object-type]
   #{:database
-    :dimension_options
+    :dimension-options
     :table})
 
 (defn- parse-fields [fields]
@@ -241,19 +241,36 @@
   (or (object-get obj "_card")
       obj))
 
-(defmethod parse-objects :card
-  [object-type metadata]
-  (let [parse-card (comp (parse-object-fn object-type) unwrap-card)]
+(defn- assamble-card
+  [metadata id]
+  (let [parse-card (comp (parse-object-fn :card) unwrap-card)]
+    ;; The question objects might not contain the fields so we merge them
+    ;; in from the table matadata.
     (merge
-     (obj->clj (comp (filter (fn [[k _v]]
-                               (str/starts-with? k "card__")))
-                     (map (fn [[s v]]
-                            (when-let [id (lib.util/string-table-id->card-id s)]
-                              [id (delay (assoc (parse-card v) :id id))]))))
-               (object-get metadata "tables"))
-     (obj->clj (comp (map (fn [[k v]]
-                            [(parse-long k) (delay (parse-card v))])))
-               (object-get metadata "questions")))))
+     (-> metadata
+         (object-get "tables")
+         (object-get (str "card__" id))
+         ;; _plainObject can contain field names in the field property
+         ;; instead of the field objects themselves.  Removing this
+         ;; property makes sure we parse the real fields.
+         (doto (gobject/remove "_plainObject"))
+         parse-card
+         (assoc :id id))
+     (-> metadata
+         (object-get "questions")
+         (object-get (str id))
+         parse-card))))
+
+(defmethod parse-objects :card
+  [_object-type metadata]
+  (into {}
+        (map (fn [id]
+               [id (delay (assamble-card metadata id))]))
+        (-> #{}
+            (into (keep lib.util/string-table-id->card-id)
+                  (gobject/getKeys (object-get metadata "tables")))
+            (into (map parse-long)
+                  (gobject/getKeys (object-get metadata "questions"))))))
 
 (defmethod lib-type :metric
   [_object-type]
