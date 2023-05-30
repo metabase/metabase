@@ -7,6 +7,7 @@ export * from "./use-metric-query";
 export * from "./use-question-list-query";
 export * from "./use-question-query";
 export * from "./use-schema-list-query";
+export * from "./use-search-list-query";
 export * from "./use-segment-list-query";
 export * from "./use-segment-query";
 export * from "./use-table-list-query";
