@@ -1,4 +1,4 @@
-import DatabaseCandidates from "metabase/entities/popular-items";
+import DatabaseCandidates from "metabase/entities/database-candidates";
 import {
   DatabaseCandidateListQuery,
   DatabaseCandidate,
