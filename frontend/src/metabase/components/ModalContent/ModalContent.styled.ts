@@ -15,6 +15,12 @@ export const HeaderContainer = styled.div`
   align-items: flex-start;
 `;
 
+export const HeaderText = styled.h2`
+  font-weight: 700;
+
+  flex-grow: 1;
+`;
+
 export const ActionsWrapper = styled.div`
   display: flex;
   flex-direction: row;

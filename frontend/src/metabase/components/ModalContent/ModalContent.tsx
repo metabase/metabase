@@ -5,6 +5,7 @@ import {
   ActionIcon,
   ActionsWrapper,
   HeaderContainer,
+  HeaderText,
 } from "./ModalContent.styled";
 
 export interface ModalContentProps extends CommonModalProps {
@@ -129,14 +130,14 @@ export const ModalHeader = ({
   const actionIconSize = fullPageModal ? 24 : 16;
 
   return (
-    <HeaderContainer>
-      <h2
-        className={cx("text-bold", {
+    <HeaderContainer data-testid="modal-header">
+      <HeaderText
+        className={cx({
           "text-centered": fullPageModal || centeredTitle,
         })}
       >
         {children}
-      </h2>
+      </HeaderText>
 
       {hasActions && (
         <ActionsWrapper>
