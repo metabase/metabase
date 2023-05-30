@@ -99,7 +99,7 @@ describe("ActionCreator > Query Actions", () => {
     });
   });
 
-  describe("editing action", () => {
+  describe("Editing Action", () => {
     it("renders correctly", async () => {
       const action = createMockQueryAction();
       await setup({ action });
