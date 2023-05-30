@@ -332,3 +332,57 @@
                {:id  tab4-card2-id
                 :row 18}]
               (t2/select-fn-vec #(select-keys % [:id :row]) :model/DashboardCard :dashboard_id dashboard-id)))))))
+
+(deftest migrate-dashboard-revision-grid-from-18-to-24-test
+  (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
+    (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+          migrate-down! (partial db.setup/migrate! db-type data-source :down)
+          user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
+                                                              :last_name   "Hughes"
+                                                              :email       "howard@aircraft.com"
+                                                              :password    "superstrong"
+                                                              :date_joined :%now}))
+
+          cards        [{:row 15 :col 0  :size_x 12 :size_y 8}
+                        {:row 7  :col 12 :size_x 6  :size_y 8}
+                        {:row 2  :col 5  :size_x 5  :size_y 3}
+                        {:row 25 :col 0  :size_x 7  :size_y 10}
+                        {:row 2  :col 0  :size_x 5  :size_y 3}
+                        {:row 7  :col 6  :size_x 6  :size_y 8}
+                        {:row 25 :col 7  :size_x 11 :size_y 10}
+                        {:row 7  :col 0  :size_x 6  :size_y 4}
+                        {:row 23 :col 0  :size_x 18 :size_y 2}
+                        {:row 5  :col 0  :size_x 18 :size_y 2}
+                        {:row 0  :col 0  :size_x 18 :size_y 2}]
+          revision-id (first (t2/insert-returning-pks! 'Revision
+                                                        {:object   {:cards cards}
+                                                         :model    "Dashboard"
+                                                         :model_id 1
+                                                         :user_id  user-id}))]
+
+      (migrate!)
+      (is (= [{:col 0  :row 20 :size_x 16 :size_y 10}
+              {:col 16 :row 9  :size_x 8  :size_y 11}
+              {:col 7  :row 2  :size_x 6  :size_y 4}
+              {:col 0  :row 33 :size_x 9  :size_y 13}
+              {:col 0  :row 2  :size_x 7  :size_y 4}
+              {:col 8  :row 9  :size_x 8  :size_y 11}
+              {:col 9  :row 33 :size_x 15 :size_y 13}
+              {:col 0  :row 9  :size_x 8  :size_y 5}
+              {:col 0  :row 30 :size_x 24 :size_y 3}
+              {:col 0  :row 6  :size_x 24 :size_y 3}
+              {:col 0  :row 0  :size_x 24 :size_y 2}]
+           (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id)))
+     (migrate-down! 46)
+     (is (= [{:col 0  :row 15 :size_x 12 :size_y 8}
+             {:col 12 :row 7  :size_x 6  :size_y 8}
+             {:col 6  :row 2  :size_x 4  :size_y 3}
+             {:col 0  :row 25 :size_x 7  :size_y 10}
+             {:col 0  :row 2  :size_x 6  :size_y 3}
+             {:col 6  :row 7  :size_x 6  :size_y 8}
+             {:col 7  :row 25 :size_x 11 :size_y 10}
+             {:col 0  :row 7  :size_x 6  :size_y 4}
+             {:col 0  :row 23 :size_x 18 :size_y 2}
+             {:col 0  :row 5  :size_x 18 :size_y 2}
+             {:col 0  :row 0  :size_x 18 :size_y 2}]
+          (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))))

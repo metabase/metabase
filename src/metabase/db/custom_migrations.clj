@@ -319,3 +319,55 @@
   (run! update-card-row-on-downgrade-for-dashboard-tab
         (eduction (map :dashboard_id) (t2/reducible-query {:select-distinct [:dashboard_id]
                                                            :from            [:dashboard_tab]}))))
+(defn- migrate18-to-24
+  [{:keys [row col size_x size_y]}]
+  ;; new_size_x = size_x + ((col + size_x + 1) // 3) - ((col + 1) // 3)
+  ;; new_col = col + ((col + 1) // 3)
+  ;; new_size_y = size_y + (size_y + row) // 3 - (row // 3)
+  ;; new_row = row + (row // 3)
+  {:size_x (- (+ size_x
+                 (quot (+ col size_x 1) 3))
+              (quot (+ col 1) 3))
+   :col    (+ col (quot (+ col 1) 3))
+   :row    (+ row (quot row 3))
+   :size_y (+ size_y
+              (-
+               (quot (+ size_y row) 3)
+               (quot row 3)))})
+
+(defn- migrate24-to-18
+  [{:keys [row col size_x size_y]}]
+  ;; new_size_x = size_x - ((size_x + col) // 4 - col // 4)
+  ;; new_col = col - col // 4
+  ;; new_size_y = size_y - ((size_y + row) // 4 - y // 4)
+  ;; new_col = col - col // 4
+  {:size_x (- size_x
+              (-
+               (quot (+ size_x col) 4)
+               (quot col 4)))
+   :col    (- col (quot col 4))
+   :row    (- row (quot row 4))
+   :size_y (- size_y
+              (-
+               (quot (+ size_y row) 4)
+               (quot row 4)))})
+
+(define-reversible-migration RevisionDashboardMigrateGridFrom18To24
+  (let [migrate! (fn [revision]
+                  (let [object (json/parse-string (:object revision) keyword)]
+                    (when (seq (:cards object))
+                      (t2/query {:update :revision
+                                 :set {:object (json/generate-string (update object :cards #(map migrate18-to-24 %)))}
+                                 :where [:= :id (:id revision)]}))))]
+   (run! migrate! (t2/reducible-query {:select [:*]
+                                       :from   [:revision]
+                                       :where  [:= :model "Dashboard"]})))
+  (let [downgrade! (fn [revision]
+                    (let [object (json/parse-string (:object revision) keyword)]
+                      (when (seq (:cards object))
+                        (t2/query {:update :revision
+                                   :set {:object (json/generate-string (update object :cards #(map migrate24-to-18 %)))}
+                                   :where [:= :id (:id revision)]}))))]
+   (run! downgrade! (t2/reducible-query {:select [:*]
+                                         :from   [:revision]
+                                         :where  [:= :model "Dashboard"]}))))

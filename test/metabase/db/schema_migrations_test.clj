@@ -1055,30 +1055,40 @@
                                :from     [:core_user]
                                :order-by [[:id :asc]]}))))))
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- migrate18-to-24
   [{:keys [row col size_x size_y]}]
-  {:row    (+ row (quot row 3))
-   :col    (+ col (quot (+ col 1) 3))
-   :size_x (- (+ size_x
+  ;; new_size_x = size_x + ((col + size_x + 1) // 3) - ((col + 1) // 3)
+  ;; new_col = col + ((col + 1) // 3)
+  ;; new_size_y = size_y + (size_y + row) // 3 - (row // 3)
+  ;; new_row = row + (row // 3)
+  {:size_x (- (+ size_x
                  (quot (+ col size_x 1) 3))
               (quot (+ col 1) 3))
+   :col    (+ col (quot (+ col 1) 3))
+   :row    (+ row (quot row 3))
    :size_y (+ size_y
               (-
-                (quot (+ size_y row) 3)
-                (quot row 3)))})
+               (quot (+ size_y row) 3)
+               (quot row 3)))})
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- migrate24-to-18
   [{:keys [row col size_x size_y]}]
-  {:row    (- row (quot row 4))
-   :col    (- col (quot col 4))
-   :size_x (- size_x
+  ;; new_size_x = size_x - ((size_x + col) // 4 - col // 4)
+  ;; new_col = col - col // 4
+  ;; new_size_y = size_y - ((size_y + row) // 4 - y // 4)
+  ;; new_col = col - col // 4
+  {:size_x (- size_x
               (-
-                (quot (+ size_x col) 4)
-                (quot col 4)))
+               (quot (+ size_x col) 4)
+               (quot col 4)))
+   :col    (- col (quot col 4))
+   :row    (- row (quot row 4))
    :size_y (- size_y
               (-
-                (quot (+ size_y row) 4)
-                (quot row 4)))})
+               (quot (+ size_y row) 4)
+               (quot row 4)))})
 
 (deftest migrate-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-031" "v47.00-032"] [_migrate!]
@@ -1087,31 +1097,49 @@
           user         (create-raw-user! (tu.random/random-email))
           dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
                                                                           :creator_id (:id user)}))
-          cases        (for [[col row size_x size_y] [[0  15 12 8]
-                                                      [12 7  6  8]
-                                                      [5  2  5  3]
-                                                      [0  25 7  10]
-                                                      [0  2  5  3]
-                                                      [6  7  6  8]
-                                                      [7  25 11 10]
-                                                      [0  7  6  4]
-                                                      [0  23 18 2]
-                                                      [0  5  18 2]
-                                                      [0  0  18 2]]]
-                         {:row    row
-                          :col    col
-                          :size_x size_x
-                          :size_y size_y})
+          cases        [{:row 15 :col 0  :size_x 12 :size_y 8}
+                        {:row 7  :col 12 :size_x 6  :size_y 8}
+                        {:row 2  :col 5  :size_x 5  :size_y 3}
+                        {:row 25 :col 0  :size_x 7  :size_y 10}
+                        {:row 2  :col 0  :size_x 5  :size_y 3}
+                        {:row 7  :col 6  :size_x 6  :size_y 8}
+                        {:row 25 :col 7  :size_x 11 :size_y 10}
+                        {:row 7  :col 0  :size_x 6  :size_y 4}
+                        {:row 23 :col 0  :size_x 18 :size_y 2}
+                        {:row 5  :col 0  :size_x 18 :size_y 2}
+                        {:row 0  :col 0  :size_x 18 :size_y 2}]
           dashcard-ids (t2/insert-returning-pks! :model/DashboardCard
                                                  (map #(merge % {:dashboard_id dashboard-id
                                                                  :visualization_settings {}
                                                                  :parameter_mappings     {}}) cases))]
       (testing "forward migration migrate correclty"
         (migrate! :up)
-        (is (= (map migrate18-to-24 cases)
+        ;; (map migrate18-to-24 cases)
+        (is (= [{:col 0  :row 20 :size_x 16 :size_y 10}
+                {:col 16 :row 9  :size_x 8  :size_y 11}
+                {:col 7  :row 2  :size_x 6  :size_y 4}
+                {:col 0  :row 33 :size_x 9  :size_y 13}
+                {:col 0  :row 2  :size_x 7  :size_y 4}
+                {:col 8  :row 9  :size_x 8  :size_y 11}
+                {:col 9  :row 33 :size_x 15 :size_y 13}
+                {:col 0  :row 9  :size_x 8  :size_y 5}
+                {:col 0  :row 30 :size_x 24 :size_y 3}
+                {:col 0  :row 6  :size_x 24 :size_y 3}
+                {:col 0  :row 0  :size_x 24 :size_y 2}]
                (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y]) :model/DashboardCard :id [:in dashcard-ids]))))
 
       (testing "downgrade works correctly"
         (migrate! :down 46)
-        (is (= (->> cases (map migrate18-to-24) (map migrate24-to-18))
+        ;; (->> cases (map migrate18-to-24) (map migrate24-to-18))
+        (is (= [{:col 0  :row 15 :size_x 12 :size_y 8}
+                {:col 12 :row 7  :size_x 6  :size_y 8}
+                {:col 6  :row 2  :size_x 4  :size_y 3}
+                {:col 0  :row 25 :size_x 7  :size_y 10}
+                {:col 0  :row 2  :size_x 6  :size_y 3}
+                {:col 6  :row 7  :size_x 6  :size_y 8}
+                {:col 7  :row 25 :size_x 11 :size_y 10}
+                {:col 0  :row 7  :size_x 6  :size_y 4}
+                {:col 0  :row 23 :size_x 18 :size_y 2}
+                {:col 0  :row 5  :size_x 18 :size_y 2}
+                {:col 0  :row 0  :size_x 18 :size_y 2}]
                (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y]) :model/DashboardCard :id [:in dashcard-ids])))))))
