@@ -111,8 +111,6 @@ WithLinks.args = {
   value: 1,
 };
 
-// TODO sortable example
-
 const DraggableTemplate: ComponentStory<typeof TabRow> = args => {
   const [{ value }, updateArgs] = useArgs();
   const handleChange = (value: unknown) => updateArgs({ value });
