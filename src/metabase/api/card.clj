@@ -57,6 +57,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
+   (java.io File)
    (java.util UUID)))
 
 (set! *warn-on-reflection* true)
@@ -1144,15 +1145,17 @@ saved later when it is ready."
         filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
                               filename)
         driver            (driver.u/database->driver database)
-        _                 (or (driver/database-supports? driver :uploads nil)
+        _check-setting    (or (driver/database-supports? driver :uploads nil)
                               (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
         table-name        (->> (str (public-settings/uploads-table-prefix) filename-prefix)
                                (upload/unique-table-name driver))
         schema+table-name (if (str/blank? schema-name)
                             table-name
                             (str schema-name "." table-name))
-        _                 (upload/load-from-csv driver db-id schema+table-name csv-file)
-        _                 (sync/sync-database! database)
+        _load!            (upload/load-from-csv driver db-id schema+table-name csv-file)
+        _delete-file      (.delete ^File csv-file)
+        ;; We only need to get the Table created now; no need for a full scan
+        _sync!            (sync/sync-database! database {:scan :schema})
         table-id          (t2/select-one-fn :id Table :db_id db-id :%lower.name table-name)]
     (when (nil? table-id)
       (driver/drop-table driver db-id table-name)
