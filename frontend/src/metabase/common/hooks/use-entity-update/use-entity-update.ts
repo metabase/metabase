@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import type { Action } from "@reduxjs/toolkit";
-import { useDispatch, useStore } from "metabase/lib/redux";
+import { useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/core/utils/types";
 import { State } from "metabase-types/store";
 
@@ -35,14 +35,13 @@ export const useEntityUpdate = <
   getObject,
 }: UseEntityUpdateProps<TId, TEntity, TEntityInfo, TEntityData>) => {
   const store = useStore();
-  const dispatch = useDispatch();
 
   return useCallback(
     async (entityInfo: TEntityInfo, updates: Partial<TEntityData>) => {
-      await dispatch(update(entityInfo, updates));
+      await store.dispatch(update(entityInfo, updates));
       const entity = getObject(store.getState(), { entityId: entityInfo.id });
       return checkNotNull(entity);
     },
-    [store, dispatch, update, getObject],
+    [store, update, getObject],
   );
 };
