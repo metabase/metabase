@@ -1127,7 +1127,7 @@
                                             :dashboard_id new-dash-id
                                             {:order-by [[:position :asc]]})
               new->old-tab-id   (zipmap (map :id new-tabs) (map :id original-tabs))]
-         (testing "Cards are located correclty between tabs"
+         (testing "Cards are located correctly between tabs"
                      (is (= (map #(select-keys % [:name :display :dashboard_tab_id]) (dashboard/ordered-cards dashboard-id))
                             (map #(select-keys % [:name :display :dashboard_tab_id])
                                  (for [card (dashboard/ordered-cards new-dash-id)]

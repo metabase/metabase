@@ -279,14 +279,14 @@
   (let [new-tab-ids (t2/insert-returning-pks! :model/DashboardTab
                                               (for [tab existing-tabs]
                                                 (-> tab
-                                                  (assoc :dashboard_id (:id new-dashboard))
-                                                  (dissoc :id :entity_id :created_at :updated_at))))]
+                                                    (assoc :dashboard_id (:id new-dashboard))
+                                                    (dissoc :id :entity_id :created_at :updated_at))))]
     (zipmap (map :id existing-tabs) new-tab-ids)))
 
 (defn update-cards-for-copy
   "Update ordered-cards in a dashboard for copying.
-  If the dashboard has tabs, fixup the tab ids in ordered-cards to point to the new tabs.
-  Then If shallow copy, returns the cards. If deep copy, replaces ids with id from the newly-copied cards.
+  If the dashboard has tabs, fix up the tab ids in ordered-cards to point to the new tabs.
+  Then if shallow copy, return the cards. If deep copy, replace ids with id from the newly-copied cards.
   If there is no new id, it means user lacked curate permissions for the cards
   collections and it is omitted. Dashboard-id is only needed for useful errors."
   [dashboard-id ordered-cards deep? id->new-card id->new-tab-id]
