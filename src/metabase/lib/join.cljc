@@ -11,10 +11,10 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
-   [metabase.lib.types.isa :as lib.types.isa]))
+   [metabase.util.malli :as mu]))
 
 (defmulti with-join-alias-method
   "Implementation for [[with-join-alias]]."
