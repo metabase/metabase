@@ -339,6 +339,11 @@
   [aggregation-operator]
   (to-array (lib.core/aggregation-operator-columns aggregation-operator)))
 
+(defn ^:export selected-aggregation-operators
+  "Mark the operator and the column (if any) in `agg-operators` selected by `agg-clause`."
+  [agg-operators agg-clause]
+  (to-array (lib.core/selected-aggregation-operators (seq agg-operators) agg-clause)))
+
 (defn ^:export filterable-columns
   "Get the available filterable columns for the stage with `stage-number` of
   the query `a-query`.

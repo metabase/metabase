@@ -21,7 +21,7 @@
    (if (t2/select-one Database :id id)
      (install-database! engine (inc id))
      (do
-       ;; guard against someone manually deletihng the audit-db entry, but not removing the audit-db permissions.
+       ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
        (t2/delete! :permissions {:where [:like :object (str "%/db/" id "/%")]})
        (t2/insert! Database {:is_audit         true
                              :id               default-audit-db-id
