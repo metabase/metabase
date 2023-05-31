@@ -7,6 +7,10 @@ export interface HasId<TId> {
   id: TId;
 }
 
+export interface EntityQueryOptions<TId> {
+  entityId?: TId;
+}
+
 export interface UseEntityUpdateProps<
   TId,
   TEntity,
@@ -14,7 +18,10 @@ export interface UseEntityUpdateProps<
   TEntityData,
 > {
   update: (entityInfo: TEntityInfo, updates: Partial<TEntityData>) => Action;
-  getObject: (state: State) => TEntity | undefined;
+  getObject: (
+    state: State,
+    options: EntityQueryOptions<TId>,
+  ) => TEntity | undefined;
 }
 
 export const useEntityUpdate = <
@@ -26,13 +33,13 @@ export const useEntityUpdate = <
   update,
   getObject,
 }: UseEntityUpdateProps<TId, TEntity, TEntityInfo, TEntityData>) => {
-  const { store } = useStore();
+  const store = useStore();
   const dispatch = useDispatch();
 
   return useCallback(
     async (entityInfo: TEntityInfo, updates: TEntityData) => {
       await dispatch(update(entityInfo, updates));
-      return getObject(store.getState());
+      return getObject(store.getState(), { entityId: entityInfo.id });
     },
     [store, dispatch, update, getObject],
   );

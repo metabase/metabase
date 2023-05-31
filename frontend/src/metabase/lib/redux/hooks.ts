@@ -8,8 +8,7 @@ import {
 
 import type { State } from "metabase-types/store";
 
-export const useStore: () => { store: Store<State, AnyAction> } =
-  useStoreOriginal;
+export const useStore: () => Store<State, AnyAction> = useStoreOriginal;
 export const useDispatch: () => ThunkDispatch<State, void, AnyAction> =
   useDispatchOriginal;
 export const useSelector: TypedUseSelectorHook<State> = useSelectorOriginal;
