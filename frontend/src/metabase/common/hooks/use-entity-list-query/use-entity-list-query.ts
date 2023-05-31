@@ -53,24 +53,14 @@ export const useEntityListQuery = <TItem, TQuery = never>(
   const isLoading = useSelector(state => getLoading(state, options));
   const isLoaded = useSelector(state => getLoaded(state, options));
   const error = useSelector(state => getError(state, options));
+
   const dispatch = useDispatch();
-
-  const handleFetch = () => {
-    const action = dispatch(fetchList(entityQuery, { reload }));
-    Promise.resolve(action).catch(() => undefined);
-  };
-
-  useDeepCompareEffect(() => {
-    if (enabled) {
-      handleFetch();
-    }
-  }, [dispatch, fetchList, entityQuery, reload, enabled]);
-
   useDeepCompareEffect(() => {
     if (enabled && !isLoaded) {
-      handleFetch();
+      const action = dispatch(fetchList(entityQuery, { reload }));
+      Promise.resolve(action).catch(() => undefined);
     }
-  }, [enabled, isLoaded]);
+  }, [dispatch, fetchList, entityQuery, reload, enabled, isLoaded]);
 
   return { data, isLoading, error };
 };
