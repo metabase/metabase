@@ -28,7 +28,8 @@
   [:enum :default :long])
 
 (defmulti display-name-method
-  "Calculate a nice human-friendly display name for something."
+  "Calculate a nice human-friendly display name for something. `display-name-style` is one of the values
+  of [[DisplayNameStyle]] above."
   {:arglists '([query stage-number x display-name-style])}
   (fn [_query _stage-number x _display-name-style]
     (lib.dispatch/dispatch-value x))

@@ -275,3 +275,31 @@
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_bfaf4e7b"}]
             (lib.metadata.calculation/metadata query)))))
+
+(deftest ^:parallel join-strategy-test
+  (let [query  (lib.tu/query-with-join)
+        [join] (lib/joins query)]
+    (testing "join without :strategy"
+      (is (= :left-join
+             (lib/join-strategy join))))
+    (testing "join with explicit :strategy"
+      (let [join' (lib/with-join-strategy join :right-join)]
+        (is (=? {:strategy :right-join}
+                join'))
+        (is (= :right-join
+               (lib/join-strategy join')))))))
+
+(deftest ^:parallel with-join-strategy-test
+  (testing "Make sure `with-join-alias` works with unresolved functions"
+    (is (=? {:stages [{:joins [{:strategy :right-join}]}]}
+            (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                (lib/join (-> (lib/join-clause (fn [_query _stage-number]
+                                                 (meta/table-metadata :categories))
+                                               [(lib/=
+                                                 (lib/field "VENUES" "CATEGORY_ID")
+                                                 (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                              (lib/with-join-strategy :right-join))))))))
+
+(deftest ^:parallel available-join-strategies-test
+  (is (= [:left-join :right-join :inner-join]
+         (lib/available-join-strategies (lib.tu/query-with-join)))))

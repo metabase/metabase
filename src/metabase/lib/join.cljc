@@ -295,3 +295,37 @@
   "Get all join conditions for the given join"
   [j :- ::lib.schema.join/join]
   (:fields j))
+
+(mu/defn join-strategy :- ::lib.schema.join/strategy
+  "Get the raw keyword strategy (type) of a given join, e.g. `:left-join` or `:right-join`. This is either the value
+  of the optional `:strategy` key or the default, `:left-join`, if `:strategy` is not specified."
+  [a-join :- ::lib.schema.join/join]
+  (get a-join :strategy :left-join))
+
+(mu/defn with-join-strategy :- [:or ::lib.schema.join/join fn?]
+  "Return a copy of `a-join` with its `:strategy` set to `strategy`."
+  [a-join   :- [:or
+                ::lib.schema.join/join
+                fn?]
+   strategy :- ::lib.schema.join/strategy]
+  (if (fn? a-join)
+    (fn [query stage-metadata]
+      (with-join-strategy (a-join query stage-metadata) strategy))
+    (assoc a-join :strategy strategy)))
+
+(mu/defn available-join-strategies :- [:sequential ::lib.schema.join/strategy]
+  "Get available join strategies for the current Database (based on the Database's
+  supported [[metabase.driver/driver-features]]) as raw keywords like `:left-join`."
+  ([query]
+   (available-join-strategies query -1))
+
+  ;; stage number is not currently used, but it is taken as a parameter for consistency with the rest of MLv2
+  ([query         :- ::lib.schema/query
+    _stage-number :- :int]
+   (let [database (lib.metadata/database query)
+         features (:features database)]
+     (filterv (partial contains? features)
+              [:left-join
+               :right-join
+               :inner-join
+               :full-join]))))

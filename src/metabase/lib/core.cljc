@@ -164,7 +164,10 @@
    join-fields
    joins
    with-join-alias
-   with-join-fields]
+   with-join-fields
+   join-strategy
+   with-join-strategy
+   available-join-strategies]
   [lib.limit
    current-limit
    limit]

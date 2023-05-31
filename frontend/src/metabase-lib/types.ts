@@ -55,3 +55,12 @@ export type OrderByClauseDisplayInfo = Pick<
 > & {
   direction: OrderByDirection;
 };
+
+declare const Join: unique symbol;
+export type Join = unknown & { _opaque: typeof Join };
+
+export type JoinStrategy =
+  | "left-join"
+  | "right-join"
+  | "inner-join"
+  | "full-join";

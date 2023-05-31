@@ -378,3 +378,19 @@
    (with-fields a-query -1 new-fields))
   ([a-query stage-number new-fields]
    (lib.core/with-fields a-query stage-number new-fields)))
+
+(defn join-strategy
+  "Get the strategy (type) of a given join as a plain string like `left-join`."
+  [a-join]
+  (u/qualified-name (lib.core/join-strategy a-join)))
+
+(defn with-join-strategy
+  "Return a copy of `a-join` with its `:strategy` set to `strategy`."
+  [a-join strategy]
+  (lib.core/with-join-strategy a-join (keyword strategy)))
+
+(defn available-join-strategies
+  "Get available join strategies for the current Database (based on the Database's
+  supported [[metabase.driver/driver-features]]) as strings like `left-join`."
+  [a-query stage-number]
+  (to-array (map u/qualified-name (lib.core/available-join-strategies a-query stage-number))))

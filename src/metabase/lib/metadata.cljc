@@ -141,7 +141,10 @@
    [:lib/type [:= :metadata/database]]
    [:id ::lib.schema.id/database]
    ;; Like `:fields` for [[TableMetadata]], this is now optional -- we can fetch the Tables separately if needed.
-   [:tables {:optional true} [:sequential TableMetadata]]])
+   [:tables   {:optional true} [:sequential TableMetadata]]
+   ;; TODO -- this should validate against the driver features list in [[metabase.driver/driver-features]] if we're in
+   ;; Clj mode
+   [:features {:optional true} [:set :keyword]]])
 
 (def MetadataProvider
   "Schema for something that satisfies the [[lib.metadata.protocols/MetadataProvider]] protocol."
