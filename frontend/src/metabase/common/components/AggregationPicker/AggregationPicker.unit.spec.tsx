@@ -1,10 +1,14 @@
+import _ from "underscore";
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
-import { render, screen, within } from "__support__/ui";
+import { render, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/core/utils/types";
 
 import type { Metric, StructuredDatasetQuery } from "metabase-types/api";
-import { createMockMetric } from "metabase-types/api/mocks";
+import {
+  createMockMetric,
+  COMMON_DATABASE_FEATURES,
+} from "metabase-types/api/mocks";
 import {
   createAdHocCard,
   createSampleDatabase,
@@ -73,7 +77,10 @@ const PRODUCT_METRIC = createMockMetric({
   },
 });
 
-function createMetadata({ metrics = [] }: { metrics?: Metric[] } = {}) {
+function createMetadata({
+  metrics = [],
+  hasExpressionSupport = true,
+}: { metrics?: Metric[]; hasExpressionSupport?: boolean } = {}) {
   return createMockMetadata({
     databases: [
       createSampleDatabase({
@@ -83,6 +90,9 @@ function createMetadata({ metrics = [] }: { metrics?: Metric[] } = {}) {
           createProductsTable({ metrics: [PRODUCT_METRIC] }),
           createReviewsTable(),
         ],
+        features: hasExpressionSupport
+          ? COMMON_DATABASE_FEATURES
+          : _.without(COMMON_DATABASE_FEATURES, "expression-aggregations"),
       }),
     ],
     metrics: [...metrics, PRODUCT_METRIC],
@@ -354,6 +364,30 @@ describe("AggregationPicker", () => {
           displayName: metric.displayName(),
         }),
       );
+    });
+  });
+
+  describe("custom expressions", () => {
+    it("should allow to enter a custom expression", async () => {
+      const { onSelectLegacy } = setup();
+
+      userEvent.click(screen.getByText("Custom Expression"));
+      userEvent.type(screen.getByLabelText("Expression"), "1 + 1");
+      userEvent.type(screen.getByLabelText("Name"), "My expression");
+      userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      await waitFor(() =>
+        expect(onSelectLegacy).toHaveBeenCalledWith([
+          "aggregation-options",
+          ["+", 1, 1],
+          { "display-name": "My expression", name: "My expression" },
+        ]),
+      );
+    });
+
+    it("shouldn't be available if database doesn't support custom expressions", () => {
+      setup({ metadata: createMetadata({ hasExpressionSupport: false }) });
+      expect(screen.queryByText("Custom Expression")).not.toBeInTheDocument();
     });
   });
 });
