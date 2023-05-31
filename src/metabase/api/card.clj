@@ -57,7 +57,6 @@
    [toucan2.core :as t2])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
-   (java.io File)
    (java.util UUID)))
 
 (set! *warn-on-reflection* true)
@@ -1153,7 +1152,6 @@ saved later when it is ready."
                             table-name
                             (str schema-name "." table-name))
         _load!            (upload/load-from-csv driver db-id schema+table-name csv-file)
-        _delete-file      (.delete ^File csv-file)
         ;; We only need to get the Table created now; no need for a full scan
         _sync!            (sync/sync-database! database {:scan :schema})
         table-id          (t2/select-one-fn :id Table :db_id db-id :%lower.name table-name)]
