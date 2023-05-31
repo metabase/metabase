@@ -13,7 +13,7 @@
   - :measure - An OLAP cube measured item (Typically the Y-axis of a graph)
   - :dimension - An OLAP cube dimension (Typically the X-axis of a graph)
   - nil - It wouldn't be displayed on either axis (column ids and FKs are good examples)"
-  [{:keys [semantic_type effective_type base_type] :as metadata}]
+  [{:keys [semantic_type effective_type] :as _metadata}]
   (cond
     (isa? semantic_type :Relation/*) nil
     (or
@@ -66,7 +66,10 @@
                             :graph.dimensions []}})
 
 #?(:clj
-   (defn native-query->result-metadata [query]
+   (defn native-query->result-metadata
+     "Retrieve metadata from a native query by first running the query with
+     no more than 100 returned rows then get the metadata columns."
+     [query]
      (let [limit-query (fn [sql] (format "WITH X AS (%s) SELECT * FROM X LIMIT 100" sql))]
        (-> (update-in query [:native :query] limit-query)
            qp/process-query
@@ -106,4 +109,5 @@
 (def select-viz
   "Select the appropriate visualization from the provided measures and dimensions."
   (comp create-viz to-measures-and-dimensions))
+
 
