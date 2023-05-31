@@ -389,10 +389,9 @@
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
         ;; revert
         (revert-to-previous-revision Dashboard dashboard-id 2)
-        (testing "should works"
-          (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
-                   {:id tab-2-id :name "Tab 2" :position 1}]
-                  (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
+        (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
+                 {:id tab-2-id :name "Tab 2" :position 1}]
+                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]}))))))
 
  (testing "revert deleting tabs"
    (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
@@ -419,10 +418,9 @@
                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
        ;; revert
        (revert-to-previous-revision Dashboard dashboard-id 2)
-       (testing "should works"
-         (is (=? [{:id #hawk/schema (s/pred pos-int?) :name "Tab 1" :position 0}
-                  {:id tab-2-id :name "Tab 2" :position 1}]
-                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]}))))))))
+       (is (=? [{:id #hawk/schema (s/pred pos-int?) :name "Tab 1" :position 0}
+                {:id tab-2-id :name "Tab 2" :position 1}]
+               (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
 
 (deftest revert-dashboard-with-tabs-advanced-test
   (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
@@ -496,23 +494,22 @@
 
      ;; revert
      (revert-to-previous-revision Dashboard dashboard-id 2)
-     (testing "should works"
-       (testing "tab 1 should have 2 cards"
-         (is (= 2 (t2/count :model/DashboardCard :dashboard_tab_id tab-1-id)))
-         (testing "and position of first card is (0,0)"
-           (is (=? {:row 0
-                    :col 0}
-                   (t2/select-one :model/DashboardCard card-1-tab-1)))))
+     (testing "tab 1 should have 2 cards"
+       (is (= 2 (t2/count :model/DashboardCard :dashboard_tab_id tab-1-id)))
+       (testing "and position of first card is (0,0)"
+         (is (=? {:row 0
+                  :col 0}
+                 (t2/select-one :model/DashboardCard card-1-tab-1)))))
 
-       (testing "tab \"Tab 2\" is restored"
-         (let [new-tab-2 (t2/select-one :model/DashboardTab :dashboard_id dashboard-id :name "Tab 2")]
-          (is (= 1 (:position new-tab-2)))
+     (testing "tab \"Tab 2\" is restored"
+       (let [new-tab-2 (t2/select-one :model/DashboardTab :dashboard_id dashboard-id :name "Tab 2")]
+        (is (= 1 (:position new-tab-2)))
 
-          (testing "with its cards"
-            (is (= 2 (t2/count :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id (:id new-tab-2)))))))
+        (testing "with its cards"
+          (is (= 2 (t2/count :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id (:id new-tab-2)))))))
 
-       (testing "there are no \"Tab 3\""
-         (is (false? (t2/exists? :model/DashboardTab :dashboard_id dashboard-id :name "Tab 3"))))))))
+     (testing "there are no \"Tab 3\""
+       (is (false? (t2/exists? :model/DashboardTab :dashboard_id dashboard-id :name "Tab 3")))))))
 
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
