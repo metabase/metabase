@@ -3,7 +3,7 @@ import { getIn } from "icepick";
 import type { LocationDescriptor } from "history";
 
 import { useMount } from "react-use";
-import { IconProps } from "metabase/components/Icon";
+import { IconProps } from "metabase/core/components/Icon";
 
 import Utils from "metabase/lib/utils";
 

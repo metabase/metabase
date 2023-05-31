@@ -7,7 +7,7 @@ import {
   SortableElement,
 } from "metabase/components/sortable";
 import CollapseSection from "metabase/components/CollapseSection";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { Bookmark } from "metabase-types/api";

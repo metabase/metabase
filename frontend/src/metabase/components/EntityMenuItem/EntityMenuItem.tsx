@@ -1,5 +1,6 @@
 import React, { MouseEvent, ReactNode } from "react";
 import Tooltip from "metabase/core/components/Tooltip";
+import { IconName } from "metabase/core/components/Icon";
 import {
   MenuExternalLink,
   MenuItemContent,
@@ -10,7 +11,7 @@ import {
 
 export interface EntityMenuItemProps {
   title?: string;
-  icon?: string;
+  icon?: IconName;
   action?: (event: MouseEvent<HTMLDivElement>) => void;
   link?: string;
   externalLink?: boolean;

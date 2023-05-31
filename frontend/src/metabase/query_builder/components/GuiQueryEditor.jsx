@@ -6,7 +6,7 @@ import ReactDOM from "react-dom";
 import { t } from "ttag";
 
 import cx from "classnames";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";

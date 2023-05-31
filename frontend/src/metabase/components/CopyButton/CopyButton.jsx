@@ -3,7 +3,7 @@ import React, { Component } from "react";
 
 import { t } from "ttag";
 import CopyToClipboard from "react-copy-to-clipboard";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 
 export default class CopyWidget extends Component {

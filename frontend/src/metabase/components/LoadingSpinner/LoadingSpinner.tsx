@@ -2,7 +2,7 @@ import React from "react";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { SpinnerIcon, SpinnerRoot } from "./LoadingSpinner.styled";
 
 interface Props {

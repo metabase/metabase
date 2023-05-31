@@ -1,6 +1,6 @@
 import React from "react";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
 import { SchemaId } from "metabase-types/api";
 import Schema from "metabase-lib/metadata/Schema";

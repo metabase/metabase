@@ -6,7 +6,7 @@ import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
 import _ from "underscore";
 import { getIn } from "icepick";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { AccordionListCell } from "./AccordionListCell";
 import { AccordionListRoot } from "./AccordionList.styled";
 import { getNextCursor, getPrevCursor } from "./utils";

@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { IconProps } from "metabase/components/Icon";
+import { IconName, IconProps } from "metabase/core/components/Icon";
 import { Tree } from "metabase/components/tree";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
@@ -33,7 +33,7 @@ import {
 import BookmarkList from "./BookmarkList";
 
 interface CollectionTreeItem extends Collection {
-  icon: string | IconProps;
+  icon: IconName | IconProps;
   children: CollectionTreeItem[];
 }
 
@@ -188,7 +188,11 @@ function CollectionSectionHeading({
         </SidebarLink>
         {currentUser.is_superuser && (
           <SidebarLink
-            icon={getCollectionIcon(PERSONAL_COLLECTIONS as Collection)}
+            icon={
+              getCollectionIcon(
+                PERSONAL_COLLECTIONS as Collection,
+              ) as unknown as IconName
+            }
             url={OTHER_USERS_COLLECTIONS_URL}
             onClick={closePopover}
           >

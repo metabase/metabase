@@ -4,7 +4,7 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 import Tables from "metabase/entities/tables";
-import Icon from "metabase/components/Icon/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
 import Grabber from "metabase/components/Grabber";
 import {

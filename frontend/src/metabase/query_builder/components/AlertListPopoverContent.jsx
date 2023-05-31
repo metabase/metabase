@@ -13,7 +13,7 @@ import {
   getDayOfWeekOptions,
   HOUR_OPTIONS,
 } from "metabase/lib/date-time";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Modal from "metabase/components/Modal";
 import {
   CreateAlertModalContent,

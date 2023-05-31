@@ -1,9 +1,10 @@
 import React from "react";
+import { IconName } from "metabase/core/components/Icon";
 import { ToolbarButtonIcon, ToolbarButtonRoot } from "./ToolbarButton.styled";
 
 interface ToolbarButtonProps {
   text: string;
-  icon: string;
+  icon: IconName;
   onClick?: () => void;
 }
 

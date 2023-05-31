@@ -8,7 +8,7 @@ import { pluralize } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button";
 import Tab from "metabase/core/components/Tab";
 import TabContent from "metabase/core/components/TabContent";
-import Icon from "metabase/components/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import Question from "metabase-lib/Question";
 import StructuredQuery, {
   FilterSection,
@@ -217,7 +217,11 @@ const BulkFilterModalSectionList = ({
     <TabContent value={tab} onChange={setTab}>
       <ModalTabList>
         {sections.map((section, index) => (
-          <Tab key={index} value={index} icon={section.icon}>
+          <Tab
+            key={index}
+            value={index}
+            icon={section.icon as unknown as IconName}
+          >
             {section.name}
           </Tab>
         ))}

@@ -2,7 +2,7 @@
 import React from "react";
 
 import cx from "classnames";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { color as c, alpha } from "metabase/lib/colors";
 
 export default function ViewPill({

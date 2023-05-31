@@ -187,7 +187,7 @@ export function getDashcardResultsError(datasets: Dataset[]) {
   if (isAccessRestricted) {
     return {
       message: getPermissionErrorMessage(),
-      icon: "key",
+      icon: "key" as const,
     };
   }
 
@@ -195,11 +195,11 @@ export function getDashcardResultsError(datasets: Dataset[]) {
   if (errors.length > 0) {
     if (IS_EMBED_PREVIEW) {
       const message = errors[0]?.data || getGenericErrorMessage();
-      return { message, icon: "warning" };
+      return { message, icon: "warning" as const };
     }
     return {
       message: getGenericErrorMessage(),
-      icon: "warning",
+      icon: "warning" as const,
     };
   }
 

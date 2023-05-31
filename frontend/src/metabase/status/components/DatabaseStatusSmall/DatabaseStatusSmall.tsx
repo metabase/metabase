@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { isSyncAborted, isSyncInProgress } from "metabase/lib/syncing";
 import { InitialSyncStatus } from "metabase-types/api";
+import { IconName } from "metabase/core/components/Icon";
 import Database from "metabase-lib/metadata/Database";
 import StatusSmall from "../StatusSmall";
 
@@ -52,7 +53,7 @@ const getStatusLabel = (status: InitialSyncStatus): string => {
   }
 };
 
-const getIconName = (status: InitialSyncStatus): string => {
+const getIconName = (status: InitialSyncStatus): IconName => {
   switch (status) {
     case "incomplete":
       return "database";

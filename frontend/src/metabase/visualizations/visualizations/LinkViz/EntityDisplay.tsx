@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { isEmpty } from "metabase/lib/validate";
 

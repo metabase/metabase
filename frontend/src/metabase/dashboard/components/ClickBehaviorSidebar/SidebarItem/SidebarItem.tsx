@@ -1,6 +1,6 @@
 import React from "react";
 
-import Icon, { IconProps } from "metabase/components/Icon";
+import { Icon, IconProps } from "metabase/core/components/Icon";
 
 import {
   Name,

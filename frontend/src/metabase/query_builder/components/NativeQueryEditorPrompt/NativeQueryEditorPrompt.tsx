@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { t } from "ttag";
 import { useAsyncFn } from "react-use";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Button from "metabase/core/components/Button";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { DatabaseId } from "metabase-types/api";

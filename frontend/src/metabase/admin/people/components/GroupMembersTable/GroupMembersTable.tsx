@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { getFullName } from "metabase/lib/user";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import PaginationControls from "metabase/components/PaginationControls";
 

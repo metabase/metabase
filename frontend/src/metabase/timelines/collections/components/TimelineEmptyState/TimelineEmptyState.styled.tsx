@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { alpha, color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import DateTime from "metabase/components/DateTime";
 
 export const EmptyStateRoot = styled.div`

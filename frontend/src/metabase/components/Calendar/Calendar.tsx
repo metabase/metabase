@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import cx from "classnames";
 import moment, { Moment } from "moment-timezone";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import {
   getDayOfWeekOptions,
   getFirstDayOfWeekIndex,

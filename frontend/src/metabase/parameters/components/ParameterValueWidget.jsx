@@ -9,7 +9,7 @@ import {
 } from "metabase/parameters/utils/ui";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import DateSingleWidget from "metabase/components/DateSingleWidget";
 import DateRangeWidget from "metabase/components/DateRangeWidget";
 import DateRelativeWidget from "metabase/components/DateRelativeWidget";

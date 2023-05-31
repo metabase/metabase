@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
 import { color } from "metabase/lib/colors";

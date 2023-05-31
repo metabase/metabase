@@ -11,7 +11,7 @@ import {
 } from "metabase/lib/colors/groups";
 
 import Button from "metabase/core/components/Button";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Select, { Option } from "metabase/core/components/Select";
 import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";

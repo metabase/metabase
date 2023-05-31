@@ -1,10 +1,8 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-import Icon, { IconWrapper } from "metabase/components/Icon";
+import Button from "metabase/core/components/Button";
 
 export default function PaginationControls({
   page,
@@ -36,31 +34,24 @@ export default function PaginationControls({
           </React.Fragment>
         )}
       </span>
-      <PaginationButton
+      <Button
+        onlyIcon
+        icon="chevronleft"
         onClick={onPreviousPage}
         disabled={isPreviousDisabled}
         data-testid="previous-page-btn"
-      >
-        <Icon name="chevronleft" />
-      </PaginationButton>
-      <PaginationButton
-        small
+      />
+
+      <Button
+        onlyIcon
+        icon="chevronright"
         onClick={onNextPage}
         disabled={isNextDisabled}
         data-testid="next-page-btn"
-      >
-        <Icon name="chevronright" />
-      </PaginationButton>
+      />
     </div>
   );
 }
-
-const PaginationButton = styled(IconWrapper.withComponent("button"))`
-  &:disabled {
-    background-color: transparent;
-    color: ${color("text-light")};
-  }
-`;
 
 PaginationControls.propTypes = {
   page: PropTypes.number.isRequired,

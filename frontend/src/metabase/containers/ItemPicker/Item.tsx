@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 
-import Icon, { IconProps } from "metabase/components/Icon";
+import { Icon, IconName, IconProps } from "metabase/core/components/Icon";
 
 import type { PickerItem, PickerItemId } from "./types";
 
@@ -10,7 +10,7 @@ import { ItemRoot, ItemContent, ItemTitle, ExpandButton } from "./Item.styled";
 interface Props {
   item: PickerItem;
   name: string;
-  icon: string | IconProps;
+  icon: IconName | IconProps;
   color: string;
   selected: boolean;
   canSelect: boolean;

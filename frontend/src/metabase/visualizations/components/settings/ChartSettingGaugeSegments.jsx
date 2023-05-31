@@ -9,7 +9,7 @@ import { getAccentColors } from "metabase/lib/colors/groups";
 
 import ColorSelector from "metabase/core/components/ColorSelector";
 import Button from "metabase/core/components/Button";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import NumericInput from "metabase/components/NumericInput";
 
 const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {

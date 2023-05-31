@@ -3,7 +3,7 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import cx from "classnames";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import S from "./LabelIcon.css";
 
 const LabelIcon = ({ icon, size = 16, className, style }) =>

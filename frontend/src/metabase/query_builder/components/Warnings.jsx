@@ -2,7 +2,7 @@
 import React from "react";
 
 import Tooltip from "metabase/core/components/Tooltip";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 const Warnings = ({ warnings, className = "", size = 16 }) => {
   if (!warnings || warnings.length === 0) {

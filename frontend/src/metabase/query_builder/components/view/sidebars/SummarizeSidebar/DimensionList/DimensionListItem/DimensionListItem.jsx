@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { getSelectedSubDimensionName } from "../utils";
 

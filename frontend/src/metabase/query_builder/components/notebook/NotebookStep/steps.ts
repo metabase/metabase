@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 
+import { IconName } from "metabase/core/components/Icon";
 import DataStep from "../steps/DataStep";
 import JoinStep from "../steps/JoinStep";
 import ExpressionStep from "../steps/ExpressionStep";
@@ -17,7 +18,7 @@ import { NotebookStepUiComponentProps } from "../types";
 
 export type StepUIItem = {
   title: string;
-  icon?: string;
+  icon?: IconName;
   priority?: number;
   transparent?: boolean;
   compact?: boolean;
