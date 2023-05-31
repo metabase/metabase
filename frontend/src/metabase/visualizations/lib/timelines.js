@@ -165,8 +165,8 @@ function renderEventTicks({
       group.innerHTML = iconSvgText;
       const svg = group.firstChild;
       svg.classList.add("event-icon");
-      svg.setAttribute("width", "16");
-      svg.setAttribute("height", "16");
+      svg.setAttribute("width", ICON_SIZE);
+      svg.setAttribute("height", ICON_SIZE);
       svg.setAttribute("aria-label", getIconLabel(getIcon(d)));
 
       return group;
