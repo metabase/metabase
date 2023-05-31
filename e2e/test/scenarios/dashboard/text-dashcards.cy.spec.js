@@ -75,34 +75,21 @@ describe("scenarios > dashboard > text and headings", () => {
           });
       });
 
-      it("should auto-edit on focus", () => {
-        getDashboardCard(1)
-          .realHover()
-          .within(() => {
-            cy.get("textarea").click();
-          });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("You're editing this dashboard.").realHover();
+      it("should allow editing on click", () => {
+        getDashboardCard(1).click();
+
+        cy.get("main").findByText("You're editing this dashboard.").realHover();
 
         getDashboardCard(1).within(() => {
           cy.get("textarea").should("have.value", "Text *text* __text__");
         });
       });
 
-      it("should auto-edit on hover", () => {
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("You're editing this dashboard.").realHover().click();
-
-        getDashboardCard(1)
+      it("should auto-preview when not focused", () => {
+        cy.get("main")
+          .findByText("You're editing this dashboard.")
           .realHover()
-          .within(() => {
-            cy.get("textarea").should("have.value", "Text *text* __text__");
-          });
-      });
-
-      it("should auto-preview when not focused and not hovered", () => {
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("You're editing this dashboard.").realHover().click();
+          .click();
 
         getDashboardCard(1).within(() => {
           cy.get("div").contains("Text text text");
@@ -121,34 +108,26 @@ describe("scenarios > dashboard > text and headings", () => {
 
       // fixed in metabase#11358
       it("should load after save/refresh (metabase#12873)", () => {
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Test Dashboard");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("This dashboard is looking empty.");
+        cy.get("main").findByText("Test Dashboard");
+        cy.get("main").findByText("This dashboard is looking empty.");
 
         // Add save text box to dash
         addTextBox("Dashboard testing text");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Save").click();
+        cy.get("main").findByText("Save").click();
 
         // Reload page
         cy.reload();
 
         // Page should still load
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("New");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Loading...").should("not.exist");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Cannot read property 'type' of undefined").should(
-          "not.exist",
-        );
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Test Dashboard");
+        cy.get('[data-testid="app-bar"]').findByText("New");
+        cy.get("main").findByText("Loading...").should("not.exist");
+        cy.get("main")
+          .findByText("Cannot read property 'type' of undefined")
+          .should("not.exist");
+        cy.get("main").findByText("Test Dashboard");
 
         // Text box should still load
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Dashboard testing text");
+        cy.get("main").findByText("Dashboard testing text");
       });
 
       it("should have a scroll bar for long text (metabase#8333)", () => {
@@ -156,8 +135,7 @@ describe("scenarios > dashboard > text and headings", () => {
           "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam ut fermentum erat, nec sagittis justo. Vivamus vitae ipsum semper, consectetur odio at, rutrum nisi. Fusce maximus consequat porta. Mauris libero mi, viverra ac hendrerit quis, rhoncus quis ante. Pellentesque molestie ut felis non congue. Vivamus finibus ligula id fringilla rutrum. Donec quis dignissim ligula, vitae tempor urna.\n\nDonec quis enim porta, porta lacus vel, maximus lacus. Sed iaculis leo tortor, vel tempor velit tempus vitae. Nulla facilisi. Vivamus quis sagittis magna. Aenean eu eros augue. Sed euismod pulvinar laoreet. Morbi commodo, sem sed dictum faucibus, sem ante ultrices libero, nec ornare risus lacus eget velit. Etiam sagittis lectus non erat tristique tempor. Sed in ipsum urna. Sed venenatis turpis at orci feugiat, ut gravida lectus luctus.",
           { delay: 0 },
         );
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Save").click();
+        cy.get("main").findByText("Save").click();
 
         // The test fails if there is no scroll bar
         cy.get(".text-card-markdown")
@@ -175,14 +153,11 @@ describe("scenarios > dashboard > text and headings", () => {
         cy.findByText("Text or Category").click();
         cy.findByText("Is").click();
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save").click();
+      cy.get("main").findByText("Save").click();
 
       // confirm text box and filter are still there
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("text text text");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Text");
+      cy.get("main").findByText("text text text");
+      cy.get("main").findByText("Text");
     });
   });
 
@@ -211,33 +186,20 @@ describe("scenarios > dashboard > text and headings", () => {
           });
       });
 
-      it("should auto-edit on focus", () => {
-        getDashboardCard(1)
-          .realHover()
-          .within(() => {
-            cy.get("input").click();
-          });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("You're editing this dashboard.").realHover();
+      it("should allowing editing on click", () => {
+        getDashboardCard(1).click();
+        cy.get("main").findByText("You're editing this dashboard.").realHover();
 
         getDashboardCard(1).within(() => {
           cy.get("input").should("have.value", "Example Heading");
         });
       });
 
-      it("should auto-edit on hover", () => {
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("You're editing this dashboard.").realHover().click();
-        getDashboardCard(1)
+      it("should auto-preview when not focused", () => {
+        cy.get("main")
+          .findByText("You're editing this dashboard.")
           .realHover()
-          .within(() => {
-            cy.get("input").should("have.value", "Example Heading");
-          });
-      });
-
-      it("should auto-preview when not focused and not hovered", () => {
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("You're editing this dashboard.").realHover().click();
+          .click();
 
         getDashboardCard(1).within(() => {
           cy.get("h2").contains("Example Heading");
