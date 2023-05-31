@@ -2,11 +2,12 @@ import React, { forwardRef } from "react";
 import cx from "classnames";
 import Tooltip from "../Tooltip";
 import { Icons } from "./icons";
+import type { IconName } from "./icons";
 
 const defaultSize = 16;
 
 export type IconProps = {
-  name: keyof typeof Icons;
+  name: IconName;
   color?: string;
   size?: string | number;
   tooltip?: string | null;

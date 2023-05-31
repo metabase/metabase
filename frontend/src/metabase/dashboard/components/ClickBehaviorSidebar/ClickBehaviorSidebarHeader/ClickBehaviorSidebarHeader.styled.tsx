@@ -1,8 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-import { Icon } from "metabase/core/components/Icon";
-
 export const ItemName = styled.span`
   color: ${color("brand")};
 `;
@@ -23,8 +21,4 @@ export const ChevronIconContainer = styled.div`
 
   border: 1px solid ${color("border")};
   border-radius: 4px;
-
-  ${Icon.Root} {
-    color: ${color("text-medium")};
-  }
 `;

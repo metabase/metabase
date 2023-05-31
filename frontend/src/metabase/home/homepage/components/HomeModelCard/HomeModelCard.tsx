@@ -1,4 +1,5 @@
 import React from "react";
+import { IconName } from "metabase/core/components/Icon";
 import HomeCard from "../HomeCard";
 import { CardIcon, CardTitle } from "./HomeModelCard.styled";
 
@@ -9,7 +10,7 @@ export interface HomeModelCardProps {
 }
 
 export interface HomeModelIconProps {
-  name: string;
+  name: IconName;
 }
 
 const HomeModelCard = ({

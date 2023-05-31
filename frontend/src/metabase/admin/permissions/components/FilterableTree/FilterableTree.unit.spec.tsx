@@ -9,29 +9,29 @@ const itemGroups = [
     {
       id: 1,
       name: "Item 1 in Group 1",
-      icon: "group",
+      icon: "group" as const,
     },
     {
       id: 2,
       name: "Item 2 in Group 1",
-      icon: "group",
+      icon: "group" as const,
     },
   ],
   [
     {
       id: 3,
       name: "Item 1 in Group 2",
-      icon: "group",
+      icon: "group" as const,
     },
     {
       id: 4,
       name: "Item 2 in Group 2",
-      icon: "group",
+      icon: "group" as const,
       children: [
         {
           id: 5,
           name: "Child Item 3 in Group 3",
-          icon: "group",
+          icon: "group" as const,
         },
       ],
     },

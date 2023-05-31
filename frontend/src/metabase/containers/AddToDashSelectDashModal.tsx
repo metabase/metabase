@@ -106,7 +106,7 @@ export const AddToDashSelectDashModal = ({
       />
       <Link onClick={() => setShouldCreateDashboard(true)} to="">
         <LinkContent>
-          <Icon name="add" mx={1} />
+          <Icon name="add" className="mx1" />
           <h4>{t`Create a new dashboard`}</h4>
         </LinkContent>
       </Link>

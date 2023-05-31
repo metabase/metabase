@@ -47,7 +47,7 @@ const ClauseStep = <T,>({
               {renderName(item, index)}
               {!readOnly && onRemove && (!canRemove || canRemove(item)) && (
                 <Icon
-                  ml={1}
+                  className="ml1"
                   name="close"
                   onClick={e => {
                     e.stopPropagation();

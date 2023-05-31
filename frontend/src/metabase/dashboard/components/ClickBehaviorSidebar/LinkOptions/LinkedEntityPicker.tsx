@@ -37,14 +37,14 @@ const LINK_TARGETS = {
   question: {
     Entity: Questions,
     PickerComponent: QuestionPicker,
-    pickerIcon: "bar",
+    pickerIcon: "bar" as const,
     getModalTitle: () => t`Pick a question to link to`,
     getPickerButtonLabel: () => t`Pick a question…`,
   },
   dashboard: {
     Entity: Dashboards,
     PickerComponent: DashboardPicker,
-    pickerIcon: "dashboard",
+    pickerIcon: "dashboard" as const,
     getModalTitle: () => t`Pick a dashboard to link to`,
     getPickerButtonLabel: () => t`Pick a dashboard…`,
   },

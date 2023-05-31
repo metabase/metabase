@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 import type { LocationDescriptor } from "history";
 
-import { IconProps } from "metabase/core/components/Icon";
+import { IconName, IconProps } from "metabase/core/components/Icon";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import WithVizSettingsData from "metabase/dashboard/hoc/WithVizSettingsData";
@@ -73,7 +73,7 @@ interface DashCardVisualizationProps {
   isNightMode?: boolean;
   isPublic?: boolean;
 
-  error?: { message?: string; icon?: IconProps["name"] };
+  error?: { message?: string; icon?: IconName };
   headerIcon?: IconProps;
 
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;

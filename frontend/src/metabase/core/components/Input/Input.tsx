@@ -6,7 +6,7 @@ import React, {
   Ref,
 } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import { InputSize } from "../../style/types";
 import {
@@ -30,9 +30,9 @@ export interface InputProps extends InputAttributes {
   size?: InputSize;
   error?: boolean;
   fullWidth?: boolean;
-  leftIcon?: string;
+  leftIcon?: IconName;
   leftIconTooltip?: ReactNode;
-  rightIcon?: string;
+  rightIcon?: IconName;
   rightIconTooltip?: ReactNode;
   subtitle?: string;
   colorScheme?: InputColorScheme;

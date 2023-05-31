@@ -1,6 +1,7 @@
 import React from "react";
 import Tooltip from "metabase/core/components/Tooltip";
 import { InitialSyncStatus } from "metabase-types/api";
+import { IconName } from "metabase/core/components/Icon";
 import {
   StatusRoot,
   StatusIconContainer,
@@ -13,7 +14,7 @@ export interface StatusSmallProps {
   status: InitialSyncStatus;
   statusLabel: string;
   hasSpinner: boolean;
-  icon: string;
+  icon: IconName;
   onExpand?: () => void;
 }
 

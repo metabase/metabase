@@ -22,6 +22,7 @@ import {
   CloseSidebarButton,
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
+import { IconName } from "metabase/core/components/Icon";
 import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
 import { clearSaveError as clearPermissionsSaveError } from "../../permissions";
 import { ToolbarButton } from "../ToolbarButton";
@@ -52,7 +53,7 @@ const CloseSidebarButtonWithDefault = ({
   name = "close",
   ...props
 }: {
-  name?: string;
+  name?: IconName;
   [key: string]: unknown;
 }) => <CloseSidebarButton name={name} {...props} />;
 

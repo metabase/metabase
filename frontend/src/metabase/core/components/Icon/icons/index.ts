@@ -1072,6 +1072,6 @@ export const Icons = {
   eye_filled: { component: eye_component, source: eye_source },
 } as const;
 
-export const iconNames = Object.keys(
-  Icons,
-) as unknown as (keyof typeof Icons)[];
+export type IconName = keyof typeof Icons;
+
+export const iconNames = Object.keys(Icons) as unknown as IconName[];

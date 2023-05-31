@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import type Table from "metabase-lib/metadata/Table";
 import type Field from "metabase-lib/metadata/Field";
 import DataSelectorLoading from "../DataSelectorLoading";
@@ -64,7 +64,12 @@ const DataSelectorFieldPicker = ({
     item.field && selectedField && item.field.id === selectedField.id;
 
   const renderItemIcon = (item: FieldWithName) =>
-    item.field && <Icon name={item.field.dimension().icon()} size={18} />;
+    item.field && (
+      <Icon
+        name={item.field.dimension().icon() as unknown as IconName}
+        size={18}
+      />
+    );
 
   return (
     <Container>

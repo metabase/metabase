@@ -1,10 +1,10 @@
 import React from "react";
-import { IconProps } from "metabase/core/components/Icon";
+import { IconName, IconProps } from "metabase/core/components/Icon";
 
 export interface ITreeNodeItem {
   id: string | number;
   name: string;
-  icon: string | IconProps;
+  icon: IconName | IconProps;
   children?: ITreeNodeItem[];
 }
 

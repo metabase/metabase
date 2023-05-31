@@ -1,6 +1,7 @@
 import React, { useMemo, useCallback } from "react";
 
 import { BooleanPickerCheckbox } from "metabase/query_builder/components/filters/pickers/BooleanPicker";
+import { IconName } from "metabase/core/components/Icon";
 import Filter from "metabase-lib/queries/structured/Filter";
 import Dimension from "metabase-lib/Dimension";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -92,7 +93,7 @@ export const BulkFilterItem = ({
             fieldName={dimension.displayName()}
             value={currentOperator}
             operators={dimension.filterOperators(currentOperator)}
-            iconName={dimension?.icon() ?? undefined}
+            iconName={(dimension?.icon() as unknown as IconName) ?? undefined}
             tableName={tableName}
             onChange={changeOperator}
           />
@@ -109,7 +110,7 @@ export const BulkFilterItem = ({
         <>
           <InlineOperatorSelector
             fieldName={dimension.displayName()}
-            iconName={dimension.icon() ?? undefined}
+            iconName={(dimension.icon() as unknown as IconName) ?? undefined}
             tableName={tableName}
             value={currentOperator}
             operators={dimension.filterOperators(currentOperator)}
@@ -127,7 +128,7 @@ export const BulkFilterItem = ({
         <>
           <InlineOperatorSelector
             fieldName={dimension.displayName()}
-            iconName={dimension.icon() ?? undefined}
+            iconName={(dimension.icon() as unknown as IconName) ?? undefined}
             tableName={tableName}
           />
           <InlineDatePicker
@@ -147,7 +148,7 @@ export const BulkFilterItem = ({
             fieldName={dimension.displayName()}
             value={currentOperator}
             operators={dimension.filterOperators(currentOperator)}
-            iconName={dimension.icon() ?? undefined}
+            iconName={(dimension.icon() as unknown as IconName) ?? undefined}
             tableName={tableName}
             onChange={changeOperator}
           />

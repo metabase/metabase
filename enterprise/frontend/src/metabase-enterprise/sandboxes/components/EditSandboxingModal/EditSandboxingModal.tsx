@@ -7,7 +7,7 @@ import QuestionPicker from "metabase/containers/QuestionPicker";
 import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import Radio from "metabase/core/components/Radio";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import EntityName from "metabase/entities/containers/EntityName";
 
 import QuestionLoader from "metabase/containers/QuestionLoader";
@@ -216,7 +216,7 @@ const EditSandboxingModal = ({
 export default EditSandboxingModal;
 
 interface SummaryRowProps {
-  icon: string;
+  icon: IconName;
   content: React.ReactNode;
 }
 
@@ -272,7 +272,7 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
         ([attribute, target], index) => (
           <SummaryRow
             key={attribute}
-            icon="funneloutline"
+            icon="funnel_outline"
             content={
               index === 0
                 ? jt`where ${(

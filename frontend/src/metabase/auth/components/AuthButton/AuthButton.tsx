@@ -1,9 +1,10 @@
 import React, { ReactNode } from "react";
+import { IconName } from "metabase/core/components/Icon";
 import { CardIcon, CardLink, CardText, TextLink } from "./AuthButton.styled";
 
 export interface AuthButtonProps {
   link?: string;
-  icon?: string;
+  icon?: IconName;
   isCard?: boolean;
   children?: ReactNode;
   onClick?: () => void;

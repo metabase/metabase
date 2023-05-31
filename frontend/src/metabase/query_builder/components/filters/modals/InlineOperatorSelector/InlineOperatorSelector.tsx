@@ -1,6 +1,6 @@
 import React from "react";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 
 import {
   InlineOperatorContainer,
@@ -16,7 +16,7 @@ import {
 
 interface InlineOperatorSelectorProps {
   fieldName: string;
-  iconName?: string;
+  iconName?: IconName;
   tableName?: string;
   value?: string;
   operators?: any[];

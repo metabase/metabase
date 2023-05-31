@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
+import { IconName } from "metabase/core/components/Icon";
 import {
   SegmentedList,
   SegmentedItem,
@@ -26,7 +27,7 @@ type SegmentedControlValue = string | number;
 export type SegmentedControlOption<Value extends SegmentedControlValue> = {
   name?: React.ReactNode;
   value: Value;
-  icon?: string;
+  icon?: IconName;
   iconSize?: number;
 
   // Expects a color alias, not a color code

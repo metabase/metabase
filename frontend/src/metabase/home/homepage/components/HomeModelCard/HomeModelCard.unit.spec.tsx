@@ -18,7 +18,7 @@ describe("HomeModelCard", () => {
 
 const getProps = (opts?: Partial<HomeModelCardProps>): HomeModelCardProps => ({
   title: "Orders",
-  icon: { name: "card" },
+  icon: { name: "question" },
   url: "/question/1",
   ...opts,
 });
