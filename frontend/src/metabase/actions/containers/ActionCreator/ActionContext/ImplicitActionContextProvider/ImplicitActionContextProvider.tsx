@@ -33,12 +33,11 @@ function EditorBody() {
   );
 }
 
+// TODO: @uladzimir probably we can delete it, I'm not sure only can we get rid of getDefaultFormSettings
 function cleanFormSettings(formSettings?: ActionFormSettings) {
   const formSettingsWithDefaults = getDefaultFormSettings(formSettings);
 
-  // For implicit actions fields are generated dynamically according to the current schema
-  // For now, we don't let to customize the form to avoid dealing with fields getting out of sync
-  return _.omit(formSettingsWithDefaults, "fields");
+  return formSettingsWithDefaults;
 }
 
 function ImplicitActionContextProvider({
@@ -63,8 +62,8 @@ function ImplicitActionContextProvider({
     );
   }, [formSettings, initialAction?.visualization_settings]);
 
-  const value = useMemo(
-    (): ActionContextType => ({
+  const value = useMemo<ActionContextType>(
+    () => ({
       action: initialAction,
       formSettings,
       isNew: false,

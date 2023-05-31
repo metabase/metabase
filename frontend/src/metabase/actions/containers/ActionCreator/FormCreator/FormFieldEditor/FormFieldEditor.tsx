@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import Radio from "metabase/core/components/Radio";
@@ -66,6 +66,7 @@ function FormFieldEditor({
 }: FormFieldEditorProps) {
   const fieldTypeOptions = useMemo(getFieldTypes, []);
   const inputTypeOptions = useMemo(getInputTypes, []);
+  const [hidden, setHidden] = useState(fieldSettings?.hidden ?? false);
 
   const handleChangeFieldType = (nextFieldType: FieldType) => {
     const { inputType, valueOptions } = fieldSettings;
@@ -94,6 +95,14 @@ function FormFieldEditor({
       inputType: nextInputType,
       valueOptions: nextValueOptions,
       defaultValue: nextDefaultValue,
+    });
+  };
+
+  const handleVisibilityChange = ({ hidden }: { hidden: boolean }) => {
+    setHidden(hidden);
+    onChange({
+      ...fieldSettings,
+      hidden,
     });
   };
 
@@ -130,7 +139,11 @@ function FormFieldEditor({
         <Column />
         <Column full>
           <InputContainer>
-            <ActionFormFieldWidget formField={field} />
+            <ActionFormFieldWidget
+              hidden={hidden}
+              onVisibilityChange={handleVisibilityChange}
+              formField={field}
+            />
           </InputContainer>
         </Column>
       </PreviewContainer>

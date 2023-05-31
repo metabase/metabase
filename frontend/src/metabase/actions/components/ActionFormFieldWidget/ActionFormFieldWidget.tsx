@@ -1,4 +1,5 @@
 import React, { forwardRef } from "react";
+import { t } from "ttag";
 
 import FormInputWidget from "metabase/core/components/FormInput";
 import FormTextAreaWidget from "metabase/core/components/FormTextArea";
@@ -8,6 +9,7 @@ import FormRadioWidget, {
 import FormSelectWidget from "metabase/core/components/FormSelect";
 import FormNumericInputWidget from "metabase/core/components/FormNumericInput";
 import FormBooleanWidget from "metabase/core/components/FormToggle";
+import CheckBox from "metabase/core/components/CheckBox";
 
 import type { InputComponentType } from "metabase-types/api";
 import type { ActionFormFieldProps } from "metabase/actions/types";
@@ -30,15 +32,36 @@ const WIDGETS: Record<InputComponentType, React.FunctionComponent<any>> = {
 
 interface FormWidgetProps {
   formField: ActionFormFieldProps;
+  hidden?: boolean;
+  onVisibilityChange?: ({ hidden }: { hidden: boolean }) => void;
 }
 
 export const ActionFormFieldWidget = forwardRef(function FormFieldWidget(
-  { formField }: FormWidgetProps,
+  { formField, hidden, onVisibilityChange }: FormWidgetProps,
   ref: React.Ref<any>,
 ) {
   const Widget =
     (formField.type ? WIDGETS[formField.type] : FormInputWidget) ??
     FormInputWidget;
 
-  return <Widget {...formField} nullable ref={ref} />;
+  const actions =
+    hidden !== undefined ? (
+      <CheckBox
+        onChange={() => {
+          onVisibilityChange?.({ hidden: !hidden });
+        }}
+        checked={!hidden}
+        label={t`Show field`}
+      />
+    ) : undefined;
+
+  return (
+    <Widget
+      {...formField}
+      disabled={hidden}
+      actions={actions}
+      nullable
+      ref={ref}
+    />
+  );
 });
