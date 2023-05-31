@@ -33,7 +33,7 @@ const Questions = createEntity({
 
       if (
         ["Audit", "Performance", "Usage", "Instance analytics"].includes(
-          card.collection.name,
+          card?.collection?.name,
         )
       ) {
         card.collection.type = "instance-analytics";
