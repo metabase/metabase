@@ -1,4 +1,3 @@
-import React from "react";
 import { ToolbarButtonIcon, ToolbarButtonRoot } from "./ToolbarButton.styled";
 
 interface ToolbarButtonProps {

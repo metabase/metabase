@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -125,4 +125,4 @@ Field.propTypes = {
   formField: PropTypes.object,
 };
 
-export default React.memo(Field);
+export default memo(Field);

@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 
 import { t } from "ttag";
 
 import ActionButton from "metabase/components/ActionButton";
 
-export default class UpdateCachedFieldValues extends React.Component {
+export default class UpdateCachedFieldValues extends Component {
   render() {
     return (
       <div>

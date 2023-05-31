@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
+
+import * as React from "react";
 import { assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";

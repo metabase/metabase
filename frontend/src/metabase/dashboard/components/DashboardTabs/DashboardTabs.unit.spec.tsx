@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, fireEvent } from "__support__/ui";

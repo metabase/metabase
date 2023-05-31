@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
@@ -31,7 +31,7 @@ const getMemoizedEntityQuery = createSelector(
   },
 );
 
-class EntityObjectLoaderInner extends React.Component {
+class EntityObjectLoaderInner extends Component {
   static defaultProps = {
     fetchType: "fetch",
     requestType: "fetch",

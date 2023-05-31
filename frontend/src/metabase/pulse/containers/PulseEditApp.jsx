@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 

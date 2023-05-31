@@ -1,4 +1,3 @@
-import React from "react";
 import { t, ngettext, msgid } from "ttag";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import Field from "metabase-lib/metadata/Field";

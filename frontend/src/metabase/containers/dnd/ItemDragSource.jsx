@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 
 import { DragSource } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 
 import { dragTypeForItem } from ".";
 
-class ItemDragSource extends React.Component {
+class ItemDragSource extends Component {
   componentDidMount() {
     // Use empty image as a drag preview so browsers don't draw it
     // and we can draw whatever we want on the custom drag layer instead.

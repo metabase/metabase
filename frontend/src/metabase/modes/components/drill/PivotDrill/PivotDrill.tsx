@@ -1,5 +1,4 @@
 /* eslint-disable react/display-name */
-import React from "react";
 import { t } from "ttag";
 import type {
   ClickActionBase,

@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import DatePicker from "metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker";
 

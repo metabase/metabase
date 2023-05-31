@@ -1,4 +1,3 @@
-import React from "react";
 import { useFormikContext } from "formik";
 import { jt, t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";

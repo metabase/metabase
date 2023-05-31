@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useTimeout } from "react-use";
 import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";

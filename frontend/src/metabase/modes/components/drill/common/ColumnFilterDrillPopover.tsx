@@ -1,5 +1,4 @@
 /* eslint-disable react/display-name */
-import React from "react";
 import { ClickActionPopoverProps } from "metabase/modes/types";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 import type { Card } from "metabase-types/api";

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { User } from "metabase-types/api";
 import SearchBar from "../SearchBar";
 import ProfileLink from "../ProfileLink";

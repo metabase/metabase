@@ -1,4 +1,4 @@
-import React from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import { assoc } from "icepick";
 
@@ -166,7 +166,7 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
   const showOptions = !startingFrom;
   const numColumns = showOptions ? 3 : 4;
 
-  const [optionsVisible, setOptionsVisible] = React.useState(false);
+  const [optionsVisible, setOptionsVisible] = useState(false);
 
   const optionsContent = (
     <OptionsContent {...props} setOptionsVisible={setOptionsVisible} />

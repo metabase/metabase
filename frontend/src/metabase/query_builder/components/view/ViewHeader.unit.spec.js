@@ -1,4 +1,3 @@
-import React from "react";
 import { Route } from "react-router";
 import _ from "underscore";
 import fetchMock from "fetch-mock";

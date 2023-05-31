@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { replace } from "react-router-redux";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";

@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import * as tippy from "tippy.js";
 import * as MetabaseAnalytics from "metabase/lib/analytics";

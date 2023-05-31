@@ -1,4 +1,4 @@
-import React, { HTMLAttributes } from "react";
+import { HTMLAttributes } from "react";
 import Tooltip from "metabase/core/components/Tooltip";
 import {
   SkeletonRoot,
