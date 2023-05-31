@@ -89,7 +89,8 @@
              :updated_at (boolean updated_at)
              :card       (-> (into {} card)
                              (dissoc :id :database_id :table_id :created_at :updated_at :query_average_duration)
-                             (update :collection_id boolean)))))
+                             (update :collection_id boolean)
+                             (update :collection boolean)))))
 
 (defn- dashboard-response [{:keys [creator ordered_cards created_at updated_at] :as dashboard}]
   ;; todo: should be udpated to use mt/boolean-ids-and-timestamps
@@ -98,7 +99,11 @@
                  (assoc :created_at (boolean created_at)
                         :updated_at (boolean updated_at))
                  (update :entity_id boolean)
-                 (update :collection_id boolean))]
+                 (update :collection_id boolean)
+                 (update :collection boolean)
+                 (cond->
+                   (:param_values dashboard)
+                   (update :param_values not-empty)))]
     (cond-> dash
       (contains? dash :last-edit-info)
       (update :last-edit-info (fn [info]
@@ -155,6 +160,7 @@
    :caveats                 nil
    :collection_id           nil
    :collection_position     nil
+   :collection              true
    :created_at              true ; assuming you call dashboard-response on the results
    :description             nil
    :embedding_params        nil
@@ -185,6 +191,7 @@
                      :updated_at     true
                      :created_at     true
                      :collection_id  true
+                     :collection     false
                      :cache_ttl      1234
                      :last-edit-info {:timestamp true :id true :first_name "Rasta"
                                       :last_name "Toucan" :email "rasta@metabase.com"}})
@@ -302,6 +309,7 @@
                      dashboard-defaults
                      {:name                       "Test Dashboard"
                       :creator_id                 (mt/user->id :rasta)
+                      :collection                 true
                       :collection_id              true
                       :collection_authority_level nil
                       :can_write                  false
@@ -389,7 +397,7 @@
                            :collection_id              true
                            :collection_authority_level nil
                            :can_write                  false
-                           :param_values  nil
+                           :param_values               nil
                            :param_fields               {field-id {:id               field-id
                                                                   :table_id         table-id
                                                                   :display_name     display-name
@@ -416,6 +424,7 @@
                                                                                             {:name                   "Dashboard Test Card"
                                                                                              :creator_id             (mt/user->id :rasta)
                                                                                              :collection_id          true
+                                                                                             :collection             false
                                                                                              :entity_id              (:entity_id card)
                                                                                              :display                "table"
                                                                                              :query_type             nil
@@ -495,6 +504,7 @@
         (testing "GET before update"
           (is (= (merge dashboard-defaults {:name          "Test Dashboard"
                                             :creator_id    (mt/user->id :rasta)
+                                            :collection    false
                                             :collection_id true})
                  (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
 
@@ -505,6 +515,7 @@
                                             :cache_ttl      1234
                                             :last-edit-info {:timestamp true     :id    true :first_name "Rasta"
                                                              :last_name "Toucan" :email "rasta@metabase.com"}
+                                            :collection     false
                                             :collection_id  true})
                  (dashboard-response
                   (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
@@ -519,6 +530,7 @@
                                             :description   "Some awesome description"
                                             :cache_ttl     1234
                                             :creator_id    (mt/user->id :rasta)
+                                            :collection    false
                                             :collection_id true})
                  (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
 
@@ -556,6 +568,7 @@
         (with-dashboards-in-writeable-collection [dashboard-id]
           (is (= (merge dashboard-defaults {:name                    "Test Dashboard"
                                             :creator_id              (mt/user->id :rasta)
+                                            :collection              false
                                             :collection_id           true
                                             :caveats                 ""
                                             :points_of_interest      ""
@@ -826,6 +839,7 @@
                      {:name          "Test Dashboard"
                       :description   "A description"
                       :creator_id    (mt/user->id :rasta)
+                      :collection    false
                       :collection_id false})
                    (dashboard-response response)))
             (is (some? (:entity_id response)))
@@ -846,7 +860,8 @@
                      {:name          "Test Dashboard - Duplicate"
                       :description   "A new description"
                       :creator_id    (mt/user->id :crowberto)
-                      :collection_id false})
+                      :collection_id false
+                      :collection    false})
                    (dashboard-response response)))
             (is (some? (:entity_id response)))
             (is (not= (:entity_id dashboard) (:entity_id response))
