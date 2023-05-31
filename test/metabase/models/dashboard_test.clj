@@ -29,13 +29,13 @@
 ;; ## Dashboard Revisions
 
 (deftest serialize-dashboard-test
-  (tt/with-temp* [Dashboard           [{dashboard-id :id :as dashboard} {:name "Test Dashboard"}]
-                  Card                [{card-id :id}]
-                  Card                [{series-id-1 :id}]
-                  Card                [{series-id-2 :id}]
-                  DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                  DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
-                  DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
+  (t2.with-temp/with-temp [Dashboard           {dashboard-id :id :as dashboard} {:name "Test Dashboard"}
+                           Card                {card-id :id}                    {}
+                           Card                {series-id-1 :id}                {}
+                           Card                {series-id-2 :id}                {}
+                           DashboardCard       {dashcard-id :id}                {:dashboard_id dashboard-id, :card_id card-id}
+                           DashboardCardSeries _                                {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}
+                           DashboardCardSeries _                                {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
     (is (= {:name               "Test Dashboard"
             :auto_apply_filters true
             :collection_id      nil
@@ -193,13 +193,13 @@
 
 
 (deftest revert-dashboard!-test
-  (tt/with-temp* [Dashboard           [{dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}]
-                  Card                [{card-id :id}]
-                  Card                [{series-id-1 :id}]
-                  Card                [{series-id-2 :id}]
-                  DashboardCard       [{dashcard-id :id :as dashboard-card} {:dashboard_id dashboard-id, :card_id card-id}]
-                  DashboardCardSeries [_                                    {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
-                  DashboardCardSeries [_                                    {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
+  (t2.with-temp/with-temp [Dashboard           {dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}
+                           Card                {card-id :id}                        {}
+                           Card                {series-id-1 :id}                    {}
+                           Card                {series-id-2 :id}                    {}
+                           DashboardCard       {dashcard-id :id :as dashboard-card} {:dashboard_id dashboard-id, :card_id card-id}
+                           DashboardCardSeries _                                    {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}
+                           DashboardCardSeries _                                    {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
     (let [check-ids            (fn [[{:keys [id card_id series] :as card}]]
                                  [(assoc card
                                          :id      (= dashcard-id id)
@@ -271,13 +271,13 @@
                  (:public_uuid dashboard))))))))
 
 (deftest post-update-test
-  (tt/with-temp* [Collection          [{collection-id-1 :id}]
-                  Collection          [{collection-id-2 :id}]
-                  Dashboard           [{dashboard-id :id} {:name "Lucky the Pigeon's Lucky Stuff", :collection_id collection-id-1}]
-                  Card                [{card-id :id}]
-                  Pulse               [{pulse-id :id} {:dashboard_id dashboard-id, :collection_id collection-id-1}]
-                  DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                  PulseCard           [_ {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]]
+  (t2.with-temp/with-temp [Collection    {collection-id-1 :id} {}
+                           Collection    {collection-id-2 :id} {}
+                           Dashboard     {dashboard-id :id}    {:name "Lucky the Pigeon's Lucky Stuff", :collection_id collection-id-1}
+                           Card          {card-id :id}         {}
+                           Pulse         {pulse-id :id}        {:dashboard_id dashboard-id, :collection_id collection-id-1}
+                           DashboardCard {dashcard-id :id}     {:dashboard_id dashboard-id, :card_id card-id}
+                           PulseCard     _                     {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]
     (testing "Pulse name and collection-id updates"
       (t2/update! Dashboard dashboard-id {:name "Lucky's Close Shaves" :collection_id collection-id-2})
       (is (= "Lucky's Close Shaves"
@@ -300,11 +300,10 @@
                         :id         "_CATEGORY_NAME_"
                         :type       "category"}]
     (testing "A new dashboard creates a new ParameterCard"
-      (tt/with-temp* [Card      [{card-id :id}]
-                      Dashboard [{dashboard-id :id}
-                                 {:parameters [(merge default-params
-                                                      {:values_source_type    "card"
-                                                       :values_source_config {:card_id card-id}})]}]]
+      (t2.with-temp/with-temp [Card      {card-id :id}      {}
+                               Dashboard {dashboard-id :id} {:parameters [(merge default-params
+                                                                                 {:values_source_type    "card"
+                                                                                  :values_source_config {:card_id card-id}})]}]
         (is (=? {:card_id                   card-id
                  :parameterized_object_type :dashboard
                  :parameterized_object_id   dashboard-id
@@ -312,9 +311,8 @@
                 (t2/select-one 'ParameterCard :card_id card-id)))))
 
     (testing "Adding a card_id creates a new ParameterCard"
-      (tt/with-temp* [Card      [{card-id :id}]
-                      Dashboard [{dashboard-id :id}
-                                 {:parameters [default-params]}]]
+      (t2.with-temp/with-temp [Card      {card-id :id}      {}
+                               Dashboard {dashboard-id :id} {:parameters [default-params]}]
         (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))
         (t2/update! Dashboard dashboard-id {:parameters [(merge default-params
                                                                 {:values_source_type    "card"
@@ -326,11 +324,10 @@
                 (t2/select-one 'ParameterCard :card_id card-id)))))
 
     (testing "Removing a card_id deletes old ParameterCards"
-      (tt/with-temp* [Card      [{card-id :id}]
-                      Dashboard [{dashboard-id :id}
-                                 {:parameters [(merge default-params
-                                                      {:values_source_type    "card"
-                                                       :values_source_config {:card_id card-id}})]}]]
+      (t2.with-temp/with-temp [Card      {card-id :id}      {}
+                               Dashboard {dashboard-id :id} {:parameters [(merge default-params
+                                                                                 {:values_source_type    "card"
+                                                                                  :values_source_config {:card_id card-id}})]}]
         ;; same setup as earlier test, we know the ParameterCard exists right now
         (t2/delete! Dashboard :id dashboard-id)
         (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))))))
@@ -341,14 +338,14 @@
 
 (defn do-with-dash-in-collection [f]
   (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection    [collection]
-                    Dashboard     [dash  {:collection_id (u/the-id collection)}]
-                    Database      [db    {:engine :h2}]
-                    Table         [table {:db_id (u/the-id db)}]
-                    Card          [card  {:dataset_query {:database (u/the-id db)
-                                                          :type     :query
-                                                          :query    {:source-table (u/the-id table)}}}]
-                    DashboardCard [_ {:dashboard_id (u/the-id dash), :card_id (u/the-id card)}]]
+    (t2.with-temp/with-temp [Collection    collection {}
+                             Dashboard     dash       {:collection_id (u/the-id collection)}
+                             Database      db         {:engine :h2}
+                             Table         table      {:db_id (u/the-id db)}
+                             Card          card       {:dataset_query {:database (u/the-id db)
+                                                                       :type     :query
+                                                                       :query    {:source-table (u/the-id table)}}}
+                             DashboardCard _          {:dashboard_id (u/the-id dash), :card_id (u/the-id card)}]
       (f db collection dash))))
 
 (defmacro with-dash-in-collection

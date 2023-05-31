@@ -13,7 +13,6 @@
    [metabase.test.data :as data]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -133,8 +132,8 @@
                   qp/process-query                                             (fn [_ {:keys [rff]}]
                                                                                  (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
                   fingerprint/save-fingerprint!                                (fn [& _] (reset! fingerprinted? true))]
-      (tt/with-temp* [Table [table]
-                      Field [_ (assoc field-properties :table_id (u/the-id table))]]
+      (t2.with-temp/with-temp [Table table {}
+                               Field _     (assoc field-properties :table_id (u/the-id table))]
         [(fingerprint/fingerprint-fields! table)
          @fingerprinted?]))))
 

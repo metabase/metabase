@@ -427,7 +427,5 @@
 ;;; other libaries any other way. They're marked deprecated to encourage you to use the `t2.with-temp` versions.
 #_{:clj-kondo/ignore [:discouraged-var]}
 (doseq [varr [#'with-temp
-              #'with-temp*
-              #'tt/with-temp
-              #'tt/with-temp*]]
+              #'with-temp*]]
   (alter-meta! varr assoc :deprecated true))

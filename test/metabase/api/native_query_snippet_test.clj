@@ -11,7 +11,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -189,8 +188,8 @@
   (grant-native-perms)
   (testing "PUT /api/native-query-snippet/:id"
     (testing "\nChange collection_id"
-      (tt/with-temp* [Collection [collection-1 {:name "a Collection", :namespace "snippets"}]
-                      Collection [collection-2 {:name "another Collection", :namespace "snippets"}]]
+      (t2.with-temp/with-temp [Collection collection-1 {:name "a Collection", :namespace "snippets"}
+                               Collection collection-2 {:name "another Collection", :namespace "snippets"}]
         (let [no-collection {:name "no Collection"}]
           (doseq [[source dest] [[no-collection collection-1]
                                  [collection-1 collection-2]
@@ -206,8 +205,8 @@
                          (t2/select-one-fn :collection_id NativeQuerySnippet :id snippet-id)))))))))
 
       (testing "\nShould throw an error if you try to move it to a Collection not in the 'snippets' namespace"
-        (tt/with-temp* [Collection         [{collection-id :id}]
-                        NativeQuerySnippet [{snippet-id :id}]]
+        (t2.with-temp/with-temp [Collection         {collection-id :id} {}
+                                 NativeQuerySnippet {snippet-id :id}    {}]
           (is (= {:errors               {:collection_id "A NativeQuerySnippet can only go in Collections in the :snippets namespace."}
                   :allowed-namespaces   ["snippets"]
                   :collection-namespace nil}

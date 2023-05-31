@@ -15,7 +15,6 @@
    [metabase.transforms.materialize :as tf.materialize]
    [metabase.transforms.specs :as tf.specs]
    [metabase.util :as u]
-   [toucan.util.test :as tt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))
@@ -112,13 +111,13 @@
                    (is (some? (api-call "question/%s/cell/%s/rule/example/indepth"
                                         [card-id cell-query]
                                         #(revoke-collection-permissions! collection-id))))))]]
-        (tt/with-temp* [Collection [{collection-id :id}]
-                        Card [{card-id :id} {:table_id      (mt/id :venues)
-                                             :collection_id collection-id
-                                             :dataset_query (mt/mbql-query venues
-                                                              {:filter [:> $price 10]})}]]
-                       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-                       (test-fn collection-id card-id))))))
+        (t2.with-temp/with-temp [Collection {collection-id :id} {}
+                                 Card       {card-id :id}       {:table_id      (mt/id :venues)
+                                                                 :collection_id collection-id
+                                                                 :dataset_query (mt/mbql-query venues
+                                                                                  {:filter [:> $price 10]})}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+          (test-fn collection-id card-id))))))
 
 
 (deftest model-xray-test
@@ -142,14 +141,14 @@
                      (is (some? (api-call "model/%s/cell/%s/rule/example/indepth"
                                           [card-id cell-query]
                                           #(revoke-collection-permissions! collection-id))))))]]
-          (tt/with-temp* [Collection [{collection-id :id}]
-                          Card [{card-id :id} {:table_id      (mt/id :venues)
-                                               :collection_id collection-id
-                                               :dataset_query (mt/mbql-query venues
-                                                                {:filter [:> $price 10]})
-                                               :dataset       true}]]
-                         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-                         (test-fn collection-id card-id)))))))
+          (t2.with-temp/with-temp [Collection {collection-id :id} {}
+                                   Card       {card-id :id}       {:table_id      (mt/id :venues)
+                                                                   :collection_id collection-id
+                                                                   :dataset_query (mt/mbql-query venues
+                                                                                    {:filter [:> $price 10]})
+                                                                   :dataset       true}]
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+            (test-fn collection-id card-id)))))))
 
 (deftest adhoc-query-xray-test
   (let [query (#'magic/encode-base64-json

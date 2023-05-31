@@ -56,7 +56,6 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [methodical.core :as methodical]
-   [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -869,16 +868,16 @@
                                     (testing (format "With human readable values remapping %s -> %s\n"
                                                      (describe-field original) (pr-str values-map))
                                       (thunk)))]
-                (tt/with-temp* [Dimension   [_ {:field_id (:id original)
-                                                :name     (format "%s [internal remap]" (:display_name original))
-                                                :type     :internal}]]
+                (t2.with-temp/with-temp [Dimension _ {:field_id (:id original)
+                                                      :name     (format "%s [internal remap]" (:display_name original))
+                                                      :type     :internal}]
                   (if preexisting-id
                     (with-temp-vals-in-db FieldValues preexisting-id {:values (keys values-map)
                                                                       :human_readable_values (vals values-map)}
                       (testing-thunk))
-                    (tt/with-temp* [FieldValues [_ {:field_id              (:id original)
-                                                    :values                (keys values-map)
-                                                    :human_readable_values (vals values-map)}]]
+                    (t2.with-temp/with-temp [FieldValues _ {:field_id              (:id original)
+                                                            :values                (keys values-map)
+                                                            :human_readable_values (vals values-map)}]
                       (testing-thunk)))))))))))
    orig->remapped))
 

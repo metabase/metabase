@@ -19,17 +19,17 @@
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
-    (tt/with-temp* [:model/Card   [{card-id :id}]
-                    Dashboard [dash-1]
-                    Dashboard [dash-2]]
+    (t2.with-temp/with-temp [:model/Card   {card-id :id} {}
+                             Dashboard     dash-1        {}
+                             Dashboard     dash-2        {}]
       (letfn [(add-card-to-dash! [dash]
                 (t2/insert! DashboardCard
-                  {:card_id      card-id
-                   :dashboard_id (u/the-id dash)
-                   :row          0
-                   :col          0
-                   :size_x       4
-                   :size_y       4}))
+                            {:card_id      card-id
+                             :dashboard_id (u/the-id dash)
+                             :row          0
+                             :col          0
+                             :size_x       4
+                             :size_y       4}))
               (get-dashboard-count []
                 (card/dashboard-count (t2/select-one :model/Card :id card-id)))]
         (is (= 0
@@ -57,21 +57,21 @@
       (t2.with-temp/with-temp [:model/Card card]
         (is (zero? (hydrated-count card)))))
     (testing "With one"
-      (tt/with-temp* [:model/Card      [{card-id :id :as card}]
-                      Dashboard [_ {:parameters [(card-params card-id)]}]]
+      (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {}
+                               Dashboard   _                      {:parameters [(card-params card-id)]}]
         (is (= 1 (hydrated-count card)))))
     (testing "With several"
-      (tt/with-temp* [:model/Card      [{card-id :id :as card}]
-                      Dashboard [_ {:parameters [(card-params card-id)]}]
-                      Dashboard [_ {:parameters [(card-params card-id)]}]
-                      Dashboard [_ {:parameters [(card-params card-id)]}]]
+      (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {}
+                               Dashboard   _                      {:parameters [(card-params card-id)]}
+                               Dashboard   _                      {:parameters [(card-params card-id)]}
+                               Dashboard   _                      {:parameters [(card-params card-id)]}]
         (is (= 3 (hydrated-count card)))))))
 
 (deftest remove-from-dashboards-when-archiving-test
   (testing "Test that when somebody archives a Card, it is removed from any Dashboards it belongs to"
-    (tt/with-temp* [Dashboard     [dashboard]
-                    :model/Card          [card]
-                    DashboardCard [_dashcard {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]]
+    (t2.with-temp/with-temp [Dashboard     dashboard {}
+                             :model/Card   card      {}
+                             DashboardCard _dashcard {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]
       (t2/update! :model/Card (u/the-id card) {:archived true})
       (is (= 0
              (t2/count DashboardCard :dashboard_id (u/the-id dashboard)))))))
@@ -191,24 +191,24 @@
       (is (thrown?
            Exception
            (t2/update! :model/Card (u/the-id card)
-             (card-with-source-table (str "card__" (u/the-id card))))))))
+                       (card-with-source-table (str "card__" (u/the-id card))))))))
 
   (testing "Do the same stuff with circular reference between two Cards... (A -> B -> A)"
-    (tt/with-temp* [:model/Card [card-a (card-with-source-table (mt/id :venues))]
-                    :model/Card [card-b (card-with-source-table (str "card__" (u/the-id card-a)))]]
+    (t2.with-temp/with-temp [:model/Card card-a (card-with-source-table (mt/id :venues))
+                             :model/Card card-b (card-with-source-table (str "card__" (u/the-id card-a)))]
       (is (thrown?
            Exception
            (t2/update! :model/Card (u/the-id card-a)
-             (card-with-source-table (str "card__" (u/the-id card-b))))))))
+                       (card-with-source-table (str "card__" (u/the-id card-b))))))))
 
   (testing "ok now try it with A -> C -> B -> A"
-    (tt/with-temp* [:model/Card [card-a (card-with-source-table (mt/id :venues))]
-                    :model/Card [card-b (card-with-source-table (str "card__" (u/the-id card-a)))]
-                    :model/Card [card-c (card-with-source-table (str "card__" (u/the-id card-b)))]]
+    (t2.with-temp/with-temp [:model/Card card-a (card-with-source-table (mt/id :venues))
+                             :model/Card card-b (card-with-source-table (str "card__" (u/the-id card-a)))
+                             :model/Card card-c (card-with-source-table (str "card__" (u/the-id card-b)))]
       (is (thrown?
            Exception
            (t2/update! :model/Card (u/the-id card-a)
-             (card-with-source-table (str "card__" (u/the-id card-c)))))))))
+                       (card-with-source-table (str "card__" (u/the-id card-c)))))))))
 
 (deftest validate-collection-namespace-test
   (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]
@@ -438,12 +438,11 @@
                         :id         "_CATEGORY_NAME_"
                         :type       "category"}]
     (testing "parameter with source is card create ParameterCard"
-      (tt/with-temp* [:model/Card  [{source-card-id-1 :id}]
-                      :model/Card  [{source-card-id-2 :id}]
-                      :model/Card  [{card-id :id}
-                                    {:parameters [(merge default-params
-                                                         {:values_source_type    "card"
-                                                          :values_source_config {:card_id source-card-id-1}})]}]]
+      (t2.with-temp/with-temp [:model/Card  {source-card-id-1 :id} {}
+                               :model/Card  {source-card-id-2 :id} {}
+                               :model/Card  {card-id :id}          {:parameters [(merge default-params
+                                                                                        {:values_source_type    "card"
+                                                                                         :values_source_config {:card_id source-card-id-1}})]}]
         (is (=? [{:card_id                   source-card-id-1
                   :parameterized_object_type :card
                   :parameterized_object_id   card-id
@@ -452,8 +451,8 @@
 
         (testing "update values_source_config.card_id will update ParameterCard"
           (t2/update! :model/Card card-id {:parameters [(merge default-params
-                                                         {:values_source_type    "card"
-                                                          :values_source_config {:card_id source-card-id-2}})]})
+                                                               {:values_source_type    "card"
+                                                                :values_source_config {:card_id source-card-id-2}})]})
           (is (=? [{:card_id                   source-card-id-2
                     :parameterized_object_type :card
                     :parameterized_object_id   card-id
@@ -466,15 +465,13 @@
                  (t2/select 'ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))))
 
     (testing "Delete a card will delete any ParameterCard that linked to it"
-      (tt/with-temp* [:model/Card  [{source-card-id :id}]
-                      :model/Card  [{card-id-1 :id}
-                                    {:parameters [(merge default-params
-                                                         {:values_source_type    "card"
-                                                          :values_source_config {:card_id source-card-id}})]}]
-                      :model/Card  [{card-id-2 :id}
-                                    {:parameters [(merge default-params
-                                                         {:values_source_type    "card"
-                                                          :values_source_config {:card_id source-card-id}})]}]]
+      (t2.with-temp/with-temp [:model/Card  {source-card-id :id} {}
+                               :model/Card  {card-id-1 :id}      {:parameters [(merge default-params
+                                                                                      {:values_source_type    "card"
+                                                                                       :values_source_config {:card_id source-card-id}})]}
+                               :model/Card  {card-id-2 :id}      {:parameters [(merge default-params
+                                                                                      {:values_source_type    "card"
+                                                                                       :values_source_config {:card_id source-card-id}})]}]
         ;; makes sure we have ParameterCard to start with
         (is (=? [{:card_id                   source-card-id
                   :parameterized_object_type :card
