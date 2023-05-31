@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+/* eslint-disable  react/jsx-key */
 import { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt, ngettext, msgid } from "ttag";

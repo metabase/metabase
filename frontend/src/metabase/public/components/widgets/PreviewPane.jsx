@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+/* eslint-disable react/no-unknown-property */
 import { Component } from "react";
 
 import cx from "classnames";

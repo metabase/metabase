@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { useCallback, useMemo } from "react";
 
 import Databases from "metabase/entities/databases";

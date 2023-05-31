@@ -1,4 +1,5 @@
 /* eslint "react/prop-types": "warn" */
+/* eslint-disable react/no-unknown-property */
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { useFormik } from "formik";

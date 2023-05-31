@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
+/* eslint-disable react/display-name */
 import { Component } from "react";
 
 /**
  * @deprecated HOCs are deprecated
  */
 const paginationState = () => ComposedComponent =>
-  (class extends Component {
+  class extends Component {
     constructor(props) {
       super(props);
       this.state = {
@@ -39,6 +40,6 @@ const paginationState = () => ComposedComponent =>
 
       return <ComposedComponent {...extraProps} {...this.props} />;
     }
-  });
+  };
 
 export default paginationState;
