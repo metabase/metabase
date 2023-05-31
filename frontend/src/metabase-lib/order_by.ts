@@ -7,54 +7,40 @@ import type {
   Query,
 } from "./types";
 
-const DEFAULT_STAGE_INDEX = -1;
-
 export function orderableColumns(
   query: Query,
-  stageIndex = DEFAULT_STAGE_INDEX,
+  stageIndex: number,
 ): ColumnMetadata[] {
   return ML.orderable_columns(query, stageIndex);
 }
 
-export function orderBys(
-  query: Query,
-  stageIndex = DEFAULT_STAGE_INDEX,
-): OrderByClause[] {
+export function orderBys(query: Query, stageIndex: number): OrderByClause[] {
   return ML.order_bys(query, stageIndex);
 }
 
-declare function OrderByFn(
-  query: Query,
-  column: ColumnMetadata | OrderByClause,
-  direction?: OrderByDirection,
-): Query;
-
-declare function OrderByFn(
+export function orderBy(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata | OrderByClause,
   direction?: OrderByDirection,
-): Query;
+): Query {
+  return ML.order_by(query, stageIndex, column, direction);
+}
 
-export const orderBy: typeof OrderByFn = ML.order_by;
-
-declare function OrderByClauseFn(
+export function orderByClause(
   query: Query,
   stageNumber: number,
   column: ColumnMetadata,
   direction?: OrderByDirection,
-): OrderByClause;
-
-export const orderByClause: typeof OrderByClauseFn = ML.order_by_clause;
+): OrderByClause {
+  return ML.order_by_clause(query, stageNumber, column, direction);
+}
 
 export function changeDirection(query: Query, clause: OrderByClause): Query {
   return ML.change_direction(query, clause);
 }
 
-export function clearOrderBys(
-  query: Query,
-  stageIndex = DEFAULT_STAGE_INDEX,
-): Query {
+export function clearOrderBys(query: Query, stageIndex: number): Query {
   let current = query;
   orderBys(query, stageIndex).forEach(clause => {
     current = removeClause(query, stageIndex, clause);

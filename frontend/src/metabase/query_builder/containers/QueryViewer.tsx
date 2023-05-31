@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { useSelector, useDispatch } from "metabase/lib/redux";

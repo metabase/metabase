@@ -1,4 +1,3 @@
-import React from "react";
 import { Timeline } from "metabase-types/api";
 import TimelineCard from "../TimelineCard";
 import { ListRoot } from "./TimelineList.styled";

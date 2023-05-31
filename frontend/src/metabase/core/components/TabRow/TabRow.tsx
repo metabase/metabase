@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 
 import Icon from "metabase/components/Icon/Icon";
 import ExplicitSize from "metabase/components/ExplicitSize";

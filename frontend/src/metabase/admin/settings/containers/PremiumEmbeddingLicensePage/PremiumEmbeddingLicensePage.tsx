@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { jt, t } from "ttag";
 import { connect } from "react-redux";
 import moment from "moment-timezone";

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable react/no-string-refs */
-import React from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
@@ -15,12 +15,12 @@ import BreakoutWidget from "./BreakoutWidget";
 import FilterWidgetList from "./filters/FilterWidgetList";
 import FilterPopover from "./filters/FilterPopover";
 
-export default class GuiQueryEditor extends React.Component {
+export default class GuiQueryEditor extends Component {
   constructor(props) {
     super(props);
 
-    this.filterPopover = React.createRef();
-    this.guiBuilder = React.createRef();
+    this.filterPopover = createRef();
+    this.guiBuilder = createRef();
   }
 
   state = {

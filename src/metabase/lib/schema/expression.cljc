@@ -138,9 +138,13 @@
   (expression-schema orderable-types
                      "an expression that can be compared with :> or :<"))
 
+(def equality-comparable-types
+  "Set of base types that can be campared with equality."
+   #{:type/Boolean :type/Text :type/Number :type/Temporal})
+
 (mr/def ::equality-comparable
   [:maybe
-   (expression-schema #{:type/Boolean :type/Text :type/Number :type/Temporal}
+   (expression-schema equality-comparable-types
                       "an expression that can appear in := or :!=")])
 
 ;;; any type of expression.

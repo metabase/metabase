@@ -1,5 +1,3 @@
-import React from "react";
-
 import { Route } from "react-router";
 
 import PublicNotFound from "metabase/public/components/PublicNotFound";

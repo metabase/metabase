@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, fireEvent } from "__support__/ui";
@@ -7,10 +6,11 @@ import { DashboardOrderedTab } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { INITIAL_DASHBOARD_STATE } from "metabase/dashboard/constants";
-import { getDefaultTab } from "metabase/dashboard/actions";
+import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 
 import { INPUT_WRAPPER_TEST_ID } from "metabase/core/components/TabButton";
 import { DashboardTabs } from "./DashboardTabs";
+import { useDashboardTabs } from "./useDashboardTabs";
 
 const TEST_CARD = createMockCard({
   dataset_query: {
@@ -97,12 +97,20 @@ function setup({
     },
   };
 
-  const { store } = renderWithProviders(
-    <DashboardTabs isEditing={isEditing} />,
-    {
-      storeInitialState: { dashboard },
-    },
-  );
+  const TestComponent = () => {
+    const { selectedTabId } = useDashboardTabs();
+
+    return (
+      <>
+        <DashboardTabs isEditing={isEditing} />
+        <span>Selected tab id is {selectedTabId}</span>
+      </>
+    );
+  };
+
+  const { store } = renderWithProviders(<TestComponent />, {
+    storeInitialState: { dashboard },
+  });
   return {
     getDashcards: () =>
       Object.values((store.getState() as unknown as State).dashboard.dashcards),
@@ -145,6 +153,10 @@ async function renameTab(num: number, name: string) {
 }
 
 describe("DashboardTabs", () => {
+  beforeEach(() => {
+    resetTempTabId();
+  });
+
   describe("when not editing", () => {
     it("should display tabs without menus when there are two or more", () => {
       setup({ isEditing: false });
@@ -171,20 +183,22 @@ describe("DashboardTabs", () => {
       expect(queryTab(1)).not.toBeInTheDocument();
     });
 
-    it("should automatically select the first tab on render", () => {
-      setup({ isEditing: false });
+    describe("when selecting tabs", () => {
+      it("should automatically select the first tab on render", () => {
+        setup({ isEditing: false });
 
-      expect(queryTab(1)).toHaveAttribute("aria-selected", "true");
-      expect(queryTab(2)).toHaveAttribute("aria-selected", "false");
-      expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
-    });
+        expect(queryTab(1)).toHaveAttribute("aria-selected", "true");
+        expect(queryTab(2)).toHaveAttribute("aria-selected", "false");
+        expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
+      });
 
-    it("should allow you to click to select tabs", () => {
-      setup({ isEditing: false });
+      it("should allow you to click to select tabs", () => {
+        setup({ isEditing: false });
 
-      expect(selectTab(2)).toHaveAttribute("aria-selected", "true");
-      expect(queryTab(1)).toHaveAttribute("aria-selected", "false");
-      expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
+        expect(selectTab(2)).toHaveAttribute("aria-selected", "true");
+        expect(queryTab(1)).toHaveAttribute("aria-selected", "false");
+        expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
+      });
     });
   });
 
@@ -275,6 +289,17 @@ describe("DashboardTabs", () => {
         await deleteTab(1);
 
         expect(queryTab(2)).toHaveAttribute("aria-selected", "true");
+      });
+
+      it("should correctly update selected tab id when deleting tabs (#30923)", async () => {
+        setup({ tabs: [] });
+        createNewTab();
+        createNewTab();
+
+        await deleteTab(2);
+        await deleteTab(2);
+
+        expect(screen.getByText("Selected tab id is -1")).toBeInTheDocument();
       });
     });
 

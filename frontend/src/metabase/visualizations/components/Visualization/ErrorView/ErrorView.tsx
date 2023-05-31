@@ -1,5 +1,3 @@
-import React from "react";
-
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { Root, ShortMessage, StyledIcon } from "./ErrorView.styled";

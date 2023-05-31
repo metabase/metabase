@@ -1,5 +1,3 @@
-import React from "react";
-
 import { renderWithProviders, screen, getIcon } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
 import { setupDatabasesEndpoints } from "__support__/server-mocks/database";

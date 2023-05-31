@@ -1,4 +1,3 @@
-import React from "react";
 import { RoutelessFullPageModal } from "metabase/components/Modal/RoutelessFullPageModal";
 import {
   WindowModal,
