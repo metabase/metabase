@@ -218,7 +218,7 @@ function NoActionsState({
 
 function mostRecentFirst(action: WritebackAction) {
   const createdAt = parseTimestamp(action["created_at"]);
-  return -createdAt.unix();
+  return -createdAt.valueOf();
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
