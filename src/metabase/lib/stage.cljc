@@ -305,7 +305,7 @@
           column-metadatas)))
 
 (defmethod lib.metadata.calculation/visible-columns-method ::stage
-  [query stage-number stage {:keys [unique-name-fn], :as _options}]
+  [query stage-number stage {:keys [unique-name-fn include-implicitly-joinable?], :as _options}]
   (let [query   (lib.util/update-query-stage query stage-number (fn [stage]
                                                                   (-> stage
                                                                       (dissoc :fields :breakout :aggregation)
@@ -315,7 +315,8 @@
         columns (lib.metadata.calculation/projected-columns query stage-number stage unique-name-fn)]
     (concat
      columns
-     (implicitly-joinable-columns query stage-number columns unique-name-fn))))
+     (when include-implicitly-joinable?
+       (implicitly-joinable-columns query stage-number columns unique-name-fn)))))
 
 (mu/defn append-stage :- ::lib.schema/query
   "Adds a new blank stage to the end of the pipeline"
