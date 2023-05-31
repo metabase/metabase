@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 import { render, screen, getIcon } from "__support__/ui";
 import * as Lib from "metabase-lib";
