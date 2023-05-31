@@ -1,5 +1,5 @@
-import { useCallback } from "react";
 import type { Action } from "@reduxjs/toolkit";
+import { useAsyncFn } from "react-use";
 import { useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/core/utils/types";
 import { State } from "metabase-types/store";
@@ -25,6 +25,21 @@ export interface UseEntityUpdateProps<
   ) => TEntity | undefined;
 }
 
+export interface UseEntityUpdateResult<
+  TId,
+  TEntity,
+  TEntityInfo extends EntityInfo<TId>,
+  TEntityData,
+> {
+  data: TEntity | undefined;
+  isLoading: boolean;
+  error: unknown;
+  mutate: (
+    entityInfo: TEntityInfo,
+    updates: Partial<TEntityData>,
+  ) => Promise<TEntity>;
+}
+
 export const useEntityUpdate = <
   TId,
   TEntity,
@@ -33,10 +48,15 @@ export const useEntityUpdate = <
 >({
   update,
   getObject,
-}: UseEntityUpdateProps<TId, TEntity, TEntityInfo, TEntityData>) => {
+}: UseEntityUpdateProps<
+  TId,
+  TEntity,
+  TEntityInfo,
+  TEntityData
+>): UseEntityUpdateResult<TId, TEntity, TEntityInfo, TEntityData> => {
   const store = useStore();
 
-  return useCallback(
+  const [{ value: data, loading: isLoading, error }, handleUpdate] = useAsyncFn(
     async (entityInfo: TEntityInfo, updates: Partial<TEntityData>) => {
       await store.dispatch(update(entityInfo, updates));
       const entity = getObject(store.getState(), { entityId: entityInfo.id });
@@ -44,4 +64,6 @@ export const useEntityUpdate = <
     },
     [store, update, getObject],
   );
+
+  return { data, isLoading, error, mutate: handleUpdate };
 };
