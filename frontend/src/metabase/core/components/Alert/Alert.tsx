@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import { ReactNode } from "react";
 import { IconName } from "../Icon";
 import { AlertIcon, AlertRoot } from "./Alert.styled";
 

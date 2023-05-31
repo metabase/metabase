@@ -1,4 +1,3 @@
-import React from "react";
 import _ from "underscore";
 import userEvent from "@testing-library/user-event";
 import { checkNotNull } from "metabase/core/utils/types";

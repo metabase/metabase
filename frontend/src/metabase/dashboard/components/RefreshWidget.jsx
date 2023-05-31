@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 
 import { t } from "ttag";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -28,7 +28,7 @@ export default class RefreshWidget extends Component {
   constructor(props) {
     super(props);
 
-    this.popover = React.createRef();
+    this.popover = createRef();
   }
   state = { elapsed: null };
 

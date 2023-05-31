@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import { t, jt, ngettext, msgid } from "ttag";
 
@@ -47,7 +47,7 @@ class PulseEdit extends Component {
   constructor(props) {
     super(props);
 
-    this.pulseInfo = React.createRef();
+    this.pulseInfo = createRef();
   }
 
   componentDidMount() {

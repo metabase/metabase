@@ -1,4 +1,4 @@
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import cx from "classnames";
@@ -27,4 +27,4 @@ QueryButton.propTypes = {
   link: PropTypes.string,
 };
 
-export default React.memo(QueryButton);
+export default memo(QueryButton);

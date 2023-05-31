@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import cx from "classnames";
@@ -46,4 +46,4 @@ ListItem.propTypes = {
   icon: PropTypes.string,
 };
 
-export default React.memo(ListItem);
+export default memo(ListItem);

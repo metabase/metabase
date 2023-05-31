@@ -1,4 +1,5 @@
-import React, { HTMLAttributes } from "react";
+import { HTMLAttributes } from "react";
+import * as React from "react";
 import { t } from "ttag";
 
 import type { IconName, IconProps } from "metabase/core/components/Icon";

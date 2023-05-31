@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
@@ -27,7 +27,7 @@ import {
   Variation,
 } from "./SmartScalar.styled";
 
-export default class Smart extends React.Component {
+export default class Smart extends Component {
   static uiName = t`Trend`;
   static identifier = "smartscalar";
   static iconName = "smartscalar";

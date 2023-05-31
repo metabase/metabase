@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";

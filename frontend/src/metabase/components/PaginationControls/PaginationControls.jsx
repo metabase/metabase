@@ -1,4 +1,4 @@
-import React from "react";
+import { Fragment } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
@@ -28,10 +28,10 @@ export default function PaginationControls({
       <span className="mr1">
         {page * pageSize + 1} - {page * pageSize + itemsLength}
         {showTotal && (
-          <React.Fragment>
+          <Fragment>
             <span className="text-light">&nbsp;{t`of`}&nbsp;</span>
             <span data-testid="pagination-total">{total}</span>
-          </React.Fragment>
+          </Fragment>
         )}
       </span>
       <Button

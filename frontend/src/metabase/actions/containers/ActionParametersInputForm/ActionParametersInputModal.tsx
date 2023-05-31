@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";

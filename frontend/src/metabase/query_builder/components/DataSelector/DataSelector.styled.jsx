@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import styled from "@emotion/styled";
 import { Icon } from "metabase/core/components/Icon";

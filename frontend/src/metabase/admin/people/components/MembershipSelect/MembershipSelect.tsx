@@ -1,4 +1,4 @@
-import React from "react";
+import { Fragment } from "react";
 import { t } from "ttag";
 
 import { Icon } from "metabase/core/components/Icon";
@@ -101,7 +101,7 @@ export const MembershipSelect = ({
     <PopoverWithTrigger triggerElement={triggerElement}>
       <MembershipSelectContainer>
         {groupSections.map((section, index) => (
-          <React.Fragment key={index}>
+          <Fragment key={index}>
             {section.header && (
               <MembershipSelectHeader>{section.header}</MembershipSelectHeader>
             )}
@@ -140,7 +140,7 @@ export const MembershipSelect = ({
                 </MembershipSelectItem>
               );
             })}
-          </React.Fragment>
+          </Fragment>
         ))}
       </MembershipSelectContainer>
     </PopoverWithTrigger>

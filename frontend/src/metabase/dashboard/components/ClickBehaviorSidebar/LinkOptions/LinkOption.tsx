@@ -1,5 +1,3 @@
-import React from "react";
-
 import { color } from "metabase/lib/colors";
 
 import { IconName } from "metabase/core/components/Icon";

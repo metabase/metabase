@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import DefaultEmptyState from "metabase/components/EmptyState";
 import { IconName } from "metabase/core/components/Icon";

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import { getColumnIcon } from "metabase/common/utils/columns";

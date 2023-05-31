@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 
 import { t } from "ttag";
@@ -18,7 +18,7 @@ export default class SelectionModule extends Component {
     // a selection module can be told to be open on initialization but otherwise is closed
     const isInitiallyOpen = props.isInitiallyOpen || false;
 
-    this.rootRef = React.createRef();
+    this.rootRef = createRef();
 
     this.state = {
       open: isInitiallyOpen,

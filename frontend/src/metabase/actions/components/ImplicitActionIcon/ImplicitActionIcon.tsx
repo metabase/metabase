@@ -1,5 +1,5 @@
-import React from "react";
 import { Icon } from "metabase/core/components/Icon";
+
 import { Root } from "./ImplicitActionIcon.styled";
 
 interface ImplicitActionIconProps {

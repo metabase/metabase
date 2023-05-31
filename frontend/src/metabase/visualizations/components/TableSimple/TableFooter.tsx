@@ -1,4 +1,4 @@
-import React, { MouseEvent, useCallback, useMemo } from "react";
+import { forwardRef, MouseEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -24,7 +24,7 @@ interface TableFooterProps {
   singleItem?: boolean;
 }
 
-const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
+const TableFooter = forwardRef<HTMLDivElement, TableFooterProps>(
   function TableFooter(
     {
       className,

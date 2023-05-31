@@ -1,4 +1,3 @@
-import React from "react";
 import Tooltip from "metabase/core/components/Tooltip";
 import { IconName } from "metabase/core/components/Icon";
 import { ColorButton } from "./NotebookStep.styled";

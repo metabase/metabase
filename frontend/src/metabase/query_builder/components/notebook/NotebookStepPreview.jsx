@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 
 import cx from "classnames";
@@ -22,7 +22,7 @@ import {
   PreviewRoot,
 } from "./NotebookStepPreview.styled";
 
-class NotebookStepPreview extends React.Component {
+class NotebookStepPreview extends Component {
   constructor(props) {
     super(props);
     this.state = {

@@ -1,6 +1,5 @@
-import React from "react";
-
 import { Icon } from "metabase/core/components/Icon";
+
 import {
   ActionOptionListItem,
   ActionOptionTitle,

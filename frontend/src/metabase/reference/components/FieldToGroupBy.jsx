@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -41,4 +41,4 @@ FieldToGroupBy.propTypes = {
   secondaryOnClick: PropTypes.func,
 };
 
-export default React.memo(FieldToGroupBy);
+export default memo(FieldToGroupBy);

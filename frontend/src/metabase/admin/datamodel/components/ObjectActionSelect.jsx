@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 
 import { t } from "ttag";
@@ -14,7 +14,7 @@ export default class ObjectActionsSelect extends Component {
   constructor(props) {
     super(props);
 
-    this.retireModal = React.createRef();
+    this.retireModal = createRef();
   }
   static propTypes = {
     object: PropTypes.object.isRequired,

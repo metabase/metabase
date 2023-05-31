@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 
 import _ from "underscore";
 import AccordionList from "metabase/core/components/AccordionList";
 import { Icon } from "metabase/core/components/Icon";
 
-export default class ParameterTargetList extends React.Component {
+export default class ParameterTargetList extends Component {
   props;
 
   render() {

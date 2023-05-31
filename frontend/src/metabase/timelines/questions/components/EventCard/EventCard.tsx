@@ -1,4 +1,4 @@
-import React, { memo, ChangeEvent, SyntheticEvent, useCallback } from "react";
+import { memo, ChangeEvent, SyntheticEvent, useCallback } from "react";
 import { t } from "ttag";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import Settings from "metabase/lib/settings";

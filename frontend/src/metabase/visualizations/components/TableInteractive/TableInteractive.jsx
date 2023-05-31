@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, forwardRef, Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
@@ -94,7 +94,7 @@ class TableInteractive extends Component {
     };
     this.columnHasResized = {};
     this.headerRefs = [];
-    this.detailShortcutRef = React.createRef();
+    this.detailShortcutRef = createRef();
 
     window.METABASE_TABLE = this;
   }
@@ -1135,7 +1135,7 @@ export default _.compose(
   ),
 )(TableInteractive);
 
-const DetailShortcut = React.forwardRef((_props, ref) => (
+const DetailShortcut = forwardRef((_props, ref) => (
   <div
     id="detail-shortcut"
     className="TableInteractive-cellWrapper cursor-pointer"

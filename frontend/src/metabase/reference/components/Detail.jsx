@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -64,4 +64,4 @@ Detail.propTypes = {
   field: PropTypes.object,
 };
 
-export default React.memo(Detail);
+export default memo(Detail);

@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import { Link, IndexLink } from "react-router";
 import { t } from "ttag";
 

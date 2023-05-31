@@ -1,4 +1,3 @@
-import React from "react";
 import { EngineField } from "metabase-types/api";
 import FormNumericInput from "metabase/core/components/FormNumericInput";
 import FormFileInput from "metabase/core/components/FormFileInput";

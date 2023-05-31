@@ -1,5 +1,5 @@
 import cx from "classnames";
-import React, {
+import {
   ButtonHTMLAttributes,
   forwardRef,
   ReactNode,

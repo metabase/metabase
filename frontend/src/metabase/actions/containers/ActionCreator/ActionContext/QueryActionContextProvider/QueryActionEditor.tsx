@@ -1,5 +1,3 @@
-import React from "react";
-
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import { ACE_ELEMENT_ID } from "metabase/query_builder/components/NativeQueryEditor/constants";
 

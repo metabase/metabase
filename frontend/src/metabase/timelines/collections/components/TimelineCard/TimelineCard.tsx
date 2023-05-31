@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import { memo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { getEventCount, getTimelineName } from "metabase/lib/timelines";

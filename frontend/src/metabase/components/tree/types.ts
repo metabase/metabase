@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { IconName, IconProps } from "metabase/core/components/Icon";
 
 export interface ITreeNodeItem {

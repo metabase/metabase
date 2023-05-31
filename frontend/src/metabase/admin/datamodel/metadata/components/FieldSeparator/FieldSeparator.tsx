@@ -1,4 +1,3 @@
-import React from "react";
 import { Icon } from "metabase/core/components/Icon";
 
 const FieldSeparator = () => {

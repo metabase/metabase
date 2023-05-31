@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import LogoIcon from "metabase/components/LogoIcon";

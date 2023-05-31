@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 
 import { t } from "ttag";
 import CopyToClipboard from "react-copy-to-clipboard";

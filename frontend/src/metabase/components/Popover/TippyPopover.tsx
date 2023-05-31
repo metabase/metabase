@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import PropTypes from "prop-types";
 import * as TippyReact from "@tippyjs/react";
 import * as tippy from "tippy.js";

@@ -1,6 +1,5 @@
-import React from "react";
-
 import { Icon, IconName } from "metabase/core/components/Icon";
+
 import { TabBar, Tab, RadioInput } from "./EditorTabs.styled";
 
 type Props = {

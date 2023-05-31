@@ -1,10 +1,4 @@
-import React, {
-  MouseEvent,
-  useEffect,
-  useCallback,
-  useRef,
-  useState,
-} from "react";
+import { MouseEvent, useEffect, useCallback, useRef, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";

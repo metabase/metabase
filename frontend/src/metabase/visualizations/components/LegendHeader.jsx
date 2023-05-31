@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { getAccentColors } from "metabase/lib/colors/groups";

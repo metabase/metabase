@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 import moment from "moment-timezone";
 
@@ -63,7 +63,7 @@ const PeopleListRow = ({
       </td>
       <td>{user.email}</td>
       {showDeactivated ? (
-        <React.Fragment>
+        <Fragment>
           <td>{moment(user.updated_at).fromNow()}</td>
           <td>
             <Tooltip tooltip={t`Reactivate this account`}>
@@ -76,9 +76,9 @@ const PeopleListRow = ({
               </Link>
             </Tooltip>
           </td>
-        </React.Fragment>
+        </Fragment>
       ) : (
-        <React.Fragment>
+        <Fragment>
           <td>
             {isLoadingGroups ? (
               <LoadingSpinner />
@@ -121,7 +121,7 @@ const PeopleListRow = ({
               />
             )}
           </td>
-        </React.Fragment>
+        </Fragment>
       )}
     </tr>
   );

@@ -1,4 +1,3 @@
-import React from "react";
 import { IconName } from "metabase/core/components/Icon";
 import { ToolbarButtonIcon, ToolbarButtonRoot } from "./ToolbarButton.styled";
 

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { memo } from "react";
 import cx from "classnames";
 
 import { Icon } from "metabase/core/components/Icon";
@@ -16,4 +16,4 @@ const TitleAndDescription = ({ title, description, className }) => (
   </div>
 );
 
-export default React.memo(TitleAndDescription);
+export default memo(TitleAndDescription);

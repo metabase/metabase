@@ -1,4 +1,4 @@
-import React, { ComponentPropsWithRef } from "react";
+import { ComponentPropsWithRef } from "react";
 import remarkGfm from "remark-gfm";
 import ReactMarkdown from "react-markdown";
 import { MarkdownRoot } from "./Markdown.styled";

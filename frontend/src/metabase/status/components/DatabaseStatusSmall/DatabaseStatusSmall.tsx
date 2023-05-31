@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { isSyncAborted, isSyncInProgress } from "metabase/lib/syncing";

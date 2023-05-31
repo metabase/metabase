@@ -1,4 +1,3 @@
-import React from "react";
 import { css, Global } from "@emotion/react";
 import { FontFile } from "metabase-types/api";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";

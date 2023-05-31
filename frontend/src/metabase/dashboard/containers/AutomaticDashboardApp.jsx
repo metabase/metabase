@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -56,7 +56,7 @@ const mapDispatchToProps = {
   invalidateCollections: Collections.actions.invalidateLists,
 };
 
-class AutomaticDashboardAppInner extends React.Component {
+class AutomaticDashboardAppInner extends Component {
   state = {
     savedDashboardId: null,
   };

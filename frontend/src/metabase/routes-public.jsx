@@ -1,5 +1,3 @@
-import React from "react";
-
 import { t } from "ttag";
 import { Route } from "metabase/hoc/Title";
 

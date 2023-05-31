@@ -1,4 +1,4 @@
-import React, { ComponentPropsWithoutRef, useState } from "react";
+import { ComponentPropsWithoutRef, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
