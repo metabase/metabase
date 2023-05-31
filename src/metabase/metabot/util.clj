@@ -4,7 +4,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.memoize :as memoize]
-   [clojure.set :refer [rename-keys]]
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.db.query :as mdb.query]
@@ -508,96 +507,6 @@
       {:display                :table
        :name                   description
        :visualization_settings {:title description}})))
-
-(defn classify-type
-  "Take an element from the columns of the results metadata and return one of:
-  - :measure - An OLAP cube measured item (Typically the Y-axis of a graph)
-  - :dimension - An OLAP cube dimension (Typically the X-axis of a graph)
-  - nil - It wouldn't be displayed on either axis (column ids and FKs are good examples)"
-  [{:keys [semantic_type effective_type base_type] :as metadata}]
-  (cond
-    (isa? effective_type :Relation/*) nil
-    (or
-     (isa? effective_type :type/Text)
-     (isa? effective_type :type/Temporal)) :dimension
-    (isa? effective_type :type/Number) :measure
-    :else nil))
-
-(defn create-scalar-viz [{[{measure_name :name :keys [display_name]}] :measures}]
-  {:display                :scalar
-   :name                   display_name
-   :visualization_settings {:graph.metrics    measure_name
-                            :graph.dimensions []}})
-
-(defn create-bar-or-line-viz [{measures                                                :measures
-                               [{dimension_name :name effective_type :effective_type}] :dimensions}]
-  {:display                (if (or
-                                (isa? effective_type :type/Temporal)
-                                (str/includes? (u/lower-case-en dimension_name) "time"))
-                             :line
-                             :bar)
-   :name                   "description"
-   :visualization_settings {:graph.dimensions [dimension_name]
-                            :graph.metrics    (mapv :name measures)}})
-
-(defn create-table-viz [_]
-  {:display                :table
-   :name                   "description"
-   :visualization_settings {:title "This is a table"}})
-
-(defn select-viz [results_metadata]
-  (let [{:keys [measures dimensions] :as m-and-d} (-> (group-by classify-type results_metadata)
-                                                      (rename-keys {:measure   :measures
-                                                                    :dimension :dimensions}))]
-    (cond
-      (and
-       (= 1 (count measures)) (zero? (count dimensions))) (create-scalar-viz m-and-d)
-      (= 1 (count dimensions)) (create-bar-or-line-viz m-and-d)
-      :else (create-table-viz m-and-d))))
-
-(comment
-
-  (let [card {:database 1,
-              :type     "native",
-              :native
-              {:query
-               "WITH UGLY_TOTAL_ORDERS AS (SELECT\n  \"ID\" AS ID,\n  \"USER_ID\" AS USER_ID,\n  \"PRODUCT_ID\" AS PRODUCT_ID,\n  \"SUBTOTAL\" AS SUBTOTAL,\n  \"TAX\" AS TAX,\n  \"TOTAL\" AS TOTAL,\n  \"DISCOUNT\" AS DISCOUNT,\n  \"CREATED_AT\" AS CREATED_AT,\n  \"QUANTITY\" AS QUANTITY,\n  \"People - User__ID\" AS PEOPLE_USER_ID,\n  \"People - User__ADDRESS\" AS PEOPLE_USER_ADDRESS,\n  \"People - User__EMAIL\" AS PEOPLE_USER_EMAIL,\n  \"People - User__PASSWORD\" AS PEOPLE_USER_PASSWORD,\n  \"People - User__NAME\" AS PEOPLE_USER_NAME,\n  \"People - User__CITY\" AS PEOPLE_USER_CITY,\n  \"People - User__LONGITUDE\" AS PEOPLE_USER_LONGITUDE,\n  \"People - User__STATE\" AS PEOPLE_USER_STATE,\n  \"People - User__SOURCE\" AS PEOPLE_USER_SOURCE,\n  \"People - User__BIRTH_DATE\" AS PEOPLE_USER_BIRTH_DATE,\n  \"People - User__ZIP\" AS PEOPLE_USER_ZIP,\n  \"People - User__LATITUDE\" AS PEOPLE_USER_LATITUDE,\n  \"People - User__CREATED_AT\" AS PEOPLE_USER_CREATED_AT,\n  \"Products__ID\" AS PRODUCTS_ID,\n  \"Products__EAN\" AS PRODUCTS_EAN,\n  \"Products__TITLE\" AS PRODUCTS_TITLE,\n  \"Products__CATEGORY\" AS PRODUCTS_CATEGORY,\n  \"Products__VENDOR\" AS PRODUCTS_VENDOR,\n  \"Products__PRICE\" AS PRODUCTS_PRICE,\n  \"Products__RATING\" AS PRODUCTS_RATING,\n  \"Products__CREATED_AT\" AS PRODUCTS_CREATED_AT\nFROM\n  {{#328}} AS INNER_QUERY) SELECT\n  MAX(\n    EXTRACT(\n      YEAR\n      FROM\n        AGE(NOW(), PEOPLE_USER_BIRTH_DATE)\n    )\n  ) AS MAX_AGE\nFROM\n  UGLY_TOTAL_ORDERS;",
-               :template-tags
-               {"#328"
-                {:type         :card,
-                 :name         "#328",
-                 :id           "8a04d3a8-1363-4325-a7eb-43dc6e6994f6",
-                 :card-id      328,
-                 :display-name "#328"}}}}]
-    (qp/process-query card))
-
-  (let [inner-sql "WITH UGLY_TOTAL_ORDERS AS (SELECT\n  \"ID\" AS ID,\n  \"USER_ID\" AS USER_ID,\n  \"PRODUCT_ID\" AS PRODUCT_ID,\n  \"SUBTOTAL\" AS SUBTOTAL,\n  \"TAX\" AS TAX,\n  \"TOTAL\" AS TOTAL,\n  \"DISCOUNT\" AS DISCOUNT,\n  \"CREATED_AT\" AS CREATED_AT,\n  \"QUANTITY\" AS QUANTITY,\n  \"People - User__ID\" AS PEOPLE_USER_ID,\n  \"People - User__ADDRESS\" AS PEOPLE_USER_ADDRESS,\n  \"People - User__EMAIL\" AS PEOPLE_USER_EMAIL,\n  \"People - User__PASSWORD\" AS PEOPLE_USER_PASSWORD,\n  \"People - User__NAME\" AS PEOPLE_USER_NAME,\n  \"People - User__CITY\" AS PEOPLE_USER_CITY,\n  \"People - User__LONGITUDE\" AS PEOPLE_USER_LONGITUDE,\n  \"People - User__STATE\" AS PEOPLE_USER_STATE,\n  \"People - User__SOURCE\" AS PEOPLE_USER_SOURCE,\n  \"People - User__BIRTH_DATE\" AS PEOPLE_USER_BIRTH_DATE,\n  \"People - User__ZIP\" AS PEOPLE_USER_ZIP,\n  \"People - User__LATITUDE\" AS PEOPLE_USER_LATITUDE,\n  \"People - User__CREATED_AT\" AS PEOPLE_USER_CREATED_AT,\n  \"Products__ID\" AS PRODUCTS_ID,\n  \"Products__EAN\" AS PRODUCTS_EAN,\n  \"Products__TITLE\" AS PRODUCTS_TITLE,\n  \"Products__CATEGORY\" AS PRODUCTS_CATEGORY,\n  \"Products__VENDOR\" AS PRODUCTS_VENDOR,\n  \"Products__PRICE\" AS PRODUCTS_PRICE,\n  \"Products__RATING\" AS PRODUCTS_RATING,\n  \"Products__CREATED_AT\" AS PRODUCTS_CREATED_AT\nFROM\n  {{#328}} AS INNER_QUERY) SELECT\n  PEOPLE_USER_STATE,\n  COUNT(PEOPLE_USER_ID) AS NUMBER_OF_USERS\nFROM\n  UGLY_TOTAL_ORDERS\nGROUP BY\n  PEOPLE_USER_STATE;"
-        query     {:database   1,
-                   :type       "native",
-                   :native
-                   {:query
-                    inner-sql
-                    :template-tags
-                    {:#328
-                     {:type         "card"
-                      :name         "#328"
-                      :id           "468bdcb4-ef65-4290-8c12-484c8854430c"
-                      :card-id      328
-                      :display-name "#328"}}},
-                   :parameters []}
-        results   (qp/process-query query)
-        rsmd      (get-in results [:data :results_metadata :columns])]
-    (select-viz rsmd))
-
-  ;; Max age query -- a single value
-  (let [q       (t2/select-one-fn :dataset_query 'Card :id 3091)
-        results (qp/process-query q)
-        x       (get-in results [:data :results_metadata :columns])]
-    (select-viz x))
-
-  ;; A bunch of data -- should be a table
-  (let [{:keys [result_metadata]} (t2/select-one 'Card :id 328)]
-    (select-viz result_metadata)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Embedding Selection ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

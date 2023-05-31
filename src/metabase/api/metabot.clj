@@ -5,6 +5,7 @@
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.metabot :as metabot]
+   [metabase.metabot.dimensional-analysis :as mda]
    [metabase.metabot.feedback :as metabot-feedback]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card Database]]
@@ -63,7 +64,7 @@
                       (str uuid)
                       uuid))
                   (get-in card [:card :dataset_query])))
-        viz (metabot-util/select-viz (get-in data [:data :results_metadata :columns]))]
+        viz (mda/select-viz (get-in data [:data :results_metadata :columns]))]
     (update card :card merge viz)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -91,7 +92,7 @@
                           (str uuid)
                           uuid))
                       (get-in card [:card :dataset_query])))
-            viz (metabot-util/select-viz (get-in data [:data :results_metadata :columns]))]
+            viz (mda/select-viz (get-in data [:data :results_metadata :columns]))]
         (update card :card merge viz))
       (throw
        (let [message (format
