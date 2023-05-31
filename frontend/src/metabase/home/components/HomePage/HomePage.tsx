@@ -4,7 +4,7 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
 
 import HomeLayout from "../HomeLayout";
-import HomeContent from "../../containers/HomeContent";
+import { HomeContent } from "../HomeContent";
 
 export interface HomePageProps {
   hasMetabot: boolean;
