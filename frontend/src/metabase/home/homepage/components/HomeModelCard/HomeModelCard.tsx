@@ -1,4 +1,3 @@
-import React from "react";
 import HomeCard from "../HomeCard";
 import { CardIcon, CardTitle } from "./HomeModelCard.styled";
 

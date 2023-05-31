@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";

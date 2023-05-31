@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { updateSettings } from "metabase/admin/settings/settings";

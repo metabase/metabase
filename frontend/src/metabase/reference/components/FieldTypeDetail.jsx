@@ -1,4 +1,4 @@
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { getIn } from "icepick";
@@ -86,4 +86,4 @@ FieldTypeDetail.propTypes = {
   isEditing: PropTypes.bool.isRequired,
 };
 
-export default React.memo(FieldTypeDetail);
+export default memo(FieldTypeDetail);

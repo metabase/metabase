@@ -1,4 +1,3 @@
-import React from "react";
 import { Route } from "react-router";
 import { screen, getIcon, renderWithProviders } from "__support__/ui";
 import ListItem from "./ListItem";

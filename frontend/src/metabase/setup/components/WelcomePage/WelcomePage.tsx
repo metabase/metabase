@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
 import { LOCALE_TIMEOUT } from "../../constants";

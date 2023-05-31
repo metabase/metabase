@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 import { Location } from "history";
 import { useDispatch, useSelector } from "metabase/lib/redux";

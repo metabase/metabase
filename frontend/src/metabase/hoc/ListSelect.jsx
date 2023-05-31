@@ -1,4 +1,4 @@
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 
 import _ from "underscore";
@@ -19,7 +19,7 @@ const DEFAULT_KEY_FOR_ITEM = item => item.id;
 const listSelect =
   ({ listProp = "list", keyForItem = DEFAULT_KEY_FOR_ITEM } = {}) =>
   ComposedComponent =>
-    class extends React.Component {
+    (class extends Component {
       state = {
         selectionKeys: new Set(),
       };
@@ -85,6 +85,6 @@ const listSelect =
         // reset selectionKeys
         this.setState({ selectionKeys: new Set() });
       };
-    };
+    });
 
 export default listSelect;

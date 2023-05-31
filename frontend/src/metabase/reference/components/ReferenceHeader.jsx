@@ -1,4 +1,4 @@
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import cx from "classnames";
@@ -60,4 +60,4 @@ ReferenceHeader.propTypes = {
   headerLink: PropTypes.string,
 };
 
-export default React.memo(ReferenceHeader);
+export default memo(ReferenceHeader);

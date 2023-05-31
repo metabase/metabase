@@ -1,4 +1,3 @@
-import React from "react";
 import { Route } from "react-router";
 import fetchMock from "fetch-mock";
 
@@ -23,9 +22,9 @@ import ActionCreatorModal from "./ActionCreatorModal";
 jest.mock(
   "metabase/actions/containers/ActionCreator",
   () =>
-    function MockActionCreator() {
+    (function MockActionCreator() {
       return <div data-testid="mock-action-creator" />;
-    },
+    }),
 );
 
 const MODEL = createMockCard({ id: 1, dataset: true });

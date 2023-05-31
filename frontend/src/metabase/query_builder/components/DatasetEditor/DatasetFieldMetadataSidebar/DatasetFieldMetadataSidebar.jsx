@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { memo, Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
@@ -370,7 +364,7 @@ function DatasetFieldMetadataSidebar({
               <Divider />
               <SecondaryFormContainer>
                 {tab === TAB.SETTINGS ? (
-                  <React.Fragment>
+                  <Fragment>
                     <FormField
                       name="visibility_type"
                       onChange={onVisibilityTypeChange}
@@ -381,7 +375,7 @@ function DatasetFieldMetadataSidebar({
                         allowlist={VIEW_AS_RELATED_FORMATTING_OPTIONS}
                       />
                     </ViewAsFieldContainer>
-                  </React.Fragment>
+                  </Fragment>
                 ) : (
                   <ColumnSettings
                     {...columnSettingsProps}
@@ -400,4 +394,4 @@ function DatasetFieldMetadataSidebar({
 
 DatasetFieldMetadataSidebar.propTypes = propTypes;
 
-export default React.memo(DatasetFieldMetadataSidebar);
+export default memo(DatasetFieldMetadataSidebar);

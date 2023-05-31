@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 
 import _ from "underscore";
 
@@ -12,7 +12,7 @@ import ChartSettingsWidget from "../ChartSettingsWidget";
 const chartSettingNestedSettings =
   ({ getObjectKey, getSettingsWidgetsForObject }) =>
   ComposedComponent =>
-    class extends React.Component {
+    (class extends Component {
       constructor(props) {
         super(props);
         this.state = {};
@@ -106,6 +106,6 @@ const chartSettingNestedSettings =
           />
         );
       }
-    };
+    });
 
 export default chartSettingNestedSettings;

@@ -1,4 +1,3 @@
-import React from "react";
 import { t, jt } from "ttag";
 
 import Button from "metabase/core/components/Button";

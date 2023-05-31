@@ -1,11 +1,5 @@
-import React, {
-  useState,
-  useLayoutEffect,
-  useRef,
-  useMemo,
-  useCallback,
-  useEffect,
-} from "react";
+import { useState, useLayoutEffect, useRef, useMemo, useCallback, useEffect } from "react";
+import * as React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 

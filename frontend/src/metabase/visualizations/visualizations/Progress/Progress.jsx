@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 import _ from "underscore";
@@ -22,10 +22,10 @@ export default class Progress extends Component {
   constructor(props) {
     super(props);
 
-    this.containerRef = React.createRef();
-    this.labelRef = React.createRef();
-    this.pointerRef = React.createRef();
-    this.barRef = React.createRef();
+    this.containerRef = createRef();
+    this.labelRef = createRef();
+    this.pointerRef = createRef();
+    this.barRef = createRef();
   }
 
   static uiName = t`Progress`;

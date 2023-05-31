@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";

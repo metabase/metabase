@@ -1,5 +1,3 @@
-import React from "react";
-
 import { createMockEntitiesState } from "__support__/store";
 import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { setupSearchEndpoints } from "__support__/server-mocks/search";

@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import { createMockDatabaseData } from "metabase-types/api/mocks";
 import DatabaseStep, { DatabaseStepProps } from "./DatabaseStep";

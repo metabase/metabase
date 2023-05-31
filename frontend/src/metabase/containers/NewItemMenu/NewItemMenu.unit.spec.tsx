@@ -1,4 +1,3 @@
-import React from "react";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
@@ -14,9 +13,9 @@ import NewItemMenu from "./NewItemMenu";
 jest.mock(
   "metabase/actions/containers/ActionCreator",
   () =>
-    function ActionCreator() {
+    (function ActionCreator() {
       return <div data-testid="mock-action-editor" />;
-    },
+    }),
 );
 
 console.warn = jest.fn();

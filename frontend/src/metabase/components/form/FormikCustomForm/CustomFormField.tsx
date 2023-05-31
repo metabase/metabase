@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { forwardRef, useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import { useMount, useUnmount } from "react-use";
@@ -106,7 +106,7 @@ function RawCustomFormField(
 /**
  * @deprecated
  */
-const CustomFormField = React.forwardRef<
+const CustomFormField = forwardRef<
   HTMLInputElement,
   CustomFormFieldProps
 >(function CustomFormField(props, ref) {

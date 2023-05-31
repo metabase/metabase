@@ -1,4 +1,3 @@
-import React from "react";
 import { screen, waitForElementToBeRemoved } from "@testing-library/react";
 import { createMockRecentItem, createMockUser } from "metabase-types/api/mocks";
 import { renderWithProviders } from "__support__/ui";

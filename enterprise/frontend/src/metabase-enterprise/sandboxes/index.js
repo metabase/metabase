@@ -1,4 +1,3 @@
-import React from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import {

@@ -1,4 +1,5 @@
-import React, { RefObject } from "react";
+import { RefObject } from "react";
+import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import AceEditor, { ICommand, IMarker } from "react-ace";

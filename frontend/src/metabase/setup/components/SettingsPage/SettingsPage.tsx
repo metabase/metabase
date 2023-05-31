@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import LogoIcon from "metabase/components/LogoIcon";
 import MigrationHelp from "metabase/setup/containers/CloudMigrationHelp";
 import LanguageStep from "../../containers/LanguageStep";

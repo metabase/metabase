@@ -1,4 +1,4 @@
-import React, { Fragment } from "react";
+import { Fragment } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";

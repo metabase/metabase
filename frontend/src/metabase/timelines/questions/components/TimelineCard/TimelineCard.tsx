@@ -1,12 +1,4 @@
-import React, {
-  ChangeEvent,
-  MouseEvent,
-  memo,
-  useCallback,
-  useMemo,
-  useState,
-  useEffect,
-} from "react";
+import { ChangeEvent, MouseEvent, memo, useCallback, useMemo, useState, useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { Timeline, TimelineEvent } from "metabase-types/api";

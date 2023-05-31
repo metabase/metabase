@@ -1,4 +1,4 @@
-import React from "react";
+import { Fragment } from "react";
 import _ from "underscore";
 
 import { scaleBand } from "@visx/scale";
@@ -139,60 +139,58 @@ export default function Values({
     getBarXOffset,
   );
 
-  return (
-    <>
-      {verticalOverlappingFreeValues.map((singleSeriesValues, seriesIndex) => {
-        const compact = getCompact(
-          singleSeriesValues.map(value => value.datum),
+  return <>
+    {verticalOverlappingFreeValues.map((singleSeriesValues, seriesIndex) => {
+      const compact = getCompact(
+        singleSeriesValues.map(value => value.datum),
+      );
+
+      return fixHorizontalOverlappingValues(
+        seriesIndex,
+        compact,
+        singleSeriesValues,
+      ).map((value, index) => {
+        if (value.hidden) {
+          return null;
+        }
+
+        const { xAccessor, yAccessor, dataYAccessor } = getXyAccessors(
+          value.series.type,
+          value.xScale,
+          value.yScale,
+          getBarXOffset(value.series),
+          value.flipped,
         );
 
-        return fixHorizontalOverlappingValues(
-          seriesIndex,
-          compact,
-          singleSeriesValues,
-        ).map((value, index) => {
-          if (value.hidden) {
-            return null;
-          }
-
-          const { xAccessor, yAccessor, dataYAccessor } = getXyAccessors(
-            value.series.type,
-            value.xScale,
-            value.yScale,
-            getBarXOffset(value.series),
-            value.flipped,
-          );
-
-          const shouldRenderDataPoint = (
-            ["line", "area"] as VisualizationType[]
-          ).includes(value.series.type);
-          return (
-            <React.Fragment key={index}>
-              <OutlinedText
-                x={xAccessor(value.datum)}
-                y={yAccessor(value.datum)}
-                textAnchor="middle"
-                verticalAnchor="end"
-                {...valueProps}
-              >
-                {formatter(getY(value.datumForLabel), compact)}
-              </OutlinedText>
-              {shouldRenderDataPoint && (
-                <circle
-                  r={3}
-                  fill="white"
-                  stroke={value.series.color}
-                  strokeWidth={2}
-                  cx={xAccessor(value.datum)}
-                  cy={dataYAccessor(value.datum)}
-                />
-              )}
-            </React.Fragment>
-          );
-        });
-      })}
-    </>
-  );
+        const shouldRenderDataPoint = (
+          ["line", "area"] as VisualizationType[]
+        ).includes(value.series.type);
+        return (
+          <Fragment key={index}>
+            <OutlinedText
+              x={xAccessor(value.datum)}
+              y={yAccessor(value.datum)}
+              textAnchor="middle"
+              verticalAnchor="end"
+              {...valueProps}
+            >
+              {formatter(getY(value.datumForLabel), compact)}
+            </OutlinedText>
+            {shouldRenderDataPoint && (
+              <circle
+                r={3}
+                fill="white"
+                stroke={value.series.color}
+                strokeWidth={2}
+                cx={xAccessor(value.datum)}
+                cy={dataYAccessor(value.datum)}
+              />
+            )}
+          </Fragment>
+        );
+      });
+    })}
+  </>;
 
   function getCompact(data: (SeriesDatum | StackedDatum)[]) {
     // Use the same logic as in https://github.com/metabase/metabase/blob/1276595f073883853fed219ac185d0293ced01b8/frontend/src/metabase/visualizations/lib/chart_values.js#L178-L179

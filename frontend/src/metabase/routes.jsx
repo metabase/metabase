@@ -1,4 +1,3 @@
-import React from "react";
 import { IndexRedirect, IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 

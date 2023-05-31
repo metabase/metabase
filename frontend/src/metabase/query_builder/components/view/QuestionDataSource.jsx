@@ -1,4 +1,4 @@
-import React from "react";
+import { isValidElement } from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
 
@@ -216,7 +216,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
   }
 
   return parts.filter(
-    part => React.isValidElement(part) || part.name || part.icon,
+    part => isValidElement(part) || part.name || part.icon,
   );
 }
 

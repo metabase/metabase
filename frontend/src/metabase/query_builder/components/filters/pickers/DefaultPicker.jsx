@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";

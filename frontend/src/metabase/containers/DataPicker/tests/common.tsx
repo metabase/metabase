@@ -1,11 +1,5 @@
 /* istanbul ignore file */
-import React from "react";
-
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitForElementToBeRemoved } from "__support__/ui";
 import {
   setupCollectionsEndpoints,
   setupCollectionVirtualSchemaEndpoints,

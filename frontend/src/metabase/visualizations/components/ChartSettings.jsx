@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
+
+import * as React from "react";
 import { assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
@@ -48,7 +50,7 @@ const DEFAULT_TAB_PRIORITY = [t`Data`];
  * @deprecated HOCs are deprecated
  */
 const withTransientSettingState = ComposedComponent =>
-  class extends React.Component {
+  (class extends React.Component {
     static displayName = `withTransientSettingState[${
       ComposedComponent.displayName || ComposedComponent.name
     }]`;
@@ -78,7 +80,7 @@ const withTransientSettingState = ComposedComponent =>
         />
       );
     }
-  };
+  });
 
 class ChartSettings extends Component {
   constructor(props) {

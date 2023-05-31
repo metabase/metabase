@@ -1,5 +1,3 @@
-import React from "react";
-
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
 import Icon from "metabase/components/Icon";

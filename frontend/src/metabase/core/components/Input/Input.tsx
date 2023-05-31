@@ -1,10 +1,4 @@
-import React, {
-  forwardRef,
-  InputHTMLAttributes,
-  MouseEvent,
-  ReactNode,
-  Ref,
-} from "react";
+import { forwardRef, InputHTMLAttributes, MouseEvent, ReactNode, Ref } from "react";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";

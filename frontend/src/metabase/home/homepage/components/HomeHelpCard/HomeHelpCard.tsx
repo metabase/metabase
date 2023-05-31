@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import { CardIcon, CardRoot, CardTitle } from "./HomeHelpCard.styled";

@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import { updateIn } from "icepick";
 import DatabaseForm from "metabase/databases/containers/DatabaseForm";

@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef, KeyboardEvent } from "react";
+import { forwardRef, useEffect, useCallback, useRef, KeyboardEvent } from "react";
 
 import { usePrevious } from "react-use";
 import { Collection } from "metabase-types/api";
@@ -32,7 +32,7 @@ type Props = DroppableProps &
 
 const TIME_BEFORE_EXPANDING_ON_HOVER = 600;
 
-const SidebarCollectionLink = React.forwardRef<HTMLLIElement, Props>(
+const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
   function SidebarCollectionLink(
     {
       collection,
@@ -116,7 +116,7 @@ const SidebarCollectionLink = React.forwardRef<HTMLLIElement, Props>(
   },
 );
 
-const DroppableSidebarCollectionLink = React.forwardRef<
+const DroppableSidebarCollectionLink = forwardRef<
   HTMLLIElement,
   TreeNodeProps
 >(function DroppableSidebarCollectionLink(

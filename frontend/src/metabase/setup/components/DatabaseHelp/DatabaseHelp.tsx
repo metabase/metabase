@@ -1,4 +1,3 @@
-import React from "react";
 import DatabaseHelpCard from "metabase/databases/containers/DatabaseHelpCard";
 import { SetupCardContainer } from "../SetupCardContainer";
 

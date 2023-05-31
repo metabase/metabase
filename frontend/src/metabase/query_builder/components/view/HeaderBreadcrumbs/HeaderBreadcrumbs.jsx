@@ -1,4 +1,4 @@
-import React from "react";
+import { isValidElement, Fragment } from "react";
 import PropTypes from "prop-types";
 import { Container, Divider, HeaderBadge } from "./HeaderBreadcrumbs.styled";
 
@@ -35,8 +35,8 @@ export function HeadBreadcrumbs({
         const badgeInactiveColor =
           inactiveColor || getBadgeInactiveColor({ variant, isLast });
         return (
-          <React.Fragment key={index}>
-            {React.isValidElement(part) ? (
+          <Fragment key={index}>
+            {isValidElement(part) ? (
               part
             ) : (
               <HeaderBadge
@@ -48,12 +48,12 @@ export function HeadBreadcrumbs({
               </HeaderBadge>
             )}
             {!isLast &&
-              (React.isValidElement(divider) ? (
+              (isValidElement(divider) ? (
                 divider
               ) : (
                 <Divider char={divider} />
               ))}
-          </React.Fragment>
+          </Fragment>
         );
       })}
     </Container>
