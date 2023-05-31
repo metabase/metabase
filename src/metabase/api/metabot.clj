@@ -1,12 +1,14 @@
 (ns metabase.api.metabot
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.metabot :as metabot]
    [metabase.metabot.feedback :as metabot-feedback]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card Database]]
+   [metabase.query-processor :as qp]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [toucan2.core :as t2]))
@@ -38,15 +40,6 @@
        {:status-code 400
         :message     message})))))
 
-(defn- add-viz-to-dataset
-  "Given a calling context and resulting dataset, add a more interesting visual to the card."
-  [context {:keys [bot-sql] :as dataset}]
-  (let [context (assoc context :sql bot-sql :prompt_task :infer_viz)
-        {:keys [template prompt_template_version]} (metabot/infer-viz context)]
-    (cond-> (update dataset :card merge template)
-      prompt_template_version
-      (update :prompt_template_versions conj prompt_template_version))))
-
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/model/:model-id"
   "Ask Metabot to generate a SQL query given a prompt about a given model."
@@ -62,8 +55,16 @@
         context {:model       (metabot-util/denormalize-model model)
                  :user_prompt question
                  :prompt_task :infer_sql}
-        dataset (infer-sql-or-throw context question)]
-    (add-viz-to-dataset context dataset)))
+        card (infer-sql-or-throw context question)
+        data    (qp/process-query
+                 (walk/postwalk
+                  (fn [uuid]
+                    (if (uuid? uuid)
+                      (str uuid)
+                      uuid))
+                  (get-in card [:card :dataset_query])))
+        viz (metabot-util/select-viz (get-in data [:data :results_metadata :columns]))]
+    (update card :card merge viz)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/database/:database-id"
@@ -82,8 +83,16 @@
                  :prompt_task :infer_model}]
     (if-some [model (metabot/infer-model context)]
       (let [context (merge context {:model model :prompt_task :infer_sql})
-            dataset (infer-sql-or-throw context question)]
-        (add-viz-to-dataset context dataset))
+            card (infer-sql-or-throw context question)
+            data    (qp/process-query
+                     (walk/postwalk
+                      (fn [uuid]
+                        (if (uuid? uuid)
+                          (str uuid)
+                          uuid))
+                      (get-in card [:card :dataset_query])))
+            viz (metabot-util/select-viz (get-in data [:data :results_metadata :columns]))]
+        (update card :card merge viz))
       (throw
        (let [message (format
                       (str/join

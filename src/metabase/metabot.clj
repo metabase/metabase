@@ -11,6 +11,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+;; TODO - This is no longer used and is a candidate for removal.
 (defn infer-viz
   "Determine an 'interesting' visualization for this data."
   [{sql :sql :as context}]
