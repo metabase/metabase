@@ -16,7 +16,7 @@ const Trigger = styled.a``;
  * @deprecated HOCs are deprecated - use Modal + useState
  */
 const Triggerable = ComposedComponent =>
-  (class extends Component {
+  class extends Component {
     static displayName =
       "Triggerable[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
@@ -182,7 +182,7 @@ const Triggerable = ComposedComponent =>
         </>
       );
     }
-  });
+  };
 
 export default Object.assign(Triggerable, {
   Trigger,

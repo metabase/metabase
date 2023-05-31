@@ -1,4 +1,10 @@
-import { forwardRef, MouseEvent, HTMLAttributes, Ref, useCallback } from "react";
+import {
+  forwardRef,
+  MouseEvent,
+  HTMLAttributes,
+  Ref,
+  useCallback,
+} from "react";
 import { ColorPillContent, ColorPillRoot } from "./ColorPill.styled";
 import { PillSize } from "./types";
 

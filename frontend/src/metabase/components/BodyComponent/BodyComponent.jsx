@@ -6,7 +6,7 @@ import ReactDOM from "react-dom";
  * @deprecated HOCs are deprecated
  */
 export default ComposedComponent =>
-  (class extends Component {
+  class extends Component {
     static displayName =
       "BodyComponent[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
@@ -34,4 +34,4 @@ export default ComposedComponent =>
         this._element,
       );
     }
-  });
+  };

@@ -1,4 +1,10 @@
-import { forwardRef, useEffect, useCallback, useRef, KeyboardEvent } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useCallback,
+  useRef,
+  KeyboardEvent,
+} from "react";
 
 import { usePrevious } from "react-use";
 import { Collection } from "metabase-types/api";
@@ -116,29 +122,28 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
   },
 );
 
-const DroppableSidebarCollectionLink = forwardRef<
-  HTMLLIElement,
-  TreeNodeProps
->(function DroppableSidebarCollectionLink(
-  { item, ...props }: TreeNodeProps,
-  ref,
-) {
-  const collection = item as unknown as Collection;
-  return (
-    <div data-testid="sidebar-collection-link-root">
-      <CollectionDropTarget collection={collection}>
-        {(droppableProps: DroppableProps) => (
-          <SidebarCollectionLink
-            {...props}
-            {...droppableProps}
-            collection={collection}
-            ref={ref}
-          />
-        )}
-      </CollectionDropTarget>
-    </div>
-  );
-});
+const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
+  function DroppableSidebarCollectionLink(
+    { item, ...props }: TreeNodeProps,
+    ref,
+  ) {
+    const collection = item as unknown as Collection;
+    return (
+      <div data-testid="sidebar-collection-link-root">
+        <CollectionDropTarget collection={collection}>
+          {(droppableProps: DroppableProps) => (
+            <SidebarCollectionLink
+              {...props}
+              {...droppableProps}
+              collection={collection}
+              ref={ref}
+            />
+          )}
+        </CollectionDropTarget>
+      </div>
+    );
+  },
+);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DroppableSidebarCollectionLink;

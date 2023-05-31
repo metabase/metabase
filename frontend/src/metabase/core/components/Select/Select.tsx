@@ -147,10 +147,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
       if (first && (first as ReactElement).type === OptionSection) {
         return Children.map(children, child => ({
           ...(child as ReactElement<OptionProps<TValue>>).props,
-          items: Children.map(
-            (child as any).props.children,
-            optionToItem,
-          ),
+          items: Children.map((child as any).props.children, optionToItem),
         })) as any;
       } else if (first && first.type === Option) {
         return [{ items: Children.map(children, optionToItem) }] as any;

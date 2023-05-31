@@ -48,11 +48,7 @@ export function HeadBreadcrumbs({
               </HeaderBadge>
             )}
             {!isLast &&
-              (isValidElement(divider) ? (
-                divider
-              ) : (
-                <Divider char={divider} />
-              ))}
+              (isValidElement(divider) ? divider : <Divider char={divider} />)}
           </Fragment>
         );
       })}

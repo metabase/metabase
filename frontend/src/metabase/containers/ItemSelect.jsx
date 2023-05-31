@@ -19,7 +19,7 @@ const typeNameMap = {
 };
 
 export default (PickerComponent, NameComponent, type) =>
-  (class ItemSelect extends Component {
+  class ItemSelect extends Component {
     state = {
       width: MIN_POPOVER_WIDTH,
     };
@@ -97,4 +97,4 @@ export default (PickerComponent, NameComponent, type) =>
         </PopoverWithTrigger>
       );
     }
-  });
+  };

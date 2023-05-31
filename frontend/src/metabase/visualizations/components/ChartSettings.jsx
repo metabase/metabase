@@ -50,7 +50,7 @@ const DEFAULT_TAB_PRIORITY = [t`Data`];
  * @deprecated HOCs are deprecated
  */
 const withTransientSettingState = ComposedComponent =>
-  (class extends React.Component {
+  class extends React.Component {
     static displayName = `withTransientSettingState[${
       ComposedComponent.displayName || ComposedComponent.name
     }]`;
@@ -80,7 +80,7 @@ const withTransientSettingState = ComposedComponent =>
         />
       );
     }
-  });
+  };
 
 class ChartSettings extends Component {
   constructor(props) {

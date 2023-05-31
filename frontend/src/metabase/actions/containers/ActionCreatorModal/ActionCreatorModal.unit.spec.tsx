@@ -22,9 +22,9 @@ import ActionCreatorModal from "./ActionCreatorModal";
 jest.mock(
   "metabase/actions/containers/ActionCreator",
   () =>
-    (function MockActionCreator() {
+    function MockActionCreator() {
       return <div data-testid="mock-action-creator" />;
-    }),
+    },
 );
 
 const MODEL = createMockCard({ id: 1, dataset: true });

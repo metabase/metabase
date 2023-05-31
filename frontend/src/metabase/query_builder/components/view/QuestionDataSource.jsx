@@ -215,9 +215,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
     );
   }
 
-  return parts.filter(
-    part => isValidElement(part) || part.name || part.icon,
-  );
+  return parts.filter(part => isValidElement(part) || part.name || part.icon);
 }
 
 QuestionTableBadges.propTypes = {

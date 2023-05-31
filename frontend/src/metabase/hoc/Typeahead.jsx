@@ -26,7 +26,7 @@ export default ({
     defaultSingleSuggestion = false,
   }) =>
   ComposedComponent =>
-    (class extends Component {
+    class extends Component {
       static displayName =
         "Typeahead[" +
         (ComposedComponent.displayName || ComposedComponent.name) +
@@ -140,4 +140,4 @@ export default ({
           />
         );
       }
-    });
+    };
