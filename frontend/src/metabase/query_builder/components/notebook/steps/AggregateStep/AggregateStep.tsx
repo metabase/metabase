@@ -105,6 +105,9 @@ interface AggregationPopoverProps {
   legacyQuery: StructuredQuery;
   clauseIndex?: number;
   onLegacyQueryChange: (query: StructuredQuery) => void;
+
+  // Implicitly passed by metabase/components/Triggerable
+  onClose?: () => void;
 }
 
 function AggregationPopover({
@@ -117,6 +120,7 @@ function AggregationPopover({
   onAddAggregation,
   onUpdateAggregation,
   onLegacyQueryChange,
+  onClose,
 }: AggregationPopoverProps) {
   const isUpdate = clause != null && clauseIndex != null;
 
@@ -151,6 +155,7 @@ function AggregationPopover({
           onLegacyQueryChange(legacyQuery.aggregate(newLegacyAggregation));
         }
       }}
+      onClose={onClose}
     />
   );
 }
