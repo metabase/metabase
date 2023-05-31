@@ -1,5 +1,5 @@
 /* eslint-disable react/display-name, react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import {
@@ -262,7 +262,7 @@ function getSavedNestedQuestion({ isMultiSchemaDB } = {}) {
   return question;
 }
 
-class ErrorBoundary extends React.Component {
+class ErrorBoundary extends Component {
   componentDidCatch(...args) {
     console.error(...args);
     this.props.onError();

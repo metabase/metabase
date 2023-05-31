@@ -1,5 +1,3 @@
-import React from "react";
-
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";

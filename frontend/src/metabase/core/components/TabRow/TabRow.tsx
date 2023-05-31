@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
 import type { UniqueIdentifier, DragEndEvent } from "@dnd-kit/core";
 import {

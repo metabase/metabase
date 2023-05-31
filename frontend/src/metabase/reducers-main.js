@@ -8,7 +8,7 @@ import { PLUGIN_REDUCERS } from "metabase/plugins";
 import admin from "metabase/admin/admin";
 
 /* setup */
-import * as setup from "metabase/setup/reducers";
+import { reducer as setup } from "metabase/setup/reducers";
 
 /* dashboards */
 import dashboard from "metabase/dashboard/reducers";
@@ -48,7 +48,7 @@ export default {
   qb: combineReducers(qb),
   reference,
   revisions,
-  setup: combineReducers(setup),
+  setup,
   admin,
   plugins: combineReducers(PLUGIN_REDUCERS),
 };

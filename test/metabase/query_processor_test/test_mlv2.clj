@@ -42,13 +42,7 @@
      #{:datetime-add :datetime-subtract :convert-timezone}
      (mbql.u/match-one &match
        [_tag (_literal :guard string?) & _]
-       "#29910"))
-   ;; #29935: metadata for an `:aggregation` with a `:case` expression not working
-   (mbql.u/match-one legacy-query
-     {:aggregation aggregations}
-     (mbql.u/match-one aggregations
-       :case
-       "#29935"))))
+       "#29910"))))
 
 (defn- test-mlv2-metadata [original-query _qp-metadata]
   {:pre [(map? original-query)]}

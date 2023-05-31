@@ -1,4 +1,4 @@
-import React, { ReactElement } from "react";
+import { ReactElement } from "react";
 import { hideAll } from "tippy.js";
 
 import PropTypes from "prop-types";

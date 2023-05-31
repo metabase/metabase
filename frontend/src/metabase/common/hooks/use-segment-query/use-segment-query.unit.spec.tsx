@@ -1,4 +1,3 @@
-import React from "react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { createMockSegment } from "metabase-types/api/mocks";
 import { setupSegmentsEndpoints } from "__support__/server-mocks";

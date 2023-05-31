@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";

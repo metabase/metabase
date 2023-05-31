@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -41,4 +41,4 @@ DatabaseSidebar.propTypes = {
   style: PropTypes.object,
 };
 
-export default React.memo(DatabaseSidebar);
+export default memo(DatabaseSidebar);

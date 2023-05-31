@@ -89,7 +89,8 @@
              :updated_at (boolean updated_at)
              :card       (-> (into {} card)
                              (dissoc :id :database_id :table_id :created_at :updated_at :query_average_duration)
-                             (update :collection_id boolean)))))
+                             (update :collection_id boolean)
+                             (update :collection boolean)))))
 
 (defn- dashboard-response [{:keys [creator ordered_cards created_at updated_at] :as dashboard}]
   ;; todo: should be udpated to use mt/boolean-ids-and-timestamps
@@ -98,7 +99,11 @@
                  (assoc :created_at (boolean created_at)
                         :updated_at (boolean updated_at))
                  (update :entity_id boolean)
-                 (update :collection_id boolean))]
+                 (update :collection_id boolean)
+                 (update :collection boolean)
+                 (cond->
+                   (:param_values dashboard)
+                   (update :param_values not-empty)))]
     (cond-> dash
       (contains? dash :last-edit-info)
       (update :last-edit-info (fn [info]
@@ -122,6 +127,38 @@
 (defmacro ^:private with-dashboards-in-writeable-collection [dashboards-or-ids & body]
   `(do-with-dashboards-in-a-collection perms/grant-collection-readwrite-permissions! ~dashboards-or-ids (fn [] ~@body)))
 
+(defn- do-with-simple-dashboard-with-tabs
+  [f]
+  (t2.with-temp/with-temp
+    [Dashboard           {dashboard-id :id} {}
+
+     Card                {card-id-1 :id}    {}
+
+     Card                {card-id-2 :id}    {}
+     :model/DashboardTab {dashtab-id-1 :id} {:name         "Tab 1"
+                                             :dashboard_id dashboard-id
+                                             :position     0}
+     :model/DashboardTab {dashtab-id-2 :id} {:name         "Tab 2"
+                                             :dashboard_id dashboard-id
+                                             :position     1}
+     DashboardCard       {dashcard-id-1 :id} {:dashboard_id     dashboard-id
+                                              :card_id          card-id-1
+                                              :dashboard_tab_id dashtab-id-1}
+     DashboardCard       {dashcard-id-2 :id} {:dashboard_id     dashboard-id
+                                              :card_id          card-id-2
+                                              :dashboard_tab_id dashtab-id-2}]
+    (f {:dashboard-id  dashboard-id
+        :card-id-1     card-id-1
+        :card-id-2     card-id-1
+        :dashtab-id-1  dashtab-id-1
+        :dashtab-id-2  dashtab-id-2
+        :dashcard-id-1 dashcard-id-1
+        :dashcard-id-2 dashcard-id-2})))
+
+(defmacro ^:private with-simple-dashboard-with-tabs
+  "Create a simple dashboard with 2 tabs and 2 cards in each tab and run `body` with the dashboard and cards ids bound to"
+  [[bindings] & body]
+  `(do-with-simple-dashboard-with-tabs (fn [~bindings] ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     /api/dashboard/* AUTHENTICATION Tests                                      |
@@ -155,6 +192,7 @@
    :caveats                 nil
    :collection_id           nil
    :collection_position     nil
+   :collection              true
    :created_at              true ; assuming you call dashboard-response on the results
    :description             nil
    :embedding_params        nil
@@ -185,6 +223,7 @@
                      :updated_at     true
                      :created_at     true
                      :collection_id  true
+                     :collection     false
                      :cache_ttl      1234
                      :last-edit-info {:timestamp true :id true :first_name "Rasta"
                                       :last_name "Toucan" :email "rasta@metabase.com"}})
@@ -302,6 +341,7 @@
                      dashboard-defaults
                      {:name                       "Test Dashboard"
                       :creator_id                 (mt/user->id :rasta)
+                      :collection                 true
                       :collection_id              true
                       :collection_authority_level nil
                       :can_write                  false
@@ -389,7 +429,7 @@
                            :collection_id              true
                            :collection_authority_level nil
                            :can_write                  false
-                           :param_values  nil
+                           :param_values               nil
                            :param_fields               {field-id {:id               field-id
                                                                   :table_id         table-id
                                                                   :display_name     display-name
@@ -416,6 +456,7 @@
                                                                                             {:name                   "Dashboard Test Card"
                                                                                              :creator_id             (mt/user->id :rasta)
                                                                                              :collection_id          true
+                                                                                             :collection             false
                                                                                              :entity_id              (:entity_id card)
                                                                                              :display                "table"
                                                                                              :query_type             nil
@@ -495,6 +536,7 @@
         (testing "GET before update"
           (is (= (merge dashboard-defaults {:name          "Test Dashboard"
                                             :creator_id    (mt/user->id :rasta)
+                                            :collection    false
                                             :collection_id true})
                  (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
 
@@ -505,6 +547,7 @@
                                             :cache_ttl      1234
                                             :last-edit-info {:timestamp true     :id    true :first_name "Rasta"
                                                              :last_name "Toucan" :email "rasta@metabase.com"}
+                                            :collection     false
                                             :collection_id  true})
                  (dashboard-response
                   (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
@@ -519,6 +562,7 @@
                                             :description   "Some awesome description"
                                             :cache_ttl     1234
                                             :creator_id    (mt/user->id :rasta)
+                                            :collection    false
                                             :collection_id true})
                  (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
 
@@ -556,6 +600,7 @@
         (with-dashboards-in-writeable-collection [dashboard-id]
           (is (= (merge dashboard-defaults {:name                    "Test Dashboard"
                                             :creator_id              (mt/user->id :rasta)
+                                            :collection              false
                                             :collection_id           true
                                             :caveats                 ""
                                             :points_of_interest      ""
@@ -826,6 +871,7 @@
                      {:name          "Test Dashboard"
                       :description   "A description"
                       :creator_id    (mt/user->id :rasta)
+                      :collection    false
                       :collection_id false})
                    (dashboard-response response)))
             (is (some? (:entity_id response)))
@@ -846,13 +892,15 @@
                      {:name          "Test Dashboard - Duplicate"
                       :description   "A new description"
                       :creator_id    (mt/user->id :crowberto)
-                      :collection_id false})
+                      :collection_id false
+                      :collection    false})
                    (dashboard-response response)))
             (is (some? (:entity_id response)))
             (is (not= (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")
             (finally
               (t2/delete! Dashboard :id (u/the-id response))))))))
+
   (testing "Deep copy: POST /api/dashboard/:id/copy"
     (mt/dataset sample-dataset
       (mt/with-temp* [Collection [source-coll {:name "Source collection"}]
@@ -1080,6 +1128,31 @@
                      (set (map :name cards-in-coll)))
                   "Cards should have \"-- Duplicate\" appended"))))))))
 
+(deftest copy-dashboard-with-tab-test
+  (testing "POST /api/dashboard/:id/copy"
+    (testing "for a dashboard that has tabs"
+      (with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
+        (let [new-dash-id        (:id (mt/user-http-request :rasta :post 200
+                                                            (format "dashboard/%d/copy" dashboard-id)
+                                                            {:name        "New dashboard"
+                                                             :description "A new description"}))
+              original-tabs      (t2/select [:model/DashboardTab :id :position :name]
+                                            :dashboard_id dashboard-id
+                                            {:order-by [[:position :asc]]})
+              new-tabs           (t2/select [:model/DashboardTab :id :position :name]
+                                            :dashboard_id new-dash-id
+                                            {:order-by [[:position :asc]]})
+              new->old-tab-id   (zipmap (map :id new-tabs) (map :id original-tabs))]
+         (testing "Cards are located correctly between tabs"
+                     (is (= (map #(select-keys % [:name :display :dashboard_tab_id]) (dashboard/ordered-cards dashboard-id))
+                            (map #(select-keys % [:name :display :dashboard_tab_id])
+                                 (for [card (dashboard/ordered-cards new-dash-id)]
+                                   (assoc card :dashboard_tab_id (new->old-tab-id (:dashboard_tab_id card))))))))
+
+         (testing "new tabs should have the same name and position"
+           (is (= (map #(dissoc % :id) original-tabs)
+                  (map #(dissoc % :id) new-tabs)))))))))
+
 (def ^:dynamic ^:private
   ^{:doc "Set of ids that will report [[mi/can-write]] as true."}
   *readable-card-ids* #{})
@@ -1125,14 +1198,24 @@
 
 (deftest update-cards-for-copy-test
   (testing "When copy style is shallow returns original ordered-cards"
-
     (let [ordered-cards [{:card_id 1 :card {:id 1} :series [{:id 2}]}
                          {:card_id 3 :card {:id 3}}]]
       (is (= ordered-cards
              (api.dashboard/update-cards-for-copy 1
                                                   ordered-cards
                                                   false
-                                                  nil)))))
+                                                  nil
+                                                  nil))))
+    (testing "with tab-ids updated if dashboard has tab"
+      (is (= [{:card_id 1 :card {:id 1} :dashboard_tab_id 10}
+              {:card_id 3 :card {:id 3} :dashboard_tab_id 20}]
+             (api.dashboard/update-cards-for-copy 1
+                                                  [{:card_id 1 :card {:id 1} :dashboard_tab_id 1}
+                                                   {:card_id 3 :card {:id 3} :dashboard_tab_id 2}]
+                                                  false
+                                                  nil
+                                                  {1 10
+                                                   2 20})))))
   (testing "When copy style is deep"
     (let [ordered-cards [{:card_id 1 :card {:id 1} :series [{:id 2} {:id 3}]}]]
       (testing "Can omit series cards"
@@ -1141,7 +1224,8 @@
                                                     ordered-cards
                                                     true
                                                     {1 {:id 5}
-                                                     2 {:id 6}})))))
+                                                     2 {:id 6}}
+                                                    nil)))))
     (testing "Can omit whole card with series if not copied"
       (let [ordered-cards [{:card_id 1 :card {} :series [{:id 2} {:id 3}]}
                            {:card_id 4 :card {} :series [{:id 5} {:id 6}]}]]
@@ -1154,7 +1238,8 @@
                                                      3 {:id 9}
                                                      ;; not copying id 4 which is the base of the following two
                                                      5 {:id 10}
-                                                     6 {:id 11}})))))
+                                                     6 {:id 11}}
+                                                    nil)))))
     (testing "Updates parameter mappings to new card ids"
       (let [ordered-cards [{:card_id            1
                             :card               {:id 1}
@@ -1171,7 +1256,8 @@
                (api.dashboard/update-cards-for-copy 1
                                                     ordered-cards
                                                     true
-                                                    {1 {:id 2}})))))
+                                                    {1 {:id 2}}
+                                                    nil)))))
     (testing "Throws error if no new card-id information for deep copy"
       (let [user-id      44
             dashboard-id 55
@@ -1180,6 +1266,7 @@
                              (api.dashboard/update-cards-for-copy dashboard-id
                                                                   [{:card_id 1 :card {:id 1}}]
                                                                   true
+                                                                  nil
                                                                   nil))
                            (is false "Should have thrown with deep-copy true and no new card id info")
                            (catch Exception e (ex-data e)))]
@@ -1302,40 +1389,6 @@
                                                              (format "dashboard/%d/cards" dashboard-id)
                                                              {:cards        [new-dashcard-info]
                                                               :ordered_tabs []}))}))))))
-
-(defn- do-with-simple-dashboard-with-tabs
-  [f]
-  (t2.with-temp/with-temp
-    [Dashboard           {dashboard-id :id} {}
-
-     Card                {card-id-1 :id}    {}
-
-     Card                {card-id-2 :id}    {}
-     :model/DashboardTab {dashtab-id-1 :id} {:name         "Tab 1"
-                                             :dashboard_id dashboard-id
-                                             :position     0}
-     :model/DashboardTab {dashtab-id-2 :id} {:name         "Tab 2"
-                                             :dashboard_id dashboard-id
-                                             :position     1}
-     DashboardCard       {dashcard-id-1 :id} {:dashboard_id     dashboard-id
-                                              :card_id          card-id-1
-                                              :dashboard_tab_id dashtab-id-1}
-     DashboardCard       {dashcard-id-2 :id} {:dashboard_id     dashboard-id
-                                              :card_id          card-id-2
-                                              :dashboard_tab_id dashtab-id-2}]
-    (f {:dashboard-id  dashboard-id
-        :card-id-1     card-id-1
-        :card-id-2     card-id-1
-        :dashtab-id-1  dashtab-id-1
-        :dashtab-id-2  dashtab-id-2
-        :dashcard-id-1 dashcard-id-1
-        :dashcard-id-2 dashcard-id-2})))
-
-(defmacro ^:private with-simple-dashboard-with-tabs
-  "Create a simple dashboard with 2 tabs and 2 cards in each tab and run `body` with the dashboard and cards ids bound to"
-  [[bindings] & body]
-  `(do-with-simple-dashboard-with-tabs (fn [~bindings] ~@body)))
-
 (deftest e2e-update-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
        (t2.with-temp/with-temp

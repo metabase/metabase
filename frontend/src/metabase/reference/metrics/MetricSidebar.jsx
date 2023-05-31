@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -63,4 +63,4 @@ MetricSidebar.propTypes = {
   style: PropTypes.object,
 };
 
-export default React.memo(MetricSidebar);
+export default memo(MetricSidebar);

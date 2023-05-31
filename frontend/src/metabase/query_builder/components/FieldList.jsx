@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 
 import Dimension from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
