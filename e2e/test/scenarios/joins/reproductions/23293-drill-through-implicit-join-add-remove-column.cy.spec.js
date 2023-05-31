@@ -53,7 +53,7 @@ describe("issue 23293", () => {
 
         cy.get(".bar").first().realClick();
         popover()
-          .findByText(/^See these/)
+          .findByText(/^View these/)
           .click();
 
         cy.findByTestId("qb-filters-panel").should(
