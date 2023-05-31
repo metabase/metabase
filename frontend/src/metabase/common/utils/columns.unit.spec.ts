@@ -4,7 +4,7 @@ import { getColumnIcon } from "./columns";
 
 describe("common/utils/columns", () => {
   const query = createQuery();
-  const columns = Lib.orderableColumns(query);
+  const columns = Lib.orderableColumns(query, 0);
   const getColumn = columnFinder(query, columns);
 
   const pkColumn = getColumn("ORDERS", "ID");

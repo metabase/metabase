@@ -1617,7 +1617,7 @@
             {:id 3 :name "c" :location "/1/2/"   :here #{:dataset} :below #{:dataset}}
             {:id 4 :name "d" :location "/1/2/3/" :here #{:dataset}}
             {:id 5 :name "e" :location "/1/"     :here #{:card}}]
-           (collection/annotate-collections {:card #{1 5} :dataset #{3 4}} collections)))
+           (#'collection/annotate-collections {:card #{1 5} :dataset #{3 4}} collections)))
     (is (= [{:id 1 :here #{:card} :below #{:card :dataset}
              :children
              [{:id 2 :below #{:dataset}
