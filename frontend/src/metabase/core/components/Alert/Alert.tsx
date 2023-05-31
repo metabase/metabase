@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import { ReactNode } from "react";
 import { AlertIcon, AlertRoot } from "./Alert.styled";
 
 export type AlertVariant = "info" | "error";

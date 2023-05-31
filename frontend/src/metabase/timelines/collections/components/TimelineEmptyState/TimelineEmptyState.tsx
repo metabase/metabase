@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import moment from "moment-timezone";
 import * as Urls from "metabase/lib/urls";

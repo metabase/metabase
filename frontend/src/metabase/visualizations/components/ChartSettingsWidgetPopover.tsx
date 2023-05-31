@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import _ from "underscore";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 

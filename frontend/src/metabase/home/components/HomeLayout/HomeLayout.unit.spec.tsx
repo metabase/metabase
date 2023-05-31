@@ -1,4 +1,3 @@
-import React from "react";
 import { User } from "metabase-types/api";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";

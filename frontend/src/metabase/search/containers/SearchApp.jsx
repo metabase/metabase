@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { Fragment, useState } from "react";
 import PropTypes from "prop-types";
 
 import { jt, t } from "ttag";
@@ -132,7 +132,7 @@ export default function SearchApp({ location }) {
             return (
               <SearchBody>
                 <SearchMain>
-                  <React.Fragment>
+                  <Fragment>
                     <SearchResultSection items={list} />
                     <div className="flex justify-end my2">
                       <PaginationControls
@@ -145,7 +145,7 @@ export default function SearchApp({ location }) {
                         onPreviousPage={handlePreviousPage}
                       />
                     </div>
-                  </React.Fragment>
+                  </Fragment>
                 </SearchMain>
                 <SearchControls>
                   {filters.length > 0 ? (

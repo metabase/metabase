@@ -1,4 +1,3 @@
-import React from "react";
 import { Route } from "react-router";
 import MetabaseSettings from "metabase/lib/settings";
 import {

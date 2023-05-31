@@ -1,4 +1,3 @@
-import React from "react";
 import { Database, DatabaseCandidate } from "metabase-types/api";
 import {
   createMockDatabase,

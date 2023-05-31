@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { UserInfo } from "metabase-types/store";

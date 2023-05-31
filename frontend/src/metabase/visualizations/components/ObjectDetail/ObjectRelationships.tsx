@@ -1,4 +1,3 @@
-import React from "react";
 import { jt, t } from "ttag";
 import { inflect } from "inflection";
 

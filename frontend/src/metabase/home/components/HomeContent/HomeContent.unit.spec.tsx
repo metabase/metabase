@@ -1,4 +1,3 @@
-import React from "react";
 import { Database, PopularItem, RecentItem, User } from "metabase-types/api";
 import {
   createMockDatabase,
