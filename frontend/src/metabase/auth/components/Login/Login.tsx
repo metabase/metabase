@@ -4,7 +4,7 @@ import { useSelector } from "metabase/lib/redux";
 import { AuthProvider } from "metabase/plugins/types";
 import { AuthLayout } from "../AuthLayout";
 import { getAuthProviders } from "../../selectors";
-import * as styles from "./Login.styled";
+import * as styles from "./styles";
 
 interface LoginQueryString {
   redirect?: string;
