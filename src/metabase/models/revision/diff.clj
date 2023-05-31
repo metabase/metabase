@@ -22,6 +22,21 @@
     [:private false true]
     (deferred-tru "made {0} private" identifier)
 
+    [:public_uuid _ nil]
+    (deferred-tru "made {0} private" identifier)
+
+    [:public_uuid nil _]
+    (deferred-tru "made {0} public" identifier)
+
+    [:enable_embedding false true]
+    (deferred-tru "enabled embedding")
+
+    [:enable_embedding true false]
+    (deferred-tru "disabled embedding")
+
+    [:embedding_params _ _]
+    (deferred-tru "changed embedding parameters")
+
     [:archived false true]
     (deferred-tru "unarchived this")
 
@@ -43,14 +58,18 @@
     [:dataset_query _ _]
     (deferred-tru "modified the query")
 
-    [:collection_id nil (coll-id :guard int?)]
-    (deferred-tru "moved {0} to {1}" identifier (t2/select-one-fn :name 'Collection coll-id))
+    [:collection_id nil coll-id]
+    (deferred-tru "moved {0} to {1}" identifier (if coll-id
+                                                  (t2/select-one-fn :name 'Collection coll-id)
+                                                  (deferred-tru "Our analytics")))
 
-    [:collection_id (prev-coll-id :guard int?) (coll-id :guard int?)]
+    [:collection_id (prev-coll-id :guard int?) coll-id]
     (deferred-tru "moved {0} from {1} to {2}"
       identifier
       (t2/select-one-fn :name 'Collection prev-coll-id)
-      (t2/select-one-fn :name 'Collection coll-id))
+      (if coll-id
+        (t2/select-one-fn :name 'Collection coll-id)
+        (deferred-tru "Our analytics")))
 
     [:visualization_settings _ _]
     (deferred-tru "changed the visualization settings")

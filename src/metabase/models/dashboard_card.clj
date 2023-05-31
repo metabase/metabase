@@ -219,9 +219,7 @@
                                  (for [dashcard dashboard-cards]
                                    (merge {:parameter_mappings []
                                            :visualization_settings {}}
-                                          (select-keys dashcard
-                                                       [:dashboard_id :card_id :action_id :size_x :size_y :row :col
-                                                        :parameter_mappings :visualization_settings :dashboard_tab_id]))))]
+                                          (dissoc dashcard :id :created_at :updated_at :entity_id :series))))]
         ;; add series to the DashboardCard
         (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
         ;; return the full DashboardCard

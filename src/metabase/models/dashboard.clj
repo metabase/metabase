@@ -179,19 +179,24 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
+(def ^:private excluded-columns-for-dashcard-revision
+  [:entity_id :created_at :updated_at :collection_authority_level])
+
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
   (-> dashboard
-      (select-keys [:collection_id :description :name :cache_ttl :auto_apply_filters])
+      (dissoc :id :created_at :updated_at :creator_id :points_of_interest
+              :caveats :show_in_getting_started :entity_id)
       (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
-                           (-> (select-keys dashboard-card [:dashboard_tab_id :size_x :size_y :row :col :id :card_id])
+                           (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))
       (assoc :tabs (map #(dissoc % :created_at :updated_at :entity_id) (ordered-tabs dashboard)))))
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]
-  (let [current-cards    (t2/select [DashboardCard :id :size_x :size_y :row :col :card_id :dashboard_id]
-                                    :dashboard_id dashboard-id)
+  (let [current-cards    (t2/select-fn-vec #(apply dissoc (t2.realize/realize %) excluded-columns-for-dashcard-revision)
+                                           :model/DashboardCard
+                                           :dashboard_id dashboard-id)
         id->current-card (zipmap (map :id current-cards) current-cards)
         {:keys [to-create to-update to-delete]} (dashboard-tab/classify-changes current-cards serialized-cards)]
     (when (seq to-delete)
@@ -264,7 +269,6 @@
                (and (= num-prev-cards num-new-cards)
                     (= prev-card-ids new-card-ids))        (deferred-tru "rearranged the cards")
                :else                                       (deferred-tru "modified the cards"))))
-
          (when (or (:tabs changes) (:tabs removals))
            (let [prev-tabs     (:tabs prev-dashboard)
                  new-tabs      (:tabs dashboard)
@@ -444,7 +448,7 @@
                                                                           (assoc :collection_id (:id collection))
                                                                           save-card!))))
                             dashcard (-> dashcard
-                                         (dissoc :card :id)
+                                         (dissoc :card :id :creator_id)
                                          (update :parameter_mappings
                                                  (partial map #(assoc % :card_id (:id card))))
                                          (assoc :series series)
