@@ -8,10 +8,11 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.db.setup :as db.setup]
-   [metabase.models :refer [Card Database User]]
+   [metabase.models :refer [Card Database Revision User]]
    [metabase.models.interface :as mi]
    [metabase.task :as task]
    [metabase.test.fixtures :as fixtures]
@@ -341,3 +342,64 @@
                {:id  tab4-card2-id
                 :row 18}]
               (t2/select-fn-vec #(select-keys % [:id :row]) :model/DashboardCard :dashboard_id dashboard-id)))))))
+
+(deftest revision-add-join-alias-to-visualization-settings-field-refs-test
+  (testing "Migrations v47.00-033: update visualization_settings.column_settings legacy field refs"
+    (impl/test-migrations ["v47.00-033"] [migrate!]
+      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+            visualization-settings
+            {"column_settings" (-> {["ref" ["field" 1 {"join-alias" "Joined table"}]]         {"column_title" "THIS SHOULD TAKE PRECENDCE"}
+                                    ["ref" ["field" 1 nil]]                                   {"column_title" "THIS SHOULD NOT TAKE PRECEDENCE"}
+                                    ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "3"}
+                                    ["name" "column_name"]                                    {"column_title" "4"}}
+                                   (update-keys json/generate-string))}
+            expected
+            {"column_settings" (-> {["ref" ["field" 1 {"join-alias" "Joined table"}]]             {"column_title" "THIS SHOULD TAKE PRECENDCE"}
+                                    ["ref" ["field" 1 nil]]                                       {"column_title" "THIS SHOULD NOT TAKE PRECEDENCE"}
+                                    ["ref" ["field" 2 {"source-field" 3}]]                        {"column_title" "2"}
+                                    ["ref" ["field" 2 {"source-field" 3
+                                                       "join-alias"   "Joined table"}]]           {"column_title" "2"}
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]]     {"column_title" "3"}
+                                    ["ref" ["field" "column_name" {"base-type"  "type/Text"
+                                                                   "join-alias" "Joined table"}]] {"column_title" "3"}
+                                    ["name" "column_name"]                                        {"column_title" "4"}}
+                                   (update-keys json/generate-string))}
+            card        {:visualization_settings visualization-settings
+                         :dataset_query          {:database 1
+                                                  :query    {:joins        [{:alias        "Joined table"
+                                                                             :condition    [:=
+                                                                                            [:field 43 nil]
+                                                                                            [:field 46 {:join-alias "Joined table"}]]
+                                                                             :fields       :all
+                                                                             :source-table 5}]
+                                                             :source-table 2}
+                                                  :type     :query}}
+            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
+                                                        :last_name   "Hughes"
+                                                        :email       "howard@aircraft.com"
+                                                        :password    "superstrong"
+                                                        :date_joined :%now})
+            revision-id (t2/insert-returning-pks! Revision {:model    "Card"
+                                                            :model_id 1 ;; TODO: this could be a foreign key in the future
+                                                            :user_id  user-id
+                                                            :object   (json/generate-string card)})]
+        (migrate!)
+        (testing "column_settings field refs are updated"
+          (is (= expected
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get "visualization_settings")))))
+        (db.setup/migrate! db-type data-source :down 46)
+        (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
+          (is (= (m/dissoc-in visualization-settings
+                              ["column_settings" (json/generate-string ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get "visualization_settings")))))))))

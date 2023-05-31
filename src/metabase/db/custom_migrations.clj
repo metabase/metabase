@@ -343,7 +343,77 @@
             (recur (rest position+cards) (long (+ next-tab-row (cards->max-height cards))))))))))
 
 (define-reversible-migration DowngradeDashboardTab
-  (log/info "No forward migration for DowngradeDashboardTab")
+  nil
   (run! update-card-row-on-downgrade-for-dashboard-tab
         (eduction (map :dashboard_id) (t2/reducible-query {:select-distinct [:dashboard_id]
                                                            :from            [:dashboard_tab]}))))
+
+(define-reversible-migration RevisionAddJoinAliasToVisualizationSettingsFieldRefs
+  ;; This migration is essentially the same as `AddJoinAliasToVisualizationSettingsFieldRefs`, but for card revisions.
+  ;; We can't use the same migration because cards in the revision table don't always have `result_metadata`.
+  ;; So instead, we have to use the join aliases from card's `dataset_query` to create field refs in visualization_settings.
+  ;; There will be field refs in visualization_settings that don't have a matching field ref in result_metadata, but that's ok.
+  (let [add-join-aliases
+        (fn [card]
+          (let [join-aliases (->> (get-in card ["dataset_query" "query" "joins"])
+                                  (map #(get % "alias"))
+                                  set)]
+            (if (seq join-aliases)
+              (update (get card "visualization_settings") "column_settings"
+                      (fn [column_settings]
+                        (let [copies-with-join-alias (into {}
+                                                           (mapcat (fn [[k v]]
+                                                                     (match (vec (json/parse-string k))
+                                                                       ["ref" ["field" id opts]]
+                                                                       (for [alias join-aliases]
+                                                                         [(json/generate-string ["ref" ["field" id (assoc opts "join-alias" alias)]]) v])
+                                                                       _ '()))
+                                                                   column_settings))]
+                          ;; existing column settings should take precedence over the copies in case there is a conflict
+                          (merge copies-with-join-alias column_settings))))
+              card)))
+        migrate!
+        (fn [revision]
+          (let [card (json/parse-string (:object revision))]
+            (when (not= (get card "query_type") "native") ; native queries won't have join aliases, so we can exclude them straight away
+              (let [updated (add-join-aliases card)]
+                (when (not= updated (get "visualization_settings" card))
+                  (t2/query {:update :revision
+                             :set {:object (json/generate-string (assoc card "visualization_settings" updated))}
+                             :where [:= :id (:id revision)]}))))))]
+    (run! migrate! (t2/reducible-query {:select [:*]
+                                        :from   [:revision]
+                                        :where  [:and
+                                                 [:like :object "%\"column_settings\":%"]
+                                                 ;; exclude cards with no joins
+                                                 [:like :object "%\"joins\":%"]
+                                                 [:= :model "Card"]]})))
+  ;; backwards migration
+  (let [remove-join-aliases
+        (fn [visualization_settings]
+          (update visualization_settings "column_settings"
+                  (fn [column_settings]
+                    (into {}
+                          (map (fn [[k v]]
+                                 (match (vec (json/parse-string k))
+                                   ["ref" ["field" id opts]]
+                                   [(json/generate-string ["ref" (remove-opts ["field" id opts] "join-alias")]) v]
+                                   _ [k v]))
+                               column_settings)))))
+        reverse-migrate!
+        (fn [revision]
+          (let [card (json/parse-string (:object revision))]
+            (when (not= (get card "query_type") "native")
+              (let [viz-settings (get card "visualization_settings")
+                    updated      (remove-join-aliases-from-column-settings viz-settings)]
+                (when (not= updated viz-settings)
+                  (t2/query {:update :revision
+                             :set {:object (json/generate-string (assoc card "visualization_settings" updated))}
+                             :where [:= :id (:id revision)]}))))))]
+    (run! reverse-migrate! (t2/reducible-query {:select [:*]
+                                                :from   [:revision]
+                                                :where  [:and
+                                                         [:like :object "%\"column_settings\":%"]
+                                                         ;; exclude cards with no joins
+                                                         [:like :object "%\"joins\":%"]
+                                                         [:= :model "Card"]]}))))
