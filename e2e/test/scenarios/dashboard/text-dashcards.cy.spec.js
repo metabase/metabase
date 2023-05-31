@@ -1,14 +1,9 @@
 import {
   restore,
-  showDashcardVisualizationSettings,
   getDashboardCard,
   popover,
   visitDashboard,
-  createEmptyTextBox,
   addTextBox,
-  createEmptyHeading,
-  addHeading,
-  editDashboard,
 } from "e2e/support/helpers";
 
 describe("scenarios > dashboard > text and headings", () => {
@@ -17,136 +12,107 @@ describe("scenarios > dashboard > text and headings", () => {
     cy.signInAsAdmin();
   });
 
-  describe("text box and heading creation and popover", () => {
+  describe("text", () => {
     beforeEach(() => {
       visitDashboard(1);
-      editDashboard();
     });
 
-    it("should have button and popover to create text and headings", () => {
+    it("should allow creation, editing, and saving of text boxes", () => {
+      // should be able to create new text box
+      cy.findByLabelText("Edit dashboard").click();
       cy.findByLabelText("Add a heading or text box").click();
       popover().within(() => {
-        cy.findByText("Text").should("exist");
-        cy.findByText("Heading").should("exist");
-      });
-    });
-
-    it("should auto-focus text input on creation", () => {
-      visitDashboard(1);
-      createEmptyTextBox();
-      cy.focused().should(
-        "have.attr",
-        "placeholder",
-        "You can use Markdown here, and include variables {{like_this}}",
-      );
-    });
-
-    it("should auto-focus heading input on creation", () => {
-      visitDashboard(1);
-      createEmptyHeading();
-      cy.focused().should("have.attr", "placeholder", "Heading");
-    });
-  });
-
-  describe("text", () => {
-    describe("Editing", () => {
-      beforeEach(() => {
-        // Create text box card
-        visitDashboard(1);
-        addTextBox("Text *text* __text__");
+        cy.findByText("Text").click();
       });
 
-      it("should render visualization options (metabase#22061)", () => {
-        showDashcardVisualizationSettings(1);
+      getDashboardCard(1).within(() => {
+        // textarea should be auto-focused on creation
+        cy.get("textarea").should("have.focus");
 
-        cy.get(".Modal").within(() => {
-          cy.findByText("Vertical Alignment");
-          cy.findByText("Horizontal Alignment");
-          cy.findByText("Show background");
-        });
-      });
-
-      it("should not render edit and preview actions", () => {
-        getDashboardCard(1)
-          .realHover()
-          .within(() => {
-            cy.findByLabelText("Edit card").should("not.exist");
-            cy.findByLabelText("Preview card").should("not.exist");
-          });
-      });
-
-      it("should allow editing on click", () => {
-        getDashboardCard(1).click();
-
-        cy.get("main").findByText("You're editing this dashboard.").realHover();
-
-        getDashboardCard(1).within(() => {
-          cy.get("textarea").should("have.value", "Text *text* __text__");
-        });
-      });
-
-      it("should auto-preview when not focused", () => {
-        cy.get("main")
-          .findByText("You're editing this dashboard.")
-          .realHover()
-          .click();
-
-        getDashboardCard(1).within(() => {
-          cy.get("div").contains("Text text text");
-        });
-      });
-    });
-
-    describe("when text-box is the only element on the dashboard", () => {
-      beforeEach(() => {
-        cy.createDashboard().then(({ body: { id } }) => {
-          cy.intercept("PUT", `/api/dashboard/${id}`).as("dashboardUpdated");
-
-          visitDashboard(id);
-        });
-      });
-
-      // fixed in metabase#11358
-      it("should load after save/refresh (metabase#12873)", () => {
-        cy.get("main").findByText("Test Dashboard");
-        cy.get("main").findByText("This dashboard is looking empty.");
-
-        // Add save text box to dash
-        addTextBox("Dashboard testing text");
-        cy.get("main").findByText("Save").click();
-
-        // Reload page
-        cy.reload();
-
-        // Page should still load
-        cy.findByTestId("app-bar").findByText("New");
-        cy.get("main").findByText("Loading...").should("not.exist");
-        cy.get("main")
-          .findByText("Cannot read property 'type' of undefined")
-          .should("not.exist");
-        cy.get("main").findByText("Test Dashboard");
-
-        // Text box should still load
-        cy.get("main").findByText("Dashboard testing text");
-      });
-
-      it("should have a scroll bar for long text (metabase#8333)", () => {
-        addTextBox(
-          "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam ut fermentum erat, nec sagittis justo. Vivamus vitae ipsum semper, consectetur odio at, rutrum nisi. Fusce maximus consequat porta. Mauris libero mi, viverra ac hendrerit quis, rhoncus quis ante. Pellentesque molestie ut felis non congue. Vivamus finibus ligula id fringilla rutrum. Donec quis dignissim ligula, vitae tempor urna.\n\nDonec quis enim porta, porta lacus vel, maximus lacus. Sed iaculis leo tortor, vel tempor velit tempus vitae. Nulla facilisi. Vivamus quis sagittis magna. Aenean eu eros augue. Sed euismod pulvinar laoreet. Morbi commodo, sem sed dictum faucibus, sem ante ultrices libero, nec ornare risus lacus eget velit. Etiam sagittis lectus non erat tristique tempor. Sed in ipsum urna. Sed venenatis turpis at orci feugiat, ut gravida lectus luctus.",
-          { delay: 0 },
+        // textarea editor should have placeholder "Heading"
+        cy.get("textarea").should(
+          "have.attr",
+          "placeholder",
+          "You can use Markdown here, and include variables {{like_this}}",
         );
-        cy.get("main").findByText("Save").click();
-
-        // The test fails if there is no scroll bar
-        cy.get(".text-card-markdown")
-          .should("have.css", "overflow-x", "hidden")
-          .should("have.css", "overflow-y", "auto")
-          .scrollTo("bottom");
       });
+
+      // should auto-preview on blur (de-focus)
+      cy.get("main").findByText("You're editing this dashboard.").click(); // un-focus heading
+      getDashboardCard(1).within(() => {
+        cy.get("div").should("exist");
+
+        // if no content has been entered, preview should have placeholder content
+        cy.get("div").contains(
+          "You can use Markdown here, and include variables {{like_this}}",
+        );
+      });
+
+      // should focus textarea editor on click
+      getDashboardCard(1)
+        .click()
+        .within(() => {
+          cy.get("textarea").should("have.focus").should("have.value", "");
+        });
+
+      // should be able to edit text while focused
+      cy.focused().type("Text *text* __text__");
+
+      // should auto-preview typed text
+      cy.get("main").findByText("You're editing this dashboard.").click(); // un-focus heading
+      getDashboardCard(1).within(() => {
+        cy.get("div").contains("Text text text");
+      });
+
+      // should render visualization options
+      getDashboardCard(1)
+        .realHover()
+        .within(() => {
+          cy.findByLabelText("Show visualization options").click();
+        });
+
+      cy.get(".Modal").within(() => {
+        cy.findByText("Vertical Alignment").should("exist");
+        cy.findByText("Horizontal Alignment").should("exist");
+        cy.findByText("Show background").should("exist");
+
+        cy.findByText("Cancel").click(); // dismiss modal
+      });
+
+      // should not render edit and preview actions
+      getDashboardCard(1)
+        .realHover()
+        .within(() => {
+          cy.findByLabelText("Edit card").should("not.exist");
+          cy.findByLabelText("Preview card").should("not.exist");
+        });
+
+      // should allow saving and show up after refresh
+      cy.get("main").findByText("Save").click();
+
+      // Reload page
+      cy.reload();
+
+      getDashboardCard(1).within(() => {
+        cy.get("div").contains("Text text text");
+      });
+    });
+
+    it("should have a scroll bar for long text (metabase#8333)", () => {
+      addTextBox(
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam ut fermentum erat, nec sagittis justo. Vivamus vitae ipsum semper, consectetur odio at, rutrum nisi. Fusce maximus consequat porta. Mauris libero mi, viverra ac hendrerit quis, rhoncus quis ante. Pellentesque molestie ut felis non congue. Vivamus finibus ligula id fringilla rutrum. Donec quis dignissim ligula, vitae tempor urna.\n\nDonec quis enim porta, porta lacus vel, maximus lacus. Sed iaculis leo tortor, vel tempor velit tempus vitae. Nulla facilisi. Vivamus quis sagittis magna. Aenean eu eros augue. Sed euismod pulvinar laoreet. Morbi commodo, sem sed dictum faucibus, sem ante ultrices libero, nec ornare risus lacus eget velit. Etiam sagittis lectus non erat tristique tempor. Sed in ipsum urna. Sed venenatis turpis at orci feugiat, ut gravida lectus luctus.",
+        { delay: 1 },
+      );
+      cy.get("main").findByText("Save").click();
+
+      // The test fails if there is no scroll bar
+      cy.get(".text-card-markdown")
+        .should("have.css", "overflow-x", "hidden")
+        .should("have.css", "overflow-y", "auto")
+        .scrollTo("bottom");
     });
 
     it("should let you add a parameter to a dashboard with a text box (metabase#11927)", () => {
-      visitDashboard(1);
       addTextBox("text text text");
       cy.findByLabelText("Add filter").click();
       popover().within(() => {
@@ -162,50 +128,74 @@ describe("scenarios > dashboard > text and headings", () => {
   });
 
   describe("heading", () => {
-    describe("Editing", () => {
-      beforeEach(() => {
-        // Create text box card
-        visitDashboard(1);
-        addHeading("Example Heading");
+    beforeEach(() => {
+      visitDashboard(1);
+    });
+
+    it("should allow creation, editing, and saving of heading component", () => {
+      // should be able to create new heading
+      cy.findByLabelText("Edit dashboard").click();
+      cy.findByLabelText("Add a heading or text box").click();
+      popover().within(() => {
+        cy.findByText("Heading").click();
       });
 
-      it("should not render visualization options", () => {
-        getDashboardCard(1)
-          .realHover()
-          .within(() => {
-            cy.findByLabelText("Show visualization options").should(
-              "not.exist",
-            );
-          });
+      getDashboardCard(1).within(() => {
+        // heading should be auto-focused on creation
+        cy.get("input").should("have.focus");
+
+        // input editor should have placeholder "Heading"
+        cy.get("input").should("have.attr", "placeholder", "Heading");
       });
 
-      it("should not render edit and preview actions", () => {
-        getDashboardCard(1)
-          .realHover()
-          .within(() => {
-            cy.findByLabelText("Edit card").should("not.exist");
-            cy.findByLabelText("Preview card").should("not.exist");
-          });
+      // should auto-preview on blur (de-focus)
+      cy.get("main").findByText("You're editing this dashboard.").click(); // un-focus heading
+      getDashboardCard(1).within(() => {
+        cy.get("h2").should("exist");
+
+        // if no content has been entered, preview should have placeholder "Heading"
+        cy.get("h2").contains("Heading");
       });
 
-      it("should allowing editing on click", () => {
-        getDashboardCard(1).click();
-        cy.get("main").findByText("You're editing this dashboard.").realHover();
-
-        getDashboardCard(1).within(() => {
-          cy.get("input").should("have.value", "Example Heading");
+      // should focus input editor on click
+      getDashboardCard(1)
+        .click()
+        .within(() => {
+          cy.get("input").should("have.focus").should("have.value", "");
         });
+
+      // should be able to edit text while focused
+      cy.focused().type("Example Heading");
+
+      // should auto-preview typed text
+      cy.get("main").findByText("You're editing this dashboard.").click(); // un-focus heading
+      getDashboardCard(1).within(() => {
+        cy.get("h2").contains("Example Heading");
       });
 
-      it("should auto-preview when not focused", () => {
-        cy.get("main")
-          .findByText("You're editing this dashboard.")
-          .realHover()
-          .click();
-
-        getDashboardCard(1).within(() => {
-          cy.get("h2").contains("Example Heading");
+      // should have no visualization options
+      getDashboardCard(1)
+        .realHover()
+        .within(() => {
+          cy.findByLabelText("Show visualization options").should("not.exist");
         });
+
+      // should not render edit and preview actions
+      getDashboardCard(1)
+        .realHover()
+        .within(() => {
+          cy.findByLabelText("Edit card").should("not.exist");
+          cy.findByLabelText("Preview card").should("not.exist");
+        });
+
+      // should allow saving and show up after refresh
+      cy.get("main").findByText("Save").click();
+
+      // Reload page
+      cy.reload();
+
+      getDashboardCard(1).within(() => {
+        cy.get("h2").contains("Example Heading");
       });
     });
   });
