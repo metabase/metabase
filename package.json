@@ -343,8 +343,8 @@
     "test-visual": "yarn build && ./bin/build-for-test && yarn test-visual-run",
     "prepare": "husky install",
     "storybook": "yarn build:cljs && start-storybook -p 6006",
-    "build-storybook": "yarn build:cljs && build-storybook",
-    "chromatic": "yarn build:cljs && chromatic",
+    "build-storybook": "yarn build:cljs && NODE_OPTIONS=--max-old-space-size=8196 build-storybook",
+    "chromatic": "yarn build:cljs && NODE_OPTIONS=--max-old-space-size=8196 chromatic",
     "docs-lint-links": "find docs -type f -name '*.md' -print0 | xargs -0 markdown-link-check --quiet --config .mlc_config.json"
   },
   "lint-staged": {
