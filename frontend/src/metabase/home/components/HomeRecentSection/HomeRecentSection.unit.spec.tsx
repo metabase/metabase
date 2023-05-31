@@ -4,14 +4,13 @@ import { createMockRecentItem, createMockUser } from "metabase-types/api/mocks";
 import { renderWithProviders } from "__support__/ui";
 import { setupRecentViewsEndpoints } from "__support__/server-mocks";
 import { User } from "metabase-types/api";
-import * as utils from "../../utils";
 import { HomeRecentSection } from "./HomeRecentSection";
 
-jest.mock("../../utils", () => ({
-  isWithinWeeks: jest.fn(),
-}));
+interface SetupOpts {
+  user?: User;
+}
 
-const setup = async (user?: User) => {
+const setup = async ({ user = createMockUser() }: SetupOpts = {}) => {
   setupRecentViewsEndpoints([
     createMockRecentItem({
       model: "table",
@@ -31,28 +30,35 @@ const setup = async (user?: User) => {
 };
 
 describe("HomeRecentSection", () => {
+  beforeEach(() => {
+    jest.useFakeTimers({ advanceTimers: true });
+    jest.setSystemTime(new Date(2020, 0, 4));
+  });
+
   afterEach(() => {
+    jest.useRealTimers();
     jest.restoreAllMocks();
   });
 
   describe("new installers", () => {
     it("should show a help link for new installers", async () => {
-      jest.spyOn(utils, "isWithinWeeks").mockImplementationOnce(() => true);
-
-      await setup(
-        createMockUser({
+      await setup({
+        user: createMockUser({
           is_installer: true,
           first_login: "2020-01-05T00:00:00Z",
         }),
-      );
+      });
 
       expect(await screen.findByText("Metabase tips")).toBeInTheDocument();
     });
 
     it("should not show a help link for regular users", async () => {
-      jest.spyOn(utils, "isWithinWeeks").mockImplementationOnce(() => false);
-
-      await setup();
+      await setup({
+        user: createMockUser({
+          is_installer: false,
+          first_login: "2019-11-05T00:00:00Z",
+        }),
+      });
 
       expect(screen.queryByText("Metabase tips")).not.toBeInTheDocument();
     });

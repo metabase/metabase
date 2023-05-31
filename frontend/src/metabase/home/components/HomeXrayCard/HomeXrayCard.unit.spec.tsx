@@ -1,24 +1,28 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { renderWithProviders, screen } from "__support__/ui";
 import { HomeXrayCard } from "./HomeXrayCard";
+
+interface SetupOpts {
+  title: string;
+  message: string;
+  url: string;
+}
+
+const setup = ({ title, message, url }: SetupOpts) => {
+  renderWithProviders(
+    <HomeXrayCard title={title} message={message} url={url} />,
+  );
+};
 
 describe("HomeXrayCard", () => {
   it("should render correctly", () => {
-    const props = getProps({
+    setup({
       title: "Orders",
       message: "A look at",
+      url: "/question/1",
     });
-
-    render(<HomeXrayCard {...props} />);
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(screen.getByText("A look at")).toBeInTheDocument();
   });
-});
-
-const getProps = (opts?: Partial<HomeXrayCardProps>): HomeXrayCardProps => ({
-  title: "Orders",
-  message: "A look at",
-  url: "/question/1",
-  ...opts,
 });

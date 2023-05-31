@@ -5,6 +5,7 @@ import * as Urls from "metabase/lib/urls";
 import { getIcon, getName } from "metabase/entities/recent-items";
 import { getUser } from "metabase/selectors/user";
 import { useRecentItemListQuery } from "metabase/common/hooks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeModelCard } from "../HomeModelCard";
@@ -12,10 +13,14 @@ import { isWithinWeeks } from "../../utils";
 import { SectionBody } from "./HomeRecentSection.styled";
 
 export const HomeRecentSection = () => {
+  const { data: recentItems = [], isLoading } = useRecentItemListQuery();
   const user = useSelector(getUser);
-  const { data: recentItems = [] } = useRecentItemListQuery();
   const hasHelpCard =
     user != null && user.is_installer && isWithinWeeks(user.first_login, 2);
+
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading={isLoading} />;
+  }
 
   return (
     <div>

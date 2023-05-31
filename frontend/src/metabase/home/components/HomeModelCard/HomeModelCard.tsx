@@ -8,7 +8,7 @@ interface HomeModelCardProps {
   url: string;
 }
 
-interface HomeModelIconProps {
+export interface HomeModelIconProps {
   name: string;
 }
 
