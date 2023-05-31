@@ -3,7 +3,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import HomeLayout from "./HomeLayout";
+import { HomeLayout } from "./HomeLayout";
 
 interface SetupOpts {
   currentUser?: User;

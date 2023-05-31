@@ -11,6 +11,10 @@ export const getIsMetabotEnabled = (state: State) => {
   return getSetting(state, "is-metabot-enabled");
 };
 
+export const getHasIllustration = (state: State) => {
+  return getSetting(state, "show-lighthouse-illustration");
+};
+
 export const getCustomHomePageDashboardId = createSelector(
   [getUser],
   user => user?.custom_homepage?.dashboard_id || null,

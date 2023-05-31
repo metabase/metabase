@@ -15,7 +15,7 @@ import {
   getCustomHomePageDashboardId,
   getIsMetabotEnabled,
 } from "../../selectors";
-import HomeLayout from "../HomeLayout";
+import { HomeLayout } from "../HomeLayout";
 import { HomeContent } from "../HomeContent";
 
 const SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
