@@ -6,6 +6,7 @@ import { createMockEntitiesState } from "__support__/store";
 import QuestionActions from "metabase/query_builder/components/QuestionActions";
 import { createMockCard, createMockNativeCard } from "metabase-types/api/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { Card } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 
 const TEST_STRUCTURED_CARD = createMockCard();
@@ -20,7 +21,7 @@ const iconList = [
   },
 ];
 
-function setup({ card = TEST_STRUCTURED_CARD } = {}) {
+function setup({ card }: { card: Card }) {
   const state = createMockState({
     entities: createMockEntitiesState({
       questions: [card],

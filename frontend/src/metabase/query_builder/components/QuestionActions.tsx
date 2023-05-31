@@ -73,10 +73,7 @@ const QuestionActions = ({
 
   const dispatch = useDispatch();
 
-  const dispatchSoftReloadCard = useCallback(
-    () => dispatch(softReloadCard()),
-    [dispatch],
-  );
+  const dispatchSoftReloadCard = () => dispatch(softReloadCard());
 
   const infoButtonColor = isShowingQuestionInfoSidebar
     ? color("brand")
