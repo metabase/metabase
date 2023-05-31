@@ -20,8 +20,8 @@ export const HomeContent = (): JSX.Element | null => {
   const user = useSelector(getUser);
   const isXrayEnabled = useSelector(getIsXrayEnabled);
   const { data: databases } = useDatabaseListQuery();
-  const { data: recentItems } = useRecentItemListQuery();
-  const { data: popularItems } = usePopularItemListQuery();
+  const { data: recentItems } = useRecentItemListQuery({ reload: true });
+  const { data: popularItems } = usePopularItemListQuery({ reload: true });
 
   if (!user || isLoading(user, databases, recentItems, popularItems)) {
     return <LoadingAndErrorWrapper loading />;
