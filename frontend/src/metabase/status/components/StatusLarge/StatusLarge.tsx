@@ -1,4 +1,3 @@
-import React from "react";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "../../../components/Icon";
 import useStatusVisibility from "../../hooks/use-status-visibility";

@@ -1,4 +1,5 @@
 import * as dbTasks from "./db_tasks";
+const replay = require("@replayio/cypress");
 const { verifyDownloadTasks } = require("cy-verify-downloads");
 const {
   NodeModulesPolyfillPlugin,
@@ -21,6 +22,8 @@ const isQaDatabase = process.env["QA_DB_ENABLED"];
 
 const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
 const targetVersion = process.env["CROSS_VERSION_TARGET"];
+
+const runWithReplay = process.env["REPLAYIO_ENABLED"];
 
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
@@ -99,20 +102,24 @@ const defaultConfig = {
 
     require("@cypress/grep/src/plugin")(config);
 
+    if (runWithReplay) {
+      replay.default(on, config);
+    }
+
     return config;
   },
   supportFile: "e2e/support/cypress.js",
   videoUploadOnPasses: false,
   chromeWebSecurity: false,
   modifyObstructiveCode: false,
-};
-
-const mainConfig = {
-  ...defaultConfig,
   // New `specPattern` is the combination of the old:
   //   1. testFiles and
   //   2. integrationFolder
   specPattern: "e2e/test/**/*.cy.spec.js",
+};
+
+const mainConfig = {
+  ...defaultConfig,
   projectId: "KetpiS",
   viewportHeight: 800,
   viewportWidth: 1280,
@@ -125,7 +132,7 @@ const mainConfig = {
     json: true,
   },
   retries: {
-    runMode: 5,
+    runMode: 4,
     openMode: 0,
   },
 };
@@ -147,9 +154,15 @@ const crossVersionTargetConfig = {
   specPattern: "e2e/test/scenarios/cross-version/target/**/*.cy.spec.js",
 };
 
+const stressTestConfig = {
+  ...defaultConfig,
+  retries: 0,
+};
+
 module.exports = {
   mainConfig,
   snapshotsConfig,
+  stressTestConfig,
   crossVersionSourceConfig,
   crossVersionTargetConfig,
 };

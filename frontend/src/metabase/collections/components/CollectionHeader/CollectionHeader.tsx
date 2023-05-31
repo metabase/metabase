@@ -1,4 +1,3 @@
-import React from "react";
 import { withRouter } from "react-router";
 import type { Location } from "history";
 

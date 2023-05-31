@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import LogoIcon from "metabase/components/LogoIcon";
@@ -56,6 +56,7 @@ export const AdminNavbar = ({
         <AdminExitLink
           to="/"
           data-metabase-event="Navbar;Exit Admin"
+          data-testid="exit-admin"
         >{t`Exit admin`}</AdminExitLink>
       </MobileHide>
     </AdminNavbarRoot>

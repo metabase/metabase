@@ -241,7 +241,7 @@
                        (lib/replace-clause (first filters) (lib/= (lib/field (meta/id :venues :id)) 1)))
           replaced-filters (lib/filters replaced)]
       (is (not= filters replaced-filters))
-      (is (=? {:operator "=" :args [[:field {} (meta/id :venues :id)] 1]}
+      (is (=? [:= {} [:field {} (meta/id :venues :id)] 1]
               (first replaced-filters)))
       (is (= 2 (count replaced-filters)))
       (is (= (second filters) (second replaced-filters))))))

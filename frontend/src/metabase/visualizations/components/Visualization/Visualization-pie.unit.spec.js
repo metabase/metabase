@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 
 import Visualization from "metabase/visualizations/components/Visualization";

@@ -1,6 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";

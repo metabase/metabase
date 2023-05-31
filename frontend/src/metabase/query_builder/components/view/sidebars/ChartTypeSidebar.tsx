@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import * as React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
@@ -7,6 +8,8 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import visualizations from "metabase/visualizations";
 import { sanatizeResultData } from "metabase/visualizations/shared/utils/data";
 import { Visualization } from "metabase/visualizations/shared/types/visualization";
+
+import { UpdateQuestionOpts } from "metabase/query_builder/actions";
 
 import Question from "metabase-lib/Question";
 import Query from "metabase-lib/queries/Query";
@@ -48,10 +51,7 @@ interface ChartTypeSidebarProps {
     showSidebarTitle: boolean;
   }) => void;
   onCloseChartType: () => void;
-  updateQuestion: (
-    question: Question,
-    props: { reload: boolean; shouldUpdateUrl: boolean },
-  ) => void;
+  updateQuestion: (question: Question, props: UpdateQuestionOpts) => void;
   setUIControls: (props: { isShowingRawTable: boolean }) => void;
   query: Query;
 }
@@ -100,10 +100,16 @@ const ChartTypeSidebar = ({
       if (display === question.display()) {
         openChartSettings(e);
       } else {
-        const newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
+        let newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
+        const visualization = visualizations.get(display);
+        if (visualization.onDisplayUpdate) {
+          const updatedSettings = visualization.onDisplayUpdate(
+            newQuestion.settings(),
+          );
+          newQuestion = newQuestion.updateSettings(updatedSettings);
+        }
 
         updateQuestion(newQuestion, {
-          reload: false,
           shouldUpdateUrl: question.query().isEditable(),
         });
         setUIControls({ isShowingRawTable: false });

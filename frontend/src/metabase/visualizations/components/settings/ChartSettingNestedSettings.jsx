@@ -1,15 +1,19 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+/* eslint-disable react/display-name */
+import { Component } from "react";
 
 import _ from "underscore";
 
 import { updateSettings } from "metabase/visualizations/lib/settings";
 import ChartSettingsWidget from "../ChartSettingsWidget";
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 const chartSettingNestedSettings =
   ({ getObjectKey, getSettingsWidgetsForObject }) =>
   ComposedComponent =>
-    class extends React.Component {
+    class extends Component {
       constructor(props) {
         super(props);
         this.state = {};

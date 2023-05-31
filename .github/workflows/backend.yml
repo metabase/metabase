@@ -42,7 +42,7 @@ jobs:
     - name: Build static viz frontend
       run: yarn build-static-viz
     - name: Collect the test coverage
-      run: clojure -X:dev:ee:ee-dev:test:cloverage
+      run: clojure -X:dev:ci:ee:ee-dev:test:cloverage
     - name: Upload coverage to codecov.io
       uses: codecov/codecov-action@v3
       with:
@@ -61,7 +61,7 @@ jobs:
         docker run
         --volume $PWD:/work
         --rm
-        cljkondo/clj-kondo:2023.02.17
+        cljkondo/clj-kondo:2023.04.14
         clj-kondo
         --config /work/.clj-kondo/config.edn
         --config-dir /work/.clj-kondo

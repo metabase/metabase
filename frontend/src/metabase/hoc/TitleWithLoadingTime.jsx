@@ -1,10 +1,11 @@
-import React from "react";
-
 import { delay } from "metabase/lib/promise";
 import title from "metabase/hoc/Title";
 
 const SECONDS_UNTIL_DISPLAY = 10;
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export default startTimePropName => ComposedComponent =>
   title(({ [startTimePropName]: startTime, isRunning }) => {
     if (startTime == null || !isRunning) {

@@ -1,4 +1,3 @@
-import React from "react";
 import _ from "underscore";
 
 import { useToggle } from "metabase/hooks/use-toggle";

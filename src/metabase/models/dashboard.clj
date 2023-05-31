@@ -27,7 +27,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.async :as qp.async]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru deferred-trun tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -181,7 +181,7 @@
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
   (-> dashboard
-      (select-keys [:description :name :cache_ttl :auto_apply_filters])
+      (select-keys [:collection_id :description :name :cache_ttl :auto_apply_filters])
       (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
                            (-> (select-keys dashboard-card [:size_x :size_y :row :col :id :card_id])
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))))
@@ -203,7 +203,7 @@
             current-card    (id->current-card dashcard-id)]
         (cond
           ;; If card is in current-cards but not serialized-cards then we need to delete it
-          (not serialized-card) (dashboard-card/delete-dashboard-cards! [current-card] dashboard-id user-id)
+          (not serialized-card) (dashboard-card/delete-dashboard-cards! [(:id current-card)])
 
           ;; If card is in serialized-cards but not current-cards we need to add it
           (not current-card) (dashboard-card/create-dashboard-cards! [(assoc serialized-card
@@ -215,51 +215,59 @@
 
   serialized-dashboard)
 
-(defmethod revision/diff-str :model/Dashboard
-  [_model dashboard1 dashboard2]
-  (let [[removals changes]  (diff dashboard1 dashboard2)
+(defmethod revision/diff-strings :model/Dashboard
+  [_model prev-dashboard dashboard]
+  (let [[removals changes]  (diff prev-dashboard dashboard)
         check-series-change (fn [idx card-changes]
                               (when (and (:series card-changes)
-                                         (get-in dashboard1 [:cards idx :card_id]))
-                                (let [num-series₁ (count (get-in dashboard1 [:cards idx :series]))
-                                      num-series₂ (count (get-in dashboard2 [:cards idx :series]))]
+                                         (get-in prev-dashboard [:cards idx :card_id]))
+                                (let [num-series₁ (count (get-in prev-dashboard [:cards idx :series]))
+                                      num-series₂ (count (get-in dashboard [:cards idx :series]))]
                                   (cond
                                     (< num-series₁ num-series₂)
-                                    (format "added some series to card %d" (get-in dashboard1 [:cards idx :card_id]))
+                                    (deferred-tru "added some series to card {0}" (get-in prev-dashboard [:cards idx :card_id]))
 
                                     (> num-series₁ num-series₂)
-                                    (format "removed some series from card %d" (get-in dashboard1 [:cards idx :card_id]))
+                                    (deferred-tru "removed some series from card {0}" (get-in prev-dashboard [:cards idx :card_id]))
 
                                     :else
-                                    (format "modified the series on card %d" (get-in dashboard1 [:cards idx :card_id]))))))]
-    (-> [(when (and dashboard1 (:name changes))
-           (format "renamed it from \"%s\" to \"%s\"" (:name dashboard1) (:name dashboard2)))
-         (when (:description changes)
-           (cond
-             (nil? (:description dashboard1)) "added a description"
-             (nil? (:description dashboard2)) "removed the description"
-             :else (format "changed the description from \"%s\" to \"%s\""
-                           (:description dashboard1) (:description dashboard2))))
+                                    (deferred-tru "modified the series on card {0}" (get-in prev-dashboard [:cards idx :card_id]))))))]
+    (-> [(when-let [default-description (build-sentence ((get-method revision/diff-strings :default) Dashboard prev-dashboard dashboard))]
+           (cond-> default-description
+             (str/ends-with? default-description ".") (subs 0 (dec (count default-description)))))
          (when (:cache_ttl changes)
            (cond
-             (nil? (:cache_ttl dashboard1)) "added a cache ttl"
-             (nil? (:cache_ttl dashboard2)) "removed the cache ttl"
-             :else (format "changed the cache ttl from \"%s\" to \"%s\""
-                           (:cache_ttl dashboard1) (:cache_ttl dashboard2))))
+             (nil? (:cache_ttl prev-dashboard)) (deferred-tru "added a cache ttl")
+             (nil? (:cache_ttl dashboard)) (deferred-tru "removed the cache ttl")
+             :else (deferred-tru "changed the cache ttl from \"{0}\" to \"{1}\""
+                           (:cache_ttl prev-dashboard) (:cache_ttl dashboard))))
          (when (or (:cards changes) (:cards removals))
-           (let [num-cards1  (count (:cards dashboard1))
-                 num-cards2  (count (:cards dashboard2))]
+           (let [prev-card-ids  (set (map :id (:cards prev-dashboard)))
+                 num-prev-cards (count prev-card-ids)
+                 new-card-ids   (set (map :id (:cards dashboard)))
+                 num-new-cards  (count new-card-ids)
+                 num-cards-diff (abs (- num-prev-cards num-new-cards))]
              (cond
-               (< num-cards1 num-cards2) "added a card"
-               (> num-cards1 num-cards2) "removed a card"
-               :else                     "rearranged the cards")))
-         (let [f (comp boolean :auto_apply_filters)]
-          (when (not= (f dashboard1) (f dashboard2))
-            (format "set auto apply filters to %s" (str (f dashboard2)))))]
-        (concat (map-indexed check-series-change (:cards changes)))
-        (->> (filter identity)
-             build-sentence))))
+               (and
+                 (set/subset? prev-card-ids new-card-ids)
+                 (< num-prev-cards num-new-cards))         (deferred-trun "added a card" "added {0} cards" num-cards-diff)
+               (and
+                 (set/subset? new-card-ids prev-card-ids)
+                 (> num-prev-cards num-new-cards))         (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
+               (and (= num-prev-cards num-new-cards)
+                    (= prev-card-ids new-card-ids))        (deferred-tru "rearranged the cards")
+               :else                                       (deferred-tru "modified the cards"))))
 
+         (let [f (comp boolean :auto_apply_filters)]
+           (when (not= (f prev-dashboard) (f dashboard))
+             (deferred-tru "set auto apply filters to {0}" (str (f dashboard)))))]
+        (concat (map-indexed check-series-change (:cards changes)))
+        (->> (filter identity)))))
+
+(defn has-tabs?
+  "Check if a dashboard has tabs."
+  [dashboard-or-id]
+  (t2/exists? :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |

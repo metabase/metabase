@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import type { Collection } from "metabase-types/api";
@@ -15,7 +14,7 @@ export default function UploadOverlay({
 }) {
   return (
     <DragOverlay isDragActive={isDragActive}>
-      <Icon name="arrow_up" />
+      <Icon name="upload" size="24" />
       <div>{t`Drop here to upload to ${collection.name}`}</div>
     </DragOverlay>
   );

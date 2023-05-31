@@ -1,5 +1,3 @@
-import React from "react";
-
 import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
 
 import type { NotebookStepUiComponentProps } from "../types";

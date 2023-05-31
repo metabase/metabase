@@ -239,6 +239,7 @@
 (derive :type/Birthdate :Semantic/*)
 (derive :type/Birthdate :type/Date)
 
+(derive :type/Interval :type/Temporal)
 
 ;;; Other
 
@@ -320,6 +321,7 @@
 (derive :Coercion/UNIXSeconds->DateTime :Coercion/UNIXTime->Temporal)
 (derive :Coercion/UNIXMilliSeconds->DateTime :Coercion/UNIXTime->Temporal)
 (derive :Coercion/UNIXMicroSeconds->DateTime :Coercion/UNIXTime->Temporal)
+(derive :Coercion/UNIXNanoSeconds->DateTime :Coercion/UNIXTime->Temporal)
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
@@ -374,6 +376,7 @@
      (clj->js (into {} (for [tyype (distinct (mapcat descendants [:type/* :Semantic/* :Relation/*]))]
                          [(name tyype) (u/qualified-name tyype)])))))
 
+(coercion-hierarchies/define-types! :Coercion/UNIXNanoSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)
 (coercion-hierarchies/define-types! :Coercion/UNIXMicroSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)
 (coercion-hierarchies/define-types! :Coercion/UNIXMilliSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)
 (coercion-hierarchies/define-types! :Coercion/UNIXSeconds->DateTime      #{:type/Integer :type/Decimal} :type/Instant)

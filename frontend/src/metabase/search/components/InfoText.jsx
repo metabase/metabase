@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 
@@ -48,6 +47,8 @@ export function InfoText({ result }) {
       return jt`Metric for ${(<TableLink result={result} />)}`;
     case "action":
       return jt`for ${result.model_name}`;
+    case "indexed-entity":
+      return jt`in ${result.model_name}`;
     default:
       return jt`${getTranslatedEntityName(result.model)} in ${formatCollection(
         result,

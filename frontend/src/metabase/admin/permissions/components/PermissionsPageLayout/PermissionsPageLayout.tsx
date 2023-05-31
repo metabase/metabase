@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from "react";
+import { ReactNode, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { push } from "react-router-redux";

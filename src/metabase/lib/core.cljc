@@ -54,9 +54,13 @@
 
 (shared.ns/import-fns
   [lib.aggregation
+   aggregate
+   aggregation-clause
+   aggregation-operator-columns
    aggregations
    aggregations-metadata
-   aggregate
+   available-aggregation-operators
+   selected-aggregation-operators
    count
    avg
    count-where
@@ -136,6 +140,9 @@
   [lib.filter
    filter
    filters
+   filterable-columns
+   filterable-column-operators
+   filter-clause
    and
    or
    not

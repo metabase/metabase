@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -8,7 +8,6 @@ import { Dataset } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import {
-  DownloadButtonIcon,
   DownloadButtonRoot,
   DownloadButtonText,
   DownloadPopoverHeader,
@@ -82,7 +81,6 @@ const DownloadButton = ({ format, onDownload }: DownloadButtonProps) => {
 
   return (
     <DownloadButtonRoot onClick={handleClick}>
-      <DownloadButtonIcon name={format} format={format} />
       <DownloadButtonText>.{format}</DownloadButtonText>
     </DownloadButtonRoot>
   );

@@ -16,6 +16,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (declare stage-metadata)
@@ -154,10 +155,12 @@
    unique-name-fn  :- fn?]
   (not-empty
    (for [expression (lib.expression/expressions-metadata query stage-number)]
-     (assoc expression
-            :lib/source               :source/expressions
-            :lib/source-column-alias  (:name expression)
-            :lib/desired-column-alias (unique-name-fn (:name expression))))))
+     (let [base-type (:base-type expression)]
+       (-> (assoc expression
+                  :lib/source               :source/expressions
+                  :lib/source-column-alias  (:name expression)
+                  :lib/desired-column-alias (unique-name-fn (:name expression)))
+           (u/assoc-default :effective-type (or base-type :type/*)))))))
 
 ;;; Calculate the columns to return if `:aggregations`/`:breakout`/`:fields` are unspecified.
 ;;;

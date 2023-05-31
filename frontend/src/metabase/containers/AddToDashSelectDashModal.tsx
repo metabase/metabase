@@ -1,4 +1,4 @@
-import React, { ComponentPropsWithoutRef, useState } from "react";
+import { ComponentPropsWithoutRef, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
@@ -29,7 +29,7 @@ interface AddToDashSelectDashModalProps {
   card: Card;
   onChangeLocation: (location: string) => void;
   onClose: () => void;
-  dashboards: Record<number, Dashboard>;
+  dashboards: Record<string, Dashboard>;
 }
 
 type DashboardPickerProps = ComponentPropsWithoutRef<typeof DashboardPicker>;

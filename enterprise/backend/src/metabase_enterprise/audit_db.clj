@@ -6,7 +6,7 @@
             [metabase.util.log :as log]
             [toucan2.core :as t2]))
 
-(def ^:private default-admin-db-id 13371337)
+(def ^:private default-audit-db-id 13371337)
 
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
@@ -16,19 +16,22 @@
 
   - In the unlikely case that a user has many many databases in Metabase, and ensure there can Never be a collision, we
   do a quick check here and pick a new ID if it would have collided. Similar to finding an open port number."
-  ([engine] (install-database! engine default-admin-db-id))
+  ([engine] (install-database! engine default-audit-db-id))
   ([engine id]
    (if (t2/select-one Database :id id)
      (install-database! engine (inc id))
-     (t2/insert! Database {:is_audit         true
-                           :id               default-admin-db-id
-                           :name             "Audit Database"
-                           :description      "Internal Audit DB used to power metabase analytics."
-                           :engine           engine
-                           :is_full_sync     true
-                           :is_on_demand     false
-                           :creator_id       nil
-                           :auto_run_queries true}))))
+     (do
+       ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
+       (t2/delete! :permissions {:where [:like :object (str "%/db/" id "/%")]})
+       (t2/insert! Database {:is_audit         true
+                             :id               default-audit-db-id
+                             :name             "Audit Database"
+                             :description      "Internal Audit DB used to power metabase analytics."
+                             :engine           engine
+                             :is_full_sync     true
+                             :is_on_demand     false
+                             :creator_id       nil
+                             :auto_run_queries true})))))
 
 (defn ensure-db-installed!
   "Called on app startup to ensure the existance of the audit db in enterprise apps.
@@ -53,6 +56,6 @@
 
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`."
-  :feature :any
+  :feature :none
   []
   (ensure-db-installed!))

@@ -1,4 +1,4 @@
-import React, { FocusEvent, useCallback, useState } from "react";
+import { FocusEvent, useCallback, useState } from "react";
 import { t } from "ttag";
 import Select, { SelectChangeEvent } from "metabase/core/components/Select";
 import CacheTimeInput from "../CacheTimeInput";

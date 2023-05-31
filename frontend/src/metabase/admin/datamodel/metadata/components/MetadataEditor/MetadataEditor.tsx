@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";

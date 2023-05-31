@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useCallback, useMemo } from "react";
+import { ChangeEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import { FontSetting, FontSettingKeys, FontSettingValues } from "./types";

@@ -1,4 +1,4 @@
-import React, { ComponentPropsWithoutRef } from "react";
+import { ComponentPropsWithoutRef } from "react";
 import _ from "underscore";
 import userEvent from "@testing-library/user-event";
 import { render, screen, getIcon } from "__support__/ui";
@@ -7,7 +7,7 @@ import { Card, Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
-  createMockDatasetData,
+  createMockDataset,
 } from "metabase-types/api/mocks";
 import ChartCaption from "./ChartCaption";
 
@@ -29,10 +29,12 @@ const getSeries = ({ card }: { card?: Card } = {}): Series => {
   const series: Series = [
     {
       card: card ?? createMockCard({ name: "" }),
-      data: createMockDatasetData({
-        cols,
-        rows: [["foo", 1]],
-        rows_truncated: 0,
+      ...createMockDataset({
+        data: {
+          rows: [["foo", 1]],
+          cols,
+          rows_truncated: 0,
+        },
       }),
     },
   ];

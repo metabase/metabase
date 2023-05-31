@@ -8,6 +8,7 @@
    [clojure.spec.alpha :as spec]
    [clojure.string :as str]
    [environ.core :refer [env]]
+   [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
@@ -248,6 +249,10 @@
     (and config/ee-available?
          (has-feature? feature))))
 
+(def premium-features
+  "Set of defined premium feature keywords."
+  (atom #{}))
+
 (defmacro ^:private define-premium-feature
   "Convenience for generating a [[metabase.models.setting/defsetting]] form for a premium token feature. (The Settings
   definitions for Premium token features all look more or less the same, so this prevents a lot of code duplication.)"
@@ -257,9 +262,11 @@
                         :setter     :none
                         :getter     `(default-premium-feature-getter ~(some-> feature name))}
                        options)]
-    `(defsetting ~setting-name
-       ~docstring
-       ~@(mapcat identity options))))
+    `(do
+      (swap! premium-features conj ~feature)
+      (defsetting ~setting-name
+        ~docstring
+        ~@(mapcat identity options)))))
 
 (define-premium-feature hide-embed-branding?
   "Logo Removal and Full App Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
@@ -323,7 +330,7 @@
 ;; 'enhancements'.
 (define-premium-feature ^:deprecated enable-enhancements?
   "Should we various other enhancements, e.g. NativeQuerySnippet collection permissions?"
-  nil
+  :enhancements
   :getter #(and config/ee-available? (has-any-features?)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -500,3 +507,17 @@
                         (assoc :return-schema (-> parsed-args :return-schema :schema))
                         (assoc :fn-name fn-name))]
     `(defenterprise-impl ~args)))
+
+
+(defenterprise segmented-user?
+  "Returns a boolean if the current user is a segmented user. In OSS is always false. Will throw an error
+  if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.sandbox.api.util
+  []
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
+    ;; returning `false` for users who should actually be sandboxes.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have sandboxing. But we throw if no current-user-id so the behavior doesn't change when ee version
+  false)

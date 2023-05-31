@@ -63,10 +63,11 @@
   []
   (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
         port      (config/config-int :mb-jetty-port)
-        setup-url (str "http://"
-                       (or hostname "localhost")
-                       (when-not (= 80 port) (str ":" port))
-                       "/setup/")]
+        site-url  (or (public-settings/site-url)
+                      (str "http://"
+                           hostname
+                           (when-not (= 80 port) (str ":" port))))
+        setup-url (str site-url "/setup/")]
     (log/info (u/format-color 'green
                               (str (deferred-trs "Please use the following URL to setup your Metabase installation:")
                                    "\n\n"
@@ -93,8 +94,7 @@
 (defenterprise ensure-audit-db-installed!
   "OSS implementation of `audit-db/ensure-db-installed!`, which is an enterprise feature, so does nothing in the OSS
   version."
-  metabase-enterprise.audit-db
-  [])
+  metabase-enterprise.audit-db [] ::noop)
 
 (defn- init!*
   "General application initialization function which should be run once at application startup."

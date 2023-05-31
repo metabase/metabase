@@ -229,7 +229,7 @@ export default class Dimension {
   }
 
   /**
-   * Is this dimension idential to another dimension or MBQL clause
+   * Is this dimension identical to another dimension or MBQL clause
    */
   isEqual(
     other: Dimension | null | undefined | ConcreteFieldReference,
@@ -287,6 +287,10 @@ export default class Dimension {
    */
   field(): Field {
     return new Field();
+  }
+
+  getMLv1CompatibleDimension() {
+    return this;
   }
 
   /**
@@ -399,11 +403,16 @@ export default class Dimension {
     return this._query && this._query.dimensionForSourceQuery(this);
   }
 
+  getOptions() {
+    return this._options;
+  }
+
   /**
    * Get an option from the field options map, if there is one.
    */
   getOption(k: string): any {
-    return this._options && this._options[k];
+    const options = this.getOptions();
+    return options?.[k];
   }
 
   /*
@@ -844,6 +853,12 @@ export class FieldDimension extends Dimension {
     // Despite being unable to find a field, we _might_ still have enough data to know a few things about it.
     // For example, if we have an mbql field reference, it might contain a `base-type`
     return this._createFallbackField();
+  }
+
+  getMLv1CompatibleDimension() {
+    return this.isIntegerFieldId()
+      ? this.withoutOptions("base-type", "effective-type")
+      : this;
   }
 
   tableId() {
@@ -1717,49 +1732,49 @@ const DATETIME_SUBDIMENSIONS = [
     },
   },
   {
-    name: t`Minute of Hour`,
+    name: t`Minute of hour`,
     options: {
       "temporal-unit": "minute-of-hour",
     },
   },
   {
-    name: t`Hour of Day`,
+    name: t`Hour of day`,
     options: {
       "temporal-unit": "hour-of-day",
     },
   },
   {
-    name: t`Day of Week`,
+    name: t`Day of week`,
     options: {
       "temporal-unit": "day-of-week",
     },
   },
   {
-    name: t`Day of Month`,
+    name: t`Day of month`,
     options: {
       "temporal-unit": "day-of-month",
     },
   },
   {
-    name: t`Day of Year`,
+    name: t`Day of year`,
     options: {
       "temporal-unit": "day-of-year",
     },
   },
   {
-    name: t`Week of Year`,
+    name: t`Week of year`,
     options: {
       "temporal-unit": "week-of-year",
     },
   },
   {
-    name: t`Month of Year`,
+    name: t`Month of year`,
     options: {
       "temporal-unit": "month-of-year",
     },
   },
   {
-    name: t`Quarter of Year`,
+    name: t`Quarter of year`,
     options: {
       "temporal-unit": "quarter-of-year",
     },

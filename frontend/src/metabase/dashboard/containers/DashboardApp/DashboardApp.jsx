@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
@@ -61,6 +61,7 @@ import {
   getSlowCards,
   getIsAutoApplyFilters,
   getSelectedTabId,
+  getisNavigatingBackToDashboard,
 } from "../../selectors";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 
@@ -105,6 +106,7 @@ const mapStateToProps = (state, props) => {
     embedOptions: getEmbedOptions(state),
     selectedTabId: getSelectedTabId(state),
     isAutoApplyFilters: getIsAutoApplyFilters(state),
+    isNavigatingBackToDashboard: getisNavigatingBackToDashboard(state),
   };
 };
 

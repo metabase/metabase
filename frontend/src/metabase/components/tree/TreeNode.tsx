@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import * as React from "react";
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon";

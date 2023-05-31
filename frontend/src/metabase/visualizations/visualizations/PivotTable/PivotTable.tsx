@@ -1,10 +1,5 @@
-import React, {
-  useEffect,
-  useMemo,
-  useCallback,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useCallback, useRef, useState } from "react";
+import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
@@ -497,7 +492,6 @@ export default Object.assign(connect(mapStateToProps)(PivotTable), {
   settings,
   columnSettings,
   isLiveResizable: () => false,
-  seriesAreCompatible: () => false,
 });
 
 export { PivotTable };

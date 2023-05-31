@@ -1,9 +1,8 @@
-import React, { ChangeEvent } from "react";
+import { ChangeEvent } from "react";
 import type { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
 import CheckBox from "./CheckBox";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/CheckBox",
   component: CheckBox,

@@ -1,4 +1,4 @@
-import React, {
+import {
   useCallback,
   useEffect,
   useState,
@@ -9,13 +9,10 @@ import { t } from "ttag";
 import { useField } from "formik";
 
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-
 import FormField from "metabase/core/components/FormField";
 import SelectButton from "metabase/core/components/SelectButton";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-
-import Models from "metabase/entities/questions";
-
+import { useQuestionQuery } from "metabase/common/hooks";
 import type { CardId } from "metabase-types/api";
 
 import { PopoverItemPicker, MIN_POPOVER_WIDTH } from "./FormModelPicker.styled";
@@ -39,6 +36,11 @@ function FormModelPicker({
   const [{ value }, { error, touched }, { setValue }] = useField(name);
   const formFieldRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(MIN_POPOVER_WIDTH);
+  const isModelSelected = typeof value === "number";
+  const { data: model } = useQuestionQuery({
+    id: value,
+    enabled: isModelSelected,
+  });
 
   useEffect(() => {
     const { width: formFieldWidth } =
@@ -59,11 +61,21 @@ function FormModelPicker({
         ref={formFieldRef}
       >
         <SelectButton onClick={handleShowPopover}>
-          {typeof value === "number" ? <Models.Name id={value} /> : placeholder}
+          {isModelSelected ? model?.displayName() : placeholder}
         </SelectButton>
       </FormField>
     ),
-    [id, value, title, placeholder, error, touched, className, style],
+    [
+      id,
+      title,
+      placeholder,
+      error,
+      touched,
+      className,
+      style,
+      model,
+      isModelSelected,
+    ],
   );
 
   const renderContent = useCallback(
