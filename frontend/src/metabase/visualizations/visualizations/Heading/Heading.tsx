@@ -1,7 +1,9 @@
-import React, { useState, useMemo, MouseEvent } from "react";
+import React, { useMemo, MouseEvent } from "react";
 
 import cx from "classnames";
 import { t } from "ttag";
+
+import { useFocus } from "metabase/hooks/use-focus";
 
 import {
   InputContainer,
@@ -25,7 +27,7 @@ export function Heading({
 }: HeadingProps) {
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
-  const [isFocused, setIsFocused] = useState(justAdded);
+  const { isFocused, toggleFocusOn, toggleFocusOff } = useFocus(justAdded);
   const isPreviewing = !isFocused;
 
   const handleTextChange = (text: string) =>
@@ -44,7 +46,7 @@ export function Heading({
           "has-no-content": hasNoContent,
         })}
         isPreviewing={isPreviewing}
-        onClick={() => setIsFocused(true)}
+        onClick={toggleFocusOn}
       >
         {isPreviewing ? (
           <HeadingContent hasNoContent={hasNoContent} isEditing={isEditing}>
@@ -58,7 +60,7 @@ export function Heading({
             autoFocus={justAdded || isFocused}
             onChange={e => handleTextChange(e.target.value)}
             onMouseDown={preventDragging}
-            onBlur={() => setIsFocused(false)}
+            onBlur={toggleFocusOff}
           />
         )}
       </InputContainer>
