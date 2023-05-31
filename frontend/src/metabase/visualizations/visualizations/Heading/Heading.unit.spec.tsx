@@ -1,6 +1,9 @@
 import React from "react";
 
 import { render, screen } from "@testing-library/react";
+
+import { createMockDashboardCardWithVirtualCard } from "metabase-types/api/mocks";
+
 import { Heading } from "../Heading";
 
 interface Settings {
@@ -11,7 +14,7 @@ const defaultProps = {
   onUpdateVisualizationSettings: ({ text }: { text: string }) => {
     return;
   },
-  dashcard: {},
+  dashcard: createMockDashboardCardWithVirtualCard(),
   settings: { text: "" },
   isEditing: false,
 };

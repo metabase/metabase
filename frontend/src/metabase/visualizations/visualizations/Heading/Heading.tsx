@@ -4,6 +4,10 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { useFocus } from "metabase/hooks/use-focus";
+import type {
+  BaseDashboardOrderedCard,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import {
   InputContainer,
@@ -15,8 +19,8 @@ import {
 interface HeadingProps {
   isEditing: boolean;
   onUpdateVisualizationSettings: ({ text }: { text: string }) => void;
-  dashcard: { justAdded?: boolean };
-  settings: { text: string };
+  dashcard: BaseDashboardOrderedCard;
+  settings: VisualizationSettings;
 }
 
 export function Heading({
