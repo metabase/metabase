@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { thaw } from "icepick";
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";

@@ -1,4 +1,4 @@
-import React from "react";
+import { Component, Fragment } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
@@ -50,7 +50,7 @@ function colorForIcon(icon) {
       };
   }
 }
-export default class ExpressionEditorSuggestions extends React.Component {
+export default class ExpressionEditorSuggestions extends Component {
   static propTypes = {
     suggestions: PropTypes.array,
     onSuggestionMouseDown: PropTypes.func, // signature is f(index)
@@ -119,7 +119,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
                 </ExpressionListItem>
               );
 
-              return <React.Fragment key={key}>{listItem}</React.Fragment>;
+              return <Fragment key={key}>{listItem}</Fragment>;
             })}
           </ExpressionList>
         }

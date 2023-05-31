@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 import { SetupApi } from "metabase/services";

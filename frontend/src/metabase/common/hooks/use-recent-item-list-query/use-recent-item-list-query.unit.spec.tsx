@@ -1,4 +1,3 @@
-import React from "react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { createMockRecentItem } from "metabase-types/api/mocks";
 import { setupRecentViewsEndpoints } from "__support__/server-mocks";

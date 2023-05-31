@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+/* eslint-disable react/no-unknown-property */
+import { Component } from "react";
 
 import cx from "classnames";
 import { PreviewPaneContainer } from "./PreviewPane.styled";

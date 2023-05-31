@@ -1,6 +1,6 @@
 /* eslint "react/prop-types": "error" */
 
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
@@ -106,7 +106,7 @@ const mapDispatchToProps = {
   testPulse,
 };
 
-class SharingSidebarInner extends React.Component {
+class SharingSidebarInner extends Component {
   state = {
     editingMode: "list-pulses",
     // use this to know where to go "back" to

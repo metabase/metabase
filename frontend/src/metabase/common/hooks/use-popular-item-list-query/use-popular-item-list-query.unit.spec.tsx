@@ -1,4 +1,3 @@
-import React from "react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { createMockPopularItem } from "metabase-types/api/mocks";
 import { setupPopularItemsEndpoints } from "__support__/server-mocks";

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import * as React from "react";
 import { Motion, spring } from "react-motion";
 
 import { FixedBottomBar } from "./BulkActionBar.styled";

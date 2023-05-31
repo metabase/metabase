@@ -1,4 +1,3 @@
-import React from "react";
 import "mutationobserver-shim";
 
 import { renderWithProviders, screen } from "__support__/ui";

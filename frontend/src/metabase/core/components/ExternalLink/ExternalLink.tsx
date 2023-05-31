@@ -1,4 +1,4 @@
-import React, { AnchorHTMLAttributes, forwardRef, ReactNode, Ref } from "react";
+import { AnchorHTMLAttributes, forwardRef, ReactNode, Ref } from "react";
 import { getUrlTarget } from "metabase/lib/dom";
 import { LinkRoot } from "./ExternalLink.styled";
 

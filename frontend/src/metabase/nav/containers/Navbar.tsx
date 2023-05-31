@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import _ from "underscore";
 import { Location } from "history";
 import { connect } from "react-redux";

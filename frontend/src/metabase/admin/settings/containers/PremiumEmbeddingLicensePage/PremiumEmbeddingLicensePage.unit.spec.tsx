@@ -1,4 +1,3 @@
-import React from "react";
 import { StoreTokenStatus } from "metabase-types/api";
 import {
   createMockSettingDefinition,

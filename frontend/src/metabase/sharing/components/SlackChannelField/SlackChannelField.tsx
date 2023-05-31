@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import AutocompleteInput from "metabase/core/components/AutocompleteInput";

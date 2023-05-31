@@ -1,4 +1,5 @@
-import React, { Component, ReactNode } from "react";
+/* eslint-disable react/prop-types */
+import { Component, ReactNode } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import Icon from "metabase/components/Icon";

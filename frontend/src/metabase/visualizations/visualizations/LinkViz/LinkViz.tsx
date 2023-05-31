@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import Input from "metabase/core/components/Input";

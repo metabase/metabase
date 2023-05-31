@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { Motion, spring } from "react-motion";
 import { t } from "ttag";
