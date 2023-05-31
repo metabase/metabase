@@ -1,31 +1,51 @@
 import React, { useEffect } from "react";
 import { replace } from "react-router-redux";
 import { isSmallScreen } from "metabase/lib/dom";
-import { useDispatch } from "metabase/lib/redux";
-
+import { openNavbar } from "metabase/redux/app";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import {
+  useDatabaseListQuery,
+  useSearchListQuery,
+} from "metabase/common/hooks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
+import { CollectionItem } from "metabase-types/api";
+import Database from "metabase-lib/metadata/Database";
+import {
+  getCustomHomePageDashboardId,
+  getIsMetabotEnabled,
+} from "../../selectors";
 import HomeLayout from "../HomeLayout";
 import { HomeContent } from "../HomeContent";
 
-export interface HomePageProps {
-  hasMetabot: boolean;
-  homepageDashboard?: number;
-  onOpenNavbar: () => void;
-}
+const SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 
-const HomePage = ({
-  hasMetabot,
-  onOpenNavbar,
-  homepageDashboard,
-}: HomePageProps): JSX.Element => {
+export const HomePage = (): JSX.Element => {
+  const { data: databases, ...databaseState } = useDatabaseListQuery();
+  const { data: models, ...modelState } = useSearchListQuery({
+    query: SEARCH_QUERY,
+  });
+  const isLoading = databaseState.isLoading || modelState.isLoading;
+  const error = databaseState.error ?? modelState.error;
+  const dashboardId = useSelector(getCustomHomePageDashboardId);
+  const isMetabotEnabled = useSelector(getIsMetabotEnabled);
+  const hasMetabot = getHasMetabot(databases, models, isMetabotEnabled);
   const dispatch = useDispatch();
+
   useEffect(() => {
     if (!isSmallScreen()) {
-      onOpenNavbar();
+      dispatch(openNavbar());
     }
-  }, [onOpenNavbar]);
+  }, [dispatch]);
 
-  if (homepageDashboard) {
-    dispatch(replace(`/dashboard/${homepageDashboard}`));
+  useEffect(() => {
+    if (dashboardId) {
+      dispatch(replace(`/dashboard/${dashboardId}`));
+    }
+  }, [dashboardId, dispatch]);
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
@@ -35,5 +55,12 @@ const HomePage = ({
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default HomePage;
+const getHasMetabot = (
+  databases: Database[] = [],
+  models: CollectionItem[] = [],
+  isMetabotEnabled = false,
+) => {
+  const hasModels = models.length > 0;
+  const hasSupportedDatabases = databases.some(canUseMetabotOnDatabase);
+  return hasModels && hasSupportedDatabases && isMetabotEnabled;
+};
