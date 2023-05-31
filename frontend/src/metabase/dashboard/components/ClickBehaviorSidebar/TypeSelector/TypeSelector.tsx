@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";

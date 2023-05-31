@@ -1,4 +1,3 @@
-import React from "react";
 import { Route, Router } from "react-router";
 import fetchMock from "fetch-mock";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";

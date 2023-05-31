@@ -1,4 +1,5 @@
-import React, { FormEvent, useState } from "react";
+import { FormEvent, useState } from "react";
+import * as React from "react";
 import { jt, t } from "ttag";
 import { useAsync } from "react-use";
 

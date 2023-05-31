@@ -1,4 +1,4 @@
-import React, { HTMLAttributes } from "react";
+import { HTMLAttributes } from "react";
 import SkeletonCaption from "../SkeletonCaption";
 import { SkeletonImage, SkeletonRoot } from "./PieSkeleton.styled";
 

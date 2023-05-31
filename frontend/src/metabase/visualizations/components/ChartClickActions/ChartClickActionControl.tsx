@@ -1,4 +1,3 @@
-import React from "react";
 import { ClickAction, isRegularClickAction } from "metabase/modes/types";
 import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";

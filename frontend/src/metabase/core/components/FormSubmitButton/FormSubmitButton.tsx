@@ -1,4 +1,4 @@
-import React, { forwardRef, Ref } from "react";
+import { forwardRef, Ref } from "react";
 import { t } from "ttag";
 import Button, { ButtonProps } from "metabase/core/components/Button";
 import useFormSubmitButton from "metabase/core/hooks/use-form-submit-button";

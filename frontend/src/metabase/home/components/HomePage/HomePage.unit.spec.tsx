@@ -1,4 +1,3 @@
-import React from "react";
 import { renderWithProviders } from "__support__/ui";
 import * as dom from "metabase/lib/dom";
 import HomePage from "./HomePage";

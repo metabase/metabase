@@ -1,5 +1,3 @@
-import React from "react";
-
 import { setupUsersEndpoints } from "__support__/server-mocks/user";
 import {
   renderWithProviders,

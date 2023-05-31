@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 import { connect } from "react-redux";

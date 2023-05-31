@@ -1,5 +1,3 @@
-import React from "react";
-
 import { setupRevisionsEndpoints } from "__support__/server-mocks/revision";
 import {
   renderWithProviders,

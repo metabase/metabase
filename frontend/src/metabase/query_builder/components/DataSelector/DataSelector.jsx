@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, createElement, Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -215,7 +215,7 @@ export class UnconnectedDataSelector extends Component {
       ...state,
       ...computedState,
     };
-    this.popover = React.createRef();
+    this.popover = createRef();
   }
 
   static propTypes = {
@@ -817,7 +817,7 @@ export class UnconnectedDataSelector extends Component {
         className={className || "px2 py2 text-bold cursor-pointer text-default"}
         style={style}
       >
-        {React.createElement(getTriggerElementContent, {
+        {createElement(getTriggerElementContent, {
           selectedDatabase,
           selectedTable,
           selectedField,

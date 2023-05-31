@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 import MetabaseSettings from "metabase/lib/settings";

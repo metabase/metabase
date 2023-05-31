@@ -1,4 +1,3 @@
-import React from "react";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { PopularItem, RecentItem, User } from "metabase-types/api";

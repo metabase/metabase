@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { Fragment, useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
@@ -82,7 +82,7 @@ function RecentsList({ list, loading, onChangeLocation, onClick, className }) {
     <Root className={className}>
       <Header>{t`Recently viewed`}</Header>
       <LoadingAndErrorWrapper loading={loading} noWrapper>
-        <React.Fragment>
+        <Fragment>
           {hasRecents && (
             <ul>
               {list.map((item, index) => {
@@ -145,7 +145,7 @@ function RecentsList({ list, loading, onChangeLocation, onClick, className }) {
               <EmptyState message={t`Nothing here`} icon="folder" />
             </EmptyStateContainer>
           )}
-        </React.Fragment>
+        </Fragment>
       </LoadingAndErrorWrapper>
     </Root>
   );
