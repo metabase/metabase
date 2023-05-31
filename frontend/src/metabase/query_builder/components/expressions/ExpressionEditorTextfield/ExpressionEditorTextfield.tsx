@@ -47,6 +47,7 @@ interface ExpressionEditorTextfieldProps {
   startRule?: string;
   width?: number;
   reportTimezone?: string;
+  textAreaId?: string;
 
   onChange: (expression: Expression | null) => void;
   onError: (error: ErrorWithMessage | null) => void;
@@ -154,6 +155,13 @@ class ExpressionEditorTextfield extends React.Component<
       }
 
       this.triggerAutosuggest();
+    }
+  }
+
+  componentDidUpdate() {
+    const { textAreaId } = this.props;
+    if (this.input.current && textAreaId) {
+      this.input.current.editor.textInput.getElement().id = textAreaId;
     }
   }
 
