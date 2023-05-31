@@ -87,10 +87,6 @@ import copy_component from "./copy.svg?component";
 import copy_source from "./copy.svg?source";
 import curved_component from "./curved.svg?component";
 import curved_source from "./curved.svg?source";
-import csv_component from "./csv.svg?component";
-import csv_source from "./csv.svg?source";
-import png_component from "./png.svg?component";
-import png_source from "./png.svg?source";
 import database_component from "./database.svg?component";
 import database_source from "./database.svg?source";
 import dash_component from "./dash.svg?component";
@@ -179,8 +175,6 @@ import join_left_outer_component from "./join_left_outer.svg?component";
 import join_left_outer_source from "./join_left_outer.svg?source";
 import join_right_outer_component from "./join_right_outer.svg?component";
 import join_right_outer_source from "./join_right_outer.svg?source";
-import json_component from "./json.svg?component";
-import json_source from "./json.svg?source";
 import index_component from "./index.svg?component";
 import index_source from "./index.svg?source";
 import key_component from "./key.svg?component";
@@ -347,8 +341,6 @@ import one_million_component from "./1m.svg?component";
 import one_million_source from "./1m.svg?source";
 import zoom_in_component from "./zoom_in.svg?component";
 import zoom_in_source from "./zoom_in.svg?source";
-import xlsx_component from "./xlsx.svg?component";
-import xlsx_source from "./xlsx.svg?source";
 import zoom_out_component from "./zoom_out.svg?component";
 import zoom_out_source from "./zoom_out.svg?source";
 
@@ -529,14 +521,6 @@ export const Icons = {
     component: curved_component,
     source: curved_source,
   },
-  csv: {
-    component: csv_component,
-    source: csv_source,
-  },
-  png: {
-    component: png_component,
-    source: png_source,
-  },
   database: {
     component: database_component,
     source: database_source,
@@ -712,10 +696,6 @@ export const Icons = {
   join_right_outer: {
     component: join_right_outer_component,
     source: join_right_outer_source,
-  },
-  json: {
-    component: json_component,
-    source: json_source,
   },
   index: {
     component: index_component,
@@ -1048,10 +1028,6 @@ export const Icons = {
   zoom_in: {
     component: zoom_in_component,
     source: zoom_in_source,
-  },
-  xlsx: {
-    component: xlsx_component,
-    source: xlsx_source,
   },
   zoom_out: {
     component: zoom_out_component,
