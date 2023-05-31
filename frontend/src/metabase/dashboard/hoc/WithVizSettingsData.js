@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import _ from "underscore";
@@ -43,7 +43,7 @@ const WithVizSettingsData = ComposedComponent => {
       }),
       dispatch => ({ dispatch }),
     )(
-      class WithVizSettingsData extends React.Component {
+      class WithVizSettingsData extends Component {
         render() {
           return <ComposedComponent {..._.omit(this.props, "dispatch")} />;
         }

@@ -1,4 +1,4 @@
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import cx from "classnames";
@@ -107,4 +107,4 @@ EditableReferenceHeader.propTypes = {
   nameFormField: PropTypes.object,
 };
 
-export default React.memo(EditableReferenceHeader);
+export default memo(EditableReferenceHeader);

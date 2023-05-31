@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { Dashboard } from "metabase-types/api";
 

@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { createRef, Fragment, Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -38,7 +38,7 @@ class SettingsEmailForm extends Component {
   constructor(props, context) {
     super(props, context);
 
-    this.formRef = React.createRef();
+    this.formRef = createRef();
   }
 
   clearEmailSettings = async () => {
@@ -92,7 +92,7 @@ class SettingsEmailForm extends Component {
           updateSettings={this.props.updateEmailSettings}
           disable={sendingEmail !== "default"}
           renderExtraButtons={({ disabled, valid, pristine, submitting }) => (
-            <React.Fragment>
+            <Fragment>
               {valid && pristine && submitting === "default" ? (
                 <Button
                   mr={1}
@@ -110,7 +110,7 @@ class SettingsEmailForm extends Component {
               >
                 {t`Clear`}
               </Button>
-            </React.Fragment>
+            </Fragment>
           )}
         />
         {!MetabaseSettings.isHosted() && !MetabaseSettings.isEnterprise() && (

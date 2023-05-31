@@ -1,5 +1,3 @@
-import React from "react";
-
 import { GenericError } from "metabase/containers/ErrorPages";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";

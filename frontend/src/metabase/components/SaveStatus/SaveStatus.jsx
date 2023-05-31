@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { Component } from "react";
 
 import { t } from "ttag";
 import _ from "underscore";

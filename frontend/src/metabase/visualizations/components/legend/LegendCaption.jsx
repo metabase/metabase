@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";

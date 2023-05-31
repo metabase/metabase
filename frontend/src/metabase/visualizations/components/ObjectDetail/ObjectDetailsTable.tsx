@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 
@@ -157,7 +157,7 @@ export function DetailsTable({
     <ObjectDetailsTable>
       <GridContainer cols={3}>
         {cols.map((column, columnIndex) => (
-          <React.Fragment key={columnIndex}>
+          <Fragment key={columnIndex}>
             <GridCell>
               <DetailsTableCell
                 column={column}
@@ -180,7 +180,7 @@ export function DetailsTable({
                 visualizationIsClickable={visualizationIsClickable}
               />
             </GridCell>
-          </React.Fragment>
+          </Fragment>
         ))}
       </GridContainer>
     </ObjectDetailsTable>
