@@ -4,9 +4,6 @@ describe("issue 30680", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-
-    cy.intercept("GET", "/api/collection/root/items?**").as("rootCollection");
-    cy.intercept("GET", "/api/native-query-snippet/**").as("snippet");
   });
 
   it("should not render native editor buttons when 'Metadata' tab is open", () => {
