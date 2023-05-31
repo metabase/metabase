@@ -14797,6 +14797,20 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.DowngradeDashboardTab"
+            
+  - changeSet:
+      id: v47.00-030
+      author: escherize
+      comment: Added 0.47.0 - Type column for collections for instance-analytics
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: type
+                  type: varchar(256)
+                  defaultValue: null
+                  remarks: 'This is used to differentiate instance-analytics collections from all other collections.'
 
   - changeSet:
       id: v47.00-031
@@ -14804,9 +14818,9 @@ databaseChangeLog:
       comment: Added 0.47.0 - migrate dashboard grid size from 18 to 24
       changes:
           # new_size_x = size_x + ((col + size_x + 1) // 3) - ((col + 1) // 3)
-          # new_col = col + ((col + 1) // 3)
+          # new_col    = col + ((col + 1) // 3)
           # new_size_y = size_y + (size_y + row) // 3 - (row // 3)
-          # new_row = row + (row // 3)
+          # new_row    = row + (row // 3)
           - sql:
               dbms: postgresql
               sql: >-
@@ -14824,9 +14838,9 @@ databaseChangeLog:
 
       rollback:
           # new_size_x = size_x - ((size_x + col) // 4 - col // 4)
-          # new_col = col - col // 4
+          # new_col    = col - col // 4
           # new_size_y = size_y - ((size_y + row) // 4 - y // 4)
-          # new_col = col - col // 4
+          # new_col    = col - col // 4
           - sql:
               dbms: postgresql
               sql: >-
@@ -14842,7 +14856,6 @@ databaseChangeLog:
                   update report_dashboardcard set col    = col - floor(cast(col as decimal) / 4);
                   update report_dashboardcard set size_y = size_y - (floor(cast(size_y + `row` as decimal) / 4) - floor(cast(`row` as decimal) / 4));
                   update report_dashboardcard set `row`  = `row` - floor(cast(`row` as decimal) / 4);
-
 
   - changeSet:
       id: v47.00-032

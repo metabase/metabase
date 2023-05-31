@@ -5,7 +5,6 @@ import StaticChart from "./StaticChart";
 import { STATIC_CHART_DEFAULT_OPTIONS, STATIC_CHART_TYPES } from "./constants";
 import { StaticChartProps } from "./types";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "static-viz/StaticChart",
   component: StaticChart,

@@ -148,18 +148,24 @@ const DatabaseFormBody = ({
         <DatabaseDetailField key={field.name} field={field} />
       ))}
       {isCachingEnabled && <PLUGIN_CACHING.DatabaseCacheTimeField />}
-      <DatabaseFormFooter isAdvanced={isAdvanced} onCancel={onCancel} />
+      <DatabaseFormFooter
+        isDirty={dirty}
+        isAdvanced={isAdvanced}
+        onCancel={onCancel}
+      />
     </Form>
   );
 };
 
 interface DatabaseFormFooterProps {
   isAdvanced: boolean;
+  isDirty: boolean;
   onCancel?: () => void;
 }
 
 const DatabaseFormFooter = ({
   isAdvanced,
+  isDirty,
   onCancel,
 }: DatabaseFormFooterProps) => {
   const { values } = useFormikContext<DatabaseData>();
@@ -168,7 +174,11 @@ const DatabaseFormFooter = ({
   if (isAdvanced) {
     return (
       <div>
-        <FormSubmitButton title={isNew ? t`Save` : t`Save changes`} primary />
+        <FormSubmitButton
+          disabled={!isDirty}
+          title={isNew ? t`Save` : t`Save changes`}
+          primary
+        />
         <FormErrorMessage />
       </div>
     );

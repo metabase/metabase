@@ -97,6 +97,20 @@
                     :aggregation  [:count]
                     :breakout     [$price]}))))))))
 
+(deftest mbql-source-query-aggregation-order-by-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+    (testing "Source query with aggregation and order by produces expected results (#30874)."
+      (is (= [[50 10] [7 10] [40 9]]
+             (mt/formatted-rows [int int]
+               (mt/run-mbql-query venues
+                 {:source-query {:source-table $$venues
+                                 :aggregation  [:count]
+                                 :breakout     [$category_id]
+                                 :order-by     [[:desc [:aggregation 0]]]}
+                  :order-by [[:desc *count/Integer]
+                             [:desc $category_id]]
+                  :limit 3})))))))
+
 (deftest breakout-fk-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
     (testing "Test including a breakout of a nested query column that follows an FK"

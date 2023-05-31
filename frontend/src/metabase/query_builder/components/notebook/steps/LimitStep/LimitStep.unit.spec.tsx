@@ -7,7 +7,7 @@ import { createMockNotebookStep, DEFAULT_QUERY } from "../../test-utils";
 import LimitStep from "./LimitStep";
 
 const DEFAULT_LIMIT = 10;
-const QUERY_WITH_LIMIT = Lib.limit(DEFAULT_QUERY, DEFAULT_LIMIT);
+const QUERY_WITH_LIMIT = Lib.limit(DEFAULT_QUERY, 0, DEFAULT_LIMIT);
 
 function setup(step = createMockNotebookStep()) {
   const updateQuery = jest.fn();
@@ -51,7 +51,7 @@ describe("LimitStep", () => {
 
     fireEvent.change(limitInput, { target: { value: "52" } });
 
-    expect(Lib.currentLimit(getNextQuery())).toBe(52);
+    expect(Lib.currentLimit(getNextQuery(), 0)).toBe(52);
   });
 
   it("should update the limit", () => {
@@ -61,7 +61,7 @@ describe("LimitStep", () => {
     const limitInput = screen.getByPlaceholderText("Enter a limit");
     fireEvent.change(limitInput, { target: { value: "1000" } });
 
-    expect(Lib.currentLimit(getNextQuery())).toBe(1000);
+    expect(Lib.currentLimit(getNextQuery(), 0)).toBe(1000);
   });
 
   it("shouldn't update the limit if zero provided", () => {

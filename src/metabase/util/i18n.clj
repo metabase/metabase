@@ -217,7 +217,9 @@
 
   The first argument should be the singular form; the second argument should be the plural form, and the third argument
   should be `n`. `n` can be interpolated into the translated string using the `{0}` placeholder syntax, but no
-  additional placeholders are supported."
+  additional placeholders are supported.
+
+    (deferred-trun \"{0} table\" \"{0} tables\" n)"
   [format-string format-string-pl n]
   (validate-n format-string format-string-pl)
   `(UserLocalizedString. ~format-string ~[n] ~{:n n :format-string-pl format-string-pl}))
@@ -227,7 +229,9 @@
 
   The first argument should be the singular form; the second argument should be the plural form, and the third argument
   should be `n`. `n` can be interpolated into the translated string using the `{0}` placeholder syntax, but no
-  additional placeholders are supported."
+  additional placeholders are supported.
+
+    (trun \"{0} table\" \"{0} tables\" n)"
   [format-string format-string-pl n]
   `(str* (deferred-trun ~format-string ~format-string-pl ~n)))
 
@@ -236,7 +240,9 @@
 
   The first argument should be the singular form; the second argument should be the plural form, and the third argument
   should be `n`. `n` can be interpolated into the translated string using the `{0}` placeholder syntax, but no
-  additional placeholders are supported."
+  additional placeholders are supported.
+
+    (deferred-trsn \"{0} table\" \"{0} tables\" n)"
   [format-string format-string-pl n]
   (validate-n format-string format-string-pl)
   `(SiteLocalizedString. ~format-string ~[n] ~{:n n :format-string-pl format-string-pl}))
@@ -246,7 +252,9 @@
 
   The first argument should be the singular form; the second argument should be the plural form, and the third argument
   should be `n`. `n` can be interpolated into the translated string using the `{0}` placeholder syntax, but no
-  additional placeholders are supported."
+  additional placeholders are supported.
+
+    (trsn \"{0} table\" \"{0} tables\" n)"
   [format-string format-string-pl n]
   `(str* (deferred-trsn ~format-string ~format-string-pl ~n)))
 

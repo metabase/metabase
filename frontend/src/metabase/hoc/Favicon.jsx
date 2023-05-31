@@ -17,6 +17,9 @@ const resolveFavicon = (setterOrGetter, props) => {
   }
 };
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 const withFavicon = faviconSetterOrGetter => ComposedComponent => {
   const WithFavicon = props => {
     const favicon = resolveFavicon(faviconSetterOrGetter, props);

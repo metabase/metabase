@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
-import { color, hueRotate } from "metabase/lib/colors";
+import Button from "metabase/core/components/Button/Button";
+import { color, hueRotate, lighten } from "metabase/lib/colors";
 import {
   breakpointMinExtraLarge,
   breakpointMinLarge,
@@ -49,4 +50,15 @@ export const LayoutIllustration = styled.div`
   background-size: max(min(1728px, 260vh), 100%) auto;
   background-repeat: no-repeat;
   background-position: bottom;
+`;
+
+export const LayoutEditButton = styled(Button)`
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+
+  &:hover {
+    color: ${color("brand")};
+    background: ${lighten("brand", 0.6)};
+  }
 `;

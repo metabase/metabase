@@ -1,4 +1,10 @@
-import { popover, restore, visitDashboard } from "e2e/support/helpers";
+import {
+  popover,
+  restore,
+  visitDashboard,
+  modal,
+  dashboardHeader,
+} from "e2e/support/helpers";
 
 describe("scenarios > home > homepage", () => {
   beforeEach(() => {
@@ -137,6 +143,73 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Orders in a dashboard").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders, Count").should("not.exist");
+    });
+  });
+});
+
+describe("scenarios > home > custom homepage", () => {
+  describe("setting custom homepage", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should give you the option to set a custom home page in settings", () => {
+      cy.visit("/admin/settings/general");
+      cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+
+      cy.findByTestId("custom-homepage-dashboard-setting")
+        .findByRole("button")
+        .click();
+
+      popover().findByText("Orders in a dashboard").click();
+
+      cy.findByRole("status").findByText("Saved");
+
+      cy.findByRole("navigation").findByText("Exit admin").click();
+      cy.location("pathname").should("equal", "/dashboard/1");
+
+      // Do a page refresh and test dashboard header
+      cy.visit("/");
+
+      cy.location("pathname").should("equal", "/dashboard/1");
+
+      dashboardHeader().within(() => {
+        cy.icon("pencil").click();
+        cy.findByText(/Remember that this dashboard is set as homepage/);
+      });
+    });
+
+    it("should give you the option to set a custom home page using home page CTA", () => {
+      cy.visit("/");
+      cy.get("main").findByText("Customize").click();
+      modal()
+        .findByText(/Select a dashboard/i)
+        .click();
+
+      //Ensure that personal collections have been removed
+      popover().contains("Your personal collection").should("not.exist");
+      popover().contains("All personal collections").should("not.exist");
+
+      popover().findByText("Orders in a dashboard").click();
+      modal().findByText("Save").click();
+      cy.location("pathname").should("equal", "/dashboard/1");
+    });
+  });
+
+  describe("custom homepage set", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
+      cy.request("PUT", "/api/setting/custom-homepage-dashboard", { value: 1 });
+    });
+
+    it("should redirect you if you do not have permissions for set dashboard", () => {
+      cy.signIn("nocollection");
+      cy.visit("/");
+
+      cy.location("pathname").should("equal", "/");
     });
   });
 });

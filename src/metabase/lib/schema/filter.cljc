@@ -5,7 +5,8 @@
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
-   [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]))
+   [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
+   [metabase.util.malli.registry :as mr]))
 
 (doseq [op [:and :or]]
   (mbql-clause/define-catn-mbql-clause op :- :type/Boolean
@@ -97,3 +98,9 @@
    [:= :segment]
    ::common/options
    [:or ::common/int-greater-than-zero ::common/non-blank-string]])
+
+(mr/def ::operator
+  [:map
+   [:lib/type [:= :mbql.filter/operator]]
+   [:short [:enum := :!= :inside :between :< :> :<= :>= :is-null :not-null :is-empty :not-empty :contains :does-not-contain :starts-with :ends-with]]
+   [:display-name :string]])

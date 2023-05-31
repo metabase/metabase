@@ -637,45 +637,49 @@ class NativeQueryEditor extends Component {
             this._editor.resize();
           }}
         >
-          <div
-            className="flex-full"
-            data-testid="native-query-editor"
-            id={ACE_ELEMENT_ID}
-            ref={this.editor}
-          />
-
-          <RightClickPopover
-            isOpen={this.state.isSelectedTextPopoverOpen}
-            openSnippetModalWithSelectedText={openSnippetModalWithSelectedText}
-            runQuery={this.runQuery}
-            target={() => this.editor.current.querySelector(".ace_selection")}
-            canSaveSnippets={canSaveSnippets}
-          />
-
-          {this.props.modalSnippet && (
-            <Modal onClose={this.props.closeSnippetModal}>
-              <SnippetFormModal
-                snippet={this.props.modalSnippet}
-                onCreate={this.props.insertSnippet}
-                onUpdate={(newSnippet, oldSnippet) => {
-                  if (newSnippet.name !== oldSnippet.name) {
-                    setDatasetQuery(query.updateSnippetNames([newSnippet]));
-                  }
-                }}
-                onClose={this.props.closeSnippetModal}
-              />
-            </Modal>
-          )}
-
-          {hasEditingSidebar && !readOnly && (
-            <NativeQueryEditorSidebar
-              runQuery={this.runQuery}
-              features={sidebarFeatures}
-              onShowPromptInput={this.togglePromptVisibility}
-              isPromptInputVisible={isPromptInputVisible}
-              {...this.props}
+          <>
+            <div
+              className="flex-full"
+              data-testid="native-query-editor"
+              id={ACE_ELEMENT_ID}
+              ref={this.editor}
             />
-          )}
+
+            <RightClickPopover
+              isOpen={this.state.isSelectedTextPopoverOpen}
+              openSnippetModalWithSelectedText={
+                openSnippetModalWithSelectedText
+              }
+              runQuery={this.runQuery}
+              target={() => this.editor.current.querySelector(".ace_selection")}
+              canSaveSnippets={canSaveSnippets}
+            />
+
+            {this.props.modalSnippet && (
+              <Modal onClose={this.props.closeSnippetModal}>
+                <SnippetFormModal
+                  snippet={this.props.modalSnippet}
+                  onCreate={this.props.insertSnippet}
+                  onUpdate={(newSnippet, oldSnippet) => {
+                    if (newSnippet.name !== oldSnippet.name) {
+                      setDatasetQuery(query.updateSnippetNames([newSnippet]));
+                    }
+                  }}
+                  onClose={this.props.closeSnippetModal}
+                />
+              </Modal>
+            )}
+
+            {hasEditingSidebar && !readOnly && (
+              <NativeQueryEditorSidebar
+                runQuery={this.runQuery}
+                features={sidebarFeatures}
+                onShowPromptInput={this.togglePromptVisibility}
+                isPromptInputVisible={isPromptInputVisible}
+                {...this.props}
+              />
+            )}
+          </>
         </ResizableBox>
       </NativeQueryEditorRoot>
     );

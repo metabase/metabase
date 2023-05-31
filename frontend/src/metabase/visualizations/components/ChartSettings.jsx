@@ -44,6 +44,9 @@ import {
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Data`];
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 const withTransientSettingState = ComposedComponent =>
   class extends React.Component {
     static displayName = `withTransientSettingState[${

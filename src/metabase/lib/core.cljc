@@ -60,6 +60,7 @@
    aggregations
    aggregations-metadata
    available-aggregation-operators
+   selected-aggregation-operators
    count
    avg
    count-where
@@ -139,6 +140,9 @@
   [lib.filter
    filter
    filters
+   filterable-columns
+   filterable-column-operators
+   filter-clause
    and
    or
    not
