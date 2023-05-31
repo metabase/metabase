@@ -131,7 +131,14 @@ const config = (module.exports = {
         test: /\.svg$/i,
         issuer: /\.[jt]sx?$/,
         resourceQuery: /component/, // *.svg?component
-        use: ["@svgr/webpack"],
+        use: [
+          {
+            loader: "@svgr/webpack",
+            options: {
+              ref: true,
+            },
+          },
+        ],
       },
     ],
   },

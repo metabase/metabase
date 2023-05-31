@@ -61,18 +61,8 @@ function getIcon(events) {
   return events.length === 1 ? events[0].icon : "star";
 }
 
-function getIconSource(events) {
-  const icon = getIcon(events);
-  return Icons[icon].source;
-}
-
 function getIconTransform() {
   return `scale(${ICON_SCALE}) translate(${ICON_X}, ${ICON_Y})`;
-}
-
-function getIconLabel(events) {
-  const icon = getIcon(events);
-  return `${icon} icon`;
 }
 
 function isEventWithin(eventIndex, eventPoints, eventDistance) {
@@ -160,14 +150,15 @@ function renderEventTicks({
   eventTicks
     .insert(d => {
       const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      const iconSvgText = getIconSource(d);
+      const icon = getIcon(d);
+      const iconSvgText = Icons[icon].source;
 
       group.innerHTML = iconSvgText;
       const svg = group.firstChild;
       svg.classList.add("event-icon");
       svg.setAttribute("width", ICON_SIZE);
       svg.setAttribute("height", ICON_SIZE);
-      svg.setAttribute("aria-label", getIconLabel(getIcon(d)));
+      svg.setAttribute("aria-label", `${icon} icon`);
 
       return group;
     })
