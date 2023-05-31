@@ -274,8 +274,10 @@
         id       (public-settings/custom-homepage-dashboard)
         dash     (t2/select-one Dashboard :id id)
         valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
-    (assoc user :custom_homepage (when valid?
-                                   {:dashboard_id id}))))
+    (assoc user
+           :custom_homepage (when valid? {:dashboard_id id})
+           :dismissed_custom_dashboard_toast
+           (view-log/dismissed-custom-dashboard-toast))))
 
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
@@ -286,8 +288,7 @@
       add-first-login
       maybe-add-advanced-permissions
       maybe-add-sso-source
-      add-custom-homepage-info
-      (assoc :dismissed_toasts (view-log/user-dismissed-toasts))))
+      add-custom-homepage-info))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
@@ -492,26 +493,10 @@
     (api/check-500 (pos? (t2/update! User id {k false}))))
   {:success true})
 
-(api/defendpoint POST "/:user-id/dismissed/:toast-name"
-  [user-id toast-name]
-  {user-id ms/PositiveInt
-   toast-name view-log/toast-name-enum}
-  (api/check-403 (= user-id api/*current-user-id*))
-  (view-log/user-dismissed-toasts! [:add toast-name])
-  {:success true})
-
-(api/defendpoint DELETE "/:user-id/dismissed/:toast-name"
-  [user-id toast-name]
-  {user-id ms/PositiveInt
-   toast-name view-log/toast-name-enum}
-  (api/check-403 (= user-id api/*current-user-id*))
-  (view-log/user-dismissed-toasts! [:remove toast-name])
-  {:success true})
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/send_invite"
+(api/defendpoint POST "/:id/send_invite"
   "Resend the user invite email for a given user."
   [id]
+  {id ms/PositiveInt}
   (api/check-superuser)
   (when-let [user (t2/select-one User :id id, :is_active true)]
     (let [reset-token (user/set-password-reset-token! id)

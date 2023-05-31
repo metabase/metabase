@@ -89,6 +89,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [schema.core :as s]
    [toucan2.core :as t2])
@@ -1068,12 +1070,11 @@
 ;;; |                                                 EXTRA UTIL FNS                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn set-many!
+(mu/defn set-many!
   "Set the value of several Settings at once.
 
     (set-all {:mandrill-api-key \"xyz123\", :another-setting \"ABC\"})"
-  [settings]
-  {:pre [(map? settings)]}
+  [settings :- [:map-of ms/NonBlankString :any]]
   ;; if setting any of the settings fails, roll back the entire DB transaction and the restore the cache from the DB
   ;; to revert any changes in the cache
   (try
