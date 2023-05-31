@@ -28,7 +28,7 @@ function setup({ card = TEST_STRUCTURED_CARD } = {}) {
   });
 
   const metadata = getMetadata(state);
-  const question = metadata.question(card.id);
+  const question = metadata.question(card.id) as Question;
 
   renderWithProviders(
     <QuestionActions
@@ -36,7 +36,7 @@ function setup({ card = TEST_STRUCTURED_CARD } = {}) {
       isShowingQuestionInfoSidebar={false}
       handleBookmark={jest.fn()}
       onOpenModal={jest.fn()}
-      question={question as Question}
+      question={question}
       setQueryBuilderMode={jest.fn()}
       turnDatasetIntoQuestion={jest.fn()}
       onInfoClick={jest.fn()}
