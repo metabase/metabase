@@ -79,7 +79,7 @@ import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
-import HomePageApp from "metabase/home/containers/HomePageApp";
+import { HomePage } from "metabase/home/components/HomePage";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 
 import ArchiveApp from "metabase/archive/containers/ArchiveApp";
@@ -144,7 +144,7 @@ export const getRoutes = store => (
         {/* The global all hands routes, things in here are for all the folks */}
         <Route
           path="/"
-          component={HomePageApp}
+          component={HomePage}
           onEnter={(nextState, replace) => {
             const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
             if (page && page !== "/") {

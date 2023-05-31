@@ -2,8 +2,12 @@ import React, { ChangeEvent, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
+import { isSyncCompleted } from "metabase/lib/syncing";
 import Select from "metabase/core/components/Select";
-import { DatabaseCandidate } from "metabase-types/api";
+import {
+  useDatabaseCandidateListQuery,
+  useDatabaseListQuery,
+} from "metabase/common/hooks";
 import Database from "metabase-lib/metadata/Database";
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
@@ -18,22 +22,24 @@ import {
   SchemaTriggerIcon,
 } from "./HomeXraySection.styled";
 
-export interface HomeXraySectionProps {
-  database: Database;
-  candidates: DatabaseCandidate[];
-}
-
-const HomeXraySection = ({
-  database,
-  candidates,
-}: HomeXraySectionProps): JSX.Element => {
-  const isSample = database.is_sample;
+export const HomeXraySection = () => {
+  const { data: databases = [] } = useDatabaseListQuery();
+  const database = getXrayDatabase(databases);
+  const { data: candidates = [] } = useDatabaseCandidateListQuery({
+    query: database ? { id: database.id } : undefined,
+    enabled: database != null,
+  });
   const schemas = candidates.map(d => d.schema);
   const [schema, setSchema] = useState(schemas[0]);
   const candidate = candidates.find(d => d.schema === schema);
   const tableCount = candidate ? candidate.tables.length : 0;
   const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
+  const isSample = database?.is_sample;
   const canSelectSchema = schemas.length > 1;
+
+  if (!database) {
+    return null;
+  }
 
   return (
     <div>
@@ -119,6 +125,12 @@ const DatabaseInfo = ({ database }: DatabaseInfoProps) => {
   );
 };
 
+const getXrayDatabase = (databases: Database[]) => {
+  const sampleDatabase = databases.find(d => d.is_sample && isSyncCompleted(d));
+  const userDatabase = databases.find(d => !d.is_sample && isSyncCompleted(d));
+  return userDatabase ?? sampleDatabase;
+};
+
 const getMessages = (count: number) => {
   const options = [
     t`A look at`,
@@ -137,6 +149,3 @@ const getMessages = (count: number) => {
 const getSchemaOption = (schema: string) => {
   return schema;
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default HomeXraySection;
