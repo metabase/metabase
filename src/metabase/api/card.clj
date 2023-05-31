@@ -24,6 +24,7 @@
             ViewLog]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
+   [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.params :as params]
@@ -1174,7 +1175,7 @@ saved later when it is ready."
                                :query    {:source-table table-id}
                                :type     :query}
       :display                :table
-      :name                   filename-prefix
+      :name                   (humanization/name->human-readable-name filename-prefix)
       :visualization_settings {}})))
 
 (api/defendpoint ^:multipart POST "/from-csv"
