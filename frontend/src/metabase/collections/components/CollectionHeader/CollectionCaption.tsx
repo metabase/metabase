@@ -51,10 +51,6 @@ export const CollectionCaption = ({
   return (
     <CaptionRoot>
       <CaptionTitleContainer>
-        <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
-          collection={collection}
-          size={24}
-        />
         <CollectionCaptionIcon collection={collection} />
         <CaptionTitle
           key={collection.id}
@@ -83,19 +79,24 @@ export const CollectionCaption = ({
 };
 
 const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
-  // we only show icons for "special" collections with types
   if (!collection.type) {
-    return null;
+    return (
+      <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
+        collection={collection}
+        size={24}
+      />
+    );
   }
 
-  const icon = getCollectionIcon(collection);
+  const typeIcon = getCollectionIcon(collection);
   const tooltip = getCollectionTooltip(collection);
 
-  if (!icon) {
-    return null;
-  }
-
   return (
-    <Icon size={24} name={icon.name} color={color("brand")} tooltip={tooltip} />
+    <Icon
+      size={24}
+      name={typeIcon.name}
+      color={color("brand")}
+      tooltip={tooltip}
+    />
   );
 };
