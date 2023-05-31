@@ -33,7 +33,11 @@ interface UserFormProps {
   onSubmit: (user: UserInfo) => void;
 }
 
-const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
+export const UserForm = ({
+  user,
+  onValidatePassword,
+  onSubmit,
+}: UserFormProps) => {
   const initialValues = useMemo(() => {
     return user ?? USER_SCHEMA.getDefault();
   }, [user]);
@@ -96,6 +100,3 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
     </FormProvider>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default UserForm;

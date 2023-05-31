@@ -132,7 +132,7 @@ const mainConfig = {
     json: true,
   },
   retries: {
-    runMode: 5,
+    runMode: 4,
     openMode: 0,
   },
 };

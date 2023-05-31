@@ -7,7 +7,7 @@ import {
   StepLabelText,
 } from "./InactiveStep.styled";
 
-export interface InactiveStepProps {
+interface InactiveStepProps {
   title: string;
   label: number;
   isStepCompleted: boolean;
@@ -15,7 +15,7 @@ export interface InactiveStepProps {
   onStepSelect: () => void;
 }
 
-const InactiveStep = ({
+export const InactiveStep = ({
   title,
   label,
   isStepCompleted,
@@ -38,6 +38,3 @@ const InactiveStep = ({
     </StepRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default InactiveStep;
