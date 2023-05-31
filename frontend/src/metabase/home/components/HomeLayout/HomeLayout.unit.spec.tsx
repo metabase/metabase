@@ -1,20 +1,23 @@
 import React from "react";
-import { renderWithProviders, screen } from "__support__/ui";
 import { User } from "metabase-types/api";
+import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 import { HomeLayout } from "./HomeLayout";
 
 interface SetupOpts {
   currentUser?: User;
+  hasMetabot?: boolean;
 }
 
-const setup = ({ currentUser }: SetupOpts = {}) => {
+const setup = ({ currentUser, hasMetabot = false }: SetupOpts = {}) => {
   const state = createMockState({
     currentUser,
   });
 
-  renderWithProviders(<HomeLayout />, { storeInitialState: state });
+  renderWithProviders(<HomeLayout hasMetabot={hasMetabot} />, {
+    storeInitialState: state,
+  });
 };
 
 describe("HomeLayout", () => {

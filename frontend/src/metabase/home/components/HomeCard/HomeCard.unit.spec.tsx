@@ -1,11 +1,14 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { renderWithProviders, screen } from "__support__/ui";
 import { HomeCard } from "./HomeCard";
+
+const setup = () => {
+  renderWithProviders(<HomeCard>A look at table</HomeCard>);
+};
 
 describe("HomeCard", () => {
   it("should render correctly", () => {
-    render(<HomeCard>A look at table</HomeCard>);
-
+    setup();
     expect(screen.getByText("A look at table")).toBeInTheDocument();
   });
 });

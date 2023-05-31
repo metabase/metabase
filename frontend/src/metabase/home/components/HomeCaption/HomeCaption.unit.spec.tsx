@@ -1,11 +1,14 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { renderWithProviders, screen } from "__support__/ui";
 import { HomeCaption } from "./HomeCaption";
+
+const setup = () => {
+  renderWithProviders(<HomeCaption>Title</HomeCaption>);
+};
 
 describe("HomeCaption", () => {
   it("should render correctly", () => {
-    render(<HomeCaption>Title</HomeCaption>);
-
+    setup();
     expect(screen.getByText("Title")).toBeInTheDocument();
   });
 });
