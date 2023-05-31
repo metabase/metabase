@@ -31,6 +31,7 @@ import { AppErrorDescriptor, State } from "metabase-types/store";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";
+import { DatabasePromptBanner } from "./nav/components/DatabasePromptBanner";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
@@ -100,6 +101,7 @@ function App({
       <ScrollToTop>
         <AppContainer className="spread">
           <AppBanner />
+          <DatabasePromptBanner />
           {isAppBarVisible && <AppBar />}
           <AppContentContainer isAdminApp={isAdminApp}>
             {isNavBarEnabled && <Navbar />}
