@@ -1,9 +1,10 @@
 import { useCallback } from "react";
 import type { Action } from "@reduxjs/toolkit";
 import { useDispatch, useStore } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/core/utils/types";
 import { State } from "metabase-types/store";
 
-export interface HasId<TId> {
+export interface EntityInfo<TId> {
   id: TId;
 }
 
@@ -14,7 +15,7 @@ export interface EntityQueryOptions<TId> {
 export interface UseEntityUpdateProps<
   TId,
   TEntity,
-  TEntityInfo extends HasId<TId>,
+  TEntityInfo extends EntityInfo<TId>,
   TEntityData,
 > {
   update: (entityInfo: TEntityInfo, updates: Partial<TEntityData>) => Action;
@@ -27,7 +28,7 @@ export interface UseEntityUpdateProps<
 export const useEntityUpdate = <
   TId,
   TEntity,
-  TEntityInfo extends HasId<TId>,
+  TEntityInfo extends EntityInfo<TId>,
   TEntityData,
 >({
   update,
@@ -37,9 +38,10 @@ export const useEntityUpdate = <
   const dispatch = useDispatch();
 
   return useCallback(
-    async (entityInfo: TEntityInfo, updates: TEntityData) => {
+    async (entityInfo: TEntityInfo, updates: Partial<TEntityData>) => {
       await dispatch(update(entityInfo, updates));
-      return getObject(store.getState(), { entityId: entityInfo.id });
+      const entity = getObject(store.getState(), { entityId: entityInfo.id });
+      return checkNotNull(entity);
     },
     [store, dispatch, update, getObject],
   );
