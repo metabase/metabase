@@ -24,7 +24,7 @@ describe("scenarios > dashboard > text and headings", () => {
     });
 
     it("should have button and popover to create text and headings", () => {
-      cy.icon("string").click();
+      cy.findByLabelText("Add a heading or text box").click();
       popover().within(() => {
         cy.findByText("Text").should("exist");
         cy.findByText("Heading").should("exist");
@@ -70,8 +70,8 @@ describe("scenarios > dashboard > text and headings", () => {
         getDashboardCard(1)
           .realHover()
           .within(() => {
-            cy.icon("edit_document").should("not.exist");
-            cy.icon("eye").should("not.exist");
+            cy.findByLabelText("Edit card").should("not.exist");
+            cy.findByLabelText("Preview card").should("not.exist");
           });
       });
 
@@ -119,7 +119,7 @@ describe("scenarios > dashboard > text and headings", () => {
         cy.reload();
 
         // Page should still load
-        cy.get('[data-testid="app-bar"]').findByText("New");
+        cy.findByTestId("app-bar").findByText("New");
         cy.get("main").findByText("Loading...").should("not.exist");
         cy.get("main")
           .findByText("Cannot read property 'type' of undefined")
@@ -148,7 +148,7 @@ describe("scenarios > dashboard > text and headings", () => {
     it("should let you add a parameter to a dashboard with a text box (metabase#11927)", () => {
       visitDashboard(1);
       addTextBox("text text text");
-      cy.icon("filter").click();
+      cy.findByLabelText("Add filter").click();
       popover().within(() => {
         cy.findByText("Text or Category").click();
         cy.findByText("Is").click();
@@ -173,7 +173,9 @@ describe("scenarios > dashboard > text and headings", () => {
         getDashboardCard(1)
           .realHover()
           .within(() => {
-            cy.icon("palette").should("not.exist");
+            cy.findByLabelText("Show visualization options").should(
+              "not.exist",
+            );
           });
       });
 
@@ -181,8 +183,8 @@ describe("scenarios > dashboard > text and headings", () => {
         getDashboardCard(1)
           .realHover()
           .within(() => {
-            cy.icon("edit_document").should("not.exist");
-            cy.icon("eye").should("not.exist");
+            cy.findByLabelText("Edit card").should("not.exist");
+            cy.findByLabelText("Preview card").should("not.exist");
           });
       });
 

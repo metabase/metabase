@@ -317,6 +317,7 @@ class DashboardHeader extends Component {
                 <DashboardHeaderButton
                   key="parameters"
                   onClick={showAddParameterPopover}
+                  aria-label={t`Add filter`}
                 >
                   <Icon name="filter" />
                 </DashboardHeaderButton>

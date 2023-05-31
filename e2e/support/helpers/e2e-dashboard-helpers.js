@@ -67,7 +67,7 @@ export function showDashcardVisualizationSettings(index = 0) {
   return getDashboardCard(index)
     .realHover()
     .within(() => {
-      cy.icon("palette").click();
+      cy.findByLabelText("Show visualization options").click();
     });
 }
 
@@ -106,16 +106,16 @@ export function setFilter(type, subType) {
 }
 
 export function createEmptyTextBox() {
-  cy.icon("pencil").click();
-  cy.icon("string").click();
+  cy.findByLabelText("Edit dashboard").click();
+  cy.findByLabelText("Add a heading or text box").click();
   popover().within(() => {
     cy.findByText("Text").click();
   });
 }
 
 export function addTextBox(string, options = {}) {
-  cy.icon("pencil").click();
-  cy.icon("string").click();
+  cy.findByLabelText("Edit dashboard").click();
+  cy.findByLabelText("Add a heading or text box").click();
   popover().within(() => {
     cy.findByText("Text").click();
   });
@@ -125,16 +125,16 @@ export function addTextBox(string, options = {}) {
 }
 
 export function createEmptyHeading() {
-  cy.icon("pencil").click();
-  cy.icon("string").click();
+  cy.findByLabelText("Edit dashboard").click();
+  cy.findByLabelText("Add a heading or text box").click();
   popover().within(() => {
     cy.findByText("Heading").click();
   });
 }
 
 export function addHeading(string, options = {}) {
-  cy.icon("pencil").click();
-  cy.icon("string").click();
+  cy.findByLabelText("Edit dashboard").click();
+  cy.findByLabelText("Add a heading or text box").click();
   popover().within(() => {
     cy.findByText("Heading").click();
   });

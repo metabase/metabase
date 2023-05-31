@@ -71,6 +71,7 @@ function DashCardActionButtons({
       <DashCardActionButton
         onClick={onPreviewToggle}
         tooltip={isPreviewing ? t`Edit` : t`Preview`}
+        aria-label={isPreviewing ? t`Edit card` : t`Preview card`}
         analyticsEvent="Dashboard;Text;edit"
       >
         {isPreviewing ? (
