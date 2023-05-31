@@ -190,13 +190,16 @@
 (def ^:private excluded-columns-for-dashcard-revision
   [:entity_id :created_at :updated_at :collection_authority_level])
 
+(def ^:private excluded-columns-for-dashboard-tab-revision
+  [:created_at :updated_at :entity_id])
+
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
   (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
       (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
                            (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))
-      (assoc :tabs (map #(dissoc % :created_at :updated_at :entity_id) (ordered-tabs dashboard)))))
+      (assoc :tabs (map #(apply dissoc % excluded-columns-for-dashboard-tab-revision) (ordered-tabs dashboard)))))
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]

@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.core :as magic]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries
+   [metabase.models :refer [Action Card Collection Dashboard DashboardCard DashboardCardSeries
                             Database Field Pulse PulseCard Revision Table]]
    [metabase.models.collection :as collection]
    [metabase.models.dashboard :as dashboard]
@@ -194,26 +194,42 @@
               {:cards [{:id 1} {:id 3}]})))))
 
  (testing "update collection ---"
-   (t2.with-temp/with-temp
-     [Collection {coll-id :id} {:name "New collection"}]
-     (is (= "moved this Dashboard to New collection."
-            (build-sentence
-              (revision/diff-strings
-                Dashboard
-                {:name "Apple"}
-                {:name          "Apple"
-                 :collection_id coll-id})))))
-   (t2.with-temp/with-temp
-     [Collection {coll-id-1 :id} {:name "Old collection"}
-      Collection {coll-id-2 :id} {:name "New collection"}]
-     (is (= "moved this Dashboard from Old collection to New collection."
-            (build-sentence
-              (revision/diff-strings
-                Dashboard
-                {:name          "Apple"
-                 :collection_id coll-id-1}
-                {:name          "Apple"
-                 :collection_id coll-id-2}))))))
+   (is (= "moved this Dashboard to Our analytics."
+          (build-sentence
+            (revision/diff-strings
+              Dashboard
+              {:name "Apple"}
+              {:name          "Apple"
+               :collection_id nil}))))
+  (t2.with-temp/with-temp
+    [Collection {coll-id :id} {:name "New collection"}]
+    (is (= "moved this Dashboard to New collection."
+           (build-sentence
+             (revision/diff-strings
+               Dashboard
+               {:name "Apple"}
+               {:name          "Apple"
+                :collection_id coll-id}))))
+    (is (= "moved this Dashboard from New collection to Our analytics."
+           (build-sentence
+             (revision/diff-strings
+               Dashboard
+               {:name "Apple"
+                :collection_id coll-id}
+               {:name          "Apple"
+                :collection_id nil})))))
+
+  (t2.with-temp/with-temp
+    [Collection {coll-id-1 :id} {:name "Old collection"}
+     Collection {coll-id-2 :id} {:name "New collection"}]
+    (is (= "moved this Dashboard from Old collection to New collection."
+           (build-sentence
+             (revision/diff-strings
+               Dashboard
+               {:name          "Apple"
+                :collection_id coll-id-1}
+               {:name          "Apple"
+                :collection_id coll-id-2}))))))
 
  (testing "update tabs"
    (is (= "added a tab."
@@ -254,20 +270,29 @@
 (declare create-dashboard-revision!)
 
 (deftest record-revision-and-description-completeness-test
-  (t2.with-temp/with-temp
-    [:model/Dashboard dashboard {:name               "A Dashboard"
-                                 :description        "An insightful Dashboard"
-                                 :collection_position 0
-                                 :position            10
-                                 :cache_ttl           1000
-                                 :parameters          [{:name       "Category Name"
-                                                        :slug       "category_name"
-                                                        :id         "_CATEGORY_NAME_"
-                                                        :type       "category"}]}
-     Collection       coll      {:name "A collection"}]
-    (mt/with-temporary-setting-values [enable-public-sharing true]
-      (let [columns        (set/difference (set (keys dashboard)) (set @#'dashboard/excluded-columns-for-dashboard-revision))
-            update-col     (fn [col value]
+  (let [clean-revisions-for-dashboard (fn [dashboard-id]
+                                        ;; we'll automatically delete old revisions if we have more than [[revision/max-revisions]]
+                                        ;; revisions for an instance, so let's clear everything to make it easier to test
+                                        (t2/delete! Revision :model "Dashboard" :model_id dashboard-id)
+                                        ;; create one before the update
+                                        (create-dashboard-revision! dashboard-id true))]
+
+
+    (testing "dashboard ---"
+      (t2.with-temp/with-temp
+        [:model/Dashboard dashboard {:name               "A Dashboard"
+                                     :description        "An insightful Dashboard"
+                                     :collection_position 0
+                                     :position            10
+                                     :cache_ttl           1000
+                                     :parameters          [{:name       "Category Name"
+                                                            :slug       "category_name"
+                                                            :id         "_CATEGORY_NAME_"
+                                                            :type       "category"}]}
+         Collection       coll      {:name "A collection"}]
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (let [columns    (set/difference (set (keys dashboard)) (set @#'dashboard/excluded-columns-for-dashboard-revision))
+                update-col (fn [col value]
                              (cond
                                (= col :collection_id)     (:id coll)
                                (= col :parameters)        (cons {:name "Category ID"
@@ -281,25 +306,74 @@
                                (int? value)               (inc value)
                                (boolean? value)           (not value)
                                (string? value)            (str value "_changed")))]
-        (doseq [col columns]
-          (let [before  (select-keys dashboard [col])
-                changes {col (update-col col (get dashboard col))}]
-            ;; we'll automatically delete old revisions if we have more than [[revision/max-revisions]]
-            ;; revisions for an instance, so let's clear everything to make it easier to test
-            (t2/delete! Revision :model "Dashboard" :model_id (:id dashboard))
-            (t2/update! Dashboard (:id dashboard) changes)
-            (create-dashboard-revision! (:id dashboard) false)
+            (doseq [col columns]
+              (let [before  (select-keys dashboard [col])
+                    changes {col (update-col col (get dashboard col))}]
+                (clean-revisions-for-dashboard (:id dashboard))
+                ;; do the update
+                (t2/update! Dashboard (:id dashboard) changes)
+                (create-dashboard-revision! (:id dashboard) false)
 
-            (testing (format "we should track when %s changes" col)
-              (is (= 1 (t2/count Revision :model "Dashboard" :model_id (:id dashboard)))))
+                (testing (format "we should track when %s changes" col)
+                  (is (= 2 (t2/count Revision :model "Dashboard" :model_id (:id dashboard)))))
 
-            (when-not (#{:made_public_by_id} col)
-              (testing (format "we should have a revision description for %s" col)
-                (is (some? (build-sentence
-                             (revision/diff-strings
-                               Dashboard
-                               before
-                               changes))))))))))))
+                (when-not (#{:made_public_by_id} col)
+                  (testing (format "we should have a revision description for %s" col)
+                    (is (some? (build-sentence
+                                 (revision/diff-strings
+                                   Dashboard
+                                   before
+                                   changes))))))))))))
+
+   (testing "dashboardcard ---"
+     (t2.with-temp/with-temp
+       [:model/Dashboard     dashboard {:name "A Dashboard"}
+        :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)}
+        :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}
+        :model/Card          card      {:name "A Card" :dataset true}
+        Action               action    {:model_id (:id card)
+                                        :type     :implicit
+                                        :name     "An action"}]
+       (let [columns    (disj (set/difference (set (keys dashcard)) (set @#'dashboard/excluded-columns-for-dashcard-revision))
+                              :dashboard_id :id)
+             update-col (fn [col value]
+                          (cond
+                            (= col :action_id)          (:id action)
+                            (= col :card_id)            (:id card)
+                            (= col :dashboard_tab_id)   (:id dashtab)
+                            (= col :parameter_mappings) [{:parameter_id "_CATEGORY_NAME_"
+                                                          :target       [:dimension (mt/$ids $categories.name)]}]
+                            (= col :visualization_settings) {:text "now it's a text card"}
+                            (int? value)                (inc value)
+                            (boolean? value)            (not value)
+                            (string? value)             (str value "_changed")))]
+         (doseq [col columns]
+           (clean-revisions-for-dashboard (:id dashboard))
+           ;; do the update
+           (t2/update! :model/DashboardCard (:id dashcard) {col (update-col col (get dashcard col))})
+           (create-dashboard-revision! (:id dashboard) false)
+
+           (testing (format "we should track when %s changes" col)
+             (is (= 2 (t2/count Revision :model "Dashboard" :model_id (:id dashboard)))))))))
+
+   (testing "dashboardtab ---"
+     (t2.with-temp/with-temp
+       [:model/Dashboard     dashboard {:name "A Dashboard"}
+        :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}]
+       (let [columns    (disj (set/difference (set (keys dashtab)) (set @#'dashboard/excluded-columns-for-dashboard-tab-revision))
+                              :dashboard_id :id)
+             update-col (fn [_col value]
+                          (cond
+                            (int? value)                (inc value)
+                            (string? value)             (str value "_changed")))]
+         (doseq [col columns]
+           (clean-revisions-for-dashboard (:id dashboard))
+           ;; do the update
+           (t2/update! :model/DashboardTab (:id dashtab) {col (update-col col (get dashtab col))})
+           (create-dashboard-revision! (:id dashboard) false)
+
+           (testing (format "we should track when %s changes" col)
+             (is (= 2 (t2/count Revision :model "Dashboard" :model_id (:id dashboard)))))))))))
 
 (deftest revert-dashboard!-test
   (tt/with-temp* [Dashboard           [{dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}]

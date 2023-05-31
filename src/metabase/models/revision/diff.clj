@@ -65,7 +65,6 @@
     (deferred-tru "changed the visualization settings")
 
     ;;  Card specific
-
     [:parameter_mappings _ _]
     (deferred-tru "changed the filter mapping")
 
@@ -89,14 +88,9 @@
     [:result_metadata _ _]
     (deferred-tru "edited the metadata")
 
-     ;;  whenever table_id changed, the dataset_query will changed so we don't need a description for this
-    [:table_id _ _]
-    nil
-     ;; same with table_id
-    [:database_id _ _]
-    nil
-
-    [:query_type _ _]
+    ;;  whenever database_id, query_type, table_id changed,
+    ;; the dataset_query will changed so we don't need a description for this
+    [#{:table_id :database_id :query_type} _ _]
     nil
 
     :else nil))

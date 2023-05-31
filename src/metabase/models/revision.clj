@@ -163,6 +163,7 @@
         last-object       (t2/select-one-fn :object Revision :model (name entity) :model_id id {:order-by [[:id :desc]]})]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
+    ;;#p "--------------------------------------------"
     (when-not (= serialized-object last-object)
       (t2/insert! Revision
                   :model        (name entity)

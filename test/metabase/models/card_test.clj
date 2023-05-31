@@ -643,6 +643,72 @@
 
 ;;; -------------------------------------------- Revision tests  --------------------------------------------
 
+(deftest diff-cards-str-test
+  (testing "update general info ---"
+    (is (= "added a description and renamed it from \"Diff Test\" to \"Diff Test Changed\"."
+           (build-sentence
+             (revision/diff-strings
+               :model/Card
+               {:name        "Diff Test"
+                :description nil}
+               {:name        "Diff Test Changed"
+                :description "foobar"}))))
+
+    (is (= "renamed this Card from \"Apple\" to \"Next\"."
+           (build-sentence
+             (revision/diff-strings
+               :model/Card
+               {:name "Apple"}
+               {:name "Next"}))))
+
+    ;; multiple changes
+    (is (= "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."
+           (build-sentence
+             (revision/diff-strings
+               :model/Card
+               {:name        "Diff Test"
+                :description nil}
+               {:name        "Diff Test changed"
+                :description "New description"})))))
+
+ (testing "update collection ---"
+   (is (= "moved this Card to Our analytics."
+          (build-sentence
+            (revision/diff-strings
+              :model/Card
+              {:name "Apple"}
+              {:name          "Apple"
+               :collection_id nil}))))
+  (t2.with-temp/with-temp
+    [Collection {coll-id :id} {:name "New collection"}]
+    (is (= "moved this Card to New collection."
+           (build-sentence
+             (revision/diff-strings
+               :model/Card
+               {:name "Apple"}
+               {:name          "Apple"
+                :collection_id coll-id}))))
+    (is (= "moved this Card from New collection to Our analytics."
+           (build-sentence
+             (revision/diff-strings
+               :model/Card
+               {:name "Apple"
+                :collection_id coll-id}
+               {:name          "Apple"
+                :collection_id nil})))))
+
+  (t2.with-temp/with-temp
+    [Collection {coll-id-1 :id} {:name "Old collection"}
+     Collection {coll-id-2 :id} {:name "New collection"}]
+    (is (= "moved this Card from Old collection to New collection."
+           (build-sentence
+             (revision/diff-strings
+               :model/Card
+               {:name          "Apple"
+                :collection_id coll-id-1}
+               {:name          "Apple"
+                :collection_id coll-id-2})))))))
+
 (defn- create-card-revision!
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [card-id is-creation?]
@@ -655,18 +721,18 @@
 
 (deftest record-revision-and-description-completeness-test
   (t2.with-temp/with-temp
-    [:model/Database  db {:name "random db"}
-     :model/Card      card {:name                "A Card"
-                            :description          "An important card"
-                            :collection_position 0
-                            :cache_ttl           1000
-                            :archived            false
-                            :dataset             false
-                            :parameters          [{:name       "Category Name"
-                                                   :slug       "category_name"
-                                                   :id         "_CATEGORY_NAME_"
-                                                   :type       "category"}]}
-     Collection       coll      {:name "A collection"}]
+    [:model/Database  db    {:name "random db"}
+     :model/Card      card  {:name                "A Card"
+                             :description          "An important card"
+                             :collection_position 0
+                             :cache_ttl           1000
+                             :archived            false
+                             :dataset             false
+                             :parameters          [{:name       "Category Name"
+                                                    :slug       "category_name"
+                                                    :id         "_CATEGORY_NAME_"
+                                                    :type       "category"}]}
+     Collection       coll {:name "A collection"}]
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (let [columns     (disj (set/difference (set (keys card)) (set @#'card/excluded-columns-for-card-revision))
                               ;; we only record result metadata for models, so we'll test that seperately
