@@ -1072,8 +1072,6 @@ export const Icons = {
   eye_filled: { component: eye_component, source: eye_source },
 } as const;
 
-// TODO: arrow_right, slack img icon, arrow_split
-
 export const iconNames = Object.keys(
   Icons,
 ) as unknown as (keyof typeof Icons)[];
