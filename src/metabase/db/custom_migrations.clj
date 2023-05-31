@@ -304,6 +304,7 @@
                             (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
                                                  :from   [:report_card]
                                                  :where  [:and
+                                                          [= :query_type "query"]
                                                           [:like :visualization_settings "%column_settings%"]
                                                           [:like :result_metadata "%join-alias%"]]}))))
   (let [update! (fn [{:keys [id visualization_settings]}]
@@ -318,6 +319,7 @@
                             (t2/reducible-query {:select [:id :visualization_settings]
                                                  :from   [:report_card]
                                                  :where  [:and
+                                                          [= :query_type "query"]
                                                           [:like :visualization_settings "%column_settings%"]
                                                           [:like :visualization_settings "%join-alias%"]]})))))
 
