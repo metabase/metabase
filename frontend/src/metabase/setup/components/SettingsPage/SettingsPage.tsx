@@ -1,4 +1,3 @@
-import React from "react";
 import LogoIcon from "metabase/components/LogoIcon";
 import { CloudMigrationHelp } from "../CloudMigrationHelp";
 import { DatabaseHelp } from "../DatabaseHelp";

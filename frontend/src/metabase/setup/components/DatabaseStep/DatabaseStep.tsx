@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { updateIn } from "icepick";
 import { useDispatch, useSelector } from "metabase/lib/redux";

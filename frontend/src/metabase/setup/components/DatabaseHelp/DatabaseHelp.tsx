@@ -1,4 +1,3 @@
-import React from "react";
 import { useSelector } from "metabase/lib/redux";
 import DatabaseHelpCard from "metabase/databases/containers/DatabaseHelpCard";
 import { DATABASE_STEP } from "../../constants";
