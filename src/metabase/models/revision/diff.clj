@@ -34,29 +34,19 @@
     [:enable_embedding true false]
     (deferred-tru "disabled embedding")
 
+    [:parameters _ _]
+    (deferred-tru "changed the filters")
+
     [:embedding_params _ _]
-    (deferred-tru "changed embedding parameters")
+    (deferred-tru "changed the embedding parameters")
 
-    [:archived false true]
-    (deferred-tru "unarchived this")
+    [:archived _ after]
+    (if after
+      (deferred-tru "archived {0}" identifier)
+      (deferred-tru "unarchived {0}" identifier))
 
-    [:archived true false]
-    (deferred-tru "archived this")
-
-    [:dataset false true]
-    (deferred-tru "turned this into a model")
-
-    [:dataset false false]
-    (deferred-tru "changed this from a model to a saved question")
-
-    [:display _ _]
-    (deferred-tru "changed the display from {0} to {1}" (name v1) (name v2))
-
-    [:result_metadata _ _]
-    (deferred-tru "edited the metadata")
-
-    [:dataset_query _ _]
-    (deferred-tru "modified the query")
+    [:collection_position _ _]
+    (deferred-tru "changed pin position")
 
     [:collection_id nil coll-id]
     (deferred-tru "moved {0} to {1}" identifier (if coll-id
@@ -73,6 +63,41 @@
 
     [:visualization_settings _ _]
     (deferred-tru "changed the visualization settings")
+
+    ;;  Card specific
+
+    [:parameter_mappings _ _]
+    (deferred-tru "changed the filter mapping")
+
+    [:collection_preview _ after]
+    (if after
+      (deferred-tru "enabled collection review")
+      (deferred-tru "disabled collection preview"))
+
+    [:dataset_query _ _]
+    (deferred-tru "modified the query")
+
+    [:dataset false true]
+    (deferred-tru "turned this into a model")
+
+    [:dataset false false]
+    (deferred-tru "changed this from a model to a saved question")
+
+    [:display _ _]
+    (deferred-tru "changed the display from {0} to {1}" (name v1) (name v2))
+
+    [:result_metadata _ _]
+    (deferred-tru "edited the metadata")
+
+     ;;  whenever table_id changed, the dataset_query will changed so we don't need a description for this
+    [:table_id _ _]
+    nil
+     ;; same with table_id
+    [:database_id _ _]
+    nil
+
+    [:query_type _ _]
+    nil
 
     :else nil))
 

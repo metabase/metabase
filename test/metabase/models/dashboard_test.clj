@@ -1,5 +1,6 @@
 (ns metabase.models.dashboard-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.core :as magic]
@@ -23,6 +24,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
+   (java.util UUID)
    (java.time LocalDateTime)))
 
 (set! *warn-on-reflection* true)
@@ -61,7 +63,6 @@
               :enable_embedding    false
               :made_public_by_id   nil
               :embedding_params    nil
-              :position            nil
               :parameters          []
               :public_uuid         nil}
              (update (revision/serialize-instance Dashboard (:id dashboard) dashboard)
@@ -124,7 +125,7 @@
                 :auto_apply_filters false}))))
 
     ;; multiple changes
-    (is (= "changed the cache ttl from \"333\" to \"1,227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
+    (is (= "changed the cache ttl from \"333\" to \"1,227\", modified the cards, modified the series on card 1 and added some series to card 2."
            (build-sentence
              (revision/diff-strings
                Dashboard
@@ -164,55 +165,55 @@
                                :series  [3 4 5]}]})))))
 
  (testing "update cards ---"
-  (is (= "added a card."
-         (build-sentence
-           (revision/diff-strings
-             Dashboard
-             {:cards [{:id 1} {:id 2}]}
-             {:cards [{:id 1} {:id 2} {:id 3}]}))))
+   (is (= "added a card."
+          (build-sentence
+            (revision/diff-strings
+              Dashboard
+              {:cards [{:id 1} {:id 2}]}
+              {:cards [{:id 1} {:id 2} {:id 3}]}))))
 
-  (is (= "removed a card."
-         (build-sentence
-           (revision/diff-strings
-             Dashboard
-             {:cards [{:id 1} {:id 2}]}
-             {:cards [{:id 1}]}))))
+   (is (= "removed a card."
+          (build-sentence
+            (revision/diff-strings
+              Dashboard
+              {:cards [{:id 1} {:id 2}]}
+              {:cards [{:id 1}]}))))
 
-  (is (= "rearranged the cards."
-         (build-sentence
-           (revision/diff-strings
-             Dashboard
-             {:cards [{:id 1 :row 0} {:id 2 :row 1}]}
-             {:cards [{:id 1 :row 1} {:id 2 :row 2}]}))))
+   (is (= "modified the cards."
+          (build-sentence
+            (revision/diff-strings
+              Dashboard
+              {:cards [{:id 1 :row 0} {:id 2 :row 1}]}
+              {:cards [{:id 1 :row 1} {:id 2 :row 2}]}))))
 
-  (is (= "modified the cards."
-         (build-sentence
-           (revision/diff-strings
-             Dashboard
-             {:cards [{:id 1} {:id 2}]}
-             {:cards [{:id 1} {:id 3}]})))))
+   (is (= "modified the cards."
+          (build-sentence
+            (revision/diff-strings
+              Dashboard
+              {:cards [{:id 1} {:id 2}]}
+              {:cards [{:id 1} {:id 3}]})))))
 
  (testing "update collection ---"
-  (t2.with-temp/with-temp
-    [Collection {coll-id :id} {:name "New collection"}]
-    (is (= "moved this Dashboard to New collection."
-           (build-sentence
-             (revision/diff-strings
-               Dashboard
-               {:name "Apple"}
-               {:name          "Apple"
-                :collection_id coll-id})))))
-  (t2.with-temp/with-temp
-    [Collection {coll-id-1 :id} {:name "Old collection"}
-     Collection {coll-id-2 :id} {:name "New collection"}]
-    (is (= "moved this Dashboard from Old collection to New collection."
-           (build-sentence
-             (revision/diff-strings
-               Dashboard
-               {:name          "Apple"
-                :collection_id coll-id-1}
-               {:name          "Apple"
-                :collection_id coll-id-2}))))))
+   (t2.with-temp/with-temp
+     [Collection {coll-id :id} {:name "New collection"}]
+     (is (= "moved this Dashboard to New collection."
+            (build-sentence
+              (revision/diff-strings
+                Dashboard
+                {:name "Apple"}
+                {:name          "Apple"
+                 :collection_id coll-id})))))
+   (t2.with-temp/with-temp
+     [Collection {coll-id-1 :id} {:name "Old collection"}
+      Collection {coll-id-2 :id} {:name "New collection"}]
+     (is (= "moved this Dashboard from Old collection to New collection."
+            (build-sentence
+              (revision/diff-strings
+                Dashboard
+                {:name          "Apple"
+                 :collection_id coll-id-1}
+                {:name          "Apple"
+                 :collection_id coll-id-2}))))))
 
  (testing "update tabs"
    (is (= "added a tab."
@@ -250,6 +251,56 @@
               {:tabs [{:id 1 :name "Tab B new name and position" :position 0}
                       {:id 0 :name "Tab A new name and position" :position 1}]}))))))
 
+(declare create-dashboard-revision!)
+
+(deftest record-revision-and-description-completeness-test
+  (t2.with-temp/with-temp
+    [:model/Dashboard dashboard {:name               "A Dashboard"
+                                 :description        "An insightful Dashboard"
+                                 :collection_position 0
+                                 :position            10
+                                 :cache_ttl           1000
+                                 :parameters          [{:name       "Category Name"
+                                                        :slug       "category_name"
+                                                        :id         "_CATEGORY_NAME_"
+                                                        :type       "category"}]}
+     Collection       coll      {:name "A collection"}]
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [columns        (set/difference (set (keys dashboard)) (set @#'dashboard/excluded-columns-for-dashboard-revision))
+            update-col     (fn [col value]
+                             (cond
+                               (= col :collection_id)     (:id coll)
+                               (= col :parameters)        (cons {:name "Category ID"
+                                                                 :slug "category_id"
+                                                                 :id   "_CATEGORY_ID_"
+                                                                 :type "number"}
+                                                                value)
+                               (= col :made_public_by_id) (mt/user->id :crowberto)
+                               (= col :embedding_params)  {:category_name "locked"}
+                               (= col :public_uuid)       (str (UUID/randomUUID))
+                               (int? value)               (inc value)
+                               (boolean? value)           (not value)
+                               (string? value)            (str value "_changed")))]
+        (doseq [col columns]
+          (let [before  (select-keys dashboard [col])
+                changes {col (update-col col (get dashboard col))}]
+            ;; we'll automatically delete old revisions if we have more than [[revision/max-revisions]]
+            ;; revisions for an instance, so let's clear everything to make it easier to test
+            (t2/delete! Revision :model "Dashboard" :model_id (:id dashboard))
+            (t2/update! Dashboard (:id dashboard) changes)
+            (create-dashboard-revision! (:id dashboard) false)
+
+            (testing (format "we should track when %s changes" col)
+              (is (= 1 (t2/count Revision :model "Dashboard" :model_id (:id dashboard)))))
+
+            (when-not (#{:made_public_by_id} col)
+              (testing (format "we should have a revision description for %s" col)
+                (is (some? (build-sentence
+                             (revision/diff-strings
+                               Dashboard
+                               before
+                               changes))))))))))))
+
 (deftest revert-dashboard!-test
   (tt/with-temp* [Dashboard           [{dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}]
                   Card                [{card-id :id}]
@@ -275,7 +326,6 @@
                                 :enable_embedding    false
                                 :made_public_by_id   nil
                                 :embedding_params    nil
-                                :position            nil
                                 :parameters          []
                                 :public_uuid         nil}
           serialized-dashboard (revision/serialize-instance Dashboard (:id dashboard) dashboard)]
@@ -303,7 +353,6 @@
                 :enable_embedding    false
                 :made_public_by_id   nil
                 :embedding_params    nil
-                :position            nil
                 :parameters          []
                 :public_uuid         nil}
                (update serialized-dashboard :cards check-ids))))
@@ -342,7 +391,6 @@
                 :enable_embedding    false
                 :made_public_by_id   nil
                 :embedding_params    nil
-                :position            nil
                 :parameters          []
                 :public_uuid         nil}
                (update (revision/serialize-instance Dashboard dashboard-id (t2/select-one Dashboard :id dashboard-id))

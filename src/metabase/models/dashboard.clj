@@ -179,14 +179,20 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
+(def ^:private excluded-columns-for-dashboard-revision
+  [:id :created_at :updated_at :creator_id :points_of_interest :caveats :show_in_getting_started :entity_id
+   ;; not sure what position is for, from the column remark:
+   ;; > The position this Dashboard should appear in the Dashboards list,
+   ;;   lower-numbered positions appearing before higher numbered ones.
+   ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
+   :position])
+
 (def ^:private excluded-columns-for-dashcard-revision
   [:entity_id :created_at :updated_at :collection_authority_level])
 
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
-  (-> dashboard
-      (dissoc :id :created_at :updated_at :creator_id :points_of_interest
-              :caveats :show_in_getting_started :entity_id)
+  (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
       (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
                            (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))
@@ -266,8 +272,6 @@
                (and
                  (set/subset? new-card-ids prev-card-ids)
                  (> num-prev-cards num-new-cards))         (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
-               (and (= num-prev-cards num-new-cards)
-                    (= prev-card-ids new-card-ids))        (deferred-tru "rearranged the cards")
                :else                                       (deferred-tru "modified the cards"))))
          (when (or (:tabs changes) (:tabs removals))
            (let [prev-tabs     (:tabs prev-dashboard)

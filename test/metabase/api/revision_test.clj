@@ -253,7 +253,7 @@
                :has_multiple_changes false}
               {:description          "moved this Dashboard to New Collection.",
                :has_multiple_changes false}
-              {:description          "rearranged the cards."
+              {:description          "modified the cards."
                :has_multiple_changes false}
               {:description          "removed a card."
                :has_multiple_changes false}
@@ -267,7 +267,6 @@
                :has_multiple_changes false}]
              (map #(select-keys % [:description :has_multiple_changes])
                   (mt/user-http-request :crowberto :get 200 "revision" :entity "dashboard" :id dashboard-id)))))))
-
 
 (deftest card-revision-description-test
   (testing "revision description for card are generated correctly"
