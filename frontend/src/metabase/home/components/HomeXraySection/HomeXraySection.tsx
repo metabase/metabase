@@ -5,9 +5,9 @@ import * as Urls from "metabase/lib/urls";
 import Select from "metabase/core/components/Select";
 import { DatabaseCandidate } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";
-import HomeCaption from "../HomeCaption";
-import HomeHelpCard from "../HomeHelpCard";
-import HomeXrayCard from "../HomeXrayCard";
+import { HomeCaption } from "../HomeCaption";
+import { HomeHelpCard } from "../HomeHelpCard";
+import { HomeXrayCard } from "../HomeXrayCard";
 import {
   DatabaseLinkIcon,
   DatabaseLink,

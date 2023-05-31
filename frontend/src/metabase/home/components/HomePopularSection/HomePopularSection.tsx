@@ -2,23 +2,17 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
-import PopularItems, {
-  getIcon,
-  getName,
-} from "metabase/entities/popular-items";
+import { getIcon, getName } from "metabase/entities/popular-items";
+import { usePopularItemListQuery } from "metabase/common/hooks";
 import { PopularItem } from "metabase-types/api";
-import HomeCaption from "../HomeCaption";
-import HomeHelpCard from "../HomeHelpCard";
-import HomeModelCard from "../HomeModelCard";
+import { HomeCaption } from "../HomeCaption";
+import { HomeHelpCard } from "../HomeHelpCard";
+import { HomeModelCard } from "../HomeModelCard";
 import { SectionBody } from "./HomePopularSection.styled";
 
-export interface HomePopularSectionProps {
-  popularItems: PopularItem[];
-}
+export const HomePopularSection = (): JSX.Element => {
+  const { data: popularItems = [] } = usePopularItemListQuery();
 
-const HomePopularSection = ({
-  popularItems,
-}: HomePopularSectionProps): JSX.Element => {
   return (
     <div>
       <HomeCaption>{getTitle(popularItems)}</HomeCaption>
@@ -57,6 +51,3 @@ const getTitle = (popularItems: PopularItem[]) => {
       return t`Here are some popular items`;
   }
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default PopularItems.loadList()(HomePopularSection);

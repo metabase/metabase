@@ -10,8 +10,8 @@ import {
 } from "metabase/common/hooks";
 import { PopularItem, RecentItem, User } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";
-import HomePopularSection from "../HomePopularSection";
-import HomeRecentSection from "../HomeRecentSection";
+import { HomePopularSection } from "../HomePopularSection";
+import { HomeRecentSection } from "../HomeRecentSection";
 import HomeXraySection from "../../containers/HomeXraySection";
 import { getIsXrayEnabled } from "../../selectors";
 import { isWithinWeeks } from "../../utils";

@@ -1,18 +1,18 @@
 import React from "react";
-import HomeCard from "../HomeCard";
+import { HomeCard } from "../HomeCard";
 import { CardIcon, CardTitle } from "./HomeModelCard.styled";
 
-export interface HomeModelCardProps {
+interface HomeModelCardProps {
   title: string;
   icon: HomeModelIconProps;
   url: string;
 }
 
-export interface HomeModelIconProps {
+interface HomeModelIconProps {
   name: string;
 }
 
-const HomeModelCard = ({
+export const HomeModelCard = ({
   title,
   icon,
   url,
@@ -24,6 +24,3 @@ const HomeModelCard = ({
     </HomeCard>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default HomeModelCard;

@@ -3,9 +3,9 @@ import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import MetabotWidget from "metabase/metabot/components/MetabotWidget";
 import Tooltip from "metabase/core/components/Tooltip/Tooltip";
-import HomeGreeting from "../HomeGreeting";
+import { HomeGreeting } from "../HomeGreeting";
 import { getHasIllustration } from "../../selectors";
-import { CustomHomePageModal } from "../Modals/CustomHomePageModal/CustomHomePageModal";
+import { CustomHomePageModal } from "../CustomHomePageModal";
 import {
   LayoutBody,
   LayoutEditButton,

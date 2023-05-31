@@ -11,6 +11,10 @@ export const getIsMetabotEnabled = (state: State) => {
   return getSetting(state, "is-metabot-enabled");
 };
 
+export const getHasMetabotLogo = (state: State) => {
+  return getSetting(state, "show-metabot");
+};
+
 export const getHasIllustration = (state: State) => {
   return getSetting(state, "show-lighthouse-illustration");
 };
