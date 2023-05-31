@@ -36,7 +36,7 @@ import CollectionPermissionsModal from "metabase/admin/permissions/components/Co
 import UserCollectionList from "metabase/containers/UserCollectionList";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
-import SetupApp from "metabase/setup/containers/SetupApp";
+import { Setup } from "metabase/setup/components/Setup";
 
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 
@@ -78,11 +78,11 @@ import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
-import HomePageApp from "metabase/home/homepage/containers/HomePageApp";
+import HomePageApp from "metabase/home/containers/HomePageApp";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 
-import ArchiveApp from "metabase/home/containers/ArchiveApp";
-import SearchApp from "metabase/home/containers/SearchApp";
+import ArchiveApp from "metabase/archive/containers/ArchiveApp";
+import SearchApp from "metabase/search/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
 import {
   CanAccessMetabot,
@@ -97,7 +97,7 @@ export const getRoutes = store => (
     {/* SETUP */}
     <Route
       path="/setup"
-      component={SetupApp}
+      component={Setup}
       onEnter={(nextState, replace) => {
         if (MetabaseSettings.hasUserSetup()) {
           replace("/");

@@ -1,17 +1,30 @@
-import SettingsPage from "../../containers/SettingsPage";
-import WelcomePage from "../../containers/WelcomePage";
+import { useEffect } from "react";
+import { useUpdate } from "react-use";
+import { useSelector } from "metabase/lib/redux";
+import { trackStepSeen } from "../../analytics";
+import { WELCOME_STEP } from "../../constants";
+import { getIsLocaleLoaded, getStep } from "../../selectors";
+import { SettingsPage } from "../SettingsPage";
+import { WelcomePage } from "../WelcomePage";
 
-export interface SetupProps {
-  isWelcome: boolean;
-}
+export const Setup = (): JSX.Element => {
+  const step = useSelector(getStep);
+  const isLocaleLoaded = useSelector(getIsLocaleLoaded);
+  const update = useUpdate();
 
-const Setup = ({ isWelcome, ...props }: SetupProps): JSX.Element => {
-  if (isWelcome) {
-    return <WelcomePage {...props} />;
+  useEffect(() => {
+    trackStepSeen(step);
+  }, [step]);
+
+  useEffect(() => {
+    if (isLocaleLoaded) {
+      update();
+    }
+  }, [update, isLocaleLoaded]);
+
+  if (step === WELCOME_STEP) {
+    return <WelcomePage />;
   } else {
-    return <SettingsPage {...props} />;
+    return <SettingsPage />;
   }
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Setup;

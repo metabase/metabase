@@ -117,7 +117,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      rightSidebar().within(() => cy.icon("ellipsis").click());
+      rightSidebar().icon("ellipsis").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit event").click();
 
@@ -149,7 +149,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Builds").should("be.visible");
-      rightSidebar().within(() => cy.icon("ellipsis").click());
+      rightSidebar().icon("ellipsis").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Move event").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -177,7 +177,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      rightSidebar().within(() => cy.icon("ellipsis").click());
+      rightSidebar().icon("ellipsis").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Archive event").click();
       cy.wait("@updateEvent");
@@ -436,7 +436,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.findByText("Releases").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add an event").should("not.exist");
-      rightSidebar().within(() => cy.icon("ellipsis").should("not.exist"));
+      rightSidebar().icon("ellipsis").should("not.exist");
     });
   });
 });
