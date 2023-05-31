@@ -9,6 +9,7 @@
    [humane-are.core :as humane-are]
    [metabase.bootstrap]
    [metabase.config :as config]
+   [metabase.query-processor-test.test-mlv2 :as qp-test.mlv2]
    [metabase.test-runner.assert-exprs]
    [metabase.test.data.env :as tx.env]
    [metabase.util.date-2]
@@ -23,6 +24,9 @@
   metabase.bootstrap/keep-me
   ;; make sure stuff like `schema=` and what not are loaded
   metabase.test-runner.assert-exprs/keep-me
+
+  ;; helpers for mvl2
+  qp-test.mlv2/keep-me
 
   ;; these are necessary so data_readers.clj functions can function
   metabase.util.date-2/keep-me

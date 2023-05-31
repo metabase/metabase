@@ -1,8 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
+import { useTimeout } from "react-use";
 import { t } from "ttag";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import LogoIcon from "metabase/components/LogoIcon";
-import { LOCALE_TIMEOUT } from "../../constants";
-import SetupHelp from "../SetupHelp";
+import { loadDefaults, selectStep } from "../../actions";
+import { LANGUAGE_STEP, LOCALE_TIMEOUT } from "../../constants";
+import { getIsLocaleLoaded } from "../../selectors";
+import { SetupHelp } from "../SetupHelp";
 import {
   PageRoot,
   PageMain,
@@ -11,24 +15,20 @@ import {
   PageButton,
 } from "./WelcomePage.styled";
 
-export interface WelcomePageProps {
-  isLocaleLoaded: boolean;
-  onStepShow: () => void;
-  onStepSubmit: () => void;
-}
+export const WelcomePage = (): JSX.Element | null => {
+  const [isElapsed] = useTimeout(LOCALE_TIMEOUT);
+  const isLocaleLoaded = useSelector(getIsLocaleLoaded);
+  const dispatch = useDispatch();
 
-const WelcomePage = ({
-  isLocaleLoaded,
-  onStepShow,
-  onStepSubmit,
-}: WelcomePageProps): JSX.Element | null => {
-  const isElapsed = useIsElapsed(LOCALE_TIMEOUT);
+  const handleStepSubmit = () => {
+    dispatch(selectStep(LANGUAGE_STEP));
+  };
 
   useEffect(() => {
-    onStepShow();
-  }, [onStepShow]);
+    dispatch(loadDefaults());
+  }, [dispatch]);
 
-  if (!isElapsed && !isLocaleLoaded) {
+  if (!isElapsed() && !isLocaleLoaded) {
     return null;
   }
 
@@ -41,26 +41,11 @@ const WelcomePage = ({
           {t`Looks like everything is working.`}{" "}
           {t`Now let’s get to know you, connect to your data, and start finding you some answers!`}
         </PageBody>
-        <PageButton
-          primary
-          autoFocus
-          onClick={onStepSubmit}
-        >{t`Let's get started`}</PageButton>
+        <PageButton primary autoFocus onClick={handleStepSubmit}>
+          {t`Let's get started`}
+        </PageButton>
       </PageMain>
       <SetupHelp />
     </PageRoot>
   );
 };
-
-const useIsElapsed = (delay: number) => {
-  const [isElapsed, setIsElapsed] = useState(false);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => setIsElapsed(true), delay);
-    return () => clearTimeout(timeout);
-  }, [delay]);
-
-  return isElapsed;
-};
-
-export default WelcomePage;

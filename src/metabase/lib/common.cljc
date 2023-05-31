@@ -1,28 +1,54 @@
 (ns metabase.lib.common
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.field :as lib.field]
-   #_{:clj-kondo/ignore [:unused-namespace]}
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
-   #_{:clj-kondo/ignore [:unused-namespace]}
+   [metabase.lib.ref :as lib.ref]
+   [metabase.lib.schema.common :as schema.common]
    [metabase.util.malli :as mu])
   #?(:cljs (:require-macros [metabase.lib.common])))
+
+(comment lib.options/keep-me
+         mu/keep-me)
+
+(mu/defn external-op :- [:maybe ::schema.common/external-op]
+  "Convert the internal operator `clause` to the external format."
+  [[operator options :as clause]]
+  (when clause
+    {:operator (cond-> operator
+                 (keyword? operator) name)
+     :options options
+     :args (subvec clause 2)}))
 
 (defmulti ->op-arg
   "Ensures that clause arguments are properly unwrapped"
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x)))
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod ->op-arg :default
   [query stage-number x]
-  (if (vector? x)
+  (if (and (vector? x)
+           (keyword? (first x)))
+    ;; MBQL clause
     (mapv #(->op-arg query stage-number %) x)
+    ;; Something else - just return it
     x))
 
+(defmethod ->op-arg :dispatch-type/sequential
+  [query stage-number xs]
+  (mapv #(->op-arg query stage-number %) xs))
+
 (defmethod ->op-arg :metadata/field
-  [query stage-number field-metadata]
-  (lib.field/field query stage-number field-metadata))
+  [_query _stage-number field-metadata]
+  (lib.ref/ref field-metadata))
+
+(defmethod ->op-arg :lib/external-op
+  [query stage-number {:keys [operator options args] :or {options {}}}]
+  (->op-arg query stage-number (lib.options/ensure-uuid (into [(keyword operator) options]
+                                                              (map #(->op-arg query stage-number %))
+                                                              args))))
 
 (defmethod ->op-arg :dispatch-type/fn
   [query stage-number f]
@@ -36,27 +62,30 @@
      {:pre [(symbol? op-name)
             (every? vector? argvecs) (every? #(every? symbol? %) argvecs)
             (every? #(not-any? #{'query 'stage-number} %) argvecs)]}
-     `(do
-          (mu/defn ~(symbol (str (name op-name) "-clause")) :- ~(keyword "mbql.clause" (name op-name))
+     (let [fn-rename #(name (get {'/ 'div} % %))]
+       `(do
+          (mu/defn ~(symbol (str (fn-rename op-name) "-clause")) :- :metabase.lib.schema.common/external-op
             ~(format "Create a standalone clause of type `%s`." (name op-name))
             ~@(for [argvec argvecs
                     :let [arglist-expr (if (contains? (set argvec) '&)
                                          (cons `list* (remove #{'&} argvec))
                                          argvec)]]
                 `([~'query ~'stage-number ~@argvec]
-                  (-> (into [~(keyword op-name)]
-                            (map (fn [~'arg]
-                                   (->op-arg ~'query ~'stage-number ~'arg)))
-                            ~arglist-expr)
-                      lib.options/ensure-uuid))))
+                  {:operator ~(keyword op-name)
+                   :args (mapv (fn [~'arg]
+                                 (->op-arg ~'query ~'stage-number ~'arg))
+                               ~arglist-expr)})))
 
           (mu/defn ~op-name :- fn?
             ~(format "Create a closure of clause of type `%s`." (name op-name))
             ~@(for [argvec argvecs
-                    :let [arglist-expr (if (contains? (set argvec) '&)
+                    :let [varargs? (contains? (set argvec) '&)
+                          arglist-expr (if varargs?
                                          (filterv (complement #{'&}) argvec)
-                                         (conj argvec []))]]
-               `([~@argvec]
-                 (fn ~(symbol (str (name op-name) "-closure"))
-                   [~'query ~'stage-number]
-                   (apply ~(symbol (str (name op-name) "-clause")) ~'query ~'stage-number ~@arglist-expr))))))))
+                                         argvec)]]
+                `([~@argvec]
+                  (fn ~(symbol (str (fn-rename op-name) "-closure"))
+                    [~'query ~'stage-number]
+                    ~(cond->> (concat [(symbol (str (fn-rename op-name) "-clause")) 'query 'stage-number]
+                                      arglist-expr)
+                       varargs? (cons `apply))))))))))

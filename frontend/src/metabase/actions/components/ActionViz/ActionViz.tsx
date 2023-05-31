@@ -5,6 +5,7 @@ import Action from "./Action";
 const isForm = (object: any, computedSettings: VisualizationSettings) =>
   computedSettings.actionDisplayType === "form";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(Action, {
   uiName: t`Action`,
   identifier: "action",
@@ -18,6 +19,7 @@ export default Object.assign(Action, {
   canSavePng: false,
 
   minSize: { width: 1, height: 1 },
+  defaultSize: { width: 3, height: 1 },
 
   checkRenderable: () => true,
   isSensible: () => false,

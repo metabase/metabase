@@ -4,7 +4,7 @@
    [metabase.api.common :as api]
    [metabase.models.login-history :as login-history :refer [LoginHistory]]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn login-history
   "Return complete login history (sorted by most-recent -> least-recent) for `user-or-id`"
@@ -13,12 +13,11 @@
   ;; nice to be able to see every log in that's every happened with an account. Maybe we should page this, or page the
   ;; API endpoint?
   (login-history/human-friendly-infos
-   (db/select [LoginHistory :timestamp :session_id :device_description :ip_address]
+   (t2/select [LoginHistory :timestamp :session_id :device_description :ip_address]
               :user_id (u/the-id user-or-id)
               {:order-by [[:timestamp :desc]]})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/current"
+(api/defendpoint GET "/current"
   "Fetch recent logins for the current user."
   []
   (login-history api/*current-user-id*))

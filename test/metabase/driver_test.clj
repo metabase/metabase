@@ -4,22 +4,15 @@
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
+   [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! ::test-driver, :abstract? true)
 
-(defmethod driver/supports? [::test-driver :foreign-keys] [_ _] true)
-(defmethod driver/database-supports? [::test-driver :foreign-keys] [_ _ db] (= db "dummy"))
-
-(deftest ^:parallel driver-supports?-test
-  (is (driver/supports? ::test-driver :foreign-keys))
-  (is (not (driver/supports? ::test-driver :expressions)))
-  (is (thrown-with-msg?
-       java.lang.Exception
-       #"Invalid driver feature: .*"
-       (driver/supports? ::test-driver :some-made-up-thing))))
+(defmethod driver/database-supports? [::test-driver :foreign-keys] [_driver _feature _db] true)
+(defmethod driver/database-supports? [::test-driver :foreign-keys] [_driver _feature db] (= db "dummy"))
 
 (deftest ^:parallel database-supports?-test
   (is (driver/database-supports? ::test-driver :foreign-keys "dummy"))
@@ -61,3 +54,15 @@
                                                                       props-by-name)
                                                               vec
                                                               pr-str)))))))
+
+(deftest supports-schemas-matches-describe-database-test
+  (mt/test-drivers (mt/normal-drivers)
+    (if (driver/database-supports? driver/*driver* :schemas (mt/db))
+      (testing "`describe-database` should return schemas with tables if the database supports schemas"
+        (is (some? (->> (driver/describe-database driver/*driver* (mt/db))
+                        :tables
+                        (some :schema)))))
+      (testing "`describe-database` should not return schemas with tables if the database doesn't support schemas"
+        (is (nil? (->> (driver/describe-database driver/*driver* (mt/db))
+                       :tables
+                       (some :schema))))))))

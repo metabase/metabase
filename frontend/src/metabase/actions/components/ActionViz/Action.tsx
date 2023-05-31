@@ -1,38 +1,24 @@
 import React, { useMemo, useCallback } from "react";
-import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
-
-import { executeRowAction } from "metabase/dashboard/actions";
-
 import Tooltip from "metabase/core/components/Tooltip";
-
-import { getResponseErrorMessage } from "metabase/core/utils/errors";
-
+import { executeRowAction } from "metabase/dashboard/actions";
+import { getEditingDashcardId } from "metabase/dashboard/selectors";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   ActionDashboardCard,
-  ParametersForActionExecution,
-  WritebackQueryAction,
   Dashboard,
+  ParametersForActionExecution,
+  ParameterValueOrArray,
+  WritebackAction,
 } from "metabase-types/api";
-
-import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type { Dispatch, State } from "metabase-types/store";
-import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
-import {
-  generateFieldSettingsFromParameters,
-  setNumericValues,
-} from "metabase/actions/utils";
-
-import { getEditingDashcardId } from "metabase/dashboard/selectors";
-import Databases from "metabase/entities/databases";
-
-import type Database from "metabase-lib/metadata/Database";
-
+import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
 import {
   getDashcardParamValues,
   getNotProvidedActionParameters,
+  getMappedActionParameters,
   shouldShowConfirmation,
 } from "./utils";
 import ActionVizForm from "./ActionVizForm";
@@ -47,12 +33,8 @@ interface OwnProps {
   dispatch: Dispatch;
 }
 
-interface DatabaseLoaderProps {
-  database: Database;
-  error?: unknown;
-}
-
-export type ActionProps = VisualizationProps & OwnProps & DatabaseLoaderProps;
+export type ActionProps = Pick<VisualizationProps, "settings" | "isSettings"> &
+  OwnProps;
 
 function ActionComponent({
   dashcard,
@@ -82,6 +64,16 @@ function ActionComponent({
     );
   }, [dashcard, dashcardParamValues]);
 
+  const mappedParameters = useMemo(() => {
+    if (!dashcard.action) {
+      return [];
+    }
+    return getMappedActionParameters(
+      dashcard.action,
+      dashcardParamValues ?? [],
+    );
+  }, [dashcard, dashcardParamValues]);
+
   const shouldConfirm = shouldShowConfirmation(dashcard?.action);
 
   const shouldDisplayButton = !!(
@@ -91,40 +83,30 @@ function ActionComponent({
   );
 
   const onSubmit = useCallback(
-    (parameterMap: ParametersForActionExecution) => {
-      const action = dashcard.action;
-      const fieldSettings =
-        action?.visualization_settings?.fields ||
-        generateFieldSettingsFromParameters(action?.parameters ?? []);
-
-      const params = setNumericValues(
-        { ...dashcardParamValues, ...parameterMap },
-        fieldSettings,
-      );
-
-      return executeRowAction({
+    (parameters: ParametersForActionExecution) =>
+      executeRowAction({
         dashboard,
         dashcard,
-        parameters: params,
+        parameters,
         dispatch,
         shouldToast: shouldDisplayButton,
-      });
-    },
-    [dashboard, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
+      }),
+    [dashboard, dashcard, dispatch, shouldDisplayButton],
   );
 
   return (
     <ActionVizForm
-      onSubmit={onSubmit}
-      dashcard={dashcard}
+      action={dashcard.action as WritebackAction}
       dashboard={dashboard}
+      dashcard={dashcard}
+      missingParameters={missingParameters}
+      mappedParameters={mappedParameters}
+      dashcardParamValues={dashcardParamValues}
       settings={settings}
       isSettings={isSettings}
-      missingParameters={missingParameters}
-      dashcardParamValues={dashcardParamValues}
-      action={dashcard.action as WritebackQueryAction}
       shouldDisplayButton={shouldDisplayButton}
       isEditingDashcard={isEditingDashcard}
+      onSubmit={onSubmit}
     />
   );
 }
@@ -138,19 +120,15 @@ function mapStateToProps(state: State, props: ActionProps) {
 }
 
 function ActionFn(props: ActionProps) {
-  const {
-    database,
-    dashcard: { action },
-    error,
-  } = props;
+  const { dashcard } = props;
+  const { action } = dashcard;
 
-  const hasActionsEnabled = database?.hasActionsEnabled?.();
+  const hasActionsEnabled = getActionIsEnabledInDatabase(dashcard);
 
-  if (error || !action || !hasActionsEnabled) {
+  if (!action || !hasActionsEnabled) {
     const tooltip = getErrorTooltip({
       hasActionAssigned: !!action,
       hasActionsEnabled,
-      error,
     });
 
     return (
@@ -174,29 +152,20 @@ function ActionFn(props: ActionProps) {
 function getErrorTooltip({
   hasActionAssigned,
   hasActionsEnabled,
-  error,
 }: {
   hasActionAssigned: boolean;
   hasActionsEnabled: boolean;
-  error?: unknown;
 }) {
-  if (error) {
-    return getResponseErrorMessage(error);
-  }
   if (!hasActionAssigned) {
     return t`No action assigned`;
   }
+
   if (!hasActionsEnabled) {
     return t`Actions are not enabled for this database`;
   }
+
   return t`Something's gone wrong`;
 }
 
-export default _.compose(
-  Databases.load({
-    id: (state: State, props: ActionProps) =>
-      props.dashcard?.action?.database_id,
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps),
-)(ActionFn);
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default connect(mapStateToProps)(ActionFn);

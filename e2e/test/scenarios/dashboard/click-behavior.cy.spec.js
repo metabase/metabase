@@ -1,4 +1,8 @@
-import { restore, visitDashboard } from "e2e/support/helpers";
+import {
+  addOrUpdateDashboardCard,
+  restore,
+  visitDashboard,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
@@ -22,31 +26,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         ({ body: { id: nativeId } }) => {
           cy.createDashboard().then(({ body: { id: dashboardId } }) => {
             // Add native question to the dashboard
-            cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-              cardId: nativeId,
-              row: 0,
-              col: 0,
-              size_x: 12,
-              size_y: 10,
-            }).then(({ body: { id: dashCardId } }) => {
-              // Add click behavior to the dashboard card and point it to the question 1
-              cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-                cards: [
-                  {
-                    id: dashCardId,
-                    card_id: nativeId,
-                    row: 0,
-                    col: 0,
-                    size_x: 12,
-                    size_y: 10,
-                    visualization_settings:
-                      getVisualizationSettings(question1Id),
-                  },
-                ],
-              });
-
-              visitDashboard(dashboardId);
+            addOrUpdateDashboardCard({
+              dashboard_id: dashboardId,
+              card_id: nativeId,
+              card: {
+                // Add click behavior to the dashboard card and point it to the question 1
+                visualization_settings: getVisualizationSettings(question1Id),
+              },
             });
+            visitDashboard(dashboardId);
           });
         },
       );
@@ -55,7 +43,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     // Drill-through
     cy.findAllByTestId("cell-data").get(".link").contains("0").realClick();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("117.03").should("not.exist"); // Total for the order in which quantity wasn't 0
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 0");
 
     const getVisualizationSettings = targetId => ({
@@ -127,9 +117,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     cy.findAllByTestId("cell-data").contains("5").first().click();
 
     // Make sure filter is set
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rating is equal to 5");
 
     // Make sure it's connected to the original question
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Started from 16334");
 
     // Make sure the original visualization didn't change
@@ -178,6 +170,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     cy.findByTestId("gauge-arc-1").click();
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders");
   });
 
@@ -196,6 +189,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     cy.findByTestId("progress-bar").click();
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders");
   });
 });

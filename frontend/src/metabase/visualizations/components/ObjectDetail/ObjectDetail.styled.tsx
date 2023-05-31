@@ -61,6 +61,9 @@ export const CloseButton = styled.div`
 
 export const ErrorWrapper = styled.div`
   height: 480px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 `;
 
 type GridContainerProps = { cols?: number };

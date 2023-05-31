@@ -7,11 +7,8 @@ import type { LocationDescriptor } from "history";
 import { IconProps } from "metabase/components/Icon";
 
 import Visualization from "metabase/visualizations/components/Visualization";
-import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
+import WithVizSettingsData from "metabase/dashboard/hoc/WithVizSettingsData";
 import { getVisualizationRaw } from "metabase/visualizations";
-
-import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-import { SAVING_CHART_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
 import {
   getVirtualCardType,
@@ -22,27 +19,27 @@ import type {
   Dashboard,
   DashboardOrderedCard,
   DashCardId,
+  Dataset,
+  Series,
+  ParameterId,
+  ParameterValueOrArray,
   VirtualCardDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
-import type {
-  ParameterId,
-  ParameterValueOrArray,
-} from "metabase-types/types/Parameter";
-import type { Series } from "metabase-types/types/Visualization";
 import type { Dispatch } from "metabase-types/store";
 
+import Question from "metabase-lib/Question";
 import type Mode from "metabase-lib/Mode";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
 import { CardSlownessStatus, DashCardOnChangeCardAndRunHandler } from "./types";
 import ClickBehaviorSidebarOverlay from "./ClickBehaviorSidebarOverlay";
+import DashCardMenu from "./DashCardMenu";
 import DashCardParameterMapper from "./DashCardParameterMapper";
 import {
   VirtualDashCardOverlayRoot,
   VirtualDashCardOverlayText,
 } from "./DashCard.styled";
-import { CardDownloadWidget } from "./DashCardVisualization.styled";
 
 interface DashCardVisualizationProps {
   dashboard: Dashboard;
@@ -180,37 +177,32 @@ function DashCardVisualization({
   ]);
 
   const renderActionButtons = useCallback(() => {
-    const mainSeries = series[0];
+    const question = new Question(dashcard.card, metadata);
+    const mainSeries = series[0] as unknown as Dataset;
 
     const shouldShowDownloadWidget =
       isEmbed ||
       (!isPublic &&
         !isEditing &&
-        QueryDownloadWidget.shouldRender({
-          result: mainSeries,
-          isResultDirty: false,
-        }));
+        DashCardMenu.shouldRender({ question, result: mainSeries }));
 
     if (!shouldShowDownloadWidget) {
       return null;
     }
 
     return (
-      <CardDownloadWidget
-        className={SAVING_CHART_IMAGE_HIDDEN_CLASS}
-        classNameClose="hover-child hover-child--smooth"
-        card={dashcard.card}
+      <DashCardMenu
+        question={question}
         result={mainSeries}
-        params={parameterValuesBySlug}
         dashcardId={dashcard.id}
         dashboardId={dashboard.id}
-        token={isEmbed ? dashcard.dashboard_id : undefined}
-        icon="ellipsis"
-        iconSize={17}
+        token={isEmbed ? String(dashcard.dashboard_id) : undefined}
+        params={parameterValuesBySlug}
       />
     );
   }, [
     series,
+    metadata,
     isEmbed,
     isPublic,
     isEditing,
@@ -262,4 +254,5 @@ function DashCardVisualization({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DashCardVisualization;

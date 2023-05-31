@@ -10,6 +10,7 @@ describe("issue 17712", () => {
   it("doesn't remove extra sections when removing a single section (metabase#17712)", () => {
     openOrdersTable({ mode: "notebook" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
     popover().findByText("Products").click();
     cy.findByTestId("step-join-0-0")

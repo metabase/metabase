@@ -42,7 +42,7 @@ jobs:
     - name: Build static viz frontend
       run: yarn build-static-viz
     - name: Collect the test coverage
-      run: clojure -X:dev:ee:ee-dev:test:cloverage
+      run: clojure -X:dev:ci:ee:ee-dev:test:cloverage
     - name: Upload coverage to codecov.io
       uses: codecov/codecov-action@v3
       with:
@@ -61,7 +61,7 @@ jobs:
         docker run
         --volume $PWD:/work
         --rm
-        cljkondo/clj-kondo:2023.02.17
+        cljkondo/clj-kondo:2023.04.14
         clj-kondo
         --config /work/.clj-kondo/config.edn
         --config-dir /work/.clj-kondo
@@ -73,30 +73,32 @@ jobs:
         /work/enterprise/backend/test
         /work/shared/src
         /work/shared/test
-        /work/modules/drivers/sparksql/src
-        /work/modules/drivers/sparksql/test
-        /work/modules/drivers/vertica/src
-        /work/modules/drivers/vertica/test
+        /work/modules/drivers/athena/src
+        /work/modules/drivers/athena/test
+        /work/modules/drivers/bigquery-cloud-sdk/src
+        /work/modules/drivers/bigquery-cloud-sdk/test
+        /work/modules/drivers/druid/src
+        /work/modules/drivers/druid/test
+        /work/modules/drivers/googleanalytics/src
+        /work/modules/drivers/googleanalytics/test
         /work/modules/drivers/mongo/src
         /work/modules/drivers/mongo/test
         /work/modules/drivers/oracle/src
         /work/modules/drivers/oracle/test
-        /work/modules/drivers/sqlite/src
-        /work/modules/drivers/sqlite/test
-        /work/modules/drivers/bigquery-cloud-sdk/src
-        /work/modules/drivers/bigquery-cloud-sdk/test
+        /work/modules/drivers/presto-jdbc/src
+        /work/modules/drivers/presto-jdbc/test
         /work/modules/drivers/redshift/src
         /work/modules/drivers/redshift/test
         /work/modules/drivers/snowflake/src
         /work/modules/drivers/snowflake/test
-        /work/modules/drivers/googleanalytics/src
-        /work/modules/drivers/googleanalytics/test
-        /work/modules/drivers/druid/src
-        /work/modules/drivers/druid/test
+        /work/modules/drivers/sparksql/src
+        /work/modules/drivers/sparksql/test
+        /work/modules/drivers/sqlite/src
+        /work/modules/drivers/sqlite/test
         /work/modules/drivers/sqlserver/src
         /work/modules/drivers/sqlserver/test
-        /work/modules/drivers/presto-jdbc/src
-        /work/modules/drivers/presto-jdbc/test
+        /work/modules/drivers/vertica/src
+        /work/modules/drivers/vertica/test
 
   be-linter-eastwood:
     needs: files-changed
@@ -120,7 +122,7 @@ jobs:
     if: github.event.pull_request.draft == true && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     name: be-tests-java-11-ee-pre-check
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
@@ -153,7 +155,7 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
-    timeout-minutes: 25
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:

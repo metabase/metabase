@@ -69,17 +69,30 @@
                      [:persist.check/create-table
                       (fn create-table [conn]
                         (sql.ddl/execute! conn [(sql.ddl/create-table-sql database
-                                                          {:table-name table-name
-                                                           :field-definitions [{:field-name "field"
-                                                                                :base-type :type/Text}]}
-                                                          "select 1")]))]
+                                                                          {:table-name table-name
+                                                                           :field-definitions [{:field-name "field"
+                                                                                                :base-type :type/Text}]}
+                                                                          "select 1")]))]
                      [:persist.check/read-table
                       (fn read-table [conn]
                         (sql.ddl/jdbc-query conn [(format "select * from %s.%s"
-                                                   schema-name table-name)]))]
+                                                          schema-name table-name)]))]
                      [:persist.check/delete-table
                       (fn delete-table [conn]
-                        (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database table-name)]))]]]
+                        (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database table-name)]))]
+                     [:persist.check/create-kv-table
+                      (fn create-kv-table [conn]
+                        (sql.ddl/execute! conn [(format "drop table if exists %s.cache_info"
+                                                        schema-name)])
+                        (sql.ddl/execute! conn (sql/format
+                                                (ddl.i/create-kv-table-honey-sql-form schema-name)
+                                                {:dialect :ansi})))]
+                     [:persist.check/populate-kv-table
+                      (fn create-kv-table [conn]
+                        (sql.ddl/execute! conn (sql/format
+                                                (ddl.i/populate-kv-table-honey-sql-form
+                                                 schema-name)
+                                                {:dialect :ansi})))]]]
     (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
       (jdbc/with-db-transaction
         [tx conn]

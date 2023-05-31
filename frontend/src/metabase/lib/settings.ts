@@ -63,10 +63,16 @@ class MetabaseSettings {
     this._settings = settings;
   }
 
+  /**
+   * @deprecated use getSetting(state, key)
+   */
   get<T extends SettingKey>(key: T): Partial<Settings>[T] {
     return this._settings[key];
   }
 
+  /**
+   * @deprecated set setting values in the redux store
+   */
   set<T extends SettingKey>(key: T, value: Settings[T]) {
     if (this._settings[key] !== value) {
       this._settings[key] = value;
@@ -82,6 +88,9 @@ class MetabaseSettings {
     }
   }
 
+  /**
+   * @deprecated set setting values in the redux store
+   */
   setAll(settings: Settings) {
     const keys = Object.keys(settings) as SettingKey[];
 
@@ -90,58 +99,95 @@ class MetabaseSettings {
     });
   }
 
+  /**
+   * @deprecated call appropriate actions when modifying the setting
+   */
   on(key: SettingKey, callback: SettingListener) {
     this._listeners[key] = this._listeners[key] || [];
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     this._listeners[key]!.push(callback);
   }
 
-  // these are all special accessors which provide a lookup of a property plus some additional help
+  /**
+   * @deprecated use getSetting(state, "admin-email")
+   */
   adminEmail() {
     return this.get("admin-email");
   }
 
+  /**
+   * @deprecated use getSetting(state, "enable-enhancements?")
+   */
   enhancementsEnabled() {
     return this.get("enable-enhancements?");
   }
 
+  /**
+   * @deprecated use getSetting(state, "email-configured?")
+   */
   isEmailConfigured(): boolean {
     return !!this.get("email-configured?");
   }
 
+  /**
+   * @deprecated use getSetting(state, "is-hosted?")
+   */
   isHosted(): boolean {
     return !!this.get("is-hosted?");
   }
 
+  /**
+   * @deprecated use getSetting(state, "cloud-gateway-ips")
+   */
   cloudGatewayIps(): string[] {
     return this.get("cloud-gateway-ips") || [];
   }
 
+  /**
+   * @deprecated use getSetting(state, "has-user-setup")
+   */
   hasUserSetup() {
     return this.get("has-user-setup");
   }
 
+  /**
+   * @deprecated use getSetting(state, "hide-embed-branding?")
+   */
   hideEmbedBranding() {
     return this.get("hide-embed-branding?");
   }
 
+  /**
+   * @deprecated use getSetting(state, "google-auth-enabled")
+   */
   isGoogleAuthEnabled() {
     return this.get("google-auth-enabled");
   }
 
+  /**
+   * @deprecated use getSetting(state, "ldap-enabled")
+   */
   isLdapEnabled() {
     return this.get("ldap-enabled");
   }
 
+  /**
+   * @deprecated use getSetting(state, "ldap-configured?")
+   */
   isLdapConfigured() {
     return this.get("ldap-configured?");
   }
 
-  // JWT or SAML is enabled
+  /**
+   * @deprecated use getSetting(state, "other-sso-enabled?")
+   */
   isOtherSsoEnabled() {
     return this.get("other-sso-enabled?");
   }
 
+  /**
+   * @deprecated use getSetting(state, ...)
+   */
   isSsoEnabled() {
     return (
       this.isLdapEnabled() ||
@@ -150,30 +196,58 @@ class MetabaseSettings {
     );
   }
 
+  /**
+   * @deprecated use getSetting(state, "enable-password-login")
+   */
   isPasswordLoginEnabled() {
     return this.get("enable-password-login");
   }
 
+  /**
+   * @deprecated use getSetting(state, "search-typeahead-enabled")
+   */
   searchTypeaheadEnabled() {
     return this.get("search-typeahead-enabled");
   }
 
+  /**
+   * @deprecated use getSetting(state, "anon-tracking-enabled")
+   */
   trackingEnabled() {
     return this.get("anon-tracking-enabled") || false;
   }
 
+  /**
+   * @deprecated use getSetting(state, "anon-tracking-enabled")
+   */
+  uploadsEnabled() {
+    return !!(this.get("uploads-enabled") && this.get("uploads-database-id"));
+  }
+
+  /**
+   * @deprecated use getSetting(state, "ga-enabled")
+   */
   googleAnalyticsEnabled() {
     return this.get("ga-enabled") || false;
   }
 
+  /**
+   * @deprecated use getSetting(state, "snowplow-enabled")
+   */
   snowplowEnabled() {
     return this.get("snowplow-enabled") || false;
   }
 
+  /**
+   * @deprecated use getSetting(state, "snowplow-url")
+   */
   snowplowUrl() {
     return this.get("snowplow-url");
   }
 
+  /**
+   * @deprecated use getSetting(state, "deprecation-notice-version")
+   */
   deprecationNoticeVersion() {
     return this.get("deprecation-notice-version");
   }
@@ -182,10 +256,16 @@ class MetabaseSettings {
     return this.currentVersion() !== this.deprecationNoticeVersion();
   }
 
+  /**
+   * @deprecated use getSetting(state, "premium-embedding-token")
+   */
   token() {
     return this.get("premium-embedding-token");
   }
 
+  /**
+   * @deprecated use getSetting(state, "custom-formatting")
+   */
   formattingOptions() {
     const opts = this.get("custom-formatting");
     return opts && opts["type/Temporal"] ? opts["type/Temporal"] : {};
@@ -265,15 +345,24 @@ class MetabaseSettings {
     return result != null && result >= 0;
   }
 
+  /**
+   * @deprecated use getSetting(state, "version-info")
+   */
   versionInfo() {
     return this.get("version-info") || {};
   }
 
+  /**
+   * @deprecated use getSetting(state, "version")
+   */
   currentVersion() {
     const version = this.get("version") || {};
     return version.tag;
   }
 
+  /**
+   * @deprecated use getSetting(state, "version-info")
+   */
   latestVersion() {
     const { latest } = this.versionInfo();
     return latest && latest.version;
@@ -283,10 +372,23 @@ class MetabaseSettings {
     return false;
   }
 
+  /**
+   * @deprecated
+   */
   isPaidPlan() {
     return this.isHosted() || this.isEnterprise();
   }
 
+  /**
+   * @deprecated use getSetting(state, "is-metabot-enabled")
+   */
+  isMetabotEnabled() {
+    return this.get("is-metabot-enabled");
+  }
+
+  /**
+   * @deprecated use getSetting(state, "password-complexity")
+   */
   passwordComplexityRequirements(): PasswordComplexity {
     return this.get("password-complexity") || {};
   }
@@ -319,6 +421,9 @@ class MetabaseSettings {
     }
   }
 
+  /**
+   * @deprecated use getSetting(state, "subscription-allowed-domains")
+   */
   subscriptionAllowedDomains(): string[] {
     const setting = this.get("subscription-allowed-domains") || "";
     return setting ? setting.split(",") : [];
@@ -334,4 +439,5 @@ function makeRegexTest(property: string, regex: RegExp) {
 const initValues =
   typeof window !== "undefined" ? _.clone(window.MetabaseBootstrap) : null;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default new MetabaseSettings(initValues);

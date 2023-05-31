@@ -24,6 +24,7 @@ title: DatetimeSubtract
 - "month"
 - "day"
 - "hour"
+- "minute"
 - "second"
 - "millisecond"
 

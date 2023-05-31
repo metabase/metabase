@@ -23,8 +23,9 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
+   [ring.middleware.multipart-params :as mp]
    [schema.core :as schema]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (declare check-403 check-404)
 
@@ -102,7 +103,7 @@
   ([entity id]
    (check-exists? entity :id id))
   ([entity k v & more]
-   (check-404 (apply db/exists? entity k v more))))
+   (check-404 (apply t2/exists? entity k v more))))
 
 (defn check-superuser
   "Check that `*current-user*` is a superuser or throw a 403. This doesn't require a DB call."
@@ -294,9 +295,11 @@
   "Impl macro for [[defendpoint]]; don't use this directly."
   [{:keys [method route fn-name docstr args body arg->schema]}]
   {:pre [(or (string? route) (vector? route))]}
-  (let [method-kw      (method-symbol->keyword method)
-        allowed-params (keys arg->schema)
-        prep-route     #'compojure/prepare-route]
+  (let [method-kw       (method-symbol->keyword method)
+        allowed-params  (keys arg->schema)
+        prep-route      #'compojure/prepare-route
+        multipart?      (get (meta method) :multipart false)
+        handler-wrapper (if multipart? mp/wrap-multipart-params identity)]
     `(def ~(vary-meta fn-name
                       assoc
                       :doc          docstr
@@ -308,10 +311,11 @@
        (compojure/make-route
         ~method-kw
         ~(prep-route route)
-        (fn [request#]
-          (validate-param-values request# (quote ~allowed-params))
-          (compojure/let-request [~args request#]
-            ~@body))))))
+        (~handler-wrapper
+         (fn [request#]
+           (validate-param-values request# (quote ~allowed-params))
+           (compojure/let-request [~args request#]
+                                  ~@body)))))))
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 ;; e.g. `auto-parse`
@@ -348,10 +352,8 @@
   "Define an API function.
    This automatically does several things:
 
-   -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
-      `Integer/parseInt`
-
-   -  converts `route` from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
+   -  converts `route` from a simple form like `\"/:id\"` to a regex-typed one like `[\"/:id\" :id #\"[0-9]+\"]` based
+      on its malli schema
 
    -  sequentially applies specified annotation functions on args to validate them.
 
@@ -366,9 +368,9 @@
   (let [{:keys [args body arg->schema], :as defendpoint-args} (malli-parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
                            :body `((auto-coerce ~args ~arg->schema
-                                               ~@(malli-validate-params arg->schema)
-                                               (wrap-response-if-needed
-                                                (do ~@body))))))))
+                                                ~@(malli-validate-params arg->schema)
+                                                (wrap-response-if-needed
+                                                 (do ~@body))))))))
 
 (defmacro defendpoint-async-schema
   "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params.
@@ -461,10 +463,10 @@
    obj)
 
   ([entity id]
-   (read-check (db/select-one entity :id id)))
+   (read-check (t2/select-one entity :id id)))
 
   ([entity id & other-conditions]
-   (read-check (apply db/select-one entity :id id other-conditions))))
+   (read-check (apply t2/select-one entity :id id other-conditions))))
 
 (defn write-check
   "Check whether we can write an existing OBJ, or ENTITY with ID.
@@ -476,9 +478,9 @@
    (check-403 (mi/can-write? obj))
    obj)
   ([entity id]
-   (write-check (db/select-one entity :id id)))
+   (write-check (t2/select-one entity :id id)))
   ([entity id & other-conditions]
-   (write-check (apply db/select-one entity :id id other-conditions))))
+   (write-check (apply t2/select-one entity :id id other-conditions))))
 
 (defn create-check
   "NEW! Check whether the current user has permissions to CREATE a new instance of an object with properties in map `m`.
@@ -521,11 +523,11 @@
   endpoint) is applied.
 
     ;; assuming we have a Collection 10, that is not currently archived...
-    (api/column-will-change? :archived (db/select-one Collection :id 10) {:archived true}) ; -> true, because value will change
+    (api/column-will-change? :archived (t2/select-one Collection :id 10) {:archived true}) ; -> true, because value will change
 
-    (api/column-will-change? :archived (db/select-one Collection :id 10) {:archived false}) ; -> false, because value did not change
+    (api/column-will-change? :archived (t2/select-one Collection :id 10) {:archived false}) ; -> false, because value did not change
 
-    (api/column-will-change? :archived (db/select-one Collection :id 10) {}) ; -> false; value not specified in updates (request body)"
+    (api/column-will-change? :archived (t2/select-one Collection :id 10) {}) ; -> false; value not specified in updates (request body)"
   [k :- schema/Keyword, object-before-updates :- su/Map, object-updates :- su/Map]
   (boolean
    (and (contains? object-updates k)
@@ -542,9 +544,9 @@
    new-position  :- (schema/maybe su/IntGreaterThanZero)]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
                      (doseq [model '[Card Dashboard Pulse]]
-                       (db/update-where! model {:collection_id       collection-id
-                                                :collection_position position-update-clause}
-                         :collection_position [plus-or-minus :collection_position 1])))]
+                       (t2/update! model {:collection_id       collection-id
+                                          :collection_position position-update-clause}
+                                   {:collection_position [plus-or-minus :collection_position 1]})))]
     (when (not= new-position old-position)
       (cond
         (and (nil? new-position)
@@ -606,9 +608,32 @@
          (reconcile-position-for-collection! old-collection-id old-position nil)
          (reconcile-position-for-collection! new-collection-id nil new-position))))))
 
+
+;;; ------------------------------------------ PARAM PARSING FNS ----------------------------------------
+
 (defn bit->boolean
   "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
   [v]
   (if (number? v)
     (not (zero? v))
     v))
+
+(defn parse-multi-values-param
+  "Parse a param that could have a single value or multiple values using `parse-fn`.
+  Always return a vector.
+
+  Used for API that can parse single value or multiple values for a param:
+  e.g:
+    single value: api/card/series?exclude_ids=1
+    multi values: api/card/series?exclude_ids=1&exclude_ids=2
+
+  Example usage:
+    (parse-multi-values-param \"1\" parse-long)
+    => [1]
+
+    (parse-multi-values-param [\"1\" \"2\"] parse-long)
+    => [1, 2]"
+  [xs parse-fn]
+  (if (sequential? xs)
+    (map parse-fn xs)
+    [(parse-fn xs)]))

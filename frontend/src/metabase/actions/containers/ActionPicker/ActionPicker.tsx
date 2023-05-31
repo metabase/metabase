@@ -8,7 +8,6 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import Actions from "metabase/entities/actions";
 import Search from "metabase/entities/search";
 
-import { isImplicitAction } from "metabase/actions/utils";
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 
 import type { Card, WritebackAction } from "metabase-types/api";
@@ -25,6 +24,7 @@ import {
   NewActionButton,
 } from "./ActionPicker.styled";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ActionPicker({
   models,
   actions,
@@ -110,7 +110,7 @@ function ModelActionPicker({
                 onClick={() => onClick(action)}
               >
                 <span>{action.name}</span>
-                {!isImplicitAction(action) && (
+                {action.type !== "implicit" && (
                   <EditButton
                     icon="pencil"
                     onlyIcon
@@ -136,7 +136,7 @@ function ModelActionPicker({
         )}
       </ModelCollapseSection>
       {isActionCreatorOpen && (
-        <Modal wide onClose={closeModal}>
+        <Modal wide onClose={closeModal} closeOnClickOutside>
           <ActionCreator
             modelId={model.id}
             databaseId={model.database_id}

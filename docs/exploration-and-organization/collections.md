@@ -6,7 +6,7 @@ redirect_from:
 
 # Collections
 
- After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions.
+ After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions and dashboards.
 
 ![Our analytics](./images/our-analytics-page.png)
 
@@ -16,15 +16,17 @@ Collections are the main way to organize questions, dashboards, and [models][mod
 
 ### Regular collections
 
-They're just basic collections. You can put stuff in them.
+They're like file-system folders. You can put stuff in them.
 
 ### Official collections
 
 {% include plans-blockquote.html feature="Official collections" %}
 
-These are special collections, in that they have a badge to let people know that the items in this collection are the ones people should be looking at (or whatever "official" means to you). Questions and dashboards in official collections are also more likely to show up at the top of search results.
-
 ![Official collections](./images/official-collection.png)
+
+Metabase admins can designate collections as "official". These collections have a yellow badge to let people know that the items in the collection are the ones people should be looking at (or whatever "official" means to you). Questions and dashboards in official collections are also more likely to show up at the top of search results. Pairing Official badges with [verified items](./exploration.md#verified-items) can help everyone in your Metabase sort out which questions people can trust.
+
+To add an official badge to a collection, an admin can visit the collection and click on the dot dot dot menu (**...**) and select **Make collection official**. Admins can also remove an official badge in the same menu. Admins can also mark a collection as official or not when they first create the collection.
 
 ## Collection permissions
 
@@ -62,5 +64,11 @@ Note that you have to have Curate permission for the collection that you're movi
 
 You can add events to collections, and organize those events into timelines. See [Events and timelines](events-and-timelines.md).
 
+## Further reading
+
+- [Keeping your analytics organized](https://www.metabase.com/learn/administration/same-page)
+- [Multiple environments](https://www.metabase.com/learn/administration/multi-env#one-collection-per-environment)
+
 [dashboards]: ../dashboards/introduction.md
 [models]: ../data-modeling/models.md
+

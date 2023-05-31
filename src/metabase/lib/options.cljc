@@ -1,7 +1,10 @@
 (ns metabase.lib.options
   (:require
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
+
+;;; TODO -- not 100% sure we actually need all of this stuff anymore.
 
 (defn- mbql-clause? [x]
   (and (vector? x)
@@ -38,7 +41,9 @@
 
 (mu/defn with-options
   "Update `x` so its [[options]] are `new-options`. If the clause or map already has options, this will
-  *replace* the old options; if it does not, this will the new options.
+  *replace* the old options; if it does not, this will set the new options.
+
+  If `x` is a map with `:lib/options` and `new-options` is `empty?`, this will drop `:lib/options` entirely.
 
   You should probably prefer [[update-options]] to using this directly, so you don't stomp over existing stuff
   unintentionally. Implement this if you need to teach Metabase lib how to support something that doesn't follow the
@@ -46,10 +51,10 @@
   [x new-options :- [:maybe map?]]
   (cond
     (map? x)
-    (assoc x :lib/options new-options)
+    (u/assoc-dissoc x :lib/options (not-empty new-options))
 
     (mbql-clause? x)
-    (if (map? (second x))
+    (if ((some-fn nil? map?) (second x))
       (assoc (vec x) 1 new-options)
       (into [(first x) new-options] (rest x)))
 

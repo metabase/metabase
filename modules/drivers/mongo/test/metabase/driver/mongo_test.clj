@@ -7,9 +7,11 @@
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.mongo :as mongo]
+            [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.driver.mongo.util :as mongo.util]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.util :as mbql.u]
+            [metabase.models.card :refer [Card]]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :as table :refer [Table]]
@@ -21,8 +23,9 @@
             [metabase.test.data.mongo :as tdm]
             [metabase.util.log :as log]
             [monger.collection :as mcoll]
+            [monger.core :as mg]
             [taoensso.nippy :as nippy]
-            [toucan.db :as db])
+            [toucan2.core :as t2])
   (:import org.bson.types.ObjectId))
 
 ;; ## Constants + Helper Fns/Macros
@@ -87,7 +90,7 @@
               :expected false}]]
       (testing (str "supports with " dbms_version)
         (is (= expected
-               (let [db (db/insert! Database {:name "dummy", :engine "mongo", :dbms_version dbms_version})]
+               (let [db (first (t2/insert-returning-instances! Database {:name "dummy", :engine "mongo", :dbms_version dbms_version}))]
                  (driver/database-supports? :mongo :expressions db))))))))
 
 
@@ -118,6 +121,55 @@
                                 :type     :native
                                 :database (mt/id)})
              (m/dissoc-in [:data :results_metadata] [:data :insights]))))))
+
+(deftest nested-native-query-test
+  (mt/test-driver :mongo
+    (testing "Mbql query with nested native source query _returns correct results_ (#30112)"
+        (mt/with-temp Card [{:keys [id]} {:dataset_query {:type     :native
+                                                          :native   {:collection    "venues"
+                                                                     :query         native-query}
+                                                          :database (mt/id)}}]
+          (let [query (mt/mbql-query nil
+                        {:source-table (str "card__" id)
+                         :limit        1})]
+            (is (partial=
+                 {:status :completed
+                  :data   {:native_form {:collection "venues"
+                                         :query      (conj (mongo.qp/parse-query-string native-query)
+                                                           {"$limit" 1})}
+                           :rows        [[1]]}}
+                 (qp/process-query query))))))
+    (testing "Mbql query with nested native source query _aggregates_ correctly (#30112)"
+      (let [query-str (str "[{\"$project\":\n"
+                           "   {\"_id\": \"$_id\",\n"
+                           "    \"name\": \"$name\",\n"
+                           "    \"category_id\": \"$category_id\",\n"
+                           "    \"latitude\": \"$latitude\",\n"
+                           "    \"longitude\": \"$longitude\",\n"
+                           "    \"price\": \"$price\"}\n"
+                           "}]")]
+        (mt/with-temp Card [{:keys [id]} {:dataset_query {:type     :native
+                                                          :native   {:collection    "venues"
+                                                                     :query         query-str}
+                                                          :database (mt/id)}}]
+          (let [query (mt/mbql-query venues
+                        {:source-table (str "card__" id)
+                         :aggregation [:count]
+                         :breakout [*category_id/Integer]
+                         :order-by [[:desc [:aggregation 0]]]
+                         :limit 5})]
+            (is (partial=
+                 {:status :completed
+                  :data   {:native_form
+                           {:collection "venues"
+                            :query (conj (mongo.qp/parse-query-string query-str)
+                                         {"$group" {"_id" {"category_id" "$category_id"}, "count" {"$sum" 1}}}
+                                         {"$sort" {"_id" 1}}
+                                         {"$project" {"_id" false, "category_id" "$_id.category_id", "count" true}}
+                                         {"$sort" {"count" -1, "category_id" 1}}
+                                         {"$limit" 5})}
+                           :rows [[7 10] [50 10] [40 9] [2 8] [5 7]]}}
+                 (qp/process-query query)))))))))
 
 ;; ## Tests for individual syncing functions
 
@@ -158,7 +210,7 @@
                        :base-type         :type/Integer
                        :pk?               true
                        :database-position 0}}}
-           (driver/describe-table :mongo (mt/db) (db/select-one Table :id (mt/id :venues)))))))
+           (driver/describe-table :mongo (mt/db) (t2/select-one Table :id (mt/id :venues)))))))
 
 (deftest nested-columns-test
   (mt/test-driver :mongo
@@ -199,7 +251,7 @@
               {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :semantic_type :type/Name}]
              (map
               (partial into {})
-              (db/select [Field :name :database_type :base_type :semantic_type]
+              (t2/select [Field :name :database_type :base_type :semantic_type]
                 :table_id (mt/id :bird_species)
                 {:order-by [:name]})))))))
 
@@ -226,15 +278,15 @@
                    {:name "max_wingspan", :database_type "java.lang.Long", :base_type :type/Integer, :semantic_type nil}}
                  (into #{}
                        (map (partial into {}))
-                       (db/select [Field :name :database_type :base_type :semantic_type]
+                       (t2/select [Field :name :database_type :base_type :semantic_type]
                          :table_id (mt/id :bird_species)
                          {:order-by [:name]})))))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :mongo
     (testing "Should return the latest `nested-field-sample-limit` rows"
-      (let [table (db/select-one Table :id (mt/id :venues))
-            fields (map #(db/select-one Field :id (mt/id :venues %)) [:name :category_id])
+      (let [table (t2/select-one Table :id (mt/id :venues))
+            fields (map #(t2/select-one Field :id (mt/id :venues %)) [:name :category_id])
             rff (constantly conj)]
         (with-redefs [metadata-queries/nested-field-sample-limit 5]
           (is (= [["Mohawk Bend" 46]
@@ -251,7 +303,7 @@
             {:active true, :name "checkins"}
             {:active true, :name "users"}
             {:active true, :name "venues"}]
-           (for [field (db/select [Table :name :active]
+           (for [field (t2/select [Table :name :active]
                          :db_id (mt/id)
                          {:order-by [:name]})]
              (into {} field)))
@@ -277,7 +329,7 @@
                {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
                {:semantic_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
              (vec (for [table-name table-names]
-                    (vec (for [field (db/select [Field :name :base_type :semantic_type]
+                    (vec (for [field (t2/select [Field :name :base_type :semantic_type]
                                        :active   true
                                        :table_id (mt/id table-name)
                                        {:order-by [:name]})]
@@ -380,7 +432,7 @@
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (empty?
-           (mbql.u/match-one (->> (magic/automagic-analysis (db/select-one Field :id (mt/id :venues :price)) {})
+           (mbql.u/match-one (->> (magic/automagic-analysis (t2/select-one Field :id (mt/id :venues :price)) {})
                                   :ordered_cards
                                   (mapcat (comp :breakout :query :dataset_query :card)))
              [:field _ (_ :guard :binning)]))))))
@@ -427,7 +479,7 @@
                             :collection  "venues"}})))))))
 
 (defn- create-database-from-row-maps! [database-name collection-name row-maps]
-  (or (db/select-one Database :engine "mongo", :name database-name)
+  (or (t2/select-one Database :engine "mongo", :name database-name)
       (let [dbdef {:database-name database-name}]
         ;; destroy Mongo database if it already exists.
         (tx/destroy-db! :mongo dbdef)
@@ -445,7 +497,7 @@
             (log/infof "Inserted %d rows into %s collection %s."
                        (count row-maps) (pr-str database-name) (pr-str collection-name)))
           ;; now sync the Database.
-          (let [db (db/insert! Database {:name database-name, :engine "mongo", :details details})]
+          (let [db (first (t2/insert-returning-instances! Database {:name database-name, :engine "mongo", :details details}))]
             (sync/sync-database! db)
             db)))))
 
@@ -488,3 +540,19 @@
                (mt/rows
                 (mt/run-mbql-query bird_species
                   {:filter [:contains $bird_species._ "nett"]}))))))))
+
+(deftest strange-versionArray-test
+  (mt/test-driver :mongo
+    (testing "Negative values in versionArray are ignored (#29678)"
+      (with-redefs [mg/command (constantly {"version" "4.0.28-23"
+                                            "versionArray" [4 0 29 -100]})]
+        (is (= {:version "4.0.28-23"
+                :semantic-version [4 0 29]}
+               (driver/dbms-version :mongo (mt/db))))))
+
+    (testing "Any values after rubbish in versionArray are ignored"
+      (with-redefs [mg/command (constantly {"version" "4.0.28-23"
+                                            "versionArray" [4 0 "NaN" 29]})]
+        (is (= {:version "4.0.28-23"
+                :semantic-version [4 0]}
+               (driver/dbms-version :mongo (mt/db))))))))

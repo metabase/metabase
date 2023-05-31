@@ -24,7 +24,7 @@
 (mr/def ::fields
   [:or
    [:enum :all :none]
-   ;;; TODO -- Pretty sure fields are supposed to be unique, even excluding `:lib/uuid`
+   ;; TODO -- Pretty sure fields are supposed to be unique, even excluding `:lib/uuid`
    [:sequential {:min 1} [:ref ::ref/ref]]])
 
 ;;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
@@ -37,12 +37,15 @@
    {:gen/fmap #(str % "-" (random-uuid))}
    ::common/non-blank-string])
 
+(mr/def ::conditions
+  [:sequential {:min 1} [:ref ::expression/boolean]])
+
 (mr/def ::join
   [:map
    [:lib/type    [:= :mbql/join]]
    [:lib/options ::common/options]
    [:stages      [:ref :metabase.lib.schema/stages]]
-   [:condition   [:ref ::expression/boolean]]
+   [:conditions  ::conditions]
    [:fields {:optional true} ::fields]
    [:alias  {:optional true} ::alias]])
 

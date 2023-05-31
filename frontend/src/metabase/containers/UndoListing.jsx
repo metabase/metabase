@@ -1,14 +1,15 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { useSelector, useDispatch } from "react-redux";
 import { Motion, spring } from "react-motion";
 import { t } from "ttag";
 
+import { useSelector, useDispatch } from "metabase/lib/redux";
 import { capitalize, inflect } from "metabase/lib/formatting";
 import { dismissUndo, performUndo } from "metabase/redux/undo";
 
 import BodyComponent from "metabase/components/BodyComponent";
 
+import { isReducedMotionPreferred } from "metabase/lib/dom";
 import {
   CardContent,
   CardContentSide,
@@ -60,20 +61,19 @@ function UndoToast({ undo, onUndo, onDismiss }) {
         <ToastCard
           dark
           data-testid="toast-undo"
-          translateY={translateY}
+          translateY={isReducedMotionPreferred() ? 0 : translateY}
           color={undo.toastColor}
         >
           <CardContent>
             <CardContentSide>
-              <CardIcon name={undo.icon || "check"} color="white" />
+              {undo.icon && <CardIcon name={undo.icon} color="white" />}
               {renderMessage(undo)}
             </CardContentSide>
             <CardContentSide>
               {undo.actions?.length > 0 && (
-                <UndoButton
-                  role="button"
-                  onClick={onUndo}
-                >{t`Undo`}</UndoButton>
+                <UndoButton role="button" onClick={onUndo}>
+                  {undo.actionLabel ?? t`Undo`}
+                </UndoButton>
               )}
               <DismissIcon name="close" onClick={onDismiss} />
             </CardContentSide>

@@ -8,7 +8,9 @@ import Icon from "metabase/components/Icon";
 
 import { alpha } from "metabase/lib/colors";
 
-export const NotebookCell = styled.div`
+const CONTAINER_PADDING = "10px";
+
+const _NotebookCell = styled.div`
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -18,7 +20,10 @@ export const NotebookCell = styled.div`
   color: ${props => props.color};
 `;
 
-NotebookCell.displayName = "NotebookCell";
+export const NotebookCell = Object.assign(_NotebookCell, {
+  displayName: "NotebookCell",
+  CONTAINER_PADDING,
+});
 
 const NotebookCellItemContainer = styled.div`
   display: flex;
@@ -42,8 +47,6 @@ const NotebookCellItemContainer = styled.div`
     opacity: 0.6;
   }
 `;
-
-const CONTAINER_PADDING = "10px";
 
 const NotebookCellItemContentContainer = styled.div`
   display: flex;
@@ -86,10 +89,11 @@ export function NotebookCellItem(props) {
     right,
     rightContainerStyle,
     children,
+    readOnly,
     ...restProps
   } = props;
 
-  const hasRightSide = React.isValidElement(right);
+  const hasRightSide = React.isValidElement(right) && !readOnly;
   const mainContentRoundedCorners = ["left"];
   if (!hasRightSide) {
     mainContentRoundedCorners.push("right");
@@ -125,7 +129,6 @@ export function NotebookCellItem(props) {
 }
 
 NotebookCellItem.displayName = "NotebookCellItem";
-NotebookCell.CONTAINER_PADDING = CONTAINER_PADDING;
 
 export const NotebookCellAdd = ({ initialAddText, ...props }) => (
   <NotebookCellItem {...props} inactive={!!initialAddText}>

@@ -19,21 +19,45 @@
    [metabase.moderation :as moderation]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
-   [toucan.models :as models]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
-(models/defmodel Card :report_card)
+(def Card
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the Card symbol in our codebase."
+  :model/Card)
 
-;;; You can read/write a Card if you can read/write its parent Collection
-(derive Card ::perms/use-parent-collection-perms)
+(methodical/defmethod t2/table-name :model/Card [_model] :report_card)
+
+(methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
+  [_original-model _k]
+  :model/Card)
+
+(t2/deftransforms :model/Card
+  {:dataset_query          mi/transform-metabase-query
+   :display                mi/transform-keyword
+   :embedding_params       mi/transform-json
+   :query_type             mi/transform-keyword
+   :result_metadata        mi/transform-result-metadata
+   :visualization_settings mi/transform-visualization-settings
+   :parameters             mi/transform-parameters-list
+   :parameter_mappings     mi/transform-parameters-list})
+
+(doto :model/Card
+  (derive :metabase/model)
+  ;; You can read/write a Card if you can read/write its parent Collection
+  (derive ::perms/use-parent-collection-perms)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -41,14 +65,14 @@
   :dashboard_count
   "Return the number of Dashboards this Card is in."
   [{:keys [id]}]
-  (db/count 'DashboardCard, :card_id id))
+  (t2/count 'DashboardCard, :card_id id))
 
 (mi/define-simple-hydration-method parameter-usage-count
   :parameter_usage_count
   "Return the number of dashboard/card filters and other widgets that use this card to populate their available
   values (via ParameterCards)"
   [{:keys [id]}]
-  (db/count ParameterCard, :card_id id))
+  (t2/count ParameterCard, :card_id id))
 
 (mi/define-simple-hydration-method average-query-time
   :average_query_time
@@ -81,7 +105,7 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defmethod revision/serialize-instance Card
+(defmethod revision/serialize-instance :model/Card
   ([instance]
    (revision/serialize-instance Card nil instance))
   ([_model _id instance]
@@ -127,7 +151,7 @@
 
     ;; this is an update, and dataset_query hasn't changed => no-op
     (and existing-card-id
-         (= query (db/select-one-field :dataset_query Card :id existing-card-id)))
+         (= query (t2/select-one-fn :dataset_query Card :id existing-card-id)))
     (do
       (log/debugf "Not inferring result metadata for Card %s: query has not changed" existing-card-id)
       card)
@@ -169,7 +193,7 @@
                   {:status-code 400}))
 
         :else
-        (recur (or (db/select-one-field :dataset_query Card :id source-card-id)
+        (recur (or (t2/select-one-fn :dataset_query Card :id source-card-id)
                    (throw (ex-info (tru "Card {0} does not exist." source-card-id)
                                    {:status-code 404})))
                (conj ids-already-seen source-card-id))))))
@@ -185,7 +209,8 @@
   ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase/parameters/utils/cards.js
   (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
         :when                         (and tag-type
-                                           (or widget-type (not= tag-type :dimension)))]
+                                           (or (and widget-type (not= widget-type :none))
+                                               (not= tag-type :dimension)))]
     {:id      (:id tag)
      :type    (or widget-type (cond (= tag-type :date)   :date/single
                                     (= tag-type :string) :string/=
@@ -221,7 +246,7 @@
                                                                      :where     [:in :field.id (set field-ids)]})]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
-                                    (format "%d %s" db-id (pr-str (db/select-one-field :name 'Database :id db-id))))]
+                                    (format "%d %s" db-id (pr-str (t2/select-one-fn :name 'Database :id db-id))))]
                             (tru "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)
@@ -255,25 +280,10 @@
       (params/assert-valid-parameter-mappings card)
       (collection/check-collection-namespace Card (:collection_id card)))))
 
-(defn- post-insert [card]
-  ;; if this Card has any native template tag parameters we need to update FieldValues for any Fields that are
-  ;; eligible for FieldValues and that belong to a 'On-Demand' database
-  (u/prog1 card
-    (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
-      (log/info "Card references Fields in params:" field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
-
-(defonce
-  ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
-  This is called as part of the `pre-update` method for a Card.
-
-  For the OSS edition, there is no implementation for this function -- it is a no-op. For Metabase Enterprise Edition,
-  the implementation of this function is
-  [[metabase-enterprise.sandbox.models.group-table-access-policy/update-card-check-gtaps]] and is installed by that
-  namespace."}
-  pre-update-check-sandbox-constraints
-  (atom identity))
+(defenterprise pre-update-check-sandbox-constraints
+ "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  metabase-enterprise.sandbox.models.group-table-access-policy
+  [_])
 
 (defn- update-parameters-using-card-as-values-source
   "Update the config of parameter on any Dashboard/Card use this `card` as values source .
@@ -282,11 +292,11 @@
   - card is archived
   - card.result_metadata changes and the parameter values source field can't be found anymore"
   [{id :id, :as changes}]
-  (let [parameter-cards   (db/select ParameterCard :card_id id)]
+  (let [parameter-cards   (t2/select ParameterCard :card_id id)]
     (doseq [[[po-type po-id] param-cards]
             (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
       (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
-            {:keys [parameters]}   (db/select-one [model :parameters] :id po-id)
+            {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
             affected-param-ids-set (cond
                                      ;; update all parameters that use this card as source
                                      (:archived changes)
@@ -313,7 +323,7 @@
                                     parameter))
                                 parameters)]
         (when-not (= parameters new-parameters)
-          (db/update! model po-id {:parameters new-parameters}))))))
+          (t2/update! model po-id {:parameters new-parameters}))))))
 
 (defn model-supports-implicit-actions?
   "A model with implicit action supported iff they are a raw table,
@@ -329,11 +339,11 @@
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
   [model-id]
-  (when-let [action-ids (t2/select-pks-set 'Action {:select [:action.id]
-                                                    :from   [:action]
-                                                    :join   [:implicit_action
-                                                             [:= :action.id :implicit_action.action_id]]
-                                                    :where  [:= :action.model_id model-id]})]
+  (when-let [action-ids (t2/select-pks-set  'Action {:select [:action.id]
+                                                     :from   [:action]
+                                                     :join   [:implicit_action
+                                                              [:= :action.id :implicit_action.action_id]]
+                                                     :where  [:= :action.model_id model-id]})]
     (t2/delete! 'Action :id [:in action-ids])))
 
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
@@ -344,10 +354,10 @@
           old-card-info (when (or (contains? changes :dataset)
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
-                          (db/select-one [Card :dataset_query :dataset] :id id))]
+                          (t2/select-one [:model/Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
       (when archived?
-        (db/delete! 'DashboardCard :card_id id))
+        (t2/delete! 'DashboardCard :card_id id))
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (get-in changes [:dataset_query :native])
@@ -383,50 +393,49 @@
       (update-parameters-using-card-as-values-source changes)
       (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
       ;; additional checks (Enterprise Edition only)
-      (@pre-update-check-sandbox-constraints changes)
+      (pre-update-check-sandbox-constraints changes)
       (assert-valid-model (merge old-card-info changes)))))
 
+(t2/define-after-select :model/Card
+  [card]
+  (public-settings/remove-public-uuid-if-public-sharing-is-disabled card))
+
+(t2/define-before-insert :model/Card
+  [card]
+  (-> card
+      maybe-normalize-query
+      populate-result-metadata
+      pre-insert
+      populate-query-fields))
+
+(t2/define-after-insert :model/Card
+  [card]
+  (u/prog1 card
+    (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
+      (log/info "Card references Fields in params:" field-ids)
+      (field-values/update-field-values-for-on-demand-dbs! field-ids))
+    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
+
+(t2/define-before-update :model/Card
+  [card]
+  (-> (merge (t2/instance :model/Card {:id (:id card)})
+             (t2/changes card))
+      maybe-normalize-query
+      populate-result-metadata
+      pre-update
+      populate-query-fields))
+
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
-(defn- pre-delete [{:keys [id]}]
+(t2/define-before-delete :model/Card
+  [{:keys [id] :as _card}]
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
-  (db/delete! ParameterCard :card_id id)
-  (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (db/delete! 'Revision :model "Card", :model_id id))
+  (t2/delete! ParameterCard :card_id id)
+  (t2/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
+  (t2/delete! 'Revision :model "Card", :model_id id))
 
-(defn- result-metadata-out
-  "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
-  [metadata]
-  (when-let [metadata (not-empty (mi/json-out-with-keywordization metadata))]
-    (seq (map mbql.normalize/normalize-source-metadata metadata))))
-
-(models/add-type! ::result-metadata
-  :in mi/json-in
-  :out result-metadata-out)
-
-(mi/define-methods
- Card
- {:hydration-keys (constantly [:card])
-  :types          (constantly {:dataset_query          :metabase-query
-                               :display                :keyword
-                               :embedding_params       :json
-                               :query_type             :keyword
-                               :result_metadata        ::result-metadata
-                               :visualization_settings :visualization-settings
-                               :parameters             :parameters-list
-                               :parameter_mappings     :parameters-list})
-  :properties     (constantly {::mi/timestamped? true
-                               ::mi/entity-id    true})
-  ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
-  ;; functions those fns call assume normalized queries
-  :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
-  :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
-  :post-insert    post-insert
-  :pre-delete     pre-delete
-  :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
-
-(defmethod serdes/hash-fields Card
+(defmethod serdes/hash-fields :model/Card
   [_card]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
@@ -435,20 +444,20 @@
 (defmethod serdes/extract-query "Card" [_ opts]
   (serdes/extract-query-collections Card opts))
 
-(defn- export-result-metadata [metadata]
-  (when metadata
+(defn- export-result-metadata [card metadata]
+  (when (and (:dataset card) metadata)
     (for [m metadata]
       (-> m
-          (m/update-existing :table_id  serdes/export-table-fk)
-          (m/update-existing :id        serdes/export-field-fk)
+          (m/update-existing :table_id  serdes/*export-table-fk*)
+          (m/update-existing :id        serdes/*export-field-fk*)
           (m/update-existing :field_ref serdes/export-mbql)))))
 
 (defn- import-result-metadata [metadata]
   (when metadata
     (for [m metadata]
       (-> m
-          (m/update-existing :table_id  serdes/import-table-fk)
-          (m/update-existing :id        serdes/import-field-fk)
+          (m/update-existing :table_id  serdes/*import-table-fk*)
+          (m/update-existing :id        serdes/*import-field-fk*)
           (m/update-existing :field_ref serdes/import-mbql)))))
 
 (defn- result-metadata-deps [metadata]
@@ -466,16 +475,16 @@
   ;; :creator_id as the user's email.
   (try
     (-> (serdes/extract-one-basics "Card" card)
-        (update :database_id            serdes/export-fk-keyed 'Database :name)
-        (update :table_id               serdes/export-table-fk)
-        (update :collection_id          serdes/export-fk 'Collection)
-        (update :creator_id             serdes/export-user)
-        (update :made_public_by_id      serdes/export-user)
+        (update :database_id            serdes/*export-fk-keyed* 'Database :name)
+        (update :table_id               serdes/*export-table-fk*)
+        (update :collection_id          serdes/*export-fk* 'Collection)
+        (update :creator_id             serdes/*export-user*)
+        (update :made_public_by_id      serdes/*export-user*)
         (update :dataset_query          serdes/export-mbql)
         (update :parameters             serdes/export-parameters)
         (update :parameter_mappings     serdes/export-parameter-mappings)
         (update :visualization_settings serdes/export-visualization-settings)
-        (update :result_metadata        export-result-metadata))
+        (update :result_metadata        (partial export-result-metadata card)))
     (catch Exception e
       (throw (ex-info "Failed to export Card" {:card card} e)))))
 
@@ -483,11 +492,11 @@
   [card]
   (-> card
       serdes/load-xform-basics
-      (update :database_id            serdes/import-fk-keyed 'Database :name)
-      (update :table_id               serdes/import-table-fk)
-      (update :creator_id             serdes/import-user)
-      (update :made_public_by_id      serdes/import-user)
-      (update :collection_id          serdes/import-fk 'Collection)
+      (update :database_id            serdes/*import-fk-keyed* 'Database :name)
+      (update :table_id               serdes/*import-table-fk*)
+      (update :creator_id             serdes/*import-user*)
+      (update :made_public_by_id      serdes/*import-user*)
+      (update :collection_id          serdes/*import-fk* 'Collection)
       (update :dataset_query          serdes/import-mbql)
       (update :parameters             serdes/import-parameters)
       (update :parameter_mappings     serdes/import-parameter-mappings)
@@ -510,7 +519,7 @@
        vec))
 
 (defmethod serdes/descendants "Card" [_model-name id]
-  (let [card               (db/select-one Card :id id)
+  (let [card               (t2/select-one Card :id id)
         source-table       (some->  card :dataset_query :query :source-table)
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))

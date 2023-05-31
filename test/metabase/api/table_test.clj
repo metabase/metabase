@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.table :as api.table]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
    [metabase.mbql.util :as mbql.u]
@@ -16,7 +17,7 @@
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -48,7 +49,8 @@
     :refingerprint               nil
     :auto_run_queries            true
     :settings                    nil
-    :cache_ttl                   nil}))
+    :cache_ttl                   nil
+    :is_audit                    false}))
 
 (defn- table-defaults []
   (merge
@@ -110,11 +112,11 @@
   (testing "GET /api/table/:id"
     (is (= (merge
             (dissoc (table-defaults) :segments :field_values :metrics)
-            (db/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :venues))
+            (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :venues))
             {:schema       "PUBLIC"
              :name         "VENUES"
              :display_name "Venues"
-             :pk_field     (table/pk-field-id (db/select-one Table :id (mt/id :venues)))
+             :pk_field     (table/pk-field-id (t2/select-one Table :id (mt/id :venues)))
              :id           (mt/id :venues)
              :db_id        (mt/id)})
            (mt/user-http-request :rasta :get 200 (format "table/%d" (mt/id :venues)))))
@@ -128,10 +130,16 @@
 
 (defn- default-dimension-options []
   (as-> @#'api.table/dimension-options-for-response options
-       (m/map-vals #(update % :name str) options)
-       (m/map-keys #(Long/parseLong %) options)
-       ;; since we're comparing API responses, need to de-keywordize the `:field` clauses
-       (mbql.u/replace options :field (mt/obj->json->obj &match))))
+    (m/map-vals #(-> %
+                     (update :name str)
+                     (update :type
+                             (fn [t]
+                               (apply str
+                                      ((juxt namespace (constantly "/") name) t)))))
+                options)
+    (m/map-keys #(Long/parseLong %) options)
+    ;; since we're comparing API responses, need to de-keywordize the `:field` clauses
+    (mbql.u/replace options :field (mt/obj->json->obj &match))))
 
 (defn- query-metadata-defaults []
   (-> (table-defaults)
@@ -142,12 +150,12 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (db/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
+              (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
                :entity_type  "entity/UserTable"
-               :fields       [(assoc (field-details (db/select-one Field :id (mt/id :users :id)))
+               :fields       [(assoc (field-details (t2/select-one Field :id (mt/id :users :id)))
                                      :semantic_type     "type/PK"
                                      :table_id         (mt/id :users)
                                      :name             "ID"
@@ -159,7 +167,7 @@
                                      :has_field_values "none"
                                      :database_required false
                                      :database_is_auto_increment true)
-                              (assoc (field-details (db/select-one Field :id (mt/id :users :name)))
+                              (assoc (field-details (t2/select-one Field :id (mt/id :users :name)))
                                      :semantic_type             "type/Name"
                                      :table_id                 (mt/id :users)
                                      :name                     "NAME"
@@ -175,7 +183,7 @@
                                      :database_position        1
                                      :database_required        false
                                      :database_is_auto_increment false)
-                              (assoc (field-details (db/select-one Field :id (mt/id :users :last_login)))
+                              (assoc (field-details (t2/select-one Field :id (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
                                      :name                     "LAST_LOGIN"
                                      :display_name             "Last Login"
@@ -184,13 +192,13 @@
                                      :effective_type           "type/DateTime"
                                      :visibility_type          "normal"
                                      :dimension_options        (var-get #'api.table/datetime-dimension-indexes)
-                                     :default_dimension_option (var-get #'api.table/date-default-index)
+                                     :default_dimension_option (var-get #'api.table/datetime-default-index)
                                      :has_field_values         "none"
                                      :position                 2
                                      :database_position        2
                                      :database_required        false
                                      :database_is_auto_increment false)
-                              (assoc (field-details (db/select-one Field :table_id (mt/id :users), :name "PASSWORD"))
+                              (assoc (field-details (t2/select-one Field :table_id (mt/id :users), :name "PASSWORD"))
                                      :semantic_type     "type/Category"
                                      :table_id         (mt/id :users)
                                      :name             "PASSWORD"
@@ -213,12 +221,12 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (db/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
+              (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
                :entity_type  "entity/UserTable"
-               :fields       [(assoc (field-details (db/select-one Field :id (mt/id :users :id)))
+               :fields       [(assoc (field-details (t2/select-one Field :id (mt/id :users :id)))
                                      :table_id         (mt/id :users)
                                      :semantic_type     "type/PK"
                                      :name             "ID"
@@ -229,7 +237,7 @@
                                      :has_field_values "none"
                                      :database_required false
                                      :database_is_auto_increment true)
-                              (assoc (field-details (db/select-one Field :id (mt/id :users :name)))
+                              (assoc (field-details (t2/select-one Field :id (mt/id :users :name)))
                                      :table_id         (mt/id :users)
                                      :semantic_type     "type/Name"
                                      :name             "NAME"
@@ -242,7 +250,7 @@
                                      :database_position 1
                                      :database_required false
                                      :database_is_auto_increment false)
-                              (assoc (field-details (db/select-one Field :id (mt/id :users :last_login)))
+                              (assoc (field-details (t2/select-one Field :id (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
                                      :name                     "LAST_LOGIN"
                                      :display_name             "Last Login"
@@ -250,7 +258,7 @@
                                      :base_type                "type/DateTime"
                                      :effective_type           "type/DateTime"
                                      :dimension_options        (var-get #'api.table/datetime-dimension-indexes)
-                                     :default_dimension_option (var-get #'api.table/date-default-index)
+                                     :default_dimension_option (var-get #'api.table/datetime-default-index)
                                      :has_field_values         "none"
                                      :position                 2
                                      :database_position        2
@@ -292,7 +300,7 @@
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
                   (update :db merge (select-keys (mt/db) [:details :settings])))
-              (db/select-one [Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
+              (t2/select-one [Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
               {:description     "What a nice table!"
                :entity_type     nil
                :visibility_type "hidden"
@@ -313,7 +321,7 @@
         (mt/with-temp Table [table {:visibility_type "hidden"}]
          (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                                    {property (mt/random-name)})
-         (is (= :hidden (db/select-one-field :visibility_type Table :id (:id table)))))))
+         (is (= :hidden (t2/select-one-fn :visibility_type Table :id (:id table)))))))
 
     (testing "A table can only be updated by a superuser"
       (mt/with-temp Table [table]
@@ -390,8 +398,8 @@
 (deftest get-fks-test
   (testing "GET /api/table/:id/fks"
     (testing "We expect a single FK from CHECKINS.USER_ID -> USERS.ID"
-      (let [checkins-user-field (db/select-one Field :id (mt/id :checkins :user_id))
-            users-id-field      (db/select-one Field :id (mt/id :users :id))]
+      (let [checkins-user-field (t2/select-one Field :id (mt/id :checkins :user_id))
+            users-id-field      (t2/select-one Field :id (mt/id :users :id))]
         (is (= [{:origin_id      (:id checkins-user-field)
                  :destination_id (:id users-id-field)
                  :relationship   "Mt1"
@@ -408,7 +416,7 @@
                                             :position          2
                                             :table         (merge
                                                             (dissoc (table-defaults) :segments :field_values :metrics)
-                                                            (db/select-one [Table :id :created_at :updated_at :initial_sync_status]
+                                                            (t2/select-one [Table :id :created_at :updated_at :initial_sync_status]
                                                               :id (mt/id :checkins))
                                                             {:schema       "PUBLIC"
                                                              :name         "CHECKINS"
@@ -425,7 +433,7 @@
                                             :semantic_type  "type/PK"
                                             :table         (merge
                                                             (dissoc (table-defaults) :db :segments :field_values :metrics)
-                                                            (db/select-one [Table :id :created_at :updated_at :initial_sync_status]
+                                                            (t2/select-one [Table :id :created_at :updated_at :initial_sync_status]
                                                               :id (mt/id :users))
                                                             {:schema       "PUBLIC"
                                                              :name         "USERS"
@@ -441,12 +449,12 @@
   (testing "GET /api/table/:id/query_metadata"
     (is (= (merge
             (query-metadata-defaults)
-            (db/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
+            (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
             {:schema       "PUBLIC"
              :name         "CATEGORIES"
              :display_name "Categories"
              :fields       [(merge
-                             (field-details (db/select-one Field :id (mt/id :categories :id)))
+                             (field-details (t2/select-one Field :id (mt/id :categories :id)))
                              {:table_id          (mt/id :categories)
                               :semantic_type     "type/PK"
                               :name              "ID"
@@ -458,7 +466,7 @@
                               :database_required false
                               :database_is_auto_increment true})
                             (merge
-                             (field-details (db/select-one Field :id (mt/id :categories :name)))
+                             (field-details (t2/select-one Field :id (mt/id :categories :name)))
                              {:table_id                  (mt/id :categories)
                               :semantic_type             "type/Name"
                               :name                      "NAME"
@@ -517,7 +525,7 @@
                   :dimension_options (default-dimension-options)
                   :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
                                                 with-field-literal-id)
-                                          (let [id->fingerprint   (db/select-id->field :fingerprint Field :table_id (mt/id :venues))
+                                          (let [id->fingerprint   (t2/select-pk->fn :fingerprint Field :table_id (mt/id :venues))
                                                 name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
                                             [{:name           "NAME"
                                               :display_name   "NAME"
@@ -566,7 +574,7 @@
           ;; run the Card which will populate its result_metadata column
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
           ;; Now fetch the metadata for this "table" via the API
-          (let [[name-metadata last-login-metadata] (db/select-one-field :result_metadata Card :id (u/the-id card))]
+          (let [[name-metadata last-login-metadata] (t2/select-one-fn :result_metadata Card :id (u/the-id card))]
             (is (= {:display_name      "Users"
                     :schema            "Everything else"
                     :db_id             (:database_id card)
@@ -592,7 +600,7 @@
                                          :table_id                 card-virtual-table-id
                                          :id                       ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]
                                          :semantic_type            nil
-                                         :default_dimension_option (var-get #'api.table/date-default-index)
+                                         :default_dimension_option (var-get #'api.table/datetime-default-index)
                                          :dimension_options        (var-get #'api.table/datetime-dimension-indexes)
                                          :fingerprint              (:fingerprint last-login-metadata)
                                          :field_ref                ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]}]}
@@ -683,11 +691,13 @@
       (is (= (map str (sort (map #(Long/parseLong %) (var-get #'api.table/numeric-dimension-indexes))))
              (var-get #'api.table/numeric-dimension-indexes))))))
 
-(defn- dimension-options-for-field [response, ^String field-name]
+(defn field-from-response [response, ^String field-name]
   (->> response
        :fields
-       (m/find-first #(.equalsIgnoreCase field-name, ^String (:name %)))
-       :dimension_options))
+       (m/find-first #(.equalsIgnoreCase field-name, ^String (:name %)))))
+
+(defn- dimension-options-for-field [response, ^String field-name]
+  (:dimension_options (field-from-response response field-name)))
 
 (defn- extract-dimension-options
   "For the given `field-name` find it's dimension_options following the indexes given in the field"
@@ -727,7 +737,7 @@
                    (extract-dimension-options response "price"))))))
 
       (testing "Numeric fields without min/max values should not have binning options"
-        (let [fingerprint      (db/select-one-field :fingerprint Field :id (mt/id :venues :latitude))
+        (let [fingerprint      (t2/select-one-fn :fingerprint Field :id (mt/id :venues :latitude))
               temp-fingerprint (-> fingerprint
                                    (assoc-in [:type :type/Number :max] nil)
                                    (assoc-in [:type :type/Number :min] nil))]
@@ -750,9 +760,18 @@
 
       (testing "dates"
         (mt/test-drivers (mt/normal-drivers)
-          (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :checkins)))]
-            (is (= @#'api.table/datetime-dimension-indexes
-                   (dimension-options-for-field response "date"))))))
+          (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :checkins)))
+                field    (field-from-response response "date")]
+            ;; some dbs don't have a date type and return a datetime
+            (is (= (case (:effective_type field)
+                     ("type/DateTime" "type/Instant") @#'api.table/datetime-dimension-indexes
+                     "type/Date"                      @#'api.table/date-dimension-indexes
+                     (throw (ex-info "Invalid type for date field or field not found"
+                                     {:expected-types #{"type/DateTime" "type/Date"}
+                                      :found          (:effective_type field)
+                                      :field          field
+                                      :driver         driver/*driver*})))
+                   (:dimension_options field))))))
 
       (testing "unix timestamps"
         (mt/dataset sad-toucan-incidents
@@ -808,20 +827,20 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post 403 url)))
           (testing "FieldValues should still exist"
-            (is (db/exists? FieldValues :id (u/the-id field-values)))))
+            (is (t2/exists? FieldValues :id (u/the-id field-values)))))
 
         (testing "Admins should be able to successfuly delete them"
           (is (= {:status "success"}
                  (mt/user-http-request :crowberto :post 200 url)))
           (testing "FieldValues should be gone"
-            (is (not (db/exists? FieldValues :id (u/the-id field-values))))))))
+            (is (not (t2/exists? FieldValues :id (u/the-id field-values))))))))
 
     (testing "For tables that don't exist, we should return a 404."
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))))))
 
 (deftest field-ordering-test
-  (let [original-field-order (db/select-one-field :field_order Table :id (mt/id :venues))]
+  (let [original-field-order (t2/select-one-fn :field_order Table :id (mt/id :venues))]
     (try
       (testing "Cane we set alphabetical field ordering?"
         (is (= ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]
@@ -847,7 +866,7 @@
           (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues))
                                 {:request-options {:body (json/encode custom-field-order)}})
           (is (= custom-field-order
-                 (->> (table/fields (db/select-one Table :id (mt/id :venues)))
+                 (->> (table/fields (t2/select-one Table :id (mt/id :venues)))
                       (map u/the-id))))))
       (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                      {:field_order original-field-order})))))

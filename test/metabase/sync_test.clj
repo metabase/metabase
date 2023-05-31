@@ -15,7 +15,7 @@
    [metabase.test.mock.util :as mock.util]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        End-to-end 'MovieDB' Sync Tests                                         |
@@ -32,17 +32,20 @@
                         :base-type         :type/Integer
                         :semantic-type     :type/PK
                         :database-is-auto-increment true
+                        :json-unfolding    false
                         :database-position 0}
                        {:name              "title"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
                         :semantic-type     :type/Title
                         :database-is-auto-increment false
+                        :json-unfolding    false
                         :database-position 1}
                        {:name              "studio"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
                         :database-is-auto-increment false
+                        :json-unfolding    false
                         :database-position 2}}
              :description nil}
    "studio" {:name   "studio"
@@ -52,11 +55,13 @@
                         :base-type         :type/Text
                         :semantic-type     :type/PK
                         :database-is-auto-increment false
+                        :json-unfolding    false
                         :database-position 0}
                        {:name              "name"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
                         :database-is-auto-increment false
+                        :json-unfolding    false
                         :database-position 1}}
              :description ""}})
 
@@ -79,8 +84,8 @@
                                :schema nil}
             :dest-column-name "studio"}})))
 
-(defmethod driver/supports? [::sync-test :foreign-keys]
-  [_ _]
+(defmethod driver/database-supports? [::sync-test :foreign-keys]
+  [_driver _feature _db]
   true)
 
 (defmethod driver/mbql->native ::sync-test
@@ -93,7 +98,7 @@
 
 (defn- table-details [table]
   (into {} (-> (dissoc table :db :pk_field :field_values)
-               (assoc :fields (for [field (db/select Field, :table_id (:id table), {:order-by [:name]})]
+               (assoc :fields (for [field (t2/select Field, :table_id (:id table), {:order-by [:name]})]
                                 (into {} (-> field
                                              (update :fingerprint map?)
                                              (update :fingerprint_version (complement zero?))))))
@@ -120,6 +125,7 @@
     :last_analyzed       false
     :parent_id           false
     :position            0
+    :json_unfolding      false
     :table_id            true
     :updated_at          true}))
 
@@ -197,7 +203,7 @@
 (deftest sync-database-test
   (mt/with-temp Database [db {:engine ::sync-test}]
     (sync/sync-database! db)
-    (let [[movie studio] (mapv table-details (db/select Table :db_id (u/the-id db) {:order-by [:name]}))]
+    (let [[movie studio] (mapv table-details (t2/select Table :db_id (u/the-id db) {:order-by [:name]}))]
       (testing "`movie` Table"
         (is (= (merge
                 (table-defaults)
@@ -236,7 +242,7 @@
                                    :semantic_type nil
                                    :has_field_values :auto-list)
                             (field:movie-title)]})
-           (table-details (db/select-one Table :id (:id table)))))))
+           (table-details (t2/select-one Table :id (:id table)))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

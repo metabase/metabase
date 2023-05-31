@@ -1,5 +1,6 @@
 (ns metabase.api.search
   (:require
+   [cheshire.core :as json]
    [compojure.core :refer [GET]]
    [flatland.ordered.map :as ordered-map]
    [honey.sql.helpers :as sql.helpers]
@@ -10,6 +11,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search-config]
    [metabase.search.scoring :as scoring]
    [metabase.search.util :as search-util]
@@ -81,19 +83,21 @@
    :updated_at          :timestamp
    ;; returned for Card only
    :dashboardcard_count :integer
-   :dataset_query       :text
    :moderated_status    :text
    ;; returned for Metric and Segment
    :table_id            :integer
-   :database_id         :integer
    :table_schema        :text
    :table_name          :text
    :table_description   :text
+   ;; returned for Metric, Segment, and Action
+   :database_id         :integer
    ;; returned for Database and Table
    :initial_sync_status :text
    ;; returned for Action
    :model_id            :integer
-   :model_name          :text))
+   :model_name          :text
+   ;; returned for indexed-entity
+   :pk_ref              :text))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
@@ -104,7 +108,7 @@
 
 (s/defn ^:private model->alias :- s/Keyword
   [model :- SearchableModel]
-  (keyword model))
+  (-> model search-config/model-to-db-model :alias))
 
 (s/defn ^:private ->column-alias :- s/Keyword
   "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
@@ -157,8 +161,8 @@
 (s/defn ^:private from-clause-for-model :- [(s/one [(s/one s/Keyword "table name") (s/one s/Keyword "alias")]
                                                    "from clause")]
   [model :- SearchableModel]
-  (let [db-model (get search-config/model-to-db-model model)]
-    [[(t2/table-name db-model) (-> db-model name u/lower-case-en keyword)]]))
+  (let [{:keys [db-model alias]} (get search-config/model-to-db-model model)]
+    [[(t2/table-name db-model) alias]]))
 
 (defmulti ^:private archived-where-clause
   {:arglists '([model archived?])}
@@ -175,11 +179,17 @@
     true-clause
     false-clause))
 
+(defmethod archived-where-clause "indexed-entity"
+  [_model archived?]
+  (if-not archived?
+    true-clause
+    false-clause))
+
 ;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
 (defmethod archived-where-clause "table"
   [model archived?]
   (if archived?
-    false-clause  ; No tables should appear in archive searches
+    false-clause                        ; No tables should appear in archive searches
     [:and
      [:= (keyword (name (model->alias model)) "active") true]
      [:= (keyword (name (model->alias model)) "visibility_type") nil]]))
@@ -194,12 +204,9 @@
     (into [:or]
           (for [column searchable-columns
                 token (search-util/tokenize (search-util/normalize query))]
-            (if (and (= model "card") (= column (keyword (name (model->alias model)) "dataset_query")))
-              [:and
-               [:= (keyword (name (model->alias model)) "query_type") "native"]
-               [:like
-                [:lower column]
-                (wildcard-match token)]]
+            (if (and (= model "indexed-entity") (premium-features/segmented-user?))
+              [:= 0 1]
+
               [:like
                [:lower column]
                (wildcard-match token)])))))
@@ -207,11 +214,10 @@
 (s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and := :inline) "type") s/Any]
   [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
   (let [archived-clause (archived-where-clause model archived?)
-        search-clause   (search-string-clause model
-                                              search-string
+        search-clause   (search-string-clause model search-string
                                               (map (let [model-alias (name (model->alias model))]
                                                      (fn [column]
-                                                       (keyword model-alias (name column))))
+                                                       (keyword (str (name model-alias) "." (name column)))))
                                                    (search-config/searchable-columns-for-model model)))]
     (if search-clause
       [:and archived-clause search-clause]
@@ -283,6 +289,8 @@
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/left-join [:report_card :model]
                              [:= :model.id :action.model_id])
+      (sql.helpers/left-join :query_action
+                             [:= :query_action.action_id :action.id])
       (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
 
 (s/defmethod search-query-for-model "card"
@@ -321,6 +329,14 @@
   [model search-ctx :- SearchContext]
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/left-join [:metabase_table :table] [:= :metric.table_id :table.id])))
+
+(s/defmethod search-query-for-model "indexed-entity"
+  [model search-ctx :- SearchContext]
+  (-> (base-query-for-model model search-ctx)
+      (sql.helpers/left-join [:model_index :model-index]
+                             [:= :model-index.id :model-index-value.model_index_id])
+      (sql.helpers/left-join [:report_card :model] [:= :model-index.model_id :model.id])
+      (sql.helpers/left-join [:collection :collection] [:= :model.collection_id :collection.id])))
 
 (s/defmethod search-query-for-model "segment"
   [model search-ctx :- SearchContext]
@@ -362,7 +378,8 @@
         columns-to-search (->> all-search-columns
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
-                               (remove #{:collection_authority_level :moderated_status :initial_sync_status}))
+                               (remove #{:collection_authority_level :moderated_status
+                                         :initial_sync_status :pk_ref}))
         case-clauses      (as-> columns-to-search <>
                             (map (fn [col] [:like [:lower col] match]) <>)
                             (interleave <> (repeat [:inline 0]))
@@ -424,7 +441,9 @@
         _                  (log/tracef "Searching with query:\n%s\n%s"
                                        (u/pprint-to-str search-query)
                                        (mdb.query/format-sql (first (mdb.query/compile search-query))))
-        to-toucan-instance (fn [row] (t2.instance/instance (search-config/model-to-db-model (:model row)) row))
+        to-toucan-instance (fn [row]
+                             (let [model (-> row :model search-config/model-to-db-model :db-model)]
+                               (t2.instance/instance model row)))
         reducible-results  (mdb.query/reducible-query search-query :max-rows search-config/*db-max-results*)
         xf                 (comp
                             (map t2.realize/realize)
@@ -434,6 +453,7 @@
                             ;; needed
                             (map #(update % :bookmark api/bit->boolean))
                             (map #(update % :archived api/bit->boolean))
+                            (map #(update % :pk_ref json/parse-string))
                             (map (partial scoring/score-and-result (:search-string search-ctx)))
                             (filter #(pos? (:score %))))
         total-results      (scoring/top-results reducible-results search-config/max-filtered-results xf)]

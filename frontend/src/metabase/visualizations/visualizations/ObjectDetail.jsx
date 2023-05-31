@@ -1,13 +1,13 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import ObjectDetail from "metabase/visualizations/components/ObjectDetail";
-import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import {
+  columnSettings,
+  tableColumnSettings,
+} from "metabase/visualizations/lib/settings/column";
 
 import { formatColumn } from "metabase/lib/formatting";
-import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 
 const ObjectDetailProperties = {
   uiName: t`Detail`,
@@ -19,42 +19,8 @@ const ObjectDetailProperties = {
   disableClickBehavior: true,
   settings: {
     ...columnSettings({ hidden: true }),
-    "table.columns": {
-      section: t`Columns`,
-      title: t`Columns`,
-      widget: ChartSettingOrderedColumns,
-      getHidden: (_series, vizSettings) => vizSettings["table.pivot"],
-      isValid: ([{ card, data }]) =>
-        // If "table.columns" happened to be an empty array,
-        // it will be treated as "all columns are hidden",
-        // This check ensures it's not empty,
-        // otherwise it will be overwritten by `getDefault` below
-        card.visualization_settings["table.columns"].length !== 0 &&
-        _.all(
-          card.visualization_settings["table.columns"],
-          columnSetting =>
-            findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-        ),
-      getDefault: ([
-        {
-          data: { cols },
-        },
-      ]) =>
-        cols.map(col => ({
-          name: col.name,
-          fieldRef: col.field_ref,
-          enabled: col.visibility_type !== "details-only",
-        })),
-      getProps: ([
-        {
-          data: { cols },
-        },
-      ]) => ({
-        columns: cols,
-      }),
-    },
+    ...tableColumnSettings,
   },
-
   columnSettings: column => {
     const settings = {
       column_title: {

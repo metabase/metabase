@@ -5,12 +5,14 @@ import {
   visitDashboard,
   openSeriesSettings,
   queryBuilderMain,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 const Y_AXIS_RIGHT_SELECTOR = ".axis.yr";
 
@@ -38,6 +40,7 @@ describe("scenarios > visualizations > line chart", () => {
 
     cy.findByTestId("viz-settings-button").click();
     openSeriesSettings("Count");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Right").click();
     cy.get(Y_AXIS_RIGHT_SELECTOR);
   });
@@ -95,6 +98,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "This chart type doesn't support more than 100 series of data.",
     );
@@ -199,6 +203,99 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     cy.get(`.sub._0`).find("circle").should("have.length", 2);
+  });
+
+  describe("y-axis splitting (metabase#12939)", () => {
+    it("should not split the y-axis when columns are of the same semantic_type and have close values", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["avg", ["field", ORDERS.TOTAL, null]],
+              ["min", ["field", ORDERS.TOTAL, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      cy.get("g.axis.yr").should("not.exist");
+    });
+
+    it("should split the y-axis when columns are of different semantic_type", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": PEOPLE_ID,
+            aggregation: [
+              ["avg", ["field", PEOPLE.LATITUDE, null]],
+              ["avg", ["field", PEOPLE.LONGITUDE, null]],
+            ],
+            breakout: [
+              ["field", PEOPLE.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      cy.get("g.axis.yr").should("be.visible");
+    });
+
+    it("should split the y-six when columns are of the same semantic_type but have far values", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              ["min", ["field", ORDERS.TOTAL, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      cy.get("g.axis.yr").should("be.visible");
+    });
+
+    it("should not split the y-axis when the setting is disabled", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              ["min", ["field", ORDERS.TOTAL, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+        visualization_settings: {
+          "graph.y_axis.auto_split": false,
+        },
+      });
+
+      cy.get("g.axis.yr").should("not.exist");
+    });
   });
 
   describe("tooltip of combined dashboard cards (multi-series) should show the correct column title (metabase#16249", () => {
@@ -322,32 +419,18 @@ describe("scenarios > visualizations > line chart", () => {
       secondCardId,
     } = {}) {
       // Add the first question to the dashboard
-      cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-        cardId: firstCardId,
-        row: 0,
-        col: 0,
-        size_x: 18,
-        size_y: 12,
-      }).then(({ body: { id: dashCardId } }) => {
-        // Combine the second question with the first one as the second series
-        cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-          cards: [
+      addOrUpdateDashboardCard({
+        dashboard_id: dashboardId,
+        card_id: firstCardId,
+        card: {
+          size_x: 18,
+          size_y: 12,
+          series: [
             {
-              id: dashCardId,
-              card_id: firstCardId,
-              row: 0,
-              col: 0,
-              size_x: 18,
-              size_y: 12,
-              series: [
-                {
-                  id: secondCardId,
-                },
-              ],
-              parameter_mappings: [],
+              id: secondCardId,
             },
           ],
-        });
+        },
       });
     }
 
@@ -413,6 +496,7 @@ describe("scenarios > visualizations > line chart", () => {
         },
         display: "line",
       });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Category is Doohickey");
     });
 

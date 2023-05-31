@@ -22,11 +22,16 @@ Fetch a list of all Collections that the current user has read permissions for (
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`.
 
+  By default, admin users will see all collections. To hide other user's collections pass in
+  `?exclude-other-user-collections=true`.
+
 ### PARAMS:
 
-*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`exclude-other-user-collections`** nullable value must be a valid boolean string ('true' or 'false').
+
+*  **`namespace`** nullable value must be a non-blank string.
 
 ## `GET /api/collection/:id`
 
@@ -34,7 +39,7 @@ Fetch a specific Collection with standard details added.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/collection/:id/items`
 
@@ -66,11 +71,11 @@ Fetch a specific Collection's timelines.
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
-*  **`include`** value may be nil, or if non-nil, value must be one of: `events`.
+*  **`include`** nullable must equal events
 
-*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`archived`** nullable boolean
 
 ## `GET /api/collection/graph`
 
@@ -80,7 +85,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`namespace`** nullable value must be a non-blank string.
 
 ## `GET /api/collection/root`
 
@@ -88,7 +93,7 @@ Return the 'Root' Collection object with standard details added.
 
 ### PARAMS:
 
-*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`namespace`** nullable value must be a non-blank string.
 
 ## `GET /api/collection/root/items`
 
@@ -126,9 +131,9 @@ Fetch the root Collection's timelines.
 
 ### PARAMS:
 
-*  **`include`** value may be nil, or if non-nil, value must be one of: `events`.
+*  **`include`** nullable must equal events
 
-*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`archived`** nullable boolean
 
 ## `GET /api/collection/tree`
 
@@ -155,9 +160,11 @@ Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
 ### PARAMS:
 
-*  **`exclude-archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`exclude-archived`** nullable boolean
 
-*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`exclude-other-user-collections`** nullable boolean
+
+*  **`namespace`** nullable value must be a non-blank string.
 
 ## `POST /api/collection/`
 
@@ -208,9 +215,9 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`namespace`** nullable value must be a non-blank string.
 
-*  **`body`** value must be a map.
+*  **`body`** map
 
 ---
 

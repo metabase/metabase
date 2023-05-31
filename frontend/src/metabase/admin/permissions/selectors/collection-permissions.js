@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import _ from "underscore";
@@ -16,7 +16,11 @@ import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../constants/messages";
 import { getPermissionWarningModal } from "./confirmations";
 
-export const collectionsQuery = { tree: true, "exclude-archived": true };
+export const collectionsQuery = {
+  tree: true,
+  "exclude-other-user-collections": true,
+  "exclude-archived": true,
+};
 
 export const getIsDirty = createSelector(
   state => state.admin.permissions.collectionPermissions,
@@ -184,6 +188,7 @@ export const getCollectionsPermissionEditor = createSelector(
         permissions: [
           {
             toggleLabel,
+            hasChildren,
             isDisabled: isAdmin,
             disabledTooltip: isAdmin
               ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS

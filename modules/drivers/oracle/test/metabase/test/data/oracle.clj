@@ -24,7 +24,7 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -136,9 +136,9 @@
     (locking oracle-test-dbs-created-by-this-instance
       (when-not (contains? @oracle-test-dbs-created-by-this-instance database-name)
         (mdb/setup-db!)                 ; if not already setup
-        (when-let [existing-db (db/select-one Database :engine "oracle", :name database-name)]
+        (when-let [existing-db (t2/select-one Database :engine "oracle", :name database-name)]
           (let [existing-db-id (u/the-id existing-db)
-                all-schemas    (db/select-field :schema Table :db_id existing-db-id)]
+                all-schemas    (t2/select-fn-set :schema Table :db_id existing-db-id)]
             (when-not (= all-schemas #{session-schema})
               (log/warn (u/format-color 'yellow
                                         (str "[oracle] At least one table's schema for the existing '%s' Database"
@@ -148,7 +148,7 @@
                                         existing-db-id
                                         (str/join "," all-schemas)
                                         session-schema))
-              (db/delete! Database :id existing-db-id))))
+              (t2/delete! Database :id existing-db-id))))
         (swap! oracle-test-dbs-created-by-this-instance conj database-name)))))
 
 (defmethod data.impl/get-or-create-database! :oracle
@@ -175,8 +175,6 @@
 (defmethod load-data/load-data! :oracle
   [driver dbdef tabledef]
   (load-data/load-data-add-ids-chunked! driver dbdef tabledef))
-
-(defmethod tx/has-questionable-timezone-support? :oracle [_] true)
 
 ;; Oracle has weird syntax for inserting multiple rows, it looks like
 ;;

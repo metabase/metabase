@@ -13,7 +13,7 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (s/defn ^:private update-field-metadata-if-needed! :- (s/enum 0 1)
   "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs
@@ -24,6 +24,7 @@
          old-field-comment              :field-comment
          old-semantic-type              :semantic-type
          old-database-position          :database-position
+         old-position                   :position
          old-database-name              :name
          old-database-is-auto-increment :database-is-auto-increment
          old-db-required                :database-required} metabase-field
@@ -95,6 +96,13 @@
                           old-database-position
                           new-database-position))
            {:database_position new-database-position})
+         (when (and (= (:field_order table) :database)
+                    (not= old-position new-database-position))
+           (log/info (trs "Position of {0} has changed from ''{1}'' to ''{2}''."
+                          (common/field-metadata-name-for-logging table metabase-field)
+                          old-position
+                          new-database-position))
+           {:position new-database-position})
          (when new-name?
            (log/info (trs "Name of {0} has changed from ''{1}'' to ''{2}''."
                           (common/field-metadata-name-for-logging table metabase-field)
@@ -115,7 +123,7 @@
            {:database_required new-db-required}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
-             (db/update! Field (u/the-id metabase-field) updates))
+             (pos? (t2/update! Field (u/the-id metabase-field) updates)))
       1
       0)))
 

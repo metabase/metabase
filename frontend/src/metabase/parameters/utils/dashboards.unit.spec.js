@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import {
   createParameter,
   setParameterName,
@@ -8,8 +9,15 @@ import {
   getFilteringParameterValuesMap,
   getDashboardUiParameters,
 } from "metabase/parameters/utils/dashboards";
-import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
+import {
+  createSampleDatabase,
+  PRODUCTS,
+} from "metabase-types/api/mocks/presets";
 import Field from "metabase-lib/metadata/Field";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 describe("metabase/parameters/utils/dashboards", () => {
   describe("createParameter", () => {
@@ -534,17 +542,17 @@ describe("metabase/parameters/utils/dashboards", () => {
             {
               card_id: 789,
               parameter_id: "d",
-              target: ["dimension", ["field", PRODUCTS.RATING.id, null]],
+              target: ["dimension", ["field", PRODUCTS.RATING, null]],
             },
             {
               card_id: 123,
               parameter_id: "f",
-              target: ["dimension", ["field", PRODUCTS.TITLE.id, null]],
+              target: ["dimension", ["field", PRODUCTS.TITLE, null]],
             },
             {
               card_id: 123,
               parameter_id: "g",
-              target: ["dimension", ["field", PRODUCTS.TITLE.id, null]],
+              target: ["dimension", ["field", PRODUCTS.TITLE, null]],
             },
           ],
         },
@@ -564,7 +572,7 @@ describe("metabase/parameters/utils/dashboards", () => {
                   bar: {
                     type: "dimension",
                     "widget-type": "string/contains",
-                    dimension: ["field", PRODUCTS.TITLE.id, null],
+                    dimension: ["field", PRODUCTS.TITLE, null],
                   },
                 },
               },
@@ -596,12 +604,12 @@ describe("metabase/parameters/utils/dashboards", () => {
             {
               card_id: 999,
               parameter_id: "g",
-              target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+              target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
             },
             {
               card_id: 999,
               parameter_id: "h",
-              target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+              target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
             },
           ],
         },

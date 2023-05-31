@@ -29,9 +29,10 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan2.core :as t2]))
 
 (def ^Integer category-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
@@ -76,7 +77,21 @@
 ;;; |                                             Entity & Lifecycle                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(models/defmodel FieldValues :metabase_fieldvalues)
+(def FieldValues
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/FieldValues)
+
+(methodical/defmethod t2/table-name :model/FieldValues [_model] :metabase_fieldvalues)
+
+(doto :model/FieldValues
+  (derive :metabase/model)
+  (derive :hook/timestamped?))
+
+(t2/deftransforms :model/FieldValues
+  {:human_readable_values mi/transform-json-no-keywordization
+   :values                mi/transform-json
+   :type                  mi/transform-keyword})
 
 (defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
   (when (s/check (s/maybe [(s/maybe su/NonBlankString)]) human-readable-values)
@@ -108,15 +123,16 @@
 (defn clear-advanced-field-values-for-field!
   "Remove all advanced FieldValues for a `field-or-id`."
   [field-or-id]
-  (db/delete! FieldValues :field_id (u/the-id field-or-id)
+  (t2/delete! FieldValues :field_id (u/the-id field-or-id)
                           :type     [:in advanced-field-values-types]))
 
 (defn clear-field-values-for-field!
   "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
   [field-or-id]
-  (db/delete! FieldValues :field_id (u/the-id field-or-id)))
+  (t2/delete! FieldValues :field_id (u/the-id field-or-id)))
 
-(defn- pre-insert [{:keys [field_id] :as field-values}]
+(t2/define-before-insert :model/FieldValues
+  [{:keys [field_id] :as field-values}]
   (u/prog1 (merge {:type :full}
                   field-values)
     (assert-valid-human-readable-values field-values)
@@ -125,22 +141,23 @@
     (when (= (:type <>) :full)
       (clear-advanced-field-values-for-field! field_id))))
 
-(defn- pre-update [{:keys [id type field_id values hash_key] :as field-values}]
-  (u/prog1 field-values
-    (assert-valid-human-readable-values field-values)
-    (when (or type hash_key)
-      (throw (ex-info (tru "Can't update type or hash_key for a FieldValues.")
-                      {:type        type
-                       :hash_key    hash_key
-                       :status-code 400})))
-    ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
-    (when (and values
-           (= (or type (db/select-one-field :type FieldValues :id id))
-              :full))
-     (clear-advanced-field-values-for-field! (or field_id
-                                                 (db/select-one-field :field_id FieldValues :id id))))))
+(t2/define-before-update :model/FieldValues
+  [field-values]
+  (let [{:keys [type values hash_key]} (t2/changes field-values)]
+    (u/prog1 field-values
+      (assert-valid-human-readable-values field-values)
+      (when (or type hash_key)
+        (throw (ex-info (tru "Can't update type or hash_key for a FieldValues.")
+                        {:type        type
+                         :hash_key    hash_key
+                         :status-code 400})))
+      ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
+      (when (and values
+                 (= (:type field-values) :full))
+        (clear-advanced-field-values-for-field! (:field_id field-values))))))
 
-(defn- post-select [field-values]
+(t2/define-after-select :model/FieldValues
+  [field-values]
   (cond-> field-values
     (contains? field-values :human_readable_values)
     (update :human_readable_values (fn [human-readable-values]
@@ -162,17 +179,8 @@
                                        :else
                                        [])))))
 
-(mi/define-methods
- FieldValues
- {:properties  (constantly {::mi/timestamped? true})
-  :types       (constantly {:human_readable_values :json-no-keywordization
-                            :values                :json
-                            :type                  :keyword})
-  :pre-insert  pre-insert
-  :pre-update  pre-update
-  :post-select post-select})
 
-(defmethod serdes/hash-fields FieldValues
+(defmethod serdes/hash-fields :model/FieldValues
   [_field-values]
   [(serdes/hydrated-hash :field)])
 
@@ -191,7 +199,7 @@
   [field-or-field-id]
   (if-not (map? field-or-field-id)
     (let [field-id (u/the-id field-or-field-id)]
-      (recur (or (db/select-one ['Field :base_type :visibility_type :has_field_values] :id field-id)
+      (recur (or (t2/select-one ['Field :base_type :visibility_type :has_field_values] :id field-id)
                  (throw (ex-info (tru "Field {0} does not exist." field-id)
                                  {:field-id field-id, :status-code 404})))))
     (let [{base-type        :base_type
@@ -266,7 +274,7 @@
 (defenterprise hash-key-for-sandbox
   "Return a hash-key that will be used for sandboxed fieldvalues."
   metabase-enterprise.sandbox.models.params.field-values
-  [field-id]
+  [_field-id]
   nil)
 
 (defn default-hash-key-for-linked-filters
@@ -326,7 +334,7 @@
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
   [field & [human-readable-values]]
-  (let [field-values                     (db/select-one FieldValues :field_id (u/the-id field) :type :full)
+  (let [field-values                     (t2/select-one FieldValues :field_id (u/the-id field) :type :full)
         {:keys [values has_more_values]} (distinct-values field)
         field-name                       (or (:name field) (:id field))]
     (cond
@@ -347,7 +355,7 @@
         (log/info (trs "Field {0} was previously automatically set to show a list widget, but now has {1} values."
                        field-name (count values))
                   (trs "Switching Field to use a search widget instead."))
-        (db/update! 'Field (u/the-id field) :has_field_values nil)
+        (t2/update! 'Field (u/the-id field) {:has_field_values nil})
         (clear-field-values-for-field! field)
         ::fv-deleted)
 
@@ -371,12 +379,12 @@
       values
       (do
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
-        (db/insert! FieldValues
-          :type :full
-          :field_id              (u/the-id field)
-          :has_more_values       has_more_values
-          :values                values
-          :human_readable_values human-readable-values)
+        (t2/insert! FieldValues
+                    :type :full
+                    :field_id              (u/the-id field)
+                    :has_more_values       has_more_values
+                    :values                values
+                    :human_readable_values human-readable-values)
         ::fv-created)
 
       ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
@@ -392,21 +400,21 @@
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
-    (let [existing (db/select-one FieldValues :field_id field-id :type :full)]
+    (let [existing (t2/select-one FieldValues :field_id field-id :type :full)]
       (if (or (not existing) (inactive? existing))
         (case (create-or-update-full-field-values! field human-readable-values)
           ::fv-deleted
           nil
 
           ::fv-created
-          (db/select-one FieldValues :field_id field-id :type :full)
+          (t2/select-one FieldValues :field_id field-id :type :full)
 
           (do
             (when existing
-              (db/update! FieldValues (:id existing) :last_used_at :%now))
-            (db/select-one FieldValues :field_id field-id :type :full)))
+              (t2/update! FieldValues (:id existing) {:last_used_at :%now}))
+            (t2/select-one FieldValues :field_id field-id :type :full)))
         (do
-          (db/update! FieldValues (:id existing) :last_used_at :%now)
+          (t2/update! FieldValues (:id existing) {:last_used_at :%now})
           existing)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -420,9 +428,9 @@
   [table-ids]
   (let [table-ids            (set table-ids)
         table-id->db-id      (when (seq table-ids)
-                               (db/select-id->field :db_id 'Table :id [:in table-ids]))
+                               (t2/select-pk->fn :db_id 'Table :id [:in table-ids]))
         db-id->is-on-demand? (when (seq table-id->db-id)
-                               (db/select-id->field :is_on_demand 'Database
+                               (t2/select-pk->fn :is_on_demand 'Database
                                  :id [:in (set (vals table-id->db-id))]))]
     (into {} (for [table-id table-ids]
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
@@ -433,7 +441,7 @@
   [field-ids]
   (let [fields (when (seq field-ids)
                  (filter field-should-have-field-values?
-                         (db/select ['Field :name :id :base_type :effective_type :coercion_strategy
+                         (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
                                      :semantic_type :visibility_type :table_id :has_field_values]
                            :id [:in field-ids])))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]
@@ -448,7 +456,7 @@
 ;;; |                                              Serialization                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 (defmethod serdes/generate-path "FieldValues" [_ {:keys [field_id]}]
-  (let [field (db/select-one 'Field :id field_id)]
+  (let [field (t2/select-one 'Field :id field_id)]
     (conj (serdes/generate-path "Field" field)
           {:model "FieldValues" :id "0"})))
 
@@ -467,13 +475,13 @@
                     ;; It's too short, so no schema. Shift them over and add a nil schema.
                     [db nil schema table])]
     (-> (serdes/load-xform-basics fv)
-        (assoc :field_id (serdes/import-field-fk field-ref))
+        (assoc :field_id (serdes/*import-field-fk* field-ref))
         (update :type keyword))))
 
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
   (let [field (serdes/load-find-local (pop path))]
-    (db/select-one FieldValues :field_id (:id field))))
+    (t2/select-one FieldValues :field_id (:id field))))
 
 (defmethod serdes/load-update! "FieldValues" [_ ingested local]
   ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.

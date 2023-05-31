@@ -12,7 +12,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,7 +38,7 @@
     (query/save-query-and-update-average-execution-time! query query-hash running-time))
   (if-not context
     (log/warn (trs "Cannot save QueryExecution, missing :context"))
-    (db/insert! QueryExecution (dissoc query-execution :json_query))))
+    (t2/insert! QueryExecution (dissoc query-execution :json_query))))
 
 (defn- save-query-execution!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
@@ -94,6 +94,7 @@
          (events/publish-event! :card-query {:card_id      (:card_id execution-info)
                                              :actor_id     (:executor_id execution-info)
                                              :cached       (:cached acc)
+                                             :context      (:context execution-info)
                                              :ignore_cache (get-in execution-info [:json_query :middleware :ignore-cached-results?])}))
        (save-successful-query-execution! (:cached acc) execution-info @row-count)
        (rf (if (map? acc)

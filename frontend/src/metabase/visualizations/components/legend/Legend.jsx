@@ -84,6 +84,7 @@ const Legend = ({
             color={colors[localIndex % colors.length]}
             isMuted={hovered && itemIndex !== hovered.index}
             isVertical={isVertical}
+            isReversed={isReversed}
             onHoverChange={onHoverChange}
             onSelectSeries={onSelectSeries}
             onRemoveSeries={onRemoveSeries}

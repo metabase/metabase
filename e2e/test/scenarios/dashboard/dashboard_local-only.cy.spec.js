@@ -1,4 +1,8 @@
-import { restore, filterWidget } from "e2e/support/helpers";
+import {
+  restore,
+  filterWidget,
+  addOrUpdateDashboardCard,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -24,57 +28,39 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
     });
-    cy.createQuestion({
-      name: "15694",
-      query: { "source-table": PEOPLE_ID },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-        // Add filter to the dashboard
-        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-          parameters: [
+    cy.createQuestionAndDashboard({
+      questionDetails: {
+        name: "15694",
+        query: { "source-table": PEOPLE_ID },
+      },
+      dashboardDetails: {
+        parameters: [
+          {
+            name: "Location",
+            slug: "location",
+            id: "5aefc725",
+            type: "string/=",
+            sectionId: "location",
+          },
+        ],
+      },
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      addOrUpdateDashboardCard({
+        card_id,
+        dashboard_id,
+        card: {
+          parameter_mappings: [
             {
-              name: "Location",
-              slug: "location",
-              id: "5aefc725",
-              type: "string/=",
-              sectionId: "location",
+              parameter_id: "5aefc725",
+              card_id,
+              target: ["dimension", ["field", PEOPLE.STATE, null]],
             },
           ],
-        });
-        // Add card to the dashboard
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-          row: 0,
-          col: 0,
-          size_x: 12,
-          size_y: 9,
-        }).then(({ body: { id: DASH_CARD_ID } }) => {
-          // Connect filter to the card
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cards: [
-              {
-                id: DASH_CARD_ID,
-                card_id: QUESTION_ID,
-                row: 0,
-                col: 0,
-                size_x: 12,
-                size_y: 9,
-                visualization_settings: {},
-                parameter_mappings: [
-                  {
-                    parameter_id: "5aefc725",
-                    card_id: QUESTION_ID,
-                    target: ["dimension", ["field", PEOPLE.STATE, null]],
-                  },
-                ],
-              },
-            ],
-          });
-        });
-
-        cy.visit(`/dashboard/${DASHBOARD_ID}?location=AK&location=CA`);
-        filterWidget().contains(/\{0\}/).should("not.exist");
+        },
       });
+
+      cy.visit(`/dashboard/${dashboard_id}?location=AK&location=CA`);
+      filterWidget().contains(/\{0\}/).should("not.exist");
     });
   });
 });

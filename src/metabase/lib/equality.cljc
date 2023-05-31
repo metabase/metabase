@@ -2,7 +2,8 @@
   "Logic for determining whether two pMBQL queries are equal."
   (:refer-clojure :exclude [=])
   (:require
-   [metabase.lib.dispatch :as lib.dispatch]))
+   [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -16,7 +17,8 @@
           y-dispatch-value (lib.dispatch/dispatch-value y)]
       (if (not= x-dispatch-value y-dispatch-value)
         ::different-dispatch-values
-        x-dispatch-value))))
+        x-dispatch-value)))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod = ::different-dispatch-values
   [_x _y]
@@ -41,7 +43,7 @@
                       (get m2 k)))
                  m1-keys))))
 
-(defmethod = :dispatch-type/sequence
+(defmethod = :dispatch-type/sequential
   [xs ys]
   (and (clojure.core/= (count xs) (count ys))
        (loop [[x & more-x] xs, [y & more-y] ys]
@@ -49,11 +51,37 @@
               (or (empty? more-x)
                   (recur more-x more-y))))))
 
+(def ^:private ^:dynamic *side->uuid->index* nil)
+
+(defn- aggregation-uuid->index
+  [stage]
+  (into {}
+        (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
+                       [ag-uuid idx]))
+        (:aggregation stage)))
+
+(defmethod = :mbql.stage/mbql
+  [x y]
+  (binding [*side->uuid->index* {:left (aggregation-uuid->index x)
+                                 :right (aggregation-uuid->index y)}]
+    ((get-method = :dispatch-type/map) x y)))
+
+(defmethod = :aggregation
+  [[x-tag x-opts x-uuid :as x] [y-tag y-opts y-uuid :as y]]
+  (and (clojure.core/= 3 (count x) (count y))
+       (clojure.core/= x-tag y-tag)
+       (= x-opts y-opts)
+       ;; If nil, it means we aren't comparing a stage, so just compare the uuid directly
+       (if *side->uuid->index*
+         (clojure.core/= (get-in *side->uuid->index* [:left x-uuid] ::no-left)
+                         (get-in *side->uuid->index* [:right y-uuid] ::no-right))
+         (clojure.core/= x-uuid y-uuid))))
+
 ;;; if we've gotten here we at least know the dispatch values for `x` and `y` are the same, which means the types will
 ;;; be the same.
 (defmethod = :default
   [x y]
   (cond
-    (map? x)        ((get-method = :dispatch-type/map) x y)
-    (sequential? x) ((get-method = :dispatch-type/sequence) x y)
-    :else           (clojure.core/= x y)))
+    (map? x)                   ((get-method = :dispatch-type/map) x y)
+    (sequential? x)            ((get-method = :dispatch-type/sequential) x y)
+    :else                      (clojure.core/= x y)))

@@ -7,7 +7,6 @@ import {
   openPeopleTable,
   visitQuestionAdhoc,
   enterCustomColumnDetails,
-  getBinningButtonForDimension,
   filter,
 } from "e2e/support/helpers";
 
@@ -33,11 +32,12 @@ describe("scenarios > question > custom column", () => {
 
     visualize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question").should("not.exist");
     cy.get(".Visualization").contains("Math");
   });
 
-  it("should allow choosing a binning for a numeric custom column", () => {
+  it("should not show binning for a numeric custom column", () => {
     openOrdersTable({ mode: "notebook" });
     cy.icon("add_data").click();
 
@@ -47,25 +47,26 @@ describe("scenarios > question > custom column", () => {
     });
     cy.button("Done").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summarize").click();
     popover().findByText("Count of rows").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
+    // Check no binning options are shown.
+    popover()
+      .findByText("Half Price")
+      .closest(".List-item")
+      .find(".Field-extra")
+      .should("be.empty");
     popover().findByText("Half Price").click();
 
     cy.get("[data-testid='step-summarize-0-0']")
       .findByText("Half Price")
-      .click();
-    getBinningButtonForDimension({
-      name: "Half Price",
-    }).click();
-
-    popover().last().findByText("10 bins").click();
-
-    cy.findByText("Half Price: 10 bins").should("be.visible");
+      .should("be.visible");
   });
 
-  it("should allow choosing a temporal unit for a date/time custom column", () => {
+  it("should not show temporal units for a date/time custom column", () => {
     openOrdersTable({ mode: "notebook" });
     cy.icon("add_data").click();
 
@@ -75,25 +76,25 @@ describe("scenarios > question > custom column", () => {
     });
     cy.button("Done").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summarize").click();
     popover().findByText("Count of rows").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
+    popover()
+      .findByText("Product Date")
+      .closest(".List-item")
+      .find(".Field-extra")
+      .should("be.empty");
     popover().findByText("Product Date").click();
 
     cy.get("[data-testid='step-summarize-0-0']")
       .findByText("Product Date")
-      .click();
-    getBinningButtonForDimension({
-      name: "Product Date",
-    }).click();
-
-    popover().last().findByText("Month of Year").click();
-
-    cy.findByText("Product Date: Month of year").should("be.visible");
+      .should("be.visible");
   });
 
-  it("should allow choosing a binning for a coordinate custom column", () => {
+  it("should not show binning options for a coordinate custom column", () => {
     openPeopleTable({ mode: "notebook" });
     cy.icon("add_data").click();
 
@@ -103,20 +104,22 @@ describe("scenarios > question > custom column", () => {
     });
     cy.button("Done").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summarize").click();
     popover().findByText("Count of rows").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
+    popover()
+      .findByText("UserLAT")
+      .closest(".List-item")
+      .find(".Field-extra")
+      .should("be.empty");
     popover().findByText("UserLAT").click();
 
-    cy.get("[data-testid='step-summarize-0-0']").findByText("UserLAT").click();
-    getBinningButtonForDimension({
-      name: "UserLAT",
-    }).click();
-
-    popover().last().findByText("Bin every 10 degrees").click();
-
-    cy.findByText("UserLAT: 10°").should("be.visible");
+    cy.get("[data-testid='step-summarize-0-0']")
+      .findByText("UserLAT")
+      .should("be.visible");
   });
 
   // flaky test (#19454)
@@ -131,6 +134,7 @@ describe("scenarios > question > custom column", () => {
 
     summarize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Group by").parent().findByText("Math").trigger("mouseenter");
 
     popover().contains("Math");
@@ -183,11 +187,14 @@ describe("scenarios > question > custom column", () => {
       cy.findByText("Total").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At").click();
 
     // Add custom column based on previous aggregates
     const columnName = "MegaTotal";
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
 
     enterCustomColumnDetails({
@@ -198,6 +205,7 @@ describe("scenarios > question > custom column", () => {
 
     visualize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question").should("not.exist");
     // This is a pre-save state of the question but the column name should appear
     // both in tabular and graph views (regardless of which one is currently selected)
@@ -207,10 +215,13 @@ describe("scenarios > question > custom column", () => {
   it("should not return same results for columns with the same name (metabase#12649)", () => {
     openOrdersTable({ mode: "notebook" });
     // join with Products
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Products").click();
 
     // add custom column
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     enterCustomColumnDetails({ formula: "1 + 1", name: "x" });
     cy.button("Done").click();
@@ -258,6 +269,7 @@ describe("scenarios > question > custom column", () => {
       { visitQuestion: true },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(CC_NAME);
   });
 
@@ -293,6 +305,7 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("Regression since v0.37.1 - it works on v0.37.0");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(`Sum of ${CC_NAME}`);
     cy.get(".Visualization .dot").should("have.length.of.at.least", 8);
   });
@@ -315,9 +328,11 @@ describe("scenarios > question > custom column", () => {
       { visitQuestion: true },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("13634");
 
     cy.log("Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Foo Bar");
     cy.findAllByText("57911");
   });
@@ -347,11 +362,13 @@ describe("scenarios > question > custom column", () => {
     // Test displays collapsed filter - click on number 1 to expand and show the filter name
     cy.icon("filter").parent().contains("1").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Subtotal is greater than 0/i)
       .parent()
       .find(".Icon-close")
       .click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(CC_NAME);
   });
 
@@ -374,7 +391,9 @@ describe("scenarios > question > custom column", () => {
       { visitQuestion: true },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(CC_NAME);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Gizmo2");
   });
 
@@ -409,10 +428,12 @@ describe("scenarios > question > custom column", () => {
     });
 
     // Remove join
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data")
       .parent()
       .find(".Icon-close")
       .click({ force: true }); // x is hidden and hover doesn't work so we have to force it
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").should("not.exist");
 
     cy.log("Reported failing on 0.38.1-SNAPSHOT (6d77f099)");
@@ -422,6 +443,7 @@ describe("scenarios > question > custom column", () => {
       expect(response.body.error).to.not.exist;
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
   });
 
@@ -460,7 +482,9 @@ describe("scenarios > question > custom column", () => {
       { callback: xhr => expect(xhr.response.body.error).not.to.exist },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(CC_NAME);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
   });
 
@@ -475,6 +499,7 @@ describe("scenarios > question > custom column", () => {
       cy.visit(`/question/${QUESTION_ID}/notebook`);
     });
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sum of ...").click();
     popover().findByText("MyCC [2021]").click();
     cy.findAllByTestId("notebook-cell-item")
@@ -489,6 +514,7 @@ describe("scenarios > question > custom column", () => {
 
   it.skip("should work with `isNull` function (metabase#15922)", () => {
     openOrdersTable({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     enterCustomColumnDetails({
       formula: `isnull([Discount])`,
@@ -500,7 +526,9 @@ describe("scenarios > question > custom column", () => {
       expect(response.body.error).to.not.exist;
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No discount");
   });
 
@@ -517,6 +545,7 @@ describe("scenarios > question > custom column", () => {
       },
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("CustomDate").click();
 
     popover().within(() => {
@@ -528,11 +557,13 @@ describe("scenarios > question > custom column", () => {
     });
 
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 463 rows").should("be.visible");
   });
 
   it("should work with relative date filter applied to a custom column (metabase#16273)", () => {
     openOrdersTable({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
 
     enterCustomColumnDetails({
@@ -544,11 +575,15 @@ describe("scenarios > question > custom column", () => {
 
     filter({ mode: "notebook" });
     popover().contains("MiscDate").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Relative dates...").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Past").click();
     // The popover shows up with the default value selected - previous 30 days.
     // Since we don't have any orders in the Sample Database for that period, we have to change it to the previous 30 years.
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("days").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("years").click();
     cy.button("Add filter").click();
 
@@ -556,7 +591,9 @@ describe("scenarios > question > custom column", () => {
       expect(body.error).to.not.exist;
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("MiscDate Previous 30 Years"); // Filter name
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("MiscDate"); // Column name
   });
 

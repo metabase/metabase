@@ -13,6 +13,7 @@
               [malli.experimental :as mx]
               [malli.instrument :as minst]
               [metabase.util.i18n :as i18n]
+              [net.cgrand.macrovich :as macros]
               [ring.util.codec :as codec])))
   #?(:cljs (:require-macros [metabase.util.malli])))
 
@@ -46,26 +47,32 @@
   ;; TODO Should this be translated with more complete context? (tru "{0}, received: {1}" message (pr-str value))
   (str message ", " (tru "received") ": " (pr-str value)))
 
+(def ^:dynamic *enforce*
+  "Bind to false to skip enforcing instrumented function schemas."
+  true)
+
 (core/defn explain-fn-fail!
   "Used as reporting function to minst/instrument!"
   [type data]
-  (let [{:keys [input args output value]} data
-        humanized (cond input  (me/humanize (mc/explain input args) {:wrap humanize-include-value})
-                        output (me/humanize (mc/explain output value) {:wrap humanize-include-value}))
-        link (cond input (->malli-io-link input args)
-                   output (->malli-io-link output value))]
-    (throw (ex-info
-            (pr-str humanized)
-            (cond-> {:type type :data data}
-              data (assoc :humanized humanized)
-              (and data link) (assoc :link link))))))
+  (when *enforce*
+    (let [{:keys [input args output value]} data
+          humanized (cond input  (me/humanize (mc/explain input args) {:wrap humanize-include-value})
+                          output (me/humanize (mc/explain output value) {:wrap humanize-include-value}))
+          link (cond input (->malli-io-link input args)
+                     output (->malli-io-link output value))]
+      (throw (ex-info
+               (pr-str humanized)
+               (cond-> {:type type :data data}
+                 data (assoc :humanized humanized)
+                 (and data link) (assoc :link link))))))
+  data)
 
 #?(:clj
    (clojure.core/defn instrument!
      "Instrument a [[metabase.util.malli/defn]]."
      [id]
-     (minst/instrument! {:filters [(minst/-filter-var #(-> % meta :validate! (= id)))]
-                         :report  explain-fn-fail!}))
+     (with-out-str (minst/instrument! {:filters [(minst/-filter-var #(-> % meta :validate! (= id)))]
+                                       :report  #'explain-fn-fail!})))
    :cljs
    (clojure.core/defn instrument!
      "Instrument a [[metabase.util.malli/defn]]. No-op for ClojureScript. Instrumentation currently only works in
@@ -73,7 +80,7 @@
      [_id]))
 
 #?(:clj
-   (core/defn- -defn [schema args]
+   (core/defn- -defn [target schema args]
      (let [{:keys [name return doc meta arities] :as parsed} (mc/parse schema args)
            _ (when (= ::mc/invalid parsed) (mc/-fail! ::parse-error {:schema schema, :args args}))
            parse (fn [{:keys [args] :as parsed}] (merge (malli.destructure/parse args) parsed))
@@ -92,27 +99,36 @@
                                                             "\n"
                                                             (str "\n          "))
                                 (when (not-empty doc) (str "\n\n  " doc))))
-           id (str (gensym "id"))]
-       `(let [defn# (core/defn
-                      ~name
-                      ~@(some-> annotated-doc vector)
-                      ~(assoc meta
-                              :raw-arglists (list 'quote raw-arglists)
-                              :schema schema
-                              :validate! id)
-                      ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
-                      ~@(when-not single (some->> arities val :meta vector)))]
-          (mc/=> ~name ~schema)
-          ;; instrument the defn we just registered, via ~id
-          (instrument! ~id)
-          defn#))))
+           id (str (gensym "id"))
+           inner-defn `(core/defn
+                         ~name
+                         ~@(some-> annotated-doc vector)
+                         ~(assoc meta
+                                 :raw-arglists (list 'quote raw-arglists)
+                                 :schema schema
+                                 :validate! id)
+                         ~@(map (fn [{:keys [arglist prepost body]}] `(~arglist ~prepost ~@body)) parglists)
+                         ~@(when-not single (some->> arities val :meta vector)))]
+       (case target
+         :clj  `(let [defn# ~inner-defn]
+                  (mc/=> ~name ~schema)
+                  ;; instrument the defn we just registered, via ~id
+                  (instrument! ~id)
+                  defn#)
+         ;; Vars aren't real in CLJS, so wrapping the inner `defn` in a `let` doesn't work like in does in CLJ.
+         ;; In CLJS `mu/defn` is just `cljs.core/defn` with some extra metadata and augmented docstring;
+         ;; [[mc/=>]] is not called, nor is [[instrument!]].
+         :cljs inner-defn))))
 
 #?(:clj
    (defmacro defn
      "Like s/defn, but for malli. Will always validate input and output without the need for calls to instrumentation (they are emitted automatically).
      Calls to minst/unstrument! can remove this, so use a filter that avoids :validate! if you use that."
      [& args]
-     (-defn mx/SchematizedParams args)))
+     ;; [[macros/case]] only works properly in a `defmacro`, not in a helper function called by a `defmacro`.
+     ;; So we use it here and pass :clj or :cljs to [[-defn]].
+     (-defn (macros/case :clj :clj :cljs :cljs)
+            mx/SchematizedParams args)))
 
 (def ^:private Schema
   [:and any?

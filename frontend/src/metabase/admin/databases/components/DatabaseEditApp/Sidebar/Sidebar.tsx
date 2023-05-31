@@ -9,7 +9,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
 
-import type { Database as IDatabase, DatabaseId } from "metabase-types/api";
+import type { DatabaseData, DatabaseId } from "metabase-types/api";
 import type Database from "metabase-lib/metadata/Database";
 
 import ModelActionsSection from "./ModelActionsSection";
@@ -26,7 +26,7 @@ interface DatabaseEditAppSidebarProps {
   isAdmin: boolean;
   isModelPersistenceEnabled: boolean;
   updateDatabase: (
-    database: { id: DatabaseId } & Partial<IDatabase>,
+    database: { id: DatabaseId } & Partial<DatabaseData>,
   ) => Promise<void>;
   syncDatabaseSchema: (databaseId: DatabaseId) => Promise<void>;
   dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
@@ -198,4 +198,5 @@ const DatabaseEditAppSidebar = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseEditAppSidebar;

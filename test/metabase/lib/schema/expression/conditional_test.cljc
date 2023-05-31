@@ -1,6 +1,6 @@
 (ns metabase.lib.schema.expression.conditional-test
   (:require
-   [clojure.test :refer [are deftest is]]
+   [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as expression]
@@ -49,7 +49,6 @@
     (case-expr 1 1.1)
     :type/Number))
 
-
 (deftest ^:parallel coalesce-test
   (is (mc/validate
        :mbql.clause/coalesce
@@ -61,10 +60,8 @@
        ::lib.schema/query
        {:lib/type     :mbql/query
         :lib/metadata meta/metadata-provider
-        :type         :pipeline
         :database     (meta/id)
         :stages       [{:lib/type     :mbql.stage/mbql,
-                        :lib/options  {:lib/uuid "455a9f5e-4996-4df9-82aa-01bc083b2efe"}
                         :source-table (meta/id :venues)
                         :expressions  {"expr"
                                        [:coalesce
@@ -73,3 +70,33 @@
                                          {:base-type :type/Text, :lib/uuid "68443c43-f9de-45e3-9f30-8dfd5fef5af6"}
                                          (meta/id :venues :name)]
                                         "bar"]}}]})))
+
+(deftest ^:parallel case-type-of-with-fields-only-test
+  ;; Ideally expression/type-of should have enough information to determine the types of fields.
+  (testing "The type of a case expression can be determined even if it consists of fields only."
+    (is (= :type/*
+           (expression/type-of
+            [:case
+             {:lib/uuid "8c6e099e-b856-4aeb-a8f6-2266b5d3d1e3"}
+             [[[:>
+                {:lib/uuid "9c4cc3b0-f3c7-4d34-ab53-640ba6e911e5"}
+                [:field {:lib/uuid "435b08c8-9404-41a5-8c5a-00b415f14da6"} 25]
+                0]
+               [:field {:lib/uuid "1c93ba8b-6a39-4ef2-a9e6-e3bcff042800"} 32]]]
+             [:field
+              {:source-field 29
+               :lib/uuid "a5ab7f91-9826-40a7-9499-4a1a0184a450"}
+              23]])))))
+
+(deftest ^:parallel coalasce-type-of-with-fields-only-test
+  ;; Ideally expression/type-of should have enough information to determine the types of fields.
+  (testing "The type of a case expression can be determined even if it consists of fields only."
+    (is (= :type/*
+           (expression/type-of
+            [:coalesce
+             {:lib/uuid "8c6e099e-b856-4aeb-a8f6-2266b5d3d1e3"}
+             [:field {:lib/uuid "435b08c8-9404-41a5-8c5a-00b415f14da6"} 25]
+             [:field
+              {:source-field 29
+               :lib/uuid "a5ab7f91-9826-40a7-9499-4a1a0184a450"}
+              23]])))))

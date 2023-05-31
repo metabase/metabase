@@ -1,14 +1,10 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 
 import title from "metabase/hoc/Title";
 import { PublicApi } from "metabase/services";
 
-import { ActionForm } from "metabase/actions/components/ActionForm";
-import {
-  generateFieldSettingsFromParameters,
-  getSuccessMessage,
-  setNumericValues,
-} from "metabase/actions/utils";
+import ActionForm from "metabase/actions/components/ActionForm";
+import { getSuccessMessage } from "metabase/actions/utils";
 
 import type {
   ParametersForActionExecution,
@@ -32,28 +28,16 @@ function PublicAction({ action, publicId, onError }: Props) {
   const [isSubmitted, setSubmitted] = useState(false);
   const successMessage = getSuccessMessage(action);
 
-  const formSettings = useMemo(() => {
-    const actionSettings = action.visualization_settings || {};
-    const fieldSettings =
-      actionSettings.fields ||
-      generateFieldSettingsFromParameters(action.parameters);
-    return {
-      ...actionSettings,
-      fields: fieldSettings,
-    };
-  }, [action]);
-
   const handleSubmit = useCallback(
-    async (values: ParametersForActionExecution) => {
+    async (parameters: ParametersForActionExecution) => {
       try {
-        const parameters = setNumericValues(values, formSettings.fields);
         await PublicApi.executeAction({ uuid: publicId, parameters });
         setSubmitted(true);
       } catch (error) {
         onError(error as AppErrorDescriptor);
       }
     },
-    [publicId, formSettings, onError],
+    [publicId, onError],
   );
 
   if (isSubmitted) {
@@ -63,15 +47,12 @@ function PublicAction({ action, publicId, onError }: Props) {
   return (
     <FormContainer>
       <FormTitle>{action.name}</FormTitle>
-      <ActionForm
-        parameters={action.parameters}
-        formSettings={formSettings}
-        onSubmit={handleSubmit}
-      />
+      <ActionForm action={action} onSubmit={handleSubmit} />
     </FormContainer>
   );
 }
 
 const getPageTitle = ({ action }: Props) => action.name;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default title(getPageTitle)(PublicAction);

@@ -22,7 +22,7 @@
 (sql-jdbc.tx/add-test-extensions! :athena)
 
 ;; during unit tests don't treat athena as having FK support
-(defmethod driver/supports? [:athena :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/database-supports? [:athena :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
@@ -86,7 +86,7 @@
 ;;;    enable [[*allow-database-creation*]] for this to work:
 ;;;
 ;;;    ```
-;;;    (db/delete! 'Database :engine "athena", :name "sample-dataset")
+;;;    (t2/delete! 'Database :engine "athena", :name "sample-dataset")
 ;;;    (binding [metabase.test.data.athena/*allow-database-creation* true]
 ;;;      (metabase.driver/with-driver :athena
 ;;;        (metabase.test/dataset sample-dataset

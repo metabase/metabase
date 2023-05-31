@@ -103,4 +103,5 @@ const getLocaleOptions = (locales: LocaleData[] | null) => {
   return [{ name: t`Use site default`, value: null }, ...options];
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default UserProfileForm;

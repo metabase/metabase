@@ -36,6 +36,10 @@ const filter = {
   sectionId: "string",
 };
 
+const dashboardDetails = {
+  parameters: [filter],
+};
+
 describe("issue 20438", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/embed/dashboard/**").as("getEmbed");
@@ -43,44 +47,44 @@ describe("issue 20438", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
-      ({ body: { id, card_id, dashboard_id } }) => {
-        cy.addFilterToDashboard({ filter, dashboard_id });
+    cy.createNativeQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: { id, card_id, dashboard_id } }) => {
+      // Connect filter to the card
+      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+        cards: [
+          {
+            id,
+            card_id,
+            row: 0,
+            col: 0,
+            size_x: 18,
+            size_y: 8,
+            parameter_mappings: [
+              {
+                parameter_id: filter.id,
+                card_id,
+                target: ["dimension", ["template-tag", "CATEGORY"]],
+              },
+            ],
+          },
+        ],
+      });
 
-        // Connect filter to the card
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
-            {
-              id,
-              card_id,
-              row: 0,
-              col: 0,
-              size_x: 18,
-              size_y: 8,
-              parameter_mappings: [
-                {
-                  parameter_id: filter.id,
-                  card_id,
-                  target: ["dimension", ["template-tag", "CATEGORY"]],
-                },
-              ],
-            },
-          ],
-        });
+      // Enable embedding and enable the "Text" filter
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        enable_embedding: true,
+        embedding_params: { [filter.slug]: "enabled" },
+      });
 
-        // Enable embedding and enable the "Text" filter
-        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          enable_embedding: true,
-          embedding_params: { [filter.slug]: "enabled" },
-        });
-
-        visitDashboard(dashboard_id);
-      },
-    );
+      visitDashboard(dashboard_id);
+    });
   });
 
   it("dashboard filter connected to the field filter should work with a single value in embedded dashboards (metabase#20438)", () => {
     cy.icon("share").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Embed in your application").click();
 
     visitIframe();

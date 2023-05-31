@@ -1,4 +1,9 @@
-import { adhocQuestionHash, popover, restore } from "e2e/support/helpers";
+import {
+  adhocQuestionHash,
+  popover,
+  appBar,
+  restore,
+} from "e2e/support/helpers";
 
 describe("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -13,84 +18,102 @@ describe("scenarios > embedding > full app", () => {
   describe("home page navigation", () => {
     it("should hide the top nav when nothing is shown", () => {
       visitUrl({ url: "/", qs: { side_nav: false, logo: false } });
-      cy.findByText(/Bobby/).should("be.visible");
-      cy.findByText("Our analytics").should("not.exist");
-      cy.findByTestId("main-logo").should("not.exist");
+      appBar().should("not.exist");
     });
 
-    it("should show the top nav and breadcrumbs by default", () => {
+    it("should show the top nav by default", () => {
       visitUrl({ url: "/" });
-      cy.findByText(/Bobby/).should("be.visible");
-      cy.findByText("Our analytics").should("be.visible");
+      appBar().should("be.visible");
       cy.findByTestId("main-logo").should("be.visible");
     });
 
     it("should hide the top nav by a param", () => {
       visitUrl({ url: "/", qs: { top_nav: false } });
-      cy.findByText(/Bobby/).should("be.visible");
-      cy.findByText("Our analytics").should("not.exist");
-      cy.findByTestId("main-logo").should("not.exist");
+      appBar().should("not.exist");
     });
 
     it("should not hide the top nav when the logo is still visible", () => {
-      visitUrl({ url: "/", qs: { breadcrumbs: false } });
-      cy.findByText(/Bobby/).should("be.visible");
-      cy.findByText("Our analytics").should("be.visible");
+      visitUrl({ url: "/question/1", qs: { breadcrumbs: false } });
       cy.findByTestId("main-logo").should("be.visible");
+      appBar().within(() => {
+        cy.findByText("Our analytics").should("not.exist");
+      });
     });
 
-    it("should hide the top nav when all nav elements are hidden", () => {
-      visitUrl({ url: "/", qs: { logo: false } });
-      cy.findByText(/Bobby/).should("be.visible");
-      cy.findByText("Our analytics").should("not.exist");
+    it("should keep showing sidebar toggle button when logo, breadcrumbs, the new button, and search are hidden", () => {
+      visitUrl({
+        url: "/",
+        qs: {
+          logo: false,
+          breadcrumbs: false,
+          search: false,
+          new_button: false,
+        },
+      });
+
+      appBar().should("be.visible");
       cy.button("Toggle sidebar").should("be.visible");
-      cy.findByTestId("main-logo").should("not.exist");
     });
 
     it("should show the top nav by a param", () => {
       visitUrl({ url: "/" });
-      cy.findByText(/Bobby/).should("be.visible");
+      appBar().should("be.visible");
       cy.findByTestId("main-logo").should("be.visible");
-      cy.button(/New/).should("not.exist");
-      cy.findByPlaceholderText("Search").should("not.exist");
+      appBar().within(() => {
+        cy.button(/New/).should("not.exist");
+        cy.findByPlaceholderText("Search").should("not.exist");
+      });
     });
 
     it("should hide the side nav by a param", () => {
       visitUrl({ url: "/", qs: { side_nav: false } });
-      cy.findByText(/Bobby/).should("be.visible");
-      cy.findByTestId("main-logo").should("be.visible");
+      appBar().within(() => {
+        cy.findByTestId("main-logo").should("be.visible");
+      });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics").should("not.exist");
     });
 
     it("should show question creation controls by a param", () => {
       visitUrl({ url: "/", qs: { new_button: true } });
-      cy.findByText(/Bobby/).should("be.visible");
-      cy.button(/New/).should("be.visible");
+      appBar().within(() => {
+        cy.button(/New/).should("be.visible");
+      });
     });
 
     it("should show search controls by a param", () => {
       visitUrl({ url: "/", qs: { search: true } });
-      cy.findByText(/Bobby/).should("be.visible");
-      cy.findByPlaceholderText("Search…").should("be.visible");
+      appBar().within(() => {
+        cy.findByPlaceholderText("Search…").should("be.visible");
+      });
     });
 
     it("should preserve params when navigating", () => {
-      visitUrl({ url: "/" });
-      cy.findByText(/Bobby/).should("be.visible");
-      cy.findByTestId("main-logo").should("be.visible");
+      visitUrl({ url: "/", qs: { search: true } });
 
+      appBar().within(() => {
+        cy.findByPlaceholderText("Search…").should("be.visible");
+      });
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard").should("be.visible");
-      cy.findByTestId("main-logo").should("be.visible");
+
+      appBar().within(() => {
+        cy.findByPlaceholderText("Search…").should("be.visible");
+      });
     });
   });
 
   describe("browse data", () => {
     it("should hide the top nav when nothing is shown", () => {
       visitUrl({ url: "/browse", qs: { side_nav: false, logo: false } });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our data").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics").should("not.exist");
-      cy.findByTestId("main-logo").should("not.exist");
+      appBar().should("not.exist");
     });
   });
 
@@ -100,11 +123,13 @@ describe("scenarios > embedding > full app", () => {
 
       cy.findByTestId("qb-header").should("be.visible");
       cy.findByTestId("qb-header-left-side").realHover();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited/).should("be.visible");
 
       cy.icon("refresh").should("be.visible");
       cy.icon("notebook").should("be.visible");
       cy.button("Summarize").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter").should("be.visible");
     });
 
@@ -117,7 +142,9 @@ describe("scenarios > embedding > full app", () => {
     it("should hide the question's additional info by a param", () => {
       visitQuestionUrl({ url: "/question/1", qs: { additional_info: false } });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited/).should("not.exist");
     });
 
@@ -142,6 +169,7 @@ describe("scenarios > embedding > full app", () => {
           qs: { top_nav: true, new_button: true, side_nav: false },
         });
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("New").click();
         popover().findByText("Question").click();
         popover().findByText("Sample Database").click();
@@ -165,6 +193,7 @@ describe("scenarios > embedding > full app", () => {
           qs: { side_nav: false },
         });
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Sample Database").should("be.visible");
       });
     });
@@ -206,13 +235,16 @@ describe("scenarios > embedding > full app", () => {
     it("should show the dashboard header by default", () => {
       visitDashboardUrl({ url: "/dashboard/1" });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited/).should("be.visible");
     });
 
     it("should hide the dashboard header by a param", () => {
       visitDashboardUrl({ url: "/dashboard/1", qs: { header: false } });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard").should("not.exist");
     });
 
@@ -222,8 +254,11 @@ describe("scenarios > embedding > full app", () => {
         qs: { additional_info: false },
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited/).should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics").should("be.visible");
     });
 
@@ -253,6 +288,7 @@ describe("scenarios > embedding > full app", () => {
     it("should show the dashboard header by default", () => {
       visitXrayDashboardUrl({ url: "/auto/dashboard/table/1" });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("More X-rays").should("be.visible");
       cy.button("Save this").should("be.visible");
     });
@@ -263,6 +299,7 @@ describe("scenarios > embedding > full app", () => {
         qs: { header: false },
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("More X-rays").should("be.visible");
       cy.button("Save this").should("not.exist");
     });

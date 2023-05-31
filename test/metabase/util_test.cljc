@@ -227,18 +227,43 @@
     {}  nil
     nil nil))
 
-;; TODO Can we achieve something like with-locale in CLJS?
+(deftest ^:parallel lower-case-en-test
+  (is (= "id"
+         (u/lower-case-en "ID"))))
+
 #?(:clj
-   (deftest lower-case-en-test
+   (deftest lower-case-en-turkish-test
+     ;; TODO Can we achieve something like with-locale in CLJS?
      (mt/with-locale "tr"
        (is (= "id"
               (u/lower-case-en "ID"))))))
 
+(deftest ^:parallel upper-case-en-test
+  (is (= "ID"
+         (u/upper-case-en "id"))))
+
 #?(:clj
-   (deftest upper-case-en-test
+   (deftest upper-case-en-turkish-test
      (mt/with-locale "tr"
        (is (= "ID"
               (u/upper-case-en "id"))))))
+
+(deftest ^:parallel capitalize-en-test
+  (are [s expected] (= expected
+                       (u/capitalize-en s))
+    nil    nil
+    ""     ""
+    "ibis" "Ibis"
+    "IBIS" "Ibis"
+    "Ibis" "Ibis"))
+
+#?(:clj
+   (deftest capitalize-en-turkish-test
+     (mt/with-locale "tr"
+       (is (= "Ibis"
+              (u/capitalize-en "ibis")
+              (u/capitalize-en "IBIS")
+              (u/capitalize-en "Ibis"))))))
 
 (deftest ^:parallel parse-currency-test
   (are [s expected] (= expected
@@ -290,7 +315,7 @@
                              (= x m)
                              (= ys (concat non-pos rest))))))))
 
-(deftest normalize-map-test
+(deftest ^:parallel normalize-map-test
   (testing "nil and empty maps return empty maps"
     (is (= {} (u/normalize-map nil)))
     (is (= {} (u/normalize-map {}))))
@@ -305,6 +330,12 @@
     #?(:cljs
        (testing "JS objects get turned into Clojure maps"
          (is (= exp (u/normalize-map #js {"kebab-key" 1 "snake_key" 2 "camelKey" 3})))))))
+
+#?(:clj
+   (deftest normalize-map-turkish-test
+     (mt/with-locale "tr"
+       (is (= {:bird "Toucan"}
+              (u/normalize-map {:BIRD "Toucan"}))))))
 
 (deftest ^:parallel or-with-test
   (testing "empty case"
@@ -350,3 +381,33 @@
       :dispatch-type/regex
       :dispatch-type/fn
       :dispatch-type/*)))
+
+(deftest ^:parallel assoc-dissoc-test
+  (testing `lib.options/with-option-value
+    (is (= {:foo "baz"}
+           (u/assoc-dissoc {:foo "bar"} :foo "baz")))
+    (is (= {}
+           (u/assoc-dissoc {:foo "bar"} :foo nil)))
+    (is (= {:foo false}
+           (u/assoc-dissoc {:foo "bar"} :foo false))
+        "false should be assoc'd")))
+
+(deftest ^:parallel assoc-default-test
+  (testing "nil map"
+    (is (= {:x 0}
+           (u/assoc-default nil :x 0))))
+  (testing "empty map"
+    (is (= {0 :x}
+           (u/assoc-default {} 0 :x))))
+  (testing "existing key"
+    (is (= {:x 0}
+           (u/assoc-default {:x 0} :x 1))))
+  (testing "nil value"
+    (is (= {:x 0}
+           (u/assoc-default {:x 0} :y nil))))
+  (testing "multiple defaults"
+    (is (= {:x nil, :z 1}
+           (u/assoc-default {:x nil} :x 0 :y nil :z 1))))
+  (testing "multiple defaults for the same key"
+    (is (= {:x nil, :y 1, :z 2}
+           (u/assoc-default {:x nil} :x 0, :y nil, :y 1, :z 2, :x 3, :z 4)))))

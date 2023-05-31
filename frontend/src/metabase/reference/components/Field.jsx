@@ -7,7 +7,7 @@ import { getIn } from "icepick";
 import cx from "classnames";
 import * as MetabaseCore from "metabase/lib/core";
 
-import S from "metabase/components/List.css";
+import S from "metabase/components/List/List.css";
 import Select from "metabase/core/components/Select";
 import Icon from "metabase/components/Icon";
 import { isTypeFK } from "metabase-lib/types/utils/isa";

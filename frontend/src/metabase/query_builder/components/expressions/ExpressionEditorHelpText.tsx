@@ -1,20 +1,25 @@
 import React from "react";
 import { t } from "ttag";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import Tooltip from "metabase/core/components/Tooltip";
+import MetabaseSettings from "metabase/lib/settings";
 import { HelpText } from "metabase-lib/expressions/types";
+import { getHelpDocsUrl } from "./ExpressionEditorTextfield/helper-text-strings";
 import {
+  ArgumentTitle,
+  ArgumentsGrid,
+  BlockSubtitleText,
   Container,
-  ExampleBlock,
+  Divider,
+  DocumentationLink,
   ExampleCode,
-  ExampleTitleText,
   FunctionHelpCode,
   FunctionHelpCodeArgument,
+  LearnMoreIcon,
 } from "./ExpressionEditorHelpText.styled";
 
 export interface ExpressionEditorHelpTextProps {
-  helpText: HelpText | undefined;
-  width: number;
+  helpText: HelpText | null | undefined;
+  width: number | undefined;
   target: React.RefObject<HTMLElement>;
 }
 
@@ -42,19 +47,16 @@ const ExpressionEditorHelpText = ({
             onMouseDown={e => e.preventDefault()}
             data-testid="expression-helper-popover"
           >
-            <div>{description}</div>
-            <FunctionHelpCode data-testid="expression-helper-popover-arguments">
+            <FunctionHelpCode data-testid="expression-helper-popover-structure">
               {structure}
               {args != null && (
                 <>
                   (
-                  {args.map(({ name, description }, index) => (
+                  {args.map(({ name }, index) => (
                     <span key={name}>
-                      <Tooltip tooltip={description} placement="bottom-start">
-                        <FunctionHelpCodeArgument>
-                          {name}
-                        </FunctionHelpCodeArgument>
-                      </Tooltip>
+                      <FunctionHelpCodeArgument>
+                        {name}
+                      </FunctionHelpCodeArgument>
                       {index + 1 < args.length && ", "}
                     </span>
                   ))}
@@ -62,10 +64,30 @@ const ExpressionEditorHelpText = ({
                 </>
               )}
             </FunctionHelpCode>
-            <ExampleBlock>
-              <ExampleTitleText>{t`Example`}</ExampleTitleText>
-              <ExampleCode>{helpText.example}</ExampleCode>
-            </ExampleBlock>
+            <Divider />
+
+            <div>{description}</div>
+
+            {args != null && (
+              <ArgumentsGrid data-testid="expression-helper-popover-arguments">
+                {args.map(({ name, description: argDescription }, index) => (
+                  <React.Fragment key={name}>
+                    <ArgumentTitle>{name}</ArgumentTitle>
+                    <div>{argDescription}</div>
+                  </React.Fragment>
+                ))}
+              </ArgumentsGrid>
+            )}
+
+            <BlockSubtitleText>{t`Example`}</BlockSubtitleText>
+            <ExampleCode>{helpText.example}</ExampleCode>
+            <DocumentationLink
+              href={MetabaseSettings.docsUrl(getHelpDocsUrl(helpText))}
+              target="_blank"
+            >
+              <LearnMoreIcon name="reference" size={12} />
+              {t`Learn more`}
+            </DocumentationLink>
           </Container>
         </>
       }
@@ -73,4 +95,5 @@ const ExpressionEditorHelpText = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ExpressionEditorHelpText;

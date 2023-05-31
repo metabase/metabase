@@ -1,10 +1,10 @@
 import React from "react";
 
 import Select, { Option } from "metabase/core/components/Select";
-import { formatBucketing } from "metabase-lib/queries/utils/query-time";
+import * as Lib from "metabase-lib";
 
 const defaultDisplayName = (period: string, intervals: number) =>
-  formatBucketing(period, intervals).toLowerCase();
+  Lib.describeTemporalUnit(period, intervals).toLowerCase();
 
 type Props = {
   className?: string;
@@ -43,4 +43,5 @@ const DateUnitSelector = ({
   </Select>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DateUnitSelector;

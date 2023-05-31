@@ -1,1 +1,1 @@
-export { default } from "./PreferencesStep";
+export * from "./PreferencesStep";

@@ -10,7 +10,7 @@ summary: |
 
 ## `PUT /api/google/settings`
 
-Update Google Sign-In related settings. You must be a superuser or have `setting` permission to do this.
+Update Google Sign-In related settings. You must be a superuser to do this.
 
 You must be a superuser to do this.
 

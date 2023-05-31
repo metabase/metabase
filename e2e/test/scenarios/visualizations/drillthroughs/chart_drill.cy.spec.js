@@ -10,6 +10,8 @@ import {
   visitQuestion,
   visitDashboard,
   startNewQuestion,
+  addOrUpdateDashboardCard,
+  addSummaryField,
 } from "e2e/support/helpers";
 
 import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -46,7 +48,9 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Gadget");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("January, 2017");
     cy.wait(100); // wait longer to avoid grabbing the svg before a chart redraw
 
@@ -59,13 +63,19 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // new filter applied
     // Note: Test was flaking because apparently mouseup doesn't always happen at the same position.
     //       It is enough that we assert that the filter exists and that it starts with May, 2016
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(/^Created At between May, 2016/);
     // more granular axis labels
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("June, 2016");
     // confirm that product category is still broken out
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Gadget");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Doohickey");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Gizmo");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Widget");
   });
 
@@ -100,7 +110,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.wait("@dataset");
 
       granularity === "month"
-        ? cy.findByText("Created At between September, 2016 February, 2017")
+        ? // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          cy.findByText("Created At between September, 2016 February, 2017")
         : // Once the issue gets fixed, figure out the positive assertion for the "month-of-year" granularity
           null;
 
@@ -133,37 +144,20 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add the first question to the dashboard");
 
-            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cardId: Q1_ID,
-              row: 0,
-              col: 0,
-              size_x: 16,
-              size_y: 12,
-            }).then(({ body: { id: DASH_CARD_ID } }) => {
-              cy.log(
-                "Add additional series combining it with the second question",
-              );
-
-              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cards: [
+            addOrUpdateDashboardCard({
+              card_id: Q1_ID,
+              dashboard_id: DASHBOARD_ID,
+              card: {
+                size_x: 16,
+                size_y: 12,
+                // Add additional series combining it with the second question
+                series: [
                   {
-                    id: DASH_CARD_ID,
-                    card_id: Q1_ID,
-                    row: 0,
-                    col: 0,
-                    size_x: 16,
-                    size_y: 12,
-                    series: [
-                      {
-                        id: Q2_ID,
-                        model: "card",
-                      },
-                    ],
-                    visualization_settings: {},
-                    parameter_mappings: [],
+                    id: Q2_ID,
+                    model: "card",
                   },
                 ],
-              });
+              },
             });
 
             visitDashboard(DASHBOARD_ID);
@@ -173,8 +167,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               .find(".dot")
               .eq(0)
               .click({ force: true });
-            cy.findByText(/Zoom in/i);
-            cy.findByText(/View these Orders/i);
+            cy.findByText("See this year by quarter");
+            cy.findByText("See these Orders");
 
             // Click anywhere else to close the first action panel
             cy.findByText("11442D").click();
@@ -185,8 +179,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               .find(".dot")
               .eq(0)
               .click({ force: true });
-            cy.findByText(/Zoom in/i);
-            cy.findByText(/View these Products/i);
+            cy.findByText("See this year by quarter");
+            cy.findByText("See these Products");
           },
         );
       });
@@ -219,37 +213,20 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add the first question to the dashboard");
 
-            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cardId: Q1_ID,
-              row: 0,
-              col: 0,
-              size_x: 16,
-              size_y: 12,
-            }).then(({ body: { id: DASH_CARD_ID } }) => {
-              cy.log(
-                "Add additional series combining it with the second question",
-              );
-
-              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cards: [
+            addOrUpdateDashboardCard({
+              card_id: Q1_ID,
+              dashboard_id: DASHBOARD_ID,
+              card: {
+                size_x: 16,
+                size_y: 12,
+                // Add additional series combining it with the second question
+                series: [
                   {
-                    id: DASH_CARD_ID,
-                    card_id: Q1_ID,
-                    row: 0,
-                    col: 0,
-                    size_x: 16,
-                    size_y: 12,
-                    series: [
-                      {
-                        id: Q2_ID,
-                        model: "card",
-                      },
-                    ],
-                    visualization_settings: {},
-                    parameter_mappings: [],
+                    id: Q2_ID,
+                    model: "card",
                   },
                 ],
-              });
+              },
             });
 
             visitDashboard(DASHBOARD_ID);
@@ -259,8 +236,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               .find(".dot")
               .eq(0)
               .click({ force: true });
-            cy.findByText(/Zoom in/i);
-            cy.findByText(/View these Orders/i);
+            cy.findByText("See this year by quarter");
+            cy.findByText("See these Orders");
 
             // Click anywhere else to close the first action panel
             cy.findByText("13457D").click();
@@ -271,43 +248,50 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               .find(".dot")
               .eq(0)
               .click({ force: true });
-            cy.findByText(/Zoom in/i);
-            cy.findByText(/View these Orders/i);
+            cy.findByText("See this year by quarter");
+            cy.findByText("See these Orders");
           },
         );
       });
     });
   });
 
-  // this test was very flaky
-  it.skip("should drill through a nested query", () => {
-    // There's a slight hiccup in the UI with nested questions when we Summarize by City below.
-    // Because there's only 5 rows, it automatically switches to the chart, but issues another
-    // dataset request. So we wait for the dataset to load.
+  it("should drill through a nested query", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    // People in CA
     cy.createQuestion({
       name: "CA People",
       query: { "source-table": PEOPLE_ID, limit: 5 },
     });
     // Build a new question off that grouping by City
     startNewQuestion();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Saved Questions").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("CA People").click();
-    cy.contains("Hudson Borer");
-    summarize();
-    cy.contains("Summarize by").parent().parent().contains("City").click();
 
-    // wait for chart to load
+    addSummaryField({ metric: "Count of rows" });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Pick a column to group by").click();
+    popover().within(() => {
+      cy.findByText("City").click();
+    });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Visualize").click();
+
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count by City");
-    // drill into the first bar
-    cy.get(".bar").first().click({ force: true });
-    cy.contains("View this CA People").click();
 
-    // check that filter is applied and person displayed
+    cy.get(".bar").first().click({ force: true });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains("See this CA Person").click();
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("City is Beaver Dams");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Dominique Leffler");
   });
 
@@ -324,57 +308,75 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     // Load the question up
     cy.visit("/collection/root");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Orders by Created At: Week").click({ force: true });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("January, 2019");
 
     // drill into a recent week
     cy.get(".dot").eq(-4).click({ force: true });
-    cy.contains("View these Orders").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains("See these Orders").click();
 
     // check that filter is applied and rows displayed
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 127 rows");
 
     cy.log("Filter should show the range between two dates");
     // Now click on the filter widget to see if the proper parameters got passed in
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Created At between").click();
   });
 
   it.skip("should drill-through on filtered aggregated results (metabase#13504)", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At").click();
 
     // add filter: Count > 1
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
     popover().within(() => {
       cy.findByText("Count").click();
       cy.findByText("Equal to").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Greater than").click();
     cy.findByPlaceholderText("Enter a number").click().type("1");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
     visualize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
     cy.icon("line").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
     cy.log("Mid-point assertion");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count by Created At: Month");
     // at this point, filter is displaying correctly with the name
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count is greater than 1");
 
     // drill-through
     cy.get(".dot")
       .eq(10) // random dot
       .click({ force: true });
-    cy.findByText("View these Orders").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("See these Orders").click();
 
     cy.log("Reproduced on 0.34.3, 0.35.4, 0.36.7 and 0.37.0-rc2");
     // when the bug is present, filter is missing a name (showing only "is 256")
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count is equal to 256");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question").should("not.exist");
   });
 
@@ -487,7 +489,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
         // Initial visualization has rendered and we can now drill-through
         cy.get(".Visualization .bar").eq(4).click({ force: true });
-        cy.findByText(/View these People/i).click();
+        cy.findByText("See these People").click();
 
         // We should see the resulting dataset of that drill-through
         cy.wait("@dataset").then(xhr => {
@@ -514,14 +516,19 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
       display: "table",
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^10 –/)
       .closest(".TableInteractive-cellWrapper")
       .next()
       .contains("85")
       .click();
-    cy.findByText("View these Orders").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("See these Orders").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is greater than or equal to 10");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is less than 20");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 85 rows");
   });
 
@@ -543,11 +550,15 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
 
     // click on the Count column cell showing the count of null rows
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("16,845").click();
-    cy.findByText("View these Orders").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("See these Orders").click();
 
     // count number of distinct values in the Discount column
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Discount ($)").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Distinct values").click();
 
     // there should be 0 distinct values since they are all null
@@ -565,35 +576,20 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       display: "pie",
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-          row: 0,
-          col: 0,
-          size_x: 16,
-          size_y: 10,
-        }).then(({ body: { id: DASH_CARD_ID } }) => {
-          // Add click through to the custom destination on a card
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cards: [
-              {
-                id: DASH_CARD_ID,
-                card_id: QUESTION_ID,
-                row: 0,
-                col: 0,
-                size_x: 16,
-                size_y: 10,
-                series: [],
-                visualization_settings: {
-                  click_behavior: {
-                    type: "link",
-                    linkType: "url",
-                    linkTemplate: "question/{{count}}",
-                  },
-                },
-                parameter_mappings: [],
+        addOrUpdateDashboardCard({
+          card_id: QUESTION_ID,
+          dashboard_id: DASHBOARD_ID,
+          card: {
+            size_x: 16,
+            size_y: 10,
+            visualization_settings: {
+              click_behavior: {
+                type: "link",
+                linkType: "url",
+                linkTemplate: "question/{{count}}",
               },
-            ],
-          });
+            },
+          },
         });
 
         visitDashboard(DASHBOARD_ID);
@@ -624,7 +620,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
       // Drill-through the last bar (Widget)
       cy.get(".bar").last().click({ force: true });
-      cy.findByText("View these Products").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("See these Products").click();
     });
 
     // [quarantine] flaky
@@ -633,8 +630,11 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.url().should("include", "/question#");
 
       cy.log("Assert on the correct product category: Widget");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Category is Widget");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Gizmo").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Doohickey").should("not.exist");
     });
   });

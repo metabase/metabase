@@ -8,6 +8,7 @@ describe("scenarios > reference > databases", () => {
 
   it("should see the listing", () => {
     cy.visit("/reference/databases");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sample Database");
   });
 
@@ -19,35 +20,46 @@ describe("scenarios > reference > databases", () => {
 
   it("should let an admin edit details about the database", () => {
     cy.visit("/reference/databases/1");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Edit").click();
     // Q - is there any cleaner way to get a nearby element without having to know the DOM?
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Description")
       .parent()
       .parent()
       .find("textarea")
       .type("A pretty ok store");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("A pretty ok store");
   });
 
   it("should let an admin start to edit and cancel without saving", () => {
     cy.visit("/reference/databases/1");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Edit").click();
     // Q - is there any cleaner way to get a nearby element without having to know the DOM?
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Why this")
       .parent()
       .parent()
       .find("textarea")
       .type("Turns out it's not");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Cancel").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Turns out").should("have.length", 0);
   });
 
   it("should let an admin edit the database name", () => {
     cy.visit("/reference/databases/1");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Edit").click();
     cy.get(".wrapper input").clear().type("My definitely profitable business");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("My definitely profitable business");
   });
 

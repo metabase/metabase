@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/core/components/Link";
 
 export const NotificationCardRoot = styled.div`
   display: flex;
@@ -18,15 +17,6 @@ export const NotificationCardRoot = styled.div`
 
 export const NotificationContent = styled.div`
   flex: 1 1 auto;
-`;
-
-export const NotificationTitle = styled(Link)`
-  color: ${color("brand")};
-  font-weight: bold;
-
-  &:hover {
-    text-decoration: underline;
-  }
 `;
 
 export const NotificationDescription = styled.div`

@@ -1,6 +1,7 @@
 import React, { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
+
 import { getEngineNativeType } from "metabase/lib/engine";
 import Button from "metabase/core/components/Button";
 import {
@@ -10,7 +11,10 @@ import {
 import { NativeQueryForm } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
+
 import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
+
+import { createDatasetQuery } from "./utils";
 
 const MODAL_TITLE = {
   sql: t`SQL for this question`,
@@ -47,11 +51,8 @@ const ConvertQueryModal = ({
       return;
     }
 
-    const newQuestion = question.setDatasetQuery({
-      type: "native",
-      native: { query, "template-tags": {} },
-      database: question.databaseId() || undefined,
-    });
+    const newDatasetQuery = createDatasetQuery(query, question);
+    const newQuestion = question.setDatasetQuery(newDatasetQuery);
 
     onUpdateQuestion?.(newQuestion, { shouldUpdateUrl: true });
     onClose?.();
@@ -81,4 +82,5 @@ const mapStateToProps = (state: State) => ({
   onLoadQuery: getNativeQueryFn(state),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(ConvertQueryModal);

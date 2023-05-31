@@ -6,7 +6,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.encryption-test :as encryption-test]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.io DataInputStream File)
    (java.nio.charset StandardCharsets)))
@@ -35,7 +35,7 @@
          (is (= name (:name secret)))
          (is (= kind (:kind secret)))
          (is (mt/secret-value-equals? value (:value secret)))
-         (let [loaded (db/select-one Secret :id id)]
+         (let [loaded (t2/select-one Secret :id id)]
            (is (= name (:name loaded)))
            (is (= kind (:kind loaded)))
            (is (mt/secret-value-equals? value (:value loaded))))))))

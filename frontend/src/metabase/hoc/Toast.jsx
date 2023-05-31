@@ -8,6 +8,9 @@ const mapDispatchToProps = {
   addUndo,
 };
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 const withToaster = ComposedComponent => {
   class ToastedComponent extends React.Component {
     _triggerToast = (message, options = {}) => {

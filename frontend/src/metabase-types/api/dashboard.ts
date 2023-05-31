@@ -1,16 +1,16 @@
-import { Parameter } from "metabase-types/api/parameters";
-import type { EntityId } from "metabase-types/types";
 import type {
-  ParameterTarget,
+  Parameter,
   ParameterId,
-} from "metabase-types/types/Parameter";
+  ParameterTarget,
+} from "metabase-types/api";
 
-import { ActionDashboardCard } from "./actions";
+import type { ActionDashboardCard } from "./actions";
 import type { SearchModelType } from "./search";
 import type { Card, CardId, CardDisplayType } from "./card";
 import type { Dataset } from "./dataset";
 
-export type DashboardId = number;
+// x-ray dashboard have string ids
+export type DashboardId = number | string;
 
 export interface Dashboard {
   id: DashboardId;
@@ -19,6 +19,7 @@ export interface Dashboard {
   description: string | null;
   model?: string;
   ordered_cards: (DashboardOrderedCard | ActionDashboardCard)[];
+  ordered_tabs?: DashboardOrderedTab[];
   parameters?: Parameter[] | null;
   can_write: boolean;
   cache_ttl: number | null;
@@ -29,13 +30,15 @@ export interface Dashboard {
     last_name: string;
     timestamp: string;
   };
+  auto_apply_filters: boolean;
 }
 
-export type DashCardId = EntityId;
+export type DashCardId = number;
 
 export type BaseDashboardOrderedCard = {
   id: DashCardId;
   dashboard_id: DashboardId;
+  dashboard_tab_id?: DashboardTabId;
   size_x: number;
   size_y: number;
   col: number;
@@ -62,6 +65,18 @@ export type DashboardOrderedCard = BaseDashboardOrderedCard & {
   card: Card;
   parameter_mappings?: DashboardParameterMapping[] | null;
   series?: Card[];
+};
+
+export type DashboardTabId = number;
+
+export type DashboardOrderedTab = {
+  id: DashboardTabId;
+  dashboard_id: DashboardId;
+  entity_id: string;
+  name: string;
+  position?: number;
+  created_at: string;
+  updated_at: string;
 };
 
 export type DashboardParameterMapping = {
@@ -95,4 +110,11 @@ export type RestrictedLinkEntity = {
 export interface LinkCardSettings {
   url?: string;
   entity?: LinkEntity;
+}
+
+export interface GetCompatibleCardsPayload {
+  last_cursor?: number;
+  limit: number;
+  query?: string;
+  exclude_ids: number[];
 }

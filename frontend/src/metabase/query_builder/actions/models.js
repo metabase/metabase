@@ -27,8 +27,9 @@ export const onCancelCreateNewModel = () => async dispatch => {
 export const CANCEL_DATASET_CHANGES = "metabase/qb/CANCEL_DATASET_CHANGES";
 export const onCancelDatasetChanges = () => (dispatch, getState) => {
   const cardBeforeChanges = getOriginalCard(getState());
-  dispatch.action(CANCEL_DATASET_CHANGES, {
-    card: cardBeforeChanges,
+  dispatch({
+    type: CANCEL_DATASET_CHANGES,
+    payload: { card: cardBeforeChanges },
   });
   dispatch(runDirtyQuestionQuery());
 };
@@ -50,7 +51,7 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
 
   await dispatch(loadMetadataForQueries([], [dataset.dependentMetadata()]));
 
-  dispatch.action(API_UPDATE_QUESTION, dataset.card());
+  dispatch({ type: API_UPDATE_QUESTION, payload: dataset.card() });
 
   dispatch(
     addUndo({

@@ -66,7 +66,6 @@
            (formatted-value :date/single end locale))
       "")))
 
-;;; TODO -- sorta duplicated with [[metabase.lib.metadata.calculate.display-name/interval-display-name]] but not exactly
 (defn- translated-interval
   [interval n]
   (case interval

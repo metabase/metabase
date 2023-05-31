@@ -1,19 +1,20 @@
 import React, { ChangeEvent, useMemo } from "react";
 import { t } from "ttag";
 
+import Input from "metabase/core/components/Input";
+import Radio from "metabase/core/components/Radio";
+import Toggle from "metabase/core/components/Toggle";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+
+import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { getInputTypes } from "metabase/actions/constants";
+
 import type {
   FieldSettings,
   FieldType,
   InputSettingType,
 } from "metabase-types/api";
 
-import Input from "metabase/core/components/Input";
-import Radio from "metabase/core/components/Radio";
-import Toggle from "metabase/core/components/Toggle";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-
-import { getInputTypes } from "./constants";
 import { getDefaultValueInputType } from "./utils";
 import {
   SettingsTriggerIcon,
@@ -99,14 +100,16 @@ export function FormCreatorPopoverBody({
         fieldType={fieldSettings.fieldType}
         onChange={handleUpdateInputType}
       />
-      <Divider />
+      <Divider data-testid="divider" />
       {hasPlaceholder && (
-        <PlaceholderInput
-          value={fieldSettings.placeholder ?? ""}
-          onChange={handleUpdatePlaceholder}
-        />
+        <>
+          <PlaceholderInput
+            value={fieldSettings.placeholder ?? ""}
+            onChange={handleUpdatePlaceholder}
+          />
+          <Divider data-testid="divider" />
+        </>
       )}
-      <Divider />
       <RequiredInput
         fieldSettings={fieldSettings}
         onChangeRequired={handleUpdateRequired}

@@ -5,7 +5,7 @@ import {
   popover,
   summarize,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -20,15 +20,19 @@ describe("scenarios > admin > datamodel > metadata", () => {
     // go directly to Data Model page for Sample Database
     cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     // edit "Product ID" column in "Orders" table
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
     cy.findByTestId("column-PRODUCT_ID").find(".Icon-gear").click();
 
     // remap its original value to use foreign key
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Use original value").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Use foreign key").click();
     popover().within(() => {
       cy.findByText("Title").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
     );
@@ -51,12 +55,16 @@ describe("scenarios > admin > datamodel > metadata", () => {
     // go directly to Data Model page for Sample Database
     cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     // edit "Rating" values in "Reviews" table
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Reviews").click();
     cy.findByTestId("column-RATING").find(".Icon-gear").click();
 
     // apply custom remapping for "Rating" values 1-5
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Use original value").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom mapping").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
     );
@@ -64,6 +72,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     Object.entries(customMap).forEach(([key, value]) => {
       cy.findByDisplayValue(key).click().clear().type(value);
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     cy.log("Numeric ratings should be remapped to custom strings");
@@ -92,9 +101,11 @@ describe("scenarios > admin > datamodel > metadata", () => {
       { visitQuestion: true },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At: Hour of day");
 
     cy.log("Reported failing in v0.37.2");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^3:00 AM$/);
   });
 
@@ -110,7 +121,9 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
     openReviewsTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     cy.get(".List-section-header").contains("Created At").click();
     cy.get(".List-section--expanded .List-item-title")
@@ -120,7 +133,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
   it("display value 'custom mapping' should be available regardless of the chosen filtering type (metabase#16322)", () => {
     cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${REVIEWS_ID}/${REVIEWS.RATING}/general`,
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}/field/${REVIEWS.RATING}/general`,
     );
 
     openOptionsForSection("Filtering on this field");

@@ -62,6 +62,7 @@ const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
     title: override?.title ?? field["display-name"],
     description: override?.description ?? field.description,
     placeholder: placeholder != null ? String(placeholder) : undefined,
+    encoding: field["treat-before-posting"],
   };
 };
 
@@ -86,4 +87,5 @@ const getSelectProps = (field: EngineField, override?: EngineFieldOverride) => {
   };
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseDetailField;

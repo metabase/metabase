@@ -85,7 +85,7 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;; so the hydration method for name_field is loaded
 (comment params/keep-me)
@@ -110,7 +110,7 @@
    ^{::memoize/args-fn (fn [[field-id]]
                          [(mdb.connection/unique-identifier) field-id])}
    (fn [field-id]
-     (types/temporal-field? (db/select-one [Field :base_type :semantic_type] :id field-id)))
+     (types/temporal-field? (t2/select-one [Field :base_type :semantic_type] :id field-id)))
    :ttl/threshold (u/minutes->ms 10)))
 
 (defn- filter-clause
@@ -137,7 +137,7 @@
           [:= field-clause value]))))
 
 (defn- name-for-logging [model id]
-  (format "%s %d %s" (name model) id (u/format-color 'blue (pr-str (db/select-one-field :name model :id id)))))
+  (format "%s %d %s" (name model) id (u/format-color 'blue (pr-str (t2/select-one-fn :name model :id id)))))
 
 (defn- format-join-for-logging [join]
   (format "%s %s -> %s %s"
@@ -468,7 +468,7 @@
 
 (s/defn ^:private human-readable-remapping-map :- (s/maybe HumanReadableRemappingMap)
   [field-id :- su/IntGreaterThanZero]
-  (when-let [{orig :values, remapped :human_readable_values} (db/select-one [FieldValues :values :human_readable_values]
+  (when-let [{orig :values, remapped :human_readable_values} (t2/select-one [FieldValues :values :human_readable_values]
                                                                {:where [:and
                                                                         [:= :type "full"]
                                                                         [:= :field_id field-id]
@@ -552,8 +552,8 @@
 (defn- cached-field-values [field-id constraints {:keys [limit]}]
   ;; TODO: why don't we remap the human readable values here?
   (let [{:keys [values has_more_values]} (if (empty? constraints)
-                                           (params.field-values/get-or-create-field-values-for-current-user! (db/select-one Field :id field-id))
-                                           (params.field-values/get-or-create-linked-filter-field-values! (db/select-one Field :id field-id) constraints))]
+                                           (params.field-values/get-or-create-field-values-for-current-user! (t2/select-one Field :id field-id))
+                                           (params.field-values/get-or-create-linked-filter-field-values! (t2/select-one Field :id field-id) constraints))]
     {:values          (cond->> (map first values)
                         limit (take limit))
      :has_more_values (or (when limit
@@ -597,12 +597,12 @@
 (defn- check-valid-search-field
   "Before running a search query, make sure the Field actually exists and that it's a Text field."
   [field-id]
-  (let [base-type (db/select-one-field :base_type Field :id field-id)]
+  (let [base-type (t2/select-one-fn :base_type Field :id field-id)]
     (when-not base-type
       (throw (ex-info (tru "Field {0} does not exist." field-id)
                       {:field field-id, :status-code 404})))
     (when-not (isa? base-type :type/Text)
-      (let [field-name (db/select-one-field :name Field :id field-id)]
+      (let [field-name (t2/select-one-fn :name Field :id field-id)]
         (throw (ex-info (tru "Cannot search against non-Text Field {0} {1}" field-id (pr-str field-name))
                         {:status-code 400
                          :field-id    field-id
@@ -645,19 +645,21 @@
 
 (defn- search-cached-field-values? [field-id constraints]
   (and (use-cached-field-values? field-id)
-       (isa? (db/select-one-field :base_type Field :id field-id) :type/Text)
-       (db/exists? FieldValues (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
-                                  ;; if we are doing a search, make sure we only use field values
-                                  ;; when we're certain the fieldvalues we stored are all the possible values.
-                                  ;; otherwise, we should search directly from DB
-                                  {:has_more_values false}
-                                  (if-not (empty? constraints)
-                                    {:type     "linked-filter"
-                                     :hash_key (params.field-values/hash-key-for-advanced-field-values :linked-filter field-id constraints)}
-                                    (if-let [hash-key (params.field-values/hash-key-for-advanced-field-values :sandbox field-id nil)]
-                                      {:type    "sandbox"
-                                       :hash_key hash-key}
-                                      {:type "full"}))))))
+       (isa? (t2/select-one-fn :base_type Field :id field-id) :type/Text)
+       (apply t2/exists? FieldValues (mapcat
+                                       identity
+                                       (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
+                                              ;; if we are doing a search, make sure we only use field values
+                                              ;; when we're certain the fieldvalues we stored are all the possible values.
+                                              ;; otherwise, we should search directly from DB
+                                              {:has_more_values false}
+                                              (if-not (empty? constraints)
+                                                {:type     "linked-filter"
+                                                 :hash_key (params.field-values/hash-key-for-advanced-field-values :linked-filter field-id constraints)}
+                                                (if-let [hash-key (params.field-values/hash-key-for-advanced-field-values :sandbox field-id nil)]
+                                                  {:type    "sandbox"
+                                                   :hash_key hash-key}
+                                                  {:type "full"})))))))
 
 (defn- cached-field-values-search
   [field-id query constraints {:keys [limit]}]

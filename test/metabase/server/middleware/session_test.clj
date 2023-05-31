@@ -5,12 +5,15 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time :as t]
-   [metabase.api.common :refer [*current-user* *current-user-id*]]
+   [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.config :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models :refer [PermissionsGroupMembership Session User]]
+   [metabase.models.setting :as setting]
+   [metabase.models.setting-test :as setting-test]
+   [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.public-settings.premium-features-test
@@ -19,7 +22,7 @@
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
    [ring.mock.request :as ring.mock]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)))
@@ -116,7 +119,7 @@
         (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
           (mt/with-temp User [{user-id :id}]
             (let [session-id (str (UUID/randomUUID))]
-              (db/simple-insert! Session {:id session-id, :user_id user-id, :created_at created-at})
+              (t2/insert! (t2/table-name Session) {:id session-id, :user_id user-id, :created_at created-at})
               (let [session (#'mw.session/current-user-info-for-session session-id nil)]
                 (if expected
                   (is (= nil
@@ -231,28 +234,28 @@
     ;; for some reason Toucan seems to be busted with models with non-integer IDs and `with-temp` doesn't seem to work
     ;; the way we'd expect :/
     (try
-      (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :lucky)})
+      (t2/insert! Session {:id (str test-uuid), :user_id (mt/user->id :lucky)})
       (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
-        (db/delete! Session :id (str test-uuid)))))
+        (t2/delete! Session :id (str test-uuid)))))
 
   (testing "superusers should come back as `:is-superuser?`"
     (try
-      (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :crowberto)})
+      (t2/insert! Session {:id (str test-uuid), :user_id (mt/user->id :crowberto)})
       (is (= {:metabase-user-id (mt/user->id :crowberto), :is-superuser? true, :is-group-manager? false, :user-locale nil}
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
-        (db/delete! Session :id (str test-uuid)))))
+        (t2/delete! Session :id (str test-uuid)))))
 
   (testing "If user is a group manager of at least one group, `:is-group-manager?` "
     (try
       (mt/with-user-in-groups [group-1 {:name "New Group 1"}
                                group-2 {:name "New Group 2"}
                                user    [group-1 group-2]]
-        (db/update-where! PermissionsGroupMembership {:user_id (:id user), :group_id (:id group-2)}
-          :is_group_manager true)
-        (db/insert! Session {:id      (str test-uuid)
+        (t2/update! PermissionsGroupMembership {:user_id (:id user), :group_id (:id group-2)}
+                    {:is_group_manager true})
+        (t2/insert! Session {:id      (str test-uuid)
                              :user_id (:id user)})
         (testing "is `false` if advanced-permisison is disabled"
           (premium-features-test/with-premium-features #{}
@@ -266,65 +269,65 @@
             (is (= true
                    (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil)))))))
       (finally
-        (db/delete! Session :id (str test-uuid)))))
+        (t2/delete! Session :id (str test-uuid)))))
 
   (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
     (try
-      (db/insert! Session {:id              (str test-uuid)
+      (t2/insert! Session {:id              (str test-uuid)
                            :user_id         (mt/user->id :lucky)
                            :anti_csrf_token test-anti-csrf-token})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
-        (db/delete! Session :id (str test-uuid))))
+        (t2/delete! Session :id (str test-uuid))))
 
     (testing "...but if we do specifiy the token, they should come back"
       (try
-        (db/insert! Session {:id              (str test-uuid)
+        (t2/insert! Session {:id              (str test-uuid)
                              :user_id         (mt/user->id :lucky)
                              :anti_csrf_token test-anti-csrf-token})
         (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
                (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token)))
         (finally
-          (db/delete! Session :id (str test-uuid))))
+          (t2/delete! Session :id (str test-uuid))))
 
       (testing "(unless the token is wrong)"
         (try
-          (db/insert! Session {:id              (str test-uuid)
+          (t2/insert! Session {:id              (str test-uuid)
                                :user_id         (mt/user->id :lucky)
                                :anti_csrf_token test-anti-csrf-token})
           (is (= nil
                  (#'mw.session/current-user-info-for-session (str test-uuid) (str/join (reverse test-anti-csrf-token)))))
           (finally
-            (db/delete! Session :id (str test-uuid)))))))
+            (t2/delete! Session :id (str test-uuid)))))))
 
   (testing "if we specify an anti-csrf token we shouldn't get back a session without that token"
     (try
-      (db/insert! Session {:id      (str test-uuid)
+      (t2/insert! Session {:id      (str test-uuid)
                            :user_id (mt/user->id :lucky)})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token)))
       (finally
-        (db/delete! Session :id (str test-uuid)))))
+        (t2/delete! Session :id (str test-uuid)))))
 
   (testing "shouldn't fetch expired sessions"
     (try
-      (db/insert! Session {:id      (str test-uuid)
+      (t2/insert! Session {:id      (str test-uuid)
                            :user_id (mt/user->id :lucky)})
         ;; use low-level `execute!` because updating is normally disallowed for Sessions
-      (db/execute! {:update :core_session, :set {:created_at (t/instant 0)}, :where [:= :id (str test-uuid)]})
+      (t2/query-one {:update :core_session, :set {:created_at (t/instant 0)}, :where [:= :id (str test-uuid)]})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
-        (db/delete! Session :id (str test-uuid)))))
+        (t2/delete! Session :id (str test-uuid)))))
 
   (testing "shouldn't fetch sessions for inactive users"
     (try
-      (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)})
+      (t2/insert! Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
-        (db/delete! Session :id (str test-uuid))))))
+        (t2/delete! Session :id (str test-uuid))))))
 
 ;; create a simple example of our middleware wrapped around a handler that simply returns our bound variables for users
 (defn- user-bound-handler [request]
@@ -358,6 +361,33 @@
             (request-with-user-id 0))))))
 
 
+;;; ----------------------------------------------   with-current-user -------------------------------------------------
+
+(deftest with-current-user-test
+  (testing "with-current-user correctly binds the appropriate vars for the provided user ID"
+    (mw.session/with-current-user (mt/user->id :rasta)
+      ;; Set a user-local value for rasta so that we can make sure that the user-local settings map is correctly bound
+      (setting-test/test-user-local-only-setting! "XYZ")
+
+      (is (= (mt/user->id :rasta) *current-user-id*))
+      (is (= "rasta@metabase.com" (:email @*current-user*)))
+      (is (false? api/*is-superuser?*))
+      (is (= nil i18n/*user-locale*))
+      (is (false? api/*is-group-manager?*))
+      (is (= (user/permissions-set (mt/user->id :rasta)) @api/*current-user-permissions-set*))
+      (is (partial= {:test-user-local-only-setting "XYZ"} @@setting/*user-local-values*)))))
+
+(deftest as-admin-test
+  (testing "as-admin overrides *is-superuser?* and *current-user-permissions-set*"
+    (mw.session/with-current-user (mt/user->id :rasta)
+      (mw.session/as-admin
+       ;; Current user ID remains the same
+       (is (= (mt/user->id :rasta) *current-user-id*))
+       ;; *is-superuser?* and permissions set are overrided
+       (is (true? api/*is-superuser?*))
+       (is (= #{"/"} @api/*current-user-permissions-set*))))))
+
+
 ;;; ----------------------------------------------------- Locale -----------------------------------------------------
 
 (deftest bind-locale-test
@@ -378,7 +408,7 @@
       (testing "for user with no `:locale`"
         (mt/with-temp User [{user-id :id}]
           (let [session-id (str (UUID/randomUUID))]
-            (db/insert! Session {:id session-id, :user_id user-id})
+            (t2/insert! Session {:id session-id, :user_id user-id})
             (is (= nil
                    (session-locale session-id)))
 
@@ -389,7 +419,7 @@
       (testing "for user *with* `:locale`"
         (mt/with-temp User [{user-id :id} {:locale "es-MX"}]
           (let [session-id (str (UUID/randomUUID))]
-            (db/insert! Session {:id session-id, :user_id user-id, :created_at :%now})
+            (t2/insert! Session {:id session-id, :user_id user-id, :created_at :%now})
             (is (= "es_MX"
                    (session-locale session-id)))
 

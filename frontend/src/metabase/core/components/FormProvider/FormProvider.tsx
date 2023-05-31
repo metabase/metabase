@@ -38,4 +38,5 @@ function FormProvider<T extends FormikValues, C = unknown>({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormProvider;

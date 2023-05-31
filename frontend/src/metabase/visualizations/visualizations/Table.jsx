@@ -10,14 +10,18 @@ import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils"
 import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
-import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import ChartSettingsTableFormatting, {
   isFormattable,
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import {
+  columnSettings,
+  tableColumnSettings,
+  getTitleForColumn,
+  isPivoted as _isPivoted,
+} from "metabase/visualizations/lib/settings/column";
 
 import {
   isMetric,
@@ -33,17 +37,6 @@ import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
 import TableSimple from "../components/TableSimple";
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
-
-const getTitleForColumn = (column, series, settings) => {
-  const isPivoted = Table.isPivoted(series, settings);
-  if (isPivoted) {
-    return formatColumn(column) || t`Unset`;
-  } else {
-    return (
-      settings.column(column)["_column_title_full"] || formatColumn(column)
-    );
-  }
-};
 
 export default class Table extends Component {
   static uiName = t`Table`;
@@ -69,28 +62,7 @@ export default class Table extends Component {
     // scalar can always be rendered, nothing needed here
   }
 
-  static isPivoted(series, settings) {
-    const [{ data }] = series;
-
-    if (!settings["table.pivot"]) {
-      return false;
-    }
-
-    const pivotIndex = _.findIndex(
-      data.cols,
-      col => col.name === settings["table.pivot_column"],
-    );
-    const cellIndex = _.findIndex(
-      data.cols,
-      col => col.name === settings["table.cell_column"],
-    );
-    const normalIndex = _.findIndex(
-      data.cols,
-      (col, index) => index !== pivotIndex && index !== cellIndex,
-    );
-
-    return pivotIndex >= 0 && cellIndex >= 0 && normalIndex >= 0;
-  }
+  static isPivoted = _isPivoted;
 
   static settings = {
     ...columnSettings({ hidden: true }),
@@ -171,56 +143,7 @@ export default class Table extends Component {
       readDependencies: ["table.pivot", "table.pivot_column"],
       persistDefault: true,
     },
-    // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
-    //   { name: "COLUMN_NAME", enabled: true }
-    //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
-    "table.columns": {
-      section: t`Columns`,
-      title: t`Columns`,
-      widget: ChartSettingOrderedColumns,
-      getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-      isValid: ([{ card, data }]) =>
-        // If "table.columns" happened to be an empty array,
-        // it will be treated as "all columns are hidden",
-        // This check ensures it's not empty,
-        // otherwise it will be overwritten by `getDefault` below
-        card.visualization_settings["table.columns"].length !== 0 &&
-        _.all(
-          card.visualization_settings["table.columns"],
-          columnSetting =>
-            findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-        ),
-      getDefault: ([
-        {
-          data: { cols },
-        },
-      ]) =>
-        cols.map(col => ({
-          name: col.name,
-          fieldRef: col.field_ref,
-          enabled: col.visibility_type !== "details-only",
-        })),
-      getProps: (series, settings) => {
-        const [
-          {
-            data: { cols },
-          },
-        ] = series;
-
-        return {
-          columns: cols,
-          getColumnName: columnSetting => {
-            const columnIndex = findColumnIndexForColumnSetting(
-              cols,
-              columnSetting,
-            );
-            if (columnIndex >= 0) {
-              return getTitleForColumn(cols[columnIndex], series, settings);
-            }
-          },
-        };
-      },
-    },
+    ...tableColumnSettings,
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
       section: t`Conditional Formatting`,

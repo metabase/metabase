@@ -29,8 +29,8 @@
    [metabase.util.schema :as su]
    [metabase.util.urls :as urls]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
 
@@ -39,25 +39,34 @@
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
                                           'metabase-enterprise.advanced-permissions.common))
 
-(defn- filter-pulses-recipients
+(defn- maybe-filter-pulses-recipients
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
   themselves. Recipients that are plain email addresses are preserved."
   [pulses]
-  (if-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-    (if (segmented-user?)
-      (for [pulse pulses]
-        (assoc pulse :channels
-               (for [channel (:channels pulse)]
-                 (assoc channel :recipients
-                        (filter (fn [recipient] (or (not (:id recipient))
-                                                    (= (:id recipient) api/*current-user-id*)))
-                                (:recipients channel))))))
-      pulses)
+  (if (premium-features/segmented-user?)
+    (for [pulse pulses]
+      (assoc pulse :channels
+             (for [channel (:channels pulse)]
+               (assoc channel :recipients
+                      (filter (fn [recipient] (or (not (:id recipient))
+                                                  (= (:id recipient) api/*current-user-id*)))
+                              (:recipients channel))))))
     pulses))
 
-(defn- filter-pulse-recipients
+(defn- maybe-filter-pulse-recipients
   [pulse]
-  (first (filter-pulses-recipients [pulse])))
+  (first (maybe-filter-pulses-recipients [pulse])))
+
+(defn- maybe-strip-sensitive-metadata
+  "If the current user does not have collection read permissions for the pulse, but can still read the pulse due to
+  being the creator or a recipient, we return it with some metadata removed."
+  [pulse]
+  (if (mi/current-user-has-full-permissions? :read pulse)
+    pulse
+    (-> (dissoc pulse :cards)
+        (update :channels
+                (fn [channels]
+                  (map #(dissoc % :recipients) channels))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
@@ -66,21 +75,25 @@
 
   If `dashboard_id` is specified, restricts results to subscriptions for that dashboard.
 
-  If `can_read` is `true`, it specifically returns all subscriptions for which the current user
+  If `created_or_receive` is `true`, it specifically returns all subscriptions for which the current user
   created *or* is a known recipient of. Note that this is a superset of the default items returned for non-admins,
-  and a subset of the default items returned for admins. This is used to power the /account/notifications page."
-  [archived dashboard_id can_read]
-  {archived            (s/maybe su/BooleanString)
-   dashboard_id        (s/maybe su/IntGreaterThanZero)
-   can_read            (s/maybe su/BooleanString)}
-  (let [can-read? (Boolean/parseBoolean can_read)
-        archived? (Boolean/parseBoolean archived)
-        pulses    (->> (pulse/retrieve-pulses {:archived?     archived?
-                                               :dashboard-id  dashboard_id
-                                               :user-id       api/*current-user-id*
-                                               :can-read?     can-read?})
-                       (filter (if can-read? mi/can-read? mi/can-write?))
-                       filter-pulses-recipients)]
+  and a subset of the default items returned for admins. This is used to power the /account/notifications page.
+  This may include subscriptions which the current user does not have collection permissions for, in which case
+  some sensitive metadata (the list of cards and recipients) is stripped out."
+  [archived dashboard_id creator_or_recipient]
+  {archived           (s/maybe su/BooleanString)
+   dashboard_id       (s/maybe su/IntGreaterThanZero)
+   creator_or_recipient (s/maybe su/BooleanString)}
+  (let [creator-or-recipient (Boolean/parseBoolean creator_or_recipient)
+        archived?            (Boolean/parseBoolean archived)
+        pulses               (->> (pulse/retrieve-pulses {:archived?    archived?
+                                                          :dashboard-id dashboard_id
+                                                          :user-id      (when creator-or-recipient api/*current-user-id*)})
+                                  (filter (if creator-or-recipient mi/can-read? mi/can-write?))
+                                  maybe-filter-pulses-recipients)
+        pulses               (if creator-or-recipient
+                               (map maybe-strip-sensitive-metadata pulses)
+                               pulses)]
     (hydrate pulses :can_write)))
 
 (defn check-card-read-permissions
@@ -120,39 +133,41 @@
                     :collection_position collection_position
                     :dashboard_id        dashboard_id
                     :parameters          parameters}]
-    (db/transaction
-      ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
-      ;; check that and fix it if needed
-      (api/maybe-reconcile-collection-position! pulse-data)
-      ;; ok, now create the Pulse
-      (api/check-500
-       (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
+    (t2/with-transaction [_conn]
+     ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
+     ;; check that and fix it if needed
+     (api/maybe-reconcile-collection-position! pulse-data)
+     ;; ok, now create the Pulse
+     (api/check-500
+      (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
-  "Fetch `Pulse` with ID."
+  "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
+  we still return it but with some sensitive metadata removed."
   [id]
-  (-> (api/read-check (pulse/retrieve-pulse id))
-      filter-pulse-recipients
-      (hydrate :can_write)))
+  (api/let-404 [pulse (pulse/retrieve-pulse id)]
+   (api/check-403 (mi/can-read? pulse))
+   (-> pulse
+       maybe-filter-pulse-recipients
+       maybe-strip-sensitive-metadata
+       (hydrate :can_write))))
 
 (defn- maybe-add-recipients-for-sandboxed-users
   "Sandboxed users can't read the full recipient list for a pulse, so we need to merge in existing recipients
   before writing the pulse updates to avoid them being deleted unintentionally. We only merge in recipients that are
   Metabase users, not raw email addresses, which sandboxed users can still view and modify."
   [pulse-updates pulse-before-update]
-  (if-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-    (if (segmented-user?)
-      (let [recipients-to-add (filter
-                               (fn [{id :id}] (and id (not= id api/*current-user-id*)))
-                               (:recipients (api.alert/email-channel pulse-before-update)))]
-        (assoc pulse-updates :channels
-               (for [channel (:channels pulse-updates)]
-                 (if (= "email" (:channel_type channel))
-                   (assoc channel :recipients
-                          (concat (:recipients channel) recipients-to-add))
-                   channel))))
-      pulse-updates)
+  (if (premium-features/segmented-user?)
+    (let [recipients-to-add (filter
+                             (fn [{id :id}] (and id (not= id api/*current-user-id*)))
+                             (:recipients (api.alert/email-channel pulse-before-update)))]
+      (assoc pulse-updates :channels
+             (for [channel (:channels pulse-updates)]
+               (if (= "email" (:channel_type channel))
+                 (assoc channel :recipients
+                        (concat (:recipients channel) recipients-to-add))
+                 channel))))
     pulse-updates))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -193,7 +208,7 @@
                    [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")])))
 
     (let [pulse-updates (maybe-add-recipients-for-sandboxed-users pulse-updates pulse-before-update)]
-      (db/transaction
+      (t2/with-transaction [_conn]
        ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
        ;; depending on what changed.
        (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
@@ -214,8 +229,7 @@
                        (assoc-in [:slack :configured] (slack/slack-configured?))
                        (assoc-in [:email :configured] (email/email-configured?)))]
     {:channels (cond
-                 (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-                   (segmented-user?))
+                 (premium-features/segmented-user?)
                  (dissoc chan-types :slack)
 
                  ;; no Slack integration, so we are g2g
@@ -313,10 +327,10 @@
 (api/defendpoint-schema DELETE "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
   [id]
-  (api/let-404 [pulse-id (db/select-one-id Pulse :id id)
-                pc-id    (db/select-one-id PulseChannel :pulse_id pulse-id :channel_type "email")
-                pcr-id   (db/select-one-id PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
-    (db/delete! PulseChannelRecipient :id pcr-id))
+  (api/let-404 [pulse-id (t2/select-one-pk Pulse :id id)
+                pc-id    (t2/select-one-pk PulseChannel :pulse_id pulse-id :channel_type "email")
+                pcr-id   (t2/select-one-pk PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
+    (t2/delete! PulseChannelRecipient :id pcr-id))
   api/generic-204-no-content)
 
 (api/define-routes)

@@ -13,8 +13,8 @@
    [metabase.models.segment :refer [Segment]]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
@@ -32,26 +32,41 @@
                     `:type/Temporal`s, and from there on in alphabetical order."
   #{:database :alphabetical :custom :smart})
 
-
-(models/defmodel Table :metabase_table)
-
-(doto Table
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
-
-
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(defn- pre-insert [table]
+(def Table
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the Table symbol in our codebase."
+  :model/Table)
+(methodical/defmethod t2/table-name :model/Table [_model] :metabase_table)
+
+(doto :model/Table
+  (derive :metabase/model)
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set)
+  (derive :hook/timestamped?))
+
+(t2/deftransforms :model/Table
+  {:entity_type     mi/transform-keyword
+   :visibility_type mi/transform-keyword
+   :field_order     mi/transform-keyword})
+
+(methodical/defmethod t2/model-for-automagic-hydration [:default :table]
+  [_original-model _k]
+  :model/Table)
+
+(t2/define-before-insert :model/Table
+  [table]
   (let [defaults {:display_name        (humanization/name->human-readable-name (:name table))
-                  :field_order         (driver/default-field-order (db/select-one-field :engine Database :id (:db_id table)))
+                  :field_order         (driver/default-field-order (t2/select-one-fn :engine Database :id (:db_id table)))
                   :initial_sync_status "incomplete"}]
     (merge defaults table)))
 
-(defn- pre-delete [{:keys [db_id schema id]}]
-  (db/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
+(t2/define-before-delete :model/Table
+  [{:keys [db_id schema id]}]
+  (t2/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
 
-(defmethod mi/perms-objects-set Table
+(defmethod mi/perms-objects-set :model/Table
   [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]
   ;; To read (e.g., fetch metadata) a Table you must have either self-service data permissions for the Table, or write
   ;; permissions for the Table (detailed below). `can-read?` checks the former, while `can-write?` checks the latter;
@@ -67,17 +82,7 @@
       :read  (perms/table-read-path table)
       :write (perms/data-model-write-perms-path db-id schema table-id))})
 
-(mi/define-methods
- Table
- {:hydration-keys (constantly [:table])
-  :types          (constantly {:entity_type     :keyword
-                               :visibility_type :keyword
-                               :field_order     :keyword})
-  :properties     (constantly {::mi/timestamped? true})
-  :pre-insert     pre-insert
-  :pre-delete     pre-delete})
-
-(defmethod serdes/hash-fields Table
+(defmethod serdes/hash-fields :model/Table
   [_table]
   [:schema :name (serdes/hydrated-hash :db)])
 
@@ -93,9 +98,9 @@
   [table]
   (doall
    (map-indexed (fn [new-position field]
-                  (db/update! Field (u/the-id field) :position new-position))
+                  (t2/update! Field (u/the-id field) {:position new-position}))
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
-                (db/select [Field :id]
+                (t2/select [Field :id]
                            :table_id  (u/the-id table)
                            {:order-by (case (:field_order table)
                                         :custom       [[:custom_position :asc]]
@@ -112,7 +117,7 @@
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
-  (= (db/select-ids Field
+  (= (t2/select-pks-set Field
        :table_id (u/the-id table)
        :active   true)
      (set field-ordering)))
@@ -121,12 +126,12 @@
   "Set field order to `field-order`."
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
-  (db/update! Table (u/the-id table) :field_order :custom)
+  (t2/update! Table (u/the-id table) {:field_order :custom})
   (doall
-   (map-indexed (fn [position field-id]
-                  (db/update! Field field-id {:position        position
-                                              :custom_position position}))
-                field-order)))
+    (map-indexed (fn [position field-id]
+                   (t2/update! Field field-id {:position        position
+                                               :custom_position position}))
+                 field-order)))
 
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
@@ -135,7 +140,7 @@
   :fields
   "Return the Fields belonging to a single `table`."
   [{:keys [id]}]
-  (db/select Field
+  (t2/select Field
     :table_id        id
     :active          true
     :visibility_type [:not= "retired"]
@@ -145,22 +150,21 @@
   :field_values
   "Return the FieldValues for all Fields belonging to a single `table`."
   [{:keys [id]}]
-  (let [field-ids (db/select-ids Field
+  (let [field-ids (t2/select-pks-set Field
                     :table_id        id
                     :visibility_type "normal"
                     {:order-by field-order-rule})]
     (when (seq field-ids)
-      (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids]))))
+      (t2/select-fn->fn :field_id :values FieldValues, :field_id [:in field-ids]))))
 
 (mi/define-simple-hydration-method ^{:arglists '([table])} pk-field-id
   :pk_field
   "Return the ID of the primary key `Field` for `table`."
   [{:keys [id]}]
-  (db/select-one-id Field
+  (t2/select-one-pk Field
     :table_id        id
     :semantic_type   (mdb.u/isa :type/PK)
     :visibility_type [:not-in ["sensitive" "retired"]]))
-
 
 (defn- with-objects [hydration-key fetch-objects-fn tables]
   (let [table-ids         (set (map :id tables))
@@ -175,7 +179,7 @@
   [tables]
   (with-objects :segments
     (fn [table-ids]
-      (db/select Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-metrics
@@ -184,7 +188,7 @@
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (db/select Metric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+      (t2/select Metric :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (defn with-fields
@@ -192,7 +196,7 @@
   [tables]
   (with-objects :fields
     (fn [table-ids]
-      (db/select Field
+      (t2/select Field
         :active          true
         :table_id        [:in table-ids]
         :visibility_type [:not= "retired"]
@@ -204,21 +208,21 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (db/select-one Database :id (:db_id table)))
+  (t2/select-one Database :id (:db_id table)))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
   (mdb.connection/memoize-for-application-db
    (fn [table-id]
      {:pre [(integer? table-id)]}
-     (db/select-one-field :db_id Table, :id table-id))))
+     (t2/select-one-fn :db_id Table, :id table-id))))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes/dependencies "Table" [table]
   [[{:model "Database" :id (:db_id table)}]])
 
 (defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (db/select-one-field :name 'Database :id (:db_id table))]
+  (let [db-name (t2/select-one-fn :name 'Database :id (:db_id table))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})
@@ -233,18 +237,18 @@
         schema-name (when (= 3 (count path))
                       (-> path second :id))
         table-name  (-> path last :id)
-        db-id       (db/select-one-id Database :name db-name)]
-    (db/select-one Table :name table-name :db_id db-id :schema schema-name)))
+        db-id       (t2/select-one-pk Database :name db-name)]
+    (t2/select-one Table :name table-name :db_id db-id :schema schema-name)))
 
 (defmethod serdes/extract-one "Table"
   [_model-name _opts {:keys [db_id] :as table}]
   (-> (serdes/extract-one-basics "Table" table)
-      (assoc :db_id (db/select-one-field :name 'Database :id db_id))))
+      (assoc :db_id (t2/select-one-fn :name 'Database :id db_id))))
 
 (defmethod serdes/load-xform "Table"
   [{:keys [db_id] :as table}]
   (-> (serdes/load-xform-basics table)
-      (assoc :db_id (db/select-one-field :id 'Database :name db_id))))
+      (assoc :db_id (t2/select-one-fn :id 'Database :name db_id))))
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-table-path-prefix (serdes/path table))

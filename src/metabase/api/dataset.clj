@@ -6,6 +6,8 @@
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.api.field :as api.field]
+   [metabase.db.query :as mdb.query]
+   [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -26,9 +28,8 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
@@ -58,11 +59,11 @@
   ;; store table id trivially iff we get a query with simple source-table
   (let [table-id (get-in query [:query :source-table])]
     (when (int? table-id)
-      (events/publish-event! :table-read (assoc (db/select-one Table :id table-id) :actor_id api/*current-user-id*))))
+      (events/publish-event! :table-read (assoc (t2/select-one Table :id table-id) :actor_id api/*current-user-id*))))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)
         source-card    (when source-card-id
-                         (db/select-one [Card :result_metadata :dataset] :id source-card-id))
+                         (t2/select-one [Card :result_metadata :dataset] :id source-card-id))
         info           (cond-> {:executed-by api/*current-user-id*
                                 :context     context
                                 :card-id     source-card-id}
@@ -82,9 +83,13 @@
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
+(def export-formats
+  "Valid export formats for downloading query results."
+  (mapv u/qualified-name (qp.streaming/export-formats)))
+
 (def ExportFormat
   "Schema for valid export formats for downloading query results."
-  (apply s/enum (map u/qualified-name (qp.streaming/export-formats))))
+  (apply s/enum export-formats))
 
 (s/defn export-format->context :- mbql.s/Context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
@@ -111,13 +116,12 @@
      json-key
      (keyword json-key)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST ["/:export-format", :export-format export-format-regex]
+(api/defendpoint POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
   [export-format :as {{:keys [query visualization_settings] :or {visualization_settings "{}"}} :params}]
-  {query                  su/JSONString
-   visualization_settings su/JSONString
-   export-format          ExportFormat}
+  {query                  ms/JSONString
+   visualization_settings ms/JSONString
+   export-format          (into [:enum] export-formats)}
   (let [query        (json/parse-string query keyword)
         viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)
                          (update-in [:table.columns] mbql.normalize/normalize)
@@ -141,8 +145,7 @@
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
 
 ;; TODO - this is no longer used. Should we remove it?
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/duration"
+(api/defendpoint POST "/duration"
   "Get historical query execution duration."
   [:as {{:keys [database], :as query} :body}]
   (api/read-check Database database)
@@ -154,19 +157,25 @@
                     (assoc query :constraints (qp.constraints/default-query-constraints))])
              0)})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/native"
+(api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
-  [:as {query :body}]
+  [:as {{:keys [database pretty] :as query} :body}]
+  {database ms/PositiveInt
+   pretty  [:maybe :boolean]}
   (binding [persisted-info/*allow-persisted-substitution* false]
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-    (qp/compile-and-splice-parameters query)))
+    (let [{q :query :as compiled} (qp/compile-and-splice-parameters query)
+          driver          (driver.u/database->driver database)
+          ;; Format the query unless we explicitly do not want to
+          formatted-query (if (false? pretty)
+                            q
+                            (or (u/ignore-exceptions (mdb.query/format-sql q driver)) q))]
+      (assoc compiled :query formatted-query))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/pivot"
+(api/defendpoint POST "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"
   [:as {{:keys [database] :as query} :body}]
-  {database (s/maybe s/Int)}
+  {database [:maybe ms/PositiveInt]}
   (when-not database
     (throw (Exception. (str (tru "`database` is required for all queries.")))))
   (api/read-check Database database)

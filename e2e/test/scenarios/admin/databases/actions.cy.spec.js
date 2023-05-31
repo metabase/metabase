@@ -1,6 +1,8 @@
 import { restore } from "e2e/support/helpers";
 import { WRITABLE_DB_ID, WRITABLE_DB_CONFIG } from "e2e/support/cypress_data";
 
+import { visitDatabase } from "./helpers/e2e-database-helpers";
+
 describe(
   "admin > database > external databases > enable actions",
   { tags: ["@external", "@actions"] },
@@ -10,7 +12,7 @@ describe(
         restore(`${dialect}-writable`);
         cy.signInAsAdmin();
 
-        cy.request(`/api/database/${WRITABLE_DB_ID}`).then(({ body }) => {
+        visitDatabase(WRITABLE_DB_ID).then(({ response: { body } }) => {
           expect(body.name).to.include("Writable");
           expect(body.name.toLowerCase()).to.include(dialect);
 
@@ -20,7 +22,6 @@ describe(
           expect(body.settings["database-enable-actions"]).to.eq(true);
         });
 
-        cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
         cy.get("#model-actions-toggle").should(
           "have.attr",
           "aria-checked",

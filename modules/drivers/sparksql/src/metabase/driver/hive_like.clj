@@ -24,8 +24,9 @@
                   :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
                   :abstract? true)
 
-(defmethod driver/database-supports? [:hive-like :now] [_driver _feat _db] true)
-(defmethod driver/database-supports? [:hive-like :datetime-diff] [_driver _feat _db] true)
+(doseq [[feature supported?] {:now           true
+                              :datetime-diff true}]
+  (defmethod driver/database-supports? [:hive-like feature] [_driver _feature _db] supported?))
 
 (defmethod driver/escape-alias :hive-like
   [driver s]

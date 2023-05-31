@@ -1,14 +1,16 @@
 import { t } from "ttag";
 import moment from "moment-timezone";
-
-import type { Database } from "metabase-types/api/database";
 import { HelpText, HelpTextConfig } from "metabase-lib/expressions/types";
+import type Database from "metabase-lib/metadata/Database";
 import {
   formatIdentifier,
   formatStringLiteral,
 } from "metabase-lib/expressions";
 
-const getDescriptionForNow = (database: Database, reportTimezone: string) => {
+const getDescriptionForNow: HelpTextConfig["description"] = (
+  database,
+  reportTimezone,
+) => {
   const hasTimezoneFeatureFlag = database.features.includes("set-timezone");
   const timezone = hasTimezoneFeatureFlag ? reportTimezone : "UTC";
   const nowAtTimezone = getNowAtTimezone(timezone, reportTimezone);
@@ -25,7 +27,15 @@ const getDescriptionForNow = (database: Database, reportTimezone: string) => {
   }
 };
 
-const helperTextStrings: HelpTextConfig[] = [
+const getNowAtTimezone = (
+  timezone: string | undefined,
+  reportTimezone: string | undefined,
+) =>
+  timezone && reportTimezone
+    ? moment().tz(reportTimezone).format("LT")
+    : moment().format("LT");
+
+const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "count",
     structure: "Count",
@@ -481,12 +491,12 @@ const helperTextStrings: HelpTextConfig[] = [
       {
         name: t`datetime1`,
         description: t`The column or expression with your datetime value.`,
-        example: formatIdentifier(t`created_at`),
+        example: formatIdentifier(t`Created At`),
       },
       {
         name: t`datetime2`,
         description: t`The column or expression with your datetime value.`,
-        example: formatIdentifier(t`shipped_at`),
+        example: formatIdentifier(t`Shipped At`),
       },
       {
         name: t`unit`,
@@ -513,6 +523,24 @@ const helperTextStrings: HelpTextConfig[] = [
     name: "contains",
     structure: "contains",
     description: () => t`Checks to see if string1 contains string2 within it.`,
+    args: [
+      {
+        name: t`string1`,
+        description: t`The column or text to check.`,
+        example: formatIdentifier(t`Status`),
+      },
+      {
+        name: t`string2`,
+        description: t`The string of text to look for.`,
+        example: formatStringLiteral(t`Pass`),
+      },
+    ],
+  },
+  {
+    name: "does-not-contain",
+    structure: "doesNotContain",
+    description: () =>
+      t`Checks to see if string1 does not contain string2 within it.`,
     args: [
       {
         name: t`string1`,
@@ -656,6 +684,18 @@ const helperTextStrings: HelpTextConfig[] = [
     docsPage: "isnull",
   },
   {
+    name: "not-null",
+    structure: "notnull",
+    description: () => t`Checks if a column is not null`,
+    args: [
+      {
+        name: t`column`,
+        description: t`The column to check.`,
+        example: formatIdentifier(t`Discount`),
+      },
+    ],
+  },
+  {
     name: "is-empty",
     structure: "isempty",
     description: () => t`Checks if a column is empty`,
@@ -667,6 +707,18 @@ const helperTextStrings: HelpTextConfig[] = [
       },
     ],
     docsPage: "isempty",
+  },
+  {
+    name: "not-empty",
+    structure: "notempty",
+    description: () => t`Checks if a column is not empty`,
+    args: [
+      {
+        name: t`column`,
+        description: t`The column to check.`,
+        example: formatIdentifier(t`Name`),
+      },
+    ],
   },
   {
     name: "coalesce",
@@ -925,9 +977,9 @@ See the full list here: https://w.wiki/4Jx`,
 export const getHelpText = (
   name: string,
   database: Database,
-  reportTimezone: string,
+  reportTimezone?: string,
 ): HelpText | undefined => {
-  const helperTextConfig = helperTextStrings.find(h => h.name === name);
+  const helperTextConfig = HELPER_TEXT_STRINGS.find(h => h.name === name);
 
   if (!helperTextConfig) {
     return;
@@ -949,5 +1001,8 @@ const getHelpExample = ({ structure, args }: HelpTextConfig): string => {
   return `${structure}${exampleParameters ? `(${exampleParameters})` : ""}`;
 };
 
-const getNowAtTimezone = (timezone: string, reportTimezone: string) =>
-  timezone ? moment().tz(reportTimezone).format("LT") : moment().format("LT");
+export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
+  return docsPage
+    ? `questions/query-builder/expressions/${docsPage}`
+    : "questions/query-builder/expressions";
+};

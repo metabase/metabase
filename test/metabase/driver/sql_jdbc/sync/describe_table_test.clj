@@ -3,6 +3,8 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.mysql-test :as mysql-test]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
@@ -11,7 +13,7 @@
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- sql-jdbc-drivers-with-default-describe-table-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`. (As far as I know, this is
@@ -25,12 +27,12 @@
 (deftest describe-table-test
   (is (= {:name "VENUES",
           :fields
-          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true :database-required false :database-is-auto-increment true}
-            {:name "NAME", :database-type "CHARACTER VARYING", :base-type :type/Text, :database-position 1 :database-required false :database-is-auto-increment false}
-            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2 :database-required false :database-is-auto-increment false}
-            {:name "LATITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 3 :database-required false :database-is-auto-increment false}
-            {:name "LONGITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 4 :database-required false :database-is-auto-increment false}
-            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5 :database-required false :database-is-auto-increment false}}}
+          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true :database-required false :database-is-auto-increment true :json-unfolding false}
+            {:name "NAME", :database-type "CHARACTER VARYING", :base-type :type/Text, :database-position 1 :database-required false :database-is-auto-increment false :json-unfolding false}
+            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2 :database-required false :database-is-auto-increment false :json-unfolding false}
+            {:name "LATITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 3 :database-required false :database-is-auto-increment false :json-unfolding false}
+            {:name "LONGITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 4 :database-required false :database-is-auto-increment false :json-unfolding false}
+            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5 :database-required false :database-is-auto-increment false :json-unfolding false}}}
          (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
 
 (deftest describe-auto-increment-on-non-pk-field-test
@@ -52,19 +54,22 @@
                          :database-required         false
                          :database-type             "INTEGER"
                          :name                      "id"
-                         :pk?                       true}
+                         :pk?                       true
+                         :json-unfolding            false}
                         {:base-type                 :type/Integer
                          :database-is-auto-increment true
                          :database-position         1
                          :database-required         false
                          :database-type             "INTEGER"
-                         :name                      "count"}
+                         :name                      "count"
+                         :json-unfolding            false}
                         {:base-type                 :type/Integer
                          :database-is-auto-increment false
                          :database-position         2
                          :database-required         true
                          :database-type             "INTEGER"
-                         :name                      "rank"}}
+                         :name                      "rank"
+                         :json-unfolding            false}}
               :name "employee_counter"}
              (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "employee_counter"}))))))
 
@@ -88,7 +93,7 @@
                  {:name "latitude"    :base-type :type/Float}
                  {:name "name"        :base-type :type/Text}
                  {:name "id"          :base-type :type/Integer}}
-               (->> (sql-jdbc.describe-table/describe-table driver/*driver* (mt/id) (db/select-one Table :id (mt/id :venues)))
+               (->> (sql-jdbc.describe-table/describe-table driver/*driver* (mt/id) (t2/select-one Table :id (mt/id :venues)))
                     :fields
                     (map (fn [{:keys [name base-type]}]
                            {:name      (u/lower-case-en name)
@@ -104,7 +109,7 @@
                                                                   (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
-             (->> (sql-jdbc.describe-table/describe-table (or driver/*driver* :h2) (mt/id) (db/select-one Table :id (mt/id :venues)))
+             (->> (sql-jdbc.describe-table/describe-table (or driver/*driver* :h2) (mt/id) (t2/select-one Table :id (mt/id :venues)))
                   :fields
                   (filter :semantic-type)
                   (map (juxt (comp u/lower-case-en :name) :semantic-type))))))))
@@ -144,6 +149,21 @@
                #'sql-jdbc.describe-table/describe-json-xform
                #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
 
+(deftest json-details-only-test
+  (testing "fields with base-type=type/JSON should have visibility-type=details-only, unlike other fields."
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+      (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
+        (mt/dataset json
+          (let [spec  (sql-jdbc.conn/connection-details->spec driver/*driver* (:details (mt/db)))
+                table (t2/select-one Table :id (mt/id :json))]
+            (with-open [conn (jdbc/get-connection spec)]
+              (let [fields     (sql-jdbc.describe-table/describe-table-fields driver/*driver* conn table nil)
+                    json-field (first (filter #(= (:name %) "json_bit") fields))
+                    text-field (first (filter #(= (:name %) "bloop") fields))]
+                (is (= :details-only
+                       (:visibility-type json-field)))
+                (is (nil? (:visibility-type text-field)))))))))))
+
 (deftest describe-nested-field-columns-test
   (testing "flattened-row"
     (let [row       {:bob {:dobbs 123 :cobbs "boop"}}
@@ -157,12 +177,13 @@
       (is (= types (#'sql-jdbc.describe-table/row->types row)))))
   (testing "JSON row->types handles bigint that comes in and gets interpreted as Java bigint OK (#22732)"
     (let [int-row   {:zlob {"blob" (java.math.BigInteger. "123124124312134235234235345344324352")}}]
-      (is (= #{{:name "zlob → blob",
-                :database-type "decimal",
-                :base-type :type/BigInteger,
+      (is (= #{{:name              "zlob → blob",
+                :database-type     "decimal",
+                :base-type         :type/BigInteger,
                 :database-position 0,
-                :visibility-type :normal,
-                :nfc-path [:zlob "blob"]}}
+                :json-unfolding    false
+                :visibility-type   :normal,
+                :nfc-path          [:zlob "blob"]}}
              (-> int-row
                  (#'sql-jdbc.describe-table/row->types)
                  (#'sql-jdbc.describe-table/field-types->fields)))))))

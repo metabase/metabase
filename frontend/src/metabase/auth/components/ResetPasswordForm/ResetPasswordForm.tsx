@@ -34,7 +34,7 @@ interface ResetPasswordFormProps {
   onSubmit: (data: ResetPasswordData) => void;
 }
 
-const ResetPasswordForm = ({
+export const ResetPasswordForm = ({
   onValidatePassword,
   onSubmit,
 }: ResetPasswordFormProps): JSX.Element => {
@@ -86,5 +86,3 @@ const ResetPasswordForm = ({
     </div>
   );
 };
-
-export default ResetPasswordForm;

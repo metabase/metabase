@@ -18,14 +18,15 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
+   [metabase.models.params.field-values :as params.field-values]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -68,6 +69,29 @@
     :else
     field-id-or-form))
 
+(def ^:dynamic *ignore-current-user-perms-and-return-all-field-values*
+  "Whether to ignore permissions for the current User and return *all* FieldValues for the Fields being parameterized by
+  Cards and Dashboards. This determines how `:param_values` gets hydrated for Card and Dashboard. Normally, this is
+  `false`, but the public and embed versions of the API endpoints can bind this to `true` to bypass normal perms
+  checks (since there is no current User) and get *all* values."
+  false)
+
+(defn- field-ids->param-field-values-ignoring-current-user
+  [param-field-ids]
+  (t2/select-fn->fn :field_id (comp identity t2.realize/realize)
+                    ['FieldValues :values :human_readable_values :field_id]
+                    :type :full
+                    :field_id [:in param-field-ids]))
+
+(defn- field-ids->param-field-values
+  "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference.
+  This map is returned by various endpoints as `:param_values`, if `param-field-ids` is empty, return `nil`"
+  [param-field-ids]
+  (when (seq param-field-ids)
+    ((if *ignore-current-user-perms-and-return-all-field-values*
+       field-ids->param-field-values-ignoring-current-user
+       params.field-values/field-id->field-values-for-current-user) param-field-ids)))
+
 (defn- template-tag->field-form
   "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
 
@@ -96,12 +120,12 @@
   (filter #(isa? (:semantic_type %) :type/PK) fields))
 
 (def ^:private Field:params-columns-only
-  "Form for use in Toucan `db/select` expressions (as a drop-in replacement for using `Field`) that returns Fields with
+  "Form for use in Toucan `t2/select` expressions (as a drop-in replacement for using `Field`) that returns Fields with
   only the columns that are appropriate for returning in public/embedded API endpoints, which make heavy use of the
   functions in this namespace. Use `conj` to add additional Fields beyond the ones already here. Use `rest` to get
   just the column identifiers, perhaps for use with something like `select-keys`. Clutch!
 
-    (db/select Field:params-columns-only)"
+    (t2/select Field:params-columns-only)"
   ['Field :id :table_id :display_name :base_type :semantic_type :has_field_values])
 
 (defn- fields->table-id->name-field
@@ -109,7 +133,7 @@
   cases where more than one name Field exists for a Table, this just adds the first one it finds."
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
-    (m/index-by :table_id (-> (db/select Field:params-columns-only
+    (m/index-by :table_id (-> (t2/select Field:params-columns-only
                                 :table_id      [:in table-ids]
                                 :semantic_type (mdb.u/isa :type/Name))
                               ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
@@ -155,11 +179,24 @@
   parameter widgets."
   [field-ids :- (s/maybe #{su/IntGreaterThanZero})]
   (when (seq field-ids)
-    (m/index-by :id (-> (db/select Field:params-columns-only :id [:in field-ids])
+    (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
                         (hydrate :has_field_values :name_field [:dimensions :human_readable_field])
                         remove-dimensions-nonpublic-columns))))
 
-(defmulti ^:private param-fields
+
+(defmulti ^:private ^{:hydrate :param_values} param-values
+  "Add a `:param_values` map (Field ID -> FieldValues) containing FieldValues for the Fields referenced by the
+  parameters of a Card or a Dashboard. Implementations are in respective sections below."
+  t2/model)
+
+#_{:clj-kondo/ignore [:unused-private-var]}
+(mi/define-simple-hydration-method ^:private hydrate-param-values
+  :param_values
+  "Hydration method for `:param_fields`."
+  [instance]
+  (param-values instance))
+
+(defmulti ^:private ^{:hydrate :param_fields} param-fields
   "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card or
   Dashboard. Implementations are below in respective sections."
   t2/model)
@@ -206,7 +243,17 @@
           id))
    (cards->card-param-field-ids (map :card dashcards))))
 
-(defmethod param-fields :metabase.models.dashboard/Dashboard [dashboard]
+
+(defn- dashboard->param-field-values
+  "Return a map of Field ID to FieldValues (if any) for any Fields referenced by Cards in `dashboard`,
+   or `nil` if none are referenced or none of them have FieldValues."
+  [dashboard]
+  (field-ids->param-field-values (dashcards->param-field-ids (:ordered_cards dashboard))))
+
+(defmethod param-values :model/Dashboard [dashboard]
+  (dashboard->param-field-values dashboard))
+
+(defmethod param-fields :model/Dashboard [dashboard]
   (-> (hydrate dashboard [:ordered_cards :card])
       :ordered_cards
       dashcards->param-field-ids
@@ -232,6 +279,8 @@
   (set (mbql.u/match (seq (card->template-tag-field-clauses card))
          [:field (id :guard integer?) _]
          id)))
+(defmethod param-values :model/Card [card]
+  (-> card card->template-tag-field-ids field-ids->param-field-values))
 
-(defmethod param-fields :metabase.models.card/Card [card]
+(defmethod param-fields :model/Card [card]
   (-> card card->template-tag-field-ids param-field-ids->fields))

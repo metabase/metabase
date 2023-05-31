@@ -16,16 +16,14 @@ import type {
   Dataset,
   Group,
   GroupsPermissions,
+  Revision,
   User,
+  UserListResult,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
 
-import { PluginGroupManagersType } from "./types";
-
-// Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
-const object = () => ({});
-const array = () => [];
+import { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUCTIONS = [];
@@ -81,7 +79,7 @@ export const PLUGIN_ADMIN_USER_MENU_ITEMS = [];
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
 // authentication providers
-export const PLUGIN_AUTH_PROVIDERS = [] as any;
+export const PLUGIN_AUTH_PROVIDERS: GetAuthProviders[] = [];
 
 // Only show the password tab in account settings if these functions all return true.
 // Otherwise, the user is logged in via SSO and should hide first name, last name, and email field in profile settings metabase#23298.
@@ -145,6 +143,14 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
     PluginPlaceholder as FormCollectionAuthorityLevelPicker,
 };
 
+export type RevisionOrModerationEvent = {
+  title: string;
+  timestamp: string;
+  icon: string | { name: string; color: string } | Record<string, never>;
+  description?: string;
+  revision?: Revision;
+};
+
 export const PLUGIN_MODERATION = {
   isEnabled: () => false,
   QuestionModerationIcon: PluginPlaceholder,
@@ -152,8 +158,13 @@ export const PLUGIN_MODERATION = {
   QuestionModerationButton: PluginPlaceholder,
   ModerationReviewBanner: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
-  getStatusIcon: object,
-  getModerationTimelineEvents: array,
+  getStatusIcon: (moderated_status?: string): string | IconProps | undefined =>
+    undefined,
+  getModerationTimelineEvents: (
+    reviews: any,
+    usersById: Record<string, UserListResult>,
+    currentUser: User | null,
+  ) => [] as RevisionOrModerationEvent[],
   getMenuItems: (
     question?: Question,
     isModerator?: boolean,

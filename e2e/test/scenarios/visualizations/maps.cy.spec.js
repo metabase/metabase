@@ -25,25 +25,31 @@ describe("scenarios > visualizations > maps", () => {
     cy.get(".NativeQueryEditor .Icon-play").click();
 
     // switch to a pin map visualization
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
     cy.icon("pinmap").click();
     cy.findByTestId("Map-button").within(() => {
       cy.icon("gear").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Map type").next().click();
     popover().contains("Pin map").click();
 
     // When the settings sidebar opens, both latitude and longitude selects are
     // open. That makes it difficult to select each in Cypress, so we click
     // outside twice to close both of them before reopening them one-by-one. :(
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("New question").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("New question").click();
 
     // select both columns
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Latitude field").next().click();
     popover().contains("LAT").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Longitude field").next().click();
     popover().contains("LNG").click();
 
@@ -71,6 +77,7 @@ describe("scenarios > visualizations > maps", () => {
       { visitQuestion: true },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").closest(".Button").as("vizButton");
     cy.get("@vizButton").click();
     cy.findByTestId("display-options-sensible").as("sensibleOptions");
@@ -110,18 +117,23 @@ describe("scenarios > visualizations > maps", () => {
     cy.get("@texas").trigger("mousemove");
 
     // check tooltip content
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("State:"); // column name key
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Texas"); // feature name as value
 
     // open drill-through menu and drill within it
     cy.get("@texas").click();
-    cy.findByText(/View these People/i).click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(/See these People/i).click();
 
     cy.log("Reported as a regression since v0.37.0");
     cy.wait("@dataset").then(xhr => {
       expect(xhr.request.body.query.filter).not.to.contain("Texas");
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("State is TX");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("171 Olive Oyle Lane"); // Address in the first row
   });
 
@@ -165,8 +177,11 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.get(".leaflet-interactive").trigger("mousemove");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Latitude:");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Longitude:");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1");
   });
 
@@ -195,6 +210,7 @@ describe("scenarios > visualizations > maps", () => {
     // Ensure chart is rendered
     cy.get(".leaflet-interactive");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
 
     // Ensure the Map visualization is sensible

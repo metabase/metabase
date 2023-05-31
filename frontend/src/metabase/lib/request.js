@@ -38,12 +38,12 @@ export class RestfulRequest {
 
   // Triggers the request; modelled as a Redux thunk action so wrap this to `dispatch()` call
   trigger = params => async dispatch => {
-    dispatch.action(this.actions.requestStarted);
+    dispatch({ type: this.actions.requestStarted });
     try {
       const result = await this.endpoint(params);
-      dispatch.action(this.actions.requestSuccessful, { result });
+      dispatch({ type: this.actions.requestSuccessful, payload: { result } });
     } catch (error) {
-      dispatch.action(this.actions.requestFailed, { error });
+      dispatch({ type: this.actions.requestFailed, payload: { error } });
       throw error;
     }
   };

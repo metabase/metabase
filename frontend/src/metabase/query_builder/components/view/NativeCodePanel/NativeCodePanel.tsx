@@ -56,4 +56,5 @@ const useCopyButton = (value: string) => {
   return { isCopied, handleCopy };
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default NativeCodePanel;

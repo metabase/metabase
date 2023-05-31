@@ -6,16 +6,15 @@ import {
   popover,
   openQuestionActions,
   questionInfoButton,
-} from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
-import {
+  addOrUpdateDashboardCard,
   openColumnOptions,
   renameColumn,
   setColumnType,
   mapColumnTo,
   setModelMetadata,
-} from "./helpers/e2e-models-metadata-helpers";
+} from "e2e/support/helpers";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
 
 const { PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS } = SAMPLE_DATABASE;
 
@@ -45,13 +44,16 @@ describe("scenarios > models metadata", () => {
         cy.findByTextEnsureVisible("89%").trigger("mouseenter");
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Some columns are missing a column type, description, or friendly name.",
       );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Adding metadata makes it easier for your team to explore this data.",
       );
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit metadata").click();
 
       cy.url().should("include", "/metadata");
@@ -66,12 +68,14 @@ describe("scenarios > models metadata", () => {
       startQuestionFromModel("GUI Model");
 
       visualize();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pre-tax ($)");
     });
 
     it("allows for canceling changes", () => {
       openQuestionActions();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit metadata").click();
 
       openColumnOptions("Subtotal");
@@ -81,12 +85,14 @@ describe("scenarios > models metadata", () => {
 
       cy.button("Cancel").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Subtotal");
     });
 
     it("clears custom metadata when a model is turned back into a question", () => {
       openQuestionActions();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit metadata").click();
 
       openColumnOptions("Subtotal");
@@ -102,6 +108,7 @@ describe("scenarios > models metadata", () => {
 
       cy.wait("@dataset");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Subtotal");
     });
   });
@@ -124,13 +131,16 @@ describe("scenarios > models metadata", () => {
       cy.findByTextEnsureVisible("37%").trigger("mouseenter");
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "Most columns are missing a column type, description, or friendly name.",
     );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "Adding metadata makes it easier for your team to explore this data.",
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit metadata").click();
 
     cy.url().should("include", "/metadata");
@@ -149,7 +159,33 @@ describe("scenarios > models metadata", () => {
     startQuestionFromModel("Native Model");
 
     visualize();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pre-tax ($)");
+  });
+
+  it("should allow setting column relations (metabase#29318)", () => {
+    cy.createNativeQuestion(
+      {
+        name: "Native Model",
+        dataset: true,
+        native: {
+          query: "SELECT * FROM ORDERS",
+        },
+      },
+      { visitQuestion: true },
+    );
+    openQuestionActions();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Edit metadata").click();
+    openColumnOptions("USER_ID");
+    setColumnType("No special type", "Foreign Key");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Select a target").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("People → ID").click();
+    cy.button("Save changes").click();
+    // TODO: Not much to do with it at the moment beyond saving it.
+    // Check that the relation is automatically suggested in the notebook once it is implemented.
   });
 
   it("should keep metadata in sync with the query", () => {
@@ -206,6 +242,7 @@ describe("scenarios > models metadata", () => {
       .and("not.contain", "SUBTOTAL");
 
     openQuestionActions();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit metadata").click();
 
     cy.findByTextEnsureVisible("TAX");
@@ -309,12 +346,10 @@ describe("scenarios > models metadata", () => {
       cy.get("@modelId").then(modelId => {
         cy.createDashboard().then(response => {
           const dashboardId = response.body.id;
-          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-            cardId: modelId,
-            row: 0,
-            col: 0,
-            size_x: 18,
-            size_y: 9,
+          addOrUpdateDashboardCard({
+            dashboard_id: dashboardId,
+            card_id: modelId,
+            card: { size_x: 18, size_y: 9 },
           });
 
           visitDashboard(dashboardId);
@@ -357,8 +392,11 @@ describe("scenarios > models metadata", () => {
 
       cy.createQuestion(questionDetails, { visitQuestion: true });
       openQuestionActions();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Vendor").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit metadata").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Vendor").should("be.visible");
     });
   });

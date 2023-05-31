@@ -18,7 +18,7 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)
@@ -340,7 +340,7 @@
                                            :database_id (mt/id)}]]
                 (persist-models!)
                 (testing "tag uses persisted table"
-                  (let [pi (db/select-one 'PersistedInfo :card_id (u/the-id model))]
+                  (let [pi (t2/select-one 'PersistedInfo :card_id (u/the-id model))]
                     (is (= "persisted" (:state pi)))
                     (is (re-matches #"select \* from \"metabase_cache_[a-z0-9]+_[0-9]+\".\"model_[0-9]+_model\""
                                     (:query

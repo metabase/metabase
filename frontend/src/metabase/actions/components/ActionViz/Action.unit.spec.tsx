@@ -2,14 +2,15 @@ import React from "react";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, getIcon, waitFor } from "__support__/ui";
 import {
-  setupDatabasesEndpoints,
-  setupUnauthorizedDatabasesEndpoints,
-} from "__support__/server-mocks";
+  getIcon,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 
-import type { ActionDashboardCard } from "metabase-types/api";
-import type { ParameterTarget } from "metabase-types/types/Parameter";
+import type { ActionDashboardCard, ParameterTarget } from "metabase-types/api";
 import {
   createMockActionDashboardCard as _createMockActionDashboardCard,
   createMockActionParameter,
@@ -17,9 +18,9 @@ import {
   createMockQueryAction,
   createMockImplicitQueryAction,
   createMockDashboard,
-  createMockDatabase,
 } from "metabase-types/api/mocks";
 
+import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
 import Action, { ActionProps } from "./Action";
 
 const DASHBOARD_ID = 123;
@@ -27,27 +28,37 @@ const DASHCARD_ID = 456;
 const ACTION_MODEL_ID = 777;
 const ACTION_EXEC_MOCK_PATH = `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`;
 
-const DATABASE_WITHOUT_ACTIONS = createMockDatabase({ id: 1 });
-const DATABASE = createMockDatabase({
-  id: 2,
-  settings: { "database-enable-actions": true },
-});
+const DATABASE_ID = 1;
 
 const ACTION = createMockQueryAction({
   name: "My Awesome Action",
-  database_id: DATABASE.id,
+  database_id: DATABASE_ID,
   parameters: [
     createMockActionParameter({
       id: "parameter_1",
-      type: "type/Text",
+      name: "Parameter 1",
+      type: "string/=",
       target: ["variable", ["template-tag", "1"]],
     }),
     createMockActionParameter({
       id: "parameter_2",
-      type: "type/Integer",
+      name: "Parameter 2",
+      type: "number/=",
       target: ["variable", ["template-tag", "2"]],
     }),
   ],
+  visualization_settings: {
+    fields: {
+      parameter_1: createMockFieldSettings({
+        fieldType: "string",
+        inputType: "string",
+      }),
+      parameter_2: createMockFieldSettings({
+        fieldType: "number",
+        inputType: "number",
+      }),
+    },
+  },
 });
 
 function createMockActionDashboardCard(
@@ -72,25 +83,17 @@ function createMockActionDashboardCard(
   });
 }
 
-type SetupOpts = Partial<ActionProps> & {
-  hasDataPermissions?: boolean;
-};
+type SetupOpts = Partial<ActionProps>;
 
 async function setup({
   dashboard = createMockDashboard({ id: DASHBOARD_ID }),
   dashcard = createMockActionDashboardCard(),
   settings = {},
   parameterValues = {},
-  hasDataPermissions = true,
   ...props
 }: SetupOpts = {}) {
-  const databases = [DATABASE, DATABASE_WITHOUT_ACTIONS];
-
-  if (hasDataPermissions) {
-    setupDatabasesEndpoints(databases);
+  if (getActionIsEnabledInDatabase(dashcard)) {
     fetchMock.post(ACTION_EXEC_MOCK_PATH, { "rows-updated": [1] });
-  } else {
-    setupUnauthorizedDatabasesEndpoints(databases);
   }
 
   renderWithProviders(
@@ -100,9 +103,8 @@ async function setup({
       settings={settings}
       parameterValues={parameterValues}
       isSettings={false}
-      isEditing={false}
+      isEditingDashcard={false}
       dispatch={jest.fn()}
-      onVisualizationClick={jest.fn()}
       {...props}
     />,
   );
@@ -126,7 +128,7 @@ describe("Actions > ActionViz > Action", () => {
       await setup({
         dashcard: createMockActionDashboardCard({
           action: createMockQueryAction({
-            database_id: DATABASE_WITHOUT_ACTIONS.id,
+            database_enabled_actions: false,
           }),
         }),
       });
@@ -134,15 +136,6 @@ describe("Actions > ActionViz > Action", () => {
       expect(screen.getByRole("button")).toBeDisabled();
       expect(
         screen.getByLabelText(/actions are not enabled/i),
-      ).toBeInTheDocument();
-    });
-
-    it("should render a disabled state if the user doesn't have permissions to action database", async () => {
-      await setup({ hasDataPermissions: false });
-      expect(getIcon("bolt")).toBeInTheDocument();
-      expect(screen.getByRole("button")).toBeDisabled();
-      expect(
-        screen.getByLabelText(/don't have permission/i),
       ).toBeInTheDocument();
     });
 
@@ -163,13 +156,29 @@ describe("Actions > ActionViz > Action", () => {
       expect(screen.getByRole("button")).toHaveTextContent("Please Click Me");
     });
 
-    it("clicking an action button should open a modal action form", async () => {
+    it("clicking an action button with parameters should open a modal action form", async () => {
       await setup();
 
       userEvent.click(screen.getByRole("button"));
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       expect(screen.getByLabelText("Parameter 1")).toBeInTheDocument();
+    });
+
+    it("clicking an action button without parameters should open a confirmation modal", async () => {
+      await setup({
+        dashcard: createMockActionDashboardCard({
+          action: createMockQueryAction({
+            database_id: DATABASE_ID,
+          }),
+          parameter_mappings: [],
+        }),
+      });
+
+      userEvent.click(screen.getByRole("button"));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByTestId("action-form")).toBeInTheDocument();
+      expect(screen.queryByLabelText(/^Parameter/)).not.toBeInTheDocument();
     });
 
     it("the modal should have the action name as a title", async () => {
@@ -196,7 +205,6 @@ describe("Actions > ActionViz > Action", () => {
       ];
 
       const action = createMockQueryAction({
-        database_id: DATABASE.id,
         parameters: [
           createMockActionParameter({
             id: parameterId,
@@ -229,6 +237,13 @@ describe("Actions > ActionViz > Action", () => {
       });
 
       userEvent.click(screen.getByRole("button", { name: "Click me" }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByTestId("action-form")).toBeInTheDocument();
+      userEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: action.name,
+        }),
+      );
 
       await waitFor(async () => {
         const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
@@ -255,7 +270,9 @@ describe("Actions > ActionViz > Action", () => {
     it("should render the action name as the form title", async () => {
       await setup({ settings: formSettings });
 
-      expect(screen.getByText("My Awesome Action")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "My Awesome Action" }),
+      ).toBeInTheDocument();
     });
 
     it("should only show form fields with no provided values from dashboard filters", async () => {
@@ -271,7 +288,7 @@ describe("Actions > ActionViz > Action", () => {
     it("should render as a button if no parameters are missing", async () => {
       await setup({
         settings: formSettings,
-        parameterValues: { "dash-param-1": "foo", "dash-param-2": "bar" },
+        parameterValues: { "dash-param-1": "foo", "dash-param-2": 2 },
       });
 
       expect(
@@ -300,7 +317,7 @@ describe("Actions > ActionViz > Action", () => {
         expect(screen.getByLabelText("Parameter 2")).toHaveValue(5),
       );
 
-      userEvent.click(screen.getByRole("button", { name: "Run" }));
+      userEvent.click(screen.getByRole("button", { name: ACTION.name }));
 
       await waitFor(async () => {
         const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
@@ -327,7 +344,7 @@ describe("Actions > ActionViz > Action", () => {
         expect(screen.getByLabelText("Parameter 1")).toHaveValue("foo"),
       );
 
-      userEvent.click(screen.getByRole("button", { name: "Run" }));
+      userEvent.click(screen.getByRole("button", { name: ACTION.name }));
 
       await waitFor(async () => {
         const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
@@ -343,7 +360,6 @@ describe("Actions > ActionViz > Action", () => {
           action: createMockImplicitQueryAction({
             name: "My Delete Action",
             kind: "row/delete",
-            database_id: DATABASE.id,
             parameters: [
               createMockActionParameter({
                 id: "1",

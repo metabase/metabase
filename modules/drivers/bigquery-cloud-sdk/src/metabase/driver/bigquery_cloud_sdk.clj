@@ -26,7 +26,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (clojure.lang PersistentList)
@@ -167,13 +166,19 @@
                set)})
 
 (defn- get-field-parsers [^Schema schema]
-  (into []
-        (map (fn [^Field field]
-               (let [column-type (.. field getType name)
-                     column-mode (.getMode field)
-                     method (get-method bigquery.qp/parse-result-of-type column-type)]
-                 (partial method column-type column-mode bigquery.common/*bigquery-timezone-id*))))
-        (.getFields schema)))
+  (let [default-parser (get-method bigquery.qp/parse-result-of-type :default)]
+    (into []
+          (map (fn [^Field field]
+                 (let [column-type (.. field getType name)
+                       column-mode (.getMode field)
+                       method (get-method bigquery.qp/parse-result-of-type column-type)]
+                   (when (= method default-parser)
+                     (let [column-name (.getName field)]
+                       (log/warn (trs "Warning: missing type mapping for parsing BigQuery results column {0} of type {1}."
+                                      column-name
+                                      column-type))))
+                   (partial method column-type column-mode bigquery.common/*bigquery-timezone-id*))))
+          (.getFields schema))))
 
 (defn- parse-field-value [^FieldValue cell parser]
   (when-let [v (.getValue cell)]
@@ -372,26 +377,17 @@
 ;;; |                                           Other Driver Method Impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/supports? [:bigquery-cloud-sdk :percentile-aggregations] [_ _] true)
-
-(defmethod driver/supports? [:bigquery-cloud-sdk :expressions] [_ _] true)
-
-(defmethod driver/supports? [:bigquery-cloud-sdk :foreign-keys] [_ _] true)
-
-(defmethod driver/database-supports? [:bigquery-cloud-sdk :datetime-diff]
-  [_driver _feat _db]
-  true)
-
-(defmethod driver/database-supports? [:bigquery-cloud-sdk :now] [_driver _feat _db] true)
-
-(defmethod driver/database-supports? [:bigquery-cloud-sdk :convert-timezone]
-  [_driver _feat _db]
-  true)
-
-;; BigQuery uses timezone operators and arguments on calls like extract() and timezone_trunc() rather than literally
-;; using SET TIMEZONE, but we need to flag it as supporting set-timezone anyway so that reporting timezones are
-;; returned and used, and tests expect the converted values.
-(defmethod driver/supports? [:bigquery-cloud-sdk :set-timezone] [_ _] true)
+(doseq [[feature supported?] {:percentile-aggregations true
+                              :expressions             true
+                              :foreign-keys            true
+                              :datetime-diff           true
+                              :now                     true
+                              :convert-timezone        true
+                              ;; BigQuery uses timezone operators and arguments on calls like extract() and timezone_trunc() rather than literally
+                              ;; using SET TIMEZONE, but we need to flag it as supporting set-timezone anyway so that reporting timezones are
+                              ;; returned and used, and tests expect the converted values.
+                              :set-timezone            true}]
+  (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC
 (defmethod driver/db-default-timezone :bigquery-cloud-sdk [_ _]
@@ -419,13 +415,13 @@
     (log/infof (trs "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
                     db-id))
     (try
-      (db/execute! {:update (t2/table-name MetabaseTable)
-                    :set    {:schema dataset-id}
-                    :where  [:and
-                             [:= :db_id db-id]
-                             [:or
-                              [:= :schema nil]
-                              [:not= :schema dataset-id]]]})
+      (t2/query-one {:update (t2/table-name MetabaseTable)
+                     :set    {:schema dataset-id}
+                     :where  [:and
+                              [:= :db_id db-id]
+                              [:or
+                               [:= :schema nil]
+                               [:not= :schema dataset-id]]]})
       ;; if we are upgrading to the sdk driver after having downgraded back to the old driver we end up with
       ;; duplicated tables with nil schema. Happily only in the "dataset-id" schema and not all schemas. But just
       ;; leave them with nil schemas and they will get deactivated in sync.
@@ -433,7 +429,7 @@
     (let [updated-db (-> (assoc-in database [:details :dataset-filters-type] "inclusion")
                          (assoc-in [:details :dataset-filters-patterns] dataset-id)
                          (m/dissoc-in [:details :dataset-id]))]
-      (db/update! Database db-id :details (:details updated-db))
+      (t2/update! Database db-id {:details (:details updated-db)})
       updated-db)))
 
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk

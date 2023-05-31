@@ -7,7 +7,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- delete-gtaps-with-condition! [group-or-id condition]
   (when (seq condition)
@@ -25,7 +25,7 @@
                                                      :where     conditions}))))]
           (do
             (log/debugf "Deleting %d matching GTAPs: %s" (count gtap-ids) (pr-str gtap-ids))
-            (db/delete! GroupTableAccessPolicy :id [:in gtap-ids]))
+            (t2/delete! GroupTableAccessPolicy :id [:in gtap-ids]))
           (log/debug "No matching GTAPs need to be deleted."))
         (catch Throwable e
           (throw (ex-info (tru "Error deleting Sandboxes: {0}" (ex-message e))

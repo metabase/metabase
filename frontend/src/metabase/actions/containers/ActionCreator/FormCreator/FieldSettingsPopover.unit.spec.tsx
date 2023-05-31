@@ -60,6 +60,34 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
     });
   });
 
+  describe("when field has placeholder", () => {
+    it("should render two <Divider />s", async () => {
+      const settings = getDefaultFieldSettings({
+        fieldType: "string",
+      });
+      setup({ settings });
+
+      userEvent.click(screen.getByLabelText("Field settings"));
+      await screen.findByLabelText("Default value");
+
+      expect(screen.getAllByTestId("divider").length).toBe(2);
+    });
+  });
+
+  describe("when field does not have placeholder", () => {
+    it("should render one <Divider />", async () => {
+      const settings = getDefaultFieldSettings({
+        fieldType: "date",
+      });
+      setup({ settings });
+
+      userEvent.click(screen.getByLabelText("Field settings"));
+      await screen.findByLabelText("Default value");
+
+      expect(screen.getAllByTestId("divider").length).toBe(1);
+    });
+  });
+
   it("should allow to make the field required and optional", async () => {
     const settings = getDefaultFieldSettings({
       fieldType: "number",

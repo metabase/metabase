@@ -1,10 +1,12 @@
 (ns metabase.lib.schema.filter
-  "Schemas for the various types of filter clauses that you'd pass to `:filter` or use inside something else that takes
+  "Schemas for the various types of filter clauses that you'd pass to `:filters` or use inside something else that takes
   a boolean expression."
   (:require
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
-   [metabase.lib.schema.mbql-clause :as mbql-clause]))
+   [metabase.lib.schema.mbql-clause :as mbql-clause]
+   [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
+   [metabase.util.malli.registry :as mr]))
 
 (doseq [op [:and :or]]
   (mbql-clause/define-catn-mbql-clause op :- :type/Boolean
@@ -31,12 +33,12 @@
 
 ;; sugar: a pair of `:between` clauses
 (mbql-clause/define-tuple-mbql-clause :inside :- :type/Boolean
-  #_lat-field [:ref ::expression/orderable]
-  #_lon-field [:ref ::expression/orderable]
-  #_lat-max   [:ref ::expression/orderable]
-  #_lon-min   [:ref ::expression/orderable]
-  #_lat-min   [:ref ::expression/orderable]
-  #_lon-max   [:ref ::expression/orderable])
+  #_lat-expr [:ref ::expression/orderable]
+  #_lon-expr [:ref ::expression/orderable]
+  #_lat-max  [:ref ::expression/orderable]
+  #_lon-min  [:ref ::expression/orderable]
+  #_lat-min  [:ref ::expression/orderable]
+  #_lon-max  [:ref ::expression/orderable])
 
 ;;; null checking expressions
 ;;;
@@ -68,13 +70,10 @@
      [:= op]
      [:merge ::common/options string-filter-options]
      #_whole [:ref ::expression/string]
-     #_part [:ref ::expression/string]]))
+     #_part  [:ref ::expression/string]]))
 
 (def ^:private time-interval-options
   [:map [:include-current {:optional true} :boolean]]) ; default false
-
-(def ^:private relative-datetime-unit
-  [:enum :default :minute :hour :day :week :month :quarter :year])
 
 ;; SUGAR: rewritten as a filter clause with a relative-datetime value
 (mbql-clause/define-mbql-clause :time-interval :- :type/Boolean
@@ -91,7 +90,7 @@
            [:enum :current :last :next]
            ;; I guess there's no reason you shouldn't be able to do something like 1 + 2 in here
            [:ref ::expression/integer]]
-   #_unit relative-datetime-unit])
+   #_unit [:ref ::temporal-bucketing/unit.date-time.interval]])
 
 ;; segments are guaranteed to return valid filter clauses and thus booleans, right?
 (mbql-clause/define-mbql-clause :segment :- :type/Boolean
@@ -99,3 +98,9 @@
    [:= :segment]
    ::common/options
    [:or ::common/int-greater-than-zero ::common/non-blank-string]])
+
+(mr/def ::operator
+  [:map
+   [:lib/type [:= :mbql.filter/operator]]
+   [:short [:enum := :!= :inside :between :< :> :<= :>= :is-null :not-null :is-empty :not-empty :contains :does-not-contain :starts-with :ends-with]]
+   [:display-name :string]])

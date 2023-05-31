@@ -2,25 +2,37 @@
   (:require
    [java-time :as t]
    [metabase.models.collection :as collection]
-   [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
    [metabase.models.timeline-event :as timeline-event]
    [metabase.util.date-2 :as u.date]
+   [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan2.core :as t2]))
 
-(models/defmodel Timeline :timeline)
+(def Timeline
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Timeline)
 
-(derive Timeline ::perms/use-parent-collection-perms)
+(methodical/defmethod t2/table-name :model/Timeline  [_model] :timeline)
+
+(doto :model/Timeline
+  (derive :metabase/model)
+  (derive ::perms/use-parent-collection-perms)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id))
 
 ;;;; schemas
 
+(def icons
+  "Valid Timeline and TimelineEvent icons"
+  ["star" "balloons" "mail" "warning" "bell" "cloud"])
+
 (def Icons
   "Timeline and TimelineEvent icon string Schema"
-  (s/enum "star" "balloons" "mail" "warning" "bell" "cloud"))
+  (apply s/enum icons))
 
 (def DefaultIcon
   "Timeline default icon"
@@ -44,7 +56,7 @@
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
   [collection-id {:keys [:timeline/events? :timeline/archived?] :as options}]
-  (cond-> (hydrate (db/select Timeline
+  (cond-> (hydrate (t2/select Timeline
                               :collection_id collection-id
                               :archived (boolean archived?))
                    :creator
@@ -52,12 +64,7 @@
     (nil? collection-id) (->> (map hydrate-root-collection))
     events? (timeline-event/include-events options)))
 
-(mi/define-methods
- Timeline
- {:properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id true})})
-
-(defmethod serdes/hash-fields Timeline
+(defmethod serdes/hash-fields :model/Timeline
   [_timeline]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
@@ -71,7 +78,7 @@
            (for [event events]
              (-> (into (sorted-map) event)
                  (dissoc :creator :id :timeline_id :updated_at)
-                 (update :creator_id  serdes/export-user)
+                 (update :creator_id  serdes/*export-user*)
                  (update :timestamp   #(u.date/format (t/offset-date-time %)))))))
 
 (defmethod serdes/extract-one "Timeline"
@@ -81,19 +88,19 @@
                    (timeline-event/include-events-singular timeline {:all? true}))]
     (-> (serdes/extract-one-basics "Timeline" timeline)
         (update :events        extract-events)
-        (update :collection_id serdes/export-fk 'Collection)
-        (update :creator_id    serdes/export-user))))
+        (update :collection_id serdes/*export-fk* 'Collection)
+        (update :creator_id    serdes/*export-user*))))
 
 (defmethod serdes/load-xform "Timeline" [timeline]
   (-> timeline
       serdes/load-xform-basics
-      (update :collection_id serdes/import-fk 'Collection)
-      (update :creator_id    serdes/import-user)))
+      (update :collection_id serdes/*import-fk* 'Collection)
+      (update :creator_id    serdes/*import-user*)))
 
 (defmethod serdes/load-one! "Timeline" [ingested maybe-local]
   (let [timeline ((get-method serdes/load-one! :default) (dissoc ingested :events) maybe-local)]
     (doseq [event (:events ingested)]
-      (let [local (db/select-one 'TimelineEvent :timeline_id (:id timeline) :timestamp (u.date/parse (:timestamp event)))
+      (let [local (t2/select-one 'TimelineEvent :timeline_id (:id timeline) :timestamp (u.date/parse (:timestamp event)))
             event (assoc event
                          :timeline_id (:entity_id timeline)
                          :serdes/meta [{:model "Timeline"      :id (:entity_id timeline)}

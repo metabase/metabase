@@ -2,7 +2,6 @@ import * as A from "./aggregation";
 import * as B from "./breakout";
 import * as F from "./filter";
 import * as J from "./join";
-import * as L from "./limit";
 import * as O from "./order-by";
 import * as E from "./expression";
 import * as FIELD from "./field";
@@ -24,10 +23,6 @@ export const clearAggregations = query =>
   setAggregationClause(query, A.clearAggregations(query.aggregation));
 
 export const isBareRows = query => A.isBareRows(query.aggregation);
-export const hasEmptyAggregation = query =>
-  A.hasEmptyAggregation(query.aggregation);
-export const hasValidAggregation = query =>
-  A.hasValidAggregation(query.aggregation);
 
 // BREAKOUT
 
@@ -82,7 +77,6 @@ export const clearOrderBy = query =>
   setOrderByClause(query, O.clearOrderBy(query["order-by"]));
 
 // FIELD
-export const getFields = query => FIELD.getFields(query.fields);
 export const addField = (query, field) =>
   setFieldsClause(query, FIELD.addField(query.fields, field));
 export const updateField = (query, index, field) =>
@@ -92,19 +86,9 @@ export const removeField = (query, index) =>
 export const clearFields = query =>
   setFieldsClause(query, FIELD.clearFields(query.fields));
 
-// LIMIT
-
-export const getLimit = query => L.getLimit(query.limit);
-export const updateLimit = (query, limit) =>
-  setLimitClause(query, L.updateLimit(query.limit, limit));
-export const clearLimit = query =>
-  setLimitClause(query, L.clearLimit(query.limit));
-
 // EXPRESSIONS
 
 export const getExpressions = query => E.getExpressions(query.expressions);
-export const getExpressionsList = query =>
-  E.getExpressionsList(query.expressions);
 export const addExpression = (query, name, expression) =>
   setExpressionClause(
     query,
@@ -176,9 +160,6 @@ function setOrderByClause(query, orderByClause) {
 }
 function setFieldsClause(query, fieldsClause) {
   return setClause("fields", query, fieldsClause);
-}
-function setLimitClause(query, limitClause) {
-  return setClause("limit", query, limitClause);
 }
 function setExpressionClause(query, expressionClause) {
   if (expressionClause && Object.keys(expressionClause).length === 0) {

@@ -4,7 +4,7 @@
    [metabase.models :refer [Collection NativeQuerySnippet]]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))
 
@@ -16,16 +16,16 @@
       (is (thrown-with-msg?
            Exception
            #"You cannot update the creator_id of a NativeQuerySnippet\."
-           (db/update! NativeQuerySnippet snippet-id :creator_id (mt/user->id :rasta))))
+           (t2/update! NativeQuerySnippet snippet-id {:creator_id (mt/user->id :rasta)})))
       (is (= (mt/user->id :lucky)
-             (db/select-one-field :creator_id NativeQuerySnippet :id snippet-id))))))
+             (t2/select-one-fn :creator_id NativeQuerySnippet :id snippet-id))))))
 
 (deftest snippet-collection-test
   (testing "Should be allowed to create snippets in a Collection in the :snippets namespace"
     (mt/with-temp* [Collection         [{collection-id :id} {:namespace "snippets"}]
                     NativeQuerySnippet [{snippet-id :id} {:collection_id collection-id}]]
       (is (= collection-id
-             (db/select-one-field :collection_id NativeQuerySnippet :id snippet-id)))))
+             (t2/select-one-fn :collection_id NativeQuerySnippet :id snippet-id)))))
 
   (doseq [[source dest] [[nil "snippets"]
                          ["snippets" "snippets"]
@@ -37,9 +37,9 @@
                       Collection         [{dest-collection-id :id}   {:namespace dest}]
                       NativeQuerySnippet [{snippet-id :id} (when source
                                                              {:collection_id source-collection-id})]]
-        (db/update! NativeQuerySnippet snippet-id :collection_id (when dest dest-collection-id))
+        (t2/update! NativeQuerySnippet snippet-id {:collection_id (when dest dest-collection-id)})
         (is (= (when dest dest-collection-id)
-               (db/select-one-field :collection_id NativeQuerySnippet :id snippet-id))))))
+               (t2/select-one-fn :collection_id NativeQuerySnippet :id snippet-id))))))
 
   (doseq [collection-namespace [nil "x"]]
     (testing (format "Should *not* be allowed to create snippets in a Collection in the %s namespace"
@@ -48,7 +48,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
-             (db/insert! NativeQuerySnippet
+             (t2/insert! NativeQuerySnippet
                {:name          (mt/random-name)
                 :content       "1 = 1"
                 :creator_id    (mt/user->id :rasta)
@@ -61,7 +61,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
-             (db/update! NativeQuerySnippet snippet-id :collection_id dest-collection-id)))))))
+             (t2/update! NativeQuerySnippet snippet-id {:collection_id dest-collection-id})))))))
 
 (deftest identity-hash-test
   (testing "Native query snippet hashes are composed of the name and the collection's hash"

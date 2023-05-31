@@ -39,7 +39,7 @@ Get the set of models that a search query will return.
 
 *  **`archived-string`** 
 
-*  **`table-db-id`**
+*  **`table-db-id`** nullable value must be an integer greater than zero.
 
 ---
 

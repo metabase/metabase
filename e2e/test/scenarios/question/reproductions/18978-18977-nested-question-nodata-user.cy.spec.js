@@ -3,7 +3,7 @@ import {
   appBar,
   popover,
   openNavigationSidebar,
-  sidebar,
+  leftSidebar,
   visitQuestion,
   POPOVER_ELEMENT,
 } from "e2e/support/helpers";
@@ -75,7 +75,7 @@ describe("11914, 18978, 18977", () => {
 function setVisualizationTo(vizName) {
   cy.findByTestId("viz-type-button").click();
 
-  sidebar().within(() => {
+  leftSidebar().within(() => {
     cy.icon(vizName).click();
     cy.icon(vizName).realHover();
     cy.icon("gear").click();
@@ -83,17 +83,17 @@ function setVisualizationTo(vizName) {
   });
   selectFromDropdown("Created At");
 
-  sidebar().within(() => {
+  leftSidebar().within(() => {
     cy.findByText("Y-axis").parent().findByText("Select a field").click();
   });
   selectFromDropdown("Quantity");
 
-  sidebar().findByText("Done").click();
+  leftSidebar().findByText("Done").click();
 }
 
 function addGoalLine() {
   cy.findByTestId("viz-settings-button").click();
-  sidebar().within(() => {
+  leftSidebar().within(() => {
     cy.findByText("Display").click();
     cy.findByText("Goal line").parent().find("input").click();
     cy.findByText("Done").click();

@@ -1,5 +1,4 @@
-import type { ParameterTarget } from "metabase-types/types/Parameter";
-import type { Parameter, ParameterId } from "./parameters";
+import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
 import type { NativeDatasetQuery } from "./query";
 import type { ClickBehavior } from "./click-behavior";
 import type {
@@ -32,6 +31,7 @@ export interface WritebackActionBase {
   created_at: string;
   public_uuid: string | null;
   database_id?: DatabaseId;
+  database_enabled_actions?: boolean;
 }
 
 export type PublicWritebackAction = Pick<

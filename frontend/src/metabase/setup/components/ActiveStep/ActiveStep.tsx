@@ -6,13 +6,13 @@ import {
   StepLabelText,
 } from "./ActiveStep.styled";
 
-export interface ActiveStepProps {
+interface ActiveStepProps {
   title: string;
   label: number;
   children?: ReactNode;
 }
 
-const ActiveStep = ({
+export const ActiveStep = ({
   title,
   label,
   children,
@@ -27,5 +27,3 @@ const ActiveStep = ({
     </StepRoot>
   );
 };
-
-export default ActiveStep;

@@ -1,15 +1,16 @@
 import React, { useState } from "react";
 
+import { getFormTitle } from "metabase/actions/utils";
+
 import type {
-  WritebackQueryAction,
-  WritebackParameter,
-  OnSubmitActionForm,
   ActionDashboardCard,
+  OnSubmitActionForm,
+  Dashboard,
   ParametersForActionExecution,
   VisualizationSettings,
-  Dashboard,
+  WritebackAction,
+  WritebackParameter,
 } from "metabase-types/api";
-import { getFormTitle } from "metabase/actions/utils";
 
 import ActionParametersInputForm, {
   ActionParametersInputModal,
@@ -20,43 +21,41 @@ import { shouldShowConfirmation } from "./utils";
 import { FormWrapper, FormTitle } from "./ActionForm.styled";
 
 interface ActionFormProps {
-  onSubmit: OnSubmitActionForm;
+  action: WritebackAction;
   dashcard: ActionDashboardCard;
+  dashboard: Dashboard;
+  missingParameters?: WritebackParameter[];
+  mappedParameters?: WritebackParameter[];
+  dashcardParamValues: ParametersForActionExecution;
   settings: VisualizationSettings;
   isSettings: boolean;
-  dashboard: Dashboard;
-  missingParameters: WritebackParameter[];
-  dashcardParamValues: ParametersForActionExecution;
-  action: WritebackQueryAction;
   shouldDisplayButton: boolean;
   isEditingDashcard: boolean;
+  onSubmit: OnSubmitActionForm;
 }
 
 function ActionVizForm({
-  onSubmit,
-  dashcard,
-  settings,
-  isSettings,
-  dashboard,
-  missingParameters,
-  dashcardParamValues,
   action,
+  dashcard,
+  dashboard,
+  settings,
+  missingParameters = [],
+  mappedParameters = [],
+  dashcardParamValues,
+  isSettings,
   shouldDisplayButton,
   isEditingDashcard,
+  onSubmit,
 }: ActionFormProps) {
   const [showModal, setShowModal] = useState(false);
   const title = getFormTitle(action);
 
   // only show confirmation if there are no missing parameters
   const showConfirmMessage =
-    shouldShowConfirmation(action) && !missingParameters.length;
+    shouldShowConfirmation(action) && missingParameters.length === 0;
 
   const onClick = () => {
-    if (missingParameters.length > 0 || showConfirmMessage) {
-      setShowModal(true);
-    } else {
-      onSubmit({});
-    }
+    setShowModal(true);
   };
 
   const onModalSubmit = async (params: ParametersForActionExecution) => {
@@ -71,24 +70,24 @@ function ActionVizForm({
     return (
       <>
         <ActionButtonView
-          onClick={onClick}
           settings={settings}
           isFullHeight={!isSettings}
           focus={isEditingDashcard}
+          onClick={onClick}
         />
         {showModal && (
           <ActionParametersInputModal
-            onClose={() => setShowModal(false)}
-            title={title}
-            onSubmit={onModalSubmit}
-            showConfirmMessage={!!showConfirmMessage}
-            confirmMessage={action.visualization_settings?.confirmMessage}
+            action={action}
             dashboard={dashboard}
             dashcard={dashcard}
-            missingParameters={missingParameters}
+            mappedParameters={mappedParameters}
             dashcardParamValues={dashcardParamValues}
+            title={title}
+            showConfirmMessage={showConfirmMessage}
+            confirmMessage={action.visualization_settings?.confirmMessage}
+            onSubmit={onModalSubmit}
+            onClose={() => setShowModal(false)}
             onCancel={() => setShowModal(false)}
-            action={action}
           />
         )}
       </>
@@ -99,15 +98,16 @@ function ActionVizForm({
     <FormWrapper>
       <FormTitle>{title}</FormTitle>
       <ActionParametersInputForm
-        onSubmit={onSubmit}
+        action={action}
         dashboard={dashboard}
         dashcard={dashcard}
-        missingParameters={missingParameters}
+        mappedParameters={mappedParameters}
         dashcardParamValues={dashcardParamValues}
-        action={action}
+        onSubmit={onSubmit}
       />
     </FormWrapper>
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionVizForm;

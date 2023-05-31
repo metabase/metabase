@@ -1,17 +1,16 @@
 (ns metabase.analytics.snowplow
   "Functions for sending Snowplow analytics events"
   (:require
+   [clojure.string :as str]
    [java-time :as t]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
-   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (com.snowplowanalytics.snowplow.tracker Snowplow Subject Tracker)
@@ -66,7 +65,7 @@
 (defn- first-user-creation
   "Returns the earliest user creation timestamp in the database"
   []
-  (:min (db/select-one [User [:%min.date_joined :min]])))
+  (:min (t2/select-one [User [:%min.date_joined :min]])))
 
 ;; We need to declare `track-event!` up front so that we can use it in the custom getter of `instance-creation`.
 ;; We can't move `instance-creation` below `track-event!` because it has to be defined before `context`, which is called
@@ -78,7 +77,7 @@
   :visibility :public
   :setter     :none
   :getter     (fn []
-                (when-not (db/exists? Setting :key "instance-creation")
+                (when-not (t2/exists? Setting :key "instance-creation")
                   ;; For instances that were started before this setting was added (in 0.41.3), use the creation
                   ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
                   ;; is first read.
@@ -136,14 +135,16 @@
 (def ^:private schema->version
   "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
   to SnowcatCloud, at the same time that the data sent to the collector is updated."
-  {::account   "1-0-0"
-   ::invite    "1-0-1"
-   ::dashboard "1-0-0"
-   ::database  "1-0-0"
-   ::instance  "1-1-0"
-   ::timeline  "1-0-0"
-   ::task      "1-0-0"
-   ::action    "1-0-0"})
+  {::account      "1-0-0"
+   ::invite       "1-0-1"
+   ::dashboard    "1-0-0"
+   ::dashboardtab "1-0-0"
+   ::database     "1-0-0"
+   ::instance     "1-1-0"
+   ::metabot      "1-0-0"
+   ::timeline     "1-0-0"
+   ::task         "1-0-0"
+   ::action       "1-0-0"})
 
 (defn- app-db-type
   "Returns the type of the Metabase application database as a string (e.g. PostgreSQL, MySQL)"
@@ -172,7 +173,7 @@
 
 (defn- normalize-kw
   [kw]
-  (-> kw u/snake-key name))
+  (-> kw name (str/replace #"-" "_")))
 
 (defn- payload
   "A SelfDescribingJson object containing the provided event data, which can be included as the payload for an
@@ -205,7 +206,10 @@
    ::action-created                 ::action
    ::action-updated                 ::action
    ::action-deleted                 ::action
-   ::action-executed                ::action})
+   ::action-executed                ::action
+   ::dashboard-tabs-created         ::dashboardtab
+   ::dashboard-tabs-deleted         ::dashboardtab
+   ::metabot-feedback-received      ::metabot})
 
 (defn track-event!
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector

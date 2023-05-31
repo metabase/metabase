@@ -1,1 +1,1 @@
-export { default } from "./LanguageStep";
+export * from "./LanguageStep";

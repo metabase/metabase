@@ -57,42 +57,35 @@ const defaultImplicitActionCreateOptions = {
 const enableImplicitActionsForModel =
   async (modelId: number, options = defaultImplicitActionCreateOptions) =>
   async (dispatch: Dispatch) => {
-    const requests = [];
-
-    if (options.insert) {
-      requests.push(
-        ActionsApi.create({
-          name: t`Create`,
-          type: "implicit",
-          kind: "row/create",
-          model_id: modelId,
-        }),
-      );
+    // We're ordering actions that's most recently created first.
+    // So if we want to show Create, Update, Delete, then we need
+    // to create them in the reverse order.
+    if (options.delete) {
+      await ActionsApi.create({
+        name: t`Delete`,
+        type: "implicit",
+        kind: "row/delete",
+        model_id: modelId,
+      });
     }
 
     if (options.update) {
-      requests.push(
-        ActionsApi.create({
-          name: t`Update`,
-          type: "implicit",
-          kind: "row/update",
-          model_id: modelId,
-        }),
-      );
+      await ActionsApi.create({
+        name: t`Update`,
+        type: "implicit",
+        kind: "row/update",
+        model_id: modelId,
+      });
     }
 
-    if (options.delete) {
-      requests.push(
-        ActionsApi.create({
-          name: t`Delete`,
-          type: "implicit",
-          kind: "row/delete",
-          model_id: modelId,
-        }),
-      );
+    if (options.insert) {
+      await ActionsApi.create({
+        name: t`Create`,
+        type: "implicit",
+        kind: "row/create",
+        model_id: modelId,
+      });
     }
-
-    await Promise.all(requests);
 
     dispatch(Actions.actions.invalidateLists());
   };
@@ -185,4 +178,5 @@ const Actions = createEntity({
   },
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Actions;

@@ -21,13 +21,13 @@ const LOGIN_SCHEMA = Yup.object().shape({
   remember: Yup.boolean(),
 });
 
-export interface LoginFormProps {
+interface LoginFormProps {
   isLdapEnabled: boolean;
   hasSessionCookies: boolean;
   onSubmit: (data: LoginData) => void;
 }
 
-const LoginForm = ({
+export const LoginForm = ({
   isLdapEnabled,
   hasSessionCookies,
   onSubmit,
@@ -80,5 +80,3 @@ const LoginForm = ({
     </FormProvider>
   );
 };
-
-export default LoginForm;

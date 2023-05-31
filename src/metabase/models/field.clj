@@ -17,7 +17,7 @@
    [methodical.core :as methodical]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]
+   [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
@@ -68,11 +68,17 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(models/defmodel Field :metabase_field)
+(def Field
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the Field symbol in our codebase."
+  :model/Field)
 
-(doto Field
-  (derive ::mi/read-policy.partial-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+(methodical/defmethod t2/table-name :model/Field [_model] :metabase_field)
+
+(methodical/defmethod t2/model-for-automagic-hydration [:default :destination]          [_model _k]  :model/Field)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :field]                [_model _k]  :model/Field)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :origin]               [_model _k]  :model/Field)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :human_readable_field] [_model _k]  :model/Field)
 
 (defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
   (fn [k]
@@ -101,23 +107,57 @@
             (log/warn (trs "Invalid Field {0} {1}: falling back to {2}" column-name k fallback-type))
             fallback-type))))))
 
-(models/add-type! ::base-type
-  :in  (hierarchy-keyword-in  :base_type :ancestor-types [:type/*])
-  :out (hierarchy-keyword-out :base_type :ancestor-types [:type/*], :fallback-type :type/*))
+(def ^:private transform-field-base-type
+  {:in  (hierarchy-keyword-in  :base_type :ancestor-types [:type/*])
+   :out (hierarchy-keyword-out :base_type :ancestor-types [:type/*], :fallback-type :type/*)})
 
-(models/add-type! ::effective-type
-  :in  (hierarchy-keyword-in  :effective_type :ancestor-types [:type/*])
-  :out (hierarchy-keyword-out :effective_type :ancestor-types [:type/*], :fallback-type :type/*))
+(def ^:private transform-field-effective-type
+  {:in  (hierarchy-keyword-in  :effective_type :ancestor-types [:type/*])
+   :out (hierarchy-keyword-out :effective_type :ancestor-types [:type/*], :fallback-type :type/*)})
 
-(models/add-type! ::semantic-type
-  :in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:Semantic/* :Relation/*])
-  :out (hierarchy-keyword-out :semantic_type :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil))
+(def ^:private transform-field-semantic-type
+  {:in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:Semantic/* :Relation/*])
+   :out (hierarchy-keyword-out :semantic_type :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil)})
 
-(models/add-type! ::coercion-strategy
-  :in  (hierarchy-keyword-in  :coercion_strategy :ancestor-types [:Coercion/*])
-  :out (hierarchy-keyword-out :coercion_strategy :ancestor-types [:Coercion/*], :fallback-type nil))
+(def ^:private transform-field-coercion-strategy
+  {:in  (hierarchy-keyword-in  :coercion_strategy :ancestor-types [:Coercion/*])
+   :out (hierarchy-keyword-out :coercion_strategy :ancestor-types [:Coercion/*], :fallback-type nil)})
 
-(defn- pre-insert [field]
+(defn- maybe-parse-semantic-numeric-values [maybe-double-value]
+  (if (string? maybe-double-value)
+    (or (u/ignore-exceptions (Double/parseDouble maybe-double-value)) maybe-double-value)
+    maybe-double-value))
+
+(defn- update-semantic-numeric-values
+  "When fingerprinting decimal columns, NaN and Infinity values are possible. Serializing these values to JSON just
+  yields a string, not a value double. This function will attempt to coerce any of those values to double objects"
+  [fingerprint]
+  (m/update-existing-in fingerprint [:type :type/Number]
+                        (partial m/map-vals maybe-parse-semantic-numeric-values)))
+
+(def ^:private transform-json-fingerprints
+  {:in  mi/json-in
+   :out (comp update-semantic-numeric-values mi/json-out-with-keywordization)})
+
+(t2/deftransforms :model/Field
+  {:base_type         transform-field-base-type
+   :effective_type    transform-field-effective-type
+   :coercion_strategy transform-field-coercion-strategy
+   :semantic_type     transform-field-semantic-type
+   :visibility_type   mi/transform-keyword
+   :has_field_values  mi/transform-keyword
+   :fingerprint       transform-json-fingerprints
+   :settings          mi/transform-json
+   :nfc_path          mi/transform-json})
+
+(doto :model/Field
+  (derive :metabase/model)
+  (derive ::mi/read-policy.partial-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set)
+  (derive :hook/timestamped?))
+
+(t2/define-before-insert :model/Field
+  [field]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
     (merge defaults field)))
 
@@ -151,13 +191,13 @@
    ^{::memoize/args-fn (fn [[table-id read-or-write]]
                          [(mdb.connection/unique-identifier) table-id read-or-write])}
    (fn [table-id read-or-write]
-     (let [{schema :schema, db-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
+     (let [{schema :schema, db-id :db_id} (t2/select-one ['Table :schema :db_id] :id table-id)]
        (perms-objects-set* db-id schema table-id read-or-write)))
    :ttl/threshold 5000))
 
 ;;; Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
 ;;; same as permissions to access its parent Table.
-(defmethod mi/perms-objects-set Field
+(defmethod mi/perms-objects-set :model/Field
   [{table-id :table_id, {db-id :db_id, schema :schema} :table} read-or-write]
   (if db-id
     ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
@@ -165,38 +205,7 @@
     ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
     (cached-perms-object-set table-id read-or-write)))
 
-(defn- maybe-parse-semantic-numeric-values [maybe-double-value]
-  (if (string? maybe-double-value)
-    (u/ignore-exceptions (Double/parseDouble maybe-double-value))
-    maybe-double-value))
-
-(defn- update-semantic-numeric-values
-  "When fingerprinting decimal columns, NaN and Infinity values are possible. Serializing these values to JSON just
-  yields a string, not a value double. This function will attempt to coerce any of those values to double objects"
-  [fingerprint]
-  (m/update-existing-in fingerprint [:type :type/Number]
-                        (partial m/map-vals maybe-parse-semantic-numeric-values)))
-
-(models/add-type! :json-for-fingerprints
-  :in  mi/json-in
-  :out (comp update-semantic-numeric-values mi/json-out-with-keywordization))
-
-(mi/define-methods
- Field
- {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
-  :types          (constantly {:base_type         ::base-type
-                               :effective_type    ::effective-type
-                               :coercion_strategy ::coercion-strategy
-                               :semantic_type     ::semantic-type
-                               :visibility_type   :keyword
-                               :has_field_values  :keyword
-                               :fingerprint       :json-for-fingerprints
-                               :settings          :json
-                               :nfc_path          :json})
-  :properties     (constantly {::mi/timestamped? true})
-  :pre-insert     pre-insert})
-
-(defmethod serdes/hash-fields Field
+(defmethod serdes/hash-fields :model/Field
   [_field]
   [:name (serdes/hydrated-hash :table)])
 
@@ -206,7 +215,7 @@
 (defn values
   "Return the `FieldValues` associated with this `field`."
   [{:keys [id]}]
-  (db/select [FieldValues :field_id :values], :field_id id))
+  (t2/select [FieldValues :field_id :values], :field_id id))
 
 (defn- select-field-id->instance
   "Select instances of `model` related by `field_id` FK to a Field in `fields`, and return a map of Field ID -> model
@@ -220,7 +229,7 @@
   [fields model & conditions]
   (let [field-ids (set (map :id fields))]
     (m/index-by :field_id (when (seq field-ids)
-                            (apply db/select model :field_id [:in field-ids] conditions)))))
+                            (apply t2/select model :field_id [:in field-ids] conditions)))))
 
 (mi/define-batched-hydration-method with-values
   :values
@@ -319,18 +328,27 @@
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (m/index-by :id (when (seq target-field-ids)
-                                           (readable-fields-only (db/select Field :id [:in target-field-ids]))))]
+                                           (readable-fields-only (t2/select Field :id [:in target-field-ids]))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
 
+(defn hydrate-target-with-write-perms
+  "Hydrates :target on field, but if the `:fk_target_field_id` field is not writable, `:target` will be nil."
+  [field]
+  (let [target-field-id (when (isa? (:semantic_type field) :type/FK)
+                          (:fk_target_field_id field))
+        target-field    (when-let [target-field (and target-field-id (t2/select-one Field :id target-field-id))]
+                          (when (mi/can-write? (hydrate target-field :table))
+                            target-field))]
+    (assoc field :target target-field)))
 
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
-  (conj (vec (if-let [parent (db/select-one Field :id parent-id)]
+  (conj (vec (if-let [parent (t2/select-one Field :id parent-id)]
                (qualified-name-components parent)
-               (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id table-id)]
+               (let [{table-name :name, schema :schema} (t2/select-one ['Table :name :schema], :id table-id)]
                  (conj (when schema
                          [schema])
                        table-name))))
@@ -351,7 +369,7 @@
   (mdb.connection/memoize-for-application-db
    (fn [field-id]
      {:pre [(integer? field-id)]}
-     (db/select-one-field :table_id Field, :id field-id))))
+     (t2/select-one-fn :table_id Field, :id field-id))))
 
 (defn field-id->database-id
   "Return the ID of the Database this Field belongs to."
@@ -364,7 +382,7 @@
   "Return the `Table` associated with this `Field`."
   {:arglists '([field])}
   [{:keys [table_id]}]
-  (db/select-one 'Table, :id table_id))
+  (t2/select-one 'Table, :id table_id))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
@@ -372,9 +390,9 @@
 ;; a trio of strings with schema maybe nil.
 (defmethod serdes/generate-path "Field" [_ {table_id :table_id field :name}]
   (let [table (when (number? table_id)
-                   (db/select-one 'Table :id table_id))
+                   (t2/select-one 'Table :id table_id))
         db    (when table
-                (db/select-one-field :name 'Database :id (:db_id table)))
+                (t2/select-one-fn :name 'Database :id (:db_id table)))
         [db schema table] (if (number? table_id)
                             [db (:schema table) (:name table)]
                             ;; If table_id is not a number, it's already been exported as a [db schema table] triple.
@@ -388,7 +406,8 @@
   name)
 
 (defmethod serdes/extract-query "Field" [_model-name _opts]
-  (let [dimensions (->> (db/select Dimension)
+  (let [d (t2/select Dimension)
+        dimensions (->> d
                         (group-by :field_id))]
     (eduction (map #(assoc % :dimensions (get dimensions (:id %))))
               (db/select-reducible Field))))
@@ -411,34 +430,34 @@
   (->> (for [dim dimensions]
          (-> (into (sorted-map) dim)
              (dissoc :field_id :updated_at) ; :field_id is implied by the nesting under that field.
-             (update :human_readable_field_id serdes/export-field-fk)))
+             (update :human_readable_field_id serdes/*export-field-fk*)))
        (sort-by :created_at)))
 
 (defmethod serdes/extract-one "Field"
   [_model-name _opts field]
   (let [field (if (contains? field :dimensions)
                 field
-                (assoc field :dimensions (db/select Dimension :field_id (:id field))))]
+                (assoc field :dimensions (t2/select Dimension :field_id (:id field))))]
     (-> (serdes/extract-one-basics "Field" field)
         (update :dimensions         extract-dimensions)
-        (update :table_id           serdes/export-table-fk)
-        (update :fk_target_field_id serdes/export-field-fk))))
+        (update :table_id           serdes/*export-table-fk*)
+        (update :fk_target_field_id serdes/*export-field-fk*))))
 
 (defmethod serdes/load-xform "Field"
   [field]
   (-> (serdes/load-xform-basics field)
-      (update :table_id           serdes/import-table-fk)
-      (update :fk_target_field_id serdes/import-field-fk)))
+      (update :table_id           serdes/*import-table-fk*)
+      (update :fk_target_field_id serdes/*import-field-fk*)))
 
 (defmethod serdes/load-find-local "Field"
   [path]
   (let [table (serdes/load-find-local (pop path))]
-    (db/select-one Field :name (-> path last :id) :table_id (:id table))))
+    (t2/select-one Field :name (-> path last :id) :table_id (:id table))))
 
 (defmethod serdes/load-one! "Field" [ingested maybe-local]
   (let [field ((get-method serdes/load-one! :default) (dissoc ingested :dimensions) maybe-local)]
     (doseq [dim (:dimensions ingested)]
-      (let [local (db/select-one Dimension :entity_id (:entity_id dim))
+      (let [local (t2/select-one Dimension :entity_id (:entity_id dim))
             dim   (assoc dim
                          :field_id    (:id field)
                          :serdes/meta [{:model "Dimension" :id (:entity_id dim)}])]

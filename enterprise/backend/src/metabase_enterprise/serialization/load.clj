@@ -36,7 +36,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
 
@@ -181,7 +181,7 @@
 (def ^:private ^{:arglists '([])} default-user-id
   (mdb.connection/memoize-for-application-db
    (fn []
-     (let [user (db/select-one-id User :is_superuser true)]
+     (let [user (t2/select-one-pk User :is_superuser true)]
        (assert user (trs "No admin users found! At least one admin user is needed to act as the owner for all the loaded entities."))
        user))))
 
@@ -449,7 +449,7 @@
         ;; until we can come in here and clean things up. -- Cam 2022-03-24
         _               (when (and (= (:mode context) :update)
                                    (seq dashboard-ids))
-                          (db/delete! DashboardCard :dashboard_id [:in (set dashboard-ids)]))
+                          (t2/delete! DashboardCard :dashboard_id [:in (set dashboard-ids)]))
         dashboard-cards (map :dashboard_cards dashboards)
         ;; a function that prepares a dash card for insertion, while also validating to ensure the underlying
         ;; card_id could be resolved from the fully qualified name
@@ -687,7 +687,7 @@
     "A function called on the ID of each `User` instance after it is inserted (via upsert)."
     [user-id]
     (when-let [{email :email, google-auth? :google_auth, is-active? :is_active}
-               (db/select-one [User :email :google_auth :is_active] :id user-id)]
+               (t2/select-one [User :email :google_auth :is_active] :id user-id)]
       (let [reset-token        (user/set-password-reset-token! user-id)
             site-url           (public-settings/site-url)
             password-reset-url (str site-url "/auth/reset_password/" reset-token)
@@ -714,7 +714,7 @@
 (defn- derive-location
   [context]
   (if-let [parent-id (:collection context)]
-    (str (db/select-one-field :location Collection :id parent-id) parent-id "/")
+    (str (t2/select-one-fn :location Collection :id parent-id) parent-id "/")
     "/"))
 
 (defn- make-reload-fn [all-results]

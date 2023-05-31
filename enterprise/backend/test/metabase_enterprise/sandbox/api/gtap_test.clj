@@ -10,7 +10,7 @@
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"
@@ -253,10 +253,10 @@
                         :attribute_remappings {:foo 1}
                         :permission_id        #hawk/schema s/Int}]
                       (:sandboxes result)))
-              (is (db/exists? GroupTableAccessPolicy :table_id table-id-1 :group_id group-id))))
+              (is (t2/exists? GroupTableAccessPolicy :table_id table-id-1 :group_id group-id))))
 
           (testing "Test that we can update a sandbox using the permission graph API"
-            (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy
+            (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
                                                   :table_id table-id-1
                                                   :group_id group-id)
                   graph      (-> (perms/data-perms-graph)
@@ -268,12 +268,12 @@
                             (:sandboxes result)))
               (is (partial= {:card_id              card-id-2
                              :attribute_remappings {"foo" 2}}
-                            (db/select-one GroupTableAccessPolicy
+                            (t2/select-one GroupTableAccessPolicy
                                            :table_id table-id-1
                                            :group_id group-id)))))
 
           (testing "Test that we can create and update multiple sandboxes at once using the permission graph API"
-            (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy
+            (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
                                                   :table_id table-id-1
                                                   :group_id group-id)
                   graph       (-> (perms/data-perms-graph)
@@ -292,13 +292,13 @@
               ;; Updated sandbox
               (is (partial= {:card_id              card-id-1
                              :attribute_remappings {"foo" 3}}
-                            (db/select-one GroupTableAccessPolicy
+                            (t2/select-one GroupTableAccessPolicy
                                            :table_id table-id-1
                                            :group_id group-id)))
               ;; Created sandbox
               (is (partial= {:card_id              card-id-2
                              :attribute_remappings {"foo" 10}}
-                            (db/select-one GroupTableAccessPolicy
+                            (t2/select-one GroupTableAccessPolicy
                                            :table_id table-id-2
                                            :group_id group-id))))))))))
 

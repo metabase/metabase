@@ -26,15 +26,16 @@ describe("issue 18512", () => {
     cy.createQuestion(question2);
 
     startNewQuestion();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Saved Questions").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("18512#1").click();
     cy.wait("@cardQueryMetadata");
 
     cy.icon("join_left_outer").click();
 
     popover().within(() => {
-      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Saved Questions").click();
       cy.findByText("18512#2").click();
       cy.wait("@cardQueryMetadata");
@@ -47,6 +48,7 @@ describe("issue 18512", () => {
       expect(response.body.error).to.not.exist;
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Products → Created At");
   });
 });

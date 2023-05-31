@@ -3,17 +3,17 @@
 import { t } from "ttag";
 import _ from "underscore";
 import { pluralize } from "metabase/lib/formatting";
-import { TableId } from "metabase-types/types/Table";
-import {
+import type {
+  ConcreteFieldReference,
   Join as JoinObject,
   JoinStrategy,
   JoinFields,
   JoinAlias,
   JoinCondition,
   JoinedFieldReference,
+  TableId,
   StructuredQuery as StructuredQueryObject,
-  ConcreteField,
-} from "metabase-types/types/Query";
+} from "metabase-types/api";
 import {
   getDatetimeUnit,
   isDateTimeField,
@@ -50,6 +50,7 @@ const JOIN_STRATEGY_OPTIONS = [
 ];
 const PARENT_DIMENSION_INDEX = 1;
 const JOIN_DIMENSION_INDEX = 2;
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Join extends MBQLObjectClause {
   strategy: JoinStrategy | null | undefined;
   alias: JoinAlias | null | undefined;
@@ -100,15 +101,6 @@ export default class Join extends MBQLObjectClause {
   // SOURCE QUERY
   joinSourceQuery(): StructuredQueryObject | null | undefined {
     return this["source-query"];
-  }
-
-  setJoinSourceQuery(query: StructuredQuery) {
-    return this.set({
-      ...this,
-      "source-table": undefined,
-      "source-query": query,
-      condition: null,
-    });
   }
 
   _uniqueAlias(name: JoinAlias): JoinAlias {
@@ -377,7 +369,7 @@ export default class Join extends MBQLObjectClause {
     return this;
   }
 
-  _convertDimensionIntoMBQL(dimension: Dimension | ConcreteField) {
+  _convertDimensionIntoMBQL(dimension: Dimension | ConcreteFieldReference) {
     return dimension instanceof Dimension ? dimension.mbql() : dimension;
   }
 
@@ -669,7 +661,7 @@ export default class Join extends MBQLObjectClause {
     const dimensions = [...this.parentDimensions(), ...this.joinDimensions()];
     return dimensions.every(
       dimension =>
-        dimensionOptions.hasDimension(dimension) || // For some GUI queries created in earlier versions of Metabase,
+        dimensionOptions.hasDimension(dimension.getMLv1CompatibleDimension()) || // For some GUI queries created in earlier versions of Metabase,
         // some dimensions are described as field literals
         // Usually it's [ "field", field_numeric_id, null|object ]
         // And field literals look like [ "field", "PRODUCT_ID", {'base-type': 'type/Integer' } ]

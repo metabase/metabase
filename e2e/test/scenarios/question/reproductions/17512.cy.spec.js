@@ -22,7 +22,9 @@ describe("issue 17512", () => {
       "CE",
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At").click();
 
     addCustomColumn("1 + 1", "CC");
@@ -31,7 +33,9 @@ describe("issue 17512", () => {
       expect(body.error).to.not.exist;
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("CE");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("CC");
   });
 });
@@ -42,7 +46,7 @@ function addSummarizeCustomExpression(formula, name) {
 
   popover().within(() => {
     cy.get(".ace_text-input").type(formula).blur();
-    cy.findByPlaceholderText("Name (required)").type(name);
+    cy.findByPlaceholderText("Something nice and descriptive").type(name);
     cy.button("Done").click();
   });
 }

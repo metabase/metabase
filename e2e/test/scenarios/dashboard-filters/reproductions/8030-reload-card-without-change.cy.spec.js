@@ -1,4 +1,4 @@
-import { restore, popover } from "e2e/support/helpers";
+import { restore, popover, updateDashboardCards } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -74,24 +74,25 @@ const createQuestionsAndDashboard = () => {
 };
 
 const setFilterMapping = ({ dashboard_id, card1_id, card2_id }) => {
-  return cy
-    .request("POST", `/api/dashboard/${dashboard_id}/cards`, {
-      cardId: card1_id,
-      row: 0,
-      col: 0,
-      size_x: 4,
-      size_y: 4,
-      parameter_mappings: [
-        {
-          parameter_id: filterDetails.id,
-          card_id: card1_id,
-          target: ["dimension", ["field", PRODUCTS.ID, null]],
-        },
-      ],
-    })
-    .then(() => {
-      return cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
-        cardId: card2_id,
+  return updateDashboardCards({
+    dashboard_id,
+    cards: [
+      {
+        card_id: card1_id,
+        row: 0,
+        col: 0,
+        size_x: 4,
+        size_y: 4,
+        parameter_mappings: [
+          {
+            parameter_id: filterDetails.id,
+            card_id: card1_id,
+            target: ["dimension", ["field", PRODUCTS.ID, null]],
+          },
+        ],
+      },
+      {
+        card_id: card2_id,
         row: 0,
         col: 4,
         size_x: 4,
@@ -103,8 +104,9 @@ const setFilterMapping = ({ dashboard_id, card1_id, card2_id }) => {
             target: ["dimension", ["field", ORDERS.ID, null]],
           },
         ],
-      });
-    });
+      },
+    ],
+  });
 };
 
 const interceptRequests = ({ dashboard_id, card1_id, card2_id }) => {

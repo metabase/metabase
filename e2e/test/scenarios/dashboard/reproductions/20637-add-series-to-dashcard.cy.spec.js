@@ -19,6 +19,7 @@ describe("adding an additional series to a dashcard (metabase#20637)", () => {
     // the button is made clickable by css using :hover so we need to force it
     cy.findByTestId("add-series-button").click({ force: true });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("20637 Question 2").click();
     // make sure the card query endpoint was used
     cy.wait("@additionalSeriesCardQuery");
@@ -42,6 +43,10 @@ function createQuestionsAndDashboard() {
       aggregation: [["count"]],
       breakout: [["field", PRODUCTS.CATEGORY, null]],
     },
+    visualization_settings: {
+      "graph.dimensions": ["CATEGORY"],
+      "graph.metrics": ["count"],
+    },
     display: "line",
   };
 
@@ -51,6 +56,10 @@ function createQuestionsAndDashboard() {
       "source-table": PRODUCTS_ID,
       aggregation: [["count"]],
       breakout: [["field", PRODUCTS.CATEGORY, null]],
+    },
+    visualization_settings: {
+      "graph.dimensions": ["CATEGORY"],
+      "graph.metrics": ["count"],
     },
     display: "bar",
   };

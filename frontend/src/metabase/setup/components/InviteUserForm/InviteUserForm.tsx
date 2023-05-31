@@ -28,7 +28,7 @@ interface InviteUserFormProps {
   onSubmit: (invite: InviteInfo) => void;
 }
 
-const InviteUserForm = ({
+export const InviteUserForm = ({
   user,
   invite,
   onSubmit,
@@ -70,5 +70,3 @@ const InviteUserForm = ({
     </FormProvider>
   );
 };
-
-export default InviteUserForm;

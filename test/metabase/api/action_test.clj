@@ -10,7 +10,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -357,9 +356,9 @@
               action-path    (str "action/" action-id)]
           (testing "Archiving"
             (mt/user-http-request :crowberto :put 200 action-path {:archived true})
-            (is (true? (db/select-one-field :archived Action :id action-id)))
+            (is (true? (t2/select-one-fn :archived Action :id action-id)))
             (mt/user-http-request :crowberto :put 200 action-path {:archived false})
-            (is (false? (db/select-one-field :archived Action :id action-id))))
+            (is (false? (t2/select-one-fn :archived Action :id action-id))))
           (testing "Validate POST"
             (testing "Required fields"
               (is (partial= {:errors {:name "string"},
@@ -425,7 +424,7 @@
             (mt/with-actions [{:keys [action-id]} unshared-action-opts]
               (let [uuid (:uuid (mt/user-http-request :crowberto :post 200
                                                       (format "action/%d/public_link" action-id)))]
-                (is (db/exists? Action :id action-id, :public_uuid uuid))
+                (is (t2/exists? Action :id action-id, :public_uuid uuid))
                 (testing "Test that if an Action has already been shared we reuse the existing UUID"
                   (is (= uuid
                          (:uuid (mt/user-http-request :crowberto :post 200
@@ -471,7 +470,7 @@
             (testing "Test that we can unshare an action"
               (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id))
               (is (= false
-                     (db/exists? Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
+                     (t2/exists? Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
 
         (testing "Test that we cannot unshare an action if it's archived"
           (let [action-opts (merge {:archived true} (shared-action-opts))]
@@ -521,7 +520,7 @@
                                      (format "action/%s/execute" action-id)
                                      {:parameters {:id 1 :name "European"}})))))
     (mt/with-actions [{:keys [action-id]} unshared-action-opts]
-      (let [nonexistent-id (inc (db/select-one-id Action {:order-by [[:id :desc]]}))]
+      (let [nonexistent-id (inc (t2/select-one-pk Action {:order-by [[:id :desc]]}))]
         (testing "Check that we get a 404 if the action doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :crowberto
@@ -549,7 +548,7 @@
                                                    {:parameters {:id 1 :name % :last_login nil}})]
             (try
               (run-action! "Darth Vader")
-              (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]}))) ]
+              (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]})))]
                 (is (= "Darth Vader" new-name))
                 (is (some? last-login)))
               (finally

@@ -10,7 +10,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- resolve-card-id-source-tables [query]
   (:pre (mt/test-qp-middleware fetch-source-query/resolve-card-id-source-tables query)))
@@ -249,10 +249,10 @@
                                    :type     :query
                                    :query    {:source-table (str "card__" card-id)}}
             save-error            (try
-                                    ;; `db/update!` will fail because it will try to validate the query when it saves
-                                    (db/execute! {:update :report_card
-                                                  :set    {:dataset_query (json/generate-string circular-source-query)}
-                                                  :where  [:= :id card-id]})
+                                    ;; `t2/update!` will fail because it will try to validate the query when it saves
+                                    (t2/query-one {:update :report_card
+                                                   :set    {:dataset_query (json/generate-string circular-source-query)}
+                                                   :where  [:= :id card-id]})
                                     nil
                                     (catch Throwable e
                                       (str "Failed to save Card:" e)))]
@@ -273,10 +273,10 @@
                       Card [{card-2-id :id} {:dataset_query (circular-source-query card-1-id)}]]
         ;; Make sure save isn't the thing throwing the Exception
         (let [save-error (try
-                           ;; `db/update!` will fail because it will try to validate the query when it saves,
-                           (db/execute! {:update :report_card
-                                         :set    {:dataset_query (json/generate-string (circular-source-query card-2-id))}
-                                         :where  [:= :id card-1-id]})
+                           ;; `t2/update!` will fail because it will try to validate the query when it saves,
+                           (t2/query-one {:update :report_card
+                                          :set    {:dataset_query (json/generate-string (circular-source-query card-2-id))}
+                                          :where  [:= :id card-1-id]})
                            nil
                            (catch Throwable e
                              (str "Failed to save Card:" e)))]
@@ -351,5 +351,22 @@
                                                         {:$limit 1048575}]}
                                   :collection  "checkins"
                                   :mbql?       true}
+                :database        (mt/id)}
+               (#'fetch-source-query/card-id->source-query-and-metadata card-id))))))
+  (testing "card-id->source-query-and-metadata-test should preserve mongodb native queries in string format (#30112)"
+    (let [query-str (str "[{\"$project\":\n"
+                         "   {\"_id\":\"$_id\",\n"
+                         "    \"user_id\":\"$user_id\",\n"
+                         "    \"venue_id\": \"$venue_id\"}},\n"
+                         " {\"$limit\": 1048575}]")
+          query {:type     :native
+                 :native   {:query query-str
+                            :collection  "checkins"}
+                 :database (mt/id)}]
+      (mt/with-temp Card [{card-id :id} {:dataset_query query}]
+        (is (= {:source-metadata nil
+                :source-query    {:native      {:collection "checkins"
+                                                :query      query-str}
+                                  :collection  "checkins"}
                 :database        (mt/id)}
                (#'fetch-source-query/card-id->source-query-and-metadata card-id)))))))
