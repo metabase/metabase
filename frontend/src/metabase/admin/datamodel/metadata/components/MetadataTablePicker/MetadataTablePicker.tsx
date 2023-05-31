@@ -1,4 +1,3 @@
-import React from "react";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Schemas from "metabase/entities/schemas";
 import { DatabaseId, SchemaId, TableId } from "metabase-types/api";

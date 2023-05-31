@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";

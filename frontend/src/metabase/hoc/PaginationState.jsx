@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+/* eslint-disable react/display-name */
+import { Component } from "react";
 
 /**
  * @deprecated HOCs are deprecated
  */
 const paginationState = () => ComposedComponent =>
-  class extends React.Component {
+  class extends Component {
     constructor(props) {
       super(props);
       this.state = {

@@ -1,4 +1,4 @@
-import React, { HTMLAttributes } from "react";
+import { HTMLAttributes } from "react";
 import AreaSkeleton from "../AreaSkeleton";
 import BarSkeleton from "../BarSkeleton";
 import EmptySkeleton from "../EmptySkeleton";

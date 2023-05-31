@@ -1,4 +1,3 @@
-import React from "react";
 import styled from "@emotion/styled";
 import { color, darken } from "metabase/lib/colors";
 

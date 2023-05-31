@@ -1,5 +1,3 @@
-import React from "react";
-
 import type Tether from "tether";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";

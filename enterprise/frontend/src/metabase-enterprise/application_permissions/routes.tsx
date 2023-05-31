@@ -1,5 +1,3 @@
-import React from "react";
-
 import { Route } from "metabase/hoc/Title";
 
 import ApplicationPermissionsPage from "./pages/ApplicationPermissionsPage";

@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 
 import { ICON_PATHS, loadIcon, parseViewBox } from "metabase/icon_paths";

@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
+
+import * as React from "react";
 
 import Popover from "metabase/components/Popover";
 import FilterComponent from "metabase/query_builder/components/Filter";

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { t, ngettext, msgid } from "ttag";
 
@@ -156,7 +156,7 @@ const GroupDetail = ({
   return (
     <AdminPaneLayout
       title={
-        <React.Fragment>
+        <Fragment>
           {getGroupNameLocalized(group ?? {})}
           <span className="text-light ml1">
             {ngettext(
@@ -165,7 +165,7 @@ const GroupDetail = ({
               groupMemberships.length,
             )}
           </span>
-        </React.Fragment>
+        </Fragment>
       }
       buttonText={t`Add members`}
       buttonAction={canEditMembership(group) ? onAddUsersClicked : null}
