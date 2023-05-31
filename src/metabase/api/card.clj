@@ -1128,6 +1128,12 @@ saved later when it is ready."
    query     ms/NonBlankString}
   (param-values (api/read-check Card card-id) param-key query))
 
+(defn- maybe-scan-database!
+  [database]
+  (when (or (:is_on_demand database)
+            (:is_full_sync database))
+    (future (sync/sync-database! database))))
+
 (defn upload-csv!
   "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
   syncing and scanning the new data, and creating an appropriate model which is then returned. May throw validation or
@@ -1152,8 +1158,9 @@ saved later when it is ready."
                             table-name
                             (str schema-name "." table-name))
         _load!            (upload/load-from-csv driver db-id schema+table-name csv-file)
-        ;; We only need to get the Table created now; no need for a full scan
+        ;; A sync is needed immediately to create the Table; the scan is settings-dependent and can be async
         _sync!            (sync/sync-database! database {:scan :schema})
+        _scan!            (maybe-scan-database! database)
         table-id          (t2/select-one-fn :id Table :db_id db-id :%lower.name table-name)]
     (when (nil? table-id)
       (driver/drop-table driver db-id table-name)
