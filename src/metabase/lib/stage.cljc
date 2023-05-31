@@ -147,7 +147,7 @@
    unique-name-fn  :- fn?]
   (when-let [card-id (lib.util/string-table-id->card-id source-table-id)]
     (when-let [card (lib.metadata/card query card-id)]
-      (lib.metadata.calculation/default-columns query stage-number card unique-name-fn))))
+      (lib.metadata.calculation/projected-columns query stage-number card unique-name-fn))))
 
 (mu/defn ^:private expressions-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query           :- ::lib.schema/query
@@ -181,7 +181,7 @@
 ;;; PLUS
 ;;;
 ;;; 3. Columns added by joins at this stage
-(defmethod lib.metadata.calculation/default-columns-method ::stage
+(defmethod lib.metadata.calculation/projected-columns-method ::stage
   [query stage-number _stage unique-name-fn]
   (concat
    ;; 1: columns from the previous stage, source table or query
@@ -194,7 +194,7 @@
        ;; 1b: default visible Fields for the source Table
        (when (integer? source-table)
          (let [table-metadata (lib.metadata/table query source-table)]
-           (lib.metadata.calculation/default-columns query stage-number table-metadata unique-name-fn)))
+           (lib.metadata.calculation/projected-columns query stage-number table-metadata unique-name-fn)))
        ;; 1c. Metadata associated with a saved Question
        (when (string? source-table)
          (saved-question-metadata query stage-number source-table unique-name-fn))
@@ -240,7 +240,7 @@
                           (lib.join/all-joins-default-columns query stage-number unique-name-fn))))
 
         :else
-        (lib.metadata.calculation/default-columns query stage-number (lib.util/query-stage query stage-number) unique-name-fn))))))
+        (lib.metadata.calculation/projected-columns query stage-number (lib.util/query-stage query stage-number) unique-name-fn))))))
 
 (defmethod lib.metadata.calculation/metadata-method ::stage
   [query stage-number _stage]
@@ -295,7 +295,7 @@
                 (m/distinct-by :table-id)
                 (mapcat (fn [{:keys [table-id], ::keys [source-field-id]}]
                           (let [table-metadata (lib.metadata/table query table-id)]
-                            (for [field (lib.metadata.calculation/default-columns query stage-number table-metadata unique-name-fn)
+                            (for [field (lib.metadata.calculation/projected-columns query stage-number table-metadata unique-name-fn)
                                   :let  [field (assoc field
                                                       :fk-field-id              source-field-id
                                                       :lib/source               :source/implicitly-joinable
@@ -305,9 +305,14 @@
           column-metadatas)))
 
 (defmethod lib.metadata.calculation/visible-columns-method ::stage
-  [query stage-number stage unique-name-fn]
-  (let [query   (lib.util/update-query-stage query stage-number dissoc :fields :breakout :aggregation)
-        columns (lib.metadata.calculation/default-columns query stage-number stage unique-name-fn)]
+  [query stage-number stage {:keys [unique-name-fn], :as _options}]
+  (let [query   (lib.util/update-query-stage query stage-number (fn [stage]
+                                                                  (-> stage
+                                                                      (dissoc :fields :breakout :aggregation)
+                                                                      (m/update-existing :joins (fn [joins]
+                                                                                                  (for [join joins]
+                                                                                                    (assoc join :fields :all)))))))
+        columns (lib.metadata.calculation/projected-columns query stage-number stage unique-name-fn)]
     (concat
      columns
      (implicitly-joinable-columns query stage-number columns unique-name-fn))))

@@ -57,7 +57,7 @@
              [(or position 0) (u/lower-case-en (or field-name ""))])
            field-metadatas))
 
-(defmethod lib.metadata.calculation/default-columns-method :metadata/table
+(defmethod lib.metadata.calculation/projected-columns-method :metadata/table
   [query _stage-number table-metadata unique-name-fn]
   (when-let [field-metadatas (lib.metadata/fields query (:id table-metadata))]
     (->> field-metadatas

@@ -127,7 +127,7 @@
    field-name :- ::lib.schema.common/non-blank-string]
   (lib.util/format "%s__%s" join-alias field-name))
 
-(defmethod lib.metadata.calculation/default-columns-method :mbql/join
+(defmethod lib.metadata.calculation/projected-columns-method :mbql/join
   [query stage-number join unique-name-fn]
   ;; should be dev-facing-only so don't need to i18n
   (assert (:alias join) "Join must have an alias to determine column aliases!")
@@ -157,13 +157,13 @@
           joins)))
 
 (mu/defn all-joins-default-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
-  "Convenience for calling [[lib.metadata.calculation/default-columns]] on all of the joins in a query stage."
+  "Convenience for calling [[lib.metadata.calculation/projected-columns]] on all of the joins in a query stage."
   [query          :- ::lib.schema/query
    stage-number   :- :int
    unique-name-fn :- fn?]
   (into []
         (mapcat (fn [join]
-                  (lib.metadata.calculation/default-columns query stage-number join unique-name-fn)))
+                  (lib.metadata.calculation/projected-columns query stage-number join unique-name-fn)))
         (when-let [joins (:joins (lib.util/query-stage query stage-number))]
           (ensure-all-joins-have-aliases query stage-number joins))))
 
