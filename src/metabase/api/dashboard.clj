@@ -565,7 +565,7 @@
    [:id   ms/Int]
    [:name ms/NonBlankString]])
 
-(defn- do-cards-and-tabs-updates-tracking!
+(defn- track-dashcard-and-tab-events!
   [dashboard-id {:keys [created-dashcards deleted-dashcards updated-dashcards
                         created-tab-ids updated-tab-ids deleted-tab-ids total-num-tabs]}]
   ;; Dashcard events
@@ -635,11 +635,11 @@
       (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
                       {:status-code 400})))
     (api/check-500
-      (let [update-stats (atom nil)]
+      (let [changes-stats (atom nil)]
         (t2/with-transaction [_conn]
           (let [{:keys [old->new-tab-id
                         deleted-tab-ids]
-                 :as update-tabs-stats}  (dashboard-tab/do-update-tabs! (:id dashboard) (:ordered_tabs dashboard) new-tabs)
+                 :as tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id dashboard) (:ordered_tabs dashboard) new-tabs)
                 deleted-tab-ids          (set deleted-tab-ids)
                 current-cards            (cond->> (:ordered_cards dashboard)
                                            (seq deleted-tab-ids)
@@ -652,12 +652,13 @@
                                                   (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
                                                     (assoc card :dashboard_tab_id real-tab-id)
                                                     card))))
-                update-dashcards-stats   (do-update-dashcards! dashboard current-cards new-cards)]
-            (reset! update-stats
+                dashcards-changes-stats  (do-update-dashcards! dashboard current-cards new-cards)]
+            (reset! changes-stats
                     (merge
-                      (select-keys update-tabs-stats [:created-tab-ids :updated-tab-ids :deleted-tab-ids :total-num-tabs])
-                      (select-keys update-dashcards-stats [:created-dashcards :deleted-dashcards :updated-dashcards])))))
-        (do-cards-and-tabs-updates-tracking! id @update-stats)
+                      (select-keys tabs-changes-stats [:created-tab-ids :updated-tab-ids :deleted-tab-ids :total-num-tabs])
+                      (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards :updated-dashcards])))))
+        ;; trigger events out of tx so rows are committed and visible from other threads
+        (track-dashcard-and-tab-events!  id @changes-stats)
         true))
    {:cards        (t2/hydrate (dashboard/ordered-cards id) :series)
     :ordered_tabs (dashboard/ordered-tabs id)}))

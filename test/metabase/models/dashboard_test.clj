@@ -226,16 +226,17 @@
               Dashboard
               {:tabs [{:id 0 :name "First tab" :position 0}
                       {:id 1 :name "Second tab" :position 1}]}
-              {:tabs [{:id 1 :name "First tab" :position 0}
-                      {:id 0 :name "Second tab" :position 1}]}))))
+              {:tabs [{:id 1 :name "Second tab" :position 0}
+                      {:id 0 :name "First tab" :position 1}]}))))
+
    (is (= "modified the tabs."
           (build-sentence
             (revision/diff-strings
               Dashboard
-              {:tabs [{:id 0 :name "First tab" :position 0}
-                      {:id 1 :name "Second tab" :position 1}]}
-              {:tabs [{:id 1 :name "First tab new name" :position 0}
-                      {:id 0 :name "Second tab new name" :position 1}]}))))))
+              {:tabs [{:id 0 :name "Tab A" :position 0}
+                      {:id 1 :name "Tab B" :position 1}]}
+              {:tabs [{:id 1 :name "Tab B new name and position" :position 0}
+                      {:id 0 :name "Tab A new name and position" :position 1}]}))))))
 
 (deftest revert-dashboard!-test
   (tt/with-temp* [Dashboard           [{dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}]
@@ -359,10 +360,9 @@
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
         ;; revert
         (revert-to-previous-revision Dashboard dashboard-id 2)
-        (testing "should works"
-          (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
-                   {:id tab-2-id :name "Tab 2" :position 1}]
-                  (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
+        (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
+                 {:id tab-2-id :name "Tab 2" :position 1}]
+                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]}))))))
 
   (testing "revert renaming tabs"
     (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
