@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { connect } from "react-redux";
 import EventSandbox from "metabase/components/EventSandbox";
 import { getSetting } from "metabase/selectors/settings";

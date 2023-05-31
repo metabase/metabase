@@ -1,5 +1,3 @@
-import React from "react";
-
 import { HAS_LOCAL_STORAGE } from "metabase/lib/dom";
 
 // If enabled this monkeypatches `t` and `jt` to return blacked out

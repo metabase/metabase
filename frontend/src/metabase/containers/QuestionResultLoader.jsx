@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { defer } from "metabase/lib/promise";
 import { runQuestionQuery } from "metabase/services";
@@ -29,7 +29,7 @@ const propTypes = {
  * </QuestionResultLoader>
  *
  */
-export class QuestionResultLoader extends React.Component {
+export class QuestionResultLoader extends Component {
   state = {
     results: null,
     loading: false,

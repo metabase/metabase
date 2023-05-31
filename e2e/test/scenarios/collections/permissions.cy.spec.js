@@ -442,7 +442,7 @@ function clickButton(name) {
 
 function pinItem(item) {
   openCollectionItemMenu(item);
-  popover().within(() => cy.icon("pin").click());
+  popover().icon("pin").click();
 }
 
 function exposeChildrenFor(collectionName) {

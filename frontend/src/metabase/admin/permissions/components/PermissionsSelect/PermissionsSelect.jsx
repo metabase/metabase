@@ -1,4 +1,4 @@
-import React, { useState, memo } from "react";
+import { Fragment, useState, memo } from "react";
 import PropTypes from "prop-types";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -101,7 +101,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
       targetOffsetY={8}
     >
       {({ onClose }) => (
-        <React.Fragment>
+        <Fragment>
           <OptionsList role="listbox">
             {selectableOptions.map(option => (
               <OptionsListItem
@@ -139,7 +139,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
               <Toggle small value={toggleState} onChange={setToggleState} />
             </ToggleContainer>
           )}
-        </React.Fragment>
+        </Fragment>
       )}
     </PopoverWithTrigger>
   );

@@ -1,4 +1,4 @@
-import React, { ChangeEvent } from "react";
+import { ChangeEvent } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 

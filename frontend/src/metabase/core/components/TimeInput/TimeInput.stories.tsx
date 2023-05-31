@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import moment from "moment-timezone";
 import type { ComponentStory } from "@storybook/react";
 import TimeInput from "./TimeInput";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/TimeInput",
   component: TimeInput,

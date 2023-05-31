@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -189,7 +189,9 @@ function EntityItemMenu({
   return (
     <EntityMenuContainer align="center">
       <EntityMenu
-        className={cx(className, "hover-child")}
+        triggerAriaLabel={t`Actions`}
+        className={className}
+        closedClassNames="hover-child hover-child--smooth"
         triggerIcon="ellipsis"
         items={actions}
       />

@@ -1,4 +1,3 @@
-import React from "react";
 import { Line } from "@visx/shape";
 import { Text } from "../../Text";
 

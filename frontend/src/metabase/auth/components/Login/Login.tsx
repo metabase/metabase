@@ -1,7 +1,9 @@
-import React from "react";
 import { t } from "ttag";
-import AuthLayout from "../../containers/AuthLayout";
-import { AuthProvider } from "../../types";
+import { Location } from "history";
+import { useSelector } from "metabase/lib/redux";
+import { AuthProvider } from "metabase/plugins/types";
+import { AuthLayout } from "../AuthLayout";
+import { getAuthProviders } from "../../selectors";
 import {
   ActionList,
   ActionListItem,
@@ -9,18 +11,23 @@ import {
   LoginTitle,
 } from "./Login.styled";
 
-export interface LoginProps {
-  providers: AuthProvider[];
-  providerName?: string;
-  redirectUrl?: string;
+interface LoginQueryString {
+  redirect?: string;
 }
 
-const Login = ({
-  providers,
-  providerName,
-  redirectUrl,
-}: LoginProps): JSX.Element => {
-  const selection = getSelectedProvider(providers, providerName);
+interface LoginQueryParams {
+  provider?: string;
+}
+
+interface LoginProps {
+  params?: LoginQueryParams;
+  location?: Location<LoginQueryString>;
+}
+
+export const Login = ({ params, location }: LoginProps): JSX.Element => {
+  const providers = useSelector(getAuthProviders);
+  const selection = getSelectedProvider(providers, params?.provider);
+  const redirectUrl = location?.query?.redirect;
 
   return (
     <AuthLayout>
@@ -54,6 +61,3 @@ const getSelectedProvider = (
 
   return provider?.Panel ? provider : undefined;
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Login;

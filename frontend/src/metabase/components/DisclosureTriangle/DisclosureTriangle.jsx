@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import { Motion, spring, presets } from "react-motion";
 
 import Icon from "metabase/components/Icon";

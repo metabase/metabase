@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import * as React from "react";
 import { getIn } from "icepick";
 import type { LocationDescriptor } from "history";
 

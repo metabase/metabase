@@ -1,11 +1,9 @@
 /* eslint-disable react/display-name */
-import React from "react";
 import type { StoryObj } from "@storybook/react";
 import styled from "@emotion/styled";
 import { ICON_PATHS } from "metabase/icon_paths";
 import Icon from "./Icon";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Components/Icon",
   component: Icon,

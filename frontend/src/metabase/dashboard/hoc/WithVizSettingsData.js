@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import _ from "underscore";
@@ -7,7 +7,10 @@ import _ from "underscore";
 import { getUserAttributes } from "metabase/selectors/user";
 import { getLinkTargets } from "metabase/lib/click-behavior";
 
-// This HOC give access to data referenced in viz settings.
+/**
+ * This HOC gives access to data referenced in viz settings.
+ * @deprecated HOCs are deprecated
+ */
 const WithVizSettingsData = ComposedComponent => {
   return withRouter(
     connect(
@@ -40,7 +43,7 @@ const WithVizSettingsData = ComposedComponent => {
       }),
       dispatch => ({ dispatch }),
     )(
-      class WithVizSettingsData extends React.Component {
+      class WithVizSettingsData extends Component {
         render() {
           return <ComposedComponent {..._.omit(this.props, "dispatch")} />;
         }

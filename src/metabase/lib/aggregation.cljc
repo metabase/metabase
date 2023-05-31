@@ -4,6 +4,7 @@
    [clojure.math :as math]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -13,6 +14,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
@@ -235,9 +237,11 @@
     stage-number :- :int]
    (some->> (not-empty (:aggregation (lib.util/query-stage query stage-number)))
             (into [] (map (fn [aggregation]
-                            (-> (lib.metadata.calculation/metadata query stage-number aggregation)
-                                (assoc :lib/source :source/aggregations
-                                       :lib/source-uuid (:lib/uuid (second aggregation))))))))))
+                            (let [metadata (lib.metadata.calculation/metadata query stage-number aggregation)]
+                              (-> metadata
+                                  (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
+                                  (assoc :lib/source :source/aggregations
+                                         :lib/source-uuid (:lib/uuid (second aggregation)))))))))))
 
 (def ^:private OperatorWithColumns
   [:merge
@@ -250,10 +254,11 @@
   (:display-name (display-info)))
 
 (defmethod lib.metadata.calculation/display-info-method :mbql.aggregation/operator
-  [_query _stage-number {:keys [display-info requires-column?] short-name :short}]
-  (assoc (display-info)
-         :short short-name
-         :requires-column requires-column?))
+  [_query _stage-number {:keys [display-info requires-column? selected?] short-name :short}]
+  (cond-> (assoc (display-info)
+                 :short-name (u/qualified-name short-name)
+                 :requires-column requires-column?)
+    (some? selected?) (assoc :selected selected?)))
 
 (mu/defn aggregation-operator-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Returns the columns for which `aggregation-operator` is applicable."
@@ -298,7 +303,7 @@
   a `column`.
   For aggregations requiring an argument `column` is mandatory, otherwise
   it is optional."
-  ([aggregation-operator]
+  ([aggregation-operator :- ::lib.schema.aggregation/operator]
    (if-not (:requires-column? aggregation-operator)
      {:lib/type :lib/external-op
       :operator (:short aggregation-operator)}
@@ -306,7 +311,43 @@
                                       (:short aggregation-operator))
                      {:aggregation-operator aggregation-operator}))))
 
-  ([aggregation-operator column]
+  ([aggregation-operator :- ::lib.schema.aggregation/operator
+    column]
    {:lib/type :lib/external-op
     :operator (:short aggregation-operator)
     :args [column]}))
+
+(def ^:private SelectedColumnMetadata
+  [:merge
+   lib.metadata/ColumnMetadata
+   [:map
+    [:selected? {:optional true} :boolean]]])
+
+(def ^:private SelectedOperatorWithColumns
+  [:merge
+   ::lib.schema.aggregation/operator
+   [:map
+    [:columns {:optional true} [:sequential SelectedColumnMetadata]]
+    [:selected? {:optional true} :boolean]]])
+
+(mu/defn selected-aggregation-operators :- [:maybe [:sequential SelectedOperatorWithColumns]]
+  "Mark the operator and the column (if any) in `agg-operators` selected by `agg-clause`."
+  [agg-operators :- [:maybe [:sequential OperatorWithColumns]]
+   agg-clause]
+  (when (seq agg-operators)
+    (let [[op _ agg-col] agg-clause]
+      (mapv (fn [agg-op]
+              (cond-> agg-op
+                (= (:short agg-op) op)
+                (-> (assoc :selected? true)
+                    (m/update-existing
+                     :columns
+                     (fn [cols]
+                       (mapv (fn [col]
+                               (let [a-ref (lib.ref/ref col)]
+                                 (cond-> col
+                                   (or (lib.equality/= a-ref agg-col)
+                                       (lib.equality/= a-ref (lib.util/with-default-effective-type agg-col)))
+                                   (assoc :selected? true))))
+                             cols))))))
+            agg-operators))))

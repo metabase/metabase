@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import Text from "metabase/components/type/Text";
 
 const Subhead = ({ children, ...props }) => (

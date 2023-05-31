@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";

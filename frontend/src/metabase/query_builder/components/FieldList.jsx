@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 
 import Dimension from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
@@ -49,6 +49,7 @@ export default class FieldList extends Component {
       (query
         ? query.parseFieldReference(field)
         : Dimension.parseMBQL(field, metadata));
+
     return (
       <DimensionList
         sections={this.state.sections}

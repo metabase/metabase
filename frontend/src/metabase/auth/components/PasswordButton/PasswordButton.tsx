@@ -1,28 +1,21 @@
-import React from "react";
 import { t } from "ttag";
-import AuthButton from "../AuthButton";
+import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { getIsLdapEnabled } from "../../selectors";
+import { AuthButton } from "../AuthButton";
 
-export interface PasswordButtonProps {
-  isLdapEnabled: boolean;
+interface PasswordButtonProps {
   redirectUrl?: string;
 }
 
-const PasswordButton = ({
-  isLdapEnabled,
-  redirectUrl,
-}: PasswordButtonProps) => {
-  const link = redirectUrl
-    ? `/auth/login/password?redirect=${encodeURIComponent(redirectUrl)}`
-    : `/auth/login/password`;
+export const PasswordButton = ({ redirectUrl }: PasswordButtonProps) => {
+  const isLdapEnabled = useSelector(getIsLdapEnabled);
 
   return (
-    <AuthButton link={link}>
+    <AuthButton link={Urls.password(redirectUrl)}>
       {isLdapEnabled
         ? t`Sign in with username or email`
         : t`Sign in with email`}
     </AuthButton>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default PasswordButton;

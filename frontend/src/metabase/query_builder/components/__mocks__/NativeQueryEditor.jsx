@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import { ACE_ELEMENT_ID } from "metabase/query_builder/components/NativeQueryEditor/constants";
 
 const MockNativeQueryEditor = ({ query, setParameterValue, ...props }) => {
   const onChange = evt => {
@@ -9,7 +8,7 @@ const MockNativeQueryEditor = ({ query, setParameterValue, ...props }) => {
   };
 
   return (
-    <div data-testid="mock-native-query-editor">
+    <div data-testid="mock-native-query-editor" id={ACE_ELEMENT_ID}>
       {query.queryText && (
         <textarea value={query.queryText()} onChange={onChange} />
       )}

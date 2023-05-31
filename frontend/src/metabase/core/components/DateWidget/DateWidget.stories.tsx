@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Moment } from "moment-timezone";
 import type { ComponentStory } from "@storybook/react";
 import DateWidget from "./DateWidget";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/DateWidget",
   component: DateWidget,

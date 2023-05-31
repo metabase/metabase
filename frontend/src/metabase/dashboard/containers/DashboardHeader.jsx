@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component, Fragment } from "react";
+import { createRef, Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import PropTypes from "prop-types";
@@ -67,7 +67,7 @@ const mapDispatchToProps = {
 class DashboardHeader extends Component {
   constructor(props) {
     super(props);
-    this.addQuestionModal = React.createRef();
+    this.addQuestionModal = createRef();
     this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
   }
 
@@ -384,7 +384,7 @@ class DashboardHeader extends Component {
 
       extraButtons.push({
         title: t`Export as PDF`,
-        icon: "png",
+        icon: "document",
         action: () => {
           this.saveAsImage();
         },

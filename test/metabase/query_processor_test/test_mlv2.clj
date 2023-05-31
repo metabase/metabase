@@ -29,20 +29,6 @@
   place, [[metabase.models.query.permissions-test/invalid-queries-test]]."
   false)
 
-(defn- skip-conversion-tests?
-  "Whether to skip conversion tests against a `legacy-query`."
-  [legacy-query]
-  (or
-   *skip-conversion-tests*
-   ;; #29949: missing schema
-   (mbql.u/match-one legacy-query
-     :regex-match-first
-     "#29949")
-   ;; #29958: `:convert-timezone` with 2 args is broken
-   (mbql.u/match-one legacy-query
-     [:convert-timezone _expr _source-timezone]
-     "#29958")))
-
 (defn- skip-metadata-calculation-tests? [legacy-query]
   (or
    ;; #29907: wrong column name for joined columns in `:breakout`
@@ -56,23 +42,11 @@
      #{:datetime-add :datetime-subtract :convert-timezone}
      (mbql.u/match-one &match
        [_tag (_literal :guard string?) & _]
-       "#29910"))
-   ;; #29935: metadata for an `:aggregation` with a `:case` expression not working
-   (mbql.u/match-one legacy-query
-     {:aggregation aggregations}
-     (mbql.u/match-one aggregations
-       :case
-       "#29935"))
-   ;; #29936: metadata for an `:aggregation` that is a `:metric`
-   (mbql.u/match-one legacy-query
-     {:aggregation aggregations}
-     (mbql.u/match-one aggregations
-       :metric
-       "#29936"))))
+       "#29910"))))
 
 (defn- test-mlv2-metadata [original-query _qp-metadata]
   {:pre [(map? original-query)]}
-  (when-not (or (skip-conversion-tests? original-query)
+  (when-not (or *skip-conversion-tests*
                 (skip-metadata-calculation-tests? original-query))
     (do-with-legacy-query-testing-context
      original-query
@@ -92,7 +66,7 @@
               (is (any? mlv2-metadata)))))))))))
 
 (defn- test-mlv2-conversion [query]
-  (when-not (skip-conversion-tests? query)
+  (when-not *skip-conversion-tests*
     (do-with-legacy-query-testing-context
      query
      (^:once fn* []

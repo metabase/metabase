@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import { t, jt } from "ttag";
 import Code from "metabase/components/Code";
 import Button from "metabase/core/components/Button";

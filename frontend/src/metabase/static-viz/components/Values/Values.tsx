@@ -1,4 +1,4 @@
-import React from "react";
+import { Fragment } from "react";
 import _ from "underscore";
 
 import { scaleBand } from "@visx/scale";
@@ -167,7 +167,7 @@ export default function Values({
             ["line", "area"] as VisualizationType[]
           ).includes(value.series.type);
           return (
-            <React.Fragment key={index}>
+            <Fragment key={index}>
               <OutlinedText
                 x={xAccessor(value.datum)}
                 y={yAccessor(value.datum)}
@@ -187,7 +187,7 @@ export default function Values({
                   cy={dataYAccessor(value.datum)}
                 />
               )}
-            </React.Fragment>
+            </Fragment>
           );
         });
       })}

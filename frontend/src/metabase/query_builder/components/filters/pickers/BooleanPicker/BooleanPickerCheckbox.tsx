@@ -1,4 +1,4 @@
-import React, { Key } from "react";
+import { Key } from "react";
 import _ from "underscore";
 
 import CheckBox from "metabase/core/components/CheckBox";

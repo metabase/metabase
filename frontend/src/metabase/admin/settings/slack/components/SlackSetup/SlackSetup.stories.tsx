@@ -1,8 +1,6 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import SlackSetup from "./SlackSetup";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Admin/Settings/Slack/SlackSetup",
   component: SlackSetup,

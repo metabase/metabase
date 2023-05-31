@@ -613,28 +613,21 @@
                   (mt/db)
                   (t2/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
 
-(deftest ddl-execute-with-timeout-test1
-  (mt/test-driver :mysql
-    (mt/dataset json
-      (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-        (is (thrown-with-msg?
-             Exception
-             #"Killed mysql process id [\d,]+ due to timeout."
-             (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))))))
-
 (deftest ddl-execute-with-timeout-test
   (mt/test-driver :mysql
     (mt/dataset json
       (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-        (is (thrown-with-msg?
-              Exception
-              #"Killed mysql process id [\d,]+ due to timeout."
-              (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
-        (is (some? (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))
+        (testing "When the query takes longer that the timeout, it is killed."
+          (is (thrown-with-msg?
+                Exception
+                #"Killed mysql process id [\d,]+ due to timeout."
+                (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"]))))
+        (testing "When the query takes less time than the timeout, it is successful."
+          (is (some? (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"]))))))))
 
 (deftest syncable-schemas-test
   (mt/test-driver :mysql
     (testing "`syncable-schemas` should return an empty set because mysql doesn't support schemas"
       (mt/with-empty-db
         (is (= #{}
-               (driver/syncable-schemas driver/*driver* (mt/id))))))))
+               (driver/syncable-schemas driver/*driver* (mt/db))))))))

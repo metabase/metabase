@@ -1,6 +1,7 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import React, { Component, forwardRef } from "react";
+import { Component, forwardRef } from "react";
+import * as React from "react";
 import styled from "@emotion/styled";
 import { color, hover, space, SpaceProps } from "styled-system";
 import Tooltip from "metabase/core/components/Tooltip";

@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.revision :as revision]
+   [metabase.models.revision.diff :refer [build-sentence]]
    [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
    [metabase.test :as mt]
@@ -18,7 +19,8 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan.util.test :as tt]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time LocalDateTime)))
 
@@ -36,6 +38,7 @@
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
     (is (= {:name               "Test Dashboard"
             :auto_apply_filters true
+            :collection_id      nil
             :description        nil
             :cache_ttl          nil
             :cards              [{:size_x  4
@@ -55,77 +58,139 @@
 
 
 (deftest diff-dashboards-str-test
-  (is (= "renamed it from \"Diff Test\" to \"Diff Test Changed\" and added a description."
-         (revision/diff-str
-          Dashboard
-          {:name        "Diff Test"
-           :description nil
-           :cards       []}
-          {:name        "Diff Test Changed"
-           :description "foobar"
-           :cards       []})))
+  (is (= "added a description and renamed it from \"Diff Test\" to \"Diff Test Changed\"."
+         (build-sentence
+           (revision/diff-strings
+             Dashboard
+             {:name        "Diff Test"
+              :description nil
+              :cards       []}
+             {:name        "Diff Test Changed"
+              :description "foobar"
+              :cards       []}))))
 
   (is (= "added a card."
-         (revision/diff-str
-          Dashboard
-          {:name        "Diff Test"
-           :description nil
-           :cards       []}
-          {:name        "Diff Test"
-           :description nil
-           :cards       [{:size_x  4
-                          :size_y  4
-                          :row     0
-                          :col     0
-                          :id      1
-                          :card_id 1
-                          :series  []}]})))
+         (build-sentence
+           (revision/diff-strings
+             Dashboard
+             {:name        "Diff Test"
+              :description nil
+              :cards       []}
+             {:name        "Diff Test"
+              :description nil
+              :cards       [{:size_x  4
+                             :size_y  4
+                             :row     0
+                             :col     0
+                             :id      1
+                             :card_id 1
+                             :series  []}]}))))
 
   (is (= "set auto apply filters to false."
-         (revision/diff-str
-          Dashboard
-          {:name               "Diff Test"
-           :auto_apply_filters true}
-          {:name               "Diff Test"
-           :auto_apply_filters false})))
+         (build-sentence
+           (revision/diff-strings
+             Dashboard
+             {:name               "Diff Test"
+              :auto_apply_filters true}
+             {:name               "Diff Test"
+              :auto_apply_filters false}))))
 
-  (is (= "changed the cache ttl from \"333\" to \"1227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
-         (revision/diff-str
-          Dashboard
-          {:name        "Diff Test"
-           :description nil
-           :cache_ttl   333
-           :cards       [{:size_x  4
-                          :size_y  4
-                          :row     0
-                          :col     0
-                          :id      1
-                          :card_id 1
-                          :series  [5 6]}
-                         {:size_x  4
-                          :size_y  4
-                          :row     0
-                          :col     0
-                          :id      2
-                          :card_id 2
-                          :series  []}]}
-          {:name        "Diff Test"
-           :description nil
-           :cache_ttl   1227
-           :cards       [{:size_x  4
-                          :size_y  4
-                          :row     0
-                          :col     0
-                          :id      1
-                          :card_id 1
-                          :series  [4 5]}
-                         {:size_x  4
-                          :size_y  4
-                          :row     2
-                          :col     0
-                          :id      2
-                          :card_id 2
-                          :series  [3 4 5]}]}))))
+  (is (= "changed the cache ttl from \"333\" to \"1,227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
+         (build-sentence
+           (revision/diff-strings
+             Dashboard
+             {:name        "Diff Test"
+              :description nil
+              :cache_ttl   333
+              :cards       [{:size_x  4
+                             :size_y  4
+                             :row     0
+                             :col     0
+                             :id      1
+                             :card_id 1
+                             :series  [5 6]}
+                            {:size_x  4
+                             :size_y  4
+                             :row     0
+                             :col     0
+                             :id      2
+                             :card_id 2
+                             :series  []}]}
+             {:name        "Diff Test"
+              :description nil
+              :cache_ttl   1227
+              :cards       [{:size_x  4
+                             :size_y  4
+                             :row     0
+                             :col     0
+                             :id      1
+                             :card_id 1
+                             :series  [4 5]}
+                            {:size_x  4
+                             :size_y  4
+                             :row     2
+                             :col     0
+                             :id      2
+                             :card_id 2
+                             :series  [3 4 5]}]}))))
+
+ (is (= "added a card."
+        (build-sentence
+          (revision/diff-strings
+            Dashboard
+            {:cards [{:id 1} {:id 2}]}
+            {:cards [{:id 1} {:id 2} {:id 3}]}))))
+
+ (is (= "removed a card."
+        (build-sentence
+          (revision/diff-strings
+            Dashboard
+            {:cards [{:id 1} {:id 2}]}
+            {:cards [{:id 1}]}))))
+
+ (is (= "rearranged the cards."
+        (build-sentence
+          (revision/diff-strings
+            Dashboard
+            {:cards [{:id 1 :row 0} {:id 2 :row 1}]}
+            {:cards [{:id 1 :row 1} {:id 2 :row 2}]}))))
+
+ (is (= "modified the cards."
+        (build-sentence
+          (revision/diff-strings
+            Dashboard
+            {:cards [{:id 1} {:id 2}]}
+            {:cards [{:id 1} {:id 3}]}))))
+
+ (is (= "renamed it from \"Apple\" to \"Next\" and modified the cards."
+        (build-sentence
+          (revision/diff-strings
+            Dashboard
+            {:name "Apple"
+             :cards [{:id 1} {:id 2}]}
+            {:name "Next"
+             :cards [{:id 1} {:id 3}]}))))
+ (t2.with-temp/with-temp
+   [Collection {coll-id :id} {:name "New collection"}]
+   (is (= "moved this Dashboard to New collection."
+          (build-sentence
+            (revision/diff-strings
+              Dashboard
+              {:name "Apple"}
+              {:name          "Apple"
+               :collection_id coll-id})))))
+ (t2.with-temp/with-temp
+   [Collection {coll-id-1 :id} {:name "Old collection"}
+    Collection {coll-id-2 :id} {:name "New collection"}]
+   (is (= "moved this Dashboard from Old collection to New collection."
+          (build-sentence
+            (revision/diff-strings
+              Dashboard
+              {:name          "Apple"
+               :collection_id coll-id-1}
+              {:name          "Apple"
+               :collection_id coll-id-2}))))))
+
 
 (deftest revert-dashboard!-test
   (tt/with-temp* [Dashboard           [{dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}]
@@ -143,6 +208,7 @@
           empty-dashboard      {:name               "Revert Test"
                                 :description        "something"
                                 :auto_apply_filters true
+                                :collection_id      nil
                                 :cache_ttl          nil
                                 :cards              []}
           serialized-dashboard (revision/serialize-instance Dashboard (:id dashboard) dashboard)]
@@ -151,6 +217,7 @@
                 :description        nil
                 :cache_ttl          nil
                 :auto_apply_filters true
+                :collection_id      nil
                 :cards              [{:size_x  4
                                       :size_y  4
                                       :row     0
@@ -160,7 +227,7 @@
                                       :series  true}]}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
-        (dashboard-card/delete-dashboard-cards! [dashboard-card] dashboard-id (test.users/user->id :rasta))
+        (dashboard-card/delete-dashboard-cards! [(:id dashboard-card)])
         (t2/update! Dashboard dashboard-id
                     {:name               "Revert Test"
                      :auto_apply_filters false
@@ -175,6 +242,7 @@
                 :description        nil
                 :cache_ttl          nil
                 :auto_apply_filters true
+                :collection_id      nil
                 :cards              [{:size_x  4
                                       :size_y  4
                                       :row     0

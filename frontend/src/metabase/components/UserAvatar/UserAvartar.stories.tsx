@@ -1,8 +1,6 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import UserAvatar from "./UserAvatar";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Components/UserAvatar",
   component: UserAvatar,

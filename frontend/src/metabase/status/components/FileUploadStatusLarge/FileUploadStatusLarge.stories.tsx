@@ -1,9 +1,7 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import { createMockCollection } from "metabase-types/api/mocks";
 import FileUploadStatusLarge from "./FileUploadStatusLarge";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Status/FileUploadStatusLarge",
   component: FileUploadStatusLarge,
