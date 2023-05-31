@@ -175,13 +175,13 @@ describe("scenarios > question > settings", () => {
       cy.findByTestId("viz-settings-button").click(); // open settings sidebar
       cy.findByText("Conditional Formatting"); // confirm it's open
       cy.get(".TableInteractive").findByText("Subtotal").click(); // open subtotal column header actions
-      popover().within(() => cy.icon("gear").click()); // open subtotal column settings
+      popover().icon("gear").click(); // open subtotal column settings
 
       //cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
       cy.findByText("Separator style"); // shows subtotal column settings
 
       cy.get(".TableInteractive").findByText("Created At").click(); // open created_at column header actions
-      popover().within(() => cy.icon("gear").click()); // open created_at column settings
+      popover().icon("gear").click(); // open created_at column settings
       cy.findByText("Date style"); // shows created_at column settings
     });
 
