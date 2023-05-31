@@ -1,4 +1,10 @@
-import { ChangeEvent, KeyboardEvent, useCallback, useRef, useState } from "react";
+import {
+  ChangeEvent,
+  KeyboardEvent,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 import { useAsyncFn } from "react-use";
 import Icon from "metabase/components/Icon";

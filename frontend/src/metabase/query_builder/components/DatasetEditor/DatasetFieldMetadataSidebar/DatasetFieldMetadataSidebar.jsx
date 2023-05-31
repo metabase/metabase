@@ -1,4 +1,12 @@
-import { memo, Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";

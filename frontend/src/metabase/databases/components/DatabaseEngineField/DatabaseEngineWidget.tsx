@@ -1,4 +1,10 @@
-import { ChangeEvent, KeyboardEvent, useCallback, useMemo, useState } from "react";
+import {
+  ChangeEvent,
+  KeyboardEvent,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { jt, t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import Input from "metabase/core/components/Input";

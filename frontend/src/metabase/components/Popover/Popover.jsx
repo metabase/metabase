@@ -243,10 +243,7 @@ export default class Popover extends Component {
           : Children.count(this.props.children) === 1 &&
             // NOTE: workaround for https://github.com/facebook/react/issues/12136
             !Array.isArray(this.props.children)
-          ? cloneElement(
-              Children.only(this.props.children),
-              childProps,
-            )
+          ? cloneElement(Children.only(this.props.children), childProps)
           : this.props.children}
       </div>
     );

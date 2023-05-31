@@ -1,4 +1,11 @@
-import { forwardRef, MouseEvent, HTMLAttributes, Ref, useCallback, useMemo } from "react";
+import {
+  forwardRef,
+  MouseEvent,
+  HTMLAttributes,
+  Ref,
+  useCallback,
+  useMemo,
+} from "react";
 import _ from "underscore";
 import { getColorScale } from "metabase/lib/colors/scales";
 import { ColorRangeItem, ColorRangeRoot } from "./ColorRange.styled";

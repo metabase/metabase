@@ -7,7 +7,7 @@ import { getDisplayName } from "./utils";
 // i.e. https://reactjs.org/docs/uncontrolled-components.html
 
 const Uncontrollable = () => WrappedComponent =>
-  (class extends Component {
+  class extends Component {
     static displayName = `Uncontrollable(${getDisplayName(WrappedComponent)})`;
 
     constructor(props) {
@@ -46,6 +46,6 @@ const Uncontrollable = () => WrappedComponent =>
         );
       }
     }
-  });
+  };
 
 export default Uncontrollable;

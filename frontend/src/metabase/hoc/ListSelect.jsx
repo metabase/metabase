@@ -19,7 +19,7 @@ const DEFAULT_KEY_FOR_ITEM = item => item.id;
 const listSelect =
   ({ listProp = "list", keyForItem = DEFAULT_KEY_FOR_ITEM } = {}) =>
   ComposedComponent =>
-    (class extends Component {
+    class extends Component {
       state = {
         selectionKeys: new Set(),
       };
@@ -85,6 +85,6 @@ const listSelect =
         // reset selectionKeys
         this.setState({ selectionKeys: new Set() });
       };
-    });
+    };
 
 export default listSelect;

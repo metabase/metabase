@@ -106,12 +106,11 @@ function RawCustomFormField(
 /**
  * @deprecated
  */
-const CustomFormField = forwardRef<
-  HTMLInputElement,
-  CustomFormFieldProps
->(function CustomFormField(props, ref) {
-  return <RawCustomFormField {...props} forwardedRef={ref} />;
-});
+const CustomFormField = forwardRef<HTMLInputElement, CustomFormFieldProps>(
+  function CustomFormField(props, ref) {
+    return <RawCustomFormField {...props} forwardedRef={ref} />;
+  },
+);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CustomFormField;

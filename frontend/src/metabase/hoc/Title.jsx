@@ -19,7 +19,7 @@ const updateDocumentTitle = _.debounce(() => {
  * @deprecated HOCs are deprecated
  */
 const title = documentTitleOrGetter => ComposedComponent =>
-  (class extends Component {
+  class extends Component {
     static displayName =
       "Title[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
@@ -71,7 +71,7 @@ const title = documentTitleOrGetter => ComposedComponent =>
     render() {
       return <ComposedComponent {...this.props} />;
     }
-  });
+  };
 
 export default title;
 
