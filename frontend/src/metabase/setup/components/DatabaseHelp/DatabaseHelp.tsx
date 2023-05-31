@@ -1,15 +1,15 @@
+import React from "react";
+import { useSelector } from "metabase/lib/redux";
 import DatabaseHelpCard from "metabase/databases/containers/DatabaseHelpCard";
+import { DATABASE_STEP } from "../../constants";
+import { getDatabaseEngine, getIsStepActive } from "../../selectors";
 import { SetupCardContainer } from "../SetupCardContainer";
 
-export interface DatabaseHelpProps {
-  engine?: string;
-  isStepActive: boolean;
-}
-
-const DatabaseHelp = ({
-  engine,
-  isStepActive,
-}: DatabaseHelpProps): JSX.Element => {
+export const DatabaseHelp = (): JSX.Element => {
+  const engine = useSelector(getDatabaseEngine);
+  const isStepActive = useSelector(state =>
+    getIsStepActive(state, DATABASE_STEP),
+  );
   const isVisible = isStepActive && engine != null;
 
   return (
@@ -18,6 +18,3 @@ const DatabaseHelp = ({
     </SetupCardContainer>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseHelp;
