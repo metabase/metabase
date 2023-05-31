@@ -1,12 +1,21 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import Button from "metabase/core/components/Button";
-import { LocaleData } from "metabase-types/api";
 import { Locale } from "metabase-types/store";
-import ActiveStep from "../ActiveStep";
-import InactiveStep from "../InvactiveStep";
+import { selectStep, updateLocale } from "../../actions";
+import { LANGUAGE_STEP, USER_STEP } from "../../constants";
+import {
+  getAvailableLocales,
+  getIsSetupCompleted,
+  getIsStepActive,
+  getIsStepCompleted,
+  getLocale,
+} from "../../selectors";
 import { getLocales } from "../../utils";
+import { ActiveStep } from "../ActiveStep";
+import { InactiveStep } from "../InvactiveStep";
 import {
   LocaleGroup,
   LocaleInput,
@@ -15,29 +24,31 @@ import {
   StepDescription,
 } from "./LanguageStep.styled";
 
-export interface LanguageStepProps {
-  locale?: Locale;
-  localeData?: LocaleData[];
-  isStepActive: boolean;
-  isStepCompleted: boolean;
-  isSetupCompleted: boolean;
-  onLocaleChange: (locale: Locale) => void;
-  onStepSelect: () => void;
-  onStepSubmit: () => void;
-}
-
-const LanguageStep = ({
-  locale,
-  localeData,
-  isStepActive,
-  isStepCompleted,
-  isSetupCompleted,
-  onLocaleChange,
-  onStepSelect,
-  onStepSubmit,
-}: LanguageStepProps): JSX.Element => {
+export const LanguageStep = (): JSX.Element => {
+  const locale = useSelector(getLocale);
+  const localeData = useSelector(getAvailableLocales);
+  const isStepActive = useSelector(state =>
+    getIsStepActive(state, LANGUAGE_STEP),
+  );
+  const isStepCompleted = useSelector(state =>
+    getIsStepCompleted(state, LANGUAGE_STEP),
+  );
+  const isSetupCompleted = useSelector(state => getIsSetupCompleted(state));
   const fieldId = useMemo(() => _.uniqueId(), []);
   const locales = useMemo(() => getLocales(localeData), [localeData]);
+  const dispatch = useDispatch();
+
+  const handleLocaleChange = (locale: Locale) => {
+    dispatch(updateLocale(locale));
+  };
+
+  const handleStepSelect = () => {
+    dispatch(selectStep(LANGUAGE_STEP));
+  };
+
+  const handleStepSubmit = () => {
+    dispatch(selectStep(USER_STEP));
+  };
 
   if (!isStepActive) {
     return (
@@ -46,7 +57,7 @@ const LanguageStep = ({
         label={1}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
-        onStepSelect={onStepSelect}
+        onStepSelect={handleStepSelect}
       />
     );
   }
@@ -63,15 +74,17 @@ const LanguageStep = ({
             locale={item}
             checked={item.code === locale?.code}
             fieldId={fieldId}
-            onLocaleChange={onLocaleChange}
+            onLocaleChange={handleLocaleChange}
           />
         ))}
       </LocaleGroup>
       <Button
         primary={locale != null}
         disabled={locale == null}
-        onClick={onStepSubmit}
-      >{t`Next`}</Button>
+        onClick={handleStepSubmit}
+      >
+        {t`Next`}
+      </Button>
     </ActiveStep>
   );
 };
@@ -107,6 +120,3 @@ const LocaleItem = ({
     </LocaleLabel>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default LanguageStep;
