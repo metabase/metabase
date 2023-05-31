@@ -19,7 +19,7 @@ You can set various levels of permissions on a data source, from querying access
 - [Data access](#data-access)
 - [Native querying](#native-query-editing)
 - [Download results](#download-results)\*
-- [Manage table metadata](#manage-data-model)\*
+- [Manage table metadata](#manage-table-metadata)\*
 - [Manage database](#manage-database)\*
 
 \* Available on paid plans.
