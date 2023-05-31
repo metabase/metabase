@@ -31,6 +31,7 @@ export interface User extends BaseUser {
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;
+  dismissed_toasts: Record<string, boolean>;
 }
 
 export interface UserListResult {

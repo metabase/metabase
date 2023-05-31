@@ -4,6 +4,7 @@ import {
   visitDashboard,
   modal,
   dashboardHeader,
+  navigationSidebar,
 } from "e2e/support/helpers";
 
 describe("scenarios > home > homepage", () => {
@@ -194,6 +195,21 @@ describe("scenarios > home > custom homepage", () => {
       popover().findByText("Orders in a dashboard").click();
       modal().findByText("Save").click();
       cy.location("pathname").should("equal", "/dashboard/1");
+      cy.findByRole("status").within(() => {
+        cy.findByText(
+          /Your admin has set this dashboard as your homepage/,
+        ).should("exist");
+        cy.findByText("Got it").click();
+      });
+
+      cy.log("let the dashboard load");
+      dashboardHeader().findByText("Orders in a dashboard");
+
+      navigationSidebar().findByText("Home").click();
+
+      cy.get("main")
+        .contains(/Your admin has set this dashboard as your homepage/)
+        .should("not.exist");
     });
   });
 

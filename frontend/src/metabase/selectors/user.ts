@@ -30,3 +30,8 @@ export const getUserPersonalCollectionId = createSelector(
   [getUser],
   user => user?.personal_collection_id,
 );
+
+export const hasUserDismissedToast = createSelector(
+  [getUser, (state, toastKey) => toastKey],
+  (user, toastKey) => user?.dismissed_toasts[toastKey],
+);

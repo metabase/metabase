@@ -62,6 +62,7 @@ function UndoToast({ undo, onUndo, onDismiss }) {
           data-testid="toast-undo"
           translateY={isReducedMotionPreferred() ? 0 : translateY}
           color={undo.toastColor}
+          role="status"
         >
           <CardContent>
             <CardContentSide>

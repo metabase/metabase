@@ -13,6 +13,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { CollectionItem } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";
+import { hasUserDismissedToast } from "metabase/selectors/user";
 import {
   getCustomHomePageDashboardId,
   getIsMetabotEnabled,
@@ -30,6 +31,9 @@ export const HomePage = (): JSX.Element => {
   const isLoading = databaseListState.isLoading || modelListState.isLoading;
   const error = databaseListState.error ?? modelListState.error;
   const dashboardId = useSelector(getCustomHomePageDashboardId);
+  const showHomepageRedirectRoast = useSelector(
+    state => !hasUserDismissedToast(state, "custom_homepage_changed"),
+  );
   const isMetabotEnabled = useSelector(getIsMetabotEnabled);
   const hasMetabot = getHasMetabot(
     databaseListState.data,
@@ -47,24 +51,24 @@ export const HomePage = (): JSX.Element => {
   useEffect(() => {
     if (dashboardId) {
       dispatch(replace(`/dashboard/${dashboardId}`));
+
+      if (showHomepageRedirectRoast) {
+        dispatch(
+          addUndo({
+            message: t`Your admin has set this dashboard as your homepage`,
+            icon: "info",
+            timeout: 10000,
+            actions: [dismissUndo],
+            actionLabel: t`Got it`,
+            hideDismiss: true,
+          }),
+        );
+      }
     }
-  }, [dashboardId, dispatch]);
+  }, [dashboardId, showHomepageRedirectRoast, dispatch, addUndo]);
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
-  if (dashboardId) {
-    dispatch(
-      addUndo({
-        message: t`Your admin has set this dashboard as your homepage`,
-        icon: "info",
-        timeout: 10000,
-        actions: [dismissUndo],
-        actionLabel: t`Got it`,
-        hideDismiss: true,
-      }),
-    );
   }
 
   return (
