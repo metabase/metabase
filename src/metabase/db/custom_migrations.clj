@@ -305,8 +305,8 @@
                                                  :from   [:report_card]
                                                  :where  [:and
                                                           [= :query_type "query"]
-                                                          [:like :visualization_settings "%column_settings%"]
-                                                          [:like :result_metadata "%join-alias%"]]}))))
+                                                          [:like :visualization_settings "%\"column_settings\"%"]
+                                                          [:like :result_metadata "%\"join-alias\"%"]]}))))
   (let [update! (fn [{:keys [id visualization_settings]}]
                   (t2/query-one {:update :report_card
                                  :set    {:visualization_settings visualization_settings}
@@ -320,8 +320,8 @@
                                                  :from   [:report_card]
                                                  :where  [:and
                                                           [= :query_type "query"]
-                                                          [:like :visualization_settings "%column_settings%"]
-                                                          [:like :visualization_settings "%join-alias%"]]})))))
+                                                          [:like :visualization_settings "%\"column_settings\":%"]
+                                                          [:like :visualization_settings "%\"join-alias\":%"]]})))))
 
 (defn- update-card-row-on-downgrade-for-dashboard-tab
   [dashboard-id]
