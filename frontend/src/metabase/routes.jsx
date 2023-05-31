@@ -82,7 +82,7 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 import HomePageApp from "metabase/home/homepage/containers/HomePageApp";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 
-import ArchiveApp from "metabase/home/containers/ArchiveApp";
+import ArchiveApp from "metabase/archive/containers/ArchiveApp";
 import SearchApp from "metabase/search/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
 import {
