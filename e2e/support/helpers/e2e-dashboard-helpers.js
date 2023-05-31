@@ -63,7 +63,7 @@ export function showDashboardCardActions(index = 0) {
   getDashboardCard(index).realHover();
 }
 
-export function showVisualizationOptions(index = 0) {
+export function showDashcardVisualizationSettings(index = 0) {
   return getDashboardCard(index)
     .realHover()
     .within(() => {

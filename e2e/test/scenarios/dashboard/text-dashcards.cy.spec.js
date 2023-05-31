@@ -1,6 +1,6 @@
 import {
   restore,
-  showVisualizationOptions,
+  showDashcardVisualizationSettings,
   getDashboardCard,
   popover,
   visitDashboard,
@@ -57,7 +57,7 @@ describe("scenarios > dashboard > text and headings", () => {
       });
 
       it("should render visualization options (metabase#22061)", () => {
-        showVisualizationOptions(1);
+        showDashcardVisualizationSettings(1);
 
         cy.get(".Modal").within(() => {
           cy.findByText("Vertical Alignment");
