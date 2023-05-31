@@ -8,11 +8,21 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.test :as mt]))
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest ^:parallel fetch-field-test
   (let [field (#'lib.metadata.jvm/fetch-instance :metadata/field (mt/id :categories :id))]
     (is (not (me/humanize (mc/validate lib.metadata/ColumnMetadata field))))))
+
+(deftest ^:parallel fetch-database-test
+  (is (=? {:lib/type :metadata/database}
+          (lib.metadata/database (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))
+  (testing "Should return nil correctly"
+    (is (nil? (lib.metadata.protocols/database (lib.metadata.jvm/application-database-metadata-provider Integer/MAX_VALUE))))))
 
 (deftest ^:parallel saved-question-metadata-test
   (let [card  {:dataset-query {:database (mt/id)
@@ -83,3 +93,57 @@
                 :display-name "Sum"
                 :source_alias "Orders"}]
               (lib.metadata.calculation/metadata mlv2-query))))))
+
+(deftest ^:parallel long-display-name-test-3 []
+  (mt/dataset sample-dataset
+    (let [query             (mt/mbql-query orders {:joins [{:source-table $$products
+                                                            :condition    [:= $product_id &O.products.id]
+                                                            :alias        "O"}]
+                                                   :limit 1})
+          results           (qp/process-query query)
+          result-metadata   (for [col (get-in results [:data :results_metadata :columns])]
+                              (update-keys col u/->kebab-case-en))
+          metadata-provider (lib.tu/composed-metadata-provider
+                             (lib.tu/mock-metadata-provider
+                              {:cards [{:id              1
+                                        :name            "Card 1"
+                                        :dataset-query   query
+                                        :result-metadata result-metadata}]})
+                             (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
+          query             (lib/query metadata-provider {:database (mt/id)
+                                                          :type     :query
+                                                          :query    {:source-table "card__1"}})
+          cols              (lib/breakoutable-columns query)]
+      (testing (str "metadata = \n" (u/pprint-to-str result-metadata))
+        (is (= ["ID"
+                "User ID"
+                "Product ID"
+                "Subtotal"
+                "Tax"
+                "Total"
+                "Discount"
+                "Created At"
+                "Quantity"
+                "User → ID"
+                "User → Address"
+                "User → Email"
+                "User → Password"
+                "User → Name"
+                "User → City"
+                "User → Longitude"
+                "User → State"
+                "User → Source"
+                "User → Birth Date"
+                "User → Zip"
+                "User → Latitude"
+                "User → Created At"
+                "Product → ID"
+                "Product → Ean"
+                "Product → Title"
+                "Product → Category"
+                "Product → Vendor"
+                "Product → Price"
+                "Product → Rating"
+                "Product → Created At"]
+               (for [col cols]
+                 (:long-display-name (lib/display-info query col)))))))))

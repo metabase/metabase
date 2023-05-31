@@ -12,7 +12,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.util.test :as tt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def ^:private test-snippet-fields [:content :creator_id :description :name])
 
@@ -195,7 +196,7 @@
                                  [collection-1 collection-2]
                                  [collection-1 no-collection]]]
             (testing (format "\nShould be able to move a Snippet from %s to %s" (:name source) (:name dest))
-              (tt/with-temp NativeQuerySnippet [{snippet-id :id} {:collection_id (:id source)}]
+              (t2.with-temp/with-temp [NativeQuerySnippet {snippet-id :id} {:collection_id (:id source)}]
                 (testing "\nresponse"
                   (is (= {:collection_id (:id dest)}
                          (-> (mt/user-http-request :rasta :put 200 (snippet-url snippet-id) {:collection_id (:id dest)})
@@ -213,6 +214,6 @@
                  (mt/user-http-request :rasta :put 400 (snippet-url snippet-id) {:collection_id collection-id})))))
 
       (testing "\nShould throw an error if Collection does not exist"
-        (tt/with-temp NativeQuerySnippet [{snippet-id :id}]
+        (t2.with-temp/with-temp [NativeQuerySnippet {snippet-id :id}]
           (is (= {:errors {:collection_id "Collection does not exist."}}
                  (mt/user-http-request :rasta :put 404 (snippet-url snippet-id) {:collection_id Integer/MAX_VALUE}))))))))
