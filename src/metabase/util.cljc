@@ -2,6 +2,7 @@
   "Common utility functions useful throughout the codebase."
   (:require
    [camel-snake-kebab.core :as csk]
+   [camel-snake-kebab.internals.macros :as csk.macros]
    [clojure.pprint :as pprint]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -206,6 +207,25 @@
     (upper-case-en s)
     (str (upper-case-en (subs s 0 1))
          (subs s 1))))
+
+(declare ^:private ->kebab-case-en*)
+
+(csk.macros/defconversion "kebab-case-en*" lower-case-en lower-case-en "-")
+
+(defn- wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords
+  "Wrap a CSK defconversion function so that it handles nil and namespaced keywords, which it doesn't support out of the
+  box for whatever reason."
+  [f]
+  (fn [x]
+    (when x
+      (if (qualified-keyword? x)
+        (keyword (f (namespace x)) (f (name x)))
+        (f x)))))
+
+(def ^{:arglists '([x])} ->kebab-case-en
+  "Like [[camel-snake-kebab.core/->kebab-case]], but always uses English for lower-casing, supports keywords with
+  namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->kebab-case-en*))
 
 ;; Log the maximum memory available to the JVM at launch time as well since it is very handy for debugging things
 #?(:clj

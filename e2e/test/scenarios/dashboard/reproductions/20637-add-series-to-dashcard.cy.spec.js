@@ -42,6 +42,10 @@ function createQuestionsAndDashboard() {
       aggregation: [["count"]],
       breakout: [["field", PRODUCTS.CATEGORY, null]],
     },
+    visualization_settings: {
+      "graph.dimensions": ["CATEGORY"],
+      "graph.metrics": ["count"],
+    },
     display: "line",
   };
 
@@ -51,6 +55,10 @@ function createQuestionsAndDashboard() {
       "source-table": PRODUCTS_ID,
       aggregation: [["count"]],
       breakout: [["field", PRODUCTS.CATEGORY, null]],
+    },
+    visualization_settings: {
+      "graph.dimensions": ["CATEGORY"],
+      "graph.metrics": ["count"],
     },
     display: "bar",
   };

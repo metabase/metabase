@@ -32,24 +32,6 @@ describeEE("formatting > whitelabel", () => {
       cy.log("Company name has been updated!");
     });
 
-    it("changes should reflect in different parts of UI", () => {
-      cy.log("New company should show up on activity page");
-      cy.visit("/activity");
-      cy.findByText(`${COMPANY_NAME} is up and running.`);
-      cy.findByText("Metabase is up and running.").should("not.exist");
-
-      cy.log("New company should show up when logged out");
-      cy.signOut();
-      cy.visit("/");
-      cy.findByText(`Sign in to ${COMPANY_NAME}`);
-
-      cy.log("New company should show up for a normal user");
-      cy.signInAsNormalUser();
-      cy.visit("/activity");
-      cy.findByText(`${COMPANY_NAME} is up and running.`);
-      cy.findByText("Metabase is up and running.").should("not.exist");
-    });
-
     it.skip("should not show the old name in the admin panel (metabase#17043)", () => {
       cy.reload();
 

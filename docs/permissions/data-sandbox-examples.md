@@ -79,7 +79,11 @@ Here's the table I'm going to filter:
 
 ![Original Orders table](images/advanced-example-2-orders-table.png)
 
+<<<<<<< HEAD
 The filtering question that I'll create will exclude columns that I don't want these users to see, and I'll also add in an optional `WHERE` clause which defines a variable, `cid`, that I can then reference in my sandbox. Here's what it looks like:
+=======
+The filtering question that I'll create will exclude columns that I don't want these users to see, and I'll also add in a `WHERE` clause which defines a variable, `cid`, that I can then reference in my sandbox. Here's what it looks like:
+>>>>>>> chale/faros-v1.46.4
 
 ![Filtering question](images/advanced-example-2-filtering-question.png)
 
@@ -95,7 +99,11 @@ SELECT
   user_id
 FROM
   orders
+<<<<<<< HEAD
 [[WHERE user_id = {%raw%}{{cid}}{%endraw%}]]
+=======
+WHERE user_id = {%raw%}{{cid}}{%endraw%}
+>>>>>>> chale/faros-v1.46.4
 ```
 
 Going back over to the Permissions section, when I open up the sandboxed access modal and select the second option and select my filtering question, I'll see an additional section which allows me to map the variable I defined in my question with a user attribute:
