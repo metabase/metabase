@@ -13,10 +13,10 @@ import {
 import { useDashboardTabs } from "./useDashboardTabs";
 
 interface DashboardTabsProps {
-  isEditing: boolean;
+  isEditing?: boolean;
 }
 
-export function DashboardTabs({ isEditing }: DashboardTabsProps) {
+export function DashboardTabs({ isEditing = false }: DashboardTabsProps) {
   const { tabs, createNewTab, deleteTab, renameTab, selectTab, selectedTabId } =
     useDashboardTabs();
   const showTabs = tabs.length > 1 || isEditing;

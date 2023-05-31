@@ -196,22 +196,6 @@ class Dashboard extends Component {
     }
   }
 
-  getDashboardWithFilteredCards = () => {
-    if (!this.props.dashboard) {
-      return;
-    }
-
-    return {
-      ...this.props.dashboard,
-      ordered_cards: this.props.dashboard.ordered_cards.filter(
-        dc =>
-          !this.props.selectedTabId ||
-          dc.dashboard_tab_id === this.props.selectedTabId ||
-          dc.dashboard_tab_id === null,
-      ),
-    };
-  };
-
   setEditing = isEditing => {
     this.props.onRefreshPeriodChange(null);
     this.props.setEditingDashboard(isEditing);
@@ -264,7 +248,7 @@ class Dashboard extends Component {
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
     const dashboardHasCards =
-      this.getDashboardWithFilteredCards()?.ordered_cards.length > 0 ?? false;
+      this.props.dashboard?.ordered_cards.length > 0 ?? false;
     const visibleParameters = getVisibleParameters(parameters);
 
     const parametersWidget = (
@@ -354,7 +338,7 @@ class Dashboard extends Component {
                   {dashboardHasCards ? (
                     <DashboardGrid
                       {...this.props}
-                      dashboard={this.getDashboardWithFilteredCards()}
+                      dashboard={this.props.dashboard}
                       isNightMode={shouldRenderAsNightMode}
                       onEditingChange={this.setEditing}
                     />
