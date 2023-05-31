@@ -1,7 +1,10 @@
 (ns metabase-enterprise.audit-db
-  (:require [metabase.db.env :as mdb.env]
+  (:require [metabase.config :as config]
+            [metabase.db.env :as mdb.env]
             [metabase.models.database :refer [Database]]
             [metabase.public-settings.premium-features :refer [defenterprise]]
+            [metabase.sync.sync-metadata :as sync-metadata]
+            [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [metabase.util.log :as log]
             [toucan2.core :as t2]))
@@ -58,4 +61,9 @@
   "EE implementation of `ensure-db-installed!`."
   :feature :none
   []
-  (ensure-db-installed!))
+  (ensure-db-installed!)
+  (if-let [audit-db (t2/select-one :model/Database {:where [:= :is_audit true]})]
+    (do (log/info "Audit DB installed, beginning Audit DB Sync...")
+        (sync-metadata/sync-db-metadata! audit-db))
+    (when (not config/is-prod?)
+      (log/warn "Audit DB was not installed correctly!!"))))
