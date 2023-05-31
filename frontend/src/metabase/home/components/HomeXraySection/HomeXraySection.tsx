@@ -4,10 +4,12 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import Select from "metabase/core/components/Select";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
   useDatabaseCandidateListQuery,
   useDatabaseListQuery,
 } from "metabase/common/hooks";
+import { DatabaseCandidate } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
@@ -23,23 +25,39 @@ import {
 } from "./HomeXraySection.styled";
 
 export const HomeXraySection = () => {
-  const { data: databases = [] } = useDatabaseListQuery();
-  const database = getXrayDatabase(databases);
-  const { data: candidates = [] } = useDatabaseCandidateListQuery({
+  const databaseState = useDatabaseListQuery();
+  const database = getXrayDatabase(databaseState.data);
+  const candidateState = useDatabaseCandidateListQuery({
     query: database ? { id: database.id } : undefined,
     enabled: database != null,
   });
+  const isLoading = databaseState.isLoading || candidateState.isLoading;
+  const error = databaseState.error ?? candidateState.error;
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  if (!database) {
+    return null;
+  }
+
+  return <HomeXrayView database={database} candidates={candidateState.data} />;
+};
+
+interface HomeXrayViewProps {
+  database: Database;
+  candidates?: DatabaseCandidate[];
+}
+
+const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
   const schemas = candidates.map(d => d.schema);
   const [schema, setSchema] = useState(schemas[0]);
   const candidate = candidates.find(d => d.schema === schema);
   const tableCount = candidate ? candidate.tables.length : 0;
   const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
-  const isSample = database?.is_sample;
+  const isSample = database.is_sample;
   const canSelectSchema = schemas.length > 1;
-
-  if (!database) {
-    return null;
-  }
 
   return (
     <div>
@@ -125,7 +143,7 @@ const DatabaseInfo = ({ database }: DatabaseInfoProps) => {
   );
 };
 
-const getXrayDatabase = (databases: Database[]) => {
+const getXrayDatabase = (databases: Database[] = []) => {
   const sampleDatabase = databases.find(d => d.is_sample && isSyncCompleted(d));
   const userDatabase = databases.find(d => !d.is_sample && isSyncCompleted(d));
   return userDatabase ?? sampleDatabase;

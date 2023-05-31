@@ -49,7 +49,7 @@ describe("HomeRecentSection", () => {
         }),
       });
 
-      expect(await screen.findByText("Metabase tips")).toBeInTheDocument();
+      expect(screen.getByText("Metabase tips")).toBeInTheDocument();
     });
 
     it("should not show a help link for regular users", async () => {
@@ -67,9 +67,7 @@ describe("HomeRecentSection", () => {
   it("should render a list of recent items", async () => {
     await setup();
 
-    expect(
-      await screen.findByText("Pick up where you left off"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Pick up where you left off")).toBeInTheDocument();
     expect(screen.getByText("Orders")).toBeInTheDocument();
   });
 });

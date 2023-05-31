@@ -1,7 +1,7 @@
 import React from "react";
 import { screen } from "@testing-library/react";
 import { createMockPopularItem } from "metabase-types/api/mocks";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, waitForElementToBeRemoved } from "__support__/ui";
 import { setupPopularItemsEndpoints } from "__support__/server-mocks";
 import { PopularItem } from "metabase-types/api";
 import { HomePopularSection } from "./HomePopularSection";
@@ -10,14 +10,15 @@ interface SetupOpts {
   popularItems: PopularItem[];
 }
 
-const setup = ({ popularItems }: SetupOpts) => {
+const setup = async ({ popularItems }: SetupOpts) => {
   setupPopularItemsEndpoints(popularItems);
   renderWithProviders(<HomePopularSection />);
+  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
 };
 
 describe("HomePopularSection", () => {
   it("should render a list of items of the same type", async () => {
-    setup({
+    await setup({
       popularItems: [
         createMockPopularItem({
           model: "dashboard",
@@ -34,11 +35,11 @@ describe("HomePopularSection", () => {
       ],
     });
 
-    expect(await screen.findByText(/popular dashboards/)).toBeInTheDocument();
+    expect(screen.getByText(/popular dashboards/)).toBeInTheDocument();
   });
 
   it("should render a list of items of different types", async () => {
-    setup({
+    await setup({
       popularItems: [
         createMockPopularItem({
           model: "dashboard",
@@ -55,6 +56,6 @@ describe("HomePopularSection", () => {
       ],
     });
 
-    expect(await screen.findByText(/popular items/)).toBeInTheDocument();
+    expect(screen.getByText(/popular items/)).toBeInTheDocument();
   });
 });

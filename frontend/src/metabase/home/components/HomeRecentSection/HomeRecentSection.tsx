@@ -13,13 +13,13 @@ import { isWithinWeeks } from "../../utils";
 import { SectionBody } from "./HomeRecentSection.styled";
 
 export const HomeRecentSection = () => {
-  const { data: recentItems = [], isLoading } = useRecentItemListQuery();
+  const { data: recentItems = [], isLoading, error } = useRecentItemListQuery();
   const user = useSelector(getUser);
   const hasHelpCard =
     user != null && user.is_installer && isWithinWeeks(user.first_login, 2);
 
-  if (isLoading) {
-    return <LoadingAndErrorWrapper loading={isLoading} />;
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
