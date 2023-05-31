@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 
-export const title = css`
+export const titleCss = css`
   color: ${color("text-dark")};
   font-size: 1.25rem;
   font-weight: 700;
@@ -9,15 +9,15 @@ export const title = css`
   text-align: center;
 `;
 
-export const panel = css`
+export const panelCss = css`
   margin-top: 2.5rem;
 `;
 
-export const actionList = css`
+export const actionListCss = css`
   margin-top: 3.5rem;
 `;
 
-export const actionListItem = css`
+export const actionListItemCss = css`
   margin-top: 2rem;
   text-align: center;
 `;
