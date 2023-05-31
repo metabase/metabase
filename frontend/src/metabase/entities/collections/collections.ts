@@ -30,8 +30,8 @@ const addTypesToCollections = (collections: Collection[]) => {
 
   for (const col of collections) {
     if (reservedNames.includes(col.name)) {
-      // @ts-expect-error need to update this puppy
       col.type = "instance-analytics";
+      col.can_write = false;
     }
 
     if (col.children) {
@@ -59,6 +59,10 @@ const Collections = createEntity({
   displayNameMany: t`collections`,
 
   api: {
+    get: async (...params: any[]) => {
+      const response = await GET("/api/collection/:id")(params[0]);
+      return addTypesToCollections([response as unknown as Collection])[0];
+    },
     list: async (params: { tree?: boolean }, ...args: any) =>
       params?.tree
         ? FAKE_ListCollections(params, ...args)
