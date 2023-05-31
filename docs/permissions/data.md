@@ -19,7 +19,7 @@ You can set various levels of permissions on a data source, from querying access
 - [Data access](#data-access)
 - [Native querying](#native-query-editing)
 - [Download results](#download-results)\*
-- [Manage data model](#manage-data-model)\*
+- [Manage table metadata](#manage-data-model)\*
 - [Manage database](#manage-database)\*
 
 \* Available on paid plans.
@@ -102,11 +102,11 @@ You can set permissions on whether people in a group can download results (and h
 - 10 thousand rows
 - 1 million rows
 
-## Manage data model
+## Manage table metadata
 
 {% include plans-blockquote.html feature="Data model permissions" %}
 
-You can define whether a group can [edit metadata](../data-modeling/metadata-editing.md). Options are:
+You can define whether a group can [edit table metadata](../data-modeling/metadata-editing.md). Options are:
 
 - Yes (meaning, they can edit metadata for that data source).
 - No
