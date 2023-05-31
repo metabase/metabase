@@ -4,7 +4,7 @@ import type { Location } from "history";
 
 import { Collection, CollectionId } from "metabase-types/api";
 
-import CollectionCaption from "./CollectionCaption";
+import { CollectionCaption } from "./CollectionCaption";
 import CollectionBookmark from "./CollectionBookmark";
 import CollectionMenu from "./CollectionMenu";
 import CollectionTimeline from "./CollectionTimeline";

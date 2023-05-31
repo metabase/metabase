@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import { IconProps } from "metabase/components/Icon";
 
 import { color } from "metabase/lib/colors";
@@ -46,6 +47,15 @@ export function getCollectionIcon(
       }
     : { name: "folder" };
 }
+
+export const getCollectionTooltip = (collection: Collection) => {
+  switch (collection.type) {
+    case "instance-analytics":
+      return t`This is a read-only Instance Analytics collection`;
+    default:
+      return undefined;
+  }
+};
 
 export function getCollectionType(
   collectionId: Collection["id"] | undefined,

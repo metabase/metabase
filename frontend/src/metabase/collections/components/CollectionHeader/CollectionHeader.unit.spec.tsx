@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent, { specialChars } from "@testing-library/user-event";
+import { getIcon } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 import CollectionHeader, { CollectionHeaderProps } from "./CollectionHeader";
 
@@ -67,6 +68,19 @@ describe("CollectionHeader", () => {
 
       const input = screen.getByDisplayValue("Personal collection");
       expect(input).toBeDisabled();
+    });
+
+    it("should show an icon for instance analytics collections", () => {
+      const props = getProps({
+        collection: createMockCollection({
+          name: "Audit",
+          type: "instance-analytics",
+        }),
+      });
+
+      render(<CollectionHeader {...props} />);
+
+      expect(getIcon("beaker")).toBeInTheDocument();
     });
   });
 
