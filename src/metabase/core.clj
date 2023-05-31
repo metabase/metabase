@@ -63,10 +63,11 @@
   []
   (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
         port      (config/config-int :mb-jetty-port)
-        setup-url (str "http://"
-                       (or hostname "localhost")
-                       (when-not (= 80 port) (str ":" port))
-                       "/setup/")]
+        site-url  (or (public-settings/site-url)
+                      (str "http://"
+                           hostname
+                           (when-not (= 80 port) (str ":" port))))
+        setup-url (str site-url "/setup/")]
     (log/info (u/format-color 'green
                               (str (deferred-trs "Please use the following URL to setup your Metabase installation:")
                                    "\n\n"

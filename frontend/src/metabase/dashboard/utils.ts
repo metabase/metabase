@@ -18,6 +18,7 @@ import {
   NativeDatasetQuery,
   Parameter,
   StructuredDatasetQuery,
+  ActionDashboardCard,
 } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import {
@@ -263,4 +264,10 @@ export const getVisibleCardIds = (
       )
       .map(c => c.id),
   );
+};
+
+export const getActionIsEnabledInDatabase = (
+  card: ActionDashboardCard,
+): boolean => {
+  return !!card.action?.database_enabled_actions;
 };

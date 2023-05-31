@@ -10,6 +10,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -404,22 +405,22 @@
                     [:count {}]
                     [:sum {} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?]]]}]}
                 agg-query))
-        (is (=? [{:lib/type     :metadata/field,
-                  :base-type    :type/Integer,
-                  :name         "sum_double-price",
-                  :display-name "Sum of double-price",
-                  :lib/source   :source/aggregations}
-                 {:lib/type     :metadata/field,
-                  :base-type    :type/Integer,
-                  :name         "count",
-                  :display-name "Count",
-                  :lib/source   :source/aggregations}
-                 {:settings     {:is_priceless true},
-                  :lib/type     :metadata/field,
-                  :base-type    :type/Integer,
-                  :name         "sum_PRICE",
-                  :display-name "Sum of Price",
-                  :lib/source   :source/aggregations}]
+        (is (=? [{:lib/type       :metadata/field,
+                  :effective-type :type/Integer,
+                  :name           "sum_double-price",
+                  :display-name   "Sum of double-price",
+                  :lib/source     :source/aggregations}
+                 {:lib/type       :metadata/field,
+                  :effective-type :type/Integer,
+                  :name           "count",
+                  :display-name   "Count",
+                  :lib/source     :source/aggregations}
+                 {:settings       {:is_priceless true},
+                  :lib/type       :metadata/field,
+                  :effective-type :type/Integer,
+                  :name           "sum_PRICE",
+                  :display-name   "Sum of Price",
+                  :lib/source     :source/aggregations}]
                 (lib/aggregations-metadata agg-query)))))))
 
 (deftest ^:parallel selected-aggregation-operator-test
@@ -574,13 +575,26 @@
   (testing "Aggregation metadata should return the `:settings` for the field being aggregated, for some reason."
     (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                     (lib/aggregate (lib/sum (lib/field (meta/id :venues :price)))))]
-      (is (=? {:settings     {:is_priceless true}
-               :lib/type     :metadata/field
-               :base-type    :type/Integer
-               :name         "sum_PRICE"
-               :display-name "Sum of Price"
-               :lib/source   :source/aggregations}
+      (is (=? {:settings       {:is_priceless true}
+               :lib/type       :metadata/field
+               :effective-type :type/Integer
+               :name           "sum_PRICE"
+               :display-name   "Sum of Price"
+               :lib/source     :source/aggregations}
               (lib.metadata.calculation/metadata query (first (lib/aggregations-metadata query -1))))))))
+
+(deftest ^:parallel count-aggregation-type-test
+  (testing "Count aggregation should produce numeric columns"
+    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                    (lib/aggregate (lib/count)))
+          count-meta (first (lib/aggregations-metadata query -1))]
+      (is (=? {:lib/type       :metadata/field
+               :effective-type :type/Integer
+               :name           "count"
+               :display-name   "Count"
+               :lib/source     :source/aggregations}
+              count-meta))
+      (is (lib.types.isa/numeric? count-meta)))))
 
 (deftest ^:parallel var-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
@@ -637,3 +651,43 @@
           first-stage (lib.util/query-stage query 0)]
       (is (= 2 (count (:stages query))))
       (is (contains? first-stage :order-by)))))
+
+(deftest ^:parallel aggregation-with-case-expression-metadata-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/limit 4)
+                  (lib/breakout (lib/field (meta/id :venues :category-id)))
+                  (lib/aggregate (lib/sum (lib/case [[(lib/< (lib/field (meta/id :venues :price)) 2)
+                                                      (lib/field (meta/id :venues :price))]]
+                                            0))))]
+    (is (=? [{:description              nil
+              :lib/type                 :metadata/field
+              :table-id                 (meta/id :venues)
+              :name                     "CATEGORY_ID"
+              :base-type                :type/Integer
+              :semantic-type            :type/FK
+              :database-type            "INTEGER"
+              :effective-type           :type/Integer
+              :lib/source               :source/breakouts
+              :lib/source-column-alias  "CATEGORY_ID"
+              :lib/source-uuid          string?
+              :fk-target-field-id       (meta/id :categories :id)
+              :custom-position          0
+              :active                   true
+              :id                       (meta/id :venues :category-id)
+              :parent-id                nil
+              :visibility-type          :normal
+              :lib/desired-column-alias "CATEGORY_ID"
+              :display-name             "Category ID"
+              :has-field-values         :none
+              :target                   nil
+              :preview-display          true
+              :fingerprint              {:global {:distinct-count 28, :nil% 0.0}}}
+             {:lib/type                 :metadata/field
+              :base-type                :type/Integer
+              :name                     "sum_case"
+              :display-name             "Sum of Case"
+              :lib/source               :source/aggregations
+              :lib/source-uuid          string?
+              :lib/source-column-alias  "sum_case"
+              :lib/desired-column-alias "sum_case"}]
+            (lib.metadata.calculation/metadata query)))))

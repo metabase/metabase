@@ -391,3 +391,23 @@
     (is (= {:foo false}
            (u/assoc-dissoc {:foo "bar"} :foo false))
         "false should be assoc'd")))
+
+(deftest ^:parallel assoc-default-test
+  (testing "nil map"
+    (is (= {:x 0}
+           (u/assoc-default nil :x 0))))
+  (testing "empty map"
+    (is (= {0 :x}
+           (u/assoc-default {} 0 :x))))
+  (testing "existing key"
+    (is (= {:x 0}
+           (u/assoc-default {:x 0} :x 1))))
+  (testing "nil value"
+    (is (= {:x 0}
+           (u/assoc-default {:x 0} :y nil))))
+  (testing "multiple defaults"
+    (is (= {:x nil, :z 1}
+           (u/assoc-default {:x nil} :x 0 :y nil :z 1))))
+  (testing "multiple defaults for the same key"
+    (is (= {:x nil, :y 1, :z 2}
+           (u/assoc-default {:x nil} :x 0, :y nil, :y 1, :z 2, :x 3, :z 4)))))

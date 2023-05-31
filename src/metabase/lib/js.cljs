@@ -339,6 +339,31 @@
   [aggregation-operator]
   (to-array (lib.core/aggregation-operator-columns aggregation-operator)))
 
+(defn ^:export selected-aggregation-operators
+  "Mark the operator and the column (if any) in `agg-operators` selected by `agg-clause`."
+  [agg-operators agg-clause]
+  (to-array (lib.core/selected-aggregation-operators (seq agg-operators) agg-clause)))
+
+(defn ^:export filterable-columns
+  "Get the available filterable columns for the stage with `stage-number` of
+  the query `a-query`.
+  If `stage-number` is omitted, the last stage is used."
+  ([a-query]
+   (filterable-columns a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/filterable-columns a-query stage-number))))
+
+(defn ^:export filterable-column-operators
+  "Returns the operators for which `filterable-column` is applicable."
+  [filterable-column]
+  (to-array (lib.core/filterable-column-operators filterable-column)))
+
+(defn ^:export filter-clause
+  "Returns a standalone filter clause for a `filter-operator`,
+  a `column`, and arguments."
+  [filter-operator column & args]
+  (apply lib.core/filter-clause filter-operator column args))
+
 (defn ^:export fields
   "Get the current `:fields` in a query. Unlike the lib core version, this will return an empty sequence if `:fields` is
   not specified rather than `nil` for JS-friendliness."
