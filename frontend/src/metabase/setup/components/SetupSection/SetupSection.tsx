@@ -9,13 +9,13 @@ import {
   SectionButton,
 } from "./SetupSection.styled";
 
-export interface SetupSectionProps {
+interface SetupSectionProps {
   title: ReactNode;
   description?: ReactNode;
   children?: ReactNode;
 }
 
-const SetupSection = ({
+export const SetupSection = ({
   title,
   description,
   children,
@@ -41,6 +41,3 @@ const SetupSection = ({
     </SectionRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SetupSection;

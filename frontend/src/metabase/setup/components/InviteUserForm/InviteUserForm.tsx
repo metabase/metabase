@@ -28,7 +28,7 @@ interface InviteUserFormProps {
   onSubmit: (invite: InviteInfo) => void;
 }
 
-const InviteUserForm = ({
+export const InviteUserForm = ({
   user,
   invite,
   onSubmit,
@@ -70,6 +70,3 @@ const InviteUserForm = ({
     </FormProvider>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default InviteUserForm;

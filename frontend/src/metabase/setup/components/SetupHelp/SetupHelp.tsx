@@ -4,7 +4,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { SetupFooterRoot } from "./SetupHelp.styled";
 
-const SetupHelp = (): JSX.Element => {
+export const SetupHelp = (): JSX.Element => {
   return (
     <SetupFooterRoot>
       {t`If you feel stuck`},{" "}
@@ -19,6 +19,3 @@ const SetupHelp = (): JSX.Element => {
     </SetupFooterRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SetupHelp;
