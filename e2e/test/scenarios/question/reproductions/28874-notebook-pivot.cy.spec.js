@@ -30,9 +30,7 @@ describe("issue 28874", () => {
   it("should allow to modify a pivot question in the notebook (metabase#28874)", () => {
     visitQuestionAdhoc(questionDetails, { mode: "notebook" });
 
-    cy.findByText("Product ID")
-      .parent()
-      .within(() => cy.icon("close").click());
+    cy.findByText("Product ID").parent().icon("close").click();
 
     cy.findByText("Product ID").should("not.exist");
   });

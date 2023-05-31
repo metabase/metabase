@@ -460,7 +460,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Unarchive timeline").click();
       cy.wait("@updateTimeline");
       cy.findByText("No timelines found");
-      getModal().within(() => cy.icon("chevronleft").click());
+      getModal().icon("chevronleft").click();
       cy.findByText("Releases");
     });
 
@@ -484,7 +484,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Delete").click();
       cy.wait("@deleteTimeline");
       cy.findByText("No timelines found");
-      getModal().within(() => cy.icon("chevronleft").click());
+      getModal().icon("chevronleft").click();
       cy.findByText("Our analytics events");
     });
 
@@ -620,11 +620,7 @@ const getModal = () => {
 };
 
 const openMenu = name => {
-  return cy
-    .findByText(name)
-    .parent()
-    .parent()
-    .within(() => cy.icon("ellipsis").click());
+  return cy.findByText(name).parent().parent().icon("ellipsis").click();
 };
 
 const setFormattingSettings = settings => {

@@ -129,7 +129,7 @@ describe("scenarios > question > custom column > data type", () => {
 function addCustomColumns(columns) {
   cy.wrap(columns).each((column, index) => {
     if (index) {
-      getNotebookStep("expression").within(() => cy.icon("add").click());
+      getNotebookStep("expression").icon("add").click();
     } else {
       cy.findByText("Custom column").click();
     }
