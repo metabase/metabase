@@ -72,6 +72,19 @@ describe("CollectionHeader", () => {
       const input = screen.getByDisplayValue("Personal collection");
       expect(input).toBeDisabled();
     });
+
+    it("should show an icon for instance analytics collections", () => {
+      const props = getProps({
+        collection: createMockCollection({
+          name: "Audit",
+          type: "instance-analytics",
+        }),
+      });
+
+      render(<CollectionHeader {...props} />);
+
+      expect(getIcon("beaker")).toBeInTheDocument();
+    });
   });
 
   describe("collection description", () => {
