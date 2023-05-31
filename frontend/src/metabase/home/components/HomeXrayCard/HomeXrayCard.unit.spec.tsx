@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import HomeXrayCard, { HomeXrayCardProps } from "./HomeXrayCard";
+import { HomeXrayCard } from "./HomeXrayCard";
 
 describe("HomeXrayCard", () => {
   it("should render correctly", () => {

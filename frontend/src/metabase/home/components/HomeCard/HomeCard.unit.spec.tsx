@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import HomeCard from "./HomeCard";
+import { HomeCard } from "./HomeCard";
 
 describe("HomeCard", () => {
   it("should render correctly", () => {

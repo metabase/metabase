@@ -5,7 +5,7 @@ import { renderWithProviders } from "__support__/ui";
 import { setupRecentViewsEndpoints } from "__support__/server-mocks";
 import { User } from "metabase-types/api";
 import * as utils from "../../utils";
-import HomeRecentSection from "./HomeRecentSection";
+import { HomeRecentSection } from "./HomeRecentSection";
 
 jest.mock("../../utils", () => ({
   isWithinWeeks: jest.fn(),

@@ -4,7 +4,7 @@ import { createMockPopularItem } from "metabase-types/api/mocks";
 import { renderWithProviders } from "__support__/ui";
 import { setupPopularItemsEndpoints } from "__support__/server-mocks";
 import { PopularItem } from "metabase-types/api";
-import HomePopularSection from "./HomePopularSection";
+import { HomePopularSection } from "./HomePopularSection";
 
 const setup = (items: PopularItem[]) => {
   setupPopularItemsEndpoints(items);

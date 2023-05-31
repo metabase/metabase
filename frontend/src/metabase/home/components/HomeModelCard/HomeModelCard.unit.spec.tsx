@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import HomeModelCard, { HomeModelCardProps } from "./HomeModelCard";
+import { HomeModelCard } from "./HomeModelCard";
 
 describe("HomeModelCard", () => {
   it("should render correctly", () => {

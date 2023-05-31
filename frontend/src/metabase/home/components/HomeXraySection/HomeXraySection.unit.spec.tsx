@@ -10,7 +10,7 @@ import { Database, DatabaseCandidate } from "metabase-types/api";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import HomeXraySection from "./HomeXraySection";
+import { HomeXraySection } from "./HomeXraySection";
 
 interface SetupOpts {
   database: Database;

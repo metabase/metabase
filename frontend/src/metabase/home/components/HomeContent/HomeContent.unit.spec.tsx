@@ -11,7 +11,7 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import HomeContent from "./HomeContent";
+import { HomeContent } from "./HomeContent";
 
 const PopularSectionMock = () => <div>PopularSection</div>;
 jest.mock("../HomePopularSection", () => PopularSectionMock);

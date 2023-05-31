@@ -6,7 +6,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import HomeGreeting from "./HomeGreeting";
+import { HomeGreeting } from "./HomeGreeting";
 
 interface SetupOpts {
   currentUser?: User;

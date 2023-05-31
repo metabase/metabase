@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import HomeCaption from "./HomeCaption";
+import { HomeCaption } from "./HomeCaption";
 
 describe("HomeCaption", () => {
   it("should render correctly", () => {
