@@ -167,7 +167,10 @@
    with-join-fields
    join-strategy
    with-join-strategy
-   available-join-strategies]
+   available-join-strategies
+   join-condition-lhs-columns
+   join-condition-rhs-columns
+   join-condition-operators]
   [lib.limit
    current-limit
    limit]

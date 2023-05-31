@@ -385,7 +385,8 @@
        (apply distinct? (map (comp u/lower-case-en :lib/desired-column-alias) columns))))]])
 
 (mu/defn default-columns :- ColumnsWithUniqueAliases
-  "Return a sequence of column metadatas for columns that are returned 'by default' for a table/join/query stage.
+  "Return a sequence of projected (`SELECT`ed) column metadatas for columns that are returned 'by default' for a
+  table/join/query stage.
 
   These columns will include `:lib/source-column-alias` and `:lib/desired-column-alias`. `:lib/desired-column-alias`
   is guaranteed to be unique; `unique-name-fn` is a function with the signature
@@ -408,16 +409,26 @@
     unique-name-fn :- fn?]
    (default-columns-method query stage-number x unique-name-fn)))
 
+(def ^:private VisibleColumnsOptions
+  [:map
+   [:unique-name-fn               {:optional true} fn?]
+   [:include-implicitly-joinable? {:optional true} :boolean]])
+
+(mu/defn ^:private default-visible-columns-options :- VisibleColumnsOptions
+  []
+  {:unique-name-fn               (lib.util/unique-name-generator)
+   :include-implicitly-joinable? true})
+
 (defmulti visible-columns-method
   "Impl for [[visible-columns]]."
-  {:arglists '([query stage-number x unique-name-fn])}
-  (fn [_query _stage-number x _unique-name-fn]
+  {:arglists '([query stage-number x options])}
+  (fn [_query _stage-number x _options]
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod visible-columns-method :default
-  [query stage-number x unique-name-fn]
-  (default-columns query stage-number x unique-name-fn))
+  [query stage-number x options]
+  (default-columns query stage-number x (:unique-name-fn options)))
 
 (mu/defn visible-columns :- ColumnsWithUniqueAliases
   "Return a sequence of columns that should be *visible* for something, e.g. a query stage or a join. Visible means
@@ -432,10 +443,11 @@
    (visible-columns query -1 x))
 
   ([query stage-number x]
-   (visible-columns query stage-number x (lib.util/unique-name-generator)))
+   (visible-columns query stage-number x nil))
 
   ([query          :- ::lib.schema/query
     stage-number   :- :int
     x
-    unique-name-fn :- fn?]
-   (visible-columns-method query stage-number x unique-name-fn)))
+    options        :- [:maybe VisibleColumnsOptions]]
+   (let [options (merge (default-visible-columns-options) options)]
+     (visible-columns-method query stage-number x options))))
