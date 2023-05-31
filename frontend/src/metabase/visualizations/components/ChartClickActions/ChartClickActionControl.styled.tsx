@@ -13,10 +13,7 @@ export const IconWrapper = styled.span`
 `;
 
 export const ClickActionButtonIcon = styled(Icon)`
-  margin-right: 0.5rem;
-
-  width: 0.75rem;
-  height: 0.75rem;
+  margin-right: 0.2rem;
 
   color: ${color("brand")};
   transition: all 200ms linear;
