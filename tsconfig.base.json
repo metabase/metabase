@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "jsx": "react-jsx",
+    "jsxImportSource": "@emotion/react",
     "target": "esnext",
     "allowSyntheticDefaultImports": true,
     "module": "commonjs",

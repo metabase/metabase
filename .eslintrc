@@ -93,7 +93,7 @@
     "jest/globals": true
   },
   "parser": "babel-eslint",
-  "plugins": ["react", "no-only-tests"],
+  "plugins": ["react", "@emotion", "no-only-tests"],
   "extends": [
     "eslint:recommended",
     "plugin:react/recommended",
@@ -137,7 +137,8 @@
             "ignoreRestSiblings": true,
             "destructuredArrayIgnorePattern": "^_"
           }
-        ]
+        ],
+        "react/no-unknown-property": ["error", { "ignore": ["css"] }]
       }
     },
     {

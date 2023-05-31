@@ -124,6 +124,7 @@
     "@cypress/skip-test": "^2.6.1",
     "@deploysentinel/cypress-debugger": "^0.7.8",
     "@emotion/babel-plugin": "^11.7.2",
+    "@emotion/eslint-plugin": "^11.11.0",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@percy/cli": "^1.23.0",
     "@percy/cypress": "^3.1.2",
