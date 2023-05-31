@@ -7,6 +7,10 @@
   width: 100%;
 }
 
+:local .cursor-text {
+  cursor: text;
+}
+
 :local .text-card-markdown h1,
 :local .text-card-markdown h2,
 :local .text-card-markdown h3,

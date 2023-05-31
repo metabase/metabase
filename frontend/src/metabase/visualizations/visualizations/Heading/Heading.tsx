@@ -26,8 +26,7 @@ export function Heading({
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
   const [isFocused, setIsFocused] = useState(justAdded);
-  const [isHovering, setIsHovering] = useState(false);
-  const isPreviewing = !isFocused && !isHovering;
+  const isPreviewing = !isFocused;
 
   const handleTextChange = (text: string) =>
     onUpdateVisualizationSettings({ text });
@@ -45,11 +44,10 @@ export function Heading({
           "has-no-content": hasNoContent,
         })}
         isPreviewing={isPreviewing}
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
+        onClick={() => setIsFocused(true)}
       >
         {isPreviewing ? (
-          <HeadingContent hasNoContent={hasNoContent}>
+          <HeadingContent hasNoContent={hasNoContent} isEditing={isEditing}>
             {content || placeholder}
           </HeadingContent>
         ) : (
@@ -57,10 +55,9 @@ export function Heading({
             name="heading"
             placeholder={placeholder}
             value={content}
-            autoFocus={justAdded}
+            autoFocus={justAdded || isFocused}
             onChange={e => handleTextChange(e.target.value)}
             onMouseDown={preventDragging}
-            onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
           />
         )}

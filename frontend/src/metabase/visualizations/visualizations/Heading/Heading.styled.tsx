@@ -52,6 +52,7 @@ export const HeadingContainer = styled.div`
 
 interface HeadingContentProps {
   hasNoContent?: boolean;
+  isEditing?: boolean;
 }
 
 export const HeadingContent = styled.h2<HeadingContentProps>`
@@ -67,5 +68,10 @@ export const HeadingContent = styled.h2<HeadingContentProps>`
     hasNoContent &&
     `
     color: ${color("text-light")}
+  `}
+  ${({ isEditing }) =>
+    isEditing &&
+    `
+    cursor: text;
   `}
 `;

@@ -44,8 +44,7 @@ export function Text({
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
   const [isFocused, setIsFocused] = useState(justAdded);
-  const [isHovering, setIsHovering] = useState(false);
-  const isPreviewing = !isFocused && !isHovering;
+  const isPreviewing = !isFocused;
 
   const handleTextChange = text =>
     onUpdateVisualizationSettings({ text: text });
@@ -91,8 +90,7 @@ export function Text({
           "has-no-content": hasNoContent,
         })}
         isPreviewing={isPreviewing}
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
+        onClick={() => setIsFocused(true)}
       >
         {isPreviewing ? (
           <ReactMarkdown
@@ -101,6 +99,7 @@ export function Text({
             className={cx(
               "full flex-full flex flex-column text-card-markdown",
               styles["text-card-markdown"],
+              styles["cursor-text"],
               getSettingsStyle(settings),
               {
                 "text-light": hasNoContent,
@@ -114,10 +113,9 @@ export function Text({
             name="text"
             placeholder={placeholder}
             value={content}
-            autoFocus={justAdded}
+            autoFocus={justAdded || isFocused}
             onChange={e => handleTextChange(e.target.value)}
             onMouseDown={preventDragging}
-            onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
           />
         )}
