@@ -16,10 +16,10 @@ const TEST_NEW_NAME = "New name";
 
 const TestComponent = () => {
   const { data, isLoading, error } = useDatabaseQuery({ id: TEST_DB.id });
-  const updateDatabase = useDatabaseUpdate();
+  const handleUpdate = useDatabaseUpdate();
 
   const handleSubmit = async () => {
-    await updateDatabase({ id: TEST_DB.id }, { name: TEST_NEW_NAME });
+    await handleUpdate({ id: TEST_DB.id }, { name: TEST_NEW_NAME });
   };
 
   if (isLoading || error || !data) {
