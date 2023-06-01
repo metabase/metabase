@@ -1,13 +1,10 @@
-import React, { useState, useCallback } from "react";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
+import EntityMenu from "metabase/components/EntityMenu";
 
 import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
 
-import { TextChoicesPopover } from "./TextChoicesPopover";
 import { IconContainer } from "./TextOptionsButton.styled";
 
 interface TextOptionsButtonProps {
@@ -19,45 +16,34 @@ export function TextOptionsButton({
   onAddMarkdown,
   onAddHeading,
 }: TextOptionsButtonProps) {
-  const [isAddTextPopoverOpen, setIsAddTextPopoverOpen] = useState(false);
-
-  const hideAddTextPopover = useCallback(() => {
-    setIsAddTextPopoverOpen(false);
-  }, [setIsAddTextPopoverOpen]);
-  const showAddTextPopover = useCallback(() => {
-    setIsAddTextPopoverOpen(true);
-  }, [setIsAddTextPopoverOpen]);
+  const TEXT_OPTIONS = [
+    {
+      title: t`Heading`,
+      action: () => onAddHeading(),
+      event: "Dashboard; Add Heading",
+    },
+    {
+      title: t`Text`,
+      action: () => onAddMarkdown(),
+      event: "Dashboard; Add Markdown Box",
+    },
+  ];
 
   return (
-    <span key="add-a-heading-or-text-box">
-      <TippyPopover
-        placement="bottom-start"
-        onClose={hideAddTextPopover}
-        visible={isAddTextPopoverOpen}
-        content={
-          <TextChoicesPopover
-            onAddMarkdown={onAddMarkdown}
-            onAddHeading={onAddHeading}
-            onClose={hideAddTextPopover}
-          />
-        }
-      >
-        <div>
-          <Tooltip tooltip={t`Add a heading or text`}>
-            <DashboardHeaderButton
-              key="add-text"
-              aria-label={t`Add a heading or text box`}
-              onClick={showAddTextPopover}
-              data-metabase-event="Dashboard;Add Heading or Text Box"
-            >
-              <IconContainer>
-                <Icon name="string" size={18} />
-                <Icon name="chevrondown" size={10} />
-              </IconContainer>
-            </DashboardHeaderButton>
-          </Tooltip>
-        </div>
-      </TippyPopover>
-    </span>
+    <EntityMenu
+      key="dashboard-add-heading-or-text-button"
+      triggerAriaLabel={t`Add a heading or text box`}
+      items={TEXT_OPTIONS}
+      trigger={
+        <DashboardHeaderButton>
+          <IconContainer>
+            <Icon name="string" size={18} />
+            <Icon name="chevrondown" size={10} />
+          </IconContainer>
+        </DashboardHeaderButton>
+      }
+      minWidth={90}
+      tooltip={t`Add a heading or text`}
+    />
   );
 }

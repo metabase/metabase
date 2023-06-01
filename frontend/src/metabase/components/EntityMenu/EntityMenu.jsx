@@ -54,6 +54,7 @@ class EntityMenu extends Component {
       className,
       openClassNames,
       closedClassNames,
+      minWidth,
       tooltip,
       trigger,
       renderTrigger,
@@ -127,7 +128,7 @@ class EntityMenu extends Component {
                 >
                   <Card>
                     {menuItemContent || (
-                      <ol className="p1" style={{ minWidth: 184 }}>
+                      <ol className="p1" style={{ minWidth: minWidth || 184 }}>
                         {items.map(item => {
                           if (!item) {
                             return null;
