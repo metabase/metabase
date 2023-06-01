@@ -11,10 +11,13 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import { getScrollY } from "metabase/lib/dom";
-import { Dashboard } from "metabase-types/api";
+import { color } from "metabase/lib/colors";
+import { Collection, Dashboard } from "metabase-types/api";
 
+import Icon from "metabase/components/Icon";
 import EditBar from "metabase/components/EditBar";
 import HeaderModal from "metabase/components/HeaderModal";
+import Tooltip from "metabase/core/components/Tooltip/Tooltip";
 import {
   EditWarning,
   HeaderRow,
@@ -40,6 +43,7 @@ interface DashboardHeaderViewProps {
   isEditingInfo: boolean;
   isNavBarOpen: boolean;
   dashboard: Dashboard;
+  collection: Collection;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
   onHeaderModalDone: () => null;
@@ -60,6 +64,7 @@ function DashboardHeaderView({
   isEditing,
   isNavBarOpen,
   dashboard,
+  collection,
   isLastEditInfoVisible,
   onHeaderModalDone,
   onHeaderModalCancel,
@@ -150,6 +155,13 @@ function DashboardHeaderView({
                 data-testid="dashboard-name-heading"
                 onChange={handleUpdateCaption}
               />
+              {collection.type === "instance-analytics" && (
+                <Tooltip
+                  tooltip={t`This is a read-only Instance Analytics dashboard.`}
+                >
+                  <Icon name="beaker" color={color("brand")} />
+                </Tooltip>
+              )}
             </HeaderCaptionContainer>
             <HeaderBadges>
               {isLastEditInfoVisible && (
