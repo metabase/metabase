@@ -91,6 +91,7 @@ export function Text({
         className={cx(className, "text-edit-container", {
           "has-no-content": hasNoContent,
         })}
+        hasNoContent={hasNoContent}
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
       >

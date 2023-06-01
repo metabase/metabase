@@ -2,7 +2,7 @@
   height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 0.5em 16px;
+  padding: 0.5rem 0.75rem;
   pointer-events: all;
   width: 100%;
 }

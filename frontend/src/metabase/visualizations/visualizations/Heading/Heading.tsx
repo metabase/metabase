@@ -1,4 +1,4 @@
-import React, { useMemo, MouseEvent } from "react";
+import { useMemo, MouseEvent } from "react";
 
 import cx from "classnames";
 import { t } from "ttag";
@@ -49,6 +49,7 @@ export function Heading({
         className={cx("text-edit-container", {
           "has-no-content": hasNoContent,
         })}
+        hasNoContent={hasNoContent}
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
       >

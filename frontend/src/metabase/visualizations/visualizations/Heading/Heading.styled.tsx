@@ -3,6 +3,7 @@ import { color } from "metabase/lib/colors";
 
 interface InputContainerProps {
   isPreviewing: boolean;
+  hasNoContent: boolean;
 }
 
 export const InputContainer = styled.div<InputContainerProps>`
@@ -12,14 +13,16 @@ export const InputContainer = styled.div<InputContainerProps>`
   height: 100%;
   justify-content: center;
   overflow: hidden;
-  padding: 0 0.65em;
-  padding-left: 0;
+  padding-left: 0.75rem;
   pointer-events: auto;
 
-  ${({ isPreviewing }) =>
-    !isPreviewing &&
+  &:hover {
+    padding-left: calc(0.75rem - 1px);
+  }
+  ${({ isPreviewing, hasNoContent }) =>
+    (!isPreviewing || hasNoContent) &&
     `
-    padding: 0 0.75em;
+    padding-left: calc(0.75rem - 1px);
   `}
 `;
 
@@ -28,13 +31,12 @@ export const TextInput = styled.input`
   background: none;
   max-height: 50%;
   color: ${color("text-dark")};
-  font-size: 1.5em;
+  font-size: 1.375rem;
   font-weight: 700;
   height: inherit;
-  line-height: 1.602em;
   min-height: unset;
   outline: none;
-  padding: 0.25em 0.2em;
+  padding: 0.25rem 0;
   pointer-events: all;
   resize: none;
   width: 100%;
@@ -46,7 +48,7 @@ export const HeadingContainer = styled.div`
   height: 100%;
   justify-content: center;
   overflow: hidden;
-  padding: 0;
+  padding-left: 0.75rem;
   width: 100%;
 `;
 
@@ -60,7 +62,8 @@ export const HeadingContent = styled.h2<HeadingContentProps>`
   max-width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 0 0.75em;
+  font-size: 1.375rem;
+  padding: 0;
   margin: 0;
   pointer-events: all;
 
