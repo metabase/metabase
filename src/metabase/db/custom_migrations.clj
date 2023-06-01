@@ -408,23 +408,12 @@
                                                  [:like :object "%\"joins\":%"] ; only include cards with joins
                                                  [:= :model "Card"]]})))
   ;; Reverse migration
-  (let [remove-join-aliases
-        (fn [visualization_settings]
-          (update visualization_settings "column_settings"
-                  (fn [column_settings]
-                    (into {}
-                          (map (fn [[k v]]
-                                 (match (vec (json/parse-string k))
-                                   ["ref" ["field" id opts]]
-                                   [(json/generate-string ["ref" (remove-opts ["field" id opts] "join-alias")]) v]
-                                   _ [k v]))
-                               column_settings)))))
-        update-one!
+  (let [update-one!
         (fn [revision]
           (let [card (json/parse-string (:object revision))]
             (when (not= (get card "query_type") "native")
               (let [viz-settings (get card "visualization_settings")
-                    updated      (remove-join-aliases viz-settings)]
+                    updated      (remove-join-alias-from-column-settings-field-refs viz-settings)]
                 (when (not= updated viz-settings)
                   (t2/query {:update :revision
                              :set {:object (json/generate-string (assoc card "visualization_settings" updated))}
