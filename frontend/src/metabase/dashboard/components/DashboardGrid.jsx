@@ -195,6 +195,7 @@ class DashboardGrid extends Component {
         action: 1,
         link: 1,
         text: 2,
+        heading: 2,
         scalar: 4,
       },
     });
