@@ -59,8 +59,8 @@
   (when-let [card (lib.metadata/card metadata-providerable card-id)]
     (card-metadata-columns metadata-providerable card)))
 
-(defmethod lib.metadata.calculation/default-columns-method :metadata/card
-  [query _stage-number card unique-name-fn]
+(defmethod lib.metadata.calculation/visible-columns-method :metadata/card
+  [query _stage-number card {:keys [unique-name-fn], :as _options}]
   (mapv (fn [col]
           (assoc col :lib/desired-column-alias (unique-name-fn (:name col))))
         (card-metadata-columns query card)))
