@@ -139,14 +139,20 @@ In the variables sidebar, you can set a default value for your variable. This va
 
 ## Setting complex default values in the query
 
-You can also define default values directly in your query, which is useful when defining complex default values (for example, using a function to generate a value).
+You can also define default values directly in your query by enclosing a comment inside the end brackets of an optional parameter:
 
-Here's an example that sets the default value of a Date filter to the current date using `CURRENT_DATE()`:
+```
+WHERE column = [[ {% raw %}{{ your_parameter }}{% endraw %} #]]your_default_value
+```
+
+This is useful when defining complex default values (for example, if your default value is a function like `CURRENT_DATE`).
+
+Here's a PostgreSQL example that sets the default value of a Date filter to the current date using `CURRENT_DATE()`:
 
 ```
 SELECT *
-FROM products
-WHERE DATE(created_at) = [[ {% raw %}{{dateOfCreation}}{% endraw %} #]]CURRENT_DATE()
+FROM accounts
+WHERE DATE(created_at) = [[ {% raw %}{{dateOfCreation}}{% endraw %} #]]CURRENT_DATE
 ```
 
 Note that the hash (`#`) used to comment the text might need to be replaced by the comment syntax specific to the database you're using. Some databases use double-dashes (`--`) as comment syntax.
