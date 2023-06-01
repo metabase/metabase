@@ -114,10 +114,6 @@ function setAggregationClause(query, aggregationClause) {
     query = clearFields(query);
     query = clearOrderBy(query);
   }
-  // for bare rows we always clear out any dimensions because they don't make sense
-  if (isBareRows) {
-    query = clearBreakouts(query);
-  }
   return setClause("aggregation", query, aggregationClause);
 }
 function setBreakoutClause(query, breakoutClause) {
