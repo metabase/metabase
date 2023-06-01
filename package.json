@@ -15,6 +15,8 @@
     "@dnd-kit/sortable": "^7.0.2",
     "@emotion/react": "^11.7.1",
     "@emotion/styled": "^11.6.0",
+    "@mantine/core": "^6.0.13",
+    "@mantine/hooks": "^6.0.13",
     "@react-oauth/google": "^0.4.0",
     "@reduxjs/toolkit": "^1.9.3",
     "@snowplow/browser-tracker": "^3.1.6",
