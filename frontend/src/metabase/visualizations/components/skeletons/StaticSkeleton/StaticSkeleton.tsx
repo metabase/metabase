@@ -1,4 +1,5 @@
 import { HTMLAttributes } from "react";
+import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
 import {
   SkeletonDescription,
@@ -9,6 +10,7 @@ import {
   SkeletonTooltipIcon,
   SkeletonTooltipIconContainer,
 } from "./StaticSkeleton.styled";
+import { getLeadingText, markdownToHtml } from "./utils";
 
 export interface StaticSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   name?: string | null;
@@ -28,6 +30,9 @@ const StaticSkeleton = ({
   tooltip,
   ...props
 }: StaticSkeletonProps): JSX.Element => {
+  const descriptionElements = markdownToHtml(description || "");
+  const hasMoreElementsToShow = descriptionElements.length > 1;
+
   return (
     <SkeletonRoot {...props}>
       {icon && (
@@ -43,7 +48,14 @@ const StaticSkeleton = ({
         </Tooltip>
       )}
       <SkeletonTitle>{name}</SkeletonTitle>
-      {description && <SkeletonDescription>{description}</SkeletonDescription>}
+      {description && (
+        <SkeletonDescription
+          alwaysShowTooltip={hasMoreElementsToShow}
+          tooltip={<Markdown>{description}</Markdown>}
+        >
+          {getLeadingText(descriptionElements)}
+        </SkeletonDescription>
+      )}
     </SkeletonRoot>
   );
 };
