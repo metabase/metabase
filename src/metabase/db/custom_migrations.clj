@@ -253,21 +253,18 @@
     ["field" id opts] ["field" id (not-empty (apply dissoc opts opts-to-remove))]
     _ field_ref))
 
-(defn- remove-join-alias-from-visualization-field-refs [visualization_settings]
-  (-> visualization_settings
-      json/parse-string
-      (update "column_settings"
-              (fn [column_settings]
-                (into {}
-                      (map (fn [[k v]]
-                             (match (vec (json/parse-string k))
-                               ["ref" ["field" id opts]]
-                               [(json/generate-string ["ref" (remove-opts ["field" id opts] "join-alias")]) v]
-                               _ [k v]))
-                           column_settings))))
-      json/generate-string))
+(defn- remove-join-alias-from-column-settings-field-refs [visualization_settings]
+  (update visualization_settings "column_settings"
+          (fn [column_settings]
+            (into {}
+                  (map (fn [[k v]]
+                         (match (vec (json/parse-string k))
+                           ["ref" ["field" id opts]]
+                           [(json/generate-string ["ref" (remove-opts ["field" id opts] "join-alias")]) v]
+                           _ [k v]))
+                       column_settings)))))
 
-(defn- add-join-alias-to-visualization-field-refs [{:keys [visualization_settings result_metadata]}]
+(defn- add-join-alias-to-column-settings-refs [{:keys [visualization_settings result_metadata]}]
   (let [result_metadata        (json/parse-string result_metadata)
         visualization_settings (json/parse-string visualization_settings)
         column-key->metadata   (group-by #(-> (get % "field_ref")
@@ -291,9 +288,9 @@
                                  _ [[k v]]))
                              column_settings)))))))
 
-(define-reversible-migration AddJoinAliasToVisualizationSettingsFieldRefs
+(define-reversible-migration AddJoinAliasToColumnSettingsFieldRefs
   (let [update-one! (fn [{:keys [id visualization_settings] :as card}]
-                  (let [updated (add-join-alias-to-visualization-field-refs card)]
+                  (let [updated (add-join-alias-to-column-settings-refs card)]
                     (when (not= visualization_settings updated)
                       (t2/query-one {:update :report_card
                                      :set    {:visualization_settings updated}
@@ -307,7 +304,10 @@
                                                     [:like :visualization_settings "%\\\\\"ref\\\\\",[\\\\\"field%"]
                                                     [:like :result_metadata "%\"join-alias\"%"]]})))
   (let [update! (fn [{:keys [id visualization_settings]}]
-                  (let [updated (remove-join-alias-from-visualization-field-refs visualization_settings)]
+                  (let [updated (-> visualization_settings
+                                    json/parse-string
+                                    remove-join-alias-from-column-settings-field-refs
+                                    json/generate-string)]
                     (when (not= visualization_settings updated)
                       (t2/query-one {:update :report_card
                                      :set    {:visualization_settings updated}
