@@ -265,7 +265,7 @@
                :has_multiple_changes false}
               {:description          "moved this Dashboard to New Collection.",
                :has_multiple_changes false}
-              {:description          "modified the cards."
+              {:description          "rearranged the cards."
                :has_multiple_changes false}
               {:description          "removed a card."
                :has_multiple_changes false}

@@ -179,7 +179,7 @@
               {:cards [{:id 1} {:id 2}]}
               {:cards [{:id 1}]}))))
 
-   (is (= "modified the cards."
+   (is (= "rearranged the cards."
           (build-sentence
             (revision/diff-strings
               Dashboard

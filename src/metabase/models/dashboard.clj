@@ -263,19 +263,23 @@
              :else (deferred-tru "changed the cache ttl from \"{0}\" to \"{1}\""
                            (:cache_ttl prev-dashboard) (:cache_ttl dashboard))))
          (when (or (:cards changes) (:cards removals))
+           (:card removals)
            (let [prev-card-ids  (set (map :id (:cards prev-dashboard)))
                  num-prev-cards (count prev-card-ids)
                  new-card-ids   (set (map :id (:cards dashboard)))
                  num-new-cards  (count new-card-ids)
-                 num-cards-diff (abs (- num-prev-cards num-new-cards))]
+                 num-cards-diff (abs (- num-prev-cards num-new-cards))
+                 keys-changes   (set (flatten (concat (map keys (:cards changes))
+                                                      (map keys (:cards removals)))))]
              (cond
                (and
                  (set/subset? prev-card-ids new-card-ids)
-                 (< num-prev-cards num-new-cards))         (deferred-trun "added a card" "added {0} cards" num-cards-diff)
+                 (< num-prev-cards num-new-cards))                     (deferred-trun "added a card" "added {0} cards" num-cards-diff)
+               (set/subset? keys-changes #{:row :col :size_x :size_y}) (deferred-tru "rearranged the cards")
                (and
                  (set/subset? new-card-ids prev-card-ids)
-                 (> num-prev-cards num-new-cards))         (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
-               :else                                       (deferred-tru "modified the cards"))))
+                 (> num-prev-cards num-new-cards))                     (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
+               :else                                                   (deferred-tru "modified the cards"))))
          (when (or (:tabs changes) (:tabs removals))
            (let [prev-tabs     (:tabs prev-dashboard)
                  new-tabs      (:tabs dashboard)

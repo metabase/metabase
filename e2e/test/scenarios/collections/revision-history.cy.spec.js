@@ -79,7 +79,7 @@ describe("revision history", () => {
                 .siblings("button")
                 .should("not.exist");
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText(/modified the cards/).should("not.exist");
+              cy.findByText(/rearranged the cards/).should("not.exist");
             });
 
             // skipped because it's super flaky in CI
