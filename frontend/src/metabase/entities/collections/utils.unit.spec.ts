@@ -1,7 +1,11 @@
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { createMockCollection } from "metabase-types/api/mocks";
 import { PERSONAL_COLLECTIONS } from "./constants";
-import { buildCollectionTree, getCollectionIcon } from "./utils";
+import {
+  buildCollectionTree,
+  getCollectionIcon,
+  getCollectionTooltip,
+} from "./utils";
 
 describe("entities > collections > utils", () => {
   describe("buildCollectionTree", () => {
@@ -394,6 +398,23 @@ describe("entities > collections > utils", () => {
           });
         });
       });
+    });
+  });
+
+  describe("getCollectionTooltip", () => {
+    const collection = createMockCollection({
+      type: "instance-analytics",
+    });
+    ["collection", "model", "question"].forEach(type => {
+      it(`returns correct tooltip for instance analytics ${type}`, () => {
+        expect(getCollectionTooltip(collection, type as any)).toContain(
+          `Instance Analytics ${type}`,
+        );
+      });
+    });
+
+    it(`returns empty tooltip for regular collections`, () => {
+      expect(getCollectionTooltip(createMockCollection())).toBe(undefined);
     });
   });
 });
