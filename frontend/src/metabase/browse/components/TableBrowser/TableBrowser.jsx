@@ -138,16 +138,6 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
           />
         </TableActionLink>
       )}
-      <TableActionLink
-        to={`/reference/databases/${dbId}/tables/${tableId}`}
-        data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
-      >
-        <Icon
-          name="reference"
-          tooltip={t`Learn about this table`}
-          color={color("text-medium")}
-        />
-      </TableActionLink>
     </Fragment>
   );
 };

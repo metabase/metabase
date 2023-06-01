@@ -252,7 +252,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Move event").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").click();
-      getModal().within(() => cy.button("Move").click());
+      getModal().button("Move").click();
       cy.wait("@updateEvent");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC2").should("not.exist");
@@ -284,7 +284,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Move event").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").click();
-      getModal().within(() => cy.button("Move").click());
+      getModal().button("Move").click();
       cy.wait("@updateEvent");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC2").should("not.exist");
