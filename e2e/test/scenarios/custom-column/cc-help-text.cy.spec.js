@@ -40,7 +40,7 @@ describe("scenarios > question > custom column > help text", () => {
 
     // Click outside of formula field instead of blur
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Expression").click();
+    cy.findByText("Expression").parent().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("round([Temperature])").should("not.exist");
 
