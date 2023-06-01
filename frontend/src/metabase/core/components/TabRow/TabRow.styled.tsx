@@ -4,7 +4,7 @@ import { alpha, color } from "metabase/lib/colors";
 import BaseTabList from "metabase/core/components/TabList";
 import TabLink from "metabase/core/components/TabLink";
 import { TabButton } from "metabase/core/components/TabButton";
-import { SortableDiv } from "metabase/core/components//Sortable";
+import { SortableDiv } from "metabase/core/components/Sortable";
 import { space } from "metabase/styled-components/theme";
 
 export const TabList = styled(BaseTabList)`
