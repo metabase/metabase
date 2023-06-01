@@ -222,6 +222,7 @@
   [query                                 :- ::lib.schema/query
    stage-number                          :- :int
    {:keys [unique-name-fn], :as options} :- lib.metadata.calculation/VisibleColumnsOptions]
+  {:pre [(fn? unique-name-fn)]}
   (or
    ;; 1a. columns returned by previous stage
    (previous-stage-metadata query stage-number unique-name-fn)
@@ -256,7 +257,7 @@
      (expressions-metadata query stage-number unique-name-fn))
    ;; 3: columns added by joins at this stage
    (when include-joined?
-     (lib.join/all-joins-default-columns query stage-number unique-name-fn))))
+     (lib.join/all-joins-visible-columns query stage-number unique-name-fn))))
 
 (defmethod lib.metadata.calculation/visible-columns-method ::stage
   [query stage-number _stage {:keys [unique-name-fn include-implicitly-joinable?], :as options}]
@@ -281,9 +282,9 @@
     unique-name-fn :- fn?]
    (or
     (existing-stage-metadata query stage-number)
-    (let [query (ensure-previous-stages-have-metadata query stage-number)
+    (let [query        (ensure-previous-stages-have-metadata query stage-number)
           summary-cols (summary-columns query stage-number unique-name-fn)
-          field-cols (fields-columns query stage-number unique-name-fn)]
+          field-cols   (fields-columns query stage-number unique-name-fn)]
       ;; ... then calculate metadata for this stage
       (cond
         summary-cols
@@ -294,13 +295,18 @@
             (into []
                   (m/distinct-by #(dissoc % :source_alias :lib/source :lib/source-uuid :lib/desired-column-alias))
                   (concat field-cols
-                          (lib.join/all-joins-default-columns query stage-number unique-name-fn))))
+                          (lib.join/all-joins-metadata query stage-number unique-name-fn))))
 
         :else
-        (lib.metadata.calculation/visible-columns query
-                                                  stage-number
-                                                  (lib.util/query-stage query stage-number)
-                                                  {:unique-name-fn unique-name-fn}))))))
+        ;; there is no `:fields` or summary columns (aggregtions or breakouts) which means we return all the visible
+        ;; columns from the source or previous stage plus all the expressions. We return only the `:fields` from any
+        ;; joins
+        (concat
+         ;; we don't want to include all visible joined columns, so calculate that separately
+         (previous-stage-or-source-visible-columns query stage-number {:include-implicitly-joinable? false
+                                                                       :unique-name-fn               unique-name-fn})
+         (expressions-metadata query stage-number unique-name-fn)
+         (lib.join/all-joins-metadata query stage-number unique-name-fn)))))))
 
 (defmethod lib.metadata.calculation/metadata-method ::stage
   [query stage-number _stage]

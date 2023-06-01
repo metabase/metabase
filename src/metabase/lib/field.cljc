@@ -483,7 +483,7 @@
 
   ([query :- ::lib.schema/query
     stage-number :- :int]
-   (let [current-fields (fields query stage-number)
+   (let [current-fields   (fields query stage-number)
          selected-column? (if (empty? current-fields)
                             (constantly true)
                             (fn [column]
@@ -492,10 +492,11 @@
                                  (some (fn [fields-ref]
                                          (lib.equality/ref= col-ref fields-ref))
                                        current-fields)))))]
-     (for [col (lib.metadata.calculation/visible-columns query
-                                                         stage-number
-                                                         (lib.util/query-stage query stage-number)
-                                                         {:include-joined?              false
-                                                          :include-expressions?         false
-                                                          :include-implicitly-joinable? false})]
-       (assoc col :selected? (selected-column? col))))))
+     (mapv (fn [col]
+             (assoc col :selected? (selected-column? col)))
+           (lib.metadata.calculation/visible-columns query
+                                                     stage-number
+                                                     (lib.util/query-stage query stage-number)
+                                                     {:include-joined?              false
+                                                      :include-expressions?         false
+                                                      :include-implicitly-joinable? false})))))

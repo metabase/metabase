@@ -402,3 +402,8 @@
    (with-fields a-query -1 new-fields))
   ([a-query stage-number new-fields]
    (lib.core/with-fields a-query stage-number new-fields)))
+
+(defn ^:export fieldable-columns
+  "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query."
+  [a-query stage-number]
+  (to-array (lib.core/fieldable-columns a-query stage-number)))
