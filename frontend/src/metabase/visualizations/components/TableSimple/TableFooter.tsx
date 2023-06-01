@@ -80,6 +80,7 @@ const TableFooter = forwardRef<HTMLDivElement, TableFooterProps>(
       >
         <PaginationMessage>{paginateMessage}</PaginationMessage>
         <PaginationButton
+          aria-label={t`Previous page`}
           direction="previous"
           onClick={handlePreviousPage}
           disabled={start === 0}
@@ -87,6 +88,7 @@ const TableFooter = forwardRef<HTMLDivElement, TableFooterProps>(
           <Icon name="chevronleft" />
         </PaginationButton>
         <PaginationButton
+          aria-label={t`Next page`}
           direction="next"
           onClick={handleNextPage}
           disabled={end + 1 >= total}

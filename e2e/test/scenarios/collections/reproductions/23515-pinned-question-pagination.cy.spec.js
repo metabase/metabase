@@ -16,11 +16,11 @@ describe("issue 23515", () => {
     cy.wait("@getPinnedItems");
     cy.wait("@getCardQuery");
 
-    cy.icon("chevronright").click();
+    cy.findByLabelText("Next page").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rows 4-6 of first 2000").should("be.visible");
 
-    cy.icon("chevronright").click();
+    cy.findByLabelText("Previous page").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rows 1-3 of first 2000").should("be.visible");
   });

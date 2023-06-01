@@ -40,6 +40,7 @@ export default function PaginationControls({
         onClick={onPreviousPage}
         disabled={isPreviousDisabled}
         data-testid="previous-page-btn"
+        aria-label={t`Previous page`}
       />
 
       <Button
@@ -48,6 +49,7 @@ export default function PaginationControls({
         onClick={onNextPage}
         disabled={isNextDisabled}
         data-testid="next-page-btn"
+        aria-label={t`Next page`}
       />
     </div>
   );
