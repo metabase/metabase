@@ -4,7 +4,6 @@
             [metabase.models.database :refer [Database]]
             [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [metabase.util.log :as log]
             [toucan2.core :as t2]))
@@ -58,7 +57,7 @@
       ::no-op)))
 
 (defenterprise ensure-audit-db-installed!
-  "EE implementation of `ensure-db-installed!`."
+  "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
   :feature :none
   []
   (ensure-db-installed!)
