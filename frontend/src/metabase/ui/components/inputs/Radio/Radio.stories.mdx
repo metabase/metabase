@@ -2,21 +2,24 @@ import { Meta, Canvas } from "@storybook/blocks";
 import { Radio } from "./";
 import { Box } from "@mantine/core";
 
-<Meta title="Inputs/Select/Overview" />
+<Meta title="Inputs/Radio/Overview" />
 
 # Radio
 
 Our themed wrapper around [Mantine Radio](https://mantine.dev/core/radio/)
 
 <Box my={5}>
-  <Radio data={[{ name: "Date", value: "date" }]} label="Pick a data type" />
+  <Radio.Group label="Pick a data type">
+    <Radio label="Date" value="date" />
+    <Radio label="Birthday" value="birthday" />
+  </Radio.Group>
 </Box>
 
 ## Docs
 
-- [Figma File]()
+- [Figma File](https://www.figma.com/file/7LCGPhkbJdrhdIaeiU1O9c/Input-%2F-Radio?type=design&node-id=1%3A96&t=S6gieWhmvLP15ARp-1)
 - [Mantine Radio Docs](https://mantine.dev/core/radio/)
 
 ## Caveats
 
-No caveats at this time.
+- As of right now, don't use the size prop.
