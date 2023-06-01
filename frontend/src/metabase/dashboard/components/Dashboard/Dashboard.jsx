@@ -59,6 +59,7 @@ class Dashboard extends Component {
 
     dashboard: PropTypes.object,
     dashboardId: PropTypes.number,
+    dashcardData: PropTypes.object,
     selectedTabId: PropTypes.number,
     parameters: PropTypes.array,
     parameterValues: PropTypes.object,
@@ -73,6 +74,7 @@ class Dashboard extends Component {
     cancelFetchDashboardCardData: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
     fetchDashboardCardData: PropTypes.func.isRequired,
+    fetchDashboardCardMetadata: PropTypes.func.isRequired,
     initialize: PropTypes.func.isRequired,
     onRefreshPeriodChange: PropTypes.func,
     saveDashboardAndCards: PropTypes.func.isRequired,
@@ -140,12 +142,34 @@ class Dashboard extends Component {
     if (prevProps.dashboardId !== this.props.dashboardId) {
       await this.loadDashboard(this.props.dashboardId);
       this.throttleParameterWidgetStickiness();
-    } else if (
+      return;
+    }
+
+    if (this.shouldFetchCardsAndMetadata(prevProps)) {
+      this.props.fetchDashboardCardData();
+      this.props.fetchDashboardCardMetadata();
+    }
+
+    if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
       (!prevProps.dashboard && this.props.dashboard)
     ) {
       this.props.fetchDashboardCardData({ reload: false, clearCache: true });
+      return;
     }
+  }
+
+  shouldFetchCardsAndMetadata(prevProps) {
+    if (_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
+      return false;
+    }
+
+    for (const dashcard of this.props.dashboard.ordered_cards) {
+      if (!(dashcard.id in this.props.dashcardData)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   componentWillUnmount() {
