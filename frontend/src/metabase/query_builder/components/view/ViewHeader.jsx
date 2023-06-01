@@ -4,7 +4,6 @@ import { t } from "ttag";
 import cx from "classnames";
 import { usePrevious, useMount } from "react-use";
 
-import * as QUESTION from "metabase-lib/Question";
 import * as Urls from "metabase/lib/urls";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
@@ -19,6 +18,7 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
+import * as ML_Urls from "metabase-lib/urls";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 import QuestionActions from "../QuestionActions";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
@@ -560,7 +560,7 @@ ExploreResultsLink.propTypes = {
 };
 
 function ExploreResultsLink({ question }) {
-  const url = QUESTION.getUrl(
+  const url = ML_Urls.getUrl(
     question.composeThisQuery().setDisplay("table").setSettings({}),
   );
 

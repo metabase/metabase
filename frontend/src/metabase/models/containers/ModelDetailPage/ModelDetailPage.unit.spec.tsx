@@ -58,7 +58,7 @@ import {
   createStructuredModelCard as _createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 
-import * as QUESTION from "metabase-lib/Question";
+import * as ML_Urls from "metabase-lib/urls";
 import { TYPE } from "metabase-lib/types/constants";
 
 import ModelDetailPage from "./ModelDetailPage";
@@ -389,7 +389,7 @@ describe("ModelDetailPage", () => {
 
         expect(
           screen.getByRole("link", { name: /Create a new question/i }),
-        ).toHaveAttribute("href", QUESTION.getUrl(model));
+        ).toHaveAttribute("href", ML_Urls.getUrl(model));
         expect(
           screen.getByText(/This model is not used by any questions yet/i),
         ).toBeInTheDocument();
@@ -407,11 +407,11 @@ describe("ModelDetailPage", () => {
 
         expect(screen.getByRole("link", { name: "Q1" })).toHaveAttribute(
           "href",
-          QUESTION.getUrl(q1),
+          ML_Urls.getUrl(q1),
         );
         expect(screen.getByRole("link", { name: "Q2" })).toHaveAttribute(
           "href",
-          QUESTION.getUrl(q2),
+          ML_Urls.getUrl(q2),
         );
 
         expect(
@@ -796,7 +796,7 @@ describe("ModelDetailPage", () => {
 
       expect(
         list.getByRole("link", { name: TABLE_1.displayName() }),
-      ).toHaveAttribute("href", QUESTION.getUrl(TABLE_1.newQuestion()));
+      ).toHaveAttribute("href", ML_Urls.getUrl(TABLE_1.newQuestion()));
       expect(list.queryByText("Reviews")).not.toBeInTheDocument();
     });
 
@@ -977,7 +977,7 @@ describe("ModelDetailPage", () => {
       });
 
       expect(history?.getCurrentLocation().pathname).toBe(
-        QUESTION.getUrl(question),
+        ML_Urls.getUrl(question),
       );
     });
 

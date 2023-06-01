@@ -14,7 +14,7 @@ import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
-import * as QUESTION from "metabase-lib/Question";
+import * as ML_Urls from "metabase-lib/urls";
 
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import { TablesDivider } from "./QuestionDataSource.styled";
@@ -256,7 +256,7 @@ function getTableURL(table) {
     const cardId = getQuestionIdFromVirtualTableId(table.id);
     return Urls.question({ id: cardId, name: table.displayName() });
   }
-  return QUESTION.getUrl(table.newQuestion());
+  return ML_Urls.getUrl(table.newQuestion());
 }
 
 export default QuestionDataSource;

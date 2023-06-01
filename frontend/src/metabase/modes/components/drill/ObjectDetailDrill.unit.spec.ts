@@ -22,8 +22,9 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import Question, * as QUESTION from "metabase-lib/Question";
+import Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import * as ML_Urls from "metabase-lib/urls";
 import { ObjectDetailDrill } from "./ObjectDetailDrill";
 
 const metadata = createMockMetadata({
@@ -260,7 +261,7 @@ describe("ObjectDetailDrill", () => {
 
         it("should return correct URL to object detail", () => {
           const action = actions[0] as QuestionChangeClickAction;
-          expect(QUESTION.getUrl(action.question())).toBe(
+          expect(ML_Urls.getUrl(action.question())).toBe(
             `/question/${SAVED_QUESTION.slug()}`,
           );
         });

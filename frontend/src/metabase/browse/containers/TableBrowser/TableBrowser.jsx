@@ -1,13 +1,13 @@
 import { connect } from "react-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
-import * as QUESTION from "metabase-lib/Question";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
+import * as ML_Urls from "metabase-lib/urls";
 import { RELOAD_INTERVAL } from "../../constants";
 import TableBrowser from "../../components/TableBrowser";
 
@@ -45,7 +45,7 @@ const getReloadInterval = (state, { database }, tables = []) => {
 
 const getTableUrl = (table, metadata) => {
   const metadataTable = metadata?.table(table.id);
-  return QUESTION.getUrl(metadataTable?.newQuestion(), { clean: false });
+  return ML_Urls.getUrl(metadataTable?.newQuestion(), { clean: false });
 };
 
 export default _.compose(

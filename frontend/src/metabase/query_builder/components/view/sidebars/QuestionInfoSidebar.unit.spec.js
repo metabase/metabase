@@ -19,10 +19,9 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import * as QUESTION from "metabase-lib/Question";
-
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
+import * as ML_Urls from "metabase-lib/urls";
 
 import { QuestionInfoSidebar } from "./QuestionInfoSidebar";
 
@@ -161,7 +160,7 @@ describe("QuestionInfoSidebar", () => {
       const link = screen.getByText("Model details");
 
       expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", `${QUESTION.getUrl(model)}/detail`);
+      expect(link).toHaveAttribute("href", `${ML_Urls.getUrl(model)}/detail`);
     });
 
     it("isn't shown for questions", async () => {

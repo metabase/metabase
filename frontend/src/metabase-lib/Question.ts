@@ -42,15 +42,10 @@ import * as FILTER from "metabase-lib/queries/utils/filter";
 import * as QUERY from "metabase-lib/queries/utils/query";
 
 // TODO: remove these dependencies
-import * as Urls from "metabase/lib/urls";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
-import {
-  getTemplateTagParametersFromCard,
-  remapParameterValuesToTemplateTags,
-} from "metabase-lib/parameters/utils/template-tags";
+import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
@@ -1269,138 +1264,5 @@ export default class Question extends memoizeClass<QuestionInner>("query")(
     }
 
     return new Question(card, metadata, parameterValues);
-  }
-}
-
-export function getUrl(
-  question: Question,
-  {
-    originalQuestion,
-    clean = true,
-    query,
-    includeDisplayIsLocked,
-    creationType,
-    ...options
-  }: {
-    originalQuestion?: Question;
-    clean?: boolean;
-    query?: Record<string, any>;
-    includeDisplayIsLocked?: boolean;
-    creationType?: string;
-  } = {},
-): string {
-  question = question.omitTransientCardIds();
-
-  if (
-    !question.id() ||
-    (originalQuestion && question.isDirtyComparedTo(originalQuestion))
-  ) {
-    return Urls.question(null, {
-      hash: question._serializeForUrl({
-        clean,
-        includeDisplayIsLocked,
-        creationType,
-      }),
-      query,
-    });
-  } else {
-    return Urls.question(question.card(), { query });
-  }
-}
-
-export function getUrlWithParameters(
-  Question: question,
-  parameters,
-  parameterValues,
-  { objectId, clean } = {},
-): string {
-  const includeDisplayIsLocked = true;
-
-  if (question.isStructured()) {
-    let questionWithParameters = question.setParameters(parameters);
-
-    if (question.query().isEditable()) {
-      questionWithParameters = questionWithParameters
-        .setParameterValues(parameterValues)
-        ._convertParametersToMbql();
-      return getUrl(questionWithParameters, {
-        clean,
-        originalQuestion: question,
-        includeDisplayIsLocked,
-        query: { objectId },
-      });
-    } else {
-      const query = getParameterValuesBySlug(parameters, parameterValues);
-      return getUrl(questionWithParameters.markDirty(), {
-        clean,
-        query,
-        includeDisplayIsLocked,
-      });
-    }
-  } else {
-    return getUrl(question, {
-      clean,
-      query: remapParameterValuesToTemplateTags(
-        question.query().templateTags(),
-        parameters,
-        parameterValues,
-      ),
-      includeDisplayIsLocked,
-    });
-  }
-}
-
-export function getAutomaticDashboardUrl(
-  question: Question,
-  filters,
-  /*?: Filter[] = []*/
-): string {
-  let cellQuery = "";
-
-  if (filters.length > 0) {
-    const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
-    cellQuery = `/cell/${utf8_to_b64url(JSON.stringify(mbqlFilter))}`;
-  }
-
-  const questionId = question.id();
-
-  if (questionId != null && !isTransientId(questionId)) {
-    return `/auto/dashboard/question/${questionId}${cellQuery}`;
-  } else {
-    const adHocQuery = utf8_to_b64url(
-      JSON.stringify(question.card().dataset_query),
-    );
-    return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}`;
-  }
-}
-
-export function getComparisonDashboardUrl(
-  question: Question,
-  filters,
-  /*?: Filter[] = []*/
-): string {
-  let cellQuery = "";
-
-  if (filters.length > 0) {
-    const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
-    cellQuery = `/cell/${utf8_to_b64url(JSON.stringify(mbqlFilter))}`;
-  }
-
-  const questionId = question.id();
-  const query = question.query();
-
-  if (query instanceof StructuredQuery) {
-    const tableId = query.tableId();
-
-    if (tableId) {
-      if (questionId != null && !isTransientId(questionId)) {
-        return `/auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
-      } else {
-        const adHocQuery = utf8_to_b64url(
-          JSON.stringify(question.card().dataset_query),
-        );
-        return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/table/${tableId}`;
-      }
-    }
   }
 }

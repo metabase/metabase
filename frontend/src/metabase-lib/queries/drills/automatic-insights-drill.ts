@@ -1,4 +1,4 @@
-import * as QUESTION from "metabase-lib/Question";
+import * as ML_Urls from "metabase-lib/urls";
 import { isExpressionField } from "metabase-lib/queries/utils";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { ClickActionProps } from "metabase-lib/queries/drills/types";
@@ -45,7 +45,7 @@ export function automaticDashboardDrillUrl({
     .query() as StructuredQuery;
   const filters = nextQuery.filters();
 
-  return QUESTION.getAutomaticDashboardUrl(question, filters);
+  return ML_Urls.getAutomaticDashboardUrl(question, filters);
 }
 
 export function compareToRestDrillUrl({ question, clicked }: ClickActionProps) {
@@ -59,5 +59,5 @@ export function compareToRestDrillUrl({ question, clicked }: ClickActionProps) {
     .query() as StructuredQuery;
   const filters = nextQuery.filters();
 
-  return QUESTION.getComparisonDashboardUrl(question, filters);
+  return ML_Urls.getComparisonDashboardUrl(question, filters);
 }
