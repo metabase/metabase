@@ -14812,6 +14812,15 @@ databaseChangeLog:
                   defaultValue: null
                   remarks: 'This is used to differentiate instance-analytics collections from all other collections.'
 
+  - changeSet:
+      id: v47.00-033
+      author: calherres
+      comment: Added 0.47.0 - Add join-alias to the visualization_settings.column_settings field refs in card revisions
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.RevisionAddJoinAliasToVisualizationSettingsFieldRefs"
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
