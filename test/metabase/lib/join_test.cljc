@@ -335,7 +335,7 @@
       (doseq [rhs [nil (lib/with-join-alias (lib.metadata/field query (meta/id :users :id)) "User")]]
         (testing (str "rhs = " (pr-str rhs))
           (is (=? [{:lib/desired-column-alias "ID"}
-                   #_{:lib/desired-column-alias "Cat__ID"} ;; FIXME #31233
+                   {:lib/desired-column-alias "Cat__ID"} ;; FIXME #31233
                    {:lib/desired-column-alias "CATEGORY_ID"}
                    {:lib/desired-column-alias "NAME"}
                    {:lib/desired-column-alias "LATITUDE"}

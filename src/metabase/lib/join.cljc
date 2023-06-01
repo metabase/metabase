@@ -437,7 +437,7 @@
    ;; I was on the fence about whether these should get `:lib/source :source/joins` or not -- it seems like based on
    ;; the QB UI they shouldn't. See screenshots in #31174
    (sort-join-condition-columns
-    (lib.metadata.calculation/default-columns query stage-number joined-thing))))
+    (lib.metadata.calculation/visible-columns query stage-number joined-thing {:include-implicitly-joinable? false}))))
 
 (mu/defn join-condition-operators :- [:sequential ::lib.schema.filter/operator]
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
