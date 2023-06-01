@@ -6,15 +6,14 @@ import { HomeLayout } from "./HomeLayout";
 
 interface SetupOpts {
   currentUser?: User;
-  hasMetabot?: boolean;
 }
 
-const setup = ({ currentUser, hasMetabot = false }: SetupOpts = {}) => {
+const setup = ({ currentUser }: SetupOpts = {}) => {
   const state = createMockState({
     currentUser,
   });
 
-  renderWithProviders(<HomeLayout hasMetabot={hasMetabot} />, {
+  renderWithProviders(<HomeLayout hasMetabot={false} />, {
     storeInitialState: state,
   });
 };
