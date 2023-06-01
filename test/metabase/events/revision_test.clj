@@ -4,8 +4,8 @@
    [metabase.events.revision :as revision]
    [metabase.models
     :refer [Card Dashboard DashboardCard Database Metric Revision Segment Table]]
+   [metabase.models.dashboard :as dashboard]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -24,17 +24,13 @@
    :collection_id          nil
    :collection_position    nil
    :collection_preview     true
-   :creator_id             (:creator_id card)
    :database_id            (mt/id)
    :dataset_query          (:dataset_query card)
    :dataset                false
    :description            nil
    :display                :table
    :enable_embedding       false
-   :entity_id              (:entity_id card)
    :embedding_params       nil
-   :id                     (u/the-id card)
-   :made_public_by_id      nil
    :name                   (:name card)
    :parameters             []
    :parameter_mappings     []
@@ -45,13 +41,20 @@
    :visualization_settings {}})
 
 (defn- dashboard->revision-object [dashboard]
-  {:collection_id      (:collection_id dashboard)
-   :description        nil
-   :cache_ttl          nil
-   :auto_apply_filters true
-   :name               (:name dashboard)
-   :tabs               []
-   :cards              []})
+  {:collection_id       (:collection_id dashboard)
+   :description         nil
+   :cache_ttl           nil
+   :auto_apply_filters  true
+   :name                (:name dashboard)
+   :tabs                []
+   :cards               []
+   :archived            false
+   :collection_position nil
+   :enable_embedding    false
+   :made_public_by_id   nil
+   :embedding_params    nil
+   :parameters          []
+   :public_uuid         nil})
 
 (deftest card-create-test
   (testing ":card-create"
@@ -130,7 +133,7 @@
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
               :object       (assoc (dashboard->revision-object dashboard)
-                                   :cards [(assoc (select-keys dashcard [:id :card_id :size_x :size_y :row :col :dashboard_tab_id]) :series [])])
+                                   :cards [(assoc (apply dissoc dashcard @#'dashboard/excluded-columns-for-dashcard-revision) :series [])])
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
@@ -172,14 +175,18 @@
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :crowberto)
-              :object       (assoc (dashboard->revision-object dashboard) :cards [{:id               (:id dashcard)
-                                                                                   :card_id          card-id
-                                                                                   :size_x           3
-                                                                                   :size_y           4
-                                                                                   :row              0
-                                                                                   :col              0
-                                                                                   :series           []
-                                                                                   :dashboard_tab_id nil}])
+              :object       (assoc (dashboard->revision-object dashboard) :cards [{:id                    (:id dashcard)
+                                                                                   :card_id               card-id
+                                                                                   :size_x                3
+                                                                                   :size_y                4
+                                                                                   :row                   0
+                                                                                   :col                   0
+                                                                                   :series                []
+                                                                                   :dashboard_tab_id      nil
+                                                                                   :action_id nil
+                                                                                   :parameter_mappings     []
+                                                                                   :visualization_settings {}
+                                                                                   :dashboard_id           dashboard-id}])
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
