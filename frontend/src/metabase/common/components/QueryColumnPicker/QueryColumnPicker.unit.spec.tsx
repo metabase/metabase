@@ -7,7 +7,7 @@ import QueryColumnPicker, { QueryColumnPickerProps } from "./QueryColumnPicker";
 type SetupOpts = Partial<
   Pick<
     QueryColumnPickerProps,
-    "query" | "stageIndex" | "clause" | "hasBucketing"
+    "query" | "stageIndex" | "clause" | "hasBinning" | "hasTemporalBucketing"
   >
 > & {
   columns?: Lib.ColumnMetadata[];
@@ -26,7 +26,8 @@ function setup({
   query = createQuery(),
   stageIndex = 0,
   columns = Lib.breakoutableColumns(query, stageIndex),
-  hasBucketing = true,
+  hasBinning = true,
+  hasTemporalBucketing = true,
   ...props
 }: SetupOpts = {}) {
   const onSelect = jest.fn();
@@ -43,7 +44,8 @@ function setup({
       query={query}
       stageIndex={stageIndex}
       columnGroups={Lib.groupColumns(columns)}
-      hasBucketing={hasBucketing}
+      hasBinning={hasBinning}
+      hasTemporalBucketing={hasTemporalBucketing}
       onSelect={onSelect}
       onClose={onClose}
     />,
@@ -112,7 +114,7 @@ describe("QueryColumnPicker", () => {
     });
 
     it("shouldn't show bucketing options if bucketing is disabled", () => {
-      setup({ hasBucketing: false });
+      setup({ hasBinning: false, hasTemporalBucketing: false });
 
       const total = screen.getByRole("option", { name: "Total" });
       const createdAt = screen.getByRole("option", { name: "Created At" });

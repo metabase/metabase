@@ -18,7 +18,8 @@ export interface QueryColumnPickerProps {
   stageIndex: number;
   clause?: Lib.Clause;
   columnGroups: Lib.ColumnGroup[];
-  hasBucketing?: boolean;
+  hasBinning?: boolean;
+  hasTemporalBucketing?: boolean;
   maxHeight?: number;
   onSelect: (column: Lib.ColumnMetadata) => void;
   onClose?: () => void;
@@ -40,7 +41,8 @@ function QueryColumnPicker({
   stageIndex,
   clause,
   columnGroups,
-  hasBucketing = false,
+  hasBinning = false,
+  hasTemporalBucketing = false,
   maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
   onClose,
@@ -51,7 +53,10 @@ function QueryColumnPicker({
         const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
         const items = Lib.getColumnsFromColumnGroup(group).map(column =>
-          getColumnListItem(query, stageIndex, column, { hasBucketing }),
+          getColumnListItem(query, stageIndex, column, {
+            hasBinning,
+            hasTemporalBucketing,
+          }),
         );
 
         return {
@@ -60,7 +65,7 @@ function QueryColumnPicker({
           items,
         };
       }),
-    [query, stageIndex, columnGroups, hasBucketing],
+    [query, stageIndex, columnGroups, hasBinning, hasTemporalBucketing],
   );
 
   const handleSelect = useCallback(
@@ -92,52 +97,55 @@ function QueryColumnPicker({
 
   const renderItemExtra = useCallback(
     (item: ColumnListItem) => {
-      if (!hasBucketing) {
-        return null;
+      if (hasBinning) {
+        const binningStrategies = Lib.availableBinningStrategies(
+          query,
+          item.column,
+        );
+
+        if (binningStrategies.length > 0) {
+          const selectedBucket = clause ? Lib.binning(clause) : null;
+          return (
+            <BinningStrategyPickerPopover
+              query={query}
+              stageIndex={stageIndex}
+              selectedBucket={selectedBucket}
+              buckets={binningStrategies}
+              withDefaultBucket={!clause}
+              onSelect={nextBucket => {
+                handleSelect(Lib.withBinning(item.column, nextBucket));
+              }}
+            />
+          );
+        }
       }
 
-      const binningStrategies = Lib.availableBinningStrategies(
-        query,
-        item.column,
-      );
-
-      if (binningStrategies.length > 0) {
-        const selectedBucket = clause ? Lib.binning(clause) : null;
-        return (
-          <BinningStrategyPickerPopover
-            query={query}
-            stageIndex={stageIndex}
-            selectedBucket={selectedBucket}
-            buckets={binningStrategies}
-            withDefaultBucket={!clause}
-            onSelect={nextBucket => {
-              handleSelect(Lib.withBinning(item.column, nextBucket));
-            }}
-          />
+      if (hasTemporalBucketing) {
+        const temporalBuckets = Lib.availableTemporalBuckets(
+          query,
+          item.column,
         );
-      }
 
-      const temporalBuckets = Lib.availableTemporalBuckets(query, item.column);
-
-      if (temporalBuckets.length > 0) {
-        const selectedBucket = clause ? Lib.temporalBucket(clause) : null;
-        return (
-          <TemporalBucketPickerPopover
-            query={query}
-            stageIndex={stageIndex}
-            selectedBucket={selectedBucket}
-            buckets={temporalBuckets}
-            withDefaultBucket={!clause}
-            onSelect={nextBucket => {
-              handleSelect(Lib.withTemporalBucket(item.column, nextBucket));
-            }}
-          />
-        );
+        if (temporalBuckets.length > 0) {
+          const selectedBucket = clause ? Lib.temporalBucket(clause) : null;
+          return (
+            <TemporalBucketPickerPopover
+              query={query}
+              stageIndex={stageIndex}
+              selectedBucket={selectedBucket}
+              buckets={temporalBuckets}
+              withDefaultBucket={!clause}
+              onSelect={nextBucket => {
+                handleSelect(Lib.withTemporalBucket(item.column, nextBucket));
+              }}
+            />
+          );
+        }
       }
 
       return null;
     },
-    [query, stageIndex, clause, hasBucketing, handleSelect],
+    [query, stageIndex, clause, hasBinning, hasTemporalBucketing, handleSelect],
   );
 
   return (
@@ -194,33 +202,38 @@ function getColumnListItem(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
-  { hasBucketing = false } = {},
+  { hasBinning = false, hasTemporalBucketing = false } = {},
 ) {
   const displayInfo = Lib.displayInfo(query, stageIndex, column);
 
-  const binningStrategies = Lib.availableBinningStrategies(query, column);
-  const temporalBuckets = Lib.availableTemporalBuckets(query, column);
+  if (hasBinning) {
+    const binningStrategies = Lib.availableBinningStrategies(query, column);
 
-  if (hasBucketing && binningStrategies.length > 0) {
-    const defaultBucket = binningStrategies.find(
-      bucket => Lib.displayInfo(query, stageIndex, bucket).default,
-    );
-    return {
-      ...displayInfo,
-      column: defaultBucket ? Lib.withBinning(column, defaultBucket) : column,
-    };
+    if (binningStrategies.length > 0) {
+      const defaultBucket = binningStrategies.find(
+        bucket => Lib.displayInfo(query, stageIndex, bucket).default,
+      );
+      return {
+        ...displayInfo,
+        column: defaultBucket ? Lib.withBinning(column, defaultBucket) : column,
+      };
+    }
   }
 
-  if (hasBucketing && temporalBuckets.length > 0) {
-    const defaultBucket = temporalBuckets.find(
-      bucket => Lib.displayInfo(query, stageIndex, bucket).default,
-    );
-    return {
-      ...displayInfo,
-      column: defaultBucket
-        ? Lib.withTemporalBucket(column, defaultBucket)
-        : column,
-    };
+  if (hasTemporalBucketing) {
+    const temporalBuckets = Lib.availableTemporalBuckets(query, column);
+
+    if (temporalBuckets.length > 0) {
+      const defaultBucket = temporalBuckets.find(
+        bucket => Lib.displayInfo(query, stageIndex, bucket).default,
+      );
+      return {
+        ...displayInfo,
+        column: defaultBucket
+          ? Lib.withTemporalBucket(column, defaultBucket)
+          : column,
+      };
+    }
   }
 
   return { ...displayInfo, column };

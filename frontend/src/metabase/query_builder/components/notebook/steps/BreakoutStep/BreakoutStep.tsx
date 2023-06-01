@@ -88,7 +88,8 @@ function BreakoutStep({
             clause={breakout}
             stageIndex={stageIndex}
             columnGroups={getColumnGroups(breakout)}
-            hasBucketing
+            hasBinning
+            hasTemporalBucketing
             onSelect={(column: Lib.ColumnMetadata) => {
               const isUpdate = breakout != null;
               if (isUpdate) {
