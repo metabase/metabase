@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { bindActionCreators } from "@reduxjs/toolkit";
 
@@ -17,7 +17,7 @@ export default () => ComposedComponent => {
       ],
   });
   return connect(mapStateToProps)(
-    class extends React.Component {
+    class extends Component {
       static displayName = "EntityType";
 
       _boundActionCreators = {};

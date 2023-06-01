@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 

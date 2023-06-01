@@ -2,6 +2,7 @@
   "Common utility functions useful throughout the codebase."
   (:require
    [camel-snake-kebab.internals.macros :as csk.macros]
+   [clojure.data :refer [diff]]
    [clojure.pprint :as pprint]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -787,8 +788,32 @@
 
 (defn assoc-default
   "Called like `(assoc m k v)`, this does [[assoc]] iff `m` does not contain `k`
-  and `v` is not nil."
-  [m k v]
-  (if (or (nil? v) (contains? m k))
-    m
-    (assoc m k v)))
+  and `v` is not nil. Can be called with multiple key value pairs. If a key occurs
+  more than once, only the first occurrence with a non-nil value is used."
+  ([m k v]
+   (if (or (nil? v) (contains? m k))
+     m
+     (assoc m k v)))
+  ([m k v & kvs]
+   (let [ret (assoc-default m k v)]
+     (if kvs
+       (if (next kvs)
+         (recur ret (first kvs) (second kvs) (nnext kvs))
+         (throw (ex-info "assoc-default expects an even number of key-values"
+                         {:kvs kvs})))
+       ret))))
+
+(defn classify-changes
+  "Given 2 lists of seq maps of changes, where each map an has an `id` key,
+  return a map of 3 keys: `:to-create`, `:to-update`, `:to-delete`.
+
+  Where:
+  :to-create is a list of maps that ids in `new-items`
+  :to-update is a list of maps that has ids in both `current-items` and `new-items`
+  :to delete is a list of maps that has ids only in `current-items`"
+  [current-items new-items]
+  (let [[delete-ids create-ids update-ids] (diff (set (map :id current-items))
+                                                 (set (map :id new-items)))]
+    {:to-create (when (seq create-ids) (filter #(create-ids (:id %)) new-items))
+     :to-delete (when (seq delete-ids) (filter #(delete-ids (:id %)) current-items))
+     :to-update (when (seq update-ids) (filter #(update-ids (:id %)) new-items))}))

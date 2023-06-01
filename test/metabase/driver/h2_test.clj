@@ -287,7 +287,7 @@
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
         (is (= #{"PUBLIC"}
-               (driver/syncable-schemas driver/*driver* (mt/id))))))))
+               (driver/syncable-schemas driver/*driver* (mt/db))))))))
 
 (deftest syncable-audit-db-test
   (mt/test-driver :h2

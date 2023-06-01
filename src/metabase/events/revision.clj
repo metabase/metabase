@@ -19,6 +19,9 @@
     :dashboard-add-cards
     :dashboard-remove-cards
     :dashboard-reposition-cards
+    :dashboard-add-tabs
+    :dashboard-remove-tabs
+    :dashboard-update-tabs
     :metric-create
     :metric-update
     :metric-delete

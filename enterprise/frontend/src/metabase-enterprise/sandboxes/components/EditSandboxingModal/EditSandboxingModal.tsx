@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import * as React from "react";
 import _ from "underscore";
 import { jt, t } from "ttag";
 import { useAsyncFn } from "react-use";

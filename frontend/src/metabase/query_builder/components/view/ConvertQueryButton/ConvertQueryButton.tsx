@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import { getEngineNativeType } from "metabase/lib/engine";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -28,7 +28,7 @@ const ConvertQueryButton = ({
   }, [onOpenModal]);
 
   return (
-    <Tooltip tooltip={tooltip} placement="bottom">
+    <Tooltip tooltip={tooltip} placement="top">
       <SqlButton
         onClick={handleClick}
         aria-label={tooltip}

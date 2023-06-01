@@ -1,4 +1,6 @@
-import React, {
+import {
+  createRef,
+  Children,
   Component,
   CSSProperties,
   Key,
@@ -133,7 +135,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
     );
     this._getValues = () => _getValues(this.props);
     this._getValuesSet = () => _getValuesSet(this.props);
-    this.selectButtonRef = React.createRef();
+    this.selectButtonRef = createRef();
   }
 
   _getSections(): SelectSection<TOption>[] {
@@ -143,15 +145,12 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
       const optionToItem = (option: any) => option.props;
       const first = (Array.isArray(children) ? children[0] : children) as any;
       if (first && (first as ReactElement).type === OptionSection) {
-        return React.Children.map(children, child => ({
+        return Children.map(children, child => ({
           ...(child as ReactElement<OptionProps<TValue>>).props,
-          items: React.Children.map(
-            (child as any).props.children,
-            optionToItem,
-          ),
+          items: Children.map((child as any).props.children, optionToItem),
         })) as any;
       } else if (first && first.type === Option) {
-        return [{ items: React.Children.map(children, optionToItem) }] as any;
+        return [{ items: Children.map(children, optionToItem) }] as any;
       }
     } else if (options) {
       if (this.props.optionSectionFn) {

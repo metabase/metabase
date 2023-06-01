@@ -1,4 +1,3 @@
-import React from "react";
 import {
   createMockSettingsState,
   createMockState,
@@ -26,7 +25,7 @@ const setup = () => {
   renderWithProviders(<SsoButton />, { storeInitialState: state });
 };
 
-describe("SSOButton", () => {
+describe("SsoButton", () => {
   it("should login immediately when embedded", async () => {
     setup();
 

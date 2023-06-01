@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import Mustache from "mustache";
 import moment, { Moment } from "moment-timezone";

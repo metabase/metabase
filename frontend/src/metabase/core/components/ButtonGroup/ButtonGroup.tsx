@@ -1,4 +1,4 @@
-import React, { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
+import { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
 import { ButtonGroupRoot } from "./ButtonGroup.styled";
 
 export interface ButtonGroupProps extends HTMLAttributes<HTMLDivElement> {

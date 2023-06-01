@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { Fragment, useEffect } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t, ngettext, msgid } from "ttag";
@@ -184,16 +184,16 @@ const PeopleList = ({
             <th />
             <th>{t`Email`}</th>
             {showDeactivated ? (
-              <React.Fragment>
+              <Fragment>
                 <th>{t`Deactivated`}</th>
                 <th />
-              </React.Fragment>
+              </Fragment>
             ) : (
-              <React.Fragment>
+              <Fragment>
                 <th>{t`Groups`}</th>
                 <th>{t`Last Login`}</th>
                 <th />
-              </React.Fragment>
+              </Fragment>
             )}
           </tr>
         </thead>

@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
-import React, { useState, useRef } from "react";
+import { useState, useRef } from "react";
+
+import * as React from "react";
 import { jt, t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";

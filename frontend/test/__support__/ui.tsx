@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { render, screen } from "@testing-library/react";
 import type { ByRoleMatcher } from "@testing-library/react";
 import _ from "underscore";

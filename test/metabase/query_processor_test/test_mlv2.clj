@@ -30,19 +30,12 @@
   false)
 
 (defn- skip-metadata-calculation-tests? [legacy-query]
-  (or
    ;; #29907: wrong column name for joined columns in `:breakout`
    (mbql.u/match-one legacy-query
      {:breakout breakouts}
      (mbql.u/match-one breakouts
        [:field _id-or-name {:join-alias _join-alias}]
-       "#29907"))
-   ;; #29935: metadata for an `:aggregation` with a `:case` expression not working
-   (mbql.u/match-one legacy-query
-     {:aggregation aggregations}
-     (mbql.u/match-one aggregations
-       :case
-       "#29935"))))
+       "#29907")))
 
 (defn- test-mlv2-metadata [original-query _qp-metadata]
   {:pre [(map? original-query)]}

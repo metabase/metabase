@@ -1,4 +1,3 @@
-import React from "react";
 import { createMockDashboard } from "metabase-types/api/mocks";
 import { setupDashboardEndpoints } from "__support__/server-mocks";
 import {
