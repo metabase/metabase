@@ -25,14 +25,14 @@ import {
 } from "./HomeXraySection.styled";
 
 export const HomeXraySection = () => {
-  const databaseState = useDatabaseListQuery();
-  const database = getXrayDatabase(databaseState.data);
-  const candidateState = useDatabaseCandidateListQuery({
+  const databaseListState = useDatabaseListQuery();
+  const database = getXrayDatabase(databaseListState.data);
+  const candidateListState = useDatabaseCandidateListQuery({
     query: database ? { id: database.id } : undefined,
     enabled: database != null,
   });
-  const isLoading = databaseState.isLoading || candidateState.isLoading;
-  const error = databaseState.error ?? candidateState.error;
+  const isLoading = databaseListState.isLoading || candidateListState.isLoading;
+  const error = databaseListState.error ?? candidateListState.error;
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -42,7 +42,9 @@ export const HomeXraySection = () => {
     return null;
   }
 
-  return <HomeXrayView database={database} candidates={candidateState.data} />;
+  return (
+    <HomeXrayView database={database} candidates={candidateListState.data} />
+  );
 };
 
 interface HomeXrayViewProps {

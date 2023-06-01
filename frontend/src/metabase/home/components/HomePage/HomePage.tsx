@@ -21,15 +21,19 @@ import { HomeContent } from "../HomeContent";
 const SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 
 export const HomePage = (): JSX.Element => {
-  const { data: databases, ...databaseState } = useDatabaseListQuery();
-  const { data: models, ...modelState } = useSearchListQuery({
+  const databaseListState = useDatabaseListQuery();
+  const modelListState = useSearchListQuery({
     query: SEARCH_QUERY,
   });
-  const isLoading = databaseState.isLoading || modelState.isLoading;
-  const error = databaseState.error ?? modelState.error;
+  const isLoading = databaseListState.isLoading || modelListState.isLoading;
+  const error = databaseListState.error ?? modelListState.error;
   const dashboardId = useSelector(getCustomHomePageDashboardId);
   const isMetabotEnabled = useSelector(getIsMetabotEnabled);
-  const hasMetabot = getHasMetabot(databases, models, isMetabotEnabled);
+  const hasMetabot = getHasMetabot(
+    databaseListState.data,
+    modelListState.data,
+    isMetabotEnabled,
+  );
   const dispatch = useDispatch();
 
   useEffect(() => {
