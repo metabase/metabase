@@ -54,11 +54,11 @@ export const useEntityListQuery = <TItem, TQuery = never>(
   const isLoading = useSelector(state => getLoading(state, options));
   const isLoaded = useSelector(state => getLoaded(state, options));
   const isLoadedPreviously = usePrevious(isLoaded);
-  const isInvalidated = !isLoaded && isLoadedPreviously; // reload the query if it was manually invalidated
+  const isInvalidated = !isLoaded && isLoadedPreviously;
 
   const dispatch = useDispatch();
   useDeepCompareEffect(() => {
-    if (enabled) {
+    if (enabled || (enabled && isInvalidated)) {
       const action = dispatch(fetchList(entityQuery, { reload }));
       Promise.resolve(action).catch(() => undefined);
     }
