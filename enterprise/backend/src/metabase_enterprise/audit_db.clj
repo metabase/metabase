@@ -61,6 +61,7 @@
   :feature :none
   []
   (u/prog1 (ensure-db-installed!)
+    ;; There's a sync scheduled, but we want to force a sync right away:
     (if-let [audit-db (t2/select-one :model/Database {:where [:= :is_audit true]})]
       (do (log/info "Audit DB installed, beginning Audit DB Sync...")
           (sync-metadata/sync-db-metadata! audit-db))

@@ -232,7 +232,7 @@
              include-saved-questions-tables?
              include-editable-data-model?
              exclude-uneditable-details?]}]
-  (let [dbs (t2/select Database {:where [:= :is_audit true]
+  (let [dbs (t2/select Database {:where [:= :is_audit false]
                                  :order-by [:%lower.name :%lower.engine]})
         filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (add-native-perms-info dbs)
