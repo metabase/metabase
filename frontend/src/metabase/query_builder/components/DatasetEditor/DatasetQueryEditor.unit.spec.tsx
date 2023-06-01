@@ -1,10 +1,10 @@
 import { screen } from "@testing-library/react";
-import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
@@ -53,6 +53,7 @@ const setup = async ({
 }: SetupOpts) => {
   setupDatabasesEndpoints([TEST_DB]);
   setupCollectionsEndpoints([ROOT_COLLECTION]);
+  setupNativeQuerySnippetEndpoints();
 
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({
@@ -84,8 +85,6 @@ const setup = async ({
 
 describe("DatasetQueryEditor", () => {
   beforeEach(() => {
-    fetchMock.get("path:/api/native-query-snippet", () => []);
-
     jest.unmock("metabase/query_builder/components/NativeQueryEditor");
 
     jest
