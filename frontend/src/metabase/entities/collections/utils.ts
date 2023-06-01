@@ -22,7 +22,7 @@ export function normalizedCollection(collection: Collection) {
 }
 
 export function getCollectionIcon(
-  collection: Collection,
+  collection: Partial<Collection>,
   { tooltip = "default" } = {},
 ) {
   if (collection.id === PERSONAL_COLLECTIONS.id) {
@@ -48,10 +48,21 @@ export function getCollectionIcon(
     : { name: "folder" };
 }
 
-export const getCollectionTooltip = (collection: Collection) => {
+const collectionIconTooltipNameMap = {
+  collection: t`collection`,
+  question: t`question`,
+  model: t`model`,
+};
+
+export const getCollectionTooltip = (
+  collection: Partial<Collection>,
+  entity: "collection" | "question" | "model" = "collection",
+) => {
+  const entityText = collectionIconTooltipNameMap[entity];
+
   switch (collection.type) {
     case "instance-analytics":
-      return t`This is a read-only Instance Analytics collection`;
+      return t`This is a read-only Instance Analytics ${entityText}.`;
     default:
       return undefined;
   }

@@ -13,7 +13,9 @@ export function isPersonalCollection(collection: Partial<Collection>): boolean {
   return typeof collection.personal_owner_id === "number";
 }
 
-export function isInstanceAnalyticsCollection(collection: Collection): boolean {
+export function isInstanceAnalyticsCollection(
+  collection: Partial<Collection>,
+): boolean {
   return collection.type === "instance-analytics";
 }
 
