@@ -8,7 +8,7 @@ import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 
 import { INPUT_WRAPPER_TEST_ID } from "metabase/core/components/TabButton";
 import { DashboardTabs } from "./DashboardTabs";
-import { TEST_DASHBOARD_STATE } from "./utils";
+import { TEST_DASHBOARD_STATE } from "./test-utils";
 import { useDashboardTabs } from "./useDashboardTabs";
 
 function setup({

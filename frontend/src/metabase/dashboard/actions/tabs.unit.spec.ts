@@ -1,4 +1,4 @@
-import { TEST_DASHBOARD_STATE } from "../components/DashboardTabs/utils";
+import { TEST_DASHBOARD_STATE } from "../components/DashboardTabs/test-utils";
 import { moveTab, tabsReducer } from "./tabs";
 
 /**
