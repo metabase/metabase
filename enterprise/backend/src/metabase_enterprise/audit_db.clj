@@ -60,9 +60,9 @@
   "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
   :feature :none
   []
-  (ensure-db-installed!)
-  (if-let [audit-db (t2/select-one :model/Database {:where [:= :is_audit true]})]
-    (do (log/info "Audit DB installed, beginning Audit DB Sync...")
-        (sync-metadata/sync-db-metadata! audit-db))
-    (when (not config/is-prod?)
-      (log/warn "Audit DB was not installed correctly!!"))))
+  (u/prog1 (ensure-db-installed!)
+    (if-let [audit-db (t2/select-one :model/Database {:where [:= :is_audit true]})]
+      (do (log/info "Audit DB installed, beginning Audit DB Sync...")
+          (sync-metadata/sync-db-metadata! audit-db))
+      (when (not config/is-prod?)
+        (log/warn "Audit DB was not installed correctly!!")))))
