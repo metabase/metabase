@@ -203,7 +203,7 @@ describe("scenarios > organization > timelines > collection", () => {
       openMenu("RC2");
       cy.findByText("Move event").click();
       cy.findByText("Releases").click();
-      getModal().within(() => cy.button("Move").click());
+      getModal().button("Move").click();
       cy.wait("@updateEvent");
       cy.findByText("RC2").should("not.exist");
 
@@ -228,7 +228,7 @@ describe("scenarios > organization > timelines > collection", () => {
       openMenu("RC2");
       cy.findByText("Move event").click();
       cy.findByText("Releases").click();
-      getModal().within(() => cy.button("Move").click());
+      getModal().button("Move").click();
       cy.wait("@updateEvent");
       cy.findByText("RC2").should("not.exist");
 
