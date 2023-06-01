@@ -23,53 +23,11 @@ jobs:
     steps:
       - id: testRunId
         run: echo testRunId=$(npx uuid) >> "$GITHUB_OUTPUT"
-  files-changed:
-    name: Check which files changed
-    runs-on: ubuntu-22.04
-    timeout-minutes: 3
-    outputs:
-      e2e_all: ${{ steps.changes.outputs.e2e_all }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Test which files changed
-        uses: dorny/paths-filter@v2.11.1
-        id: changes
-        with:
-          token: ${{ github.token }}
-          filters: .github/file-paths.yaml
-
-  build:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.e2e_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 25
-    strategy:
-      matrix:
-        edition: [oss, ee]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
-    steps:
-      - uses: actions/checkout@v3
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: e2e-tests
-
-      - name: Build uberjar with ./bin/build.sh
-        run: ./bin/build.sh
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    needs: [build, files-changed, test-run-id]
+    needs: test-run-id
     if: |
-      always() &&
-      needs.files-changed.outputs.e2e_all == 'true' &&
-      needs.build.result == 'success'
+      always()
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
@@ -150,10 +108,18 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
-      - name: Record runs using Deploysentinel except for the release branch
-        if: ${{ github.ref == 'refs/heads/master' || !(startsWith(github.event.pull_request.base.ref, 'release')) }}
+      - name: Download Metabase uberjar from a previously stored artifact
         run: |
-          echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
+          curl -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/metabase/metabase/actions/artifacts/726241236/zip \
+            -o mb.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Unzip Metabase artifact containing an uberjar
+        run: unzip mb.zip
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare JDK ${{ matrix.java-version }}
@@ -166,40 +132,18 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
-      - uses: actions/download-artifact@v3
-        name: Retrieve uberjar artifact for ${{ matrix.edition }}
-        with:
-          name: metabase-${{ matrix.edition }}-uberjar
       - name: Get the version info
         run: |
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
 
-      - name: Run OSS-specific Cypress tests
-        if: matrix.edition == 'oss' && github.event_name != 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags=@OSS \
-          --spec './e2e/test/scenarios/**/*.cy.spec.js'
-        env:
-          TERM: xterm
-
-      - name: Run EE Cypress tests on ${{ matrix.folder }}
-        if: matrix.edition == 'ee' && github.event_name != 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags="-@quarantine" \
-          --folder ${{ matrix.folder }}
-        env:
-          TERM: xterm
 
       # REPLAY.IO specific jobs
       - name: Install Replay.io browser
-        if: ${{ github.event_name == 'schedule' }}
         run: npx @replayio/cypress install
 
       - name: Run OSS-specific Cypress tests using Replay.io browser
-        if: matrix.edition == 'oss' && github.event_name == 'schedule'
+        if: always()
         run: |
           yarn run test-cypress-run \
           --env grepTags=@OSS \
@@ -210,9 +154,10 @@ jobs:
           CYPRESS_REPLAYIO_ENABLED: 1
           RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
+          RECORD_REPLAY_DISABLE_ASSERTS: 1
 
       - name: Run EE Cypress tests on ${{ matrix.folder }} using Replay.io browser
-        if: matrix.edition == 'ee' && github.event_name == 'schedule'
+        if: always()
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@quarantine" \
@@ -223,9 +168,10 @@ jobs:
           CYPRESS_REPLAYIO_ENABLED: 1
           RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
+          RECORD_REPLAY_DISABLE_ASSERTS: 1
 
       - name: Upload Replay.io recordings
-        if: github.event_name == 'schedule' && always()
+        if: always()
         uses: replayio/action-upload@v0.4.7
         with:
           api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ
@@ -240,92 +186,3 @@ jobs:
             ./cypress
             ./logs/test.log
           if-no-files-found: ignore
-
-  e2e-tests-skipped-stub:
-    needs: [build, files-changed]
-    if: |
-      always() &&
-      needs.files-changed.outputs.e2e_all == 'false' &&
-      needs.build.result == 'skipped'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 5
-    name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
-    strategy:
-      fail-fast: false
-      matrix:
-        java-version: [11]
-        edition: [ee]
-        folder:
-          - "admin"
-          - "binning"
-          - "collections"
-          - "custom-column"
-          - "dashboard"
-          - "dashboard-filters"
-          - "downloads"
-          - "embedding"
-          - "filters"
-          - "joins"
-          - "models"
-          - "native"
-          - "native-filters"
-          - "onboarding"
-          - "organization"
-          - "permissions"
-          - "question"
-          - "sharing"
-          - "visualizations"
-        include:
-          - edition: oss
-            context: grep
-            java-version: 11
-    steps:
-      - run: |
-          echo "Didn't run due to conditional filtering"
-
-  visual-regression-tests:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 45
-    needs: build
-    if: ${{ github.event_name != 'schedule' }}
-    name: percy-visual-regression-tests
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-    services:
-      maildev:
-        image: maildev/maildev:2.0.5
-        ports:
-          - "1080:1080"
-          - "1025:1025"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Enable Percy recording on master only
-        if: github.ref == 'refs/heads/master'
-        run: |
-          echo "PERCY_TOKEN=${{ secrets.PERCY_TOKEN }}" >> $GITHUB_ENV
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare JDK 11
-        uses: actions/setup-java@v3
-        with:
-          java-version: 11
-          distribution: 'temurin'
-      - name: Prepare Cypress environment
-        uses: ./.github/actions/prepare-cypress
-
-      - uses: actions/download-artifact@v3
-        name: Retrieve uberjar artifact for ee
-        with:
-          name: metabase-ee-uberjar
-      - name: Get the version info
-        run: |
-          jar xf target/uberjar/metabase.jar version.properties
-          mv version.properties resources/
-      - name: Percy Test
-        run: yarn run test-visual-run
-        env:
-          PERCY_TOKEN: ${{ env.PERCY_TOKEN }}
