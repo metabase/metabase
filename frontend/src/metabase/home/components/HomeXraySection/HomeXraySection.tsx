@@ -53,12 +53,12 @@ interface HomeXrayViewProps {
 }
 
 const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
+  const isSample = database.is_sample;
   const schemas = candidates.map(d => d.schema);
   const [schema, setSchema] = useState(schemas[0]);
   const candidate = candidates.find(d => d.schema === schema);
   const tableCount = candidate ? candidate.tables.length : 0;
   const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
-  const isSample = database.is_sample;
   const canSelectSchema = schemas.length > 1;
 
   return (
