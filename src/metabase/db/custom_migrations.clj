@@ -292,40 +292,34 @@
                              column_settings)))))))
 
 (define-reversible-migration AddJoinAliasToVisualizationSettingsFieldRefs
+  (let [update-one! (fn [{:keys [id visualization_settings] :as card}]
+                  (let [updated (add-join-alias-to-visualization-field-refs card)]
+                    (when (not= visualization_settings updated)
+                      (t2/query-one {:update :report_card
+                                     :set    {:visualization_settings updated}
+                                     :where  [:= :id id]}))))]
+    (run! update-one! (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
+                                           :from   [:report_card]
+                                           :where  [:and
+                                                    [:or
+                                                     [:= :query_type nil]
+                                                     [:= :query_type "query"]]
+                                                    [:like :visualization_settings "%\\\\\"ref\\\\\",[\\\\\"field%"]
+                                                    [:like :result_metadata "%\"join-alias\"%"]]})))
   (let [update! (fn [{:keys [id visualization_settings]}]
-                  (t2/query-one {:update :report_card
-                                 :set    {:visualization_settings visualization_settings}
-                                 :where  [:= :id id]}))]
-    (run! update! (eduction (keep (fn [{:keys [id visualization_settings] :as card}]
-                                    (let [updated (add-join-alias-to-visualization-field-refs card)]
-                                      (when (not= visualization_settings updated)
-                                        {:id                     id
-                                         :visualization_settings updated}))))
-                            (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
-                                                 :from   [:report_card]
-                                                 :where  [:and
-                                                          [:or
-                                                           [:= :query_type nil]
-                                                           [:= :query_type "query"]]
-                                                          [:like :visualization_settings "%\"column_settings\"%"]
-                                                          [:like :result_metadata "%\"join-alias\"%"]]}))))
-  (let [update! (fn [{:keys [id visualization_settings]}]
-                  (t2/query-one {:update :report_card
-                                 :set    {:visualization_settings visualization_settings}
-                                 :where  [:= :id id]}))]
-    (run! update! (eduction (keep (fn [{:keys [id visualization_settings]}]
-                                    (let [updated (remove-join-alias-from-visualization-field-refs visualization_settings)]
-                                      (when (not= visualization_settings updated)
-                                        {:id                     id
-                                         :visualization_settings updated}))))
-                            (t2/reducible-query {:select [:id :visualization_settings]
-                                                 :from   [:report_card]
-                                                 :where  [:and
-                                                          [:or
-                                                           [:= :query_type nil]
-                                                           [:= :query_type "query"]]
-                                                          [:like :visualization_settings "%\"column_settings\":%"]
-                                                          [:like :visualization_settings "%\"join-alias\":%"]]})))))
+                  (let [updated (remove-join-alias-from-visualization-field-refs visualization_settings)]
+                    (when (not= visualization_settings updated)
+                      (t2/query-one {:update :report_card
+                                     :set    {:visualization_settings updated}
+                                     :where  [:= :id id]}))))]
+    (run! update! (t2/reducible-query {:select [:id :visualization_settings]
+                                       :from   [:report_card]
+                                       :where  [:and
+                                                [:or
+                                                 [:= :query_type nil]
+                                                 [:= :query_type "query"]]
+                                                [:like :visualization_settings "%\"ref\\\\\",[\\\\\"field%"]
+                                                [:like :visualization_settings "%\\\\\"join-alias\\\\\"%"]]}))))
 
 (defn- update-card-row-on-downgrade-for-dashboard-tab
   [dashboard-id]
