@@ -1307,6 +1307,10 @@ export class ExpressionDimension extends Dimension {
     });
   }
 
+  getMLv1CompatibleDimension() {
+    return this.withoutOptions("base-type", "effective-type");
+  }
+
   icon(): string {
     const field = this.field();
     return field ? field.icon() : "unknown";

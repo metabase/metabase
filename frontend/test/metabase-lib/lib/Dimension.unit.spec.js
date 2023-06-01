@@ -755,6 +755,28 @@ describe("Dimension", () => {
           });
         });
       });
+
+      describe("getMLv1CompatibleDimension", () => {
+        it("should strip away *-type options", () => {
+          const dimension = Dimension.parseMBQL(
+            [
+              "expression",
+              "Hello World",
+              {
+                "base-type": "type/Text",
+                "effective-type": "type/Text",
+              },
+            ],
+            metadata,
+          );
+
+          expect(dimension.getMLv1CompatibleDimension().mbql()).toEqual([
+            "expression",
+            "Hello World",
+            null,
+          ]);
+        });
+      });
     });
 
     describe("dimensions()", () => {
