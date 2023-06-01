@@ -1,8 +1,8 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 import { HomeCaption } from "./HomeCaption";
 
 const setup = () => {
-  renderWithProviders(<HomeCaption>Title</HomeCaption>);
+  render(<HomeCaption>Title</HomeCaption>);
 };
 
 describe("HomeCaption", () => {

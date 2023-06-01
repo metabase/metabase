@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 import { HomeModelCard, HomeModelIconProps } from "./HomeModelCard";
 
 interface SetupOpts {
@@ -8,7 +8,7 @@ interface SetupOpts {
 }
 
 const setup = ({ title, icon, url }: SetupOpts) => {
-  renderWithProviders(<HomeModelCard title={title} icon={icon} url={url} />);
+  render(<HomeModelCard title={title} icon={icon} url={url} />);
 };
 
 describe("HomeModelCard", () => {

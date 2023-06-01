@@ -1,8 +1,8 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 import { HomeCard } from "./HomeCard";
 
 const setup = () => {
-  renderWithProviders(<HomeCard>A look at table</HomeCard>);
+  render(<HomeCard>A look at table</HomeCard>);
 };
 
 describe("HomeCard", () => {

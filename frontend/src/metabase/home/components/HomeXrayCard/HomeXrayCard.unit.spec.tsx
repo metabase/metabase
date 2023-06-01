@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 import { HomeXrayCard } from "./HomeXrayCard";
 
 interface SetupOpts {
@@ -8,9 +8,7 @@ interface SetupOpts {
 }
 
 const setup = ({ title, message, url }: SetupOpts) => {
-  renderWithProviders(
-    <HomeXrayCard title={title} message={message} url={url} />,
-  );
+  render(<HomeXrayCard title={title} message={message} url={url} />);
 };
 
 describe("HomeXrayCard", () => {
