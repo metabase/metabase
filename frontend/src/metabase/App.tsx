@@ -21,7 +21,7 @@ import {
 import { setErrorPage } from "metabase/redux/app";
 import { initializeIframeResizer } from "metabase/lib/dom";
 
-import AppBanner from "metabase/components/AppBanner";
+import { AppBanner } from "metabase/components/AppBanner";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
 import StatusListing from "metabase/status/components/StatusListing";
@@ -31,7 +31,6 @@ import { AppErrorDescriptor, State } from "metabase-types/store";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";
-import { DatabasePromptBanner } from "./nav/components/DatabasePromptBanner";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
@@ -101,7 +100,6 @@ function App({
       <ScrollToTop>
         <AppContainer className="spread">
           <AppBanner />
-          <DatabasePromptBanner />
           {isAppBarVisible && <AppBar />}
           <AppContentContainer isAdminApp={isAdminApp}>
             {isNavBarEnabled && <Navbar />}
