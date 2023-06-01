@@ -15,7 +15,6 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
 
 const { NativeQueryEditor } = jest.requireActual(
   "metabase/query_builder/components/NativeQueryEditor",
@@ -25,7 +24,12 @@ const TEST_DB = createSampleDatabase();
 
 const TEST_NATIVE_CARD = createMockCard({
   dataset_query: createMockNativeDatasetQuery({
+    type: "native",
     database: TEST_DB.id,
+    native: {
+      query: "select * from orders",
+      "template-tags": undefined,
+    },
   }),
 });
 
@@ -53,18 +57,8 @@ const setup = async ({
     }),
   });
   const metadata = getMetadata(storeInitialState);
-  const query = new NativeQuery(
-    checkNotNull(metadata.database(TEST_DB.id)).question(),
-    {
-      type: "native",
-      database: TEST_DB.id,
-      native: {
-        query: "select * from orders",
-        "template-tags": undefined,
-      },
-    },
-  );
   const question = checkNotNull(metadata.question(card.id));
+  const query = question.query();
 
   const { default: DatasetQueryEditor } = await import(
     "metabase/query_builder/components/DatasetEditor/DatasetQueryEditor"
