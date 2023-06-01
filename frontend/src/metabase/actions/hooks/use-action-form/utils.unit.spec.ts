@@ -1,11 +1,16 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/core/utils/types";
-import { createMockField, createMockParameter } from "metabase-types/api/mocks";
+import {
+  createMockField,
+  createMockFieldSettings,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 import {
   formatInitialValue,
   getInputType,
   generateFieldSettingsFromParameters,
   stripTZInfo,
+  getOrGenerateFieldSettings,
 } from "./utils";
 
 const getFirstEntry = (obj: any): any => {
@@ -349,6 +354,58 @@ describe("actions > containers > ActionParametersInputForm > utils", () => {
       );
 
       expect(settings.required).toBe(false);
+    });
+  });
+
+  describe("getOrGenerateFieldSettings", () => {
+    describe("when only parameters passed", () => {
+      it("generates settings with generateFieldSettingsFromParameters", () => {
+        const params = [
+          createMockParameter({ id: "test-field", required: false }),
+        ];
+
+        expect(getOrGenerateFieldSettings(params)).toEqual(
+          generateFieldSettingsFromParameters(params),
+        );
+      });
+    });
+
+    describe("when fields have only BE generated keys (hidden and id)", () => {
+      it("generates settings with generateFieldSettingsFromParameters and overrides 'hidden'", () => {
+        const id = "test-id";
+        const params = [createMockParameter({ id })];
+        let HIDDEN = true;
+        let fields = {
+          [id]: { id, hidden: HIDDEN },
+        };
+        const [, hiddenSettings] = getFirstEntry(
+          getOrGenerateFieldSettings(params, fields),
+        );
+
+        expect(hiddenSettings.hidden).toBe(HIDDEN);
+
+        HIDDEN = false;
+        fields = {
+          [id]: { id, hidden: HIDDEN },
+        };
+        const [, notHiddenSettings] = getFirstEntry(
+          getOrGenerateFieldSettings(params, fields),
+        );
+
+        expect(notHiddenSettings.hidden).toBe(HIDDEN);
+      });
+    });
+
+    describe("when fields are fulfilled", () => {
+      it("returns fields", () => {
+        const params = [createMockParameter({ id: "test-field" })];
+        const id = "test-id";
+        const fields = {
+          [id]: createMockFieldSettings({ id, hidden: true }),
+        };
+
+        expect(getOrGenerateFieldSettings(params, fields)).toBe(fields);
+      });
     });
   });
 });
