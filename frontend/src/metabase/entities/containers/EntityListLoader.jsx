@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { createSelector } from "@reduxjs/toolkit";
@@ -79,7 +79,7 @@ const getMemoizedEntityQuery = createSelector(
   },
 );
 
-class EntityListLoaderInner extends React.Component {
+class EntityListLoaderInner extends Component {
   state = {
     previousList: [],
     isReloading: this.props.reload,

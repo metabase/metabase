@@ -1,6 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import moment from "moment-timezone";
 import { t } from "ttag";
 

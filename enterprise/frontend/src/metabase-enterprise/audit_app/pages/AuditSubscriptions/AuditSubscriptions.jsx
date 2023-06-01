@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import AuditContent from "../../components/AuditContent";

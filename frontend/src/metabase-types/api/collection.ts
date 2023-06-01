@@ -51,9 +51,9 @@ type CollectionItemModel =
 
 export type CollectionItemId = number;
 
-export interface CollectionItem<T = CollectionItemModel> {
+export interface CollectionItem {
   id: CollectionItemId;
-  model: T;
+  model: CollectionItemModel;
   name: string;
   description: string | null;
   copy?: boolean;

@@ -1,5 +1,5 @@
 import { ngettext, msgid } from "ttag";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 
 import Schemas from "metabase/entities/schemas";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";

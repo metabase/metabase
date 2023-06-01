@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import { ReactNode } from "react";
 import Icon from "metabase/components/Icon";
 import {
   HeaderBackIcon,

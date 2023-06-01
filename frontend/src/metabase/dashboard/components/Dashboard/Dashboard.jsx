@@ -1,5 +1,5 @@
 // TODO: merge with metabase/dashboard/containers/Dashboard.jsx
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
@@ -107,8 +107,8 @@ class Dashboard extends Component {
 
   constructor(props) {
     super(props);
-    this.parametersWidgetRef = React.createRef();
-    this.parametersAndCardsContainerRef = React.createRef();
+    this.parametersWidgetRef = createRef();
+    this.parametersAndCardsContainerRef = createRef();
   }
 
   static getDerivedStateFromProps({ parameters }, { parametersListLength }) {

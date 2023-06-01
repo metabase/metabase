@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";

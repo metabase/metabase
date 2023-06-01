@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
@@ -441,7 +442,7 @@
     (lib.join/joined-field-desired-alias join-alias (:name field-metadata))
     (:name field-metadata)))
 
-(defn with-fields
+(mu/defn with-fields :- ::lib.schema/query
   "Specify the `:fields` for a query. Pass `nil` or an empty sequence to remove `:fields`."
   ([xs]
    (fn [query stage-number]
@@ -450,7 +451,9 @@
   ([query xs]
    (with-fields query -1 xs))
 
-  ([query stage-number xs]
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    xs]
    (let [xs (mapv (fn [x]
                     (lib.ref/ref (if (fn? x)
                                    (x query stage-number)
@@ -458,10 +461,42 @@
                   xs)]
      (lib.util/update-query-stage query stage-number u/assoc-dissoc :fields (not-empty xs)))))
 
-(defn fields
+(mu/defn fields :- [:maybe [:ref ::lib.schema/fields]]
   "Fetches the `:fields` for a query. Returns `nil` if there are no `:fields`. `:fields` should never be empty; this is
   enforced by the Malli schema."
   ([query]
    (fields query -1))
-  ([query stage-number]
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
    (:fields (lib.util/query-stage query stage-number))))
+
+(mu/defn fieldable-columns :- [:sequential lib.metadata/ColumnMetadata]
+  "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query. This is
+  basically just the columns returned by the source Table/Saved Question/Model or previous query stage.
+
+  Includes a `:selected?` key letting you know this column is already in `:fields` or not; if `:fields` is
+  unspecified, all these columns are returned by default, so `:selected?` is true for all columns (this is a little
+  strange but it matches the behavior of the QB UI)."
+  ([query]
+   (fieldable-columns query -1))
+
+  ([query :- ::lib.schema/query
+    stage-number :- :int]
+   (let [current-fields   (fields query stage-number)
+         selected-column? (if (empty? current-fields)
+                            (constantly true)
+                            (fn [column]
+                              (let [col-ref (lib.ref/ref column)]
+                                (boolean
+                                 (some (fn [fields-ref]
+                                         (lib.equality/ref= col-ref fields-ref))
+                                       current-fields)))))]
+     (mapv (fn [col]
+             (assoc col :selected? (selected-column? col)))
+           (lib.metadata.calculation/visible-columns query
+                                                     stage-number
+                                                     (lib.util/query-stage query stage-number)
+                                                     {:include-joined?              false
+                                                      :include-expressions?         false
+                                                      :include-implicitly-joinable? false})))))

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 import { useDropzone } from "react-dropzone";

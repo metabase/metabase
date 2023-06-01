@@ -1,4 +1,4 @@
-import React, { ComponentPropsWithoutRef } from "react";
+import { ComponentPropsWithoutRef } from "react";
 import _ from "underscore";
 import userEvent from "@testing-library/user-event";
 import { render, screen, getIcon } from "__support__/ui";

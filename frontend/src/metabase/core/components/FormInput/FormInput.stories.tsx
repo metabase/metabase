@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import type { ComponentStory } from "@storybook/react";
 import Form from "../Form";
 import FormProvider from "../FormProvider";

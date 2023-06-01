@@ -8,10 +8,10 @@
    [clojure.data]
    [clojure.test :refer :all]
    [environ.core :as env]
-   [hawk.init]
-   [hawk.parallel]
    [humane-are.core :as humane-are]
    [java-time :as t]
+   [mb.hawk.init]
+   [mb.hawk.parallel]
    [medley.core :as m]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
@@ -285,7 +285,7 @@
 ;;; TODO -- move all the stuff below into some other namespace and import it here.
 
 (defn do-with-clock [clock thunk]
-  (hawk.parallel/assert-test-is-not-parallel "with-clock")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-clock")
   (testing (format "\nsystem clock = %s" (pr-str clock))
     (let [clock (cond
                   (t/clock? clock)           clock
@@ -418,6 +418,6 @@
           ;; TIMESTAMP columns (which only have second resolution by default)
           (dissoc things-in-both :created_at :updated_at)))))
    (fn [toucan-model]
-     (hawk.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
+     (mb.hawk.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
      (initialize/initialize-if-needed! :db)
      (t2.model/resolve-model toucan-model))))

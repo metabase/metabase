@@ -1,5 +1,3 @@
-import React from "react";
-
 import { useSelector } from "metabase/lib/redux";
 import { getAllUploads } from "metabase/redux/uploads";
 import Collections from "metabase/entities/collections/collections";

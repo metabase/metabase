@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 
 import { t } from "ttag";
@@ -12,7 +12,7 @@ import NativeQuery from "metabase-lib/queries/NativeQuery";
 import TagEditorParam from "./TagEditorParam";
 import TagEditorHelp from "./TagEditorHelp";
 
-export default class TagEditorSidebar extends React.Component {
+export default class TagEditorSidebar extends Component {
   state = {
     section: "settings",
   };
