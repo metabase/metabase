@@ -856,3 +856,7 @@
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->Time]
   [_driver _semantic_type expr]
   (hx/->time expr))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :log]
+  [driver [_ field]]
+  [:sql-expr [:log (sql.qp/->honeysql driver field) 10]])
