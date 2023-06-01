@@ -2953,7 +2953,7 @@
                  (catch Exception e
                    (is (= {:status-code 422}
                           (ex-data e)))
-                   (is (re-matches #"^The CSV file was uploaded to public\.example(.*) but the table could not be found on sync\.$"
+                   (is (re-matches #"^The CSV file was uploaded to public\.example(.*) but the table could not be created or found\.$"
                                    (.getMessage e))))))
           (testing "\nThe table should be deleted"
             (is (false? (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]

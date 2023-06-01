@@ -1132,8 +1132,9 @@ saved later when it is ready."
    query     ms/NonBlankString}
   (param-values (api/read-check Card card-id) param-key query))
 
-(defn- maybe-scan-table!
-  [{:keys [is_on_demand is_full_sync] :as _db} table]
+(defn- scan-and-sync-table!
+  [{:keys [is_on_demand is_full_sync] :as database} table]
+  (sync-fields/sync-fields-for-table! database table)
   (when (or is_on_demand is_full_sync)
     (future (sync/sync-table! table))))
 
@@ -1163,25 +1164,24 @@ saved later when it is ready."
                             (str schema-name "." table-name))
         _load!            (upload/load-from-csv driver db-id schema+table-name csv-file)
         ;; Syncs are needed immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-        table-metadata    (:tables (fetch-metadata/db-metadata database))
-        actual-schema     (:schema (first (filter (fn [{:keys [name]}] (= (u/lower-case-en name) table-name)) table-metadata)))
-        table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema actual-schema})
-        _sync-fields      (sync-fields/sync-fields-for-table! database table)]
-    (when (nil? table)
+        table-metadata    (first (filter (fn [{:keys [name]}] (= (u/lower-case-en name) table-name)) (:tables (fetch-metadata/db-metadata database))))
+        actual-schema     (:schema table-metadata)]
+    (when (nil? table-metadata)
       (driver/drop-table driver db-id table-name)
-      (throw (ex-info (tru "The CSV file was uploaded to {0} but the table could not be found on sync." schema+table-name)
+      (throw (ex-info (tru "The CSV file was uploaded to {0} but the table could not be created or found." schema+table-name)
                       {:status-code 422})))
-    (maybe-scan-table! database table)
-    (create-card!
-     {:collection_id          collection-id,
-      :dataset                true
-      :database_id            db-id
-      :dataset_query          {:database db-id
-                               :query    {:source-table (u/the-id table)}
-                               :type     :query}
-      :display                :table
-      :name                   (humanization/name->human-readable-name filename-prefix)
-      :visualization_settings {}})))
+    (let [table (sync-tables/create-or-reactivate-table! database {:name table-name :schema actual-schema})]
+      (scan-and-sync-table! database table)
+      (create-card!
+       {:collection_id          collection-id,
+        :dataset                true
+        :database_id            db-id
+        :dataset_query          {:database db-id
+                                 :query    {:source-table (u/the-id table)}
+                                 :type     :query}
+        :display                :table
+        :name                   (humanization/name->human-readable-name filename-prefix)
+        :visualization_settings {}}))))
 
 (api/defendpoint ^:multipart POST "/from-csv"
   "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
