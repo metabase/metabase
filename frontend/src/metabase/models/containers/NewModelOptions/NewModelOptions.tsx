@@ -107,7 +107,6 @@ const NoDatabasesEmptyState = () => (
     image="app/assets/img/databases-list"
     adminAction={t`Connect a database`}
     adminLink="/admin/databases/create"
-    user={user}
   />
 );
 // eslint-disable-next-line import/no-default-export -- deprecated usage
