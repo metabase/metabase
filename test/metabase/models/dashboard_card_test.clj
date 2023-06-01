@@ -113,8 +113,7 @@
     (mt/with-temp* [Dashboard [{dashboard-id :id}]
                     Card      [{card-id :id} {:name "Test Card"}]]
       (let [dashboard-card (first (dashboard-card/create-dashboard-cards!
-                                    [{:creator_id             (mt/user->id :rasta)
-                                      :dashboard_id           dashboard-id
+                                    [{:dashboard_id           dashboard-id
                                       :card_id                card-id
                                       :size_x                 4
                                       :size_y                 3
