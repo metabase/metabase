@@ -48,7 +48,7 @@
 (def ^:private schema-patterns->filter-fn (memoize schema-patterns->filter-fn*))
 
 (defn include-schema?
-  "Returns true of the given `schema-name` should be included/synced, considering the given `inclusion-patterns` and
+  "Returns true if the given `schema-name` should be included/synced, considering the given `inclusion-patterns` and
   `exclusion-patterns`. Patterns are comma-separated, and can contain wildcard characters (`*`)."
   {:added "0.42.0"}
   [inclusion-patterns exclusion-patterns schema-name]

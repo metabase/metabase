@@ -2933,7 +2933,7 @@
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
-(deftest upload-csv!-schema-doesnt-sync-test
+(deftest upload-csv!-schema-does-not-sync-test
   ;; Just test with postgres because failure should be independent of the driver
   (mt/test-driver :postgres
     (mt/with-empty-db
@@ -2953,7 +2953,7 @@
                  (catch Exception e
                    (is (= {:status-code 422}
                           (ex-data e)))
-                   (is (re-matches #"^The CSV file was uploaded to public\.example(.*) but the table could not be created or found\.$"
+                   (is (re-matches #"^The schema public is not syncable\.$"
                                    (.getMessage e))))))
           (testing "\nThe table should be deleted"
             (is (false? (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
