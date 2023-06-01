@@ -67,9 +67,7 @@ export function filterWidget() {
 }
 
 export const openQuestionActions = () => {
-  cy.findByTestId("qb-header-action-panel").within(() => {
-    cy.icon("ellipsis").click();
-  });
+  cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
 };
 
 export const collectionTable = () => {

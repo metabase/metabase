@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 
 import title from "metabase/hoc/Title";
 import { PublicApi } from "metabase/services";

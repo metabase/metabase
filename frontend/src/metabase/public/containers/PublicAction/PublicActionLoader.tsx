@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { connect } from "react-redux";
 
 import { useMount } from "react-use";

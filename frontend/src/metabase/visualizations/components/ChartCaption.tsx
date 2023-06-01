@@ -1,4 +1,4 @@
-import React, { useCallback, ReactNode } from "react";
+import { useCallback, ReactNode } from "react";
 import { IconProps } from "metabase/components/Icon";
 import {
   Series,

@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";

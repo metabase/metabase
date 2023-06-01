@@ -207,7 +207,7 @@ jobs:
           --browser "replay-chromium"
         env:
           TERM: xterm
-          REPLAYIO_ENABLED: 1
+          CYPRESS_REPLAYIO_ENABLED: 1
           RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
 
@@ -220,12 +220,12 @@ jobs:
           --browser "replay-chromium"
         env:
           TERM: xterm
-          REPLAYIO_ENABLED: 1
+          CYPRESS_REPLAYIO_ENABLED: 1
           RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
 
       - name: Upload Replay.io recordings
-        if: ${{ github.event_name == 'schedule' }}
+        if: github.event_name == 'schedule' && always()
         uses: replayio/action-upload@v0.4.7
         with:
           api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ

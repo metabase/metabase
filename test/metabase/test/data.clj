@@ -36,7 +36,7 @@
   (:require
    [clojure.test :as t]
    [colorize.core :as colorize]
-   [hawk.init]
+   [mb.hawk.init]
    [metabase.db :as mdb]
    [metabase.db.schema-migrations-test.impl
     :as schema-migrations-test.impl]
@@ -201,7 +201,7 @@
   "Get the ID of the current database or one of its Tables or Fields. Relies on the dynamic variable `*get-db*`, which
   can be rebound with `with-db`."
   ([]
-   (hawk.init/assert-tests-are-not-initializing "(mt/id ...) or (data/id ...)")
+   (mb.hawk.init/assert-tests-are-not-initializing "(mt/id ...) or (data/id ...)")
    (u/the-id (db)))
 
   ([table-name]

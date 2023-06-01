@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from "react";
+import { useLayoutEffect } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
