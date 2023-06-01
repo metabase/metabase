@@ -1129,11 +1129,10 @@ saved later when it is ready."
    query     ms/NonBlankString}
   (param-values (api/read-check Card card-id) param-key query))
 
-(defn- maybe-scan-database!
-  [database]
-  (when (or (:is_on_demand database)
-            (:is_full_sync database))
-    (future (sync/sync-database! database))))
+(defn- maybe-scan-table!
+  [{:keys [is_on_demand is_full_sync] :as _db} table]
+  (when (or is_on_demand is_full_sync)
+    (future (sync/sync-table! table))))
 
 (defn upload-csv!
   "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
@@ -1161,18 +1160,18 @@ saved later when it is ready."
         _load!            (upload/load-from-csv driver db-id schema+table-name csv-file)
         ;; A sync is needed immediately to create the Table; the scan is settings-dependent and can be async
         _sync!            (sync/sync-database! database {:scan :schema})
-        _scan!            (maybe-scan-database! database)
-        table-id          (t2/select-one-fn :id Table :db_id db-id :%lower.name table-name)]
-    (when (nil? table-id)
+        table             (t2/select-one Table :db_id db-id :%lower.name table-name)]
+    (when (nil? table)
       (driver/drop-table driver db-id table-name)
       (throw (ex-info (tru "The CSV file was uploaded to {0} but the table could not be found on sync." schema+table-name)
                       {:status-code 422})))
+    (maybe-scan-table! database table)
     (create-card!
      {:collection_id          collection-id,
       :dataset                true
       :database_id            db-id
       :dataset_query          {:database db-id
-                               :query    {:source-table table-id}
+                               :query    {:source-table (u/the-id table)}
                                :type     :query}
       :display                :table
       :name                   (humanization/name->human-readable-name filename-prefix)
