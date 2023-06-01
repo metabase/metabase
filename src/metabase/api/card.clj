@@ -44,6 +44,7 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.sync :as sync]
    [metabase.sync.analyze.query-results :as qr]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
@@ -1153,14 +1154,14 @@ saved later when it is ready."
         _check-setting    (or (driver/database-supports? driver :uploads nil)
                               (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
         table-name        (->> (str (public-settings/uploads-table-prefix) filename-prefix)
-                               (upload/unique-table-name driver))
+                               (upload/unique-table-name driver)
+                               (u/lower-case-en))
         schema+table-name (if (str/blank? schema-name)
                             table-name
                             (str schema-name "." table-name))
         _load!            (upload/load-from-csv driver db-id schema+table-name csv-file)
         ;; A sync is needed immediately to create the Table; the scan is settings-dependent and can be async
-        _sync!            (sync/sync-database! database {:scan :schema})
-        table             (t2/select-one Table :db_id db-id :%lower.name table-name)]
+        table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema schema-name})]
     (when (nil? table)
       (driver/drop-table driver db-id table-name)
       (throw (ex-info (tru "The CSV file was uploaded to {0} but the table could not be found on sync." schema+table-name)
