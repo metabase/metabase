@@ -28,7 +28,7 @@ Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.
 
 Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, :using_model
-  and `archived`. See corresponditng implementation functions above for the specific behavior of each filter
+  and `archived`. See corresponding implementation functions above for the specific behavior of each filter
   option. :card_index.
 
 ### PARAMS:
