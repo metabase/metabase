@@ -180,7 +180,7 @@
                        ((:out mi/transform-result-metadata))
                        json/generate-string)))))))))
 
-(deftest add-join-alias-to-visualization-settings-field-refs-test
+(deftest add-join-alias-to-column-settings-field-refs-test
   (testing "Migrations v47.00-028: update visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-028"] [migrate!]
       (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
