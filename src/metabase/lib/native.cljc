@@ -12,7 +12,7 @@
 (def ^:private TemplateTag
   [:map
    [:type [:enum :text :snippet :card]]
-   [:id :uuid]
+   [:id :string]
    [:name ::common/non-blank-string]
    [:display-name {:js/prop "display-name" :optional true} ::common/non-blank-string]
    [:snippet-name {:js/prop "snippet-name" :optional true} ::common/non-blank-string]
@@ -54,7 +54,7 @@
 (defn- fresh-tag [tag-name]
   {:type :text
    :name tag-name
-   :id   (m/random-uuid)})
+   :id   (str (m/random-uuid))})
 
 (defn- finish-tag [{tag-name :name :as tag}]
   (merge tag
