@@ -1,1 +1,2 @@
-export * from "./getMarkdownFirstLine";
+export * from "./getLeadingText";
+export * from "./markdownToHtml";
