@@ -180,9 +180,9 @@
    stage-number   :- :int
    unique-name-fn :- fn?]
   (into []
-        (comp (mapcat (fn [join]
-                        (map (partial add-source-and-desired-aliases join unique-name-fn)
-                             (lib.metadata.calculation/metadata query stage-number join)))))
+        (mapcat (fn [join]
+                  (map (partial add-source-and-desired-aliases join unique-name-fn)
+                       (lib.metadata.calculation/metadata query stage-number join))))
         (when-let [joins (:joins (lib.util/query-stage query stage-number))]
           (ensure-all-joins-have-aliases query stage-number joins))))
 
