@@ -422,7 +422,9 @@
   [query]
   (-> query :stages first :source-table))
 
-(defn unique-name-generator
+(mu/defn unique-name-generator :- [:=>
+                                   [:cat ::lib.schema.common/non-blank-string]
+                                   ::lib.schema.common/non-blank-string]
   "Create a new function with the signature
 
     (f str) => str

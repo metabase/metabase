@@ -344,18 +344,8 @@
   (merge (default-display-info query stage-number table)
          {:is-source-table (= (lib.util/source-table query) (:id table))}))
 
-(defmulti projected-columns-method
-  "Impl for [[projected-columns]]. This should mostly be similar to the implementation for [[metadata-method]], but
-  needs to include `:lib/source-column-alias` and `:lib/desired-column-alias`. `:lib/source-column-alias` should
-  probably be the same as `:name`; use the supplied `unique-name-fn` with the signature `(f str) => str` to ensure
-  `:lib/desired-column-alias` is unique."
-  {:arglists '([query stage-number x unique-name-fn])}
-  (fn [_query _stage-number x _unique-name-fn]
-    (lib.dispatch/dispatch-value x))
-  :hierarchy lib.hierarchy/hierarchy)
-
 (def ColumnsWithUniqueAliases
-  "Schema for column metadata that should be returned by [[projected-columns]]. This is mostly used
+  "Schema for column metadata that should be returned by [[visible-columns]]. This is mostly used
   to power metadata calculation for stages (see [[metabase.lib.stage]]."
   [:and
    [:sequential
@@ -375,77 +365,54 @@
        (empty? columns)
        (apply distinct? (map (comp u/lower-case-en :lib/desired-column-alias) columns))))]])
 
-(mu/defn projected-columns :- ColumnsWithUniqueAliases
-  "Return a sequence of column metadatas for columns that are returned (`SELECT`ed) for a Table [metadata]/join/query
-  stage. For something like a Table this returns the columns that will be returned by default for a plain query
-  against it; for a query or query stage this returned the actual columns returned.
-
-  E.g. in a query like
-
-    SELECT id, name
-    FROM table
-    ORDER BY position
-
-  `id` and `name` are the projected columns.
-
-  These columns will include `:lib/source-column-alias` and `:lib/desired-column-alias`. `:lib/desired-column-alias`
-  is guaranteed to be unique; `unique-name-fn` is a function with the signature
-
-    (f column-alias-string) => unique-alias-string
-
-  Used to generate unique names."
-  ([query]
-   (projected-columns query (lib.util/query-stage query -1)))
-
-  ([query x]
-   (projected-columns query -1 x))
-
-  ([query stage-number x]
-   (projected-columns query stage-number x (lib.util/unique-name-generator)))
-
-  ([query          :- ::lib.schema/query
-    stage-number   :- :int
-    x
-    unique-name-fn :- fn?]
-   (projected-columns-method query stage-number x unique-name-fn)))
-
-(def ^:private VisibleColumnsOptions
+(def VisibleColumnsOptions
+  "Schema for options passed to [[visible-columns]] and [[visible-columns-method]]."
   [:map
-   [:unique-name-fn               {:optional true} fn?]
+   ;; has the signature (f str) => str
+   [:unique-name-fn               {:optional true} [:=>
+                                                    [:cat ::lib.schema.common/non-blank-string]
+                                                    ::lib.schema.common/non-blank-string]]
+   ;; these all default to true
+   [:include-joined?              {:optional true} :boolean]
+   [:include-expressions?         {:optional true} :boolean]
    [:include-implicitly-joinable? {:optional true} :boolean]])
 
 (mu/defn ^:private default-visible-columns-options :- VisibleColumnsOptions
   []
   {:unique-name-fn               (lib.util/unique-name-generator)
+   :include-joined?              true
+   :include-expressions?         true
    :include-implicitly-joinable? true})
 
 (defmulti visible-columns-method
-  "Impl for [[visible-columns]]."
+  "Impl for [[visible-columns]].
+
+  This should mostly be similar to the implementation for [[metadata-method]], but needs to include
+  `:lib/source-column-alias` and `:lib/desired-column-alias`. `:lib/source-column-alias` should probably be the same
+  as `:name`; use the supplied `:unique-name-fn` from `options` with the signature `(f str) => str` to ensure
+  `:lib/desired-column-alias` is unique.
+
+  Also, columns that aren't 'projected' should be returned as well -- in other words, ignore `:fields`,
+  `:aggregations`, and `:breakouts`."
   {:arglists '([query stage-number x options])}
   (fn [_query _stage-number x _options]
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod visible-columns-method :default
-  [query stage-number x options]
-  (projected-columns query stage-number x (:unique-name-fn options)))
-
 (mu/defn visible-columns :- ColumnsWithUniqueAliases
   "Return a sequence of columns that should be visible *within* a given stage of something, e.g. a query stage or a
-  join query. This includes not just the [[projected-columns]], but other columns that are 'reachable' in this stage
-  of the query. E.g. in a query like
+  join query. This includes not just the columns that get returned (ones present in [[metadata]], but other columns
+  that are 'reachable' in this stage of the query. E.g. in a query like
 
     SELECT id, name
     FROM table
     ORDER BY position
 
-  only `id` and `name` are projected columns, but other columns such as `position` are visible in this stage as well
+  only `id` and `name` are 'returned' columns, but other columns such as `position` are visible in this stage as well
   and would thus be returned by this function.
 
-  Additionally, by default this also includes implicitly joinable columns, but you can disable this behavior by
-  passing `options` like
-
-    {:include-implicitly-joinable? false}"
+  Columns from joins, expressions, and implicitly joinable columns are included automatically by default;
+  see [[VisibleColumnsOptions]] for the options for disabling these columns."
   ([query]
    (visible-columns query (lib.util/query-stage query -1)))
 

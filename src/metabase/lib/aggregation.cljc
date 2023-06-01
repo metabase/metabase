@@ -317,17 +317,11 @@
     :operator (:short aggregation-operator)
     :args [column]}))
 
-(def ^:private SelectedColumnMetadata
-  [:merge
-   lib.metadata/ColumnMetadata
-   [:map
-    [:selected? {:optional true} :boolean]]])
-
 (def ^:private SelectedOperatorWithColumns
   [:merge
    ::lib.schema.aggregation/operator
    [:map
-    [:columns {:optional true} [:sequential SelectedColumnMetadata]]
+    [:columns {:optional true} [:sequential lib.metadata/ColumnMetadata]]
     [:selected? {:optional true} :boolean]]])
 
 (mu/defn selected-aggregation-operators :- [:maybe [:sequential SelectedOperatorWithColumns]]
@@ -346,8 +340,7 @@
                        (mapv (fn [col]
                                (let [a-ref (lib.ref/ref col)]
                                  (cond-> col
-                                   (or (lib.equality/= a-ref agg-col)
-                                       (lib.equality/= a-ref (lib.util/with-default-effective-type agg-col)))
+                                   (lib.equality/ref= a-ref agg-col)
                                    (assoc :selected? true))))
                              cols))))))
             agg-operators))))

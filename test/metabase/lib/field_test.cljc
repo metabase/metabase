@@ -484,3 +484,26 @@
               (is (has-fields? query)
                   "sanity check")
               (is (not (has-fields? query'))))))))))
+
+(deftest ^:parallel fieldable-columns-test
+  (testing "query with no :fields"
+    (is (=? [{:lib/desired-column-alias "ID", :selected? true}
+             {:lib/desired-column-alias "NAME", :selected? true}
+             {:lib/desired-column-alias "CATEGORY_ID", :selected? true}
+             {:lib/desired-column-alias "LATITUDE", :selected? true}
+             {:lib/desired-column-alias "LONGITUDE", :selected? true}
+             {:lib/desired-column-alias "PRICE", :selected? true}]
+            (lib/fieldable-columns (lib/query-for-table-name meta/metadata-provider "VENUES"))))))
+
+(deftest ^:parallel fieldable-columns-query-with-fields-test
+  (testing "query with :fields"
+    (is (=? [{:lib/desired-column-alias "ID", :selected? true}
+             {:lib/desired-column-alias "NAME", :selected? true}
+             {:lib/desired-column-alias "CATEGORY_ID", :selected? false}
+             {:lib/desired-column-alias "LATITUDE", :selected? false}
+             {:lib/desired-column-alias "LONGITUDE", :selected? false}
+             {:lib/desired-column-alias "PRICE", :selected? false}]
+            (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                (lib/with-fields [(meta/field-metadata :venues :id)
+                                  (meta/field-metadata :venues :name)])
+                lib/fieldable-columns )))))
