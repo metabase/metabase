@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 
 import "./AuditTableVisualization";
 
@@ -17,7 +17,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-class AuditTable extends React.Component {
+class AuditTable extends Component {
   render() {
     const { metadata, card } = this.props;
     const question = new Question(card.card, metadata);

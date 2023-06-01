@@ -129,15 +129,18 @@
    field-name :- ::lib.schema.common/non-blank-string]
   (lib.util/format "%s__%s" join-alias field-name))
 
-(defmethod lib.metadata.calculation/default-columns-method :mbql/join
-  [query stage-number join unique-name-fn]
+(defn- add-source-and-desired-aliases
+  [join unique-name-fn col]
   ;; should be dev-facing-only so don't need to i18n
   (assert (:alias join) "Join must have an alias to determine column aliases!")
-  (mapv (fn [col]
-          (assoc col
-                 :lib/source-column-alias  (:name col)
-                 :lib/desired-column-alias (unique-name-fn (joined-field-desired-alias (:alias join) (:name col)))))
-        (lib.metadata.calculation/metadata query stage-number join)))
+  (assoc col
+         :lib/source-column-alias  (:name col)
+         :lib/desired-column-alias (unique-name-fn (joined-field-desired-alias (:alias join) (:name col)))))
+
+(defmethod lib.metadata.calculation/visible-columns-method :mbql/join
+  [query stage-number join {:keys [unique-name-fn], :as _options}]
+  (mapv (partial add-source-and-desired-aliases join unique-name-fn)
+        (lib.metadata.calculation/metadata query stage-number (assoc join :fields :all))))
 
 (def ^:private JoinsWithAliases
   "Schema for a sequence of joins that all have aliases."
@@ -158,14 +161,30 @@
               (not (:alias join)) (assoc :alias (unique-name-fn (default-join-alias query stage-number join)))))
           joins)))
 
-(mu/defn all-joins-default-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
-  "Convenience for calling [[lib.metadata.calculation/default-columns]] on all of the joins in a query stage."
+(mu/defn all-joins-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
+  "Convenience for calling [[lib.metadata.calculation/visible-columns]] on all of the joins in a query stage."
   [query          :- ::lib.schema/query
    stage-number   :- :int
    unique-name-fn :- fn?]
   (into []
         (mapcat (fn [join]
-                  (lib.metadata.calculation/default-columns query stage-number join unique-name-fn)))
+                  (lib.metadata.calculation/visible-columns query
+                                                            stage-number
+                                                            join
+                                                            {:unique-name-fn               unique-name-fn
+                                                             :include-implicitly-joinable? false})))
+        (when-let [joins (:joins (lib.util/query-stage query stage-number))]
+          (ensure-all-joins-have-aliases query stage-number joins))))
+
+(mu/defn all-joins-metadata :- lib.metadata.calculation/ColumnsWithUniqueAliases
+  "Convenience for calling [[lib.metadata.calculation/metadata]] on all the joins in a query stage."
+  [query          :- ::lib.schema/query
+   stage-number   :- :int
+   unique-name-fn :- fn?]
+  (into []
+        (mapcat (fn [join]
+                  (map (partial add-source-and-desired-aliases join unique-name-fn)
+                       (lib.metadata.calculation/metadata query stage-number join))))
         (when-let [joins (:joins (lib.util/query-stage query stage-number))]
           (ensure-all-joins-have-aliases query stage-number joins))))
 

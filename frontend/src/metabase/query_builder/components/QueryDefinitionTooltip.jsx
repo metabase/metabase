@@ -1,11 +1,11 @@
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import FieldSet from "metabase/components/FieldSet";
 import QueryDefinition from "./QueryDefinition";
 
-export default class QueryDefinitionTooltip extends React.Component {
+export default class QueryDefinitionTooltip extends Component {
   static propTypes = {
     type: PropTypes.string,
     object: PropTypes.object.isRequired,

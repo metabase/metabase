@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { memo } from "react";
 import { t, msgid, ngettext } from "ttag";
 import _ from "underscore";
 
@@ -105,4 +105,4 @@ function BulkActions({
   );
 }
 
-export default React.memo(BulkActions);
+export default memo(BulkActions);

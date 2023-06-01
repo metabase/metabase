@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import TabContent from "metabase/core/components/TabContent";

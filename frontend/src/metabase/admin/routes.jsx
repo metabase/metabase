@@ -1,4 +1,4 @@
-import React from "react";
+import { Fragment } from "react";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
 import { routerActions } from "react-router-redux";
@@ -221,9 +221,9 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
 
       {/* PLUGINS */}
-      <React.Fragment>
+      <Fragment>
         {PLUGIN_ADMIN_ROUTES.map(getRoutes => getRoutes(store))}
-      </React.Fragment>
+      </Fragment>
     </Route>
   </Route>
 );

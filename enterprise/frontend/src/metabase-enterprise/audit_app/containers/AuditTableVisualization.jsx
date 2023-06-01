@@ -1,4 +1,4 @@
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
@@ -38,7 +38,7 @@ const propTypes = {
 
 const ROW_ID_IDX = 0;
 
-export default class AuditTableVisualization extends React.Component {
+export default class AuditTableVisualization extends Component {
   static identifier = "audit-table";
   static noHeader = true;
   static hidden = true;

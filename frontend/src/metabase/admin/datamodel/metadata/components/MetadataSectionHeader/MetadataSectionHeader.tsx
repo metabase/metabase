@@ -1,5 +1,3 @@
-import React from "react";
-
 interface MetadataSectionHeaderProps {
   title: string;
   description?: string;

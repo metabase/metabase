@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen, within } from "@testing-library/react";
 import { checkNotNull } from "metabase/core/utils/types";
 import { createMockMetadata } from "__support__/metadata";

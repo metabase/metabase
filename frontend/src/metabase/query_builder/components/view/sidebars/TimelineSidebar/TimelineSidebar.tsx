@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import { Moment } from "moment-timezone";
 import { MODAL_TYPES } from "metabase/query_builder/constants";

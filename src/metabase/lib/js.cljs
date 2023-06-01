@@ -323,6 +323,30 @@
         unit (if (string? unit) (keyword unit) unit)]
       (lib.core/describe-relative-datetime n unit)))
 
+(defn ^:export aggregate
+  "Adds an aggregation to query."
+  ([a-query an-aggregate-clause]
+   (aggregate a-query -1 an-aggregate-clause))
+  ([a-query stage-number an-aggregate-clause]
+   (lib.core/aggregate a-query stage-number an-aggregate-clause)))
+
+(defn ^:export aggregations
+  "Get the aggregations in a given stage of a query."
+  ([a-query]
+   (aggregations a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/aggregations a-query stage-number))))
+
+(defn ^:export aggregation-clause
+  "Returns a standalone aggregation clause for an `aggregation-operator` and
+   a `column`.
+   For aggregations requiring an argument `column` is mandatory, otherwise
+   it is optional."
+  ([aggregation-operator]
+   (lib.core/aggregation-clause aggregation-operator))
+  ([aggregation-operator column]
+   (lib.core/aggregation-clause aggregation-operator column)))
+
 (defn ^:export available-aggregation-operators
   "Get the available aggregation operators for the stage with `stage-number` of
   the query `a-query`.
@@ -378,6 +402,11 @@
    (with-fields a-query -1 new-fields))
   ([a-query stage-number new-fields]
    (lib.core/with-fields a-query stage-number new-fields)))
+
+(defn ^:export fieldable-columns
+  "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query."
+  [a-query stage-number]
+  (to-array (lib.core/fieldable-columns a-query stage-number)))
 
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as a plain string like `left-join`."

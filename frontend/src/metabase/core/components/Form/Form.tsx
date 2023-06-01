@@ -1,9 +1,4 @@
-import React, {
-  FormHTMLAttributes,
-  forwardRef,
-  Ref,
-  SyntheticEvent,
-} from "react";
+import { FormHTMLAttributes, forwardRef, Ref, SyntheticEvent } from "react";
 import { useFormikContext } from "formik";
 
 export interface FormProps

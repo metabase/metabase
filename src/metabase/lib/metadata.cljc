@@ -93,7 +93,12 @@
    [:lib/source-column-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    ;; the name we should export this column as, i.e. the RHS of a `SELECT <lhs> AS <rhs>` or equivalent. This is
    ;; guaranteed to be unique in each stage of the query.
-   [:lib/desired-column-alias {:optional true} [:maybe [:string {:min 1, :max 60}]]]])
+   [:lib/desired-column-alias {:optional true} [:maybe [:string {:min 1, :max 60}]]]
+   ;; when column metadata is returned by certain things
+   ;; like [[metabase.lib.aggregation/selected-aggregation-operators]] or [[metabase.lib.field/fieldable-columns]], it
+   ;; might include this key, which tells you whether or not that column is currently selected or not already, e.g.
+   ;; for [[metabase.lib.field/fieldable-columns]] it means its already present in `:fields`
+   [:selected? {:optional true} :boolean]])
 
 (def CardMetadata
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as

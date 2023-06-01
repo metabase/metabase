@@ -1,5 +1,3 @@
-import React from "react";
-
 import Icon from "metabase/components/Icon";
 import {
   ActionOptionListItem,

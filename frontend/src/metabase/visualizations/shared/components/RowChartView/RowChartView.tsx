@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { Group } from "@visx/group";
 import { AxisBottom, AxisLeft, AxisScale } from "@visx/axis";
 import { Bar } from "@visx/shape";

@@ -1,5 +1,3 @@
-import React from "react";
-
 import Icon, { IconProps } from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 

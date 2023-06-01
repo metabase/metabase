@@ -136,7 +136,8 @@
    lower]
   [lib.field
    fields
-   with-fields]
+   with-fields
+   fieldable-columns]
   [lib.filter
    filter
    filters

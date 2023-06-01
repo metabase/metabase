@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/core/components/Button";

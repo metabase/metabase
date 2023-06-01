@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { forwardRef } from "react";
+import { forwardRef } from "react";
 
 import { PLUGIN_FORM_WIDGETS } from "metabase/plugins";
 

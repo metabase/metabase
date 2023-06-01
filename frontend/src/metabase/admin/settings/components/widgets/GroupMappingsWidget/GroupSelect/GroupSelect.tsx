@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/core/utils/types";

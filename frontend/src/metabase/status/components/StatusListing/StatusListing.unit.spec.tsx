@@ -1,4 +1,3 @@
-import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import { callMockEvent } from "__support__/events";
