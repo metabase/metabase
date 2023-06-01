@@ -181,7 +181,7 @@
                        ((:out mi/transform-result-metadata))
                        json/generate-string)))))))))
 
-(deftest add-join-alias-to-visualization-settings-field-refs-test
+(deftest add-join-alias-to-column-settings-field-refs-test
   (testing "Migrations v47.00-028: update visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-028"] [migrate!]
       (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
@@ -343,9 +343,71 @@
                 :row 18}]
               (t2/select-fn-vec #(select-keys % [:id :row]) :model/DashboardCard :dashboard_id dashboard-id)))))))
 
-(deftest revision-add-join-alias-to-visualization-settings-field-refs-test
+(deftest revision-migrate-legacy-column-settings-field-refs-test
   (testing "Migrations v47.00-033: update visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-033"] [migrate!]
+      (let [visualization-settings
+            {"column_settings" (-> {["name" "column_name"]                              {"column_title" "ID6"},
+                                    ["ref" ["field-literal" "column_name" "type/Text"]] {"column_title" "ID5"},
+                                    ["ref" ["field-id" 39]]                             {"column_title" "ID1"},
+                                    ["ref" ["field" 40 nil]]                            {"column_title" "ID2"},
+                                    ["ref" ["fk->" ["field-id" 39] ["field-id" 40]]]    {"column_title" "ID3"},
+                                    ["ref" ["fk->" 41 42]]                              {"column_title" "ID4"}}
+                                   (update-keys json/generate-string))}
+            expected
+            {"column_settings" (-> {["name" "column_name"]                                    {"column_title" "ID6"},
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "ID5"},
+                                    ["ref" ["field" 39 nil]]                                  {"column_title" "ID1"},
+                                    ["ref" ["field" 40 nil]]                                  {"column_title" "ID2"},
+                                    ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
+                                    ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
+                                   (update-keys json/generate-string))}
+            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
+                                                        :last_name   "Hughes"
+                                                        :email       "howard@aircraft.com"
+                                                        :password    "superstrong"
+                                                        :date_joined :%now})
+            card        {:visualization_settings visualization-settings}
+            revision-id (t2/insert-returning-pks! Revision {:model    "Card"
+                                                            :model_id 1 ;; TODO: this could be a foreign key in the future
+                                                            :user_id  user-id
+                                                            :object   (json/generate-string card)})]
+        (migrate!)
+        (testing "legacy column_settings are updated"
+          (is (= expected
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get "visualization_settings")))))
+        (testing "legacy column_settings are updated to the current format"
+          (is (= (-> visualization-settings
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings)
+                     walk/stringify-keys)
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get "visualization_settings")))))
+        (testing "visualization_settings are equivalent before and after migration"
+          (is (= (-> visualization-settings
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings))
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get "visualization_settings")
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings)))))))))
+
+(deftest revision-add-join-alias-to-column-settings-field-refs-test
+  (testing "Migrations v47.00-034: update visualization_settings.column_settings legacy field refs"
+    (impl/test-migrations ["v47.00-034"] [migrate!]
       (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
             visualization-settings
             {"column_settings" (-> {["ref" ["field" 1 {"join-alias" "Joined table"}]]         {"column_title" "THIS SHOULD TAKE PRECENDCE"}

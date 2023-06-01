@@ -14815,10 +14815,18 @@ databaseChangeLog:
   - changeSet:
       id: v47.00-033
       author: calherres
+      comment: Added 0.47.0 - Migrate field refs in visualization_settings.column_settings keys from legacy format
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.RevisionMigrateLegacyColumnSettingsFieldRefs"
+
+  - changeSet:
+      id: v47.00-034
+      author: calherres
       comment: Added 0.47.0 - Add join-alias to the visualization_settings.column_settings field refs in card revisions
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.RevisionAddJoinAliasToVisualizationSettingsFieldRefs"
+            class: "metabase.db.custom_migrations.RevisionAddJoinAliasToColumnSettingsFieldRefs"
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
