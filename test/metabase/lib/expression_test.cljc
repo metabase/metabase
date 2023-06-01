@@ -1,5 +1,6 @@
 (ns metabase.lib.expression-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
    [metabase.lib.core :as lib]
@@ -8,8 +9,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-util :as lib.tu]))
 
 (comment lib/keep-me)
 
@@ -20,9 +20,9 @@
            :database (meta/id)
            :stages [{:lib/type :mbql.stage/mbql
                      :source-table (meta/id :venues)
-                     :expressions {"myadd" [:+ {:lib/uuid string?}
-                                            1
-                                            [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]}}]}
+                     :expressions [[:+ {:lib/uuid string? :lib/expression-name "myadd"}
+                                    1
+                                    [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]]}]}
           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
               (lib/expression "myadd" (lib/+ 1 (lib/field "VENUES" "CATEGORY_ID")))
               (dissoc :lib/metadata)))))
@@ -89,20 +89,19 @@
            :display-name "double-price"
            :lib/source   :source/expressions}
           (lib.metadata.calculation/metadata
-           (lib.tu/venues-query-with-last-stage
-            {:expressions {"double-price" [:*
-                                           {:lib/uuid (str (random-uuid))}
-                                           (lib.tu/field-clause :venues :price {:base-type :type/Integer})
-                                           2]}})
-           -1
-           [:expression {:lib/uuid (str (random-uuid))} "double-price"]))))
+            (-> lib.tu/venues-query
+                (lib/expression "double-price"
+                                (lib/* (lib.tu/field-clause :venues :price {:base-type :type/Integer}) 2)))
+            -1
+            [:expression {:lib/uuid (str (random-uuid))} "double-price"]))))
 
 (deftest ^:parallel expression-references-in-fields-clause-test
   (let [query (lib.tu/venues-query-with-last-stage
-               {:expressions {"prev_month" [:+
-                                            {:lib/uuid (str (random-uuid))}
-                                            (lib.tu/field-clause :users :last-login)
-                                            [:interval {:lib/uuid (str (random-uuid))} -1 :month]]}
+                {:expressions [[:+
+                                {:lib/uuid (str (random-uuid))
+                                 :lib/expression-name "prev_month"}
+                                (lib.tu/field-clause :users :last-login)
+                                [:interval {:lib/uuid (str (random-uuid))} -1 :month]]]
                 :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
     (is (=? [{:name         "prev_month"
               :display-name "prev_month"
@@ -122,12 +121,11 @@
            (lib.metadata.calculation/display-name lib.tu/venues-query -1 clause)))))
 
 (deftest ^:parallel expression-reference-names-test
-  (let [query (assoc-in lib.tu/venues-query
-                        [:stages 0 :expressions "double-price"]
-                        [:*
-                         {:lib/uuid (str (random-uuid))}
-                         (lib.tu/field-clause :venues :price {:base-type :type/Integer})
-                         2])
+  (let [query (-> lib.tu/venues-query
+                  (lib/expression "double-price"
+                                  (lib/*
+                                    (lib.tu/field-clause :venues :price {:base-type :type/Integer})
+                                    2)))
         expr  [:sum
                {:lib/uuid (str (random-uuid))}
                [:expression {:lib/uuid (str (random-uuid))} "double-price"]]]
@@ -144,17 +142,12 @@
            (lib.metadata.calculation/display-name lib.tu/venues-query -1 clause)))))
 
 (defn- infer-first
-  ([expr]
-   (infer-first expr nil))
-
-  ([expr last-stage]
-   (lib.metadata.calculation/metadata
-    (lib.tu/venues-query-with-last-stage
-     (merge
-      {:expressions {"expr" expr}}
-      last-stage))
+  [expr]
+  (lib.metadata.calculation/metadata
+    (-> lib.tu/venues-query
+        (lib/expression "expr" expr))
     -1
-    [:expression {:lib/uuid (str (random-uuid))} "expr"])))
+    [:expression {:lib/uuid (str (random-uuid))} "expr"]))
 
 (deftest ^:parallel infer-coalesce-test
   (testing "Coalesce"
@@ -198,25 +191,26 @@
            :display-name "last-login-plus-2"
            :lib/source   :source/expressions}
           (lib.metadata.calculation/metadata
-           (lib.tu/venues-query-with-last-stage
-            {:expressions {"last-login-plus-2" [:datetime-add
-                                                {:lib/uuid (str (random-uuid))}
-                                                (lib.tu/field-clause :users :last-login {:base-type :type/DateTime})
-                                                2
-                                                :hour]}})
+           (-> lib.tu/venues-query
+               (lib/expression "last-login-plus-2"
+                               [:datetime-add
+                                {:lib/uuid (str (random-uuid))}
+                                (lib.tu/field-clause :users :last-login {:base-type :type/DateTime})
+                                2
+                                :hour]))
            -1
            [:expression {:lib/uuid (str (random-uuid))} "last-login-plus-2"]))))
 
 (deftest ^:parallel col-info-for-expression-error-message-test
   (testing "if there is no matching expression it should give a meaningful error message"
     (is (thrown-with-msg?
-         #?(:clj Throwable :cljs js/Error)
-         #"No expression named \"double-price\""
-         (lib.metadata.calculation/metadata
-          (lib.tu/venues-query-with-last-stage
-           {:expressions {"one-hundred" 100}})
-          -1
-          [:expression {:lib/uuid (str (random-uuid))} "double-price"])))))
+          #?(:clj Throwable :cljs js/Error)
+          #"No expression named \"double-price\""
+          (lib.metadata.calculation/metadata
+            (-> lib.tu/venues-query
+                (lib/expression "one-hundred" (lib/+ 100 0)))
+            -1
+            [:expression {:lib/uuid (str (random-uuid))} "double-price"])))))
 
 (deftest ^:parallel arithmetic-expression-type-of-test
   (testing "Make sure we can calculate correct type information for arithmetic expression"
@@ -262,3 +256,21 @@
              (ex-message ex)))
       (is (= {:expression-name "ID"}
              (ex-data ex))))))
+
+(deftest ^:parallel literal-expression-test
+  (is (=? [{:lib/type :metadata/field,
+            :base-type :type/Number,
+            :name "expr",
+            :display-name "expr",
+            :lib/source :source/expressions}]
+          (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+              (lib/expression "expr" 100)
+              (lib/expressions-metadata))))
+  (is (=? [[:value {:lib/expression-name "expr" :effective-type :type/Number} 100]]
+          (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+              (lib/expression "expr" 100)
+              (lib/expressions))))
+  (is (=? [[:value {:lib/expression-name "expr" :effective-type :type/Text} "value"]]
+          (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+              (lib/expression "expr" "value")
+              (lib/expressions)))))

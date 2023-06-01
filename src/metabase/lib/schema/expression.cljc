@@ -153,7 +153,5 @@
 
 ;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
 (mr/def ::expressions
-  [:map-of
-   {:min 1, :error/message ":expressions definition map of expression name -> expression"}
-   ::common/non-blank-string
-   ::expression])
+  [:sequential {:min 1} [:and [:ref ::expression]
+                         [:cat :any [:map [:lib/expression-name :string]] [:* :any]]]])
