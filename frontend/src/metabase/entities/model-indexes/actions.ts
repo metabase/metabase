@@ -26,9 +26,9 @@ export const updateModelIndexes =
     }
 
     const existingIndexes: ModelIndex[] =
-      ModelIndexes.selectors.getIndexesForModel(getState(), {
-        modelId: model.id(),
-      });
+      ModelIndexes.selectors.getList(getState(), {
+        entityQuery: { model_id: model.id() },
+      }) ?? [];
 
     const newFieldsToIndex = getFieldsToIndex(
       fieldsWithIndexFlags,
@@ -109,7 +109,7 @@ function getIndexIdsToRemove(
   return indexIdsToRemove;
 }
 
-export function cleanIndexFlags(fields: Field[]) {
+export function cleanIndexFlags(fields: Field[] = []) {
   const indexesToClean = fields.reduce(
     (
       indexesToClean: number[],

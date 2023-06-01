@@ -29,7 +29,7 @@ describe("scenarios > model indexes", () => {
     });
   });
 
-  it("should create and delete a model index on product titles", () => {
+  it("should create, delete, and re-create a model index on product titles", () => {
     cy.visit(`/model/${modelId}`);
     cy.wait("@dataset");
 
@@ -64,6 +64,27 @@ describe("scenarios > model indexes", () => {
     cy.wait("@modelIndexDelete").then(({ request, response }) => {
       expect(request.url).to.include("/api/model-index/1");
       expect(response.statusCode).to.equal(200);
+    });
+
+    cy.wait("@dataset");
+
+    editTitleMetadata();
+
+    sidebar()
+      .findByLabelText(/surface individual records/i)
+      .click();
+
+    cy.findByTestId("dataset-edit-bar").within(() => {
+      cy.button("Save changes").click();
+    });
+
+    // this tests redux cache invalidation (#31407)
+    cy.wait("@modelIndexCreate").then(({ request, response }) => {
+      expect(request.body.model_id).to.equal(modelId);
+
+      // this will likely change when this becomes an async process
+      expect(response.body.state).to.equal("indexed");
+      expect(response.body.id).to.equal(2);
     });
   });
 
