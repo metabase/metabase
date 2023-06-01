@@ -22,6 +22,7 @@ import {
 
 export interface DetailsTableCellProps {
   column: any;
+  columnIndex?: any;
   value: any;
   isColumnName: boolean;
   settings: any;
@@ -38,6 +39,7 @@ export function DetailsTableCell({
   className = "",
   onVisualizationClick,
   visualizationIsClickable,
+  columnIndex,
 }: DetailsTableCellProps): JSX.Element {
   let cellValue;
   const clicked = { column: null, value: null };
@@ -48,7 +50,16 @@ export function DetailsTableCell({
     columnSettings?.["_column_title_full"] || formatColumn(column);
 
   if (isColumnName) {
-    const title = column !== null ? columnTitle : null;
+    const testTitles = [
+      "Short Title",
+      "Long Title Wrapping to Next Line",
+      "Very____________LongTitleWithNoSpaces",
+      "Very Long Title With Spaces",
+      "VeryLongTitleWithNoSpaces and more words",
+      [1, 2, 3, 4, 5].map(i => `${i}_VeryLongTitleWithNoSpaces`).join(" "),
+    ];
+    const title =
+      column !== null ? testTitles[columnIndex] ?? columnTitle : null;
     cellValue = <Ellipsified lines={8}>{title}</Ellipsified>;
     clicked.column = column;
     isLink = false;
@@ -163,6 +174,7 @@ export function DetailsTable({
             <GridCell>
               <DetailsTableCell
                 column={column}
+                columnIndex={columnIndex}
                 value={row[columnIndex] ?? t`Empty`}
                 isColumnName
                 settings={settings}
