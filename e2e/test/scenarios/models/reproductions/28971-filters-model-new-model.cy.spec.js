@@ -24,7 +24,7 @@ describe("issue 28971", () => {
     popover().within(() => cy.findByText("Sample Database").click());
     popover().within(() => cy.findByText("Orders").click());
     cy.button("Save").click();
-    modal().within(() => cy.button("Save").click());
+    modal().button("Save").click();
     cy.wait("@createCard");
 
     filter();

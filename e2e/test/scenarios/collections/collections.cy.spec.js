@@ -464,7 +464,10 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
-          cy.findByTestId("bulk-action-bar").button("Archive").click();
+          cy.findByText(/item(s)? selected/)
+            .parent()
+            .button("Archive")
+            .click();
 
           cy.findByText("Orders").should("not.exist");
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
@@ -476,7 +479,10 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
-          cy.findByTestId("bulk-action-bar").button("Move").click();
+          cy.findByText(/item(s)? selected/)
+            .parent()
+            .button("Move")
+            .click();
 
           modal().within(() => {
             cy.findByText("First collection").click();
