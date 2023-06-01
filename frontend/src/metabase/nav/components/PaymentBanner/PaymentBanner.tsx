@@ -45,10 +45,10 @@ export const PaymentBanner = ({
   return null;
 };
 
-PaymentBanner.shouldRender = ({
+export function shouldRenderPaymentBanner({
   isAdmin,
   tokenStatusStatus,
-}: PaymentBannerProps) => {
+}: PaymentBannerProps) {
   const shouldRenderStatuses: (string | undefined)[] = ["past-due", "unpaid"];
   return isAdmin && shouldRenderStatuses.includes(tokenStatusStatus);
-};
+}
