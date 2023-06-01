@@ -64,10 +64,7 @@ const setup = async ({
   const metadata = getMetadata(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
   const query = question.query();
-
-  const { default: DatasetQueryEditor } = await import(
-    "metabase/query_builder/components/DatasetEditor/DatasetQueryEditor"
-  );
+  const DatasetQueryEditor = await importDatasetQueryEditor();
 
   const { rerender } = renderWithProviders(
     <DatasetQueryEditor
@@ -81,6 +78,28 @@ const setup = async ({
   );
 
   return { query, question, rerender };
+};
+
+/**
+ * NativeQueryEditor is globally mocked in test/register-visualizations.js but
+ * its actual implementation is needed in this test suite because we need to
+ * investigate its children.
+ *
+ * We're actually testing NativeQueryEditor indirectly by using DatasetQueryEditor
+ * (which uses NativeQueryEditor), so the NativeQueryEditor has to be unmocked
+ * the moment we import DatasetQueryEditor.
+ *
+ * Unmocking happens in beforeEach, so we can really only import the component
+ * during the unit test.
+ *
+ * Should the import be at the beginning of this file, the mock NativeQueryEditor
+ * would have been used in tests instead of the actual implementation.
+ */
+const importDatasetQueryEditor = async () => {
+  const { default: DatasetQueryEditor } = await import(
+    "metabase/query_builder/components/DatasetEditor/DatasetQueryEditor"
+  );
+  return DatasetQueryEditor;
 };
 
 describe("DatasetQueryEditor", () => {
@@ -127,14 +146,11 @@ describe("DatasetQueryEditor", () => {
       height: 0,
       isActive: true,
     });
+    const DatasetQueryEditor = await importDatasetQueryEditor();
 
     expect(
       screen.getByTestId("native-query-editor-sidebar"),
     ).toBeInTheDocument();
-
-    const { default: DatasetQueryEditor } = await import(
-      "metabase/query_builder/components/DatasetEditor/DatasetQueryEditor"
-    );
 
     rerender(
       <DatasetQueryEditor
