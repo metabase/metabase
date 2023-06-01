@@ -26,16 +26,16 @@ export const Login = ({ params, location }: LoginProps): JSX.Element => {
 
   return (
     <AuthLayout>
-      <div css={styles.titleCss}>{t`Sign in to Metabase`}</div>
+      <div css={styles.title}>{t`Sign in to Metabase`}</div>
       {selection && selection.Panel && (
-        <div css={styles.panelCss}>
+        <div css={styles.panel}>
           <selection.Panel redirectUrl={redirectUrl} />
         </div>
       )}
       {!selection && (
-        <div css={styles.actionListCss}>
+        <div css={styles.actionList}>
           {providers.map(provider => (
-            <div css={styles.actionListItemCss} key={provider.name}>
+            <div css={styles.actionListItem} key={provider.name}>
               <provider.Button isCard={true} redirectUrl={redirectUrl} />
             </div>
           ))}
