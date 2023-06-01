@@ -981,3 +981,10 @@
                1234.1234567890124
                1234.1234567890123456M]]
              (mt/rows (mt/process-query query)))))))
+
+
+(deftest ^:parallel test-qp-to-honeysql-log
+  (let [driver :bigquery-cloud-sdk
+        field :log]
+    (is (= [:sql-expr [:log (sql.qp/->honeysql :bigquery-cloud-sdk :log) 10]]
+           (sql.qp/->honeysql [driver [_ field]])))))
