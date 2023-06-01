@@ -28,14 +28,14 @@ Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.
 
 Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, :using_model
-  and `archived`. See corresponding implementation functions above for the specific behavior of each filter
+  and `archived`. See corresponditng implementation functions above for the specific behavior of each filter
   option. :card_index.
 
 ### PARAMS:
 
-*  **`f`** value may be nil, or if non-nil, value must be one of: `all`, `archived`, `bookmarked`, `database`, `mine`, `popular`, `recent`, `table`, `using_model`.
+*  **`f`** nullable enum of archived, table, using_model, bookmarked, popular, all, recent, mine, database
 
-*  **`model_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`model_id`** nullable value must be an integer greater than zero.
 
 ## `GET /api/card/:card-id/params/:param-key/search/:query`
 
@@ -84,6 +84,24 @@ Return related entities.
 ### PARAMS:
 
 *  **`id`**
+
+## `GET /api/card/:id/series`
+
+Fetches a list of comptatible series with the card with id `card_id`.
+
+  - `last_cursor` with value is the id of the last card from the previous page to fetch the next page.
+  - `query` to search card by name.
+  - `exclude_ids` to filter out a list of card ids.
+
+### PARAMS:
+
+*  **`id`** integer
+
+*  **`last_cursor`** 
+
+*  **`query`** nullable value must be a non-blank string.
+
+*  **`exclude_ids`** nullable function
 
 ## `GET /api/card/:id/timelines`
 
