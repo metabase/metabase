@@ -1,4 +1,4 @@
-import React, { Fragment } from "react";
+import { Fragment } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";
@@ -138,16 +138,6 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
           />
         </TableActionLink>
       )}
-      <TableActionLink
-        to={`/reference/databases/${dbId}/tables/${tableId}`}
-        data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
-      >
-        <Icon
-          name="reference"
-          tooltip={t`Learn about this table`}
-          color={color("text-medium")}
-        />
-      </TableActionLink>
     </Fragment>
   );
 };

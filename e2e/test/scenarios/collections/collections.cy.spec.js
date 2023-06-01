@@ -505,6 +505,7 @@ describe("scenarios > collection defaults", () => {
 
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(/item(s)? selected/)
+            .parent()
             .button("Archive")
             .click();
 
@@ -522,6 +523,7 @@ describe("scenarios > collection defaults", () => {
 
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(/item(s)? selected/)
+            .parent()
             .button("Move")
             .click();
 

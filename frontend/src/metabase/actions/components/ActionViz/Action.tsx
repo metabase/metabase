@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import Tooltip from "metabase/core/components/Tooltip";

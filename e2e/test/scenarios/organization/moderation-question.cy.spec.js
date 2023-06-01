@@ -142,12 +142,12 @@ describeEE("scenarios > saved question moderation", () => {
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count").icon("verified");
+      cy.findByText("Orders, Count").parent().icon("verified");
 
       cy.visit("/collection/root");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count").icon("verified");
+      cy.findByText("Orders, Count").closest("td").icon("verified");
     });
   });
 });

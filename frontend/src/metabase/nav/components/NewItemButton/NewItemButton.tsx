@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import NewItemMenu from "metabase/containers/NewItemMenu";
 import { CollectionId } from "metabase-types/api";

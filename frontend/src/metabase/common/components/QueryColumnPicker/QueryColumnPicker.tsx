@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -12,6 +12,7 @@ const DEFAULT_MAX_HEIGHT = 610;
 interface QueryColumnPickerProps {
   className?: string;
   query: Lib.Query;
+  stageIndex: number;
   columnGroups: Lib.ColumnGroup[];
   maxHeight?: number;
   onSelect: (column: Lib.ColumnMetadata) => void;
@@ -31,6 +32,7 @@ type Sections = {
 function QueryColumnPicker({
   className,
   query,
+  stageIndex,
   columnGroups,
   maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
@@ -39,10 +41,10 @@ function QueryColumnPicker({
   const sections: Sections[] = useMemo(
     () =>
       columnGroups.map(group => {
-        const groupInfo = Lib.displayInfo(query, group);
+        const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
         const items = Lib.getColumnsFromColumnGroup(group).map(column => {
-          const displayInfo = Lib.displayInfo(query, column);
+          const displayInfo = Lib.displayInfo(query, stageIndex, column);
           return {
             ...displayInfo,
             column,
@@ -55,7 +57,7 @@ function QueryColumnPicker({
           items,
         };
       }),
-    [query, columnGroups],
+    [query, stageIndex, columnGroups],
   );
 
   const handleSelect = useCallback(

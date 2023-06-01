@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import styled from "@emotion/styled";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";

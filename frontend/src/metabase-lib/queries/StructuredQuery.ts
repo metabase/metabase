@@ -553,9 +553,9 @@ class StructuredQueryInner extends AtomicQuery {
     return ML.orderBys(query).length > 0;
   }
 
-  hasLimit() {
+  hasLimit(stageIndex = this.queries().length - 1) {
     const query = this.getMLv2Query();
-    return ML.hasLimit(query);
+    return ML.hasLimit(query, stageIndex);
   }
 
   hasFields() {
@@ -1056,17 +1056,17 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * @deprecated use metabase-lib v2's currentLimit function
    */
-  limit(): Limit {
+  limit(stageIndex = this.queries().length - 1): Limit {
     const query = this.getMLv2Query();
-    return ML.currentLimit(query);
+    return ML.currentLimit(query, stageIndex);
   }
 
   /**
    * @deprecated use metabase-lib v2's limit function
    */
-  updateLimit(limit: Limit) {
+  updateLimit(limit: Limit, stageIndex = this.queries().length - 1) {
     const query = this.getMLv2Query();
-    const nextQuery = ML.limit(query, limit);
+    const nextQuery = ML.limit(query, stageIndex, limit);
     return this.updateWithMLv2(nextQuery);
   }
 
@@ -1235,8 +1235,6 @@ class StructuredQueryInner extends AtomicQuery {
     return explicitJoins;
   }
 
-  // TODO Atte Keinänen 6/18/17: Refactor to dimensionOptions which takes a dimensionFilter
-  // See aggregationFieldOptions for an explanation why that covers more use cases
   dimensionOptions(
     dimensionFilter: DimensionFilterFn = dimension => true,
   ): DimensionOptions {
@@ -1304,6 +1302,54 @@ class StructuredQueryInner extends AtomicQuery {
     }
 
     return new DimensionOptions(dimensionOptions);
+  }
+
+  /**
+   * An extension of dimensionOptions that includes MLv2 friendly dimensions.
+   * MLv1 and MLv2 can produce different field references for the same field.
+   *
+   * Example: if a question is started from another question or model,
+   * MLv2 will always use field literals like [ "field", "TOTAL", { "base-type": "type/Float" } ],
+   * but MLv1 could trace it to a concrete field like [ "field", 1, null ].
+   *
+   * Because dimensionOptions is an MLv1 concept, in will only include concrete field refs in a case like that.
+   * This method will add a field literal for each concrete field ref in the question, so MLv1 will treat them as valid.
+   *
+   * ⚠️ Should ONLY be used for clauses' `isValid` checks.
+   */
+  dimensionOptionsForValidation(
+    dimensionFilter: DimensionFilter = dimension => true,
+  ): DimensionOptions {
+    const baseOptions = this.dimensionOptions(dimensionFilter);
+
+    const mlv2FriendlyDimensions: Dimension[] = [];
+
+    baseOptions.dimensions.forEach(dimension => {
+      if (dimension instanceof FieldDimension) {
+        const field = dimension.field();
+        const options = dimension.getOptions();
+
+        // MLv1 picks up join-alias from parent questions/models.
+        // They won't be available in MLv2's field literals,
+        // so we need to remove them.
+        const mlv2Options = _.omit(options, "join-alias");
+
+        if (isVirtualCardId(field.table_id)) {
+          const mlv2Dimension = Dimension.parseMBQL([
+            "field",
+            field.name,
+            mlv2Options,
+          ]);
+          mlv2FriendlyDimensions.push(mlv2Dimension);
+        }
+      }
+    });
+
+    return new DimensionOptions({
+      count: baseOptions.count + mlv2FriendlyDimensions.length,
+      dimensions: [...baseOptions.dimensions, ...mlv2FriendlyDimensions],
+      fks: baseOptions.fks,
+    });
   }
 
   // FIELD OPTIONS

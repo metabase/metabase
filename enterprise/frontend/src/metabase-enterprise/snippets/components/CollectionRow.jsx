@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
@@ -9,7 +9,7 @@ import CollectionOptionsButton from "./CollectionOptionsButton";
 
 const ICON_SIZE = 16;
 
-class CollectionRow extends React.Component {
+class CollectionRow extends Component {
   render() {
     const { snippetCollection: collection, setSnippetCollectionId } =
       this.props;

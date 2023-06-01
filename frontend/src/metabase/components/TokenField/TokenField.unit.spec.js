@@ -2,7 +2,7 @@
 /* eslint-disable react/display-name */
 /* eslint-disable react/prop-types */
 
-import React from "react";
+import { Component } from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -29,7 +29,7 @@ const DEFAULT_TOKEN_FIELD_PROPS = {
   ),
 };
 
-class TokenFieldWithStateAndDefaults extends React.Component {
+class TokenFieldWithStateAndDefaults extends Component {
   constructor(props) {
     super(props);
     this.state = {
