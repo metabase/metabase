@@ -260,6 +260,15 @@ describe("ViewHeader", () => {
           ).not.toBeInTheDocument();
           expect(screen.getByLabelText("refresh icon")).toBeInTheDocument();
         });
+
+        it("displays refresh button tooltip above the refresh button", async () => {
+          setup({ card });
+          const refreshButton = screen.getByLabelText("refresh icon");
+          await userEvent.hover(refreshButton);
+          const tooltip = screen.getByRole("tooltip");
+          expect(tooltip).toHaveAttribute("data-placement", "top");
+          expect(tooltip).toHaveTextContent("Refresh");
+        });
       });
     });
   });
@@ -301,6 +310,17 @@ describe("ViewHeader", () => {
           });
           fireEvent.click(screen.getByLabelText("notebook icon"));
           expect(setQueryBuilderMode).toHaveBeenCalledWith("notebook");
+        });
+
+        it("displays `Show editor` tooltip above notebook icon", async () => {
+          setup({
+            card,
+          });
+          const notebookButton = screen.getByLabelText("notebook icon");
+          await userEvent.hover(notebookButton);
+          const tooltip = screen.getByRole("tooltip");
+          expect(tooltip).toHaveAttribute("data-placement", "top");
+          expect(tooltip).toHaveTextContent("Show editor");
         });
 
         it("allows to close notebook editor", () => {
