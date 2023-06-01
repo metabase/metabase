@@ -33,11 +33,12 @@
   "Create new Connection Impersonation records or update existing ones, if they have an `:id`."
   :feature :advanced-permissions
   [impersonations]
-  (for [impersonation impersonations]
-    (if-let [id (:id impersonation)]
-      (t2/update! :model/ConnectionImpersonation id impersonation)
-      (-> (t2/insert-returning-instances! :model/ConnectionImpersonation impersonation)
-          first))))
+  (doall
+   (for [impersonation impersonations]
+     (if-let [id (:id impersonation)]
+       (t2/update! :model/ConnectionImpersonation id impersonation)
+       (-> (t2/insert-returning-instances! :model/ConnectionImpersonation impersonation)
+           first)))))
 
 (defn- delete-impersonations-for-group-database! [{:keys [group-id database-id]} changes]
   (log/debugf "Deleting unneeded Connection Impersonations for Group %d for Database %d. Graph changes: %s"
