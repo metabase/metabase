@@ -8,6 +8,8 @@ import {
   getCollectionIdFromSlug,
   saveQuestion,
   getPersonalCollectionName,
+  visitCollection,
+  modal,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
@@ -239,5 +241,29 @@ describe("scenarios > question > new", () => {
 
     cy.findByText("User ID is 1");
     cy.findByText("37.65");
+  });
+
+  it("should suggest the currently viewed collection when saving question", () => {
+    getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
+      visitCollection(THIRD_COLLECTION_ID);
+    });
+
+    cy.findByLabelText("Navigation bar").within(() => {
+      cy.findByText("New").click();
+    });
+
+    popover().findByText("Question").click();
+
+    popover().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Orders").click();
+    });
+
+    cy.findByTestId("qb-header").within(() => {
+      cy.findByText("Save").click();
+    });
+    modal().within(() => {
+      cy.findByTestId("select-button").should("have.text", "Third collection");
+    });
   });
 });
