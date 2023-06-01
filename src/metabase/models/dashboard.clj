@@ -193,7 +193,7 @@
   (let [current-cards    (t2/select [DashboardCard :id :size_x :size_y :row :col :card_id :dashboard_id]
                                     :dashboard_id dashboard-id)
         id->current-card (zipmap (map :id current-cards) current-cards)
-        {:keys [to-create to-update to-delete]} (dashboard-tab/classify-changes current-cards serialized-cards)]
+        {:keys [to-create to-update to-delete]} (u/classify-changes current-cards serialized-cards)]
     (when (seq to-delete)
       (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
     (when (seq to-create)
@@ -219,7 +219,7 @@
                                            (if-let [new-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
                                              (assoc card :dashboard_tab_id new-tab-id)
                                              card))))]
-    (revert-dashcards dashboard-id  serialized-cards))
+    (revert-dashcards dashboard-id serialized-cards))
   serialized-dashboard)
 
 (defmethod revision/diff-strings :model/Dashboard
@@ -276,18 +276,16 @@
              (cond
                (and
                  (set/subset? prev-tab-ids new-tab-ids)
-                 (< num-prev-tabs num-new-tabs))         (deferred-trun "added a tab" "added {0} tabs" num-tabs-diff)
+                 (< num-prev-tabs num-new-tabs))              (deferred-trun "added a tab" "added {0} tabs" num-tabs-diff)
 
                (and
                  (set/subset? new-tab-ids prev-tab-ids)
-                 (> num-prev-tabs num-new-tabs))         (deferred-trun "removed a tab" "removed {0} tabs" num-tabs-diff)
+                 (> num-prev-tabs num-new-tabs))              (deferred-trun "removed a tab" "removed {0} tabs" num-tabs-diff)
 
-               (and (= num-prev-tabs num-new-tabs)
-                    (= prev-tab-ids new-tab-ids)
-                    (= (set (map :name prev-tabs))
-                       (set (map :name new-tabs))))      (deferred-tru "rearranged the tabs")
+               (= (set (map #(dissoc % :position) prev-tabs))
+                  (set (map #(dissoc % :position) new-tabs))) (deferred-tru "rearranged the tabs")
 
-               :else                                     (deferred-tru "modified the tabs"))))
+               :else                                          (deferred-tru "modified the tabs"))))
          (let [f (comp boolean :auto_apply_filters)]
            (when (not= (f prev-dashboard) (f dashboard))
              (deferred-tru "set auto apply filters to {0}" (str (f dashboard)))))]

@@ -538,7 +538,7 @@
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
-  (let [{:keys [to-create to-update to-delete]} (dashboard-tab/classify-changes current-cards new-cards)]
+  (let [{:keys [to-create to-update to-delete]} (u/classify-changes current-cards new-cards)]
     {:deleted-dashcards (when (seq to-delete)
                           (delete-dashcards! (map :id to-delete)))
      :created-dashcards (when (seq to-create)

@@ -1,9 +1,9 @@
 (ns metabase.models.dashboard-tab
   (:require
-   [clojure.data :refer [diff]]
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -114,25 +114,6 @@
     (t2/delete! :model/DashboardTab :id [:in tab-ids]))
   nil)
 
-(mu/defn classify-changes :- [:map
-                              [:to-create [:maybe [:sequential [:map [:id ms/Int]]]]]
-                              [:to-update [:maybe [:sequential [:map [:id ms/Int]]]]]
-                              [:to-delete [:maybe [:sequential [:map [:id ms/Int]]]]]]
-  "Given 2 lists of seq maps of changes, where each map an has an `id` key,
-  return a map of 3 keys: `:to-create`, `:to-update`, `:to-delete`.
-
-  Where:
-    :to-create is a list of maps that ids in `new-items`
-    :to-update is a list of maps that has ids in both `current-items` and `new-items`
-    :to delete is a list of maps that has ids only in `current-items`"
-  [current-items :- [:maybe [:sequential [:map [:id ms/PositiveInt]]]]
-   new-items     :- [:maybe [:sequential [:map [:id ms/Int]]]]]
-  (let [[delete-ids create-ids update-ids] (diff (set (map :id current-items))
-                                                 (set (map :id new-items)))]
-    {:to-create (when (seq create-ids) (filter #(create-ids (:id %)) new-items))
-     :to-delete (when (seq delete-ids) (filter #(delete-ids (:id %)) current-items))
-     :to-update (when (seq update-ids) (filter #(update-ids (:id %)) new-items))}))
-
 (defn do-update-tabs!
   "Given current tabs and new tabs, do the necessary create/update/delete to apply new tab changes.
   Returns:
@@ -144,7 +125,7 @@
   [dashboard-id current-tabs new-tabs]
   (let [{:keys [to-create
                 to-update
-                to-delete]} (classify-changes current-tabs new-tabs)
+                to-delete]} (u/classify-changes current-tabs new-tabs)
         to-delete-ids       (map :id to-delete)
         _                   (when-let [to-delete-ids (seq to-delete-ids)]
                               (delete-tabs! to-delete-ids))
