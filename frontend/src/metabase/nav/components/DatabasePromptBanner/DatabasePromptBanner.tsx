@@ -22,11 +22,11 @@ interface DatabasePromptBannerProps {
 export function DatabasePromptBanner({ location }: DatabasePromptBannerProps) {
   const isAdmin = useSelector(getUserIsAdmin);
   const isPaidPlan = useSelector(getIsPaidPlan);
-  const { data: databases } = useDatabaseListQuery({
+  const { data: databases = [] } = useDatabaseListQuery({
     enabled: isAdmin && isPaidPlan,
   });
   const onlyHaveSampleDatabase =
-    databases?.length === 1 && databases[0].is_sample;
+    databases.length === 1 && databases[0].is_sample;
   const shouldShowDatabasePromptBanner =
     isAdmin && isPaidPlan && onlyHaveSampleDatabase;
 
