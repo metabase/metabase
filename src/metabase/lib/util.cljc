@@ -63,7 +63,7 @@
     (if (clause? clause)
       clause
       [:value {:lib/uuid (str (random-uuid))
-               :effective-type (lib.schema.expression/type-of 1)}
+               :effective-type (lib.schema.expression/type-of clause)}
        clause])
     [1 :lib/expression-name] a-name))
 

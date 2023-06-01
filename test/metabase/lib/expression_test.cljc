@@ -259,14 +259,14 @@
 
 (deftest ^:parallel literal-expression-test
   (is (=? [{:lib/type :metadata/field,
-            :base-type :type/Number,
+            :base-type :type/Integer,
             :name "expr",
             :display-name "expr",
             :lib/source :source/expressions}]
           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
               (lib/expression "expr" 100)
               (lib/expressions-metadata))))
-  (is (=? [[:value {:lib/expression-name "expr" :effective-type :type/Number} 100]]
+  (is (=? [[:value {:lib/expression-name "expr" :effective-type :type/Integer} 100]]
           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
               (lib/expression "expr" 100)
               (lib/expressions))))
