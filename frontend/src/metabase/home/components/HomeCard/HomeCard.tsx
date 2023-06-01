@@ -1,14 +1,14 @@
 import { ReactNode } from "react";
 import { CardRoot } from "./HomeCard.styled";
 
-export interface HomeCardProps {
+interface HomeCardProps {
   className?: string;
   url?: string;
   external?: boolean;
   children?: ReactNode;
 }
 
-const HomeCard = ({
+export const HomeCard = ({
   className,
   url = "",
   children,
@@ -19,6 +19,3 @@ const HomeCard = ({
     </CardRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default HomeCard;

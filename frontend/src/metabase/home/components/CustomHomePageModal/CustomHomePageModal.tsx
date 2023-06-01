@@ -23,13 +23,13 @@ export const CustomHomePageModal = ({
   isOpen,
   onClose,
 }: CustomHomePageModalProps) => {
-  const [dashboard, setDashboard] = useState<DashboardId>();
+  const [dashboardId, setDashboardId] = useState<DashboardId>();
   const dispatch = useDispatch();
 
   const handleSave = async () => {
     await dispatch(
       updateSettings({
-        [CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY]: dashboard,
+        [CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY]: dashboardId,
         [CUSTOM_HOMEPAGE_SETTING_KEY]: true,
       }),
     );
@@ -37,14 +37,14 @@ export const CustomHomePageModal = ({
   };
 
   const handleChange = useCallback(
-    (value: number | null | undefined | string) => {
+    (value: DashboardId | null | undefined) => {
       if (value) {
-        setDashboard(value);
+        setDashboardId(value);
       } else {
-        setDashboard(undefined);
+        setDashboardId(undefined);
       }
     },
-    [setDashboard],
+    [setDashboardId],
   );
 
   return (
@@ -63,7 +63,7 @@ export const CustomHomePageModal = ({
       >
         <p>{t`Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage. You can update or reset this anytime in Admin Settings > Settings > General`}</p>
         <DashboardSelector
-          value={dashboard}
+          value={dashboardId}
           onChange={handleChange}
           collectionFilter={(collection: Collection) =>
             collection.personal_owner_id === null || collection.id === "root"
