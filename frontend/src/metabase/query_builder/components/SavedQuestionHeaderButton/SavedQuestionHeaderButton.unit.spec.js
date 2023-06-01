@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
+import { createMockCollection } from "metabase-types/api/mocks";
 import { renderWithProviders, screen, getIcon } from "__support__/ui";
 
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -29,6 +30,7 @@ describe("SavedQuestionHeaderButton", () => {
       name: "foo",
       moderation_reviews: [],
       can_write: true,
+      collection: createMockCollection(),
     },
     metadata,
   );
@@ -62,12 +64,31 @@ describe("SavedQuestionHeaderButton", () => {
         { status: null },
         { most_recent: true, status: "verified" },
       ],
+      collection: createMockCollection(),
     });
 
     it("should have an additional icon to signify the question's moderation status", () => {
       setupEnterpriseTest();
       setup({ question });
       expect(getIcon("verified")).toBeInTheDocument();
+    });
+  });
+
+  describe("when the question is in an instance analytics collection", () => {
+    const question = new Question(
+      {
+        name: "foo",
+        collection: createMockCollection({
+          id: "1",
+          type: "instance-analytics",
+        }),
+      },
+      metadata,
+    );
+
+    it("should have an additional icon to signify the question's collection type", () => {
+      setup({ question });
+      expect(getIcon("beaker")).toBeInTheDocument();
     });
   });
 });

@@ -24,6 +24,7 @@ import { memoizeClass, sortObject } from "metabase-lib/utils";
 
 import type {
   Card as CardObject,
+  Collection,
   CollectionId,
   DatabaseId,
   DatasetColumn,
@@ -895,6 +896,10 @@ class QuestionInner {
 
   collectionId(): number | null | undefined {
     return this._card && this._card.collection_id;
+  }
+
+  collectionType(): Pick<Collection, "type"> {
+    return this._card?.collection?.type;
   }
 
   setCollectionId(collectionId: number | null | undefined) {
