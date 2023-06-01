@@ -5,9 +5,10 @@ import _ from "underscore";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import { Card, Collection } from "metabase-types/api";
+import { Card } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCollection,
   createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -28,11 +29,7 @@ const TEST_NATIVE_CARD = createMockCard({
   }),
 });
 
-const ROOT_COLLECTION = {
-  id: "root",
-  name: "Our analytics",
-  can_write: true,
-} as Collection;
+const ROOT_COLLECTION = createMockCollection({ id: "root" });
 
 interface SetupOpts {
   card?: Card;
