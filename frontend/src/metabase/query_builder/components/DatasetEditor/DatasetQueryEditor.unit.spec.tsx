@@ -1,6 +1,5 @@
 import { screen } from "@testing-library/react";
 import fetchMock from "fetch-mock";
-import React from "react";
 import _ from "underscore";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
