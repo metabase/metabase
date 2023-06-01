@@ -48,9 +48,9 @@ export function DetailsTableCell({
     columnSettings?.["_column_title_full"] || formatColumn(column);
 
   if (isColumnName) {
-    const cellText = column !== null ? columnTitle : null;
-    const cellLines = cellText?.includes(" ") ? 3 : 1;
-    cellValue = <Ellipsified lines={cellLines}>{cellText}</Ellipsified>;
+    const title = column !== null ? columnTitle : null;
+    const lineLimit = title?.match(/\s/) ? 10 : 1;
+    cellValue = <Ellipsified lines={lineLimit}>{title}</Ellipsified>;
     clicked.column = column;
     isLink = false;
   } else {
