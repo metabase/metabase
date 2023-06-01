@@ -9,7 +9,7 @@
 
 (deftest test-pulse-endpoint-should-respect-email-domain-allow-list-test
   (testing "POST /api/pulse/test"
-    (t2.with-temp/with-temp [Card card] {:dataset_query (mt/mbql-query venues)}
+    (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues)}]
       ;; make sure we validate raw emails whether they're part of `:details` or part of `:recipients` -- we
       ;; technically allow either right now
       (doseq [channel [{:details {:emails ["test@metabase.com"]}}
