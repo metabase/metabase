@@ -88,6 +88,7 @@ function App({
   isNavBarEnabled,
   children,
   onError,
+  location,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
 
@@ -99,7 +100,7 @@ function App({
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
         <AppContainer className="spread">
-          <AppBanner />
+          <AppBanner location={location} />
           {isAppBarVisible && <AppBar />}
           <AppContentContainer isAdminApp={isAdminApp}>
             {isNavBarEnabled && <Navbar />}

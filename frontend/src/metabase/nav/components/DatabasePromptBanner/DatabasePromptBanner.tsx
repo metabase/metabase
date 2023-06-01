@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import { withRouter } from "react-router";
 import type { Location } from "history";
 
 import Link from "metabase/core/components/Link/Link";
@@ -20,40 +19,38 @@ interface DatabasePromptBannerProps {
   location: Location;
 }
 
-export const DatabasePromptBanner = withRouter(
-  function DatabasePromptBannerView({ location }: DatabasePromptBannerProps) {
-    const isAdmin = useSelector(getUserIsAdmin);
-    const isPaidPlan = useSelector(getIsPaidPlan);
-    const { data: databases } = useDatabaseListQuery({
-      enabled: isAdmin && isPaidPlan,
-    });
-    const onlyHaveSampleDatabase =
-      databases?.length === 1 && databases[0].is_sample;
-    const shouldShowDatabasePromptBanner =
-      isAdmin && isPaidPlan && onlyHaveSampleDatabase;
+export function DatabasePromptBanner({ location }: DatabasePromptBannerProps) {
+  const isAdmin = useSelector(getUserIsAdmin);
+  const isPaidPlan = useSelector(getIsPaidPlan);
+  const { data: databases } = useDatabaseListQuery({
+    enabled: isAdmin && isPaidPlan,
+  });
+  const onlyHaveSampleDatabase =
+    databases?.length === 1 && databases[0].is_sample;
+  const shouldShowDatabasePromptBanner =
+    isAdmin && isPaidPlan && onlyHaveSampleDatabase;
 
-    if (!shouldShowDatabasePromptBanner) {
-      return null;
-    }
+  if (!shouldShowDatabasePromptBanner) {
+    return null;
+  }
 
-    const isOnAdminAddDatabasePage = location.pathname.startsWith(
-      "/admin/databases/create",
-    );
+  const isOnAdminAddDatabasePage = location.pathname.startsWith(
+    "/admin/databases/create",
+  );
 
-    return (
-      <DatabasePromptBannerRoot>
-        <Prompt>{t`Connect to your database to get the most from Metabase.`}</Prompt>
-        <CallToActions>
-          <GetHelpButton href="https://metabase.com/help/connect">{t`Get help connecting`}</GetHelpButton>
-          {!isOnAdminAddDatabasePage && (
-            <Link to="/admin/databases/create">
-              <ConnectDatabaseButton small>
-                Connect your database
-              </ConnectDatabaseButton>
-            </Link>
-          )}
-        </CallToActions>
-      </DatabasePromptBannerRoot>
-    );
-  },
-);
+  return (
+    <DatabasePromptBannerRoot>
+      <Prompt>{t`Connect to your database to get the most from Metabase.`}</Prompt>
+      <CallToActions>
+        <GetHelpButton href="https://metabase.com/help/connect">{t`Get help connecting`}</GetHelpButton>
+        {!isOnAdminAddDatabasePage && (
+          <Link to="/admin/databases/create">
+            <ConnectDatabaseButton small>
+              Connect your database
+            </ConnectDatabaseButton>
+          </Link>
+        )}
+      </CallToActions>
+    </DatabasePromptBannerRoot>
+  );
+}
