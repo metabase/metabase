@@ -13,7 +13,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;;; Graph-related stuff
 
@@ -73,7 +74,7 @@
   (testing "PUT /api/permissions/graph"
     (testing (str "fails when a group has a block permission set, and the instance doesn't have the "
                   ":advanced-permissions premium feature enabled")
-      (mt/with-temp PermissionsGroup [{group-id :id}]
+      (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
         (let [current-graph (perms/data-perms-graph)
               new-graph     (assoc-in current-graph [:groups group-id (mt/id) :data] {:schemas :block})
               result        (premium-features-test/with-premium-features #{} ; disable premium features
@@ -91,7 +92,7 @@
                                   "the perms graph API endpoint"
                                   api-grant-block-perms!}]
       (testing (str description "\n")
-        (mt/with-temp PermissionsGroup [{group-id :id}]
+        (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
           (testing "Group should have no perms upon creation"
             (is (= nil
                    (test-db-perms group-id))))
@@ -207,7 +208,7 @@
               (is (= ::block-perms/no-block-permissions-for-db
                      (check-block-perms))))
             ;; 'grant' the block permissions.
-            (mt/with-temp Permissions [_ {:group_id group-id, :object (perms/database-block-perms-path (mt/id))}]
+            (t2.with-temp/with-temp [Permissions _ {:group_id group-id, :object (perms/database-block-perms-path (mt/id))}]
               (testing "if EE token does not have the `:advanced-permissions` feature: should not do check"
                 (premium-features-test/with-premium-features #{}
                   (is (= ::block-perms/advanced-permissions-not-enabled
@@ -226,7 +227,7 @@
                                 PermissionsGroupMembership [_ {:group_id group-2-id, :user_id user-id}]]
                   (doseq [[message perms] {"with full DB perms"                   (perms/data-perms-path (mt/id))
                                            "with perms for the Table in question" (perms/table-query-path (mt/id :venues))}]
-                    (mt/with-temp Permissions [_ {:group_id group-2-id, :object perms}]
+                    (t2.with-temp/with-temp [Permissions _ {:group_id group-2-id, :object perms}]
                       (testing (format "Should be able to run the query %s" message)
                         (doseq [[message f] {"ad-hoc queries"  run-ad-hoc-query
                                              "Saved Questions" run-saved-question}]

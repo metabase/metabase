@@ -22,7 +22,8 @@
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
    [ring.mock.request :as ring.mock]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)))
@@ -117,7 +118,7 @@
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -61 :second) true  "session that is 61 seconds old"]
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]]]
         (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
-          (mt/with-temp User [{user-id :id}]
+          (t2.with-temp/with-temp [User {user-id :id}]
             (let [session-id (str (UUID/randomUUID))]
               (t2/insert! (t2/table-name Session) {:id session-id, :user_id user-id, :created_at created-at})
               (let [session (#'mw.session/current-user-info-for-session session-id nil)]
@@ -406,7 +407,7 @@
 
     (testing "w/ Session"
       (testing "for user with no `:locale`"
-        (mt/with-temp User [{user-id :id}]
+        (t2.with-temp/with-temp [User {user-id :id}]
           (let [session-id (str (UUID/randomUUID))]
             (t2/insert! Session {:id session-id, :user_id user-id})
             (is (= nil
@@ -417,7 +418,7 @@
                      (session-locale session-id :headers {"x-metabase-locale" "es-mx"})))))))
 
       (testing "for user *with* `:locale`"
-        (mt/with-temp User [{user-id :id} {:locale "es-MX"}]
+        (t2.with-temp/with-temp [User {user-id :id} {:locale "es-MX"}]
           (let [session-id (str (UUID/randomUUID))]
             (t2/insert! Session {:id session-id, :user_id user-id, :created_at :%now})
             (is (= "es_MX"

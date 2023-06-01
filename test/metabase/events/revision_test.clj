@@ -6,7 +6,8 @@
     :refer [Card Dashboard DashboardCard Database Metric Revision Segment Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- card-properties
   "Some default properties for `Cards` for use in tests in this namespace."
@@ -52,7 +53,7 @@
 
 (deftest card-create-test
   (testing ":card-create"
-    (mt/with-temp Card [{card-id :id, :as card} (card-properties)][]
+    (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)][]
       (revision/process-revision-event! {:topic :card-create
                                          :item  card})
       (is (= {:model        "Card"
@@ -68,7 +69,7 @@
 
 (deftest card-update-test
   (testing ":card-update"
-    (mt/with-temp Card [{card-id :id, :as card} (card-properties)]
+    (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
       (revision/process-revision-event! {:topic :card-update
                                          :item  card})
       (is (= {:model        "Card"
@@ -84,7 +85,7 @@
 
 (deftest dashboard-create-test
   (testing ":dashboard-create"
-    (mt/with-temp Dashboard [{dashboard-id :id, :as dashboard}]
+    (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
       (revision/process-revision-event! {:topic :dashboard-create
                                          :item  dashboard})
       (is (= {:model        "Dashboard"
@@ -100,7 +101,7 @@
 
 (deftest dashboard-update-test
   (testing ":dashboard-update"
-    (mt/with-temp Dashboard [{dashboard-id :id, :as dashboard}]
+    (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
       (revision/process-revision-event! {:topic :dashboard-update
                                          :item  dashboard})
       (is (= {:model        "Dashboard"

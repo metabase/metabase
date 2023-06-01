@@ -9,7 +9,8 @@
    [metabase.models.task-history :as task-history]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -121,7 +122,7 @@
                                                            :orange 2}))))))
 
         (testing "infer db_engine if db_id exists"
-          (mt/with-temp Database [{db-id :id} {:engine "postgres"}]
+          (t2.with-temp/with-temp [Database {db-id :id} {:engine "postgres"}]
             (is (= {:data    {"duration"     10
                               "ended_at"     true
                               "started_at"   true
