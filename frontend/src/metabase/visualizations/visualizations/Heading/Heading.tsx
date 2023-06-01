@@ -54,7 +54,11 @@ export function Heading({
         onClick={toggleFocusOn}
       >
         {isPreviewing ? (
-          <HeadingContent hasNoContent={hasNoContent} isEditing={isEditing}>
+          <HeadingContent
+            hasNoContent={hasNoContent}
+            isEditing={isEditing}
+            onMouseDown={preventDragging}
+          >
             {content || placeholder}
           </HeadingContent>
         ) : (

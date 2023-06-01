@@ -19,6 +19,15 @@ export const EditModeContainer = styled.div`
     "padding: calc(0.75rem - 1px);"}// adjust for border on preview/no entered content
 `;
 
+export const ClickToEditWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+`;
+
 export const TextInput = styled.textarea`
   width: 100%;
   display: flex;

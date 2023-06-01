@@ -14,6 +14,7 @@ import { withInstanceLanguage, siteLocale } from "metabase/lib/i18n";
 import { useFocus } from "metabase/hooks/use-focus";
 
 import {
+  ClickToEditWrapper,
   DisplayContainer,
   EditModeContainer,
   TextInput,
@@ -96,21 +97,24 @@ export function Text({
         onClick={toggleFocusOn}
       >
         {isPreviewing ? (
-          <ReactMarkdown
-            remarkPlugins={REMARK_PLUGINS}
-            rehypePlugins={REHYPE_PLUGINS}
-            className={cx(
-              "full flex-full flex flex-column text-card-markdown",
-              styles["text-card-markdown"],
-              styles["cursor-text"],
-              getSettingsStyle(settings),
-              {
-                "text-light": hasNoContent,
-              },
-            )}
-          >
-            {content || placeholder}
-          </ReactMarkdown>
+          <ClickToEditWrapper onMouseDown={preventDragging}>
+            {/* ReactMarkdown does not allow adding an onMouseDown event handler */}
+            <ReactMarkdown
+              remarkPlugins={REMARK_PLUGINS}
+              rehypePlugins={REHYPE_PLUGINS}
+              className={cx(
+                "full flex-full flex flex-column text-card-markdown",
+                styles["text-card-markdown"],
+                styles["cursor-text"],
+                getSettingsStyle(settings),
+                {
+                  "text-light": hasNoContent,
+                },
+              )}
+            >
+              {content || placeholder}
+            </ReactMarkdown>
+          </ClickToEditWrapper>
         ) : (
           <TextInput
             name="text"
