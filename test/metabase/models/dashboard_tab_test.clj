@@ -3,12 +3,11 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.models :refer [Card Collection Dashboard DashboardCard]]
-   [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
