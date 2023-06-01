@@ -306,7 +306,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
       cy.findAllByTestId("legend-item").findByText("Doohickey").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("View these Products").click();
+      cy.findByText("See these Products").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Category is Doohickey").should("be.visible");

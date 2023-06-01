@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/hoc/Title";

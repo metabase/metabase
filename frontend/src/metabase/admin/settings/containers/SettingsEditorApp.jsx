@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { bindActionCreators } from "@reduxjs/toolkit";
@@ -65,7 +65,7 @@ class SettingsEditorApp extends Component {
 
   constructor(props) {
     super(props);
-    this.saveStatusRef = React.createRef();
+    this.saveStatusRef = createRef();
   }
 
   componentDidMount() {

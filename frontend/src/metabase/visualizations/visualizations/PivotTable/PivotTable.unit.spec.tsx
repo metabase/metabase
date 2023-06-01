@@ -1,4 +1,4 @@
-import React from "react";
+import { useState } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import _ from "underscore";
@@ -83,7 +83,7 @@ function setup(options?: any) {
 }
 
 function PivotTableWrapper(props?: any) {
-  const [vizSettings, setVizSettings] = React.useState(
+  const [vizSettings, setVizSettings] = useState(
     props.initialSettings ?? settings,
   );
   return (

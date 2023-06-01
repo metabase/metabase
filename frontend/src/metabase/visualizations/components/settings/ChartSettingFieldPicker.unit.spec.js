@@ -1,4 +1,3 @@
-import React from "react";
 import { within } from "@testing-library/react";
 import { renderWithProviders, screen } from "__support__/ui";
 

@@ -1,4 +1,3 @@
-import React from "react";
 import { Route } from "react-router";
 import { screen } from "@testing-library/react";
 import { createMockCard } from "metabase-types/api/mocks";

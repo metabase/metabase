@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { checkNotNull } from "metabase/core/utils/types";

@@ -28,8 +28,17 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod ->op-arg :default
-  [_query _stage-number x]
-  x)
+  [query stage-number x]
+  (if (and (vector? x)
+           (keyword? (first x)))
+    ;; MBQL clause
+    (mapv #(->op-arg query stage-number %) x)
+    ;; Something else - just return it
+    x))
+
+(defmethod ->op-arg :dispatch-type/sequential
+  [query stage-number xs]
+  (mapv #(->op-arg query stage-number %) xs))
 
 (defmethod ->op-arg :metadata/field
   [_query _stage-number field-metadata]

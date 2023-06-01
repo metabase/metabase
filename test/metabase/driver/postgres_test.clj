@@ -1172,7 +1172,7 @@
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
         (is (= #{"public"}
-               (driver/syncable-schemas driver/*driver* (mt/id))))))
+               (driver/syncable-schemas driver/*driver* (mt/db))))))
     (testing "metabase_cache schemas should be excluded"
       (mt/dataset test-data
         (mt/with-persistence-enabled [persist-models!]
@@ -1185,4 +1185,4 @@
               (is (some (partial re-matches #"metabase_cache(.*)")
                         (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
               (is (nil? (some (partial re-matches #"metabase_cache(.*)")
-                              (driver/syncable-schemas driver/*driver* (mt/id))))))))))))
+                              (driver/syncable-schemas driver/*driver* (mt/db))))))))))))

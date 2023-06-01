@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import cx from "classnames";
 import Draggable, { ControlPosition, DraggableBounds } from "react-draggable";
 

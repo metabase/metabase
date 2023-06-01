@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 
 import cx from "classnames";
@@ -9,7 +9,7 @@ import { SnippetButton } from "./SnippetRow.styled";
 
 const ICON_SIZE = 16;
 
-class SnippetRowInner extends React.Component {
+class SnippetRowInner extends Component {
   constructor(props) {
     super(props);
     this.state = { isOpen: false };

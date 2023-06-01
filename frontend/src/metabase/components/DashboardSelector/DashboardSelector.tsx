@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import DashboardPicker from "metabase/containers/DashboardPicker";

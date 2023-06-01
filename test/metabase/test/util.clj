@@ -10,8 +10,8 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [colorize.core :as colorize]
    [environ.core :as env]
-   [hawk.parallel]
    [java-time :as t]
+   [mb.hawk.parallel]
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.models
@@ -286,7 +286,7 @@
 (defn do-with-temp-env-var-value
   "Impl for [[with-temp-env-var-value]] macro."
   [env-var-keyword value thunk]
-  (hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value")
   (let [value (str value)]
     (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
       (try
@@ -428,7 +428,7 @@
   To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
-  (hawk.parallel/assert-test-is-not-parallel "with-temporary-setting-vales")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-temporary-setting-vales")
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
@@ -441,7 +441,7 @@
   using [[metabase.models.setting/defsetting]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
-  (hawk.parallel/assert-test-is-not-parallel "with-temporary-raw-setting-values")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-temporary-raw-setting-values")
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
@@ -472,7 +472,7 @@
 (defn do-with-temp-vals-in-db
   "Implementation function for [[with-temp-vals-in-db]] macro. Prefer that to using this directly."
   [model object-or-id column->temp-value f]
-  (hawk.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
   (let [model                    (t2.model/resolve-model model)
@@ -619,7 +619,7 @@
 
 (defn do-with-model-cleanup [models f]
   {:pre [(sequential? models) (every? mdb.u/toucan-model? models)]}
-  (hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
                                      [model (:max-id (t2/select-one [model [(keyword (str "%max." (name (mdb.u/primary-key model))))
@@ -731,7 +731,7 @@
         readwrite-path              (perms/collection-readwrite-path collection-or-id)
         groups-with-read-perms      (t2/select-fn-set :group_id Permissions :object read-path)
         groups-with-readwrite-perms (t2/select-fn-set :group_id Permissions :object readwrite-path)]
-    (hawk.parallel/assert-test-is-not-parallel "with-discarded-collections-perms-changes")
+    (mb.hawk.parallel/assert-test-is-not-parallel "with-discarded-collections-perms-changes")
     (try
       (f)
       (finally
@@ -747,7 +747,7 @@
   `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
 
 (defn do-with-non-admin-groups-no-collection-perms [collection f]
-  (hawk.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
   (try
     (do-with-discarded-collections-perms-changes
      collection
@@ -823,7 +823,7 @@
 (defn call-with-locale
   "Sets the default locale temporarily to `locale-tag`, then invokes `f` and reverts the locale change"
   [locale-tag f]
-  (hawk.parallel/assert-test-is-not-parallel "with-locale")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-locale")
   (let [current-locale (Locale/getDefault)]
     (try
       (Locale/setDefault (Locale/forLanguageTag locale-tag))

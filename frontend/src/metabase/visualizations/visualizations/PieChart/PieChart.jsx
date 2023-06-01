@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import cx from "classnames";
 import d3 from "d3";
 import _ from "underscore";
@@ -46,9 +46,9 @@ export default class PieChart extends Component {
 
     this.state = { width: 0, height: 0 };
 
-    this.chartContainer = React.createRef();
-    this.chartDetail = React.createRef();
-    this.chartGroup = React.createRef();
+    this.chartContainer = createRef();
+    this.chartDetail = createRef();
+    this.chartGroup = createRef();
   }
 
   static uiName = t`Pie`;

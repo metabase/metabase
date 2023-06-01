@@ -1,4 +1,4 @@
-import React, { Component, CSSProperties } from "react";
+import { Component, CSSProperties } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import cx from "classnames";
 import {

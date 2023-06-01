@@ -1,4 +1,4 @@
-import React from "react";
+import { Fragment } from "react";
 
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 
@@ -42,7 +42,7 @@ function BaseTreeNodeList({
         const onItemToggle = () => onToggleExpand(item.id);
 
         return (
-          <React.Fragment key={item.id}>
+          <Fragment key={item.id}>
             <TreeNode
               ref={isSelected ? selectedRef : null}
               item={item}
@@ -65,7 +65,7 @@ function BaseTreeNodeList({
                 TreeNode={TreeNode}
               />
             )}
-          </React.Fragment>
+          </Fragment>
         );
       })}
     </ListRoot>

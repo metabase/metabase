@@ -1,4 +1,3 @@
-import React from "react";
 import { Group } from "@visx/group";
 import { RowChart } from "metabase/visualizations/shared/components/RowChart";
 import {

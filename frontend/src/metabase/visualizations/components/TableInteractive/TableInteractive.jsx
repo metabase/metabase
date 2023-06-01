@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, forwardRef, Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
@@ -94,7 +94,7 @@ class TableInteractive extends Component {
     };
     this.columnHasResized = {};
     this.headerRefs = [];
-    this.detailShortcutRef = React.createRef();
+    this.detailShortcutRef = createRef();
 
     window.METABASE_TABLE = this;
   }
@@ -403,7 +403,7 @@ class TableInteractive extends Component {
 
   getHeaderClickedObject(columnIndex) {
     try {
-      return this._getHeaderClickedObjectCached(
+      return getTableHeaderClickedObject(
         this.props.data,
         columnIndex,
         this.props.isPivoted,
@@ -412,10 +412,6 @@ class TableInteractive extends Component {
     } catch (e) {
       console.error(e);
     }
-  }
-  // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
-  _getHeaderClickedObjectCached(data, columnIndex, isPivoted, query) {
-    return getTableHeaderClickedObject(data, columnIndex, isPivoted, query);
   }
 
   visualizationIsClickable(clicked) {
@@ -1132,7 +1128,6 @@ export default _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   memoizeClass(
     "_getCellClickedObjectCached",
-    "_getHeaderClickedObjectCached",
     "_visualizationIsClickableCached",
     "getCellBackgroundColor",
     "getCellFormattedValue",
@@ -1140,7 +1135,7 @@ export default _.compose(
   ),
 )(TableInteractive);
 
-const DetailShortcut = React.forwardRef((_props, ref) => (
+const DetailShortcut = forwardRef((_props, ref) => (
   <div
     id="detail-shortcut"
     className="TableInteractive-cellWrapper cursor-pointer"
