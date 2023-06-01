@@ -28,7 +28,7 @@ const ConvertQueryButton = ({
   }, [onOpenModal]);
 
   return (
-    <Tooltip tooltip={tooltip} placement="bottom">
+    <Tooltip tooltip={tooltip} placement="top">
       <SqlButton
         onClick={handleClick}
         aria-label={tooltip}

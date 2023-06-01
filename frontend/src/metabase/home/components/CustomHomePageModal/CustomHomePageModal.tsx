@@ -61,7 +61,7 @@ export const CustomHomePageModal = ({
           </Button>,
         ]}
       >
-        <p>{t`Pick one of your dashboards to serve as homepage. Users wihtout dashboard access will be directed to the default homepage. You can update or reset this anytime in Admin Settings > Settings > General`}</p>
+        <p>{t`Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage. You can update or reset this anytime in Admin Settings > Settings > General`}</p>
         <DashboardSelector
           value={dashboardId}
           onChange={handleChange}
