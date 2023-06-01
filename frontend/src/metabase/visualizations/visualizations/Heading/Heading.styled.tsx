@@ -67,7 +67,7 @@ export const HeadingContent = styled.h2<HeadingContentProps>`
   ${({ hasNoContent }) =>
     hasNoContent &&
     `
-    color: ${color("text-light")}
+    color: ${color("text-light")};
   `}
   ${({ isEditing }) =>
     isEditing &&
