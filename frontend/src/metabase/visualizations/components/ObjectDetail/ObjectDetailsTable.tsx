@@ -8,6 +8,7 @@ import ExpandableString from "metabase/query_builder/components/ExpandableString
 import EmptyState from "metabase/components/EmptyState";
 
 import { formatValue, formatColumn } from "metabase/lib/formatting";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import { isa, isID } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
@@ -47,7 +48,9 @@ export function DetailsTableCell({
     columnSettings?.["_column_title_full"] || formatColumn(column);
 
   if (isColumnName) {
-    cellValue = column !== null ? columnTitle : null;
+    const cellText = column !== null ? columnTitle : null;
+    const cellLines = cellText?.includes(" ") ? 3 : 1;
+    cellValue = <Ellipsified lines={cellLines}>{cellText}</Ellipsified>;
     clicked.column = column;
     isLink = false;
   } else {
