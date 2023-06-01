@@ -1,4 +1,6 @@
 import "metabase/css/index.css";
+import { MantineProvider } from "@mantine/core";
+import { theme } from "metabase/ui/theme";
 
 export const parameters = {
   actions: { argTypesRegex: "^on[A-Z].*" },
@@ -9,3 +11,18 @@ export const parameters = {
     },
   },
 };
+
+// Pasta from - https://mantine.dev/guides/storybook/
+
+function ThemeWrapper(props) {
+  return (
+    <MantineProvider theme={theme} withGlobalStyles withNormalizeCSS>
+      {props.children}
+    </MantineProvider>
+  );
+}
+
+// enhance your stories with decorator that uses ThemeWrapper
+export const decorators = [
+  renderStory => <ThemeWrapper>{renderStory()}</ThemeWrapper>,
+];
