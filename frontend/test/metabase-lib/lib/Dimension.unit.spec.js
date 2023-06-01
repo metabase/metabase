@@ -990,6 +990,28 @@ describe("Dimension", () => {
           expect(base_type).toBe("type/Integer");
         });
       });
+
+      describe("getMLv1CompatibleDimension", () => {
+        it("should strip away *-type options", () => {
+          const dimension = Dimension.parseMBQL(
+            [
+              "aggregation",
+              1,
+              {
+                "base-type": "type/Integer",
+                "effective-type": "type/Integer",
+              },
+            ],
+            metadata,
+          );
+
+          expect(dimension.getMLv1CompatibleDimension().mbql()).toEqual([
+            "aggregation",
+            1,
+            null,
+          ]);
+        });
+      });
     });
   });
 
