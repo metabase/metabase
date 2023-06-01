@@ -5,13 +5,8 @@
    [metabase.api.user :as api.user]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card
-            Collection
-            Dashboard
-            LoginHistory
-            PermissionsGroup
-            PermissionsGroupMembership
-            User]]
+    :refer [Card Collection Dashboard LoginHistory PermissionsGroup
+            PermissionsGroupMembership User]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
@@ -45,7 +40,7 @@
       :locale           nil})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
+;;; |        Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id, GET /api/user/recipients     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 
@@ -91,6 +86,29 @@
                  :common_name "Lucky Pigeon"}]
                (->> ((mt/user-http-request :rasta :get 200 "user" :query "lUck") :data)
                     (filter mt/test-user?))))))))
+
+(deftest user-recipients-list-test
+  (testing "GET /api/user/recipients"
+    (testing "All users when user-visibility is all users"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temporary-setting-values [user-visibility "all users"]
+          (is (= [{:id          (mt/user->id :crowberto)
+                   :email       "crowberto@metabase.com"
+                   :first_name  "Crowberto"
+                   :last_name   "Corv"
+                   :common_name "Crowberto Corv"}
+                  {:id          (mt/user->id :lucky)
+                   :email       "lucky@metabase.com"
+                   :first_name  "Lucky"
+                   :last_name   "Pigeon"
+                   :common_name "Lucky Pigeon"}
+                  {:id          (mt/user->id :rasta)
+                   :email       "rasta@metabase.com"
+                   :first_name  "Rasta"
+                   :last_name   "Toucan"
+                   :common_name "Rasta Toucan"}]
+                 (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                      (filter mt/test-user?)))))))))
 
 (defn- group-ids->sets [users]
   (for [user users]
