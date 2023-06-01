@@ -32,10 +32,9 @@ export function TextOptionsButton({
   return (
     <EntityMenu
       key="dashboard-add-heading-or-text-button"
-      triggerAriaLabel={t`Add a heading or text box`}
       items={TEXT_OPTIONS}
       trigger={
-        <DashboardHeaderButton>
+        <DashboardHeaderButton aria-label={t`Add a heading or text box`}>
           <IconContainer>
             <Icon name="string" size={18} />
             <Icon name="chevrondown" size={10} />
