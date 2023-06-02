@@ -15,7 +15,6 @@
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.db.connection :as mdb.connection]
-   [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.custom-migrations-test :as custom-migrations-test]
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
