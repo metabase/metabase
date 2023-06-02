@@ -120,7 +120,7 @@ export const getInputType = (param: Parameter, field?: Field) => {
   return "string";
 };
 
-// remove this method once the migration of implicit action fields generating to the BE is complete
+// TODO: @uladzimirdev remove this method once the migration of implicit action fields generating to the BE is complete
 export const getOrGenerateFieldSettings = (
   params: Parameter[],
   fields?: Record<
