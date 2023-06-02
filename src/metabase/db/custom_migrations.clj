@@ -371,13 +371,17 @@
                                                     ;; these match legacy field refs in column_settings
                                                     [:like :object "%ref\\\\\",[\\\\\"field-id%"]
                                                     [:like :object "%ref\\\\\",[\\\\\"field-literal%"]
-                                                    [:like :object "%ref\\\\\",[\\\\\"fk->%"]]}))))
+                                                    [:like :object "%ref\\\\\",[\\\\\"fk->%"]
+                                                    ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
+                                                    [:like :object "%ref\\\\\\\",[\\\\\\\"field-id%"]
+                                                    [:like :object "%ref\\\\\\\",[\\\\\\\"field-literal%"]
+                                                    [:like :object "%ref\\\\\\\",[\\\\\\\"fk->%"]]}))))
 
 (define-reversible-migration RevisionAddJoinAliasToColumnSettingsFieldRefs
   ;; This migration is essentially the same as `AddJoinAliasToColumnSettingsFieldRefs`, but for card revisions.
   ;; We can't use the same migration because cards in the revision table don't always have `result_metadata`.
-  ;; So instead, we have to use the join aliases from card's `dataset_query` to create field refs in visualization_settings.
-  ;; There will be field refs in visualization_settings that don't have a matching field ref in result_metadata, but that's ok.
+  ;; So instead, we use the join aliases from card's `dataset_query` to create field refs in visualization_settings.
+  ;; There will inevitably be extra entries in visualization_settings.column_settings that don't match field refs in result_metadata, but that's ok.
   (let [add-join-aliases
         (fn [card]
           (let [join-aliases (->> (get-in card ["dataset_query" "query" "joins"])
@@ -409,8 +413,12 @@
     (run! update-one! (t2/reducible-query {:select [:*]
                                         :from   [:revision]
                                         :where  [:and
-                                                 [:like :object "%ref\\\\\",[\\\\\"field%"] ; only include cards with field refs in column_settings
-                                                 [:like :object "%\"joins\":%"] ; only include cards with joins
+                                                 ;; only include cards with field refs in column_settings
+                                                 [:or
+                                                  [:like :visualization_settings "%ref\\\\\",[\\\\\"field%"]
+                                                  [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                 ;; only include cards with joins
+                                                 [:like :object "%joins%"]
                                                  [:= :model "Card"]]})))
   ;; Reverse migration
   (let [update-one!
@@ -426,6 +434,8 @@
     (run! update-one! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
                                            :where  [:and
-                                                    [:like :object "%ref\\\\\",[\\\\\"field%"]
-                                                    [:like :object "%\"joins\":%"]
+                                                    [:or
+                                                     [:like :visualization_settings "%ref\\\\\",[\\\\\"field%"]
+                                                     [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                    [:like :object "%join-alias%"]
                                                     [:= :model "Card"]]}))))
