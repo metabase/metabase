@@ -98,43 +98,35 @@
 (deftest user-recipients-liPst-test
   (testing "GET /api/user/recipients"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [crowberto {:id          (mt/user->id :crowberto)
-                       :email       "crowberto@metabase.com"
-                       :first_name  "Crowberto"
-                       :last_name   "Corv"
-                       :common_name "Crowberto Corv"}
-            lucky     {:id          (mt/user->id :lucky)
-                       :email       "lucky@metabase.com"
-                       :first_name  "Lucky"
-                       :last_name   "Pigeon"
-                       :common_name "Lucky Pigeon"}
-            rasta     {:id          (mt/user->id :rasta)
-                       :email       "rasta@metabase.com"
-                       :first_name  "Rasta"
-                       :last_name   "Toucan"
-                       :common_name "Rasta Toucan"}]
+      (let [crowberto "crowberto@metabase.com"
+            lucky     "lucky@metabase.com"
+            rasta     "rasta@metabase.com"]
         (testing "Returns all users when user-visibility is all users"
           (mt/with-temporary-setting-values [user-visibility "all users"]
             (is (= [crowberto lucky rasta]
                    (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
-                        (filter mt/test-user?))))))
+                        (filter mt/test-user?)
+                        (map :email)))))
         (testing "Returns all users when admin"
           (mt/with-temporary-setting-values [user-visibility "none"]
             (is (= [crowberto lucky rasta]
                    (->> ((mt/user-http-request :crowberto :get 200 "user/recipients") :data)
-                        (filter mt/test-user?))))))
+                        (filter mt/test-user?)
+                        (map :email)))))))
         (testing "Returns users in the group when user-visibility is same group"
           (mt/with-temporary-setting-values [user-visibility "same group"]
             (mt/with-temp* [PermissionsGroup           [{group-id :id} {:name "Test delete group"}]
                             PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta) :group_id group-id}]
                             PermissionsGroupMembership [_ {:user_id (mt/user->id :crowberto) :group_id group-id}]]
               (is (= [crowberto rasta]
-                     (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data))))))
+                     (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                          (map :email))))))
         (testing "Returns only self when user-visibility is none"
           (mt/with-temporary-setting-values [user-visibility "none"]
             (is (= [rasta]
                    (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
-                        (filter mt/test-user?)))))))))))
+                        (filter mt/test-user?)
+                        (map :email)))))))))))
 
 (deftest admin-user-list-test
   (testing "GET /api/user"
