@@ -5,7 +5,8 @@
    [metabase.models.metric :refer [Metric]]
    [metabase.query-processor-test :as qp.test]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest sum-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
@@ -225,9 +226,9 @@
 (deftest metrics-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "check that we can handle Metrics inside expression aggregation clauses"
-      (mt/with-temp Metric [metric {:table_id   (mt/id :venues)
-                                    :definition {:aggregation [:sum [:field (mt/id :venues :price) nil]]
-                                                 :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
+      (t2.with-temp/with-temp [Metric metric {:table_id   (mt/id :venues)
+                                              :definition {:aggregation [:sum [:field (mt/id :venues :price) nil]]
+                                                           :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
         (is (= [[2 119]
                 [3  40]
                 [4  25]]
@@ -237,9 +238,9 @@
                     :breakout    [$price]}))))))
 
     (testing "check that we can handle Metrics inside an `:aggregation-options` clause"
-      (mt/with-temp Metric [metric {:table_id   (mt/id :venues)
-                                    :definition {:aggregation [:sum [:field (mt/id :venues :price) nil]]
-                                                 :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
+      (t2.with-temp/with-temp [Metric metric {:table_id   (mt/id :venues)
+                                              :definition {:aggregation [:sum [:field (mt/id :venues :price) nil]]
+                                                           :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
         (is (= {:rows    [[2 118]
                           [3  39]
                           [4  24]]
@@ -247,15 +248,15 @@
                           "auto_generated_name"]}
                (mt/format-rows-by [int int]
                  (mt/rows+column-names
-                   (mt/run-mbql-query venues
-                     {:aggregation [[:aggregation-options [:metric (u/the-id metric)] {:name "auto_generated_name"}]]
-                      :breakout    [$price]})))))))
+                  (mt/run-mbql-query venues
+                    {:aggregation [[:aggregation-options [:metric (u/the-id metric)] {:name "auto_generated_name"}]]
+                     :breakout    [$price]})))))))
 
     (testing "check that Metrics with a nested aggregation still work inside an `:aggregation-options` clause"
-      (mt/with-temp Metric [metric (mt/$ids venues
-                                     {:table_id   $$venues
-                                      :definition {:aggregation [[:sum $price]]
-                                                   :filter      [:> $price 1]}})]
+      (t2.with-temp/with-temp [Metric metric (mt/$ids venues
+                                               {:table_id   $$venues
+                                                :definition {:aggregation [[:sum $price]]
+                                                             :filter      [:> $price 1]}})]
         (is (= {:rows    [[2 118]
                           [3  39]
                           [4  24]]
@@ -263,9 +264,9 @@
                           "auto_generated_name"]}
                (mt/format-rows-by [int int]
                  (mt/rows+column-names
-                   (mt/run-mbql-query venues
-                     {:aggregation [[:aggregation-options [:metric (u/the-id metric)] {:name "auto_generated_name"}]]
-                      :breakout    [$price]})))))))))
+                  (mt/run-mbql-query venues
+                    {:aggregation [[:aggregation-options [:metric (u/the-id metric)] {:name "auto_generated_name"}]]
+                     :breakout    [$price]})))))))))
 
 (deftest named-aggregations-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)

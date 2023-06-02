@@ -34,8 +34,8 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.util.test :as tt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -68,7 +68,7 @@
                        "INSERT INTO `exciting-moments-in-history` (`id`, `moment`) VALUES (1, '0000-00-00');"]]
             (jdbc/execute! spec [sql]))
           ;; create & sync MB DB
-          (tt/with-temp Database [database {:engine "mysql", :details details}]
+          (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
             (sync/sync-database! database)
             (mt/with-db database
               ;; run the query
@@ -140,9 +140,9 @@
                (db->fields (mt/db)))))
 
       (testing "if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead"
-        (tt/with-temp Database [db {:engine  "mysql"
-                                    :details (assoc (:details (mt/db))
-                                                    :additional-options "tinyInt1isBit=false")}]
+        (t2.with-temp/with-temp [Database db {:engine  "mysql"
+                                              :details (assoc (:details (mt/db))
+                                                              :additional-options "tinyInt1isBit=false")}]
           (sync/sync-database! db)
           (is (= #{{:name "number-of-cans", :base_type :type/Integer, :semantic_type :type/Quantity}
                    {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
@@ -340,7 +340,7 @@
                             false
                             (throw se))))]
           (when compat
-            (tt/with-temp Database [database {:engine "mysql", :details details}]
+            (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
               (sync/sync-database! database)
               (is (= [{:name   "src1"
                        :fields [{:name      "id"

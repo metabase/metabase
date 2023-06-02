@@ -27,7 +27,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io ByteArrayInputStream)))
 
@@ -59,7 +60,7 @@
   (let [m (merge (when-not (:dataset_query m)
                    {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})})
                  m)]
-    (mt/with-temp Card [card m]
+    (t2.with-temp/with-temp [Card card m]
       (f card))))
 
 (defmacro with-temp-card {:style/indent 1} [[binding & [card]] & body]
@@ -413,13 +414,13 @@
 (deftest csv-reports-count
   (testing "make sure CSV (etc.) downloads take editable params into account (#6407)"
     (with-embedding-enabled-and-new-secret-key
-      (mt/with-temp Card [card (card-with-date-field-filter)]
+      (t2.with-temp/with-temp [Card card (card-with-date-field-filter)]
         (is (= "count\n107\n"
                (client/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
 
 (deftest csv-forward-url-test
   (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp Card [card (card-with-date-field-filter)]
+    (t2.with-temp/with-temp [Card card (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
       (binding [client/*url-prefix* (str/replace client/*url-prefix* #"/api/$" "/")]
         (mt/with-temporary-setting-values [site-url client/*url-prefix*]
@@ -434,27 +435,27 @@
 
 (deftest it-should-be-possible-to-call-this-endpoint-successfully
   (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp Dashboard [dash {:enable_embedding true}]
+    (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
       (is (= successful-dashboard-info
              (dissoc-id-and-name
               (client/client :get 200 (dashboard-url dash))))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token-2
   (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp Dashboard [dash {:enable_embedding true}]
+    (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
       (is (re= #"^Token is expired.*"
                (client/client :get 400 (dashboard-url dash {:exp (buddy-util/to-timestamp yesterday)})))))))
 
 (deftest check-that-the-dashboard-endpoint-doesn-t-work-if-embedding-isn-t-enabled
   (mt/with-temporary-setting-values [enable-embedding false]
     (with-new-secret-key
-      (mt/with-temp Dashboard [dash]
+      (t2.with-temp/with-temp [Dashboard dash]
         (is (= "Embedding is not enabled."
                (client/client :get 400 (dashboard-url dash))))))))
 
 (deftest check-that-if-embedding--is--enabled-globally-but-not-for-the-dashboard-the-request-fails
   (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp Dashboard [dash]
+    (t2.with-temp/with-temp [Dashboard dash]
       (is (= "Embedding is not enabled for this object."
              (client/client :get 400 (dashboard-url dash)))))))
 
@@ -462,14 +463,14 @@
   (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are signed "
                 "with the wrong key")
     (with-embedding-enabled-and-new-secret-key
-      (mt/with-temp Dashboard [dash {:enable_embedding true}]
+      (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
         (is (= "Message seems corrupt or manipulated."
                (client/client :get 400 (with-new-secret-key (dashboard-url dash)))))))))
 
 (deftest only-enabled-params-that-are-not-present-in-the-jwt-come-back
   (testing "check that only ENABLED params that ARE NOT PRESENT IN THE JWT come back"
     (with-embedding-enabled-and-new-secret-key
-      (mt/with-temp Dashboard [dash {:enable_embedding true
+      (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true
                                      :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}
                                      :parameters       [{:id "_a", :slug "a", :name "a", :type "date"}
                                                         {:id "_b", :slug "b", :name "b", :type "date"}
@@ -621,11 +622,11 @@
 (deftest make-sure-that-multiline-series-word-as-expected---4768-
   (testing "make sure that multiline series word as expected (#4768)"
     (with-embedding-enabled-and-new-secret-key
-      (mt/with-temp Card [series-card {:dataset_query {:database (mt/id)
+      (t2.with-temp/with-temp [Card series-card {:dataset_query {:database (mt/id)
                                                        :type     :query
                                                        :query    {:source-table (mt/id :venues)}}}]
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
-          (mt/with-temp DashboardCardSeries [_ {:dashboardcard_id (u/the-id dashcard)
+          (t2.with-temp/with-temp [DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
                                                 :card_id          (u/the-id series-card)
                                                 :position         0}]
             (is (= "completed"
@@ -645,7 +646,7 @@
 
 (defn- do-with-embedding-enabled-and-temp-card-referencing {:style/indent 2} [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp Card [card (assoc (public-test/mbql-card-referencing table-kw field-kw)
+    (t2.with-temp/with-temp [Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
                                :enable_embedding true)]
       (f card))))
 
@@ -1257,7 +1258,7 @@
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
     (mt/dataset sample-dataset
       (with-embedding-enabled-and-new-secret-key
-        (mt/with-temp Card [{card-id :id, :as card} {:dataset_query    (mt/native-query
+        (t2.with-temp/with-temp [Card {card-id :id, :as card} {:dataset_query    (mt/native-query
                                                                          {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
                                                                           :template-tags {"NAME"
                                                                                           {:id           "9ddca4ca-3906-83fd-bc6b-8480ae9ab05e"
@@ -1295,7 +1296,7 @@
   (testing "Embedded numeric params should work with numeric (as opposed to string) values in the JWT (#20845)"
     (mt/dataset sample-dataset
       (with-embedding-enabled-and-new-secret-key
-        (mt/with-temp Card [card {:dataset_query    (mt/native-query
+        (t2.with-temp/with-temp [Card card {:dataset_query    (mt/native-query
                                                       {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
                                                        :template-tags {"qty_locked" {:name         "qty_locked"
                                                                                      :display-name "Quantity (Locked)"

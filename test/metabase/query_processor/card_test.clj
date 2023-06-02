@@ -10,7 +10,8 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn run-query-for-card
   "Run query for Card synchronously."
@@ -30,7 +31,7 @@
       (mt/with-temporary-setting-values [query-caching-ttl-ratio 2]
         ;; fake average execution time (in millis)
         (with-redefs [query/average-execution-time-ms (constantly 4000)]
-          (mt/with-temp Card [card]
+          (t2.with-temp/with-temp [Card card]
             ;; the magic multiplier should be ttl-ratio times avg execution time
             (is (= (* 2 4) (:cache-ttl (#'qp.card/query-for-card card {} {} {}))))))))
     (testing "card ttl only"
@@ -78,29 +79,29 @@
 
 (deftest card-template-tag-parameters-test
   (testing "Card with a Field filter parameter"
-    (mt/with-temp Card [{card-id :id} {:dataset_query (field-filter-query)}]
+    (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (field-filter-query)}]
       (is (= {"date" :date/all-options}
              (#'qp.card/card-template-tag-parameters card-id)))))
   (testing "Card with a non-Field-filter parameter"
-    (mt/with-temp Card [{card-id :id} {:dataset_query (non-field-filter-query)}]
+    (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (non-field-filter-query)}]
       (is (= {"id" :number}
              (#'qp.card/card-template-tag-parameters card-id)))))
   (testing "Should ignore native query snippets and source card IDs"
-    (mt/with-temp Card [{card-id :id} {:dataset_query (assoc (non-field-filter-query)
-                                                             "abcdef"
-                                                             {:id           "abcdef"
-                                                              :name         "#1234"
-                                                              :display-name "#1234"
-                                                              :type         :card
-                                                              :card-id      1234}
+    (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (assoc (non-field-filter-query)
+                                                                       "abcdef"
+                                                                       {:id           "abcdef"
+                                                                        :name         "#1234"
+                                                                        :display-name "#1234"
+                                                                        :type         :card
+                                                                        :card-id      1234}
 
-                                                             "xyz"
-                                                             {:id           "xyz"
-                                                              :name         "snippet: My Snippet"
-                                                              :display-name "Snippet: My Snippet"
-                                                              :type         :snippet
-                                                              :snippet-name "My Snippet"
-                                                              :snippet-id   1})}]
+                                                                       "xyz"
+                                                                       {:id           "xyz"
+                                                                        :name         "snippet: My Snippet"
+                                                                        :display-name "Snippet: My Snippet"
+                                                                        :type         :snippet
+                                                                        :snippet-name "My Snippet"
+                                                                        :snippet-id   1})}]
       (is (= {"id" :number}
              (#'qp.card/card-template-tag-parameters card-id))))))
 
@@ -113,7 +114,7 @@
          (#'qp.card/infer-parameter-name {:target [:field 1000 nil]}))))
 
 (deftest validate-card-parameters-test
-  (mt/with-temp Card [{card-id :id} {:dataset_query (field-filter-query)}]
+  (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (field-filter-query)}]
     (testing "Should disallow parameters that aren't actually part of the Card"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo

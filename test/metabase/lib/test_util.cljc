@@ -17,11 +17,7 @@
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def venues-query
-  {:lib/type     :mbql/query
-   :lib/metadata meta/metadata-provider
-   :database     (meta/id)
-   :stages       [{:lib/type     :mbql.stage/mbql
-                   :source-table (meta/id :venues)}]})
+  (lib/query meta/metadata-provider (meta/table-metadata :venues)))
 
 (defn venues-query-with-last-stage [m]
   (let [query (update-in venues-query [:stages 0] merge m)]

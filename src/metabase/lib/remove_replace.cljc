@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
-   [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.util :as lib.util]
@@ -15,11 +14,8 @@
         join-condition-paths (for [idx join-indices]
                                [:joins idx :conditions])
         join-field-paths (for [idx join-indices]
-                           [:joins idx :fields])
-        expr-paths (for [[expr-name] (lib.expression/expressions query stage-number)]
-                     [:expressions expr-name])]
-    (concat [[:order-by] [:breakout] [:filters] [:fields] [:aggregation]]
-            expr-paths
+                           [:joins idx :fields])]
+    (concat [[:order-by] [:breakout] [:filters] [:fields] [:aggregation] [:expressions]]
             join-field-paths
             join-condition-paths)))
 
@@ -62,17 +58,17 @@
 (defn- remove-replace-location
   [query stage-number unmodified-query-for-stage location target-clause remove-replace-fn]
   (let [result (lib.util/update-query-stage query stage-number
-                                             remove-replace-fn location target-clause)
+                                            remove-replace-fn location target-clause)
         target-uuid (lib.util/clause-uuid target-clause)]
     (if (not= query result)
       (mbql.match/match-one location
-        [:expressions expr-name]
+        [:expressions]
         (-> result
             (remove-local-references
               stage-number
               unmodified-query-for-stage
               :expression
-              expr-name)
+              (lib.util/expression-name target-clause))
             (remove-stage-references stage-number unmodified-query-for-stage target-uuid))
 
         [:aggregation]
@@ -99,13 +95,10 @@
   (let [stage (lib.util/query-stage query stage-number)
         to-remove (mapcat
                     (fn [location]
-                      (when-let [sub-loc (get-in stage location)]
-                        (let [clauses (if (lib.util/clause-uuid sub-loc)
-                                        [sub-loc]
-                                        sub-loc)]
-                          (->> clauses
-                               (keep #(mbql.match/match-one sub-loc
-                                        [target-op _ target-ref-id] [location %]))))))
+                      (when-let [clauses (get-in stage location)]
+                        (->> clauses
+                             (keep #(mbql.match/match-one %
+                                      [target-op _ target-ref-id] [location %])))))
                     (stage-paths query stage-number))]
     (reduce
       (fn [query [location target-clause]]
@@ -133,11 +126,8 @@
           stage (lib.util/query-stage query stage-number)
           location (m/find-first
                      (fn [possible-location]
-                       (when-let [sub-loc (get-in stage possible-location)]
-                         (let [clauses (if (lib.util/clause? sub-loc)
-                                         [sub-loc]
-                                         sub-loc)
-                               target-uuid (lib.util/clause-uuid target-clause)]
+                       (when-let [clauses (get-in stage possible-location)]
+                         (let [target-uuid (lib.util/clause-uuid target-clause)]
                            (when (some (comp #{target-uuid} :lib/uuid second) clauses)
                              possible-location))))
                      (stage-paths query stage-number))

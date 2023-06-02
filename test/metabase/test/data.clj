@@ -183,7 +183,7 @@
 
 (defmacro run-mbql-query
   "Like `mbql-query`, but runs the query as well."
-  {:style/indent 1}
+  {:style/indent :defn}
   [table-name & [query]]
   `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 

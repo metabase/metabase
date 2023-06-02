@@ -601,7 +601,7 @@
 
 (deftest table-test
   (testing "You should see Tables in the search results!\n"
-    (mt/with-temp Table [_ {:name "RoundTable"}]
+    (t2.with-temp/with-temp [Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "RoundTable")]
                (search-request-data user :q "RoundTable"))))))
@@ -613,19 +613,19 @@
                (search-request-data user :q "Foo"))))))
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
-      (mt/with-temp Table [_ {:name "RoundTable" :display_name lancelot}]
+      (t2.with-temp/with-temp [Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
                  (search-request-data user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
-      (mt/with-temp Table [_ {:name table-name}]
+      (t2.with-temp/with-temp [Table _ {:name table-name}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
                  (search-request-data user :q table-name :archived true)))))))
   (testing "*archived* tables should not appear in search results"
     (let [table-name (mt/random-name)]
-      (mt/with-temp Table [_ {:name table-name, :active false}]
+      (t2.with-temp/with-temp [Table _ {:name table-name, :active false}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
                  (search-request-data user :q table-name)))))))
@@ -678,7 +678,7 @@
                    (filter #(and (= (:model %) "pulse")
                                  (= (:id %) pulse-id)))
                    first))]
-      (mt/with-temp Pulse [pulse {:name "Electro-Magnetic Pulse"}]
+      (t2.with-temp/with-temp [Pulse pulse {:name "Electro-Magnetic Pulse"}]
         (testing "Pulses are not searchable"
           (is (= nil (search-for-pulses pulse))))
         (mt/with-temp* [Card      [card-1]
