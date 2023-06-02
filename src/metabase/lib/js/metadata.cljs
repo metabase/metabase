@@ -29,26 +29,29 @@
 
 (defn- obj->clj
   "Convert a JS object of *any* class to a ClojureScript object."
-  [xform obj]
-  (if (map? obj)
-    ;; already a ClojureScript object.
-    (into {} xform obj)
-    ;; has a plain-JavaScript `_plainObject` attached: apply `xform` to it and call it a day
-    (if-let [plain-object (some-> (object-get obj "_plainObject")
-                                  js->clj
-                                  not-empty)]
-      (into {} xform plain-object)
-      ;; otherwise do things the hard way and convert an arbitrary object into a Cljs map. (`js->clj` doesn't work on
-      ;; arbitrary classes other than `Object`)
-      (into {}
-            (comp
-             (map (fn [k]
-                    [k (object-get obj k)]))
-             ;; ignore values that are functions
-             (remove (fn [[_k v]]
-                       (= (goog/typeOf v) "function")))
-             xform)
-            (gobject/getKeys obj)))))
+  ([xform obj]
+   (obj->clj xform obj {}))
+  ([xform obj {:keys [use-plain-object?] :or {use-plain-object? true}}]
+   (if (map? obj)
+     ;; already a ClojureScript object.
+     (into {} xform obj)
+     ;; has a plain-JavaScript `_plainObject` attached: apply `xform` to it and call it a day
+     (if-let [plain-object (when use-plain-object?
+                             (some-> (object-get obj "_plainObject")
+                                     js->clj
+                                     not-empty))]
+       (into {} xform plain-object)
+       ;; otherwise do things the hard way and convert an arbitrary object into a Cljs map. (`js->clj` doesn't work on
+       ;; arbitrary classes other than `Object`)
+       (into {}
+             (comp
+              (map (fn [k]
+                     [k (object-get obj k)]))
+              ;; ignore values that are functions
+              (remove (fn [[_k v]]
+                        (= (goog/typeOf v) "function")))
+              xform)
+             (gobject/getKeys obj))))))
 
 ;;; this intentionally does not use the lib hierarchy since it's not dealing with MBQL/lib keys
 (defmulti ^:private excluded-keys
@@ -97,17 +100,20 @@
        (map (fn [[k v]]
               [k (parse-field k v)]))))))
 
-(defn- parse-object-fn [object-type]
-  (let [xform         (parse-object-xform object-type)
-        lib-type-name (lib-type object-type)]
-    (fn [object]
-      (try
-        (let [parsed (assoc (obj->clj xform object) :lib/type lib-type-name)]
-          (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
-          parsed)
-        (catch js/Error e
-          (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
-          nil)))))
+(defn- parse-object-fn
+  ([object-type]
+   (parse-object-fn object-type {}))
+  ([object-type opts]
+   (let [xform         (parse-object-xform object-type)
+         lib-type-name (lib-type object-type)]
+     (fn [object]
+       (try
+         (let [parsed (assoc (obj->clj xform object opts) :lib/type lib-type-name)]
+           (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
+           parsed)
+         (catch js/Error e
+           (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
+           nil))))))
 
 (defmulti ^:private parse-objects
   {:arglists '([object-type metadata])}
@@ -243,7 +249,8 @@
 
 (defn- assamble-card
   [metadata id]
-  (let [parse-card (comp (parse-object-fn :card) unwrap-card)]
+  (let [parse-card-ignoring-plain-object (parse-object-fn :card {:use-plain-object? false})
+        parse-card (parse-object-fn :card)]
     ;; The question objects might not contain the fields so we merge them
     ;; in from the table matadata.
     (merge
@@ -251,15 +258,14 @@
          (object-get "tables")
          (object-get (str "card__" id))
          ;; _plainObject can contain field names in the field property
-         ;; instead of the field objects themselves.  Removing this
+         ;; instead of the field objects themselves.  Ignoring this
          ;; property makes sure we parse the real fields.
-         gobject/clone
-         (doto (gobject/remove "_plainObject"))
-         parse-card
+         parse-card-ignoring-plain-object
          (assoc :id id))
      (-> metadata
          (object-get "questions")
          (object-get (str id))
+         unwrap-card
          parse-card))))
 
 (defmethod parse-objects :card
