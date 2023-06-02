@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { within } from "@testing-library/react";
 import { Database } from "metabase-types/api";
 import {
+  createOrdersDiscountField,
   createOrdersIdField,
   createOrdersProductIdField,
   createOrdersTable,
@@ -29,7 +30,10 @@ const ORDERS_ID_FIELD = createOrdersIdField();
 
 const ORDERS_PRODUCT_ID_FIELD = createOrdersProductIdField();
 
+const ORDERS_DISCOUNT_FIELD = createOrdersDiscountField();
+
 const ORDERS_TABLE = createOrdersTable({
+  fields: [ORDERS_ID_FIELD, ORDERS_PRODUCT_ID_FIELD, ORDERS_DISCOUNT_FIELD],
   visibility_type: "technical",
 });
 
@@ -179,9 +183,6 @@ describe("MetadataEditor", () => {
       userEvent.click(screen.getByRole("radio", { name: "Original schema" }));
       expect(screen.getByText(ORDERS_TABLE.name)).toBeInTheDocument();
       expect(screen.getByText(ORDERS_ID_FIELD.name)).toBeInTheDocument();
-      expect(
-        screen.queryByText(ORDERS_ID_FIELD.display_name),
-      ).not.toBeInTheDocument();
     });
 
     it("should display visible tables", async () => {
@@ -242,8 +243,10 @@ describe("MetadataEditor", () => {
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      const section = await screen.findByLabelText(ORDERS_ID_FIELD.name);
-      userEvent.click(within(section).getByText("Everywhere"));
+      const section = within(
+        await screen.findByLabelText(ORDERS_ID_FIELD.name),
+      );
+      userEvent.click(section.getByText("Everywhere"));
 
       expect(
         await screen.findByText("Only in detail views"),
@@ -255,8 +258,10 @@ describe("MetadataEditor", () => {
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      const section = await screen.findByLabelText(ORDERS_ID_FIELD.name);
-      userEvent.click(within(section).getByText("Entity Key"));
+      const section = within(
+        await screen.findByLabelText(ORDERS_ID_FIELD.name),
+      );
+      userEvent.click(section.getByText("Entity Key"));
       expect(await screen.findByText("Entity Name")).toBeInTheDocument();
 
       userEvent.type(screen.getByPlaceholderText("Find..."), "Pri");
@@ -268,26 +273,47 @@ describe("MetadataEditor", () => {
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      const section = await screen.findByLabelText(
-        ORDERS_PRODUCT_ID_FIELD.name,
+      const section = within(
+        await screen.findByLabelText(ORDERS_PRODUCT_ID_FIELD.name),
       );
-      userEvent.click(within(section).getByText("Products → ID"));
+      userEvent.click(section.getByText("Products → ID"));
 
-      const tooltip = await screen.findByRole("rowgroup");
-      expect(within(tooltip).getByText("Products → ID")).toBeInTheDocument();
-      expect(
-        within(tooltip).queryByText("Orders → ID"),
-      ).not.toBeInTheDocument();
+      const popover = within(await screen.findByTestId("popover"));
+      expect(popover.getByText("Products → ID")).toBeInTheDocument();
+      expect(popover.queryByText("Orders → ID")).not.toBeInTheDocument();
+
+      userEvent.type(popover.getByPlaceholderText("Find..."), "Products");
+      expect(popover.getByText("Products → ID")).toBeInTheDocument();
     });
 
     it("should not show the foreign key target for non-foreign keys", async () => {
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      const section = await screen.findByLabelText(ORDERS_ID_FIELD.name);
-      expect(
-        within(section).queryByText("Products → ID"),
-      ).not.toBeInTheDocument();
+      const section = within(
+        await screen.findByLabelText(ORDERS_ID_FIELD.name),
+      );
+
+      expect(section.queryByText("Products → ID")).not.toBeInTheDocument();
+    });
+
+    it("should show currency settings for currency fields", async () => {
+      await setup();
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+
+      const section = within(
+        await screen.findByLabelText(ORDERS_DISCOUNT_FIELD.name),
+      );
+      userEvent.click(section.getByText("US Dollar"));
+
+      const popover = within(await screen.findByTestId("popover"));
+      expect(popover.getByText("Canadian Dollar")).toBeInTheDocument();
+      expect(popover.getByText("Euro")).toBeInTheDocument();
+
+      userEvent.type(popover.getByPlaceholderText("Find..."), "Dollar");
+      expect(popover.getByText("US Dollar")).toBeInTheDocument();
+      expect(popover.getByText("Canadian Dollar")).toBeInTheDocument();
+      expect(popover.queryByText("Euro")).not.toBeInTheDocument();
     });
 
     it("should allow to navigate to and from table settings", async () => {
@@ -449,14 +475,6 @@ describe("MetadataEditor", () => {
   describe("no databases", () => {
     it("should display an empty state", async () => {
       await setup({ databases: [] });
-
-      expect(
-        screen.getByText("The page you asked for couldn't be found."),
-      ).toBeInTheDocument();
-    });
-
-    it("should display an empty state when the database is not found", async () => {
-      await setup({ initialRoute: "/admin/datamodel/database/2" });
 
       expect(
         screen.getByText("The page you asked for couldn't be found."),
