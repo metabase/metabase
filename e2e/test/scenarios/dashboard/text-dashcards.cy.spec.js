@@ -5,6 +5,7 @@ import {
   visitDashboard,
   addTextBox,
   editDashboard,
+  saveDashboard,
 } from "e2e/support/helpers";
 
 describe("scenarios > dashboard > text and headings", () => {
@@ -89,10 +90,7 @@ describe("scenarios > dashboard > text and headings", () => {
         });
 
       // should allow saving and show up after refresh
-      cy.get("main").findByText("Save").click();
-
-      // Reload page
-      cy.reload();
+      saveDashboard();
 
       getDashboardCard(1).within(() => {
         cy.get("div").contains("Text text text");
@@ -190,10 +188,7 @@ describe("scenarios > dashboard > text and headings", () => {
         });
 
       // should allow saving and show up after refresh
-      cy.get("main").findByText("Save").click();
-
-      // Reload page
-      cy.reload();
+      saveDashboard();
 
       getDashboardCard(1).within(() => {
         cy.get("h2").contains("Example Heading");
