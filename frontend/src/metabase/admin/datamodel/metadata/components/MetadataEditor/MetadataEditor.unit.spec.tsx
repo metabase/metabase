@@ -239,12 +239,8 @@ describe("MetadataEditor", () => {
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(await screen.findByLabelText(ORDERS_ID_FIELD.name));
-      userEvent.click(
-        within(screen.getByLabelText(ORDERS_ID_FIELD.name)).getByText(
-          "Everywhere",
-        ),
-      );
+      const section = await screen.findByLabelText(ORDERS_ID_FIELD.name);
+      userEvent.click(within(section).getByText("Everywhere"));
 
       expect(
         await screen.findByText("Only in detail views"),
@@ -256,12 +252,8 @@ describe("MetadataEditor", () => {
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(await screen.findByLabelText(ORDERS_ID_FIELD.name));
-      userEvent.click(
-        within(screen.getByLabelText(ORDERS_ID_FIELD.name)).getByText(
-          "Entity Key",
-        ),
-      );
+      const section = await screen.findByLabelText(ORDERS_ID_FIELD.name);
+      userEvent.click(within(section).getByText("Entity Key"));
       expect(await screen.findByText("Entity Name")).toBeInTheDocument();
 
       userEvent.type(screen.getByPlaceholderText("Find..."), "Pri");
