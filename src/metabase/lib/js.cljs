@@ -456,3 +456,25 @@
   filtered out based on values of the LHS or RHS, but in the future we can add this -- see #31174."
   [a-query stage-number lhs-column-or-nil rhs-column-or-nil]
   (to-array (lib.core/join-condition-operators a-query stage-number lhs-column-or-nil rhs-column-or-nil)))
+
+(defn ^:export expression
+  "Adds an expression to query."
+  ([a-query expression-name an-expression-clause]
+   (expression a-query -1 expression-name an-expression-clause))
+  ([a-query stage-number expression-name an-expression-clause]
+   (lib.core/expression a-query stage-number expression-name an-expression-clause)))
+
+(defn ^:export expressions
+  "Get the expressions map from a given stage of a `query`."
+  ([a-query]
+   (expressions a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/expressions a-query stage-number))))
+
+(defn ^:export expressionable-columns
+  "Return an array of Column metadatas about the columns that can be used in an expression in a given stage of `a-query`.
+   Pass the current `expression-position` or `null` for new expressions."
+  ([a-query expression-position]
+   (expressionable-columns a-query expression-position))
+  ([a-query stage-number expression-position]
+   (to-array (lib.core/expressionable-columns a-query stage-number expression-position))))
