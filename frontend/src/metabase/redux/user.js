@@ -4,7 +4,7 @@ import {
   createThunkAction,
   handleActions,
 } from "metabase/lib/redux";
-import { UserApi } from "metabase/services";
+import { SettingsApi, UserApi } from "metabase/services";
 import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions";
 import Users from "metabase/entities/users";
 
@@ -34,9 +34,11 @@ export const DISMISS_TOAST = "metabase/user/DISMISS_TOAST";
 export const dismissToast = createThunkAction(
   DISMISS_TOAST,
   toastKey => async (dispatch, getState) => {
-    const currentUser = getState().currentUser;
-    await UserApi.dismiss_toast({ userId: currentUser.id, toastKey });
-    return { toastKey: toastKey };
+    await SettingsApi.put({
+      key: toastKey,
+      value: true,
+    });
+    return { toastKey };
   },
 );
 

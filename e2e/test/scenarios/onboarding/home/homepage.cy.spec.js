@@ -205,9 +205,18 @@ describe("scenarios > home > custom homepage", () => {
       cy.log("let the dashboard load");
       dashboardHeader().findByText("Orders in a dashboard");
 
+      cy.log("Ensure that internal state was updated");
       navigationSidebar().findByText("Home").click();
+      dashboardHeader().findByText("Orders in a dashboard");
 
-      cy.get("main")
+      cy.findByTestId("undo-list")
+        .contains(/Your admin has set this dashboard as your homepage/)
+        .should("not.exist");
+
+      cy.log("Ensure that on refresh, the proper settings are given");
+      cy.visit("/");
+      dashboardHeader().findByText("Orders in a dashboard");
+      cy.findByTestId("undo-list")
         .contains(/Your admin has set this dashboard as your homepage/)
         .should("not.exist");
     });

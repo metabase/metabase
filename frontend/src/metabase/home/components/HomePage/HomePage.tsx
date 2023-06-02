@@ -3,7 +3,8 @@ import { t } from "ttag";
 import { replace } from "react-router-redux";
 import { isSmallScreen } from "metabase/lib/dom";
 import { openNavbar } from "metabase/redux/app";
-import { addUndo, dismissUndo } from "metabase/redux/undo";
+import { dismissToast } from "metabase/redux/user";
+import { addUndo } from "metabase/redux/undo";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   useDatabaseListQuery,
@@ -32,7 +33,7 @@ export const HomePage = (): JSX.Element => {
   const error = databaseListState.error ?? modelListState.error;
   const dashboardId = useSelector(getCustomHomePageDashboardId);
   const showHomepageRedirectRoast = useSelector(
-    state => !hasUserDismissedToast(state, "custom_homepage_changed"),
+    state => !hasUserDismissedToast(state, "dismissed_custom_dashboard_toast"),
   );
   const isMetabotEnabled = useSelector(getIsMetabotEnabled);
   const hasMetabot = getHasMetabot(
@@ -58,7 +59,7 @@ export const HomePage = (): JSX.Element => {
             message: t`Your admin has set this dashboard as your homepage`,
             icon: "info",
             timeout: 10000,
-            actions: [dismissUndo],
+            actions: [dismissToast("dismissed_custom_dashboard_toast")],
             actionLabel: t`Got it`,
             hideDismiss: true,
           }),
