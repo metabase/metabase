@@ -1,22 +1,5 @@
 import { getLeadingText } from "./getLeadingText";
-
-const createHeading = (textContent: string) => {
-  const h1 = document.createElement("h1");
-  h1.textContent = textContent;
-  return h1;
-};
-
-const createParagraph = (textContent: string) => {
-  const p = document.createElement("p");
-  p.textContent = textContent;
-  return p;
-};
-
-const createImage = () => {
-  const img = document.createElement("img");
-  img.src = "https://example.com/img.jpg";
-  return img;
-};
+import { createHeading, createImage, createParagraph } from "./test-utils";
 
 describe("getLeadingText", () => {
   it("extracts leading text from sole elements", () => {
