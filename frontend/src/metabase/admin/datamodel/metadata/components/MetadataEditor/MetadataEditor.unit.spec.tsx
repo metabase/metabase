@@ -5,6 +5,7 @@ import { within } from "@testing-library/react";
 import { Database } from "metabase-types/api";
 import {
   createOrdersIdField,
+  createOrdersProductIdField,
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
@@ -25,6 +26,8 @@ import MetadataTableSettings from "../MetadataTableSettings";
 import MetadataEditor from "./MetadataEditor";
 
 const ORDERS_ID_FIELD = createOrdersIdField();
+
+const ORDERS_PRODUCT_ID_FIELD = createOrdersProductIdField();
 
 const ORDERS_TABLE = createOrdersTable({
   visibility_type: "technical",
@@ -259,6 +262,32 @@ describe("MetadataEditor", () => {
       userEvent.type(screen.getByPlaceholderText("Find..."), "Pri");
       expect(screen.getByText("Price")).toBeInTheDocument();
       expect(screen.queryByText("Score")).not.toBeInTheDocument();
+    });
+
+    it("should show the foreign key target for foreign keys", async () => {
+      await setup();
+
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      const section = await screen.findByLabelText(
+        ORDERS_PRODUCT_ID_FIELD.name,
+      );
+      userEvent.click(within(section).getByText("Products → ID"));
+
+      const tooltip = await screen.findByRole("rowgroup");
+      expect(within(tooltip).getByText("Products → ID")).toBeInTheDocument();
+      expect(
+        within(tooltip).queryByText("Orders → ID"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show the foreign key target for non-foreign keys", async () => {
+      await setup();
+
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      const section = await screen.findByLabelText(ORDERS_ID_FIELD.name);
+      expect(
+        within(section).queryByText("Products → ID"),
+      ).not.toBeInTheDocument();
     });
 
     it("should allow to navigate to and from table settings", async () => {
