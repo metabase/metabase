@@ -9,7 +9,8 @@
    [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [toucan.util.test :as tt])
+   [toucan.util.test :as tt]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time LocalDateTime)))
 
@@ -17,7 +18,7 @@
 
 (deftest test-next-position-for
   (testing "No existing cards"
-    (tt/with-temp Pulse [{pulse-id :id}]
+    (t2.with-temp/with-temp [Pulse {pulse-id :id}]
       (is (zero? (pulse-card/next-position-for pulse-id)))))
   (testing "With cards"
     (tt/with-temp* [Pulse [{pulse-id :id}]

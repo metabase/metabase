@@ -54,7 +54,7 @@
         card-params    (fn [card-id] (merge default-params {:values_source_type "card"
                                                             :values_source_config {:card_id card-id}}))]
     (testing "With no associated cards"
-      (tt/with-temp :model/Card [card]
+      (t2.with-temp/with-temp [:model/Card card]
         (is (zero? (hydrated-count card)))))
     (testing "With one"
       (tt/with-temp* [:model/Card      [{card-id :id :as card}]
@@ -79,13 +79,13 @@
 (deftest public-sharing-test
   (testing "test that a Card's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
-      (tt/with-temp :model/Card [card {:public_uuid (str (java.util.UUID/randomUUID))}]
+      (t2.with-temp/with-temp [:model/Card card {:public_uuid (str (java.util.UUID/randomUUID))}]
         (is (schema= u/uuid-regex
                      (:public_uuid card)))))
 
     (testing "...but if public sharing is *disabled* it should come back as `nil`"
       (tu/with-temporary-setting-values [enable-public-sharing false]
-        (tt/with-temp :model/Card [card {:public_uuid (str (java.util.UUID/randomUUID))}]
+        (t2.with-temp/with-temp [:model/Card card {:public_uuid (str (java.util.UUID/randomUUID))}]
           (is (= nil
                  (:public_uuid card))))))))
 
@@ -95,9 +95,9 @@
    :native   {:query "SELECT count(*) FROM toucan_sightings;"}})
 
 (deftest database-id-test
-  (tt/with-temp :model/Card [{:keys [id]} {:name          "some name"
-                                           :dataset_query (dummy-dataset-query (mt/id))
-                                           :database_id   (mt/id)}]
+  (t2.with-temp/with-temp [:model/Card {:keys [id]} {:name          "some name"
+                                                     :dataset_query (dummy-dataset-query (mt/id))
+                                                     :database_id   (mt/id)}]
     (testing "before update"
       (is (= {:name "some name", :database_id (mt/id)}
              (into {} (t2/select-one [:model/Card :name :database_id] :id id)))))
@@ -186,7 +186,7 @@
 
 (deftest circular-reference-test
   (testing "Should throw an Exception if saving a Card that references itself"
-    (tt/with-temp :model/Card [card (card-with-source-table (mt/id :venues))]
+    (t2.with-temp/with-temp [:model/Card card (card-with-source-table (mt/id :venues))]
       ;; now try to make the Card reference itself. Should throw Exception
       (is (thrown?
            Exception

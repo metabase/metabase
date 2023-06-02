@@ -514,13 +514,13 @@
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
-      (tt/with-temp Dashboard [dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
+      (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
         (is (schema= u/uuid-regex
                      (:public_uuid dashboard)))))
 
     (testing "...but if public sharing is *disabled* it should come back as `nil`"
       (tu/with-temporary-setting-values [enable-public-sharing false]
-        (tt/with-temp Dashboard [dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
+        (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
           (is (= nil
                  (:public_uuid dashboard))))))))
 
@@ -539,7 +539,7 @@
       (is (= collection-id-2
              (t2/select-one-fn :collection_id Pulse :id pulse-id))))
     (testing "PulseCard syncing"
-      (tt/with-temp Card [{new-card-id :id}]
+      (t2.with-temp/with-temp [Card {new-card-id :id}]
         (dashboard/add-dashcards! dashboard-id [{:card_id new-card-id
                                                  :row     0
                                                  :col     0
