@@ -4,6 +4,7 @@
    [+ - * / case coalesce abs time concat replace])
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
@@ -36,7 +37,8 @@
    stage-number    :- :int
    expression-name :- ::lib.schema.common/non-blank-string]
   (let [stage (lib.util/query-stage query stage-number)]
-    (or (get-in stage [:expressions expression-name])
+    (or (m/find-first (comp #{expression-name} lib.util/expression-name)
+                      (:expressions stage))
         (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
                         {:expression-name expression-name
                          :query           query
@@ -204,7 +206,9 @@
      (lib.util/update-query-stage
        query stage-number
        update :expressions
-       assoc expression-name (lib.common/->op-arg query stage-number an-expression-clause)))))
+       (fnil conj [])
+       (-> (lib.common/->op-arg query stage-number an-expression-clause)
+           (lib.util/named-expression-clause expression-name))))))
 
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])
@@ -257,11 +261,12 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int]
    (some->> (not-empty (:expressions (lib.util/query-stage query stage-number)))
-            (mapv (fn [[expression-name expression-definition]]
-                    (-> (lib.metadata.calculation/metadata query stage-number expression-definition)
-                        (assoc :lib/source   :source/expressions
-                               :name         expression-name
-                               :display-name expression-name)))))))
+            (mapv (fn [expression-definition]
+                    (let [expression-name (lib.util/expression-name expression-definition)]
+                      (-> (lib.metadata.calculation/metadata query stage-number expression-definition)
+                          (assoc :lib/source   :source/expressions
+                                 :name         expression-name
+                                 :display-name expression-name))))))))
 
 (mu/defn expressions :- [:maybe ::lib.schema.expression/expressions]
   "Get the expressions map from a given stage of a `query`."

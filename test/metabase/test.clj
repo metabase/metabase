@@ -91,6 +91,7 @@
   tx.env/keep-me)
 
 ;; Add more stuff here as needed
+#_{:clj-kondo/ignore [:discouraged-var]}
 (p/import-vars
  [actions.test-util
   with-actions
@@ -421,3 +422,10 @@
      (mb.hawk.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
      (initialize/initialize-if-needed! :db)
      (t2.model/resolve-model toucan-model))))
+
+;;; these are deprecated at runtime so Kondo doesn't complain, also because we can't go around deprecating stuff from
+;;; other libaries any other way. They're marked deprecated to encourage you to use the `t2.with-temp` versions.
+#_{:clj-kondo/ignore [:discouraged-var]}
+(doseq [varr [#'with-temp
+              #'with-temp*]]
+  (alter-meta! varr assoc :deprecated true))

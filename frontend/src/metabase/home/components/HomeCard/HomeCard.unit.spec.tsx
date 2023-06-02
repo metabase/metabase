@@ -1,10 +1,13 @@
-import { render, screen } from "@testing-library/react";
-import HomeCard from "./HomeCard";
+import { render, screen } from "__support__/ui";
+import { HomeCard } from "./HomeCard";
+
+const setup = () => {
+  render(<HomeCard>A look at table</HomeCard>);
+};
 
 describe("HomeCard", () => {
   it("should render correctly", () => {
-    render(<HomeCard>A look at table</HomeCard>);
-
+    setup();
     expect(screen.getByText("A look at table")).toBeInTheDocument();
   });
 });

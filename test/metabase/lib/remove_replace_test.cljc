@@ -2,6 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.dev :as lib.dev]
    [metabase.lib.test-metadata :as meta]))
@@ -196,7 +197,7 @@
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/expression "a" (lib/field "VENUES" "ID"))
                   (lib/expression "b" (lib/field "VENUES" "PRICE")))
-        {expr-a "a" expr-b "b" :as expressions} (lib/expressions query)]
+        [expr-a expr-b :as expressions] (lib/expressions query)]
     (is (= 2 (count expressions)))
     (is (= 1 (-> query
                  (lib/remove-clause expr-a)
@@ -207,7 +208,7 @@
                   (lib/remove-clause expr-b)
                   (lib/expressions))))
     (testing "removing with dependent should cascade"
-      (is (=? {:stages [{:expressions {"b" expr-b} :order-by (symbol "nil #_\"key is not present.\"")}
+      (is (=? {:stages [{:expressions [expr-b] :order-by (symbol "nil #_\"key is not present.\"")}
                         (complement :filters)]}
               (-> query
                 (lib/order-by (lib.dev/ref-lookup :expression "a"))
@@ -366,20 +367,21 @@
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/expression "a" (lib/field (meta/id :venues :id)))
                   (lib/expression "b" (lib/field (meta/id :venues :name))))
-        {expr-a "a" expr-b "b" :as expressions} (lib/expressions query)
+        [expr-a expr-b :as expressions] (lib/expressions query)
         replaced (-> query
                      (lib/replace-clause expr-a (lib/field (meta/id :venues :price))))
-        {_repl-expr-a "a" repl-expr-b "b" :as replaced-expressions} (lib/expressions replaced)]
+        [_repl-expr-a repl-expr-b :as replaced-expressions] (lib/expressions replaced)]
     (is (= 2 (count expressions)))
-    (is (=? {"a" [:field {} (meta/id :venues :price)]}
+    (is (=? [[:field {:lib/expression-name "a"} (meta/id :venues :price)]
+             expr-b]
             replaced-expressions))
     (is (not= expressions replaced-expressions))
     (is (= 2 (count replaced-expressions)))
     (is (= expr-b repl-expr-b))
     (testing "replacing with dependent should cascade"
       (is (=? {:stages [{:aggregation (symbol "nil #_\"key is not present.\"")
-                         :expressions {"a" [:field {} (meta/id :venues :price)]
-                                       "b" expr-b}}
+                         :expressions [[:field {:lib/expression-name "a"} (meta/id :venues :price)]
+                                       expr-b]}
                         (complement :filters)]}
               (-> query
                   (lib/aggregate (lib/sum (lib.dev/ref-lookup :expression "a")))
@@ -387,4 +389,120 @@
                   (lib/append-stage)
                   ;; TODO Should be able to create a ref with lib/field [#29763]
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "a"] 1))
-                  (lib/replace-clause 0 expr-a (lib/field "VENUES" "PRICE"))))))))
+                  (lib/replace-clause 0 expr-a (lib/field "VENUES" "PRICE"))))))
+    (testing "replace with literal expression"
+      (is (=? {:stages [{:expressions [[:value {:lib/expression-name "a" :effective-type :type/Integer} 999]
+                                       expr-b]}]}
+              (-> query
+                  (lib/replace-clause 0 expr-a 999)))))))
+
+(deftest ^:parallel replace-order-by-breakout-col-test
+  (testing "issue #30980"
+    (testing "Bucketing should keep order-by in sync"
+      (let [query (lib/query-for-table-name meta/metadata-provider "USERS")
+            breakout-col (->> (lib/breakoutable-columns query)
+                              (m/find-first (comp #{"LAST_LOGIN"} :name)))
+            month (->> (lib/available-temporal-buckets query breakout-col)
+                       (m/find-first (comp #{:month} :unit))
+                       (lib/with-temporal-bucket breakout-col))
+            day (->> (lib/available-temporal-buckets query breakout-col)
+                     (m/find-first (comp #{:day} :unit))
+                     (lib/with-temporal-bucket breakout-col))
+            q2 (-> query
+                   (lib/breakout month))
+            cols (lib/orderable-columns q2)
+            q3 (-> q2
+                   (lib/order-by (first cols))
+                   (lib/replace-clause (first (lib/breakouts q2)) day))
+            q4 (lib/replace-clause q3 (first (lib/breakouts q3)) month)]
+        (is (= :day (:temporal-unit (second (last (first (lib/order-bys q3)))))))
+        (is (= :month (:temporal-unit (second (last (first (lib/order-bys q4)))))))))
+    (testing "Binning should keep in order-by in sync"
+      (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
+            breakout-col (->> (lib/breakoutable-columns query)
+                              (m/find-first (comp #{"PRICE"} :name)))
+            ten (->> (lib/available-binning-strategies query breakout-col)
+                     (m/find-first (comp #{"10 bins"} :display-name))
+                     (lib/with-binning breakout-col))
+            hundo (->> (lib/available-binning-strategies query breakout-col)
+                       (m/find-first (comp #{"100 bins"} :display-name))
+                       (lib/with-binning breakout-col))
+            q2 (-> query
+                   (lib/breakout ten))
+            cols (lib/orderable-columns q2)
+            q3 (-> q2
+                   (lib/order-by (first cols))
+                   (lib/replace-clause (first (lib/breakouts q2)) hundo))
+            q4 (lib/replace-clause q3 (first (lib/breakouts q3)) ten)]
+        (is (= 100 (:num-bins (:binning (second (last (first (lib/order-bys q3))))))))
+        (is (= 10 (:num-bins (:binning (second (last (first (lib/order-bys q4))))))))))
+    (testing "Replace the correct order-by bin when there are multiple"
+      (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
+            breakout-col (->> (lib/breakoutable-columns query)
+                              (m/find-first (comp #{"PRICE"} :name)))
+            ten (->> (lib/available-binning-strategies query breakout-col)
+                     (m/find-first (comp #{"10 bins"} :display-name))
+                     (lib/with-binning breakout-col))
+            fiddy (->> (lib/available-binning-strategies query breakout-col)
+                       (m/find-first (comp #{"50 bins"} :display-name))
+                       (lib/with-binning breakout-col))
+            hundo (->> (lib/available-binning-strategies query breakout-col)
+                       (m/find-first (comp #{"100 bins"} :display-name))
+                       (lib/with-binning breakout-col))
+            auto (->> (lib/available-binning-strategies query breakout-col)
+                      (m/find-first (comp #{"Auto bin"} :display-name))
+                      (lib/with-binning breakout-col))
+            q2 (-> query
+                   (lib/breakout auto)
+                   (lib/breakout ten)
+                   (lib/breakout hundo))
+            cols (lib/orderable-columns q2)
+            q3 (-> q2
+                   (lib/order-by (first cols))
+                   (lib/order-by (second cols))
+                   (lib/order-by (last cols)))
+            ten-breakout (second (lib/breakouts q3))]
+        (is (= ["Price: Auto binned" "Price: 10 bins" "Price: 100 bins"]
+               (map (comp :display-name #(lib/display-info q2 %)) cols)))
+        (is (= 10 (-> ten-breakout second :binning :num-bins)))
+        (is (=? [{:strategy :default} {:num-bins 10} {:num-bins 100}]
+                (map (comp :binning second last)
+                     (lib/order-bys q3))))
+        (is (=? [{:strategy :default} {:num-bins 50} {:num-bins 100}]
+                (map (comp :binning second last)
+                     (-> q3
+                         (lib/replace-clause ten-breakout fiddy)
+                         lib/order-bys))))))
+    (testing "Replacing with a new field should remove the order by"
+      (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
+            breakout-col (->> (lib/breakoutable-columns query)
+                              (m/find-first (comp #{"PRICE"} :name)))
+            new-breakout-col (->> (lib/breakoutable-columns query)
+                                  (m/find-first (comp #{"NAME"} :name)))
+            ten (->> (lib/available-binning-strategies query breakout-col)
+                     (m/find-first (comp #{"10 bins"} :display-name))
+                     (lib/with-binning breakout-col))
+            q2 (-> query
+                   (lib/breakout ten))
+            cols (lib/orderable-columns q2)
+            q3 (-> q2
+                   (lib/order-by (first cols)))
+            ten-breakout (first (lib/breakouts q3))]
+        (is (nil?
+              (-> q3
+                  (lib/replace-clause ten-breakout new-breakout-col)
+                  lib/order-bys)))))
+    (testing "Removing a breakout should remove the order by"
+      (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
+            breakout-col (->> (lib/breakoutable-columns query)
+                              (m/find-first (comp #{"PRICE"} :name)))
+            q2 (-> query
+                   (lib/breakout breakout-col))
+            cols (lib/orderable-columns q2)
+            q3 (-> q2
+                   (lib/order-by (first cols)))
+            ten-breakout (first (lib/breakouts q3))]
+        (is (nil?
+              (-> q3
+                  (lib/remove-clause ten-breakout)
+                  lib/order-bys)))))))
