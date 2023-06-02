@@ -235,7 +235,9 @@
                                                        :desired-alias "PRICE"}]
                                  [:expression "x" #::add{:desired-alias "x"}]]}}}
                              :limit        1})
-                          (-> query add/add-alias-info nest-expressions))))))))
+                          (-> query add/add-alias-info nest-expressions)))))))))
+
+(deftest nest-expressions-ignore-source-queries-from-joins-test
   (testing "Ignores source-query from joins (#20809)"
     (let [query {:source-table 2,
                  :expressions  {"CC" [:+ 1 1]},
