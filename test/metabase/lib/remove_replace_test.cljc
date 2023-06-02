@@ -190,7 +190,7 @@
               (-> query
                   (lib/order-by (lib.dev/ref-lookup :aggregation 0))
                   (lib/append-stage)
-                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum_ID"] 1))
+                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
                   (lib/remove-clause 0 (first aggregations))))))))
 
 (deftest ^:parallel remove-clause-expression-test
@@ -360,7 +360,7 @@
                   (lib/expression "expr" (lib.dev/ref-lookup :aggregation 0))
                   (lib/append-stage)
                   ;; TODO Should be able to create a ref with lib/field [#29763]
-                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum_ID"] 1))
+                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
                   (lib/replace-clause 0 (first aggregations) (lib/sum (lib/field "VENUES" "PRICE")))))))))
 
 (deftest ^:parallel replace-clause-expression-test

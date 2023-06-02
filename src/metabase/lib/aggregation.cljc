@@ -79,6 +79,11 @@
     (str "count_" (lib.metadata.calculation/column-name query stage-number x))
     "count"))
 
+(defmethod lib.metadata.calculation/metadata-method :count
+  [query stage-number clause]
+  (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
+         :semantic-type :type/Quantity))
+
 (lib.hierarchy/derive :count ::aggregation)
 
 (defmethod lib.metadata.calculation/display-name-method :case
@@ -104,21 +109,18 @@
   (lib.hierarchy/derive tag ::unary-aggregation))
 
 (defmethod lib.metadata.calculation/column-name-method ::unary-aggregation
-  [query stage-number [tag _opts arg]]
-  (let [arg (lib.metadata.calculation/column-name-method query stage-number arg)]
-    (str
-     (case tag
-       :avg       "avg_"
-       :cum-count "cum_count_"
-       :cum-sum   "cum_sum_"
-       :distinct  "distinct_"
-       :max       "max_"
-       :median    "median_"
-       :min       "min_"
-       :stddev    "std_dev_"
-       :sum       "sum_"
-       :var       "var_")
-     arg)))
+  [_query _stage-number [tag _opts _arg]]
+  (case tag
+    :avg       "avg"
+    :cum-count "count"
+    :cum-sum   "sum"
+    :distinct  "count"
+    :max       "max"
+    :median    "median"
+    :min       "min"
+    :stddev    "std_dev"
+    :sum       "sum"
+    :var       "var"))
 
 (defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
   [query stage-number [tag _opts arg] style]
@@ -140,12 +142,8 @@
   (i18n/tru "{0}th percentile of {1}" p (lib.metadata.calculation/display-name query stage-number x style)))
 
 (defmethod lib.metadata.calculation/column-name-method :percentile
-  [query stage-number [_percentile _opts x p]]
-  ;; if `p` is between `0` and `1` then just use the first two digits for the name, e.g. `p95_whatever`
-  (let [p (if (< 0 p 1)
-            (int (math/round (* p 100.0)))
-            p)]
-    (lib.util/format "p%s_%s" p (lib.metadata.calculation/column-name query stage-number x))))
+  [_query _stage-number _clause]
+  "percentile")
 
 (lib.hierarchy/derive :percentile ::aggregation)
 

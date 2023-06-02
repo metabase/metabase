@@ -95,12 +95,15 @@
 
 (defmethod tx/aggregate-column-info :h2
   ([driver ag-type]
-   ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type)
+    (when (= ag-type :count)
+      {:base_type :type/BigInteger})))
 
   ([driver ag-type field]
    (merge
     ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
-    (when (= ag-type :sum)
+    (when (#{:sum :cum-count} ag-type)
       {:base_type :type/BigInteger}))))
 
 (defmethod execute/execute-sql! :h2

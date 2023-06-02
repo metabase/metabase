@@ -41,15 +41,15 @@
                                    0.8
                                    [:avg {} (lib.tu/field-clause :venues :price)]]]})]
         (is (=? [{:base-type                :type/Float
-                  :name                     "0_8_times_avg_PRICE"
+                  :name                     "expression"
                   :display-name             "0.8 × Average of Price"
-                  :lib/source-column-alias  "0_8_times_avg_PRICE"
-                  :lib/desired-column-alias "0_8_times_avg_PRICE"}
+                  :lib/source-column-alias  "expression"
+                  :lib/desired-column-alias "expression"}
                  {:base-type                :type/Float
-                  :name                     "0_8_times_avg_PRICE"
+                  :name                     "expression"
                   :display-name             "0.8 × Average of Price"
-                  :lib/source-column-alias  "0_8_times_avg_PRICE"
-                  :lib/desired-column-alias "0_8_times_avg_PRICE_2"}]
+                  :lib/source-column-alias  "expression"
+                  :lib/desired-column-alias "expression_2"}]
                 (lib.metadata.calculation/metadata query -1 query)))))))
 
 (deftest ^:parallel stage-display-name-card-source-query

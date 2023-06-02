@@ -108,21 +108,9 @@
   [query stage-number [tag _opts & args] _style]
   (infix-display-name query stage-number (get infix-operator-display-name tag) args))
 
-(defn- infix-column-name
-  [query stage-number operator-str args]
-  (str/join (str \_ operator-str \_)
-            (map (partial lib.metadata.calculation/column-name query stage-number)
-                 args)))
-
-(def ^:private infix-operator-column-name
-  {:+ "plus"
-   :- "minus"
-   :/ "divided_by"
-   :* "times"})
-
 (defmethod lib.metadata.calculation/column-name-method ::infix-operator
-  [query stage-number [tag _opts & args]]
-  (infix-column-name query stage-number (get infix-operator-column-name tag) args))
+  [_query _stage-number _expr]
+  "expression")
 
 ;;; `:+`, `:-`, and `:*` all have the same logic; also used for [[metabase.lib.schema.expression/type-of]].
 ;;;

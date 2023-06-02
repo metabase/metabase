@@ -133,7 +133,7 @@
                [:expression {:lib/uuid (str (random-uuid))} "double-price"]]]
     (is (= "Sum of double-price"
            (lib.metadata.calculation/display-name query -1 expr)))
-    (is (= "sum_double-price"
+    (is (= "sum"
            (lib.metadata.calculation/column-name query -1 expr)))))
 
 (deftest ^:parallel coalesce-names-test

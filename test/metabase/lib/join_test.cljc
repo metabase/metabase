@@ -6,6 +6,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -158,7 +159,7 @@
                                            :query    {:source-table (meta/id :checkins)
                                                       :aggregation  [[:count]]
                                                       :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}
-        metadata-provider (lib.tu/composed-metadata-provider
+        metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
                            meta/metadata-provider
                            (lib.tu/mock-metadata-provider
                             {:cards [card-1]}))
