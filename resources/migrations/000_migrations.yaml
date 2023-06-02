@@ -14812,6 +14812,17 @@ databaseChangeLog:
                   defaultValue: null
                   remarks: 'This is used to differentiate instance-analytics collections from all other collections.'
 
+  - changeSet:
+      id: v47.00-035
+      author: calherries
+      comment: Added 0.47.0  - Set primary key to action_id for implicit_action table
+      changes:
+        - addPrimaryKey:
+            tableName: implicit_action
+            columnNames: action_id
+            constraintName: pk_implicit_action
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
