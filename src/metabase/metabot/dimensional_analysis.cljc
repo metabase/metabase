@@ -30,7 +30,8 @@
                     :dimension :dimensions})))
 
 (defn viz-type
-  "Determine the viz type from the provided measures and dimensions."
+  "Determine the viz type from the provided measures and dimensions.
+  This is the fundamental logical unit of this ns that drives which visualization gets selected."
   [{:keys [measures dimensions]}]
   (let [[_first-measure] measures
         [first-dim] dimensions]
@@ -38,11 +39,13 @@
       (and
         (zero? (count dimensions))
         (= 1 (count measures))
-        (-> measures first :effective_type (isa? :type/Integer))
-        (-> measures first :fingerprint :global :distinct-count (= 1))) :scalar
+        (-> measures first :fingerprint :global :count-non-nil (= 1))) :scalar
       ;; Note that ATM we aren't handling compound dimensions like lon/lat for pins where dim count is 2
       (or
+        ;; No dimensions: E.g. columns are ID (neither m nor d), avg, sum, total (all measures)
         (zero? (count dimensions))
+        ;; At least 2 dimensions - created at, ordered at, birth date -- The x-axis is indeterminate
+        ;; We could resolve this with a "preferred" dimension
         (< 1 (count dimensions))) :table
       (and
         ;; Maps can only display one measure
@@ -109,5 +112,3 @@
 (def select-viz
   "Select the appropriate visualization from the provided measures and dimensions."
   (comp create-viz to-measures-and-dimensions))
-
-

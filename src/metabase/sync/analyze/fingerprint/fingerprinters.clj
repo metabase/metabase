@@ -56,6 +56,12 @@
    (.offer acc x)
    acc))
 
+(defn- count-non-nil-elements
+  "Count the number of elements in the sequence"
+  ([] 0)
+  ([acc] acc)
+  ([acc item] (cond-> acc (some? item) inc)))
+
 (defmacro robust-map
   "Wrap each map value in try-catch block."
   [& kvs]
@@ -121,6 +127,7 @@
 (def ^:private global-fingerprinter
   (redux/post-complete
    (robust-fuse {:distinct-count cardinality
+                 :count-non-nil  count-non-nil-elements
                  :nil%           (stats/share nil?)})
    (partial hash-map :global)))
 

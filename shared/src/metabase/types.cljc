@@ -19,12 +19,12 @@
 
   These strategies tell us how to coerce a column from its base type to it effective type when the two differ. For
   example, `:Coercion/ISO8601->DateTime` can be used to tell us how to interpret a `VARCHAR` column (base type =
-  `:type/Text`) as a `:type/DateTime` column (effective type). This depends of the database, but we might do something
+  `:type/Text`) as a `:type/DateTime` column (effective type). This depends on the database, but we might do something
   like using a `parse_timestamp()` function whenever we fetch this column.
 
   ### Semantic Types -- types starting with `:type/*` and deriving from `:Semantic/*`
 
-  NOTE: In the near future we plan to rename the semantic types so they start with `:Semantic/` rather than `:type/`.
+  NOTE: In the near future we plan to rename the semantic types so that they start with `:Semantic/` rather than `:type/`.
 
   These types represent the semantic meaning/interpretation/purpose of a column in the data warehouse, for example
   `:type/UpdatedTimestamp`. This affects things like how we display this column or how we generate Automagic
@@ -41,7 +41,7 @@
 
   ### Relation Type -- types starting with `:type/*` and deriving from `:Relation/*`
 
-  NOTE: As with Semantic types, in the near future we'll change the relation types so they all start with `:Relation/`.
+  NOTE: As with Semantic types, in the near future we'll change the relation types so that they all start with `:Relation/`.
 
   Types that have to do with whether this column is a primary key or foreign key. These are currently stored in the
   `semantic_type` column, but we'll split them out into a separate `relation_type` column in the future.
