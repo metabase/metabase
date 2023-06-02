@@ -97,8 +97,6 @@ jobs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: pre-release-build
-    - name: Build
-      run: ./bin/build.sh
 
     - name: Determine the canonical version ## EE is always v1.x.y, OSS is always v0.x.y
       uses: actions/github-script@v6
@@ -118,13 +116,9 @@ jobs:
           }
           console.log("The canonical version of this", process.env.EDITION, "edition is", canonical_version);
           return canonical_version;
-    - name: Adjust the tag in the version.properties file
-      run: |
-        jar xf ./target/uberjar/metabase.jar version.properties
-        sed -i 's/tag=.*/tag=${{ steps.canonical_version.outputs.result }}/' version.properties
-        zip ./target/uberjar/metabase.jar version.properties
-    - name: Show the updated version.properties
-      run: echo "Updated version.properties:" && cat version.properties
+
+    - name: Build
+      run: ./bin/build.sh :edition :${{ matrix.edition }} :version ${{ steps.canonical_version.outputs.result }}
 
     - name: Prepare uberjar artifact
       uses: ./.github/actions/prepare-uberjar-artifact
