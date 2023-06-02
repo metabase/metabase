@@ -14788,7 +14788,7 @@ databaseChangeLog:
       comment: Added 0.47.0 - Add join-alias to the report_card.visualization_settings.column_settings field refs
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.AddJoinAliasToVisualizationSettingsFieldRefs"
+            class: "metabase.db.custom_migrations.AddJoinAliasToColumnSettingsFieldRefs"
 
   - changeSet:
       id: v47.00-029
