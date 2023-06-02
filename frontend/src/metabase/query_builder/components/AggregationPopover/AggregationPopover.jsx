@@ -9,9 +9,9 @@ import Tooltip from "metabase/core/components/Tooltip";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import Aggregation from "metabase-lib/queries/structured/Aggregation";
-import ExpressionWidget from "../expressions/ExpressionWidget";
-import ExpressionWidgetHeader from "../expressions/ExpressionWidgetHeader";
-import QueryDefinitionTooltip from "../QueryDefinitionTooltip";
+import { ExpressionWidget } from "../expressions/ExpressionWidget";
+import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
+import { QueryDefinitionTooltip } from "../QueryDefinitionTooltip";
 
 import {
   AggregationItemList,
