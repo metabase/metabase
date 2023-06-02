@@ -472,6 +472,11 @@
                (str/replace s #"\s" "")
                (re-matches #"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$" s)))))
 
+(defn batches-of
+  "Returns coll split into seqs of up to n items"
+  [n coll]
+  (partition n n nil coll))
+
 (def ^{:arglists '([n])} safe-inc
   "Increment `n` if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
   (fnil inc 0))
