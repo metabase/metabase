@@ -268,10 +268,9 @@ const SuggestionsList = ({ suggestions, section }) => (
         {suggestions[s].length > 0 &&
           suggestions[s].map((item, itemIndex) => (
             <Link
-              hover={{ color: color("brand") }}
               key={itemIndex}
               to={item.url}
-              className="mb1 block hover-parent hover--visibility"
+              className="mb1 block hover-parent hover--visibility text-brand-hover"
               data-metabase-event={`Auto Dashboard;Click Related;${s}`}
             >
               <Card p={2} hoverable>

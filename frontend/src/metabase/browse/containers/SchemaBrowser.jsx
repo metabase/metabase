@@ -49,9 +49,8 @@ function SchemaBrowser(props) {
                     to={`/browse/${dbId}/schema/${encodeURIComponent(
                       schema.name,
                     )}`}
-                    hover={{ color: color("accent2") }}
                     data-metabase-event={`${ANALYTICS_CONTEXT};Schema Click`}
-                    className="mb1 overflow-hidden"
+                    className="mb1 overflow-hidden text-accent2-hover"
                   >
                     <Card hoverable className="px1">
                       <EntityItem
