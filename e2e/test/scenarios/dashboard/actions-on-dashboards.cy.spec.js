@@ -247,7 +247,7 @@ const MODEL_NAME = "Test Action Model";
         });
       });
 
-      describe.only(`Actions Data Types`, () => {
+      describe(`Actions Data Types`, () => {
         beforeEach(() => {
           resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
           restore(`${dialect}-writable`);
@@ -262,7 +262,7 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it.only("can update various data types via implicit actions", () => {
+        it("can update various data types via implicit actions", () => {
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "update",
