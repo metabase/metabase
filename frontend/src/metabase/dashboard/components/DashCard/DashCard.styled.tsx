@@ -6,7 +6,7 @@ export interface DashCardRootProps {
   isNightMode: boolean;
   isUsuallySlow: boolean;
   hasHiddenBackground: boolean;
-  shouldAutoPreviewInEditing: boolean;
+  shouldForceHiddenBackground: boolean;
 }
 
 const rootNightModeStyle = css`
@@ -24,7 +24,7 @@ const rootTransparentBackgroundStyle = css`
   box-shadow: none !important;
 `;
 
-const editingAutoPreviewStyle = css`
+const hiddenBackgroundStyle = css`
   background: ${color("bg-light")};
   box-shadow: none !important;
 `;
@@ -37,8 +37,8 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
   ${({ hasHiddenBackground }) =>
     hasHiddenBackground && rootTransparentBackgroundStyle}
 
-  ${({ shouldAutoPreviewInEditing }) =>
-    shouldAutoPreviewInEditing && editingAutoPreviewStyle}
+  ${({ shouldForceHiddenBackground }) =>
+    shouldForceHiddenBackground && hiddenBackgroundStyle}
 `;
 
 export const DashboardCardActionsPanel = styled.div`

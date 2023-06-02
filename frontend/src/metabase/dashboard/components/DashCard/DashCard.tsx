@@ -190,7 +190,7 @@ function DashCard({
     [dashcard],
   );
 
-  const shouldAutoPreviewInEditing = useMemo(() => {
+  const shouldForceHiddenBackground = useMemo(() => {
     if (!isEditing) {
       return false;
     }
@@ -298,7 +298,7 @@ function DashCard({
         data-testid="dashcard"
         className="Card rounded flex flex-column hover-parent hover--visibility"
         hasHiddenBackground={hasHiddenBackground}
-        shouldAutoPreviewInEditing={shouldAutoPreviewInEditing}
+        shouldForceHiddenBackground={shouldForceHiddenBackground}
         isNightMode={isNightMode}
         isUsuallySlow={isSlow === "usually-slow"}
         ref={cardRootRef}
