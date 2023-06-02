@@ -14812,14 +14812,22 @@ databaseChangeLog:
                   defaultValue: null
                   remarks: 'This is used to differentiate instance-analytics collections from all other collections.'
 
-- changeSet:
-    id: v47.00-035
-    author: calherries
-    comment: Added 0.47.0 - Drop foreign key constraint on implicit_action.action_id
-    changes:
-      - dropForeignKeyConstraint:
-          baseTableName: implicit_action
-          constraintName: fk_implicit_action_action_id
+  - changeSet:
+      id: v47.00-035
+      author: calherries
+      comment: Added 0.47.0 - Drop foreign key constraint on implicit_action.action_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: implicit_action
+            constraintName: fk_implicit_action_action_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: implicit_action
+            baseColumnNames: action_id
+            referencedTableName: action
+            referencedColumnNames: id
+            constraintName: fk_implicit_action_action_id
+            onDelete: CASCADE
 
   - changeSet:
       id: v47.00-036
