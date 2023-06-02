@@ -299,6 +299,16 @@ describe("MetadataEditor", () => {
       expect(popover.queryByText("Euro")).not.toBeInTheDocument();
     });
 
+    it("should not show currency settings for non-currency fields", async () => {
+      await setup();
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+
+      const section = within(
+        await screen.findByLabelText(ORDERS_ID_FIELD.name),
+      );
+      expect(section.queryByText("US Dollar")).not.toBeInTheDocument();
+    });
+
     it("should allow to navigate to and from table settings", async () => {
       await setup();
 
