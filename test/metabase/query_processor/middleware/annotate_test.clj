@@ -69,10 +69,9 @@
         (is (= [(merge (info-for-field :venues :price)
                        {:source    :fields
                         :field_ref $price})]
-               (doall
-                (annotate/column-info
-                 {:type :query, :query {:fields [$price]}}
-                 {:columns [:price]}))))))))
+               (annotate/column-info
+                {:type :query, :query {:fields [$price]}}
+                {:columns [:price]})))))))
 
 (deftest ^:parallel col-info-for-implicit-joins-test
   (mt/with-everything-store
@@ -80,9 +79,10 @@
       (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk_field_id` "
                     "info about the source Field")
         (is (= [(merge (info-for-field :categories :name)
-                       {:fk_field_id %category_id
-                        :source      :fields
-                        :field_ref   $category_id->categories.name})]
+                       {:fk_field_id  %category_id
+                        :source       :fields
+                        :field_ref    $category_id->categories.name
+                        :display_name "Category → Name"})]
                (annotate/column-info
                 {:type :query, :query {:fields [$category_id->categories.name]}}
                 {:columns [:name]})))))))
@@ -558,30 +558,30 @@
 
 (deftest ^:parallel test-string-extracts
   (is (= {:base_type :type/Text}
-         (infered-col-type  [:trim "foo"])))
+         (infered-col-type [:trim "foo"])))
   (is (= {:base_type :type/Text}
-         (infered-col-type  [:ltrim "foo"])))
+         (infered-col-type [:ltrim "foo"])))
   (is (= {:base_type :type/Text}
-         (infered-col-type  [:rtrim "foo"])))
+         (infered-col-type [:rtrim "foo"])))
   (is (= {:base_type :type/BigInteger}
-         (infered-col-type  [:length "foo"])))
+         (infered-col-type [:length "foo"])))
   (is (= {:base_type :type/Text}
-         (infered-col-type  [:upper "foo"])))
+         (infered-col-type [:upper "foo"])))
   (is (= {:base_type :type/Text}
-         (infered-col-type  [:lower "foo"])))
+         (infered-col-type [:lower "foo"])))
   (is (= {:base_type :type/Text}
-         (infered-col-type  [:substring "foo" 2])))
+         (infered-col-type [:substring "foo" 2])))
   (is (= {:base_type :type/Text}
-         (infered-col-type  [:replace "foo" "f" "b"])))
+         (infered-col-type [:replace "foo" "f" "b"])))
   (is (= {:base_type :type/Text}
-         (infered-col-type  [:regex-match-first "foo" "f"])))
+         (infered-col-type [:regex-match-first "foo" "f"])))
   (is (= {:base_type :type/Text}
-         (infered-col-type  [:concat "foo" "bar"])))
+         (infered-col-type [:concat "foo" "bar"])))
   (is (= {:base_type :type/Text}
-         (infered-col-type  [:coalesce "foo" "bar"])))
+         (infered-col-type [:coalesce "foo" "bar"])))
   (is (= {:base_type     :type/Text
           :semantic_type :type/Name}
-         (infered-col-type  [:coalesce [:field (mt/id :venues :name) nil] "bar"]))))
+         (infered-col-type [:coalesce [:field (mt/id :venues :name) nil] "bar"]))))
 
 (deftest ^:parallel unique-name-key-test
   (testing "Make sure `:cols` always come back with a unique `:name` key (#8759)"
