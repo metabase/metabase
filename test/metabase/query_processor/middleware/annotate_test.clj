@@ -9,8 +9,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.util.test :as tt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -209,33 +209,33 @@
 
 (deftest col-info-combine-parent-field-names-test
   (testing "For fields with parents we should return them with a combined name including parent's name"
-    (tt/with-temp* [Field [parent {:name "parent", :table_id (mt/id :venues)}]
-                    Field [child  {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]]
-     (mt/with-everything-store
+    (t2.with-temp/with-temp [Field parent {:name "parent", :table_id (mt/id :venues)}
+                             Field child  {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]
+      (mt/with-everything-store
         (is (= {:description     nil
-                 :table_id        (mt/id :venues)
-                 :semantic_type   nil
-                 :effective_type  nil
-                 ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
-                 ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
-                 ;; when the info is inferred. the solution to this might be quite extensive renaming
-                 :coercion_strategy nil
-                 :name            "parent.child"
-                 :settings        nil
-                 :field_ref       [:field (u/the-id child) nil]
-                 :nfc_path        nil
-                 :parent_id       (u/the-id parent)
-                 :id              (u/the-id child)
-                 :visibility_type :normal
-                 :display_name    "Child"
-                 :fingerprint     nil
-                 :base_type       :type/Text}
+                :table_id        (mt/id :venues)
+                :semantic_type   nil
+                :effective_type  nil
+                ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
+                ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
+                ;; when the info is inferred. the solution to this might be quite extensive renaming
+                :coercion_strategy nil
+                :name            "parent.child"
+                :settings        nil
+                :field_ref       [:field (u/the-id child) nil]
+                :nfc_path        nil
+                :parent_id       (u/the-id parent)
+                :id              (u/the-id child)
+                :visibility_type :normal
+                :display_name    "Child"
+                :fingerprint     nil
+                :base_type       :type/Text}
                (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil])))))))
 
   (testing "nested-nested fields should include grandparent name (etc)"
-    (tt/with-temp* [Field [grandparent {:name "grandparent", :table_id (mt/id :venues)}]
-                    Field [parent      {:name "parent", :table_id (mt/id :venues), :parent_id (u/the-id grandparent)}]
-                    Field [child       {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]]
+    (t2.with-temp/with-temp [Field grandparent {:name "grandparent", :table_id (mt/id :venues)}
+                             Field parent      {:name "parent", :table_id (mt/id :venues), :parent_id (u/the-id grandparent)}
+                             Field child       {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]
       (mt/with-everything-store
         (is (= {:description     nil
                 :table_id        (mt/id :venues)

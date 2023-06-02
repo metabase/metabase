@@ -26,9 +26,9 @@ export const updateModelIndexes =
     }
 
     const existingIndexes: ModelIndex[] =
-      ModelIndexes.selectors.getIndexesForModel(getState(), {
-        modelId: model.id(),
-      });
+      ModelIndexes.selectors.getList(getState(), {
+        entityQuery: { model_id: model.id() },
+      }) ?? [];
 
     const newFieldsToIndex = getFieldsToIndex(
       fieldsWithIndexFlags,
@@ -42,15 +42,17 @@ export const updateModelIndexes =
     if (newFieldsToIndex.length) {
       const pkRef = ModelIndexes.utils.getPkRef(fields);
 
-      await Promise.all(
-        newFieldsToIndex.map(field =>
-          ModelIndexes.api.create({
-            model_id: model.id(),
-            value_ref: field.field_ref,
-            pk_ref: pkRef,
-          }),
-        ),
-      );
+      if (pkRef) {
+        await Promise.all(
+          newFieldsToIndex.map(field =>
+            ModelIndexes.api.create({
+              model_id: model.id(),
+              value_ref: field.field_ref,
+              pk_ref: pkRef,
+            }),
+          ),
+        );
+      }
     }
 
     if (indexIdsToRemove.length) {
@@ -107,8 +109,7 @@ function getIndexIdsToRemove(
   return indexIdsToRemove;
 }
 
-export function cleanIndexFlags(model: Question) {
-  const fields = model.getResultMetadata();
+export function cleanIndexFlags(fields: Field[] = []) {
   const indexesToClean = fields.reduce(
     (
       indexesToClean: number[],
@@ -123,12 +124,11 @@ export function cleanIndexFlags(model: Question) {
     [],
   );
 
-  const newResultMetadata = [...model.getResultMetadata()];
+  const newResultMetadata = [...fields];
   for (const index of indexesToClean) {
     newResultMetadata[index] = dissocIn(newResultMetadata[index], [
       "should_index",
     ]);
   }
-  const newModel = model.setResultsMetadata(newResultMetadata);
-  return newModel;
+  return newResultMetadata;
 }

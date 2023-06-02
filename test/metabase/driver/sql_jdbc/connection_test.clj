@@ -13,7 +13,8 @@
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -49,7 +50,7 @@
           (jdbc/with-db-connection [_conn spec]
             (jdbc/execute! spec ["CREATE TABLE birds (name varchar)"])
             (jdbc/execute! spec ["INSERT INTO birds values ('rasta'),('lucky')"])
-            (mt/with-temp Database [database {:engine :h2, :details connection-details}]
+            (t2.with-temp/with-temp [Database database {:engine :h2, :details connection-details}]
               (testing "database id is not in our connection map initially"
                 ;; deref'ing a var to get the atom. looks weird
                 (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
