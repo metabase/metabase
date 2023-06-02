@@ -9,6 +9,7 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.db.setup :as db.setup]
    [metabase.models :refer [Card Database User]]
@@ -353,7 +354,11 @@
                         {:row 7  :col 0  :size_x 6  :size_y 4}
                         {:row 23 :col 0  :size_x 18 :size_y 2}
                         {:row 5  :col 0  :size_x 18 :size_y 2}
-                        {:row 0  :col 0  :size_x 18 :size_y 2}]
+                        {:row 0  :col 0  :size_x 18 :size_y 2}
+                        ;; these 2 last cases is a specical case where the last card has (width, height) = (1, 1)
+                        ;; it's to test an edge case to make sure downgrade from 24 -> 18 does not remove this card
+                        {:row 36 :col 0  :size_x 17 :size_y 1}
+                        {:row 36 :col 17 :size_x 1  :size_y 1}]
           revision-id (first (t2/insert-returning-pks! 'Revision
                                                         {:object   {:cards cards}
                                                          :model    "Dashboard"
@@ -361,28 +366,97 @@
                                                          :user_id  user-id}))]
 
       (migrate!)
-      (is (= [{:col 0  :row 20 :size_x 16 :size_y 10}
-              {:col 16 :row 9  :size_x 8  :size_y 11}
-              {:col 7  :row 2  :size_x 6  :size_y 4}
-              {:col 0  :row 33 :size_x 9  :size_y 13}
-              {:col 0  :row 2  :size_x 7  :size_y 4}
-              {:col 8  :row 9  :size_x 8  :size_y 11}
-              {:col 9  :row 33 :size_x 15 :size_y 13}
-              {:col 0  :row 9  :size_x 8  :size_y 5}
-              {:col 0  :row 30 :size_x 24 :size_y 3}
-              {:col 0  :row 6  :size_x 24 :size_y 3}
-              {:col 0  :row 0  :size_x 24 :size_y 2}]
-           (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id)))
+      (testing "forward migration migrate correclty"
+        (is (= [{:col 0  :row 20 :size_x 16 :size_y 10}
+                {:col 16 :row 9  :size_x 8  :size_y 11}
+                {:col 7  :row 2  :size_x 6  :size_y 4}
+                {:col 0  :row 33 :size_x 9  :size_y 13}
+                {:col 0  :row 2  :size_x 7  :size_y 4}
+                {:col 8  :row 9  :size_x 8  :size_y 11}
+                {:col 9  :row 33 :size_x 15 :size_y 13}
+                {:col 0  :row 9  :size_x 8  :size_y 5}
+                {:col 0  :row 30 :size_x 24 :size_y 3}
+                {:col 0  :row 6  :size_x 24 :size_y 3}
+                {:col 0  :row 0  :size_x 24 :size_y 2}
+                {:row 48 :col 0  :size_x 23 :size_y 1}
+                {:row 48 :col 23 :size_x 1  :size_y 1}]
+               (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))
      (migrate-down! 46)
-     (is (= [{:col 0  :row 15 :size_x 12 :size_y 8}
-             {:col 12 :row 7  :size_x 6  :size_y 8}
-             {:col 6  :row 2  :size_x 4  :size_y 3}
-             {:col 0  :row 25 :size_x 7  :size_y 10}
-             {:col 0  :row 2  :size_x 6  :size_y 3}
-             {:col 6  :row 7  :size_x 6  :size_y 8}
-             {:col 7  :row 25 :size_x 11 :size_y 10}
-             {:col 0  :row 7  :size_x 6  :size_y 4}
-             {:col 0  :row 23 :size_x 18 :size_y 2}
-             {:col 0  :row 5  :size_x 18 :size_y 2}
-             {:col 0  :row 0  :size_x 18 :size_y 2}]
-          (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))))
+     (testing "downgrade works correctly"
+      (is (= [{:col 0  :row 15 :size_x 12 :size_y 8}
+              {:col 12 :row 7  :size_x 6  :size_y 8}
+              {:col 5  :row 2  :size_x 4  :size_y 3}
+              {:col 0  :row 25 :size_x 7  :size_y 10}
+              {:col 0  :row 2  :size_x 5  :size_y 3}
+              {:col 6  :row 7  :size_x 6  :size_y 8}
+              {:col 7  :row 25 :size_x 11 :size_y 10}
+              {:col 0  :row 7  :size_x 6  :size_y 4}
+              {:col 0  :row 23 :size_x 18 :size_y 2}
+              {:col 0  :row 5  :size_x 18 :size_y 2}
+              {:col 0  :row 0  :size_x 18 :size_y 2}
+              {:row 36 :col 0  :size_x 17 :size_y 1}
+              {:row 36 :col 17 :size_x 1  :size_y 1}]
+           (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id)))))))
+
+(defn two-cards-overlap? [box1 box2]
+  (let [{col1    :col
+         row1    :row
+         size_x1 :size_x
+         size_y1 :size_y} box1
+        {col2    :col
+         row2    :row
+         size_x2 :size_x
+         size_y2 :size_y} box2]
+    (and (< col1 (+ col2 size_x2))
+         (> (+ col1 size_x1) col2)
+         (< row1 (+ row2 size_y2))
+         (> (+ row1 size_y1) row2))))
+
+(defn no-cards-are-overlaped?
+  "Return false if the cards contains at least 1 pair of cards that overlap, else returns true"
+  [boxes]
+  (every? false? (for [i (range (count boxes))
+                        j (range (- (count boxes) i 1))]
+                   (two-cards-overlap? (nth boxes i) (nth boxes (+ i j 1))))))
+
+(defn no-cards-are-out-of-grid-and-has-size-0?
+  "Return true if all cards are inside the grid and has size >= 1."
+  [boxes grid-size]
+  (every? (fn [{:keys [col size_x size_y]}]
+            (and (<= (+ col size_x) grid-size)
+                 (pos? size_x)
+                 (pos? size_y))) boxes))
+
+(def ^:private big-random-dashboard-cards
+    (for [[col row size_x size_y]
+          [[0, 0, 5, 1], [5, 0, 4, 1], [9, 0, 2, 1], [11, 0, 2, 1], [13, 0, 5, 1], [0, 2, 8, 7],
+           [8, 2, 2, 7], [10, 2, 7, 7], [17, 2, 1, 7], [17, 10, 1, 5], [17, 16, 1, 5], [0, 22, 7, 2],
+           [7, 22, 10, 2], [17, 22, 1, 2], [0, 25, 1, 2], [1, 25, 7, 2], [8, 25, 9, 2], [17, 25, 1, 2],
+           [15, 28, 3, 4], [0, 33, 7, 7], [7, 33, 8, 7], [15, 33, 3, 7], [0, 41, 8, 5], [8, 41, 8, 5],
+           [16, 41, 2, 5], [0, 47, 4, 6], [4, 47, 1, 6], [5, 47, 5, 6], [10, 47, 8, 6], [0, 54, 6, 6],
+           [6, 54, 4, 6], [10, 54, 2, 6], [12, 54, 6, 6], [0, 61, 2, 7], [2, 61, 2, 7], [4, 61, 3, 7],
+           [7, 61, 1, 7], [8, 61, 7, 7], [15, 61, 3, 7], [0, 69, 1, 5], [1, 69, 2, 5], [3, 69, 7, 5],
+           [10, 69, 6, 5], [16, 69, 2, 5], [0, 75, 10, 7], [10, 75, 3, 7], [13, 75, 5, 7], [0, 83, 7, 5],
+           [7, 83, 4, 5], [11, 83, 1, 5], [12, 83, 4, 5], [16, 83, 2, 5], [0, 89, 3, 2], [3, 89, 7, 2],
+           [10, 89, 8, 2], [0, 92, 5, 6], [5, 92, 2, 6], [7, 92, 9, 6], [16, 92, 2, 6], [0, 99, 6, 3],
+           [6, 99, 3, 3], [9, 99, 6, 3], [15, 99, 3, 3], [0, 103, 2, 3], [2, 103, 6, 3], [8, 103, 3, 3],
+           [11, 103, 7, 3], [0, 107, 4, 1], [4, 107, 8, 1], [12, 107, 2, 1], [14, 107, 4, 1]]]
+      {:row row
+       :col col
+       :size_x size_x
+       :size_y size_y}))
+
+(deftest migrated-grid-18-to-24-stretch-test
+  (let [migrated-to-18   (map @#'custom-migrations/migrate-dashboard-grid-from-18-to-24 big-random-dashboard-cards)
+        rollbacked-to-24 (map @#'custom-migrations/migrate-dashboard-grid-from-24-to-18 migrated-to-18)]
+    (testing "migrates to 24"
+      (testing "shouldn't have any cards out of grid"
+        (is (true? (no-cards-are-out-of-grid-and-has-size-0? migrated-to-18 24))))
+      (testing "shouldn't have overlapping cards"
+        (is (true? (no-cards-are-overlaped? migrated-to-18)))))
+
+    (testing "rollbacked to 18"
+      (testing "shouldn't have any cards out of grid"
+        (is (true? (no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-24 18))))
+      (testing "shouldn't have overlapping cards"
+        (is (true? (no-cards-are-overlaped? rollbacked-to-24)))))))

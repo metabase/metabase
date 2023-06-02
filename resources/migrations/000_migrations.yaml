@@ -14797,7 +14797,7 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.DowngradeDashboardTab"
-            
+
   - changeSet:
       id: v47.00-030
       author: escherize
@@ -14837,24 +14837,25 @@ databaseChangeLog:
                   update report_dashboardcard set `row`  = `row` + floor(cast(`row` as decimal) / 3);
 
       rollback:
-          # new_size_x = size_x - ((size_x + col) // 4 - col // 4)
-          # new_col    = col - col // 4
-          # new_size_y = size_y - ((size_y + row) // 4 - y // 4)
-          # new_col    = col - col // 4
+          # new_size_x = size_x - ((size_x + col + 1) // 4 - (col + 1) // 4) for size_x > 1
+          # new_col    = col - (col + 1) // 4
+          # new_size_y = size_y - ((size_y + row) // 4 - y // 4)       for size_y > 1
+          # new_row    = row - row // 4
+          # for size_x, size_y = 1, we keep it as it is, because it can't be smaller right?
           - sql:
               dbms: postgresql
               sql: >-
-                  update report_dashboardcard set size_x = size_x - (floor(cast(size_x + col as decimal) / 4) - floor(cast(col as decimal) / 4));
-                  update report_dashboardcard set col    = col - floor(cast(col as decimal) / 4);
-                  update report_dashboardcard set size_y = size_y - (floor(cast(size_y + row as decimal) / 4) - floor(cast(row as decimal) / 4));
+                  update report_dashboardcard set size_x = size_x - (floor(cast(size_x + col + 1 as decimal) / 4) - floor(cast(col + 1 as decimal) / 4)) where size_x <> 1;
+                  update report_dashboardcard set col    = col - floor(cast(col + 1 as decimal) / 4);
+                  update report_dashboardcard set size_y = size_y - (floor(cast(size_y + row as decimal) / 4) - floor(cast(row as decimal) / 4)) where size_y <> 1;
                   update report_dashboardcard set row    = row - floor(cast(row as decimal) / 4);
 
           - sql:
               dbms: mysql,mariadb,h2
               sql: >-
-                  update report_dashboardcard set size_x = size_x - (floor(cast(size_x + col as decimal) / 4) - floor(cast(col as decimal) / 4));
-                  update report_dashboardcard set col    = col - floor(cast(col as decimal) / 4);
-                  update report_dashboardcard set size_y = size_y - (floor(cast(size_y + `row` as decimal) / 4) - floor(cast(`row` as decimal) / 4));
+                  update report_dashboardcard set size_x = size_x - (floor(cast(size_x + col + 1 as decimal) / 4) - floor(cast(col + 1 as decimal) / 4)) where size_x <> 1;
+                  update report_dashboardcard set col    = col - floor(cast(col + 1 as decimal) / 4);
+                  update report_dashboardcard set size_y = size_y - (floor(cast(size_y + `row` as decimal) / 4) - floor(cast(`row` as decimal) / 4)) where size_y <> 1;
                   update report_dashboardcard set `row`  = `row` - floor(cast(`row` as decimal) / 4);
 
   - changeSet:
