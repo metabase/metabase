@@ -41,10 +41,11 @@ const runCypress = async (baseUrl, exitFunction) => {
 
     // At least one test failed, so let's generate HTML report that helps us determine what went wrong
     if (totalFailed > 0) {
-      await executeYarnCommand({
-        command: "yarn run generate-cypress-html-report",
-        message: "Generating Mochawesome HTML report\n",
-      });
+      // FIXME: for some reason this fails in stress tests
+      // await executeYarnCommand({
+      //   command: "yarn run generate-cypress-html-report",
+      //   message: "Generating Mochawesome HTML report\n",
+      // });
 
       await exitFunction(1);
     }
