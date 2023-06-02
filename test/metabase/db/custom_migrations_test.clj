@@ -239,7 +239,7 @@
                      :visualization_settings
                      json/parse-string))))
         (db.setup/migrate! db-type data-source :down 46)
-        (testing "After reversing the migration, column_settings field refs are updated to remove the join-alias"
+        (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
           (is (= visualization-settings
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_card]
