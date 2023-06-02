@@ -305,8 +305,11 @@
                                                     [:or
                                                      [:= :query_type nil]
                                                      [:= :query_type "query"]]
-                                                    [:like :visualization_settings "%\\\\\"ref\\\\\",[\\\\\"field%"]
-                                                    [:like :result_metadata "%\"join-alias\"%"]]})))
+                                                    [:or
+                                                     [:like :visualization_settings "%ref\\\\\",[\\\\\"field%"]
+                                                     ; MySQL with NO_BACKSLASH_ESCAPES disabled
+                                                     [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                    [:like :result_metadata "%join-alias%"]]})))
   (let [update! (fn [{:keys [id visualization_settings]}]
                   (let [updated (-> visualization_settings
                                     json/parse-string
@@ -322,8 +325,10 @@
                                                 [:or
                                                  [:= :query_type nil]
                                                  [:= :query_type "query"]]
-                                                [:like :visualization_settings "%\"ref\\\\\",[\\\\\"field%"]
-                                                [:like :visualization_settings "%\\\\\"join-alias\\\\\"%"]]}))))
+                                                [:or
+                                                 [:like :visualization_settings "%ref\\\\\",[\\\\\"field%"]
+                                                 [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                [:like :visualization_settings "%join-alias%"]]}))))
 
 (defn- update-card-row-on-downgrade-for-dashboard-tab
   [dashboard-id]
