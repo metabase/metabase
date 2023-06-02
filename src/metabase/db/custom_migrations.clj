@@ -415,8 +415,8 @@
                                         :where  [:and
                                                  ;; only include cards with field refs in column_settings
                                                  [:or
-                                                  [:like :visualization_settings "%ref\\\\\",[\\\\\"field%"]
-                                                  [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                  [:like :object "%ref\\\\\",[\\\\\"field%"]
+                                                  [:like :object "%ref\\\\\\\",[\\\\\\\"field%"]]
                                                  ;; only include cards with joins
                                                  [:like :object "%joins%"]
                                                  [:= :model "Card"]]})))
@@ -435,7 +435,7 @@
                                            :from   [:revision]
                                            :where  [:and
                                                     [:or
-                                                     [:like :visualization_settings "%ref\\\\\",[\\\\\"field%"]
-                                                     [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                     [:like :object "%ref\\\\\",[\\\\\"field%"]
+                                                     [:like :object "%ref\\\\\\\",[\\\\\\\"field%"]]
                                                     [:like :object "%join-alias%"]
                                                     [:= :model "Card"]]}))))
