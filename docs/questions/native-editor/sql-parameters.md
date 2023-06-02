@@ -152,7 +152,7 @@ Here's a PostgreSQL example that sets the default value of a Date filter to the 
 ```
 SELECT *
 FROM accounts
-WHERE DATE(created_at) = [[ {% raw %}{{dateOfCreation}}{% endraw %} #]]CURRENT_DATE
+{% raw %}WHERE DATE(created_at) = [[ {{dateOfCreation}} #]]CURRENT_DATE{% endraw %}
 ```
 
 Note that the hash (`#`) used to comment the text might need to be replaced by the comment syntax specific to the database you're using. Some databases use double-dashes (`--`) as comment syntax.
