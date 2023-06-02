@@ -1,10 +1,12 @@
 (ns metabase.query-processor-test.nested-queries-test
   "Tests for handling queries with nested expressions."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [java-time :as t]
    [medley.core :as m]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.mbql.schema :as mbql.s]
@@ -401,20 +403,30 @@
 (deftest aggregatation-references-test
   (testing "make sure that aggregation references match up to aggregations from the same level they're from"
     ;; e.g. the ORDER BY in the source-query should refer the 'stddev' aggregation, NOT the 'avg' aggregation
-    (is (= {:query  (str "SELECT AVG(\"source\".\"stddev\") AS \"avg\" FROM ("
-                         "SELECT \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\", STDDEV_POP(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\" "
-                         "FROM \"PUBLIC\".\"VENUES\" "
-                         "GROUP BY \"PUBLIC\".\"VENUES\".\"PRICE\" "
-                         "ORDER BY \"stddev\" DESC, \"PUBLIC\".\"VENUES\".\"PRICE\" ASC"
-                         ") AS \"source\"")
+    (is (= {:query ["SELECT"
+                    "  AVG(\"source\".\"stddev\") AS \"avg\""
+                    "FROM"
+                    "  ("
+                    "    SELECT"
+                    "      \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\","
+                    "      STDDEV_POP(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\""
+                    "    FROM"
+                    "      \"PUBLIC\".\"VENUES\""
+                    "    GROUP BY"
+                    "      \"PUBLIC\".\"VENUES\".\"PRICE\""
+                    "    ORDER BY"
+                    "      \"stddev\" DESC,"
+                    "      \"PUBLIC\".\"VENUES\".\"PRICE\" ASC"
+                    "  ) AS \"source\""]
             :params nil}
-           (qp/compile
-            (mt/mbql-query venues
-              {:source-query {:source-table $$venues
-                              :aggregation  [[:stddev $id]]
-                              :breakout     [$price]
-                              :order-by     [[[:aggregation 0] :descending]]}
-               :aggregation  [[:avg *stddev/Integer]]}))))))
+           (-> (qp/compile
+                (mt/mbql-query venues
+                  {:source-query {:source-table $$venues
+                                  :aggregation  [[:stddev $id]]
+                                  :breakout     [$price]
+                                  :order-by     [[[:aggregation 0] :descending]]}
+                   :aggregation  [[:avg *stddev/Integer]]}))
+               (update :query #(str/split-lines (mdb.query/format-sql % :h2))))))))
 
 (deftest handle-incorrect-field-forms-gracefully-test
   (testing "make sure that we handle [:field [:field <name> ...]] forms gracefully, despite that not making any sense"
@@ -549,7 +561,7 @@
             ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
             ;; display values of the column.
             (is (= [(assoc date-col  :field_ref [:field (mt/id :checkins :date) {:temporal-unit :default}], :unit :year)
-                    (assoc count-col :field_ref [:field "count" {:base-type (:base_type count-col)}])]
+                    (assoc count-col :field_ref [:field "count" {:base-type :type/Integer}])]
                    (mt/cols
                     (qp/process-query (query-with-source-card card)))))))))))
 
@@ -866,7 +878,7 @@
                    :base_type    :type/Text}
                   {:name         "count"
                    :display_name "Count"
-                   :field_ref    [:field "count" {:base-type :type/BigInteger}]
+                   :field_ref    [:field "count" {:base-type :type/Integer}]
                    :base_type    (:base_type (qp.test/aggregate-col :count))}])
                (for [col (mt/cols results)]
                  (select-keys col [:name :display_name :id :field_ref :base_type]))))))))
