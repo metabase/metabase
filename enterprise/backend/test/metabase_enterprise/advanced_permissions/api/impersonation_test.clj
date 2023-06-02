@@ -23,7 +23,6 @@
                                :attribute "Attribute Name"}
                 graph         (assoc (perms/data-perms-graph) :impersonations [impersonation])
                 result        (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
-            (def result result)
             (is (= [(assoc impersonation :id (-> result :impersonations first :id))]
                    (t2/select :model/ConnectionImpersonation :group_id (u/the-id group)))))
 
@@ -35,8 +34,8 @@
                   graph         (assoc (perms/data-perms-graph) :impersonations [impersonation])]
               (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)
               (is (= [impersonation]
-                   (t2/select :model/ConnectionImpersonation
-                              :group_id (u/the-id group)))))))))))
+                     (t2/select :model/ConnectionImpersonation
+                                :group_id (u/the-id group)))))))))))
 
 (deftest fetch-impersonation-policy-test
   (testing "GET /api/ee/advanced-permissions/impersonation"
