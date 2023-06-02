@@ -4,6 +4,7 @@ import {
   popover,
   visitDashboard,
   addTextBox,
+  editDashboard,
 } from "e2e/support/helpers";
 
 describe("scenarios > dashboard > text and headings", () => {
@@ -19,7 +20,7 @@ describe("scenarios > dashboard > text and headings", () => {
 
     it("should allow creation, editing, and saving of text boxes", () => {
       // should be able to create new text box
-      cy.findByLabelText("Edit dashboard").click();
+      editDashboard();
       cy.findByLabelText("Add a heading or text box").click();
       popover().within(() => {
         cy.findByText("Text").click();
@@ -134,7 +135,7 @@ describe("scenarios > dashboard > text and headings", () => {
 
     it("should allow creation, editing, and saving of heading component", () => {
       // should be able to create new heading
-      cy.findByLabelText("Edit dashboard").click();
+      editDashboard();
       cy.findByLabelText("Add a heading or text box").click();
       popover().within(() => {
         cy.findByText("Heading").click();

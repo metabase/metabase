@@ -72,7 +72,7 @@ export function showDashcardVisualizationSettings(index = 0) {
 }
 
 export function editDashboard() {
-  cy.icon("pencil").click();
+  cy.findByLabelText("Edit dashboard").click();
   cy.findByText("You're editing this dashboard.");
 }
 
