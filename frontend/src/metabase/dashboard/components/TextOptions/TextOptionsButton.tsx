@@ -19,12 +19,12 @@ export function TextOptionsButton({
   const TEXT_OPTIONS = [
     {
       title: t`Heading`,
-      action: () => onAddHeading(),
+      action: onAddHeading,
       event: "Dashboard; Add Heading",
     },
     {
       title: t`Text`,
-      action: () => onAddMarkdown(),
+      action: onAddMarkdown,
       event: "Dashboard; Add Markdown Box",
     },
   ];
