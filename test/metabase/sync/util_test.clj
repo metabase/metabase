@@ -197,7 +197,7 @@
 
 (deftest error-handling-test
   (testing "A ConnectException will cause sync to stop"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [expected           (java.io.IOException.
                                 "outer"
                                 (java.net.ConnectException.
@@ -252,7 +252,7 @@
           (is (= {:log-summary-fn nil} (dissoc result :start-time :end-time))))))))
 
 (deftest initial-sync-status-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "If `initial-sync-status` on a DB is `incomplete`, it is marked as `complete` when sync-metadata has finished"
       (let [_  (t2/update! Database (:id (mt/db)) {:initial_sync_status "incomplete"})
             db (t2/select-one Database :id (:id (mt/db)))]

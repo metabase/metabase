@@ -524,7 +524,7 @@
 (deftest join-source-queries-with-joins-test
   (testing "Should be able to join against source queries that themselves contain joins (#12928)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :foreign-keys)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (testing "(#12928)"
           (let [query (mt/mbql-query orders
                         {:source-query {:source-table $$orders
@@ -588,7 +588,7 @@
 (deftest join-against-saved-question-with-sort-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Should be able to join against a Saved Question that is sorted (#13744)"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query (mt/mbql-query products
                       {:joins    [{:source-query {:source-table $$products
                                                   :aggregation  [[:count]]
@@ -616,7 +616,7 @@
 (deftest join-with-space-in-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Some drivers don't allow Table alises with spaces in them. Make sure joins still work."
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-bigquery-fks #{:bigquery-cloud-sdk}
           (let [query (mt/mbql-query products
                         {:joins    [{:source-query {:source-table $$orders}
@@ -637,7 +637,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing (str "Should be able to join two nested queries with the same aggregation on a Field in their respective "
                   "source queries (#18512)")
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query (mt/mbql-query reviews
                       {:source-query {:source-table $$reviews
                                       :joins        [{:source-table $$products
@@ -674,7 +674,7 @@
 (deftest join-against-same-table-as-source-query-source-table-test
   (testing "Joining against the same table as the source table of the source query should work (#18502)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query (mt/mbql-query people
                       {:source-query {:source-table $$people
                                       :breakout     [!month.created_at]
@@ -697,7 +697,7 @@
 (deftest join-against-multiple-saved-questions-with-same-column-test
   (testing "Should be able to join multiple against saved questions on the same column (#15863, #20362)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [q1         (mt/mbql-query products {:breakout [$category], :aggregation [[:count]]})
               q2         (mt/mbql-query products {:breakout [$category], :aggregation [[:sum $price]]})
               q3         (mt/mbql-query products {:breakout [$category], :aggregation [[:avg $rating]]})
@@ -738,7 +738,7 @@
 (deftest use-correct-source-alias-for-fields-from-joins-test
   (testing "Make sure we use the correct escaped alias for a Fields coming from joins (#20413)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query (mt/mbql-query orders
                       {:joins       [{:source-table $$products
                                       :alias        "Products Renamed"
@@ -859,7 +859,7 @@
                            ;; mongodb doesn't support foreign keys required by this test
                            :mongo)
       (mt/with-bigquery-fks #{:bigquery-cloud-sdk}
-        (mt/dataset sample-dataset
+        (mt/dataset test-data
           (let [query (mt/mbql-query orders
                         {:source-query {:source-table $$orders
                                         :breakout     [$product_id->products.category]
@@ -885,7 +885,7 @@
       ;; SQL 1. Honey SQL 1 support is slated for removal in Metabase 0.49.0.
       (when (or (not (isa? driver/hierarchy driver/*driver* :sql))
                 (= (sql.qp/honey-sql-version driver/*driver*) 2))
-        (mt/dataset sample-dataset
+        (mt/dataset test-data
           (doseq [[first-join-strategy second-join-strategy] [[:inner-join :left-join]
                                                               [:left-join :inner-join]]
                   :let [query (mt/mbql-query people
@@ -910,7 +910,7 @@
 
 (deftest join-with-brakout-and-aggregation-expression
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mt/mbql-query orders
                                  {:source-query {:source-table $$orders
                                                  :joins    [{:source-table $$products

@@ -10,7 +10,7 @@
     (fix-bad-refs/fix-bad-references query)))
 
 (deftest fix-bad-references-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (is (query= (mt/mbql-query orders
                   {:source-query {:source-table $$orders
                                   :joins        [{:fields       :all

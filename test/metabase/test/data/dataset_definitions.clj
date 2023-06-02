@@ -62,13 +62,6 @@
   There are some `nil` `:name` strings in the `region` and `municipality` tables. `airport` has a row with an airport
   whose `:code` is an empty string.")
 
-(tx/defdataset-edn sample-dataset
-  "The sample database that ships with Metabase, but converted to an EDN dataset definition so it can be used in tests.
-  This dataset is pretty large (over 20k rows) so it can take a long time to load -- keep that in mind. There is one
-  difference from the H2 version that ships with Metabase -- this version uses `:type/DateTimeWithTZ` `updated_at`
-  columns (i.e., `TIMESTAMP WITH TIME ZONE`) instead of `:type/DateType`, to make it easier to use this test data
-  across multiple databases.")
-
 (tx/defdataset-edn json
   "Dataset with some JSON columns in it. Used to test JSON columns.")
 

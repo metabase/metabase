@@ -280,7 +280,7 @@
       (is (= [[:field 33 {:join-alias "Question 4918"}]
               [:field "count" {:join-alias "Question 4918"}]]
              (#'nest-query/joined-fields query))))
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp* [Card [base {:dataset_query
                                   (mt/mbql-query
                                    reviews
@@ -555,7 +555,7 @@
 (deftest multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
     (driver/with-driver :h2
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-everything-store
           (is (partial= (mt/$ids orders
                           (merge {:source-query (let [product-id        [:field %product_id {::add/source-table  $$orders
@@ -634,7 +634,7 @@
 
 (deftest uniquify-aliases-test
   (driver/with-driver :h2
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-everything-store
         (is (partial= (mt/$ids products
                         {:source-query       {:source-table $$products
