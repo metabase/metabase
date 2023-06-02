@@ -691,7 +691,7 @@ describe("Dimension", () => {
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
         it('returns an "expression" clause', () => {
-          expect(dimension.mbql()).toEqual(["expression", "Hello World", null]);
+          expect(dimension.mbql()).toEqual(["expression", "Hello World"]);
         });
       });
       describe("displayName()", () => {
@@ -703,12 +703,12 @@ describe("Dimension", () => {
       describe("column()", () => {
         it("returns the dimension column", () => {
           expect(dimension.column()).toEqual({
-            id: ["expression", "Hello World", null],
+            id: ["expression", "Hello World"],
             name: "Hello World",
             display_name: "Hello World",
             base_type: "type/Text",
             semantic_type: "type/Text",
-            field_ref: ["expression", "Hello World", null],
+            field_ref: ["expression", "Hello World"],
           });
         });
       });
@@ -753,6 +753,28 @@ describe("Dimension", () => {
             expect(field.query).toEqual(query);
             expect(field.metadata).toEqual(metadata);
           });
+        });
+      });
+
+      describe("getMLv1CompatibleDimension", () => {
+        it("should strip away *-type options", () => {
+          const dimension = Dimension.parseMBQL(
+            [
+              "expression",
+              "Hello World",
+              {
+                "base-type": "type/Text",
+                "effective-type": "type/Text",
+              },
+            ],
+            metadata,
+          );
+
+          expect(dimension.getMLv1CompatibleDimension().mbql()).toEqual([
+            "expression",
+            "Hello World",
+            null,
+          ]);
         });
       });
     });
@@ -966,6 +988,28 @@ describe("Dimension", () => {
         it("should return an int field for count", () => {
           const { base_type } = aggregation(["count"]).field();
           expect(base_type).toBe("type/Integer");
+        });
+      });
+
+      describe("getMLv1CompatibleDimension", () => {
+        it("should strip away *-type options", () => {
+          const dimension = Dimension.parseMBQL(
+            [
+              "aggregation",
+              1,
+              {
+                "base-type": "type/Integer",
+                "effective-type": "type/Integer",
+              },
+            ],
+            metadata,
+          );
+
+          expect(dimension.getMLv1CompatibleDimension().mbql()).toEqual([
+            "aggregation",
+            1,
+            null,
+          ]);
         });
       });
     });

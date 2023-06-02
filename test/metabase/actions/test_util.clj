@@ -14,8 +14,8 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
-   [toucan.util.test :as tt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -233,7 +233,7 @@
            binding-forms-and-option-maps])]
     `(do
        (initialize/initialize-if-needed! :web-server)
-       (tt/with-temp Card ~[model model-def]
+       (t2.with-temp/with-temp ~[Card model model-def]
          (tu/with-model-cleanup [Action]
            (let [~custom-binding ~model
                  ~@(mapcat (fn [[binding-form option-map]]
