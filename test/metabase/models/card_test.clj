@@ -211,7 +211,7 @@
                        (card-with-source-table (str "card__" (u/the-id card-c)))))))))
 
 (deftest validate-collection-namespace-test
-  (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]
+  (t2.with-temp/with-temp [Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Card in a non-normal Collection"
       (let [card-name (mt/random-name)]
         (try
@@ -223,7 +223,7 @@
             (t2/delete! :model/Card :name card-name)))))
 
     (testing "Shouldn't be able to move a Card to a non-normal Collection"
-      (mt/with-temp :model/Card [{card-id :id}]
+      (t2.with-temp/with-temp [:model/Card {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Card can only go in Collections in the \"default\" namespace"
@@ -232,19 +232,19 @@
 (deftest normalize-result-metadata-test
   (testing "Should normalize result metadata keys when fetching a Card from the DB"
     (let [metadata (qp/query->expected-cols (mt/mbql-query venues))]
-      (mt/with-temp :model/Card [{card-id :id} {:dataset_query   (mt/mbql-query venues)
-                                                :result_metadata metadata}]
+      (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query venues)
+                                                          :result_metadata metadata}]
         (is (= (mt/derecordize metadata)
                (mt/derecordize (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))
 
 (deftest populate-result-metadata-if-needed-test
   (doseq [[creating-or-updating f]
           {"creating" (fn [properties f]
-                        (mt/with-temp :model/Card [{card-id :id} properties]
+                        (t2.with-temp/with-temp [:model/Card {card-id :id} properties]
                           (f (t2/select-one-fn :result_metadata :model/Card :id card-id))))
            "updating" (fn [changes f]
-                        (mt/with-temp :model/Card [{card-id :id} {:dataset_query   (mt/mbql-query checkins)
-                                                                  :result_metadata (qp/query->expected-cols (mt/mbql-query checkins))}]
+                        (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query checkins)
+                                                                            :result_metadata (qp/query->expected-cols (mt/mbql-query checkins))}]
                           (t2/update! :model/Card card-id changes)
                           (f (t2/select-one-fn :result_metadata :model/Card :id card-id))))}]
 
@@ -322,7 +322,7 @@
 (deftest normalize-visualization-settings-test
   (test-visualization-settings-normalization
    (fn [original expected]
-     (mt/with-temp :model/Card [card {:visualization_settings original}]
+     (t2.with-temp/with-temp [:model/Card card {:visualization_settings original}]
        (is (= expected
               (t2/select-one-fn :visualization_settings :model/Card :id (u/the-id card))))))))
 
@@ -348,9 +348,9 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
-             (mt/with-temp :model/Card [_ bad-card-data]))))
+             (t2.with-temp/with-temp [:model/Card _ bad-card-data]))))
       (testing "Should not be able to update a Card to have a filter with the wrong Database ID"
-        (mt/with-temp :model/Card [{card-id :id} good-card-data]
+        (t2.with-temp/with-temp [:model/Card {card-id :id} good-card-data]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
@@ -364,14 +364,14 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #":parameters must be a sequence of maps with :id and :type keys"
-           (mt/with-temp :model/Card [_ {:parameters {:a :b}}])))
+           (t2.with-temp/with-temp [:model/Card _ {:parameters {:a :b}}])))
 
-     (mt/with-temp :model/Card [card {:parameters [{:id   "valid-id"
-                                                    :type "id"}]}]
-       (is (some? card))))
+      (t2.with-temp/with-temp [:model/Card card {:parameters [{:id   "valid-id"
+                                                               :type "id"}]}]
+        (is (some? card))))
 
     (testing "updating"
-      (mt/with-temp :model/Card [{:keys [id]} {:parameters []}]
+      (t2.with-temp/with-temp [:model/Card {:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with :id and :type keys"
@@ -384,8 +384,8 @@
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
       (testing (format "target = %s" (pr-str target))
-        (mt/with-temp :model/Card [{card-id :id} {:parameter_mappings [{:parameter_id     "_CATEGORY_NAME_"
-                                                                        :target target}]}]
+        (t2.with-temp/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id     "_CATEGORY_NAME_"
+                                                                                  :target target}]}]
 
           (is (= [{:parameter_id     "_CATEGORY_NAME_"
                    :target expected}]
@@ -397,14 +397,14 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
-           (mt/with-temp :model/Card [_ {:parameter_mappings {:a :b}}])))
+           (t2.with-temp/with-temp [:model/Card _ {:parameter_mappings {:a :b}}])))
 
-     (mt/with-temp :model/Card [card {:parameter_mappings [{:parameter_id "valid-id"
-                                                            :target       [:field 1000 nil]}]}]
-       (is (some? card))))
+      (t2.with-temp/with-temp [:model/Card card {:parameter_mappings [{:parameter_id "valid-id"
+                                                                       :target       [:field 1000 nil]}]}]
+        (is (some? card))))
 
     (testing "updating"
-      (mt/with-temp :model/Card [{:keys [id]} {:parameter_mappings []}]
+      (t2.with-temp/with-temp [:model/Card {:keys [id]} {:parameter_mappings []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
@@ -415,9 +415,9 @@
 
 (deftest normalize-parameter-mappings-test
   (testing ":parameter_mappings should get normalized when coming out of the DB"
-    (mt/with-temp :model/Card [{card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
-                                                                    :card_id      1
-                                                                    :target       [:dimension [:field-id 1]]}]}]
+    (t2.with-temp/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
+                                                                              :card_id      1
+                                                                              :target       [:dimension [:field-id 1]]}]}]
       (is (= [{:parameter_id "22486e00",
                :card_id      1,
                :target       [:dimension [:field 1 nil]]}]
@@ -597,15 +597,15 @@
   (let [metadata (qp/query->expected-cols (mt/mbql-query venues))
         query    (mt/mbql-query venues)]
     (testing "normal cards omit result_metadata"
-      (mt/with-temp :model/Card [{card-id :id} {:dataset_query   query
-                                                :result_metadata metadata}]
+      (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query   query
+                                                          :result_metadata metadata}]
         (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
           (is (not (:dataset extracted)))
           (is (nil? (:result_metadata extracted))))))
     (testing "dataset cards (models) retain result_metadata"
-      (mt/with-temp :model/Card [{card-id :id} {:dataset         true
-                                                :dataset_query   query
-                                                :result_metadata metadata}]
+      (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset         true
+                                                          :dataset_query   query
+                                                          :result_metadata metadata}]
         (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
           (is (:dataset extracted))
           (is (string? (:display_name (first (:result_metadata extracted)))))
@@ -617,13 +617,13 @@
 
 (deftest upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
-    (mt/with-temp :model/Card [{card-id :id} {:visualization_settings {:pie.show_legend true}}]
-        (is (= {:version 2
-                :pie.show_legend true
-                :pie.percent_visibility "inside"}
-               (t2/select-one-fn :visualization_settings :model/Card :id card-id)))))
+    (t2.with-temp/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
+      (is (= {:version 2
+              :pie.show_legend true
+              :pie.percent_visibility "inside"}
+             (t2/select-one-fn :visualization_settings :model/Card :id card-id)))))
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 and persisted on update"
-    (mt/with-temp :model/Card [{card-id :id} {:visualization_settings {:pie.show_legend true}}]
+    (t2.with-temp/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
       (t2/update! :model/Card card-id {:name "Favorite Toucan Foods"})
       (is (= {:version 2
               :pie.show_legend true

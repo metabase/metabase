@@ -31,7 +31,8 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      SHARED GTAP DEFINITIONS & HELPER FNS                                      |
@@ -371,7 +372,7 @@
                   "querying of a card as a nested query. Part of the row level perms check is looking at the table (or "
                   "card) to see if row level permissions apply. This was broken when it wasn't expecting a card and "
                   "only expecting resolved source-tables")
-      (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
+      (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues)}]
         (let [query {:database (mt/id)
                      :type     :query
                      :query    {:source-table (format "card__%s" (u/the-id card))
