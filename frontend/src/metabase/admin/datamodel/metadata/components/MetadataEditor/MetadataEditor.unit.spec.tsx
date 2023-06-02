@@ -70,19 +70,15 @@ const SAMPLE_DB_NO_SCHEMA = createSampleDatabase({
 
 interface SetupOpts {
   databases?: Database[];
-  initialRoute?: string;
 }
 
-const setup = async ({
-  databases = [SAMPLE_DB],
-  initialRoute = "admin/datamodel",
-}: SetupOpts = {}) => {
+const setup = async ({ databases = [SAMPLE_DB] }: SetupOpts = {}) => {
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints([]);
 
   renderWithProviders(
     <Route path="admin/datamodel">{getMetadataRoutes()}</Route>,
-    { withRouter: true, initialRoute },
+    { withRouter: true, initialRoute: "admin/datamodel" },
   );
 
   await waitForElementToBeRemoved(() => screen.queryByText(/Loading/));
