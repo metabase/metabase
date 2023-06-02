@@ -1,0 +1,45 @@
+description: null
+database_type: BOOLEAN
+semantic_type: type/Category
+table_id:
+- Sample Database
+- PUBLIC
+- ACCOUNTS
+coercion_strategy: null
+name: TRIAL_CONVERTED
+fingerprint_version: 5
+has_field_values: auto-list
+settings: null
+caveats: null
+fk_target_field_id: null
+dimensions: []
+custom_position: 0
+effective_type: type/Boolean
+active: true
+nfc_path: null
+parent_id: null
+last_analyzed: '2023-06-02T21:32:48.369099Z'
+serdes/meta:
+- model: Database
+  id: Sample Database
+- model: Schema
+  id: PUBLIC
+- model: Table
+  id: ACCOUNTS
+- model: Field
+  id: TRIAL_CONVERTED
+database_is_auto_increment: false
+json_unfolding: false
+position: 10
+visibility_type: normal
+preview_display: true
+display_name: Trial Converted
+database_position: 10
+database_required: false
+fingerprint:
+  global:
+    distinct-count: 2
+    nil%: 0.0
+created_at: '2023-06-02T21:32:37.976256Z'
+base_type: type/Boolean
+points_of_interest: null

@@ -1,5 +1,7 @@
 (ns metabase-enterprise.audit-db
-  (:require [metabase.config :as config]
+  (:require [clojure.java.io :as io]
+            [metabase-enterprise.serialization.cmd :as serialization.cmd]
+            [metabase.config :as config]
             [metabase.db.env :as mdb.env]
             [metabase.models.database :refer [Database]]
             [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -66,4 +68,7 @@
       (do (log/info "Audit DB installed, beginning Audit DB Sync...")
           (sync-metadata/sync-db-metadata! audit-db))
       (when (not config/is-prod?)
-        (log/warn "Audit DB was not installed correctly!!")))))
+        (log/warn "Audit DB was not installed correctly!!")))
+    ;; install the content
+    (when-let [analytics-root-dir (io/resource "internal_analytics")]
+      (serialization.cmd/v2-load analytics-root-dir {}))))

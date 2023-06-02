@@ -1,0 +1,29 @@
+description: Some example data for you to play around with as you embark on your Metabase journey.
+cache_field_values_schedule: 0 0 13 * * ? *
+timezone: UTC
+auto_run_queries: true
+metadata_sync_schedule: 0 59 * * * ? *
+name: Sample Database
+settings: null
+caveats: You probably don't want to use this for your business-critical analyses, but hey, it's your world, we're just living in it.
+creator_id: null
+is_full_sync: true
+cache_ttl: null
+is_sample: true
+is_on_demand: false
+serdes/meta:
+- model: Database
+  id: Sample Database
+options: null
+engine: h2
+initial_sync_status: complete
+is_audit: false
+dbms_version:
+  flavor: H2
+  version: 2.1.214 (2022-06-13)
+  semantic-version:
+  - 2
+  - 1
+refingerprint: null
+created_at: '2023-06-02T21:32:35.917486Z'
+points_of_interest: You can find all sorts of different joinable tables ranging from products to people to reviews here.

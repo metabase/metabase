@@ -1,0 +1,42 @@
+description: Skip a scheduled Pulse if none of its questions have any results
+database_type: bool
+semantic_type: null
+table_id:
+- Audit Database
+- public
+- pulse
+coercion_strategy: null
+name: skip_if_empty
+fingerprint_version: 0
+has_field_values: null
+settings: null
+caveats: null
+fk_target_field_id: null
+dimensions: []
+custom_position: 0
+effective_type: type/Boolean
+active: true
+nfc_path: null
+parent_id: null
+last_analyzed: null
+serdes/meta:
+- model: Database
+  id: Audit Database
+- model: Schema
+  id: public
+- model: Table
+  id: pulse
+- model: Field
+  id: skip_if_empty
+database_is_auto_increment: false
+json_unfolding: false
+position: 5
+visibility_type: normal
+preview_display: true
+display_name: Skip If Empty
+database_position: 5
+database_required: false
+fingerprint: null
+created_at: '2023-06-02T21:32:54.682651Z'
+base_type: type/Boolean
+points_of_interest: null

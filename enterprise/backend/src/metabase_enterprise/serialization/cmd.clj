@@ -25,9 +25,11 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [clojure.java.io :as io]))
 
 (set! *warn-on-reflection* true)
 
@@ -71,11 +73,12 @@
         (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))
         (throw e)))))
 
-(defn v2-load
+(mu/defn v2-load
   "SerDes v2 load entry point.
 
    opts are passed to load-metabase"
-  [path opts]
+  [path
+   opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]]
   (plugins/load-plugins!)
   (mdb/setup-db!)
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
@@ -181,17 +184,18 @@
 
 (defn v2-dump
   "Exports Metabase app data to directory at path"
-  [path {:keys [user-email collections] :as opts}]
+  [path {:keys [user-email collection-ids] :as opts}]
   (log/info (trs "Exporting Metabase to {0}" path) (u/emoji "🏭 🚛💨"))
   (mdb/setup-db!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (serdes/with-cache
     (-> (cond-> opts
-         (seq collections) (assoc :targets (v2.extract/make-targets-of-type "Collection" collections))
-         user-email        (assoc :user-id (t2/select-one-pk User :email user-email :is_superuser true)))
+          (seq collection-ids) (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids))
+          user-email        (assoc :user-id (t2/select-one-pk User :email user-email :is_superuser true)))
         v2.extract/extract
         (v2.storage/store! path)))
-  (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦")))
+  (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦"))
+  ::v2-dump-complete)
 
 (defn seed-entity-ids
   "Add entity IDs for instances of serializable models that don't already have them.
@@ -199,3 +203,22 @@
   Returns truthy if all entity IDs were added successfully, or falsey if any errors were encountered."
   []
   (v2.seed-entity-ids/seed-entity-ids!))
+
+
+(comment
+
+  ;; Steps to extract and prepare Internal Analytics Magic Dashboards ❇
+
+  ;; Delete the resources/internal_analytics that are there:
+
+  (require '[clojure.java.shell :as sh])
+  (:exit (sh/sh "rm" "-rf" "resourecs/internal_analytics"))
+
+  ;; Use this to dump Internal Analytics:
+  (v2-dump "resources/internal_analytics" {:collection-ids [(t2/select-one-fn :id 'Collection {:where [:= :type "internal_analytics"]})]})
+
+  ;; Use this to load it from within in the uber-jar (maybe)
+
+  (v2-load (io/resource "__internal_analytics") {})
+
+  )

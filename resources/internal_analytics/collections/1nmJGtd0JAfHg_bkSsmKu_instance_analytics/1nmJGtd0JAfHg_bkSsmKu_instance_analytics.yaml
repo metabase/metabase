@@ -1,0 +1,16 @@
+authority_level: null
+description: null
+archived: false
+slug: instance_analytics
+color: '#509EE3'
+name: Instance Analytics
+personal_owner_id: null
+type: instance_analytics
+parent_id: null
+serdes/meta:
+- model: Collection
+  id: 1nmJGtd0JAfHg_bkSsmKu
+  label: instance_analytics
+entity_id: 1nmJGtd0JAfHg_bkSsmKu
+namespace: null
+created_at: '2023-06-02T21:35:39.190613Z'

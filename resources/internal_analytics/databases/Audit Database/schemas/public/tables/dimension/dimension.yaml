@@ -1,0 +1,21 @@
+description: Stores references to alternate views of existing fields, such as remapping an integer to a description, like an enum
+entity_type: null
+schema: public
+show_in_getting_started: false
+name: dimension
+caveats: null
+active: true
+db_id: Audit Database
+serdes/meta:
+- model: Database
+  id: Audit Database
+- model: Schema
+  id: public
+- model: Table
+  id: dimension
+visibility_type: null
+field_order: database
+initial_sync_status: complete
+display_name: Dimension
+created_at: '2023-06-02T21:32:51.891949Z'
+points_of_interest: null

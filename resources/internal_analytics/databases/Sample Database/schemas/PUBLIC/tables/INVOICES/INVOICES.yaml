@@ -1,0 +1,21 @@
+description: Confirmed payments from Piespace’s customers. Most accounts pay for their pie subscription on a monthly basis.
+entity_type: entity/GenericTable
+schema: PUBLIC
+show_in_getting_started: false
+name: INVOICES
+caveats: You can group by “Account ID” to see all the payments from an account and unveil information like total amount paid to date.
+active: true
+db_id: Sample Database
+serdes/meta:
+- model: Database
+  id: Sample Database
+- model: Schema
+  id: PUBLIC
+- model: Table
+  id: INVOICES
+visibility_type: null
+field_order: database
+initial_sync_status: complete
+display_name: Invoices
+created_at: '2023-06-02T21:32:37.485822Z'
+points_of_interest: Is it? We’ll let you be the judge of that.
