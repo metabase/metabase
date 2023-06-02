@@ -280,3 +280,39 @@
 (defmethod lib.ref/ref-method :expression
   [expression-clause]
   expression-clause)
+
+(mu/defn expressionable-columns :- [:sequential lib.metadata/ColumnMetadata]
+  "Get column metadata for all the columns that can be used expressions in
+  the stage number `stage-number` of the query `query` and in expression index `expression-position`
+  If `stage-number` is omitted, the last stage is used.
+  Pass nil to `expression-position` for new expressions.
+  The rules for determining which columns can be broken out by are as follows:
+
+  1. custom `:expressions` in this stage of the query, that come before the `expression-position`
+
+  2. Fields 'exported' by the previous stage of the query, if there is one;
+     otherwise Fields from the current `:source-table`
+
+  3. Fields exported by explicit joins
+
+  4. Fields in Tables that are implicitly joinable."
+
+  ([query :- ::lib.schema/query
+    expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+   (expressionable-columns query -1 expression-position))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+   (let [indexed-expressions (into {} (map-indexed (fn [idx expr]
+                                                     [(lib.util/expression-name expr) idx])
+                                                   (expressions query stage-number)))
+         unavailable-expressions (fn [column]
+                                   (or (not expression-position)
+                                       (not= (:lib/source column) :source/expressions)
+                                       (< (get indexed-expressions (:name column)) expression-position)))
+         stage (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)]
+     (->> columns
+          (filterv unavailable-expressions)
+          not-empty))))
