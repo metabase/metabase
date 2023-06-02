@@ -2,6 +2,7 @@ import {
   popover,
   restore,
   changeCardDescription,
+  changeDashboardDescription,
   dragAndDrop,
   getPinnedSection,
   openPinnedItemMenu,
@@ -264,6 +265,27 @@ describe("scenarios > collection pinned items overview", () => {
     popover().findByText("Pin this").click();
     cy.wait("@getPinnedItems");
     changeCardDescription(MODEL_NAME, MARKDOWN);
+    openRootCollection();
+
+    getPinnedSection().within(() => {
+      cy.findByText(HEADING_1_TEXT, { exact: false }).should("exist");
+
+      cy.findByText(HEADING_1_MARKDOWN, { exact: false }).should("not.exist");
+      cy.findByText(HEADING_2_MARKDOWN, { exact: false }).should("not.exist");
+      cy.findByText(HEADING_2_TEXT, { exact: false }).should("not.exist");
+      cy.findByText(PARAGRAPH_MARKDOWN, { exact: false }).should("not.exist");
+      cy.findByText(PARAGRAPH_TEXT, { exact: false }).should("not.exist");
+    });
+  });
+
+  it("should render only the first line of description without markdown formatting on pinned dashboards", () => {
+    cy.request("PUT", "/api/card/1", { dataset: true });
+
+    openRootCollection();
+    openUnpinnedItemMenu(DASHBOARD_NAME);
+    popover().findByText("Pin this").click();
+    cy.wait("@getPinnedItems");
+    changeDashboardDescription(DASHBOARD_NAME, MARKDOWN);
     openRootCollection();
 
     getPinnedSection().within(() => {

@@ -1,4 +1,4 @@
-import { getFullName, popover } from "e2e/support/helpers";
+import { getFullName, popover, questionInfoButton } from "e2e/support/helpers";
 
 /**
  * Clicks the "+" icon on the collection page and selects one of the menu options
@@ -80,10 +80,24 @@ export const changeCardDescription = (cardName, description) => {
   openRootCollection();
 
   getPinnedSection().within(() => {
-    cy.findByText(cardName).click();
+    cy.findByText(cardName, { exact: true }).click();
   });
 
-  cy.findByTestId("qb-header-info-button").click();
+  questionInfoButton().click();
+
+  cy.findByTestId("sidebar-right").within(() => {
+    cy.findByRole("textbox").type(description).blur();
+  });
+};
+
+export const changeDashboardDescription = (cardName, description) => {
+  openRootCollection();
+
+  getPinnedSection().within(() => {
+    cy.findByText(cardName, { exact: true }).click();
+  });
+
+  cy.findByTestId("dashboard-header-info-button").click();
 
   cy.findByTestId("sidebar-right").within(() => {
     cy.findByRole("textbox").type(description).blur();
