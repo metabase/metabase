@@ -27,7 +27,7 @@
           nest-query/nest-expressions
           remove-source-metadata))))
 
-(deftest nest-expressions-test
+(deftest ^:parallel nest-expressions-test
   (driver/with-driver :h2
     (mt/with-everything-store
       (is (partial= (mt/$ids venues
@@ -68,7 +68,7 @@
                         add/add-alias-info
                         nest-expressions))))))
 
-(deftest nest-expressions-with-existing-non-expression-fields-test
+(deftest ^:parallel nest-expressions-with-existing-non-expression-fields-test
   (driver/with-driver :h2
     (mt/with-everything-store
       (testing "Other `:fields` besides the `:expressions` should be preserved in the top level"
@@ -119,7 +119,7 @@
                           add/add-alias-info
                           nest-expressions)))))))
 
-(deftest multiple-expressions-test
+(deftest ^:parallel multiple-expressions-test
   (testing "Make sure the nested version of the query doesn't mix up expressions if we have ones that reference others"
     (driver/with-driver :h2
       (mt/with-everything-store
@@ -170,7 +170,7 @@
                           add/add-alias-info
                           nest-expressions)))))))
 
-(deftest nest-expressions-ignore-source-queries-test
+(deftest ^:parallel nest-expressions-ignore-source-queries-test
   (testing (str "When 'raising' :expression clauses, only raise ones in the current level. Handle duplicate expression "
                 "names correctly.")
     (driver/with-driver :h2
@@ -305,7 +305,7 @@
                  :expressions {"CC" [:+ 1 1]}
                  :limit 2})))))))))
 
-(deftest nest-expressions-with-joins-test
+(deftest ^:parallel nest-expressions-with-joins-test
   (driver/with-driver :h2
     (mt/with-everything-store
       (testing "If there are any `:joins`, those need to be nested into the `:source-query` as well."
@@ -364,7 +364,7 @@
                                                                                            ::add/source-alias  "MaxPrice"
                                                                                            ::add/desired-alias "CategoriesStats__MaxPrice"
                                                                                            ::add/position      8}]
-                                                                       [:field "AvgPrice" {:base-type          :type/Integer
+                                                                       [:field "AvgPrice" {:base-type          :type/Float
                                                                                            :join-alias         "CategoriesStats"
                                                                                            ::add/source-table  "CategoriesStats"
                                                                                            ::add/source-alias  "AvgPrice"
@@ -424,7 +424,7 @@
                                                                            ::add/source-alias  "MaxPrice"
                                                                            ::add/desired-alias "CategoriesStats__MaxPrice"
                                                                            ::add/position      8}]
-                                                       [:field "AvgPrice" {:base-type          :type/Integer
+                                                       [:field "AvgPrice" {:base-type          :type/Float
                                                                            :join-alias         "CategoriesStats"
                                                                            ::add/source-table  "CategoriesStats"
                                                                            ::add/source-alias  "AvgPrice"
@@ -552,7 +552,7 @@
                             add/add-alias-info
                             nest-expressions))))))))
 
-(deftest multiple-joins-with-expressions-test
+(deftest ^:parallel multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
     (driver/with-driver :h2
       (mt/dataset sample-dataset
@@ -632,7 +632,7 @@
                             add/add-alias-info
                             nest-expressions))))))))
 
-(deftest uniquify-aliases-test
+(deftest ^:parallel uniquify-aliases-test
   (driver/with-driver :h2
     (mt/dataset sample-dataset
       (mt/with-everything-store
