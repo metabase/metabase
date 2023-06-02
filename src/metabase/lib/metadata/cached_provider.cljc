@@ -14,7 +14,8 @@
 (defn- store-in-cache! [cache ks value]
   (let [value (if (some? value) value ::nil)]
     (swap! cache assoc-in ks value)
-    value))
+    (when-not (= value ::nil)
+      value)))
 
 (defn- store-database! [cache database-metadata]
   (let [database-metadata (-> database-metadata

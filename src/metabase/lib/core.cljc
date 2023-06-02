@@ -73,7 +73,9 @@
    stddev
    sum
    sum-where
-   var]
+   var
+   cum-count
+   cum-sum]
   [lib.binning
    available-binning-strategies
    binning
@@ -136,7 +138,8 @@
    lower]
   [lib.field
    fields
-   with-fields]
+   with-fields
+   fieldable-columns]
   [lib.filter
    filter
    filters

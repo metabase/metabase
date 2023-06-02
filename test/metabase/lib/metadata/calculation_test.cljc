@@ -58,3 +58,23 @@
             "Product → Rating"
             "Product → Created At"]
            results))))
+
+(deftest ^:parallel visible-columns-test
+  (testing "Include all visible columns, not just projected ones (#31233)"
+    (is (= ["ID"
+            "NAME"
+            "CATEGORY_ID"
+            "LATITUDE"
+            "LONGITUDE"
+            "PRICE"
+            "Categories__ID"            ; this column is not projected, but should still be returned.
+            "Categories__NAME"]
+           (map :lib/desired-column-alias
+                (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/join (-> (lib/join-clause
+                                   (meta/table-metadata :categories)
+                                   [(lib/=
+                                     (lib/field "VENUES" "CATEGORY_ID")
+                                     (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Categories"))])
+                                  (lib/with-join-fields [(lib/with-join-alias (lib/field "CATEGORIES" "NAME") "Categories")])))
+                    lib.metadata.calculation/visible-columns))))))
