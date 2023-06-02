@@ -1070,11 +1070,11 @@
 ;;; |                                                 EXTRA UTIL FNS                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn set-many!
+(defn set-many!
   "Set the value of several Settings at once.
 
-    (set-all {:mandrill-api-key \"xyz123\", :another-setting \"ABC\"})"
-  [settings :- [:map-of ms/NonBlankString :any]]
+    (set-many! {:mandrill-api-key \"xyz123\", :another-setting \"ABC\"})"
+  [settings]
   ;; if setting any of the settings fails, roll back the entire DB transaction and the restore the cache from the DB
   ;; to revert any changes in the cache
   (try

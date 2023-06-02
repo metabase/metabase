@@ -276,8 +276,9 @@
         valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id})
-           :dismissed_custom_dashboard_toast
-           (view-log/dismissed-custom-dashboard-toast))))
+           :dismissed_toasts {:dismissed_custom_dashboard_toast (view-log/dismissed-custom-dashboard-toast)})))
+
+
 
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
