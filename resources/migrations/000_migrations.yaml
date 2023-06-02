@@ -14842,7 +14842,7 @@ databaseChangeLog:
   - changeSet:
       id: v47.00-037
       author: calherries
-      comment: Added 0.47.0 - Set primary key to action_id for implicit_action table
+      comment: Added 0.47.0 - Add foreign key constraint on implicit_action.action_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: implicit_action
