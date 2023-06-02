@@ -3,6 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { within } from "@testing-library/react";
 import { Database } from "metabase-types/api";
 import {
+  createMockDatabase,
+  createMockField,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import {
   createOrdersDiscountField,
   createOrdersIdField,
   createOrdersProductIdField,
@@ -64,15 +69,33 @@ const SAMPLE_DB_MULTI_SCHEMA = createSampleDatabase({
 });
 
 const ORDERS_TABLE_NO_SCHEMA = createOrdersTable({
-  id: 10,
-  db_id: 3,
   schema: "",
 });
 
 const SAMPLE_DB_NO_SCHEMA = createSampleDatabase({
-  id: 3,
   name: "No schema",
   tables: [ORDERS_TABLE_NO_SCHEMA],
+});
+
+const JSON_FIELD_ROOT = createMockField({
+  id: 1,
+  name: "JSON",
+  display_name: "Json",
+});
+
+const JSON_FIELD_NESTED = createMockField({
+  id: 2,
+  name: "version",
+  display_name: "Version",
+  nfc_path: ["JSON", "version"],
+});
+
+const JSON_TABLE = createMockTable({
+  fields: [JSON_FIELD_ROOT, JSON_FIELD_NESTED],
+});
+
+const JSON_DB = createMockDatabase({
+  tables: [JSON_TABLE],
 });
 
 interface SetupOpts {
@@ -399,6 +422,25 @@ describe("MetadataEditor", () => {
       expect(
         screen.getByText("The page you asked for couldn't be found."),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("databases with json fields", () => {
+    it("should display unfolded json fields", async () => {
+      await setup({ databases: [JSON_DB] });
+      userEvent.click(screen.getByText(JSON_TABLE.display_name));
+      expect(
+        await screen.findByDisplayValue(JSON_TABLE.display_name),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue(JSON_FIELD_ROOT.display_name),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue(JSON_FIELD_NESTED.display_name),
+      ).toBeInTheDocument();
+
+      const section = screen.getByLabelText(JSON_FIELD_NESTED.name);
+      expect(within(section).getByText("JSON.version")).toBeInTheDocument();
     });
   });
 });
