@@ -150,8 +150,7 @@ export default function SearchApp({ location }) {
                 <SearchControls>
                   {filters.length > 0 ? (
                     <Link
-                      className="flex align-center"
-                      mb={3}
+                      className="flex align-center mb3"
                       color={filter == null ? color("brand") : "inherit"}
                       onClick={() => handleFilterChange(null)}
                       to={{
@@ -159,7 +158,7 @@ export default function SearchApp({ location }) {
                         query: { ...location.query, type: undefined },
                       }}
                     >
-                      <Icon name="search" mr={1} />
+                      <Icon name="search" className="mr1" />
                       <h4>{t`All results`}</h4>
                     </Link>
                   ) : null}
@@ -169,8 +168,7 @@ export default function SearchApp({ location }) {
                     return (
                       <Link
                         key={f.filter}
-                        className="flex align-center"
-                        mb={3}
+                        className="mb3 flex align-center"
                         onClick={() => handleFilterChange(f)}
                         color={color(isActive ? "brand" : "text-medium")}
                         to={{
@@ -178,7 +176,7 @@ export default function SearchApp({ location }) {
                           query: { ...location.query, type: f.filter },
                         }}
                       >
-                        <Icon mr={1} name={f.icon} size={16} />
+                        <Icon className="mr1" name={f.icon} size={16} />
                         <h4>{f.name}</h4>
                       </Link>
                     );
@@ -198,7 +196,7 @@ SearchApp.propTypes = {
 };
 
 const SearchResultSection = ({ items }) => (
-  <Card pt={2}>
+  <Card className="pt2">
     {items.map(item => {
       return <SearchResult key={`${item.id}__${item.model}`} result={item} />;
     })}

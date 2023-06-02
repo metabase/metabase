@@ -271,16 +271,15 @@ const SuggestionsList = ({ suggestions, section }) => (
               hover={{ color: color("brand") }}
               key={itemIndex}
               to={item.url}
-              className="block hover-parent hover--visibility"
+              className="mb1 block hover-parent hover--visibility"
               data-metabase-event={`Auto Dashboard;Click Related;${s}`}
-              mb={1}
             >
               <Card p={2} hoverable>
                 <ItemContent>
                   <Icon
                     name={RELATED_CONTENT[s].icon}
                     color={color("accent4")}
-                    mr={1}
+                    className="mr1"
                   />
                   <h4 className="text-wrap">{item.title}</h4>
                   <ItemDescription className="hover-child">

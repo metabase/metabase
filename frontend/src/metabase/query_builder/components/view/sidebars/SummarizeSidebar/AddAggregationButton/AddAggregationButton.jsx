@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import cx from "classnames";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
@@ -25,11 +26,12 @@ export const AddAggregationButton = ({
     <PopoverWithTrigger
       triggerElement={
         <Tooltip tooltip={LABEL} isEnabled={!shouldShowLabel}>
-          <AddAggregationButtonRoot
-            aria-label={t`Add aggregation`}
-            data-testid="add-aggregation-button"
-          >
-            <Icon name="add" mr={shouldShowLabel ? 1 : "none"} />
+          <AddAggregationButtonRoot data-testid="add-aggregation-button">
+            <Icon
+              name="add"
+              data-testid="add-aggregation-button"
+              className={cx({ mr1: shouldShowLabel })}
+            />
             {shouldShowLabel ? LABEL : null}
           </AddAggregationButtonRoot>
         </Tooltip>
@@ -48,7 +50,7 @@ export const AddAggregationButton = ({
           showCustom={false}
         />
       )}
-    </PopoverWithTrigger>
+    </PopoverWithTrigger >
   );
 };
 

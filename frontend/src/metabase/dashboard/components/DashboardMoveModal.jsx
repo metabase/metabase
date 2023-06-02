@@ -54,9 +54,13 @@ export default DashboardMoveModal;
 
 const DashboardMoveToast = ({ collectionId }) => (
   <ToastRoot>
-    <Icon name="collection" mr={1} color="white" />
+    <Icon name="collection" className="mr1" color="white" />
     {jt`Dashboard moved to ${(
-      <Collection.Link id={collectionId} ml={1} color={color("brand")} />
+      <Collection.Link
+        id={collectionId}
+        className="ml1"
+        color={color("brand")}
+      />
     )}`}
   </ToastRoot>
 );
