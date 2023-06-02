@@ -260,6 +260,7 @@ const MODEL_NAME = "Test Action Model";
             tableName: TEST_COLUMNS_TABLE,
             modelName: MODEL_NAME,
           });
+          cy.wait(3000); // FIXME i'm sorry.
         });
 
         it("can update various data types via implicit actions", () => {
@@ -364,6 +365,7 @@ const MODEL_NAME = "Test Action Model";
               kind: "create",
               model_id: id,
             });
+            cy.wait(500); // FIXME I know this is bad, i'm sorry.
           });
 
           createDashboardWithActionButton({
@@ -636,6 +638,7 @@ function createDashboardWithActionButton({
   });
 
   saveDashboard();
+  cy.wait(500); // FIXME I know this is bad, i'm sorry.
 }
 
 const changeValue = ({ fieldName, fieldType, oldValue, newValue }) => {
@@ -649,7 +652,7 @@ const changeValue = ({ fieldName, fieldType, oldValue, newValue }) => {
 const clickHelper = buttonName => {
   // this is dirty, but it seems to be the only reliable solution to detached elements before cypress v12
   // https://github.com/cypress-io/cypress/issues/7306
-  cy.wait(100);
+  cy.wait(500);
   cy.button(buttonName).click();
 };
 
