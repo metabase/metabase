@@ -73,7 +73,9 @@
    stddev
    sum
    sum-where
-   var]
+   var
+   cum-count
+   cum-sum]
   [lib.binning
    available-binning-strategies
    binning

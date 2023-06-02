@@ -66,25 +66,36 @@
   [query stage-number [_tag _opts index] style]
   (lib.metadata.calculation/display-name query stage-number (resolve-aggregation query stage-number index) style))
 
-(defmethod lib.metadata.calculation/display-name-method :count
-  [query stage-number [_count _opts x] style]
+(lib.hierarchy/derive ::count-aggregation ::aggregation)
+
+;;; count and cumulative count can both be used either with no args (count of rows) or with one arg (count of X, which
+;;; I think means count where X is not NULL or something like that. Basically `count(x)` in SQL)
+(doseq [tag [:count
+             :cum-count]]
+  (lib.hierarchy/derive tag ::count-aggregation))
+
+(defmethod lib.metadata.calculation/display-name-method ::count-aggregation
+  [query stage-number [tag _opts x] style]
   ;; x is optional.
   (if x
-    (i18n/tru "Count of {0}" (lib.metadata.calculation/display-name query stage-number x style))
-    (i18n/tru "Count")))
+    (let [x-display-name (lib.metadata.calculation/display-name query stage-number x style)]
+      (case tag
+        :count     (i18n/tru "Count of {0}" x-display-name)
+        :cum-count (i18n/tru "Cumulative count of {0}" x-display-name)))
+    (case tag
+      :count     (i18n/tru "Count")
+      :cum-count (i18n/tru "Cumulative count"))))
 
-(defmethod lib.metadata.calculation/column-name-method :count
-  [query stage-number [_count _opts x]]
-  (if x
-    (str "count_" (lib.metadata.calculation/column-name query stage-number x))
-    "count"))
+(defmethod lib.metadata.calculation/column-name-method ::count-aggregation
+  [_query _stage-number [tag :as _clause]]
+  (case tag
+    :count     "count"
+    :cum-count "cum_count"))
 
-(defmethod lib.metadata.calculation/metadata-method :count
+(defmethod lib.metadata.calculation/metadata-method ::count-aggregation
   [query stage-number clause]
   (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
          :semantic-type :type/Quantity))
-
-(lib.hierarchy/derive :count ::aggregation)
 
 (defmethod lib.metadata.calculation/display-name-method :case
   [_query _stage-number _case _style]
@@ -94,10 +105,11 @@
   [_query _stage-number _case]
   "case")
 
+;;; TODO - Should `:case` derive from `::aggregation` as well???
+
 (lib.hierarchy/derive ::unary-aggregation ::aggregation)
 
 (doseq [tag [:avg
-             :cum-count
              :cum-sum
              :distinct
              :max
@@ -112,7 +124,6 @@
   [_query _stage-number [tag _opts _arg]]
   (case tag
     :avg       "avg"
-    :cum-count "count"
     :cum-sum   "sum"
     :distinct  "count"
     :max       "max"
@@ -122,12 +133,12 @@
     :sum       "sum"
     :var       "var"))
 
+
 (defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
   [query stage-number [tag _opts arg] style]
   (let [arg (lib.metadata.calculation/display-name query stage-number arg style)]
     (case tag
       :avg       (i18n/tru "Average of {0}"            arg)
-      :cum-count (i18n/tru "Cumulative count of {0}"   arg)
       :cum-sum   (i18n/tru "Cumulative sum of {0}"     arg)
       :distinct  (i18n/tru "Distinct values of {0}"    arg)
       :max       (i18n/tru "Max of {0}"                arg)
