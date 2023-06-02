@@ -12,6 +12,7 @@ const clampCss = (props: EllipsifiedRootProps) => css`
   -webkit-line-clamp: ${props.lines};
   -webkit-box-orient: vertical;
   overflow: hidden;
+  overflow-wrap: break-word;
 `;
 
 interface EllipsifiedRootProps {

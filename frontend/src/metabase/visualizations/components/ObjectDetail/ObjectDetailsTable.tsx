@@ -49,8 +49,7 @@ export function DetailsTableCell({
 
   if (isColumnName) {
     const title = column !== null ? columnTitle : null;
-    const lineLimit = title?.match(/\s/) ? 10 : 1;
-    cellValue = <Ellipsified lines={lineLimit}>{title}</Ellipsified>;
+    cellValue = <Ellipsified lines={8}>{title}</Ellipsified>;
     clicked.column = column;
     isLink = false;
   } else {
