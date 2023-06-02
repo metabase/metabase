@@ -108,17 +108,13 @@ export function setFilter(type, subType) {
 export function createEmptyTextBox() {
   cy.findByLabelText("Edit dashboard").click();
   cy.findByLabelText("Add a heading or text box").click();
-  popover().within(() => {
-    cy.findByText("Text").click();
-  });
+  popover().findByText("Text").click();
 }
 
 export function addTextBox(string, options = {}) {
   cy.findByLabelText("Edit dashboard").click();
   cy.findByLabelText("Add a heading or text box").click();
-  popover().within(() => {
-    cy.findByText("Text").click();
-  });
+  popover().findByText("Text").click();
   cy.findByPlaceholderText(
     "You can use Markdown here, and include variables {{like_this}}",
   ).type(string, options);
@@ -127,17 +123,13 @@ export function addTextBox(string, options = {}) {
 export function createEmptyHeading() {
   cy.findByLabelText("Edit dashboard").click();
   cy.findByLabelText("Add a heading or text box").click();
-  popover().within(() => {
-    cy.findByText("Heading").click();
-  });
+  popover().findByText("Heading").click();
 }
 
 export function addHeading(string, options = {}) {
   cy.findByLabelText("Edit dashboard").click();
   cy.findByLabelText("Add a heading or text box").click();
-  popover().within(() => {
-    cy.findByText("Heading").click();
-  });
+  popover().findByText("Heading").click();
   cy.findByPlaceholderText("Heading").type(string, options);
 }
 
