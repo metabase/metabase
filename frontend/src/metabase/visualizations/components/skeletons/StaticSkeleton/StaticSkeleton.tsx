@@ -10,7 +10,7 @@ import {
   SkeletonTooltipIcon,
   SkeletonTooltipIconContainer,
 } from "./StaticSkeleton.styled";
-import { renderMarkdown, getLeadingText } from "./utils";
+import { parseMarkdown, getLeadingText } from "./utils";
 
 export interface StaticSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   name?: string | null;
@@ -30,7 +30,7 @@ const StaticSkeleton = ({
   tooltip,
   ...props
 }: StaticSkeletonProps): JSX.Element => {
-  const descriptionElements = renderMarkdown(description || "");
+  const descriptionElements = parseMarkdown(description || "");
   const hasMoreElementsToShow = descriptionElements.length > 1;
 
   return (

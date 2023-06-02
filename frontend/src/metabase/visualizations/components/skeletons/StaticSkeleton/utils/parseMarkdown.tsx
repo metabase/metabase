@@ -2,7 +2,7 @@ import ReactDOMServer from "react-dom/server";
 
 import Markdown from "metabase/core/components/Markdown";
 
-export const renderMarkdown = (content: string): Element[] => {
+export const parseMarkdown = (content: string): Element[] => {
   const div = document.createElement("div");
   div.innerHTML = ReactDOMServer.renderToStaticMarkup(
     <Markdown>{content}</Markdown>,
