@@ -2,6 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -691,3 +692,16 @@
               :lib/source-column-alias  "sum"
               :lib/desired-column-alias "sum"}]
             (lib.metadata.calculation/metadata query)))))
+
+(deftest ^:parallel aggregation-name-from-previous-stage-test
+  (testing "Maintain the column names in refs from the QP/MLv1 (#31266)"
+    (let [query         (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                            (lib/expression "Half Price" (lib// (meta/field-metadata :products :price) 2))
+                            (lib/aggregate (lib/avg (lib/ref-lookup :expression "Half Price")))
+                            (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :products :created-at) :month))
+                            lib/append-stage)
+          ag-op         (m/find-first #(= (:short %) :max)
+                                      (lib/available-aggregation-operators query))
+          expr-metadata (last (lib/aggregation-operator-columns ag-op))]
+      (is (=? [:field {:lib/uuid string?, :base-type :type/Float} "avg"]
+              (lib/ref expr-metadata))))))
