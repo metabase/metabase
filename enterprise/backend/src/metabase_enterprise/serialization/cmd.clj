@@ -219,6 +219,6 @@
 
   ;; Use this to load it from within in the uber-jar (maybe)
 
-  (v2-load (io/resource "__internal_analytics") {})
+  (v2-load (io/resource "internal_analytics") {})
 
   )

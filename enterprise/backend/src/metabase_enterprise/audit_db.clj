@@ -71,4 +71,5 @@
         (log/warn "Audit DB was not installed correctly!!")))
     ;; install the content
     (when-let [analytics-root-dir (io/resource "internal_analytics")]
+      (log/fatal "LOADING ANALYTICS CONTENT!")
       (serialization.cmd/v2-load analytics-root-dir {}))))
