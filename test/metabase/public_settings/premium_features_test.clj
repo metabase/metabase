@@ -13,7 +13,6 @@
     :refer [defenterprise defenterprise-schema]]
    [metabase.test :as mt]
    [schema.core :as s]
-   [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -59,7 +58,7 @@
     (apply str (repeatedly 64 #(rand-nth alphabet)))))
 
 (deftest fetch-token-status-test
-  (tt/with-temp User [_user {:email "admin@example.com"}]
+  (t2.with-temp/with-temp [User _user {:email "admin@example.com"}]
     (let [print-token "d7ad...c611"]
       (testing "Do not log the token (#18249)"
         (let [logs        (mt/with-log-messages-for-level :info
