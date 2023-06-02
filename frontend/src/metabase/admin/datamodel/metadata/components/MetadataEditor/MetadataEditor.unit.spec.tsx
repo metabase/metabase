@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { within } from "@testing-library/react";
 import { Database } from "metabase-types/api";
 import {
+  createOrdersIdField,
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
@@ -22,6 +23,8 @@ import {
 } from "__support__/ui";
 import MetadataTableSettings from "../MetadataTableSettings";
 import MetadataEditor from "./MetadataEditor";
+
+const ORDERS_ID_FIELD = createOrdersIdField();
 
 const ORDERS_TABLE = createOrdersTable({
   visibility_type: "technical",
@@ -146,30 +149,36 @@ describe("MetadataEditor", () => {
     });
 
     it("should not allow to enter an empty field name", async () => {
-      const [field] = ORDERS_TABLE.fields ?? [];
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.clear(await screen.findByDisplayValue(field.display_name));
+      userEvent.clear(
+        await screen.findByDisplayValue(ORDERS_ID_FIELD.display_name),
+      );
       userEvent.tab();
 
-      expect(screen.getByDisplayValue(field.display_name)).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue(ORDERS_ID_FIELD.display_name),
+      ).toBeInTheDocument();
     });
 
     it("should allow to switch between metadata and original schema", async () => {
-      const [field] = ORDERS_TABLE.fields ?? [];
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       expect(
         await screen.findByDisplayValue(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
-      expect(screen.getByDisplayValue(field.display_name)).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue(ORDERS_ID_FIELD.display_name),
+      ).toBeInTheDocument();
 
       userEvent.click(screen.getByRole("radio", { name: "Original schema" }));
       expect(screen.getByText(ORDERS_TABLE.name)).toBeInTheDocument();
-      expect(screen.getByText(field.name)).toBeInTheDocument();
-      expect(screen.queryByText(field.display_name)).not.toBeInTheDocument();
+      expect(screen.getByText(ORDERS_ID_FIELD.name)).toBeInTheDocument();
+      expect(
+        screen.queryByText(ORDERS_ID_FIELD.display_name),
+      ).not.toBeInTheDocument();
     });
 
     it("should display visible tables", async () => {
@@ -227,13 +236,14 @@ describe("MetadataEditor", () => {
     });
 
     it("should display field visibility options", async () => {
-      const [field] = ORDERS_TABLE.fields ?? [];
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(await screen.findByLabelText(field.name));
+      userEvent.click(await screen.findByLabelText(ORDERS_ID_FIELD.name));
       userEvent.click(
-        within(screen.getByLabelText(field.name)).getByText("Everywhere"),
+        within(screen.getByLabelText(ORDERS_ID_FIELD.name)).getByText(
+          "Everywhere",
+        ),
       );
 
       expect(
@@ -243,13 +253,14 @@ describe("MetadataEditor", () => {
     });
 
     it("should allow to search for field semantic types", async () => {
-      const [field] = ORDERS_TABLE.fields ?? [];
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(await screen.findByLabelText(field.name));
+      userEvent.click(await screen.findByLabelText(ORDERS_ID_FIELD.name));
       userEvent.click(
-        within(screen.getByLabelText(field.name)).getByText("Entity Key"),
+        within(screen.getByLabelText(ORDERS_ID_FIELD.name)).getByText(
+          "Entity Key",
+        ),
       );
       expect(await screen.findByText("Entity Name")).toBeInTheDocument();
 
@@ -417,6 +428,14 @@ describe("MetadataEditor", () => {
   describe("no databases", () => {
     it("should display an empty state", async () => {
       await setup({ databases: [] });
+
+      expect(
+        screen.getByText("The page you asked for couldn't be found."),
+      ).toBeInTheDocument();
+    });
+
+    it("should display an empty state when the database is not found", async () => {
+      await setup({ initialRoute: "/admin/datamodel/database/2" });
 
       expect(
         screen.getByText("The page you asked for couldn't be found."),
