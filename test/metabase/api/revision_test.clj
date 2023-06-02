@@ -146,14 +146,14 @@
                :message              nil
                :user                 @rasta-revision-info
                :diff                 {:before {:cards nil}
-                                      :after  {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}}
+                                      :after  {:cards [{:size_x 4 :size_y 4 :row 0 :col 0 :card_id card-id :series [] :dashboard_tab_id nil}]}}
                :has_multiple_changes false
                :description          "reverted to an earlier version."}
               {:is_reversion         false
                :is_creation          false
                :message              nil
                :user                 @rasta-revision-info
-               :diff                 {:before {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}
+               :diff                 {:before {:cards [{:size_x 4 :size_y 4 :row 0 :col 0 :card_id card-id :series [] :dashboard_tab_id nil}]}
                                       :after  {:cards nil}}
                :has_multiple_changes false
                :description          "removed a card."}
@@ -162,7 +162,7 @@
                :message              nil
                :user                 @rasta-revision-info
                :diff                 {:before {:cards nil}
-                                      :after  {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}}
+                                      :after  {:cards [{:size_x 4 :size_y 4 :row 0 :col 0 :card_id card-id :series [] :dashboard_tab_id nil}]}}
                :has_multiple_changes false
                :description          "added a card."}
               {:is_reversion         false
