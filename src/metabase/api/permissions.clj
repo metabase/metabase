@@ -93,10 +93,12 @@
                                      (pr-str explained))}))))
     (t2/with-transaction [_conn]
       (perms/update-data-perms-graph! (dissoc graph :sandboxes :impersonations))
-      (let [sandbox-updates        (:sandboxes body)
-            sandboxes              (upsert-sandboxes! sandbox-updates)
-            impersonation-updates  (:impersonations body)
-            impersonations         (upsert-impersonations! impersonation-updates)]
+      (let [sandbox-updates        (:sandboxes graph)
+            sandboxes              (when sandbox-updates
+                                     (upsert-sandboxes! sandbox-updates))
+            impersonation-updates  (:impersonations graph)
+            impersonations         (when impersonation-updates
+                                     (upsert-impersonations! impersonation-updates))]
         (merge
          (perms/data-perms-graph)
          (when sandboxes {:sandboxes sandboxes})
