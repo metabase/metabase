@@ -276,4 +276,24 @@ describe("scenarios > collection pinned items overview", () => {
       cy.findByText(PARAGRAPH_TEXT, { exact: false }).should("not.exist");
     });
   });
+
+  it("should render only the first line of description without markdown formatting on pinned native questions", () => {
+    cy.createNativeQuestion(SQL_QUESTION_DETAILS).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+    });
+
+    openRootCollection();
+    changeCardDescription(SQL_QUESTION_DETAILS.name, MARKDOWN);
+    openRootCollection();
+
+    getPinnedSection().within(() => {
+      cy.findByText(HEADING_1_MARKDOWN, { exact: false }).should("not.exist");
+      cy.findByText(HEADING_1_TEXT, { exact: false }).should("exist");
+      cy.findByText(HEADING_2_MARKDOWN, { exact: false }).should("not.exist");
+      cy.findByText(HEADING_2_TEXT, { exact: false }).should("not.exist");
+      cy.findByText(HEADING_1_TEXT, { exact: false }).should("exist");
+      cy.findByText(PARAGRAPH_MARKDOWN, { exact: false }).should("not.exist");
+      cy.findByText(PARAGRAPH_TEXT, { exact: false }).should("not.exist");
+    });
+  });
 });
