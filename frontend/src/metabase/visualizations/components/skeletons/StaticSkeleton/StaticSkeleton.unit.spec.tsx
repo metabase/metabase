@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+
 import { render, screen, within } from "__support__/ui";
 
 import StaticSkeleton from "./StaticSkeleton";
@@ -42,7 +43,7 @@ describe("StaticSkeleton", () => {
     expect(staticSkeleton).not.toHaveTextContent(PARAGRAPH_MARKDOWN);
   });
 
-  it("shows description tooltip with markdown formatting", async () => {
+  it("shows description tooltip with markdown formatting on hover", async () => {
     await setup();
 
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();

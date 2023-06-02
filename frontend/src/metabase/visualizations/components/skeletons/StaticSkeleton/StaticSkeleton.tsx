@@ -10,7 +10,7 @@ import {
   SkeletonTooltipIcon,
   SkeletonTooltipIconContainer,
 } from "./StaticSkeleton.styled";
-import { parseMarkdown, getLeadingText } from "./utils";
+import { getLeadingText, parseMarkdown } from "./utils";
 
 export interface StaticSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   name?: string | null;
