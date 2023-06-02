@@ -18,6 +18,12 @@ describe("getLeadingText", () => {
     expect(getLeadingText([p, h1])).toBe(p.textContent);
   });
 
+  it("disregards alt text of an image", () => {
+    const img = createImage();
+
+    expect(getLeadingText([img])).not.toBe(img.alt);
+  });
+
   it("skips elements without content", () => {
     const h1 = createHeading("");
     const p = createParagraph("Lorem ipsum");

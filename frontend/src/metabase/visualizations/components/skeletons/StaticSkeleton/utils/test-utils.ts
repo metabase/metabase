@@ -14,6 +14,7 @@ export const createParagraph = (textContent: string) => {
 
 export const createImage = () => {
   const img = document.createElement("img");
+  img.alt = "alt";
   img.src = "https://example.com/img.jpg";
   return img;
 };
