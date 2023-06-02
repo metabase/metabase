@@ -195,6 +195,13 @@
     :metrics
     :table})
 
+(defn- parse-field-id
+  [id]
+  (cond-> id
+    ;; sometimes instead of an ID we get a field reference
+    ;; with the name of the column in the second position
+    (vector? id) second))
+
 (defmethod parse-field-fn :field
   [_object-type]
   (fn [k v]
@@ -208,6 +215,7 @@
       :has-field-values  (keyword v)
       :semantic-type     (keyword v)
       :visibility-type   (keyword v)
+      :id                (parse-field-id v)
       v)))
 
 (defmethod parse-objects-default-key :field
@@ -221,7 +229,15 @@
 (defmethod excluded-keys :card
   [_object-type]
   #{:database
+    :db
     :dimension-options
+    :fks
+    :metadata
+    :metrics
+    :plain-object
+    :segments
+    :schema
+    :schema-name
     :table})
 
 (defn- parse-fields [fields]
