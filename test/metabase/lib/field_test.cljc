@@ -458,3 +458,52 @@
                 :lib/source-column-alias  "avg_count"
                 :lib/desired-column-alias "avg_count"}]
               (lib.metadata.calculation/metadata query))))))
+
+(deftest ^:parallel with-fields-test
+  (let [query           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                            (lib/with-fields [(lib/field "VENUES" "ID") (lib/field "VENUES" "NAME")]))
+        fields-metadata (fn [query]
+                          (map (partial lib.metadata.calculation/metadata query)
+                               (lib/fields query)))
+        metadatas       (fields-metadata query)]
+    (is (=? [{:name "ID"}
+             {:name "NAME"}]
+            metadatas))
+    (testing "Set fields with metadatas"
+      (let [fields' [(last metadatas)]
+            query'  (lib/with-fields query fields')]
+        (is (=? [{:name "NAME"}]
+                (fields-metadata query')))))
+    (testing "remove fields by passing"
+      (doseq [new-fields [nil []]]
+        (testing (pr-str new-fields)
+          (let [query' (lib/with-fields query new-fields)]
+            (is (empty? (fields-metadata query')))
+            (letfn [(has-fields? [query]
+                      (get-in query [:stages 0 :fields]))]
+              (is (has-fields? query)
+                  "sanity check")
+              (is (not (has-fields? query'))))))))))
+
+(deftest ^:parallel fieldable-columns-test
+  (testing "query with no :fields"
+    (is (=? [{:lib/desired-column-alias "ID", :selected? true}
+             {:lib/desired-column-alias "NAME", :selected? true}
+             {:lib/desired-column-alias "CATEGORY_ID", :selected? true}
+             {:lib/desired-column-alias "LATITUDE", :selected? true}
+             {:lib/desired-column-alias "LONGITUDE", :selected? true}
+             {:lib/desired-column-alias "PRICE", :selected? true}]
+            (lib/fieldable-columns (lib/query-for-table-name meta/metadata-provider "VENUES"))))))
+
+(deftest ^:parallel fieldable-columns-query-with-fields-test
+  (testing "query with :fields"
+    (is (=? [{:lib/desired-column-alias "ID", :selected? true}
+             {:lib/desired-column-alias "NAME", :selected? true}
+             {:lib/desired-column-alias "CATEGORY_ID", :selected? false}
+             {:lib/desired-column-alias "LATITUDE", :selected? false}
+             {:lib/desired-column-alias "LONGITUDE", :selected? false}
+             {:lib/desired-column-alias "PRICE", :selected? false}]
+            (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                (lib/with-fields [(meta/field-metadata :venues :id)
+                                  (meta/field-metadata :venues :name)])
+                lib/fieldable-columns )))))

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import FormProvider from "metabase/core/components/FormProvider";
@@ -18,12 +18,12 @@ const FORGOT_PASSWORD_SCHEMA = Yup.object({
   email: Yup.string().required(Errors.required).email(Errors.email),
 });
 
-export interface ForgotPasswordFormProps {
+interface ForgotPasswordFormProps {
   initialEmail?: string;
   onSubmit: (email: string) => void;
 }
 
-const ForgotPasswordForm = ({
+export const ForgotPasswordForm = ({
   initialEmail = "",
   onSubmit,
 }: ForgotPasswordFormProps): JSX.Element => {
@@ -66,6 +66,3 @@ const ForgotPasswordForm = ({
     </div>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ForgotPasswordForm;

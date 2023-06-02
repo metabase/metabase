@@ -1,4 +1,3 @@
-import React from "react";
 import moment from "moment-timezone";
 import mockDate from "mockdate";
 import userEvent from "@testing-library/user-event";

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 import { getTimelineName } from "metabase/lib/timelines";
 import Button from "metabase/core/components/Button/Button";

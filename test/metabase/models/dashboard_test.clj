@@ -165,35 +165,36 @@
                                :series  [3 4 5]}]})))))
 
  (testing "update cards ---"
-   (is (= "added a card."
-          (build-sentence
-            (revision/diff-strings
-              Dashboard
-              {:cards [{:id 1} {:id 2}]}
-              {:cards [{:id 1} {:id 2} {:id 3}]}))))
+  (is (= "added a card."
+         (build-sentence
+           (revision/diff-strings
+             Dashboard
+             {:cards [{:id 1} {:id 2}]}
+             {:cards [{:id 1} {:id 2} {:id 3}]}))))
 
-   (is (= "removed a card."
-          (build-sentence
-            (revision/diff-strings
-              Dashboard
-              {:cards [{:id 1} {:id 2}]}
-              {:cards [{:id 1}]}))))
+  (is (= "removed a card."
+         (build-sentence
+           (revision/diff-strings
+             Dashboard
+             {:cards [{:id 1} {:id 2}]}
+             {:cards [{:id 1}]}))))
 
-   (is (= "rearranged the cards."
-          (build-sentence
-            (revision/diff-strings
-              Dashboard
-              {:cards [{:id 1 :row 0} {:id 2 :row 1}]}
-              {:cards [{:id 1 :row 1} {:id 2 :row 2}]}))))
+  (is (= "rearranged the cards."
+         (build-sentence
+           (revision/diff-strings
+             Dashboard
+             {:cards [{:id 1 :row 0} {:id 2 :row 1}]}
+             {:cards [{:id 1 :row 1} {:id 2 :row 2}]}))))
 
-   (is (= "modified the cards."
-          (build-sentence
-            (revision/diff-strings
-              Dashboard
-              {:cards [{:id 1} {:id 2}]}
-              {:cards [{:id 1} {:id 3}]})))))
+  (is (= "modified the cards."
+         (build-sentence
+           (revision/diff-strings
+             Dashboard
+             {:cards [{:id 1} {:id 2}]}
+             {:cards [{:id 1} {:id 3}]})))))
 
  (testing "update collection ---"
+
    (is (= "moved this Dashboard to Our analytics."
           (build-sentence
             (revision/diff-strings
@@ -209,16 +210,7 @@
                Dashboard
                {:name "Apple"}
                {:name          "Apple"
-                :collection_id coll-id}))))
-    (is (= "moved this Dashboard from New collection to Our analytics."
-           (build-sentence
-             (revision/diff-strings
-               Dashboard
-               {:name "Apple"
-                :collection_id coll-id}
-               {:name          "Apple"
-                :collection_id nil})))))
-
+                :collection_id coll-id})))))
   (t2.with-temp/with-temp
     [Collection {coll-id-1 :id} {:name "Old collection"}
      Collection {coll-id-2 :id} {:name "New collection"}]

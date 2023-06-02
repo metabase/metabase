@@ -1,4 +1,3 @@
-import React from "react";
 import d3 from "d3";
 import Humanize from "humanize-plus";
 

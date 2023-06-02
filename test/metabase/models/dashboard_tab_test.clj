@@ -119,12 +119,3 @@
               :cards [{:id dash-1-tab2-id}
                       {:id dash-2-tab2-id}]}]
             (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :ordered-tab-cards)))))
-
-(deftest classify-changes-test
-  (testing "classify correctly"
-    (is (= {:to-update [{:id 2 :name "c3"} {:id 4 :name "c4"}]
-            :to-delete [{:id 1 :name "c1"} {:id 3 :name "c3"}]
-            :to-create [{:id -1 :name "-c1"}]}
-           (dashboard-tab/classify-changes
-             [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
-             [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))))

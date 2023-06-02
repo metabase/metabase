@@ -1,4 +1,4 @@
-import React from "react";
+import { memo } from "react";
 
 import CheckBox from "metabase/core/components/CheckBox";
 import { Card } from "metabase-types/api";
@@ -13,7 +13,7 @@ interface QuestionListItemProps {
   isEnabled: boolean;
 }
 
-export const QuestionListItem = React.memo(function QuestionListItem({
+export const QuestionListItem = memo(function QuestionListItem({
   card,
   onChange,
   isEnabled,

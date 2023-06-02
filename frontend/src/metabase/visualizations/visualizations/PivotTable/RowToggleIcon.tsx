@@ -1,4 +1,3 @@
-import React from "react";
 import { updateIn } from "icepick";
 import _ from "underscore";
 

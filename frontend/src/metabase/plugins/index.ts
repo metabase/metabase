@@ -1,4 +1,5 @@
-import React, { HTMLAttributes } from "react";
+import { HTMLAttributes } from "react";
+import * as React from "react";
 import { t } from "ttag";
 
 import { IconProps } from "metabase/components/Icon";
@@ -23,7 +24,7 @@ import type {
 import type { AdminPathKey, State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
 
-import { PluginGroupManagersType } from "./types";
+import { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUCTIONS = [];
@@ -79,7 +80,7 @@ export const PLUGIN_ADMIN_USER_MENU_ITEMS = [];
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
 // authentication providers
-export const PLUGIN_AUTH_PROVIDERS = [] as any;
+export const PLUGIN_AUTH_PROVIDERS: GetAuthProviders[] = [];
 
 // Only show the password tab in account settings if these functions all return true.
 // Otherwise, the user is logged in via SSO and should hide first name, last name, and email field in profile settings metabase#23298.

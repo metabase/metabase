@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -11,7 +11,7 @@ import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable"
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 
-class SegmentListAppInner extends React.Component {
+class SegmentListAppInner extends Component {
   render() {
     const { segments, tableSelector, setArchived } = this.props;
 

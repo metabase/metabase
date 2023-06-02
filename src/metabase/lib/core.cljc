@@ -60,6 +60,7 @@
    aggregations
    aggregations-metadata
    available-aggregation-operators
+   selected-aggregation-operators
    count
    avg
    count-where
@@ -72,7 +73,9 @@
    stddev
    sum
    sum-where
-   var]
+   var
+   cum-count
+   cum-sum]
   [lib.binning
    available-binning-strategies
    binning
@@ -135,10 +138,14 @@
    lower]
   [lib.field
    fields
-   with-fields]
+   with-fields
+   fieldable-columns]
   [lib.filter
    filter
    filters
+   filterable-columns
+   filterable-column-operators
+   filter-clause
    and
    or
    not

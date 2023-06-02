@@ -36,6 +36,7 @@ export const LegendRightContent = styled.div`
   display: flex;
   justify-content: flex-end;
   margin-left: auto;
+  align-items: center;
 `;
 
 LegendDescriptionIcon.defaultProps = {

@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import * as React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";

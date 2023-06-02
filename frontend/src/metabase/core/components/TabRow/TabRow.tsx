@@ -1,19 +1,37 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
+import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
+import type { UniqueIdentifier, DragEndEvent } from "@dnd-kit/core";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
+  restrictToHorizontalAxis,
+  restrictToParentElement,
+} from "@dnd-kit/modifiers";
 
 import Icon from "metabase/components/Icon/Icon";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { TabListProps } from "../TabList/TabList";
 import { ScrollButton, TabList } from "./TabRow.styled";
 
-interface TabRowInnerProps<T> extends TabListProps<T> {
-  width: number | null;
+interface TabRowProps<T> extends TabListProps<T> {
+  width?: number | null;
+  itemIds?: UniqueIdentifier[];
+  handleDragEnd?: (
+    activeId: UniqueIdentifier,
+    overId: UniqueIdentifier,
+  ) => void;
 }
+
 function TabRowInner<T>({
   width,
   onChange,
   children,
+  itemIds,
+  handleDragEnd,
   ...props
-}: TabRowInnerProps<T>) {
+}: TabRowProps<T>) {
   const tabListRef = useRef<HTMLDivElement>(null);
   const [scrollPosition, setScrollPosition] = useState(0);
   const [showScrollRight, setShowScrollRight] = useState(false);
@@ -38,6 +56,17 @@ function TabRowInner<T>({
     tabListRef.current.scrollBy(scrollDistance, 0);
   };
 
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 10 },
+  });
+
+  const onDragEnd = (event: DragEndEvent) => {
+    if (!event.over || !handleDragEnd) {
+      return;
+    }
+    handleDragEnd(event.active.id, event.over.id);
+  };
+
   return (
     <TabList
       onChange={onChange as (value: unknown) => void}
@@ -45,7 +74,18 @@ function TabRowInner<T>({
       ref={tabListRef}
       {...props}
     >
-      {children}
+      <DndContext
+        onDragEnd={onDragEnd}
+        modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
+        sensors={[pointerSensor]}
+      >
+        <SortableContext
+          items={itemIds ?? []}
+          strategy={horizontalListSortingStrategy}
+        >
+          {children}
+        </SortableContext>
+      </DndContext>
       {showScrollLeft && (
         <ScrollArrow direction="left" onClick={() => scroll("left")} />
       )}
@@ -57,7 +97,7 @@ function TabRowInner<T>({
 }
 
 const TabRowInnerWithSize = ExplicitSize()(TabRowInner);
-export function TabRow<T>(props: TabListProps<T>) {
+export function TabRow<T>(props: TabRowProps<T>) {
   return <TabRowInnerWithSize {...props} />;
 }
 

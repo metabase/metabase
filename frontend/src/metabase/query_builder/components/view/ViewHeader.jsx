@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -449,6 +449,11 @@ function ViewTitleHeaderRightSide(props) {
     }
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
+  const getRunButtonLabel = useCallback(
+    () => (isRunning ? t`Cancel` : t`Refresh`),
+    [isRunning],
+  );
+
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
       {QuestionFilters.shouldRender(props) && (
@@ -510,6 +515,7 @@ function ViewTitleHeaderRightSide(props) {
             isDirty={isResultDirty}
             onRun={() => runQuestionQuery({ ignoreCache: true })}
             onCancel={cancelQuery}
+            getTooltip={getRunButtonLabel}
           />
         </ViewHeaderIconButtonContainer>
       )}

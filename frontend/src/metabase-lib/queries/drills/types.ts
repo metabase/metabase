@@ -1,10 +1,11 @@
-import {
+import type {
   Card,
   DatasetColumn,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
+import type Dimension from "metabase-lib/Dimension";
 
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;
@@ -13,12 +14,14 @@ type OnChangeCardAndRunOpts = {
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
-type ClickActionProps = {
+export type ClickActionProps = {
   question: Question;
   clicked?: ClickObject;
   settings?: VisualizationSettings;
   extraData?: Record<string, any>;
 };
+
+export type DrillProps = Pick<ClickActionProps, "question" | "clicked">;
 
 type ClickActionCreator = (props: ClickActionProps) => ClickAction[];
 
@@ -37,31 +40,27 @@ export interface ClickObject {
   value?: RowValue;
   column?: DatasetColumn;
   dimensions?: ClickObjectDimension[];
+  dimension?: Dimension; // used in table visualization for QuickFilterDrill
   event?: MouseEvent;
   element?: HTMLElement;
   seriesIndex?: number;
-  settings?: Record<string, any>;
+  settings?: Record<string, unknown>;
   origin?: {
     row: RowValue;
     cols: DatasetColumn[];
   };
-  extraData?: Record<string, any>;
+  extraData?: Record<string, unknown>;
+  data?: {
+    col: DatasetColumn;
+    value: RowValue;
+  }[];
 }
 
-type ClickActionPopoverProps = {
-  onChangeCardAndRun: OnChangeCardAndRun;
-  onClose: () => void;
-};
-
 export interface ClickAction {
+  name: string;
   title?: any; // React Element
-  icon?: string;
-  popover?: (props: ClickActionPopoverProps) => any; // React Element
-  question?: () => Question | undefined;
-  url?: () => string;
-  action?: () => any; // redux action
   section?: string;
-  name?: string;
+  icon?: string;
+  buttonType?: string;
   default?: boolean;
-  defaultAlways?: boolean;
 }
