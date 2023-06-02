@@ -28,6 +28,8 @@
    [schema.core :as s]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ---------------------------------------------- Setting up the Store ----------------------------------------------
 
 (def ^:private uninitialized-store
