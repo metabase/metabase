@@ -7,6 +7,7 @@ import {
   createOrdersIdField,
   createOrdersProductIdField,
   createOrdersTable,
+  createOrdersUserIdField,
   createPeopleTable,
   createProductsTable,
   createReviewsTable,
@@ -27,10 +28,17 @@ const ORDERS_ID_FIELD = createOrdersIdField();
 
 const ORDERS_PRODUCT_ID_FIELD = createOrdersProductIdField();
 
+const ORDERS_USER_ID_FIELD = createOrdersUserIdField();
+
 const ORDERS_DISCOUNT_FIELD = createOrdersDiscountField();
 
 const ORDERS_TABLE = createOrdersTable({
-  fields: [ORDERS_ID_FIELD, ORDERS_PRODUCT_ID_FIELD, ORDERS_DISCOUNT_FIELD],
+  fields: [
+    ORDERS_ID_FIELD,
+    ORDERS_PRODUCT_ID_FIELD,
+    ORDERS_USER_ID_FIELD,
+    ORDERS_DISCOUNT_FIELD,
+  ],
   visibility_type: "technical",
 });
 
@@ -219,8 +227,8 @@ describe("MetadataEditor", () => {
 
     it("should display field visibility options", async () => {
       await setup();
-
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+
       const section = within(
         await screen.findByLabelText(ORDERS_ID_FIELD.name),
       );
@@ -234,8 +242,8 @@ describe("MetadataEditor", () => {
 
     it("should allow to search for field semantic types", async () => {
       await setup();
-
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+
       const section = within(
         await screen.findByLabelText(ORDERS_ID_FIELD.name),
       );
@@ -249,8 +257,8 @@ describe("MetadataEditor", () => {
 
     it("should show the foreign key target for foreign keys", async () => {
       await setup();
-
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+
       const section = within(
         await screen.findByLabelText(ORDERS_PRODUCT_ID_FIELD.name),
       );
@@ -262,6 +270,16 @@ describe("MetadataEditor", () => {
 
       userEvent.type(popover.getByPlaceholderText("Find..."), "Products");
       expect(popover.getByText("Products → ID")).toBeInTheDocument();
+    });
+
+    it("should show an access denied error if the foreign key field has an inaccessible target", async () => {
+      await setup();
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+
+      const section = within(
+        await screen.findByLabelText(ORDERS_USER_ID_FIELD.name),
+      );
+      expect(section.getByText("Field access denied")).toBeInTheDocument();
     });
 
     it("should not show the foreign key target for non-foreign keys", async () => {
