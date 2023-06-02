@@ -6,7 +6,7 @@ import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
 import _ from "underscore";
 import { getIn } from "icepick";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { AccordionListCell } from "./AccordionListCell";
 import { AccordionListRoot } from "./AccordionList.styled";
 import { getNextCursor, getPrevCursor } from "./utils";
@@ -111,8 +111,7 @@ export default class AccordionList extends Component {
     hideEmptySectionsInSearch: false,
 
     // section getters/render props
-    renderSectionIcon: section =>
-      section.icon && <Icon name={section.icon} size={18} />,
+    renderSectionIcon: section => section.icon && <Icon name={section.icon} />,
     renderSectionExtra: () => null,
 
     // item getters/render props
@@ -121,7 +120,7 @@ export default class AccordionList extends Component {
     renderItemName: item => item.name,
     renderItemDescription: item => item.description,
     renderItemExtra: item => null,
-    renderItemIcon: item => item.icon && <Icon name={item.icon} size={18} />,
+    renderItemIcon: item => item.icon && <Icon name={item.icon} />,
     getItemClassName: item => item.className,
     getItemStyles: item => {},
     hasInitialFocus: true,

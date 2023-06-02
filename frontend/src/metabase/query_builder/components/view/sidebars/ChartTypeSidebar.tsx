@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import * as React from "react";
 import _ from "underscore";
 import { t } from "ttag";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 import visualizations from "metabase/visualizations";
@@ -188,12 +188,12 @@ const ChartTypeOption = ({
       data-is-sensible={isSensible}
       data-testid={`${visualization.uiName}-button`}
     >
-      <Icon name={visualization.iconName} size={20} />
+      <Icon name={visualization.iconName} />
       {isSelected && (
         <SettingsButton
           onlyIcon
           icon="gear"
-          iconSize={12}
+          iconSize={16}
           onClick={onSettingsClick}
         />
       )}

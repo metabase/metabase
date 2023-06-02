@@ -1,11 +1,11 @@
 import d3 from "d3";
-import { ICON_PATHS } from "metabase/icon_paths";
+import { Icons } from "metabase/core/components/Icon";
 
-const ICON_X = -16;
-const ICON_Y = 10;
+const ICON_X = -8;
+const ICON_Y = 4;
 const ICON_SIZE = 16;
-const ICON_SCALE = 0.45;
-const RECT_SIZE = ICON_SIZE * 2;
+const ICON_SCALE = 1;
+const RECT_SIZE = ICON_SIZE;
 const TEXT_X = 10;
 const TEXT_Y = 16;
 const TEXT_DISTANCE = ICON_SIZE * 2;
@@ -61,23 +61,8 @@ function getIcon(events) {
   return events.length === 1 ? events[0].icon : "star";
 }
 
-function getIconPath(events) {
-  const icon = getIcon(events);
-  return ICON_PATHS[icon].path ?? ICON_PATHS[icon];
-}
-
-function getIconFillRule(events) {
-  const icon = getIcon(events);
-  return ICON_PATHS[icon].attrs?.fillRule;
-}
-
 function getIconTransform() {
   return `scale(${ICON_SCALE}) translate(${ICON_X}, ${ICON_Y})`;
-}
-
-function getIconLabel(events) {
-  const icon = getIcon(events);
-  return `${icon} icon`;
 }
 
 function isEventWithin(eventIndex, eventPoints, eventDistance) {
@@ -163,12 +148,21 @@ function renderEventTicks({
     .attr("transform", (d, i) => `translate(${eventPoints[i]}, 0)`);
 
   eventTicks
-    .append("path")
-    .attr("class", "event-icon")
-    .attr("d", d => getIconPath(d))
-    .attr("fill-rule", d => getIconFillRule(d))
-    .attr("transform", () => getIconTransform())
-    .attr("aria-label", d => getIconLabel(d));
+    .insert(d => {
+      const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      const icon = getIcon(d);
+      const iconSvgText = Icons[icon].source;
+
+      group.innerHTML = iconSvgText;
+      const svg = group.firstChild;
+      svg.classList.add("event-icon");
+      svg.setAttribute("width", ICON_SIZE);
+      svg.setAttribute("height", ICON_SIZE);
+      svg.setAttribute("aria-label", `${icon} icon`);
+
+      return group;
+    })
+    .attr("transform", () => getIconTransform());
 
   eventTicks
     .append("rect")

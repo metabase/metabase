@@ -5,6 +5,7 @@ import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormTextArea from "metabase/core/components/FormTextArea";
 import FormToggle from "metabase/core/components/FormToggle";
+import { IconName } from "metabase/core/components/Icon";
 import DatabaseInfoField from "../DatabaseInfoField";
 import DatabaseSectionField from "../DatabaseSectionField";
 import { FIELD_OVERRIDES } from "../../constants";
@@ -68,7 +69,7 @@ const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
 const getInputProps = (field: EngineField) => {
   return {
     infoTooltip: field["helper-text"],
-    rightIcon: field["helper-text"] && "info",
+    rightIcon: (field["helper-text"] as unknown as IconName) ?? "info",
     rightIconTooltip: field["helper-text"],
   };
 };

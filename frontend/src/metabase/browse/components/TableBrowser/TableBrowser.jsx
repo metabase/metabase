@@ -6,7 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import Database from "metabase/entities/databases";
 import EntityItem from "metabase/components/EntityItem";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { Grid } from "metabase/components/Grid";
 import {
   isVirtualCardId,
@@ -131,8 +131,7 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
           data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
         >
           <Icon
-            name="bolt"
-            size={20}
+            name="bolt_filled"
             tooltip={t`X-ray this table`}
             color={color("warning")}
           />
