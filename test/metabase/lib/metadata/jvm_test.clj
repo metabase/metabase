@@ -8,7 +8,11 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.test :as mt]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.models :refer [Card]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest ^:parallel fetch-field-test
   (let [field (#'lib.metadata.jvm/fetch-instance :metadata/field (mt/id :categories :id))]
@@ -83,3 +87,64 @@
                 :display-name "Sum"
                 :source_alias "Orders"}]
               (lib.metadata.calculation/metadata mlv2-query))))))
+
+(deftest ^:synchronized with-temp-source-question-metadata-test
+  (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues
+                                             {:joins
+                                              [{:source-table $$categories
+                                                :condition    [:= $category_id &c.categories.id]
+                                                :fields       :all
+                                                :alias        "c"}]})}]
+    (let [query      {:database (mt/id)
+                      :type     :query
+                      :query    {:source-table (str "card__" (u/the-id card))}}
+          mlv2-query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                (lib.convert/->pMBQL query))
+          breakouts  (lib/breakoutable-columns mlv2-query)
+          agg-query  (-> mlv2-query
+                         (lib/breakout (second breakouts))
+                         (lib/breakout (peek breakouts)))]
+      (is (=? [{:display-name "ID"
+                :long-display-name "ID"
+                :effective-type :type/BigInteger
+                :semantic-type :type/PK}
+               {:display-name "Name"
+                :long-display-name "Name"
+                :effective-type :type/Text
+                :semantic-type :type/Name}
+               {:display-name "Category ID"
+                :long-display-name "Category ID"
+                :effective-type :type/Integer
+                :semantic-type :type/FK}
+               {:display-name "Latitude"
+                :long-display-name "Latitude"
+                :effective-type :type/Float
+                :semantic-type :type/Latitude}
+               {:display-name "Longitude"
+                :long-display-name "Longitude"
+                :effective-type :type/Float
+                :semantic-type :type/Longitude}
+               {:display-name "Price"
+                :long-display-name "Price"
+                :effective-type :type/Integer
+                :semantic-type :type/Category}
+               {:display-name "c → ID"
+                :long-display-name "c → ID"
+                :effective-type :type/BigInteger
+                :semantic-type :type/PK}
+               {:display-name "c → Name"
+                :long-display-name "c → Name"
+                :effective-type :type/Text
+                :semantic-type :type/Name}]
+              (map #(lib/display-info mlv2-query %)
+                   (lib.metadata.calculation/metadata mlv2-query))))
+      (is (=? [{:display-name "Name"
+                :long-display-name "Name"
+                :effective-type :type/Text
+                :semantic-type :type/Name}
+               {:display-name "c → Name"
+                :long-display-name "c → Name"
+                :effective-type :type/Text
+                :semantic-type :type/Name}]
+              (map #(lib/display-info agg-query %)
+                   (lib.metadata.calculation/metadata agg-query)))))))

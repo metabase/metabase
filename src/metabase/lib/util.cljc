@@ -138,7 +138,7 @@
   "Convert legacy `:source-metadata` to [[metabase.lib.metadata/StageMetadata]]."
   [source-metadata]
   (when source-metadata
-    (-> (if (vector? source-metadata)
+    (-> (if (seqable? source-metadata)
           {:columns source-metadata}
           source-metadata)
         (update :columns (fn [columns]

@@ -78,6 +78,7 @@
         ;; we should look in to fixing this if we can.
         stage-columns (or (:metabase.lib.stage/cached-metadata stage)
                           (get-in stage [:lib/stage-metadata :columns])
+                          (lib.metadata.calculation/default-columns query stage-number stage)
                           (log/warn (i18n/tru "Cannot resolve column {0}: stage has no metadata" (pr-str column-name))))]
     (when (seq stage-columns)
       (resolve-column-name-in-metadata column-name stage-columns))))
@@ -105,7 +106,8 @@
    ;; temporally bucketed, the base-type/effective-type would probably be affected, right? We should probably be
    ;; taking that into consideration?
    (cond
-     (integer? id-or-name) (resolve-field-id query id-or-name)
+     (integer? id-or-name) (cond-> (resolve-field-id query id-or-name)
+                             join-alias (assoc ::join-alias join-alias))
      join-alias            (or (resolve-column-name-in-join query stage-number id-or-name join-alias)
                                {:lib/type    :metadata/field
                                 :name        id-or-name
@@ -203,7 +205,7 @@
                                        lib.util/strip-id)
                                    (let [table (lib.metadata/table query table-id)]
                                      (lib.metadata.calculation/display-name query stage-number table style))))
-                               (when join-alias
+                               (when-let [join-alias (or join-alias (::join-alias field-metadata))]
                                  (let [join (lib.join/resolve-join query stage-number join-alias)]
                                    (lib.metadata.calculation/display-name query stage-number join style)))))
         display-name       (if join-display-name
