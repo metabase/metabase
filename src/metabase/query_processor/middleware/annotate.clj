@@ -325,15 +325,27 @@
                         {:inner-query inner-query, :type qp.error-type/qp}
                         e))))))
 
-(s/defn col-info-for-aggregation-clause
+(s/defn ^:private col-info-for-aggregation-clause
   "Return appropriate column metadata for an `:aggregation` clause."
   ;; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
   ;; `match` pattern for field clauses below
   [inner-query :- su/Map clause]
   (let [mlv2-clause (lib.convert/->pMBQL clause)]
-    (-> (lib.metadata.calculation/metadata (mlv2-query inner-query) -1 mlv2-clause)
-        (update-keys u/->snake_case_en)
-        (dissoc :lib/type))))
+    ;; for some mystery reason it seems like the annotate code uses `:long` style display names when something appears
+    ;; inside an aggregation clause, e.g.
+    ;;
+    ;;    Distinct values of Category → Name
+    ;;
+    ;; but `:default` style names when they appear on their own or in breakouts, e.g.
+    ;;
+    ;;    Name
+    ;;
+    ;; why is this the case? Who knows! But that's the old pre-MLv2 behavior. I think we should try to fix it, but it's
+    ;; probably going to involve updating a ton of tests that encode the old behavior.
+    (binding [lib.metadata.calculation/*display-name-style* :long]
+      (-> (lib.metadata.calculation/metadata (mlv2-query inner-query) -1 mlv2-clause)
+          (update-keys u/->snake_case_en)
+          (dissoc :lib/type)))))
 
 (mu/defn aggregation-name :- ::lib.schema.common/non-blank-string
   "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation
@@ -347,11 +359,6 @@
                     (some-fn :source-table :source-query)]]
    ag-clause]
   (lib.metadata.calculation/column-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
-
-(defn aggregation-display-name
-  "Return an appropriate user-facing display name for an aggregation clause."
-  [inner-query ag-clause]
-  (lib.metadata.calculation/display-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
 
 
 ;;; ----------------------------------------- Putting it all together (MBQL) -----------------------------------------

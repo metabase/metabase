@@ -82,10 +82,28 @@
                        {:fk_field_id  %category_id
                         :source       :fields
                         :field_ref    $category_id->categories.name
-                        :display_name "Category → Name"})]
+                        ;; for whatever reason this is what the `annotate` middleware traditionally returns here, for
+                        ;; some reason we use the `:long` style inside aggregations and the `:default` style elsewhere,
+                        ;; who knows why. See notes
+                        ;; on [[metabase.query-processor.middleware.annotate/col-info-for-aggregation-clause]]
+                        :display_name "Name"})]
                (annotate/column-info
                 {:type :query, :query {:fields [$category_id->categories.name]}}
                 {:columns [:name]})))))))
+
+(deftest ^:parallel col-info-for-implicit-joins-aggregation-test
+  (mt/with-everything-store
+    (mt/$ids venues
+      (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk_field_id` "
+                    "info about the source Field")
+        (is (=? [{:source       :aggregation
+                  :field_ref    [:aggregation 0]
+                  :display_name "Distinct values of Category → Name"}]
+                (annotate/column-info
+                 {:type  :query
+                  :query {:source-table $$venues
+                          :aggregation  [[:distinct $category_id->categories.name]]}}
+                 {:columns [:name]})))))))
 
 (deftest ^:parallel col-info-for-explicit-joins-with-fk-field-id-test
   (mt/with-everything-store
@@ -335,8 +353,7 @@
   ([inner-query ag-clause]
    (binding [driver/*driver* :h2]
      (mt/with-everything-store
-       {:name         (annotate/aggregation-name inner-query ag-clause)
-        :display_name (annotate/aggregation-display-name inner-query ag-clause)}))))
+       (select-keys (#'annotate/col-info-for-aggregation-clause inner-query ag-clause) [:name :display_name])))))
 
 (deftest ^:parallel aggregation-names-test
   (testing "basic aggregations"
