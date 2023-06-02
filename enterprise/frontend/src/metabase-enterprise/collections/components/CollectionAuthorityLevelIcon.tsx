@@ -1,4 +1,5 @@
-import Icon, { IconProps } from "metabase/components/Icon";
+import { Icon, IconProps } from "metabase/core/components/Icon";
+
 import { color } from "metabase/lib/colors";
 
 import type { Collection } from "metabase-types/api";

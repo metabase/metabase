@@ -62,7 +62,7 @@ describe("FormFieldEditor", () => {
     expect(screen.getByText(field.description)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(field.placeholder)).toBeInTheDocument();
     expect(screen.getByLabelText("Field settings")).toBeInTheDocument();
-    expect(getIcon("grabber2")).toBeInTheDocument();
+    expect(getIcon("grabber")).toBeInTheDocument();
   });
 
   it("handles field type change", () => {
@@ -94,7 +94,7 @@ describe("FormFieldEditor", () => {
       screen.queryByRole("radiogroup", { name: "Field type" }),
     ).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
-    expect(queryIcon("grabber2")).not.toBeInTheDocument();
+    expect(queryIcon("grabber")).not.toBeInTheDocument();
   });
 
   describe("field values", () => {

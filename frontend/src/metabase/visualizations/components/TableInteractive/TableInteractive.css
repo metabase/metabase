@@ -23,7 +23,7 @@
 
 .TableInteractive-headerCellData .Icon-chevrondown,
 .TableInteractive-headerCellData .Icon-chevronup {
-  opacity: 0.2;
+  opacity: 0.5;
 }
 
 .TableInteractive-headerCellData--sorted .Icon-chevrondown,

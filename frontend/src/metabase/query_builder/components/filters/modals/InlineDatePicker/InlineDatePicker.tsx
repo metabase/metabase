@@ -2,7 +2,7 @@ import { useMemo, useCallback } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { DATE_SHORTCUT_OPTIONS as ALL_DATE_OPTIONS } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
 
 import type { Filter as FilterExpression } from "metabase-types/api";
@@ -121,7 +121,7 @@ export function InlineDatePicker({
             </OptionButton>
           ) : (
             <OptionButton onClick={onClick} aria-label={t`more options`}>
-              <Icon name="ellipsis" size={14} style={{ marginBottom: -5 }} />
+              <Icon name="ellipsis" style={{ marginBottom: -5 }} />
             </OptionButton>
           )
         }

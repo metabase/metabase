@@ -849,7 +849,7 @@
                                   (assoc (card-with-name-and-query card-name)
                                          :collection_id      (u/the-id collection)))
             (testing "check the correct metadata was fetched and was saved in the DB"
-              (is (= [{:base_type     :type/BigInteger
+              (is (= [{:base_type     :type/Integer
                        :display_name  "Count"
                        :name          "count"
                        :semantic_type :type/Quantity

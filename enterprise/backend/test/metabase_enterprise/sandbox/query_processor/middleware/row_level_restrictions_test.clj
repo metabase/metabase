@@ -215,7 +215,7 @@
                                           :condition [:= $venue_id &v.venues.id]}]
                           :aggregation  [[:count]]}
 
-                  ::row-level-restrictions/original-metadata [{:base_type     :type/BigInteger
+                  ::row-level-restrictions/original-metadata [{:base_type     :type/Integer
                                                                :semantic_type :type/Quantity
                                                                :name          "count"
                                                                :display_name  "Count"
@@ -229,8 +229,10 @@
                    :joins       [{:source-table $$venues
                                   :alias        "v"
                                   :strategy     :left-join
-                                  :condition    [:= $venue_id &v.venues.id]}]}))))))
+                                  :condition    [:= $venue_id &v.venues.id]}]}))))))))
 
+(deftest middleware-native-quest-test
+  (testing "Make sure the middleware does the correct transformation given the GTAPs we have"
     (testing "Should substitute appropriate value in native query"
       (met/with-gtaps {:gtaps      {:venues (venues-category-native-gtap-def)}
                        :attributes {"cat" 50}}
@@ -243,7 +245,7 @@
                                                          "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\" ASC")
                                             :params []}}
 
-                  ::row-level-restrictions/original-metadata [{:base_type     :type/BigInteger
+                  ::row-level-restrictions/original-metadata [{:base_type     :type/Integer
                                                                :semantic_type :type/Quantity
                                                                :name          "count"
                                                                :display_name  "Count"

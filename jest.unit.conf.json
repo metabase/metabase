@@ -5,7 +5,8 @@
     "^promise-loader\\?global\\!metabase-lib\\/metadata\\/utils\\/ga-metadata$": "<rootDir>/frontend/src/metabase-lib/metadata/utils/ga-metadata.js",
     "ace/ext-searchbox": "<rootDir>/frontend/test/__mocks__/aceSearchBoxExtMock.js",
     "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
-    "react-markdown": "<rootDir>/node_modules/react-markdown/react-markdown.min.js"
+    "react-markdown": "<rootDir>/node_modules/react-markdown/react-markdown.min.js",
+    "\\.svg\\?(component|source)": "<rootDir>/frontend/test/__mocks__/svgMock.jsx"
   },
   "transformIgnorePatterns": [
     "<rootDir>/node_modules/(?!rehype-external-links/)"

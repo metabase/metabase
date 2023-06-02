@@ -1,7 +1,6 @@
 import { HomeCard } from "../HomeCard";
 import {
   CardIcon,
-  CardIconContainer,
   CardTitle,
   CardTitlePrimary,
   CardTitleSecondary,
@@ -20,9 +19,7 @@ export const HomeXrayCard = ({
 }: HomeXrayCardProps): JSX.Element => {
   return (
     <HomeCard url={url}>
-      <CardIconContainer>
-        <CardIcon name="bolt" />
-      </CardIconContainer>
+      <CardIcon name="bolt_filled" />
       <CardTitle>
         <CardTitleSecondary>{message}</CardTitleSecondary>{" "}
         <CardTitlePrimary>{title}</CardTitlePrimary>
