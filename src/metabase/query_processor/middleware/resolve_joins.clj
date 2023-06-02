@@ -117,6 +117,20 @@
   [{breakouts :breakout, aggregations :aggregation}]
   (every? empty? [aggregations breakouts]))
 
+(defn- append-join-fields [fields join-fields]
+  (into []
+        (comp cat
+              (m/distinct-by (comp
+                              ;; we shouldn't consider different type info to mean two Fields are different even if
+                              ;; everything else is the same. So give everything `:base-type` of `:type/*` (it will
+                              ;; complain if we remove `:base-type` entirely from fields with a string name)
+                              #(mbql.u/update-field-options % (fn [opts]
+                                                                (-> opts
+                                                                    (assoc :base-type :type/*)
+                                                                    (dissoc :effective-type))))
+                              mbql.u/remove-namespaced-options)))
+        [fields join-fields]))
+
 (s/defn ^:private merge-joins-fields :- UnresolvedMBQLQuery
   "Append the `:fields` from `:joins` into their parent level as appropriate so joined columns appear in the final
   query results, and remove the `:fields` entry for all joins.
@@ -133,10 +147,7 @@
                                                            (keyword? fields) (dissoc :fields)))
                                                        joins)))]
     (cond-> inner-query
-      (seq join-fields) (update :fields (fn [fields]
-                                          (into []
-                                                (comp cat (m/distinct-by mbql.u/remove-namespaced-options))
-                                                [fields join-fields]))))))
+      (seq join-fields) (update :fields append-join-fields join-fields))))
 
 (s/defn ^:private resolve-joins-in-mbql-query :- ResolvedMBQLQuery
   [query :- mbql.s/MBQLQuery]

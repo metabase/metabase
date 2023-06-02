@@ -87,6 +87,8 @@
     (sequential? x)            ((get-method = :dispatch-type/sequential) x y)
     :else                      (clojure.core/= x y)))
 
+;;; TODO I think to field refs with different `:base-type`s but with other info the same should probably be considered
+;;; the same, right? Like if we improve type calculation it shouldn't break existing queries
 (defn ref=
   "Are two refs `x` and `y` equal?"
   [x y]

@@ -548,7 +548,7 @@
             ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
             ;; display values of the column.
             (is (= [(assoc date-col  :field_ref [:field (mt/id :checkins :date) {:temporal-unit :default}], :unit :year)
-                    (assoc count-col :field_ref [:field "count" {:base-type (:base_type count-col)}])]
+                    (assoc count-col :field_ref [:field "count" {:base-type :type/Integer}])]
                    (mt/cols
                     (qp/process-query (query-with-source-card card)))))))))))
 
@@ -865,7 +865,7 @@
                    :base_type    :type/Text}
                   {:name         "count"
                    :display_name "Count"
-                   :field_ref    [:field "count" {:base-type :type/BigInteger}]
+                   :field_ref    [:field "count" {:base-type :type/Integer}]
                    :base_type    (:base_type (qp.test/aggregate-col :count))}])
                (for [col (mt/cols results)]
                  (select-keys col [:name :display_name :id :field_ref :base_type]))))))))

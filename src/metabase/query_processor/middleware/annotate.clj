@@ -19,8 +19,6 @@
     :as escape-join-aliases]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.store.metadata-provider
-    :as qp.store.metadata-provider]
    [metabase.query-processor.util :as qp.util]
    [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.util :as u]
@@ -318,7 +316,7 @@
   (qp.store/cached [:mlv2-query (hash inner-query)]
     (try
       (lib/query
-       (qp.store.metadata-provider/metadata-provider)
+       (qp.store/metadata-provider)
        (lib.convert/->pMBQL (lib.convert/legacy-query-from-inner-query
                              (:id (qp.store/database))
                              (mbql.normalize/normalize-fragment [:query] inner-query))))
@@ -334,7 +332,8 @@
   [inner-query :- su/Map clause]
   (let [mlv2-clause (lib.convert/->pMBQL clause)]
     (-> (lib.metadata.calculation/metadata (mlv2-query inner-query) -1 mlv2-clause)
-        (update-keys u/->snake_case_en))))
+        (update-keys u/->snake_case_en)
+        (dissoc :lib/type))))
 
 (mu/defn aggregation-name :- ::lib.schema.common/non-blank-string
   "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation

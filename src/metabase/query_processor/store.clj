@@ -13,6 +13,10 @@
   but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient than fetching
   those Fields potentially dozens of times in a single query execution."
   (:require
+   [metabase.lib.metadata.composed-provider
+    :as lib.metadata.composed-provider]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
@@ -20,6 +24,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
+   [pretty.core :as pretty]
    [schema.core :as s]
    [toucan2.core :as t2]))
 
@@ -316,3 +321,33 @@
   ;; for the unique key use a gensym prefixed by the namespace to make for easier store debugging if needed
   (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
     `(cached-fn ~ks (fn [] ~@body))))
+
+(defn- base-metadata-provider []
+  (reify
+    lib.metadata.protocols/MetadataProvider
+    (database [_this]
+      (some-> (database) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/database)))
+
+    (table [_this table-id]
+      (some-> (table table-id) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/table)))
+
+    (field [_this field-id]
+      (some-> (field field-id) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/field)))
+
+    (card [_this _card-id] nil)
+    (metric [_this _metric-id] nil)
+    (segment [_this _segment-id] nil)
+    (tables [_metadata-provider] nil)
+    (fields [_metadata-provider _table-id] nil)
+
+    pretty/PrettyPrintable
+    (pretty [_this]
+      `metadata-provider)))
+
+(defn metadata-provider
+  "Create a new MLv2 metadata provider that uses the QP store."
+  []
+  (cached ::metadata-provider
+    (lib.metadata.composed-provider/composed-metadata-provider
+     (base-metadata-provider)
+     (lib.metadata.jvm/application-database-metadata-provider (:id (database))))))
