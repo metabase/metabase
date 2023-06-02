@@ -7,19 +7,19 @@ import type { PickerItem } from "./types";
 
 import { ItemRoot, ItemContent, ItemTitle, ExpandButton } from "./Item.styled";
 
-interface Props<T> {
-  item: PickerItem<T>;
+interface Props<TId> {
+  item: PickerItem<TId>;
   name: string;
   icon: IconName | IconProps;
   color: string;
   selected: boolean;
   canSelect: boolean;
   hasChildren?: boolean;
-  onChange: (item: PickerItem<T>) => void;
-  onChangeOpenCollectionId?: (id: T) => void;
+  onChange: (item: PickerItem<TId>) => void;
+  onChangeOpenCollectionId?: (id: TId) => void;
 }
 
-function Item<T>({
+function Item<TId>({
   item,
   name,
   icon,
@@ -29,7 +29,7 @@ function Item<T>({
   hasChildren,
   onChange,
   onChangeOpenCollectionId,
-}: Props<T>) {
+}: Props<TId>) {
   const handleClick = useMemo(() => {
     if (canSelect) {
       return () => onChange(item);

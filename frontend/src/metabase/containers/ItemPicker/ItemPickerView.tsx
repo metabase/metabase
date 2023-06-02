@@ -27,14 +27,14 @@ import {
   SearchToggle,
 } from "./ItemPicker.styled";
 
-interface SearchEntityListLoaderProps<T> {
-  list: PickerItem<T>[];
+interface SearchEntityListLoaderProps<TId> {
+  list: PickerItem<TId>[];
 }
 
-interface Props<T> {
+interface Props<TId> {
   models: PickerModel[];
   openCollection: Collection;
-  collections: CollectionPickerItem<T>[];
+  collections: CollectionPickerItem<TId>[];
   searchString: string;
   searchQuery: SearchQuery;
   showSearch?: boolean;
@@ -42,20 +42,20 @@ interface Props<T> {
   crumbs: any[];
   className?: string;
   style?: React.CSSProperties;
-  onChange: (item: PickerItem<T>) => void;
+  onChange: (item: PickerItem<TId>) => void;
   onSearchStringChange: (searchString: string) => void;
-  onOpenCollectionChange: (collectionId: PickerItem<T>["id"]) => void;
+  onOpenCollectionChange: (collectionId: PickerItem<TId>["id"]) => void;
   checkCollectionMaybeHasChildren: (
-    collection: CollectionPickerItem<T>,
+    collection: CollectionPickerItem<TId>,
   ) => boolean;
-  checkIsItemSelected: (item: PickerItem<T>) => boolean;
-  checkHasWritePermissionForItem: (item: PickerItem<T>) => boolean;
+  checkIsItemSelected: (item: PickerItem<TId>) => boolean;
+  checkHasWritePermissionForItem: (item: PickerItem<TId>) => boolean;
   getCollectionIcon: (collection: Collection) => IconProps;
 }
 
 const getDefaultCollectionIconColor = () => color("text-light");
 
-function ItemPickerView<T>({
+function ItemPickerView<TId>({
   collections,
   models,
   searchString,
@@ -72,7 +72,7 @@ function ItemPickerView<T>({
   checkIsItemSelected,
   checkHasWritePermissionForItem,
   getCollectionIcon,
-}: Props<T>) {
+}: Props<TId>) {
   const [isSearchEnabled, setIsSearchEnabled] = useState(false);
 
   const isPickingNotCollection = models.some(model => model !== "collection");
@@ -134,7 +134,7 @@ function ItemPickerView<T>({
   ]);
 
   const renderCollectionListItem = useCallback(
-    (collection: CollectionPickerItem<T>) => {
+    (collection: CollectionPickerItem<TId>) => {
       const hasChildren = checkCollectionMaybeHasChildren(collection);
 
       // NOTE: this assumes the only reason you'd be selecting a collection is to modify it in some way
@@ -174,7 +174,7 @@ function ItemPickerView<T>({
   );
 
   const renderCollectionContentListItem = useCallback(
-    (item: PickerItem<T>) => {
+    (item: PickerItem<TId>) => {
       const hasPermission = checkHasWritePermissionForItem(item);
 
       if (
@@ -217,7 +217,7 @@ function ItemPickerView<T>({
         {!searchString && collections.map(renderCollectionListItem)}
         {canFetch && (
           <Search.ListLoader query={searchQuery} wrapped>
-            {({ list }: SearchEntityListLoaderProps<T>) => (
+            {({ list }: SearchEntityListLoaderProps<TId>) => (
               <div>{list.map(renderCollectionContentListItem)}</div>
             )}
           </Search.ListLoader>

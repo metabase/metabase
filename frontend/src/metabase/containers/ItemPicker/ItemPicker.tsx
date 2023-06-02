@@ -27,15 +27,15 @@ import type {
 import ItemPickerView from "./ItemPickerView";
 import { ScrollAwareLoadingAndErrorWrapper } from "./ItemPicker.styled";
 
-interface OwnProps<T> {
-  value?: PickerValue<T>;
+interface OwnProps<TId> {
+  value?: PickerValue<TId>;
   models: PickerModel[];
   entity?: typeof Collections; // collections/snippets entity
   showSearch?: boolean;
   showScroll?: boolean;
   className?: string;
   style?: React.CSSProperties;
-  onChange: (value: PickerValue<T>) => void;
+  onChange: (value: PickerValue<TId>) => void;
   initialOpenCollectionId?: CollectionId;
   collectionFilter?: (collection: Collection) => boolean;
 }
@@ -45,7 +45,7 @@ interface StateProps {
   getCollectionIcon: (collection: Collection) => IconProps;
 }
 
-type Props<T> = OwnProps<T> & StateProps;
+type Props<TId> = OwnProps<TId> & StateProps;
 
 function canWriteToCollectionOrChildren(collection: Collection) {
   return (
@@ -54,7 +54,7 @@ function canWriteToCollectionOrChildren(collection: Collection) {
   );
 }
 
-function mapStateToProps<T>(state: State, props: OwnProps<T>) {
+function mapStateToProps<TId>(state: State, props: OwnProps<TId>) {
   const entity = props.entity || Collections;
   return {
     collectionsById: entity.selectors.getExpandedCollectionsById(state, props),
@@ -62,11 +62,11 @@ function mapStateToProps<T>(state: State, props: OwnProps<T>) {
   };
 }
 
-function getEntityLoaderType<T>(state: State, props: OwnProps<T>) {
+function getEntityLoaderType<TId>(state: State, props: OwnProps<TId>) {
   return props.entity?.name ?? "collections";
 }
 
-function getItemId<T>(item: PickerItem<T> | PickerValue<T>) {
+function getItemId<TId>(item: PickerItem<TId> | PickerValue<TId>) {
   if (!item) {
     return;
   }
@@ -76,7 +76,7 @@ function getItemId<T>(item: PickerItem<T> | PickerValue<T>) {
   return item.id;
 }
 
-function ItemPicker<T>({
+function ItemPicker<TId>({
   value,
   models,
   collectionsById,
@@ -87,7 +87,7 @@ function ItemPicker<T>({
   onChange,
   getCollectionIcon,
   initialOpenCollectionId = "root",
-}: Props<T>) {
+}: Props<TId>) {
   const [openCollectionId, setOpenCollectionId] = useState<CollectionId>(
     initialOpenCollectionId,
   );
@@ -116,7 +116,7 @@ function ItemPicker<T>({
         model: "collection",
       }));
 
-    return collectionItems as CollectionPickerItem<T>[];
+    return collectionItems as CollectionPickerItem<TId>[];
   }, [openCollection, models]);
 
   const crumbs = useMemo(
@@ -142,7 +142,7 @@ function ItemPicker<T>({
   }, [models, searchString, openCollectionId]);
 
   const checkIsItemSelected = useCallback(
-    (item: PickerItem<T>) => {
+    (item: PickerItem<TId>) => {
       if (!value || !item) {
         return false;
       }
@@ -153,7 +153,7 @@ function ItemPicker<T>({
   );
 
   const checkCollectionMaybeHasChildren = useCallback(
-    (collection: CollectionPickerItem<T>) => {
+    (collection: CollectionPickerItem<TId>) => {
       if (isPickingNotCollection) {
         // Non-collection models (e.g. questions, dashboards)
         // are loaded on-demand so we don't know ahead of time
@@ -174,7 +174,7 @@ function ItemPicker<T>({
   );
 
   const checkHasWritePermissionForItem = useCallback(
-    (item: PickerItem<T>) => {
+    (item: PickerItem<TId>) => {
       // if user is selecting a collection, they must have a `write` access to it
       if (models.includes("collection") && item.model === "collection") {
         return item.can_write;
@@ -191,12 +191,15 @@ function ItemPicker<T>({
   );
 
   const handleChange = useCallback(
-    (item: PickerItem<T>) => {
+    (item: PickerItem<TId>) => {
       if (
         item.model === "collection" &&
         isRootCollection(item as unknown as Collection)
       ) {
-        onChange({ id: null, model: "collection" } as unknown as PickerItem<T>);
+        onChange({
+          id: null,
+          model: "collection",
+        } as unknown as PickerItem<TId>);
       } else {
         onChange(item);
       }
@@ -249,4 +252,4 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps),
-)(ItemPicker) as <T>(props: OwnProps<T>) => JSX.Element;
+)(ItemPicker) as <TId>(props: OwnProps<TId>) => JSX.Element;

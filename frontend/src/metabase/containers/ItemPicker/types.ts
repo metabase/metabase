@@ -4,10 +4,10 @@ import type { Collection } from "metabase-types/api";
 
 export type PickerModel = "card" | "collection" | "dataset" | "dashboard";
 
-export type PickerValue<T> = { id: T; model: PickerModel };
+export type PickerValue<TId> = { id: TId; model: PickerModel };
 
-export type PickerItem<T> = {
-  id: T;
+export type PickerItem<TId> = {
+  id: TId;
   model: PickerModel;
   collection_id: Collection["id"];
   can_write: boolean;
