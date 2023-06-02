@@ -39,10 +39,7 @@ export function DatabasePromptBanner({ location }: DatabasePromptBannerProps) {
   );
 
   return (
-    <DatabasePromptBannerRoot
-      role="banner"
-      aria-label={t`Database prompt banner`}
-    >
+    <DatabasePromptBannerRoot role="banner">
       <Prompt>{t`Connect to your database to get the most from Metabase.`}</Prompt>
       <CallToActions>
         <GetHelpButton href="https://metabase.com/help/connect">{t`Get help connecting`}</GetHelpButton>
