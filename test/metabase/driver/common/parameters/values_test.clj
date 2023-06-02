@@ -47,7 +47,7 @@
              (#'params.values/value-for-tag
               {:name "number_filter", :display-name "ID", :type :number, :required true, :default "100"}
               [{:type :number/=, :value ["20"], :target [:variable [:template-tag "number_filter"]]}])))
-      (is (= (params/map->CommaSeparatedNumbers {:numbers [20 40]})
+      (is (= [20 40]
              (#'params.values/value-for-tag
               {:name "number_filter", :display-name "ID", :type :number, :required true, :default "100"}
               [{:type :number/=, :value ["20" "40"], :target [:variable [:template-tag "number_filter"]]}]))))

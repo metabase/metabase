@@ -1,7 +1,7 @@
 (ns metabase.api.common-test
   (:require
    [clojure.test :refer :all]
-   [hawk.assert-exprs.approximately-equal :as hawk.approx]
+   [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [metabase.api.common :as api]
    [metabase.api.common.internal :as api.internal]
    [metabase.server.middleware.exceptions :as mw.exceptions]

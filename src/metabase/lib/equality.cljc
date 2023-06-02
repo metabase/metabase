@@ -3,7 +3,8 @@
   (:refer-clojure :exclude [=])
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.hierarchy :as lib.hierarchy]))
+   [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.util :as lib.util]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -85,3 +86,10 @@
     (map? x)                   ((get-method = :dispatch-type/map) x y)
     (sequential? x)            ((get-method = :dispatch-type/sequential) x y)
     :else                      (clojure.core/= x y)))
+
+(defn ref=
+  "Are two refs `x` and `y` equal?"
+  [x y]
+  (or (= x y)
+      (= (lib.util/with-default-effective-type x)
+         (lib.util/with-default-effective-type y))))

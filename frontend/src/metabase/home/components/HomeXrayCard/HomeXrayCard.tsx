@@ -1,4 +1,4 @@
-import HomeCard from "../HomeCard";
+import { HomeCard } from "../HomeCard";
 import {
   CardIcon,
   CardTitle,
@@ -6,13 +6,13 @@ import {
   CardTitleSecondary,
 } from "./HomeXrayCard.styled";
 
-export interface HomeXrayCardProps {
+interface HomeXrayCardProps {
   title: string;
   url: string;
   message: string;
 }
 
-const HomeXrayCard = ({
+export const HomeXrayCard = ({
   title,
   url,
   message,
@@ -27,6 +27,3 @@ const HomeXrayCard = ({
     </HomeCard>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default HomeXrayCard;
