@@ -1,2 +1,2 @@
 export * from "./getLeadingText";
-export * from "./renderMarkdownToHtml";
+export * from "./renderMarkdown";
