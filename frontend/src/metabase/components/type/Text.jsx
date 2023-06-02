@@ -3,6 +3,7 @@ import { color } from "metabase/lib/colors";
 
 const Text = styled.div`
   color: ${props => color(`text-${props.color}`)};
+  font-size: ${props => props.fontSize}px;
 `;
 
 Text.defaultProps = {
