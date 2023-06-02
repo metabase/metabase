@@ -134,12 +134,14 @@
   - with include_deactivatved"
   [status query group_id include_deactivated]
   (cond-> {}
-    true                               (sql.helpers/where (status-clause status include_deactivated))
-    (premium-features/segmented-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
-    (some? query)                      (sql.helpers/where (query-clause query))
-    (some? group_id)                   (sql.helpers/right-join :permissions_group_membership
-                                             [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group_id)                   (sql.helpers/where [:= :permissions_group_membership.group_id group_id])))
+    true                                               (sql.helpers/where (status-clause status include_deactivated))
+    (premium-features/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
+    (some? query)                                      (sql.helpers/where (query-clause query))
+    (some? group_id)                                   (sql.helpers/right-join
+                                                        :permissions_group_membership
+                                                        [:= :core_user.id :permissions_group_membership.user_id])
+    (some? group_id)                                   (sql.helpers/where
+                                                        [:= :permissions_group_membership.group_id group_id])))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
