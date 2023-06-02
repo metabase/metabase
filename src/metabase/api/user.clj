@@ -191,7 +191,7 @@
    - If user-visibility is `none` or the user is sandboxed, include only themselves."
   []
   (cond
-    (or (= "all users" public-settings/user-visibility) api/*is-superuser?*)
+    (or (= "all users" (public-settings/user-visibility)) api/*is-superuser?*)
     {:data   (cond-> (t2/select
                       (vec (cons User (user-visible-columns)))
                       (cond-> (user-clauses nil nil nil nil)
@@ -201,7 +201,7 @@
      :total  (t2/count User (user-clauses nil nil nil nil))
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}
-    (and (= "same group" public-settings/user-visibility) (not (premium-features/segmented-user?)))
+    (and (= "same group" (public-settings/user-visibility)) (not (premium-features/segmented-user?)))
     (let [user_group_ids (map :id (:user_group_memberships
                                    (-> (fetch-user :id api/*current-user-id*)
                                        (hydrate :user_group_memberships))))
