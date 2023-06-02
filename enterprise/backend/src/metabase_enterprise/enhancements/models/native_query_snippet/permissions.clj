@@ -21,7 +21,7 @@
   :feature :any
   ([snippet]
    (and
-    (not (premium-features/sandboxed-or-impersonated-user?))
+    (not (premium-features/sandboxed-user?))
     (snippet.perms/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :read)))
   ([model id]
@@ -32,7 +32,7 @@
   :feature :any
   ([snippet]
    (and
-    (not (premium-features/sandboxed-or-impersonated-user?))
+    (not (premium-features/sandboxed-user?))
     (snippet.perms/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :write)))
   ([model id]
@@ -43,7 +43,7 @@
   :feature :any
   [_model m]
   (and
-   (not (premium-features/sandboxed-or-impersonated-user?))
+   (not (premium-features/sandboxed-user?))
    (snippet.perms/has-any-native-permissions?)
    (has-parent-collection-perms? m :write)))
 
@@ -52,7 +52,7 @@
   :feature :any
   [snippet changes]
   (and
-   (not (premium-features/sandboxed-or-impersonated-user?))
+   (not (premium-features/sandboxed-user?))
    (snippet.perms/has-any-native-permissions?)
    (has-parent-collection-perms? snippet :write)
    (or (not (contains? changes :collection_id))
