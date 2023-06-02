@@ -11,7 +11,7 @@ import { t } from "ttag";
 import { substitute_tags } from "cljs/metabase.shared.parameters.parameters";
 import { withInstanceLanguage, siteLocale } from "metabase/lib/i18n";
 
-import { useFocus } from "metabase/hooks/use-focus";
+import { useToggle } from "metabase/hooks/use-toggle";
 
 import {
   ClickToEditWrapper,
@@ -46,7 +46,8 @@ export function Text({
 }) {
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
-  const { isFocused, toggleFocusOn, toggleFocusOff } = useFocus(justAdded);
+  const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =
+    useToggle(justAdded);
   const isPreviewing = !isFocused;
 
   const handleTextChange = text =>

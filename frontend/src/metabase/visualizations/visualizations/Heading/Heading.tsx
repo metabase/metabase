@@ -3,7 +3,7 @@ import { useMemo, MouseEvent } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 
-import { useFocus } from "metabase/hooks/use-focus";
+import { useToggle } from "metabase/hooks/use-toggle";
 import type {
   BaseDashboardOrderedCard,
   VisualizationSettings,
@@ -31,7 +31,8 @@ export function Heading({
 }: HeadingProps) {
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
-  const { isFocused, toggleFocusOn, toggleFocusOff } = useFocus(justAdded);
+  const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =
+    useToggle(justAdded);
   const isPreviewing = !isFocused;
 
   const handleTextChange = (text: string) =>
