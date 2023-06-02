@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import React, { ComponentPropsWithoutRef } from "react";
+import { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
 import { Card, Dataset } from "metabase-types/api";
 import {

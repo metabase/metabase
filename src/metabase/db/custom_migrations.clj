@@ -299,11 +299,11 @@
 
 (define-reversible-migration AddJoinAliasToColumnSettingsFieldRefs
   (let [update-one! (fn [{:keys [id visualization_settings] :as card}]
-                  (let [updated (add-join-alias-to-column-settings-refs card)]
-                    (when (not= visualization_settings updated)
-                      (t2/query-one {:update :report_card
-                                     :set    {:visualization_settings updated}
-                                     :where  [:= :id id]}))))]
+                      (let [updated (add-join-alias-to-column-settings-refs card)]
+                        (when (not= visualization_settings updated)
+                          (t2/query-one {:update :report_card
+                                         :set    {:visualization_settings updated}
+                                         :where  [:= :id id]}))))]
     (run! update-one! (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
                                            :from   [:report_card]
                                            :where  [:and

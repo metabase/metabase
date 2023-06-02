@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import Link from "metabase/core/components/Link/Link";
 import Badge from "metabase/components/Badge";

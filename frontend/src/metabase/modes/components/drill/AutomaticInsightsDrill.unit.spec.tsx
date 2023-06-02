@@ -1,4 +1,3 @@
-import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 import { DatasetColumn } from "metabase-types/api";
 import MetabaseSettings from "metabase/lib/settings";

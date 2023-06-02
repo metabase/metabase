@@ -1,4 +1,3 @@
-import React from "react";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 

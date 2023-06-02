@@ -33,7 +33,6 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -287,17 +286,17 @@
           (execute! "CREATE TABLE \"%s\".\"messages\" (\"id\" %s, \"message\" CLOB)"            username pk-type)
           (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
           (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
-          (tt/with-temp* [Table [table    {:schema username, :name "messages", :db_id (mt/id)}]
-                          Field [id-field {:table_id (u/the-id table), :name "id", :base_type "type/Integer"}]
-                          Field [_        {:table_id (u/the-id table), :name "message", :base_type "type/Text"}]]
+          (t2.with-temp/with-temp [Table table    {:schema username, :name "messages", :db_id (mt/id)}
+                                   Field id-field {:table_id (u/the-id table), :name "id", :base_type "type/Integer"}
+                                   Field _        {:table_id (u/the-id table), :name "message", :base_type "type/Text"}]
             (is (= [[1M "Hello"]
                     [2M nil]]
                    (qp.test/rows
-                     (qp/process-query
-                      {:database (mt/id)
-                       :type     :query
-                       :query    {:source-table (u/the-id table)
-                                  :order-by     [[:asc [:field (u/the-id id-field) nil]]]}}))))))))))
+                    (qp/process-query
+                     {:database (mt/id)
+                      :type     :query
+                      :query    {:source-table (u/the-id table)
+                                 :order-by     [[:asc [:field (u/the-id id-field) nil]]]}}))))))))))
 
 (deftest handle-slashes-test
   (mt/test-driver :oracle

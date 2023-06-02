@@ -1,4 +1,4 @@
-import React from "react";
+import { Component } from "react";
 import moment from "moment-timezone";
 import _ from "underscore";
 import { t } from "ttag";
@@ -19,7 +19,7 @@ type State = {
   year: number;
 };
 
-class DateQuarterYearWidget extends React.Component<Props, State> {
+class DateQuarterYearWidget extends Component<Props, State> {
   state: State = {
     quarter: null,
     year: moment().year(),

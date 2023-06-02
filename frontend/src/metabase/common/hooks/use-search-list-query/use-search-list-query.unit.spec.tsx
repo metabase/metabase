@@ -1,4 +1,3 @@
-import React from "react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { createMockCollectionItem } from "metabase-types/api/mocks";
 import { setupSearchEndpoints } from "__support__/server-mocks";

@@ -1,4 +1,4 @@
-import React, { ComponentType, useState } from "react";
+import { ComponentType, useState } from "react";
 import { connect } from "react-redux";
 
 import { t } from "ttag";

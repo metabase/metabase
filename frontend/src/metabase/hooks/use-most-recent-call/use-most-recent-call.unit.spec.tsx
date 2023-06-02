@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { render, screen } from "@testing-library/react";
 
 import { useMostRecentCall } from "./use-most-recent-call";

@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -66,8 +66,8 @@ class ParameterValueWidget extends Component {
   constructor(props) {
     super(props);
 
-    this.valuePopover = React.createRef();
-    this.trigger = React.createRef();
+    this.valuePopover = createRef();
+    this.trigger = createRef();
   }
 
   onFocusChanged = isFocused => {

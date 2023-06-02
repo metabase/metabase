@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import _ from "underscore";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";

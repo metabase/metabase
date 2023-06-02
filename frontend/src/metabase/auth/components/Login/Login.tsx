@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { Location } from "history";
 import { useSelector } from "metabase/lib/redux";

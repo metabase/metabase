@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import visualizations from "metabase/visualizations";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
-export default class ChartSettingsSidebar extends React.Component {
+export default class ChartSettingsSidebar extends Component {
   state = { sidebarPropsOverride: null };
 
   setSidebarPropsOverride = sidebarPropsOverride =>

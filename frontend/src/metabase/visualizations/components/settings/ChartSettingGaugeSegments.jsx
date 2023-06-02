@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Fragment } from "react";
 
 import { t } from "ttag";
 import _ from "underscore";
@@ -31,7 +31,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
         </thead>
         <tbody>
           {segments.map((segment, index) => (
-            <React.Fragment key={segment.index}>
+            <Fragment key={segment.index}>
               <tr>
                 <td>
                   <ColorSelector
@@ -84,7 +84,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                   />
                 </td>
               </tr>
-            </React.Fragment>
+            </Fragment>
           ))}
         </tbody>
       </table>
