@@ -9,8 +9,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.util.test :as tt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -74,7 +74,7 @@
                  {:type :query, :query {:fields [$price]}}
                  {:columns [:price]}))))))))
 
-(deftest ^:parallel col-info-for-fks-and-joins-test
+(deftest ^:parallel col-info-for-implicit-joins-test
   (mt/with-everything-store
     (mt/$ids venues
       (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk_field_id` "
@@ -83,47 +83,49 @@
                        {:fk_field_id %category_id
                         :source      :fields
                         :field_ref   $category_id->categories.name})]
-               (doall
-                (annotate/column-info
-                 {:type :query, :query {:fields [$category_id->categories.name]}}
-                 {:columns [:name]})))))
+               (annotate/column-info
+                {:type :query, :query {:fields [$category_id->categories.name]}}
+                {:columns [:name]})))))))
 
-      (testing "joins"
-        (testing (str "we should get `:fk_field_id` and information where possible when using joins; "
-                      "display_name should include the display name of the FK field (for IMPLICIT JOINS)")
-          (is (= [(merge (info-for-field :categories :name)
-                         {:display_name "Category → Name"
-                          :source       :fields
-                          :field_ref    $category_id->categories.name
-                          :fk_field_id  %category_id
-                          :source_alias "CATEGORIES__via__CATEGORY_ID"})]
-                 (doall
-                  (annotate/column-info
-                   {:type  :query
-                    :query {:fields [&CATEGORIES__via__CATEGORY_ID.categories.name]
-                            :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
-                                      :source-table $$venues
-                                      :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
-                                      :strategy     :left-join
-                                      :fk-field-id  %category_id}]}}
-                   {:columns [:name]})))))
+(deftest ^:parallel col-info-for-explicit-joins-with-fk-field-id-test
+  (mt/with-everything-store
+    (mt/$ids venues
+      (testing (str "we should get `:fk_field_id` and information where possible when using joins; "
+                    "display_name should include the display name of the FK field (for IMPLICIT JOINS)")
+        (is (= [(merge (info-for-field :categories :name)
+                       {:display_name "Category → Name"
+                        :source       :fields
+                        :field_ref    $category_id->categories.name
+                        :fk_field_id  %category_id
+                        :source_alias "CATEGORIES__via__CATEGORY_ID"})]
+               (annotate/column-info
+                {:type  :query
+                 :query {:fields [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                         :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
+                                   :source-table $$venues
+                                   :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                                   :strategy     :left-join
+                                   :fk-field-id  %category_id}]}}
+                {:columns [:name]})))))))
 
-        (testing (str "for EXPLICIT JOINS (which do not include an `:fk-field-id` in the Join info) the returned "
-                      "`:field_ref` should be have only `:join-alias`, and no `:source-field`")
-          (is (= [(merge (info-for-field :categories :name)
-                         {:display_name "Categories → Name"
-                          :source       :fields
-                          :field_ref    &Categories.categories.name
-                          :source_alias "Categories"})]
-                 (doall
-                  (annotate/column-info
-                   {:type  :query
-                    :query {:fields [&Categories.categories.name]
-                            :joins  [{:alias        "Categories"
-                                      :source-table $$venues
-                                      :condition    [:= $category_id &Categories.categories.id]
-                                      :strategy     :left-join}]}}
-                   {:columns [:name]})))))))))
+(deftest ^:parallel col-info-for-explicit-joins-without-fk-field-id-test
+  (mt/with-everything-store
+    (mt/$ids venues
+      (testing (str "for EXPLICIT JOINS (which do not include an `:fk-field-id` in the Join info) the returned "
+                    "`:field_ref` should be have only `:join-alias`, and no `:source-field`")
+        (is (= [(merge (info-for-field :categories :name)
+                       {:display_name "Categories → Name"
+                        :source       :fields
+                        :field_ref    &Categories.categories.name
+                        :source_alias "Categories"})]
+               (annotate/column-info
+                {:type  :query
+                 :query {:fields [&Categories.categories.name]
+                         :joins  [{:alias        "Categories"
+                                   :source-table $$venues
+                                   :condition    [:= $category_id &Categories.categories.id]
+                                   :strategy     :left-join}]}}
+                {:columns [:name]})))))))
 
 (deftest ^:parallel col-info-for-field-with-temporal-unit-test
   (mt/with-everything-store
@@ -136,8 +138,11 @@
                (doall
                 (annotate/column-info
                  {:type :query, :query {:fields (mt/$ids venues [!month.price])}}
-                 {:columns [:price]})))))
+                 {:columns [:price]}))))))))
 
+(deftest ^:parallel col-info-for-field-literal-with-temporal-unit-test
+  (mt/with-everything-store
+    (mt/$ids venues
       (testing "datetime unit should work on field literals too"
         (is (= [{:name         "price"
                  :base_type    :type/Number
@@ -148,8 +153,10 @@
                (doall
                 (annotate/column-info
                  {:type :query, :query {:fields [[:field "price" {:base-type :type/Number, :temporal-unit :month}]]}}
-                 {:columns [:price]}))))))
+                 {:columns [:price]}))))))))
 
+(deftest ^:parallel col-info-for-field-with-temporal-unit-from-nested-query-test
+  (mt/with-everything-store
     (testing "should add the correct info if the Field originally comes from a nested query"
       (mt/$ids checkins
         (is (= [{:name "DATE", :unit :month, :field_ref [:field %date {:temporal-unit :default}]}
@@ -209,33 +216,34 @@
 
 (deftest col-info-combine-parent-field-names-test
   (testing "For fields with parents we should return them with a combined name including parent's name"
-    (tt/with-temp* [Field [parent {:name "parent", :table_id (mt/id :venues)}]
-                    Field [child  {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]]
-     (mt/with-everything-store
+    (t2.with-temp/with-temp [Field parent {:name "parent", :table_id (mt/id :venues)}
+                             Field child  {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]
+      (mt/with-everything-store
         (is (= {:description     nil
-                 :table_id        (mt/id :venues)
-                 :semantic_type   nil
-                 :effective_type  nil
-                 ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
-                 ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
-                 ;; when the info is inferred. the solution to this might be quite extensive renaming
-                 :coercion_strategy nil
-                 :name            "parent.child"
-                 :settings        nil
-                 :field_ref       [:field (u/the-id child) nil]
-                 :nfc_path        nil
-                 :parent_id       (u/the-id parent)
-                 :id              (u/the-id child)
-                 :visibility_type :normal
-                 :display_name    "Child"
-                 :fingerprint     nil
-                 :base_type       :type/Text}
-               (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil])))))))
+                :table_id        (mt/id :venues)
+                :semantic_type   nil
+                :effective_type  nil
+                ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
+                ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
+                ;; when the info is inferred. the solution to this might be quite extensive renaming
+                :coercion_strategy nil
+                :name            "parent.child"
+                :settings        nil
+                :field_ref       [:field (u/the-id child) nil]
+                :nfc_path        nil
+                :parent_id       (u/the-id parent)
+                :id              (u/the-id child)
+                :visibility_type :normal
+                :display_name    "Child"
+                :fingerprint     nil
+                :base_type       :type/Text}
+               (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil]))))))))
 
+(deftest col-info-combine-grandparent-field-names-test
   (testing "nested-nested fields should include grandparent name (etc)"
-    (tt/with-temp* [Field [grandparent {:name "grandparent", :table_id (mt/id :venues)}]
-                    Field [parent      {:name "parent", :table_id (mt/id :venues), :parent_id (u/the-id grandparent)}]
-                    Field [child       {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]]
+    (t2.with-temp/with-temp [Field grandparent {:name "grandparent", :table_id (mt/id :venues)}
+                             Field parent      {:name "parent", :table_id (mt/id :venues), :parent_id (u/the-id grandparent)}
+                             Field child       {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]
       (mt/with-everything-store
         (is (= {:description     nil
                 :table_id        (mt/id :venues)
@@ -677,39 +685,38 @@
 
   (testing "Aggregated question with source is an aggregated models should infer display_name correctly (#23248)"
     (mt/dataset sample-dataset
-     (mt/with-temp* [Card [{card-id :id}
-                           {:dataset true
-                            :dataset_query
-                            (mt/$ids :products
-                                     {:type     :query
-                                      :database (mt/id)
-                                      :query    {:source-table $$products
-                                                 :aggregation
-                                                 [[:aggregation-options
-                                                   [:sum $price]
-                                                   {:name "sum"}]
-                                                  [:aggregation-options
-                                                   [:max $rating]
-                                                   {:name "max"}]]
-                                                 :breakout     $category
-                                                 :order-by     [[:asc $category]]}})}]]
-       (let [query (qp/preprocess
+      (t2.with-temp/with-temp [Card {card-id :id} {:dataset true
+                                                   :dataset_query
+                                                   (mt/$ids :products
+                                                     {:type     :query
+                                                      :database (mt/id)
+                                                      :query    {:source-table $$products
+                                                                 :aggregation
+                                                                 [[:aggregation-options
+                                                                   [:sum $price]
+                                                                   {:name "sum"}]
+                                                                  [:aggregation-options
+                                                                   [:max $rating]
+                                                                   {:name "max"}]]
+                                                                 :breakout     $category
+                                                                 :order-by     [[:asc $category]]}})}]
+        (let [query (qp/preprocess
                      (mt/mbql-query nil
-                                    {:source-table (str "card__" card-id)
-                                     :aggregation  [[:aggregation-options
-                                                     [:sum
-                                                      [:field
-                                                       "sum"
-                                                       {:base-type :type/Float}]]
-                                                     {:name "sum"}]
-                                                    [:aggregation-options
-                                                     [:count]
-                                                     {:name "count"}]]
-                                     :limit        1}))]
-        (is (= ["Sum of Sum of Price" "Count"]
-              (->> (add-column-info query {})
-                  :cols
-                  (map :display_name)))))))))
+                       {:source-table (str "card__" card-id)
+                        :aggregation  [[:aggregation-options
+                                        [:sum
+                                         [:field
+                                          "sum"
+                                          {:base-type :type/Float}]]
+                                        {:name "sum"}]
+                                       [:aggregation-options
+                                        [:count]
+                                        {:name "count"}]]
+                        :limit        1}))]
+          (is (= ["Sum of Sum of Price" "Count"]
+                 (->> (add-column-info query {})
+                      :cols
+                      (map :display_name)))))))))
 
 (deftest ^:parallel inception-test
   (testing "Should return correct metadata for an 'inception-style' nesting of source > source > source with a join (#14745)"
@@ -741,42 +748,43 @@
                               :field_ref    &Products.ean})
                            (ean-metadata (add-column-info nested-query {}))))))))))))))
 
-;; metabase#14787
 (deftest col-info-for-fields-from-card-test
-  (mt/dataset sample-dataset
-    (let [card-1-query (mt/mbql-query orders
-                         {:joins [{:fields       :all
-                                   :source-table $$products
-                                   :condition    [:= $product_id &Products.products.id]
-                                   :alias        "Products"}]})]
-      (mt/with-temp* [Card [{card-1-id :id} {:dataset_query card-1-query}]
-                      Card [{card-2-id :id} {:dataset_query (mt/mbql-query people)}]]
-        (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side"
-          (mt/$ids nil
-            (let [base-query (qp/preprocess
-                              (mt/mbql-query nil
-                                {:source-table (str "card__" card-1-id)
-                                 :joins        [{:fields       :all
-                                                 :source-table (str "card__" card-2-id)
-                                                 :condition    [:= $orders.user_id &Products.products.id]
-                                                 :alias        "Q"}]
-                                 :limit        1}))
-                  fields     #{%orders.discount %products.title %people.source}]
-              (is (= [{:display_name "Discount" :field_ref [:field %orders.discount nil]}
-                      {:display_name "Products → Title" :field_ref [:field %products.title nil]}
-                      {:display_name "Q → Source" :field_ref [:field %people.source {:join-alias "Q"}]}]
-                     (->> (:cols (add-column-info base-query {}))
-                          (filter #(fields (:id %)))
-                          (map #(select-keys % [:display_name :field_ref])))))))))))
+  (testing "#14787"
+    (mt/dataset sample-dataset
+      (let [card-1-query (mt/mbql-query orders
+                           {:joins [{:fields       :all
+                                     :source-table $$products
+                                     :condition    [:= $product_id &Products.products.id]
+                                     :alias        "Products"}]})]
+        (t2.with-temp/with-temp [Card {card-1-id :id} {:dataset_query card-1-query}
+                                 Card {card-2-id :id} {:dataset_query (mt/mbql-query people)}]
+          (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side"
+            (mt/$ids nil
+              (let [base-query (qp/preprocess
+                                (mt/mbql-query nil
+                                  {:source-table (str "card__" card-1-id)
+                                   :joins        [{:fields       :all
+                                                   :source-table (str "card__" card-2-id)
+                                                   :condition    [:= $orders.user_id &Products.products.id]
+                                                   :alias        "Q"}]
+                                   :limit        1}))
+                    fields     #{%orders.discount %products.title %people.source}]
+                (is (= [{:display_name "Discount" :field_ref [:field %orders.discount nil]}
+                        {:display_name "Products → Title" :field_ref [:field %products.title nil]}
+                        {:display_name "Q → Source" :field_ref [:field %people.source {:join-alias "Q"}]}]
+                       (->> (:cols (add-column-info base-query {}))
+                            (filter #(fields (:id %)))
+                            (map #(select-keys % [:display_name :field_ref])))))))))))))
 
-  (testing "Has the correct display names for joined fields from cards"
+(deftest col-info-for-joined-fields-from-card-test
+  (testing "Has the correct display names for joined fields from cards (#14787)"
     (letfn [(native [query] {:type :native
                              :native {:query query :template-tags {}}
                              :database (mt/id)})]
-      (mt/with-temp* [Card [{card1-id :id} {:dataset_query
-                                            (native "select 'foo' as A_COLUMN")}]
-                      Card [{card2-id :id} {:dataset_query
-                                            (native "select 'foo' as B_COLUMN")}]]
+      (t2.with-temp/with-temp [Card {card1-id :id} {:dataset_query
+                                                    (native "select 'foo' as A_COLUMN")}
+                               Card {card2-id :id} {:dataset_query
+                                                    (native "select 'foo' as B_COLUMN")}]
         (doseq [card-id [card1-id card2-id]]
           ;; populate metadata
           (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))
