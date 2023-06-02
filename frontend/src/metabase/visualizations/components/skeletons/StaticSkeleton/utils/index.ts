@@ -1,2 +1,2 @@
-export * from "./convertMarkdownToHtml";
 export * from "./getLeadingText";
+export * from "./renderMarkdownToHtml";
