@@ -439,5 +439,5 @@
                           {:breakout [[:field {:base-type :type/Date, :effective-type :type/Date} "expr"]]}]}
                 query'))
         (testing "description"
-          (is (= "Grouped by Expr"
+          (is (= "Grouped by expr"
                  (lib/describe-query query'))))))))
