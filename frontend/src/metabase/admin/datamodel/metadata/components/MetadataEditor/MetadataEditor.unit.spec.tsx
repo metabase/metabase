@@ -1,4 +1,4 @@
-import { IndexRedirect, Route } from "react-router";
+import { Route } from "react-router";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { within } from "@testing-library/react";
@@ -23,8 +23,7 @@ import {
   waitFor,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import MetadataTableSettings from "../MetadataTableSettings";
-import MetadataEditor from "./MetadataEditor";
+import { getMetadataRoutes } from "../../routes";
 
 const ORDERS_ID_FIELD = createOrdersIdField();
 
@@ -82,23 +81,7 @@ const setup = async ({
   setupSearchEndpoints([]);
 
   renderWithProviders(
-    <Route path="admin/datamodel">
-      <IndexRedirect to="database" />
-      <Route path="database" component={MetadataEditor} />
-      <Route path="database/:databaseId" component={MetadataEditor} />
-      <Route
-        path="database/:databaseId/schema/:schemaId"
-        component={MetadataEditor}
-      />
-      <Route
-        path="database/:databaseId/schema/:schemaId/table/:tableId"
-        component={MetadataEditor}
-      />
-      <Route
-        path="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-        component={MetadataTableSettings}
-      />
-    </Route>,
+    <Route path="admin/datamodel">{getMetadataRoutes()}</Route>,
     { withRouter: true, initialRoute },
   );
 
