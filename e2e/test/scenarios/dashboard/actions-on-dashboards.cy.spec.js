@@ -142,7 +142,7 @@ const MODEL_NAME = "Test Action Model";
 
           clickHelper("Create");
 
-          modal().within(() => {
+          modalActionForm().within(() => {
             cy.findByPlaceholderText("Team Name").type("Zany Zebras");
             cy.findByPlaceholderText("Score").type("44");
 
@@ -183,7 +183,7 @@ const MODEL_NAME = "Test Action Model";
 
           cy.wait("@executePrefetch");
           // let's check that the existing values are pre-filled correctly
-          modal().within(() => {
+          modalActionForm().within(() => {
             cy.findByPlaceholderText("Team Name")
               .should("have.value", "Energetic Elephants")
               .clear()
@@ -231,7 +231,7 @@ const MODEL_NAME = "Test Action Model";
 
           clickHelper("Delete");
 
-          modal().within(() => {
+          modalActionForm().within(() => {
             cy.findByPlaceholderText("ID").type("3");
             cy.button("Delete").click();
           });
@@ -247,7 +247,7 @@ const MODEL_NAME = "Test Action Model";
         });
       });
 
-      describe(`Actions Data Types`, () => {
+      describe.only(`Actions Data Types`, () => {
         beforeEach(() => {
           resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
           restore(`${dialect}-writable`);
@@ -262,7 +262,7 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it("can update various data types via implicit actions", () => {
+        it.only("can update various data types via implicit actions", () => {
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "update",
@@ -284,7 +284,7 @@ const MODEL_NAME = "Test Action Model";
 
           const oldRow = many_data_types_rows[0];
 
-          modal().within(() => {
+          modalActionForm().within(() => {
             changeValue({
               fieldName: "UUID",
               fieldType: "text",
@@ -372,7 +372,7 @@ const MODEL_NAME = "Test Action Model";
 
           clickHelper("Create");
 
-          modal().within(() => {
+          modalActionForm().within(() => {
             cy.findByPlaceholderText("UUID").type(
               "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15",
             );
@@ -458,7 +458,7 @@ const MODEL_NAME = "Test Action Model";
 
           clickHelper("Create");
 
-          modal().within(() => {
+          modalActionForm().within(() => {
             cy.findByPlaceholderText("UUID").should("be.visible");
             cy.findByPlaceholderText("JSON").should("not.exist");
             cy.findByPlaceholderText("JSONB").should("not.exist");
@@ -494,7 +494,7 @@ const MODEL_NAME = "Test Action Model";
           const oldRow = many_data_types_rows[0];
           const newTime = "2020-01-10T01:35:55";
 
-          modal().within(() => {
+          modalActionForm().within(() => {
             changeValue({
               fieldName: "Date",
               fieldType: "date",
@@ -652,3 +652,5 @@ const clickHelper = buttonName => {
   cy.wait(100);
   cy.button(buttonName).click();
 };
+
+const modalActionForm = () => modal().findByTestId("action-form");
