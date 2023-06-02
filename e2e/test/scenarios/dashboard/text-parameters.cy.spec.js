@@ -137,7 +137,13 @@ describe("scenarios > dashboard > parameters in text cards", () => {
       cy.findByText("Single Date").click();
 
       // Create text card and connect parameter
-      addTextBox("Variable: {{foo}}", { parseSpecialCharSequences: false });
+      cy.findByLabelText("Add a heading or text box").click();
+      popover().within(() => {
+        cy.findByText("Text").click();
+      });
+      cy.findByPlaceholderText(
+        "You can use Markdown here, and include variables {{like_this}}",
+      ).type("Variable: {{foo}}", { parseSpecialCharSequences: false });
       cy.findByText("Single Date").click();
       cy.findByText("Select…").click();
       cy.findByText("foo").click();

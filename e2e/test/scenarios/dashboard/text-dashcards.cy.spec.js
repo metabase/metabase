@@ -114,7 +114,7 @@ describe("scenarios > dashboard > text and headings", () => {
 
     it("should let you add a parameter to a dashboard with a text box (metabase#11927)", () => {
       addTextBox("text text text");
-      cy.findByLabelText("Add filter").click();
+      cy.findByLabelText("Add a filter").click();
       popover().within(() => {
         cy.findByText("Text or Category").click();
         cy.findByText("Is").click();
