@@ -2,12 +2,18 @@ import { ChangeEvent, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
+import { isSyncCompleted } from "metabase/lib/syncing";
 import Select from "metabase/core/components/Select";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import {
+  useDatabaseCandidateListQuery,
+  useDatabaseListQuery,
+} from "metabase/common/hooks";
 import { DatabaseCandidate } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";
-import HomeCaption from "../HomeCaption";
-import HomeHelpCard from "../HomeHelpCard";
-import HomeXrayCard from "../HomeXrayCard";
+import { HomeCaption } from "../HomeCaption";
+import { HomeHelpCard } from "../HomeHelpCard";
+import { HomeXrayCard } from "../HomeXrayCard";
 import {
   DatabaseLinkIcon,
   DatabaseLink,
@@ -18,15 +24,35 @@ import {
   SchemaTriggerIcon,
 } from "./HomeXraySection.styled";
 
-export interface HomeXraySectionProps {
+export const HomeXraySection = () => {
+  const databaseListState = useDatabaseListQuery();
+  const database = getXrayDatabase(databaseListState.data);
+  const candidateListState = useDatabaseCandidateListQuery({
+    query: database ? { id: database.id } : undefined,
+    enabled: database != null,
+  });
+  const isLoading = databaseListState.isLoading || candidateListState.isLoading;
+  const error = databaseListState.error ?? candidateListState.error;
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  if (!database) {
+    return null;
+  }
+
+  return (
+    <HomeXrayView database={database} candidates={candidateListState.data} />
+  );
+};
+
+interface HomeXrayViewProps {
   database: Database;
-  candidates: DatabaseCandidate[];
+  candidates?: DatabaseCandidate[];
 }
 
-const HomeXraySection = ({
-  database,
-  candidates,
-}: HomeXraySectionProps): JSX.Element => {
+const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
   const isSample = database.is_sample;
   const schemas = candidates.map(d => d.schema);
   const [schema, setSchema] = useState(schemas[0]);
@@ -119,6 +145,12 @@ const DatabaseInfo = ({ database }: DatabaseInfoProps) => {
   );
 };
 
+const getXrayDatabase = (databases: Database[] = []) => {
+  const sampleDatabase = databases.find(d => d.is_sample && isSyncCompleted(d));
+  const userDatabase = databases.find(d => !d.is_sample && isSyncCompleted(d));
+  return userDatabase ?? sampleDatabase;
+};
+
 const getMessages = (count: number) => {
   const options = [
     t`A look at`,
@@ -137,6 +169,3 @@ const getMessages = (count: number) => {
 const getSchemaOption = (schema: string) => {
   return schema;
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default HomeXraySection;
