@@ -10,7 +10,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -118,8 +117,8 @@
 
 (deftest revert-test
   (testing "Reverting through API works"
-    (tt/with-temp* [Dashboard [{:keys [id] :as dash}]
-                    Card      [{card-id :id, :as card}]]
+    (t2.with-temp/with-temp [Dashboard {:keys [id] :as dash}   {}
+                             Card      {card-id :id, :as card} {}]
       (is (=? {:id id}
               (create-dashboard-revision! (:id dash) true :rasta)))
       (let [dashcard (first (t2/insert-returning-instances! DashboardCard

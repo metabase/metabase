@@ -25,7 +25,8 @@
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
    [toucan.util.test :as tt]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time LocalDateTime)))
 
@@ -72,11 +73,11 @@
 
 (deftest retrieve-pulse-test
   (testing "this should cover all the basic Pulse attributes"
-    (tt/with-temp* [Pulse        [{pulse-id :id}   {:name "Lodi Dodi"}]
-                    PulseChannel [{channel-id :id} {:pulse_id pulse-id
-                                                    :details  {:other  "stuff"
-                                                               :emails ["foo@bar.com"]}}]
-                    Card         [{card-id :id}    {:name "Test Card"}]]
+    (t2.with-temp/with-temp [Pulse        {pulse-id :id}   {:name "Lodi Dodi"}
+                             PulseChannel {channel-id :id} {:pulse_id pulse-id
+                                                            :details  {:other  "stuff"
+                                                                       :emails ["foo@bar.com"]}}
+                             Card         {card-id :id}    {:name "Test Card"}]
       (t2/insert! PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
       (t2/insert! PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (mt/user->id :rasta))
       (is (= (merge

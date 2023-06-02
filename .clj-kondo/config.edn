@@ -163,8 +163,7 @@
    toucan.models/primary-key     {:message "Use metabase.db.util/primary-key instead of toucan.models/primary-key"}
    toucan.models/model?          {:message "Use mdb.u/toucan-model? instead of toucan.models/model?"}
    toucan.util.test/with-temp    {:message "Use t2.with-temp/with-temp instead of toucan.util.test/with-temp"}
-   ;; toucan.util.test/with-temp*   {:message "Use t2.with-temp/with-temp instead of toucan.util.test/with-temp*"}
-   }
+   toucan.util.test/with-temp*   {:message "Use t2.with-temp/with-temp instead of toucan.util.test/with-temp*"}}
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
