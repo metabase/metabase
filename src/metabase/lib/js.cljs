@@ -402,3 +402,57 @@
    (with-fields a-query -1 new-fields))
   ([a-query stage-number new-fields]
    (lib.core/with-fields a-query stage-number new-fields)))
+
+(defn ^:export fieldable-columns
+  "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query."
+  [a-query stage-number]
+  (to-array (lib.core/fieldable-columns a-query stage-number)))
+
+(defn ^:export join-strategy
+  "Get the strategy (type) of a given join as a plain string like `left-join`."
+  [a-join]
+  (u/qualified-name (lib.core/join-strategy a-join)))
+
+(defn ^:export with-join-strategy
+  "Return a copy of `a-join` with its `:strategy` set to `strategy`."
+  [a-join strategy]
+  (lib.core/with-join-strategy a-join (keyword strategy)))
+
+(defn ^:export available-join-strategies
+  "Get available join strategies for the current Database (based on the Database's
+  supported [[metabase.driver/driver-features]]) as strings like `left-join`."
+  [a-query stage-number]
+  (to-array (map u/qualified-name (lib.core/available-join-strategies a-query stage-number))))
+
+(defn ^:export join-condition-lhs-columns
+  "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
+  is the one that comes from the source Table/Card/previous stage of the query or a previous join.
+
+  If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
+  pass in the chosen RHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
+
+  Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns.
+
+  Unlike most other things that return columns, implicitly-joinable columns ARE NOT returned here."
+  [a-query stage-number rhs-column-or-nil]
+  (to-array (lib.core/join-condition-lhs-columns a-query stage-number rhs-column-or-nil)))
+
+(defn ^:export join-condition-rhs-columns
+  "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
+  is the one that belongs to the thing being joined, `joined-thing`, which can be something like a
+  Table ([[metabase.lib.metadata/TableMetadata]]), Saved Question/Model ([[metabase.lib.metadata/CardMetadata]]),
+  another query, etc. -- anything you can pass to [[join-clause]].
+
+  If the lhs-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
+  pass in the chosen LHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
+
+  Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns."
+  [a-query stage-number joined-thing lhs-column-or-nil]
+  (to-array (lib.core/join-condition-rhs-columns a-query stage-number joined-thing lhs-column-or-nil)))
+
+(defn ^:export join-condition-operators
+  "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
+  UI, this can be chosen at any point before or after choosing the LHS and RHS. Invalid options are not currently
+  filtered out based on values of the LHS or RHS, but in the future we can add this -- see #31174."
+  [a-query stage-number lhs-column-or-nil rhs-column-or-nil]
+  (to-array (lib.core/join-condition-operators a-query stage-number lhs-column-or-nil rhs-column-or-nil)))

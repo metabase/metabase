@@ -15,7 +15,7 @@ export default function QuestionNotebookButton({
   return (
     <Tooltip
       tooltip={isShowingNotebook ? t`Hide editor` : t`Show editor`}
-      placement="bottom"
+      placement="top"
     >
       <Button
         borderless={!isShowingNotebook}
