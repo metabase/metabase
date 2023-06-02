@@ -17,11 +17,6 @@ export interface ModalContentProps extends CommonModalProps {
   className?: string;
 }
 
-export interface ModalHeaderAction {
-  icon: string;
-  onClick: () => void;
-}
-
 interface CommonModalProps {
   // takes over the entire screen
   fullPageModal?: boolean;
@@ -29,7 +24,7 @@ interface CommonModalProps {
   formModal?: boolean;
   centeredTitle?: boolean;
 
-  headerActions?: ModalHeaderAction[];
+  headerActions?: ReactNode;
   onClose?: () => void;
 }
 
@@ -45,12 +40,7 @@ export default class ModalContent extends Component<ModalContentProps> {
     // standard modal
     formModal: PropTypes.bool,
 
-    headerActions: PropTypes.arrayOf(
-      PropTypes.shape({
-        icon: PropTypes.string,
-        onClick: PropTypes.func,
-      }),
-    ),
+    headerActions: PropTypes.any,
   };
 
   static defaultProps = {
@@ -126,7 +116,7 @@ export const ModalHeader = ({
   headerActions,
   onClose,
 }: ModalHeaderProps) => {
-  const hasActions = !!headerActions?.length || !!onClose;
+  const hasActions = !!headerActions || !!onClose;
   const actionIconSize = fullPageModal ? 24 : 16;
 
   return (
@@ -141,14 +131,7 @@ export const ModalHeader = ({
 
       {hasActions && (
         <ActionsWrapper>
-          {headerActions?.map(({ icon, onClick }) => (
-            <ActionIcon
-              key={icon}
-              name={icon}
-              size={actionIconSize}
-              onClick={onClick}
-            />
-          ))}
+          {headerActions}
           {onClose && (
             <ActionIcon name="close" size={actionIconSize} onClick={onClose} />
           )}

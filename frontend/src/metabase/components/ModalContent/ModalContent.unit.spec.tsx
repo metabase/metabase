@@ -1,14 +1,12 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import { getIcon, render } from "__support__/ui";
-import ModalContent, {
-  ModalContentProps,
-  ModalHeaderAction,
-} from "./ModalContent";
+import { ActionIcon } from "./ModalContent.styled";
+import ModalContent, { ModalContentProps } from "./ModalContent";
 
 describe("ModalContent", () => {
   it("should render header action buttons", () => {
-    const headerActions: ModalHeaderAction[] = [
+    const headerActions = [
       {
         icon: "pencil",
         onClick: jest.fn(),
@@ -19,7 +17,15 @@ describe("ModalContent", () => {
       },
     ];
 
-    setup({ headerActions });
+    const headerActionsEl = (
+      <>
+        {headerActions.map(({ icon, onClick }) => (
+          <ActionIcon key={icon} name={icon} onClick={onClick} />
+        ))}
+      </>
+    );
+
+    setup({ headerActions: headerActionsEl });
 
     headerActions.forEach(({ icon, onClick }) => {
       const iconEl = getIcon(icon);

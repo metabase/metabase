@@ -2,11 +2,24 @@ import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import { action } from "@storybook/addon-actions";
 import Modal from "metabase/components/Modal";
+import { ActionIcon } from "./ModalContent.styled";
 import ModalContent from "./ModalContent";
 
 export default {
   title: "Components/ModalContent",
   component: ModalContent,
+  argTypes: {
+    children: {
+      table: {
+        disable: true,
+      },
+    },
+    headerActions: {
+      table: {
+        disable: true,
+      },
+    },
+  },
 };
 
 const Template: ComponentStory<typeof ModalContent> = args => {
@@ -34,14 +47,9 @@ Default.args = {
 export const WithHeaderActions = Template.bind({});
 WithHeaderActions.args = {
   ...args,
-  headerActions: [
-    {
-      icon: "pencil",
-      onClick: action("Action1"),
-    },
-    {
-      icon: "bolt",
-      onClick: action("Action2"),
-    },
-  ],
+  headerActions: (
+    <>
+      <ActionIcon name="pencil" onClick={action("Action1")} />
+    </>
+  ),
 };
