@@ -166,11 +166,11 @@ function EntityItemMenu({
   return (
     <EntityMenuContainer align="center">
       <EntityMenu
-        triggerAriaLabel={t`Actions`}
         className={className}
         closedClassNames="hover-child hover-child--smooth"
         triggerIcon="ellipsis"
         items={actions}
+        triggerProps={{ "aria-label": t`Actions` }}
       />
     </EntityMenuContainer>
   );
