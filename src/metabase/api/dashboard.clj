@@ -414,13 +414,11 @@
   Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate
   permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
   superuser."
-  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
+  [id :as {{:keys [description name parameters show_in_getting_started enable_embedding
                    embedding_params position archived collection_id collection_position cache_ttl]
             :as dash-updates} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
-   caveats                 (s/maybe s/Str)
-   points_of_interest      (s/maybe s/Str)
    show_in_getting_started (s/maybe s/Bool)
    enable_embedding        (s/maybe s/Bool)
    embedding_params        (s/maybe su/EmbeddingParams)
@@ -442,7 +440,7 @@
       ;; non-nil
       (when-let [updates (not-empty (u/select-keys-when dash-updates
                                                         :present #{:description :position :collection_id :collection_position :cache_ttl}
-                                                        :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
+                                                        :non-nil #{:name :parameters :show_in_getting_started :enable_embedding
                                                                    :embedding_params :archived :auto_apply_filters}))]
         (t2/update! Dashboard id updates))))
   ;; now publish an event and return the updated Dashboard

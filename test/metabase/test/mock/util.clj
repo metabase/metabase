@@ -3,8 +3,6 @@
 (def table-defaults
   {:description             nil
    :entity_type             nil
-   :caveats                 nil
-   :points_of_interest      nil
    :show_in_getting_started false
    :schema                  nil
    :fields                  []
@@ -19,8 +17,6 @@
 (def field-defaults
   {:description        nil
    :table_id           true
-   :caveats            nil
-   :points_of_interest nil
    :fk_target_field_id false
    :database_is_auto_increment false
    :updated_at         true

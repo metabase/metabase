@@ -61,7 +61,7 @@
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check Segment id)
         clean-body (u/select-keys-when body
-                     :present #{:description :caveats :points_of_interest}
+                     :present #{:description}
                      :non-nil #{:archived :definition :name :show_in_getting_started})
         new-def    (->> clean-body :definition (mbql.normalize/normalize-fragment []))
         new-body   (merge
@@ -79,16 +79,14 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a `Segment` with ID."
-  [id :as {{:keys [name definition revision_message archived caveats description points_of_interest
+  [id :as {{:keys [name definition revision_message archived description
                    show_in_getting_started]
             :as   body} :body}]
   {name                    (s/maybe su/NonBlankString)
    definition              (s/maybe su/Map)
    revision_message        su/NonBlankString
    archived                (s/maybe s/Bool)
-   caveats                 (s/maybe s/Str)
    description             (s/maybe s/Str)
-   points_of_interest      (s/maybe s/Str)
    show_in_getting_started (s/maybe s/Bool)}
   (write-check-and-update-segment! id body))
 

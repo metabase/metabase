@@ -44,8 +44,6 @@
             :name                    "Toucans in the rainforest"
             :description             "Lookin' for a blueberry"
             :show_in_getting_started false
-            :caveats                 nil
-            :points_of_interest      nil
             :entity_id               (:entity_id segment)
             :definition              {:filter [:> [:field 4 nil] "2014-10-19"]}
             :archived                false}

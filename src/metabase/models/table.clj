@@ -66,6 +66,10 @@
   [{:keys [db_id schema id]}]
   (t2/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
 
+(t2/define-after-select :models/Table
+  [table]
+  (dissoc table :caveats :points_of_interest))
+
 (defmethod mi/perms-objects-set :model/Table
   [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]
   ;; To read (e.g., fetch metadata) a Table you must have either self-service data permissions for the Table, or write

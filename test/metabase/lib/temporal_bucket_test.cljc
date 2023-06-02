@@ -81,7 +81,6 @@
                 :lib/source :source/fields
                 :lib/source-column-alias "CREATED_AT"
                 :settings nil
-                :caveats nil
                 :nfc-path nil
                 :database-type "TIMESTAMP WITH TIME ZONE"
                 :effective-type :type/DateTimeWithLocalTZ
@@ -90,7 +89,6 @@
                 :active true
                 :id 3068
                 :parent-id nil
-                :points-of-interest nil
                 :visibility-type :normal
                 :lib/desired-column-alias "CREATED_AT"
                 :display-name "Created At"

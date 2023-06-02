@@ -51,6 +51,10 @@
                            ::mi/entity-id    true})
   :pre-update pre-update})
 
+(t2/define-after-select :model/Metric
+  [metric]
+  (dissoc metric :caveats :points_of_interest))
+
 (mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Metric's definition."
   [metadata-provider :- lib.metadata/MetadataProvider

@@ -145,7 +145,6 @@
    :fingerprint-version 0
    :has-field-values    :none
    :settings            nil
-   :caveats             nil
    :fk-target-field-id  nil
    :custom-position     0
    :effective-type      :type/BigInteger
@@ -162,7 +161,6 @@
    :database-required   false
    :fingerprint         nil
    :base-type           :type/BigInteger
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod field-metadata [:categories :name]
@@ -176,7 +174,6 @@
    :fingerprint-version 5
    :has-field-values    :list
    :settings            nil
-   :caveats             nil
    :fk-target-field-id  nil
    :custom-position     0
    :effective-type      :type/Text
@@ -199,7 +196,6 @@
                          :percent-state  0.0
                          :average-length 8.333333333333334}}}
    :base-type           :type/Text
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod table-metadata :categories
@@ -211,7 +207,6 @@
    :name                    "CATEGORIES"
    :fields                  [(field-metadata :categories :id)
                              (field-metadata :categories :name)]
-   :caveats                 nil
    :segments                []
    :active                  true
    :id                      (id :categories)
@@ -221,7 +216,6 @@
    :initial-sync-status     "complete"
    :display-name            "Categories"
    :metrics                 []
-   :points-of-interest      nil
    :lib/type                :metadata/table})
 
 (defmethod field-metadata [:checkins :id]
@@ -235,7 +229,6 @@
    :fingerprint-version 0
    :has-field-values    :none
    :settings            nil
-   :caveats             nil
    :fk-target-field-id  nil
    :custom-position     0
    :effective-type      :type/BigInteger
@@ -252,7 +245,6 @@
    :database-required   false
    :fingerprint         nil
    :base-type           :type/BigInteger
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod field-metadata [:checkins :date]
@@ -266,7 +258,6 @@
    :fingerprint-version 5
    :has-field-values    :none
    :settings            nil
-   :caveats             nil
    :fk-target-field-id  nil
    :custom-position     0
    :effective-type      :type/Date
@@ -284,7 +275,6 @@
    :fingerprint         {:global {:distinct-count 618, :nil% 0.0}
                          :type   #:type{:DateTime {:earliest "2013-01-03", :latest "2015-12-29"}}}
    :base-type           :type/Date
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod field-metadata [:checkins :user-id]
@@ -298,7 +288,6 @@
    :fingerprint-version 5
    :has-field-values    :none
    :settings            nil
-   :caveats             nil
    :fk-target-field-id  (id :users :id)
    :custom-position     0
    :effective-type      :type/Integer
@@ -315,7 +304,6 @@
    :database-required   false
    :fingerprint         {:global {:distinct-count 15, :nil% 0.0}}
    :base-type           :type/Integer
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod field-metadata [:checkins :venue-id]
@@ -329,7 +317,6 @@
    :fingerprint-version 5
    :has-field-values    :none
    :settings            nil
-   :caveats             nil
    :fk-target-field-id  (id :venues :id)
    :custom-position     0
    :effective-type      :type/Integer
@@ -346,7 +333,6 @@
    :database-required   false
    :fingerprint         {:global {:distinct-count 100, :nil% 0.0}}
    :base-type           :type/Integer
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod table-metadata :checkins
@@ -360,7 +346,6 @@
                              (field-metadata :checkins :date)
                              (field-metadata :checkins :user-id)
                              (field-metadata :checkins :venue-id)]
-   :caveats                 nil
    :segments                []
    :active                  true
    :id                      (id :checkins)
@@ -370,7 +355,6 @@
    :initial-sync-status     "complete"
    :display-name            "Checkins"
    :metrics                 []
-   :points-of-interest      nil
    :lib/type                :metadata/table})
 
 (defmethod field-metadata [:users :id]
@@ -384,7 +368,6 @@
    :fingerprint-version 0
    :has-field-values    :none
    :settings            nil
-   :caveats             nil
    :fk-target-field-id  nil
    :custom-position     0
    :effective-type      :type/BigInteger
@@ -401,7 +384,6 @@
    :database-required   false
    :fingerprint         nil
    :base-type           :type/BigInteger
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod field-metadata [:users :name]
@@ -415,7 +397,6 @@
    :fingerprint-version 5
    :has-field-values    :list
    :settings            nil
-   :caveats             nil
    :fk-target-field-id  nil
    :custom-position     0
    :effective-type      :type/Text
@@ -438,7 +419,6 @@
                                          :percent-state  0.0
                                          :average-length 13.266666666666667}}}
    :base-type           :type/Text
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod field-metadata [:users :last-login]
@@ -452,7 +432,6 @@
    :fingerprint-version 5
    :has-field-values    :none
    :settings            nil
-   :caveats             nil
    :fk-target-field-id  nil
    :custom-position     0
    :effective-type      :type/DateTime
@@ -470,7 +449,6 @@
    :fingerprint         {:global {:distinct-count 15, :nil% 0.0}
                          :type   #:type{:DateTime {:earliest "2014-01-01T08:30:00Z", :latest "2014-12-05T15:15:00Z"}}}
    :base-type           :type/DateTime
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod field-metadata [:users :password]
@@ -484,7 +462,6 @@
    :fingerprint-version 5
    :has-field-values    :list
    :settings            nil
-   :caveats             nil
    :fk-target-field-id  nil
    :custom-position     0
    :effective-type      :type/Text
@@ -507,7 +484,6 @@
                                          :percent-state  0.0
                                          :average-length 36.0}}}
    :base-type           :type/Text
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod table-metadata :users
@@ -521,7 +497,6 @@
                              (field-metadata :users :name)
                              (field-metadata :users :last-login)
                              (field-metadata :users :password)]
-   :caveats                 nil
    :segments                []
    :active                  true
    :id                      (id :users)
@@ -531,7 +506,6 @@
    :initial-sync-status     "complete"
    :display-name            "Users"
    :metrics                 []
-   :points-of-interest      nil
    :lib/type                :metadata/table})
 
 (defmethod field-metadata [:venues :id]
@@ -545,7 +519,6 @@
    :fingerprint-version 0
    :has-field-values    :none
    :settings            nil
-   :caveats             nil
    :fk-target-field-id  nil
    :custom-position     0
    :effective-type      :type/BigInteger
@@ -562,7 +535,6 @@
    :database-required   false
    :fingerprint         nil
    :base-type           :type/BigInteger
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod field-metadata [:venues :name]
@@ -576,7 +548,6 @@
    :fingerprint-version 5
    :has-field-values    :list
    :settings            nil
-   :caveats             nil
    :fk-target-field-id  nil
    :custom-position     0
    :effective-type      :type/Text
@@ -599,7 +570,6 @@
                                          :percent-state  0.0
                                          :average-length 15.63}}}
    :base-type           :type/Text
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod field-metadata [:venues :category-id]
@@ -613,7 +583,6 @@
    :fingerprint-version 5
    :has-field-values    :none
    :settings            nil
-   :caveats             nil
    :fk-target-field-id  (id :categories :id)
    :custom-position     0
    :effective-type      :type/Integer
@@ -630,7 +599,6 @@
    :database-required   false
    :fingerprint         {:global {:distinct-count 28, :nil% 0.0}}
    :base-type           :type/Integer
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod field-metadata [:venues :latitude]
@@ -644,7 +612,6 @@
    :fingerprint-version 5
    :has-field-values    :none
    :settings            nil
-   :caveats             nil
    :fk-target-field-id  nil
    :custom-position     0
    :effective-type      :type/Float
@@ -668,7 +635,6 @@
                                          :sd  3.4346725397190827
                                          :avg 35.505891999999996}}}
    :base-type           :type/Float
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod field-metadata [:venues :longitude]
@@ -682,7 +648,6 @@
    :fingerprint-version 5
    :has-field-values    :none
    :settings            nil
-   :caveats             nil
    :fk-target-field-id  nil
    :custom-position     0
    :effective-type      :type/Float
@@ -708,7 +673,6 @@
             :sd  14.162810671348238
             :avg -115.99848699999998}}}
    :base-type           :type/Float
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod field-metadata [:venues :price]
@@ -722,7 +686,6 @@
    :fingerprint-version 5
    :has-field-values    :list
    :settings            {:is_priceless true}
-   :caveats             nil
    :fk-target-field-id  nil
    :custom-position     0
    :effective-type      :type/Integer
@@ -746,7 +709,6 @@
                                          :sd  0.7713951678941896
                                          :avg 2.03}}}
    :base-type           :type/Integer
-   :points-of-interest  nil
    :lib/type            :metadata/field})
 
 (defmethod table-metadata :venues
@@ -762,7 +724,6 @@
                              (field-metadata :venues :latitude)
                              (field-metadata :venues :longitude)
                              (field-metadata :venues :price)]
-   :caveats                 nil
    :segments                []
    :active                  true
    :id                      (id :venues)
@@ -772,7 +733,6 @@
    :initial-sync-status     "complete"
    :display-name            "Venues"
    :metrics                 []
-   :points-of-interest      nil
    :lib/type                :metadata/table})
 
  (defmethod field-metadata [:products :id]
@@ -786,7 +746,6 @@
     :fingerprint-version        0
     :has-field-values           nil
     :settings                   nil
-    :caveats                    nil
     :fk-target-field-id         nil
     :custom-position            0
     :effective-type             :type/BigInteger
@@ -803,7 +762,6 @@
     :database-required          false
     :fingerprint                nil
     :base-type                  :type/BigInteger
-    :points-of-interest         nil
     :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:products :rating]
@@ -817,7 +775,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Float
@@ -840,7 +797,6 @@
                                                        :sd  1.3605488657451452
                                                        :avg 3.4715}}}
    :base-type                  :type/Float
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
  (defmethod field-metadata [:products :category]
@@ -854,7 +810,6 @@
     :fingerprint-version        5
     :has-field-values           :auto-list
     :settings                   nil
-    :caveats                    nil
     :fk-target-field-id         nil
     :custom-position            0
     :effective-type             :type/Text
@@ -876,7 +831,6 @@
                                                       :percent-state  0.0
                                                       :average-length 6.375}}}
     :base-type                  :type/Text
-    :points-of-interest         nil
     :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:products :price]
@@ -890,7 +844,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Float
@@ -913,7 +866,6 @@
                                                        :sd  21.711152906916283
                                                        :avg 55.746399999999994}}}
    :base-type                  :type/Float
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
  (defmethod field-metadata [:products :title]
@@ -927,7 +879,6 @@
     :fingerprint-version        5
     :has-field-values           :auto-list
     :settings                   nil
-    :caveats                    nil
     :fk-target-field-id         nil
     :custom-position            0
     :effective-type             :type/Text
@@ -949,7 +900,6 @@
                                                       :percent-state  0.0
                                                       :average-length 21.495}}}
     :base-type                  :type/Text
-    :points-of-interest         nil
     :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:products :created-at]
@@ -963,7 +913,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/DateTimeWithLocalTZ
@@ -982,7 +931,6 @@
                                 :type   {:type/DateTime {:earliest "2016-04-26T19:29:55.147Z"
                                                          :latest   "2019-04-15T13:34:19.931Z"}}}
    :base-type                  :type/DateTimeWithLocalTZ
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:products :vendor]
@@ -996,7 +944,6 @@
    :fingerprint-version        5
    :has-field-values           :auto-list
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Text
@@ -1018,7 +965,6 @@
                                                      :percent-state  0.0
                                                      :average-length 20.6}}}
    :base-type                  :type/Text
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:products :ean]
@@ -1032,7 +978,6 @@
    :fingerprint-version        5
    :has-field-values           :auto-list
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Text
@@ -1054,7 +999,6 @@
                                                      :percent-state  0.0
                                                      :average-length 13.0}}}
    :base-type                  :type/Text
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod table-metadata :products
@@ -1064,7 +1008,6 @@
    :schema                  "PUBLIC"
    :show-in-getting-started false
    :name                    "PRODUCTS"
-   :caveats                 nil
    :active                  true
    :id                      (id :products)
    :db-id                   (id)
@@ -1072,7 +1015,6 @@
    :field-order             :database
    :initial-sync-status     "complete"
    :display-name            "Products"
-   :points-of-interest      nil
    :lib/type                :metadata/table
    :fields                  [(field-metadata :products :id)
                              (field-metadata :products :rating)
@@ -1094,7 +1036,6 @@
    :fingerprint-version        0
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/BigInteger
@@ -1111,7 +1052,6 @@
    :database-required          false
    :fingerprint                nil
    :base-type                  :type/BigInteger
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :subtotal]
@@ -1125,7 +1065,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Float
@@ -1149,7 +1088,6 @@
                                           :sd  32.536819823931104
                                           :avg 77.012717}}}
    :base-type                  :type/Float
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :total]
@@ -1163,7 +1101,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Float
@@ -1187,7 +1124,6 @@
                                           :sd  34.264752087910324
                                           :avg 80.35850400000001}}}
    :base-type                  :type/Float
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :tax]
@@ -1201,7 +1137,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Float
@@ -1225,7 +1160,6 @@
                                           :sd  2.3206651358900316
                                           :avg 3.8722100000000004}}}
    :base-type                  :type/Float
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :discount]
@@ -1239,7 +1173,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Float
@@ -1262,7 +1195,6 @@
                                                        :sd  3.053736975739119
                                                        :avg 5.161009803921569}}}
    :base-type                  :type/Float
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :quantity]
@@ -1276,7 +1208,6 @@
    :fingerprint-version        5
    :has-field-values           :auto-list
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Integer
@@ -1299,7 +1230,6 @@
                                                        :sd  4.214258386403798
                                                        :avg 3.7015}}}
    :base-type                  :type/Integer
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :created-at]
@@ -1313,7 +1243,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/DateTimeWithLocalTZ
@@ -1332,7 +1261,6 @@
                                 :type   {:type/DateTime {:earliest "2016-04-30T18:56:13.352Z"
                                                          :latest   "2020-04-19T14:07:15.657Z"}}}
    :base-type                  :type/DateTimeWithLocalTZ
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :product-id]
@@ -1346,7 +1274,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         (id :products :id)
    :custom-position            0
    :effective-type             :type/Integer
@@ -1363,7 +1290,6 @@
    :database-required          false
    :fingerprint                {:global {:distinct-count 200, :nil% 0.0}}
    :base-type                  :type/Integer
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:orders :user-id]
@@ -1377,7 +1303,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         (id :people :id)
    :custom-position            0
    :effective-type             :type/Integer
@@ -1394,7 +1319,6 @@
    :database-required          false
    :fingerprint                {:global {:distinct-count 929, :nil% 0.0}}
    :base-type                  :type/Integer
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod table-metadata :orders
@@ -1404,7 +1328,6 @@
    :schema                  "PUBLIC"
    :show-in-getting-started false
    :name                    "ORDERS"
-   :caveats                 nil
    :active                  true
    :id                      (id :orders)
    :db-id                   (id)
@@ -1412,7 +1335,6 @@
    :field-order             :database
    :initial-sync-status     "complete"
    :display-name            "Orders"
-   :points-of-interest      nil
    :lib/type                :metadata/table
    :fields                  [(field-metadata :orders :id)
                              (field-metadata :orders :subtotal)
@@ -1435,7 +1357,6 @@
    :fingerprint-version        0
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/BigInteger
@@ -1452,7 +1373,6 @@
    :database-required          false
    :fingerprint                nil
    :base-type                  :type/BigInteger
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :state]
@@ -1466,7 +1386,6 @@
    :fingerprint-version        5
    :has-field-values           :auto-list
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Text
@@ -1488,7 +1407,6 @@
                                                      :percent-state  1.0
                                                      :average-length 2.0}}}
    :base-type                  :type/Text
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :city]
@@ -1502,7 +1420,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Text
@@ -1524,7 +1441,6 @@
                                                      :percent-state  0.002
                                                      :average-length 8.284}}}
    :base-type                  :type/Text
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :address]
@@ -1538,7 +1454,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Text
@@ -1560,7 +1475,6 @@
                                                      :percent-state  0.0
                                                      :average-length 20.85}}}
    :base-type                  :type/Text
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :name]
@@ -1574,7 +1488,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Text
@@ -1596,7 +1509,6 @@
                                                      :percent-state  0.0
                                                      :average-length 13.532}}}
    :base-type                  :type/Text
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :source]
@@ -1610,7 +1522,6 @@
    :fingerprint-version        5
    :has-field-values           :auto-list
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Text
@@ -1632,7 +1543,6 @@
                                                      :percent-state  0.0
                                                      :average-length 7.4084}}}
    :base-type                  :type/Text
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :zip]
@@ -1646,7 +1556,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Text
@@ -1668,7 +1577,6 @@
                                                      :percent-state  0.0
                                                      :average-length 5.0}}}
    :base-type                  :type/Text
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :latitude]
@@ -1682,7 +1590,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Float
@@ -1705,7 +1612,6 @@
                                                        :sd  6.390832341883712
                                                        :avg 39.87934670484002}}}
    :base-type                  :type/Float
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :password]
@@ -1719,7 +1625,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Text
@@ -1741,7 +1646,6 @@
                                                      :percent-state  0.0
                                                      :average-length 36.0}}}
    :base-type                  :type/Text
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :birth-date]
@@ -1755,7 +1659,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Date
@@ -1774,7 +1677,6 @@
    {:global {:distinct-count 2308, :nil% 0.0}
     :type   {:type/DateTime {:earliest "1958-04-26", :latest "2000-04-03"}}}
    :base-type                  :type/Date
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :longitude]
@@ -1788,7 +1690,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Float
@@ -1811,7 +1712,6 @@
                                                        :sd  15.399698968175663
                                                        :avg -95.18741780363999}}}
    :base-type                  :type/Float
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :email]
@@ -1825,7 +1725,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Text
@@ -1847,7 +1746,6 @@
                                                      :percent-state  0.0
                                                      :average-length 24.1824}}}
    :base-type                  :type/Text
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:people :created-at]
@@ -1861,7 +1759,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/DateTimeWithLocalTZ
@@ -1880,7 +1777,6 @@
                                 :type   {:type/DateTime {:earliest "2016-04-19T21:35:18.752Z"
                                                          :latest   "2019-04-19T14:06:27.3Z"}}}
    :base-type                  :type/DateTimeWithLocalTZ
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod table-metadata :people
@@ -1890,7 +1786,6 @@
    :schema                  "PUBLIC"
    :show-in-getting-started false
    :name                    "PEOPLE"
-   :caveats                 nil
    :active                  true
    :id                      (id :people)
    :db-id                   (id)
@@ -1898,7 +1793,6 @@
    :field-order             :database
    :initial-sync-status     "complete"
    :display-name            "People"
-   :points-of-interest      nil
    :lib/type                :metadata/table
    :fields                  [(field-metadata :people :id)
                              (field-metadata :people :state)
@@ -1925,7 +1819,6 @@
    :fingerprint-version        0
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/BigInteger
@@ -1942,7 +1835,6 @@
    :database-required          false
    :fingerprint                nil
    :base-type                  :type/BigInteger
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:reviews :created-at]
@@ -1956,7 +1848,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/DateTimeWithLocalTZ
@@ -1975,7 +1866,6 @@
                                 :type   {:type/DateTime {:earliest "2016-06-03T00:37:05.818Z"
                                                          :latest   "2020-04-19T14:15:25.677Z"}}}
    :base-type                  :type/DateTimeWithLocalTZ
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:reviews :rating]
@@ -1989,7 +1879,6 @@
    :fingerprint-version        5
    :has-field-values           :auto-list
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Integer
@@ -2012,7 +1901,6 @@
                                                        :sd  1.0443899855660577
                                                        :avg 3.987410071942446}}}
    :base-type                  :type/Integer
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:reviews :reviewer]
@@ -2026,7 +1914,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Text
@@ -2048,7 +1935,6 @@
                                                      :percent-state  0.001798561151079137
                                                      :average-length 9.972122302158274}}}
    :base-type                  :type/Text
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:reviews :body]
@@ -2062,7 +1948,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         nil
    :custom-position            0
    :effective-type             :type/Text
@@ -2084,7 +1969,6 @@
                                                      :percent-state  0.0
                                                      :average-length 177.41996402877697}}}
    :base-type                  :type/Text
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:reviews :product-id]
@@ -2098,7 +1982,6 @@
    :fingerprint-version        5
    :has-field-values           nil
    :settings                   nil
-   :caveats                    nil
    :fk-target-field-id         (id :products :id)
    :custom-position            0
    :effective-type             :type/Integer
@@ -2115,7 +1998,6 @@
    :database-required          false
    :fingerprint                {:global {:distinct-count 176, :nil% 0.0}}
    :base-type                  :type/Integer
-   :points-of-interest         nil
    :lib/type                   :metadata/field})
 
 (defmethod table-metadata :reviews
@@ -2125,7 +2007,6 @@
    :schema                  "PUBLIC"
    :show-in-getting-started false
    :name                    "REVIEWS"
-   :caveats                 nil
    :active                  true
    :id                      (id :reviews)
    :db-id                   (id)
@@ -2133,7 +2014,6 @@
    :field-order             :database
    :initial-sync-status     "complete"
    :display-name            "Reviews"
-   :points-of-interest      nil
    :lib/type                :metadata/table
    :fields                  [(field-metadata :reviews :id)
                              (field-metadata :reviews :created-at)
@@ -2176,7 +2056,6 @@
    :metadata-sync-schedule      "0 50 * * * ? *"
    :name                        "test-data"
    :settings                    nil
-   :caveats                     nil
    :tables                      [(table-metadata :categories)
                                  (table-metadata :checkins)
                                  (table-metadata :users)
@@ -2196,7 +2075,6 @@
    :initial-sync-status         "complete"
    :dbms-version                {:flavor "H2", :version "2.1.212 (2022-04-09)", :semantic-version [2 1]}
    :refingerprint               nil
-   :points-of-interest          nil
    :lib/type                    :metadata/database})
 
 (def metadata-provider

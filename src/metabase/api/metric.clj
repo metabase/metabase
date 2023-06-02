@@ -72,7 +72,7 @@
   [id {:keys [revision_message] :as body}]
   (let [existing   (api/write-check Metric id)
         clean-body (u/select-keys-when body
-                     :present #{:description :caveats :how_is_this_calculated :points_of_interest}
+                     :present #{:description :how_is_this_calculated}
                      :non-nil #{:archived :definition :name :show_in_getting_started})
         new-def    (->> clean-body :definition (mbql.normalize/normalize-fragment []))
         new-body   (merge
@@ -90,17 +90,15 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a `Metric` with ID."
-  [id :as {{:keys [name definition revision_message archived caveats description how_is_this_calculated
-                   points_of_interest show_in_getting_started]
+  [id :as {{:keys [name definition revision_message archived description how_is_this_calculated
+                   show_in_getting_started]
             :as   body} :body}]
   {name                    (s/maybe su/NonBlankString)
    definition              (s/maybe su/Map)
    revision_message        su/NonBlankString
    archived                (s/maybe s/Bool)
-   caveats                 (s/maybe s/Str)
    description             (s/maybe s/Str)
    how_is_this_calculated  (s/maybe s/Str)
-   points_of_interest      (s/maybe s/Str)
    show_in_getting_started (s/maybe s/Bool)}
   (write-check-and-update-metric! id body))
 

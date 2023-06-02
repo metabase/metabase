@@ -90,7 +90,7 @@
   (letfn [(normalize-details [db]
             (binding [*normalizing-details* true]
               (driver/normalize-db-details driver db)))]
-    (cond-> database
+    (cond-> (dissoc database :caveats :points_of_interest)
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (driver.impl/registered? driver)
       (assoc :features (driver.u/features driver database))

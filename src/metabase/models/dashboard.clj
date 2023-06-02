@@ -131,6 +131,7 @@
 (t2/define-after-select :model/Dashboard
   [dashboard]
   (-> dashboard
+      (dissoc :caveats :points_of_interest)
       public-settings/remove-public-uuid-if-public-sharing-is-disabled))
 
 (defmethod serdes/hash-fields :model/Dashboard

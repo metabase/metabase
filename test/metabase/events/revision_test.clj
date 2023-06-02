@@ -280,8 +280,6 @@
                                :entity_id               (:entity_id metric)
                                :how_is_this_calculated  nil
                                :show_in_getting_started false
-                               :caveats                 nil
-                               :points_of_interest      nil
                                :archived                false
                                :creator_id              (mt/user->id :rasta)
                                :definition              {:a "b"}}
@@ -310,8 +308,6 @@
                                :entity_id               (:entity_id metric)
                                :how_is_this_calculated  nil
                                :show_in_getting_started false
-                               :caveats                 nil
-                               :points_of_interest      nil
                                :archived                false
                                :creator_id              (mt/user->id :rasta)
                                :definition              {:a "b"}}
@@ -337,9 +333,7 @@
                                :description             "Lookin' for a blueberry"
                                :how_is_this_calculated  nil
                                :show_in_getting_started false
-                               :caveats                 nil
                                :entity_id               (:entity_id metric)
-                               :points_of_interest      nil
                                :archived                true
                                :creator_id              (mt/user->id :rasta)
                                :definition              {:a "b"}}
@@ -365,8 +359,6 @@
                 :object       {:name                    "Toucans in the rainforest"
                                :description             "Lookin' for a blueberry"
                                :show_in_getting_started false
-                               :caveats                 nil
-                               :points_of_interest      nil
                                :entity_id               (:entity_id segment)
                                :archived                false
                                :creator_id              (mt/user->id :rasta)
@@ -392,8 +384,6 @@
               :object       {:name                    "Toucans in the rainforest"
                              :description             "Lookin' for a blueberry"
                              :show_in_getting_started false
-                             :caveats                 nil
-                             :points_of_interest      nil
                              :entity_id               (:entity_id segment)
                              :archived                false
                              :creator_id              (mt/user->id :rasta)
@@ -421,8 +411,6 @@
               :object       {:name                    "Toucans in the rainforest"
                              :description             "Lookin' for a blueberry"
                              :show_in_getting_started false
-                             :caveats                 nil
-                             :points_of_interest      nil
                              :entity_id               (:entity_id segment)
                              :archived                true
                              :creator_id              (mt/user->id :rasta)

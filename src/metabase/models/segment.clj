@@ -51,6 +51,10 @@
   :hydration-keys (constantly [:segment])
   :pre-update     pre-update})
 
+(t2/define-after-select :model/Segment
+  [segment]
+  (dissoc segment :caveats :points_of_interest))
+
 (mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Segment's definition."
   [metadata-provider :- lib.metadata/MetadataProvider

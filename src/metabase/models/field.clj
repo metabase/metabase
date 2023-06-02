@@ -161,6 +161,10 @@
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
     (merge defaults field)))
 
+(t2/define-after-select :model/Field
+  [field]
+  (dissoc field :caveats :points_of_interest))
+
 ;;; Field permissions
 ;; There are several API endpoints where large instances can return many thousands of Fields. Normally Fields require
 ;; a DB call to fetch information about their Table, because a Field's permissions set is the same as its parent

@@ -76,8 +76,6 @@
     (is (= {:name                    "A Segment"
             :description             "I did it!"
             :show_in_getting_started false
-            :caveats                 nil
-            :points_of_interest      nil
             :creator_id              (mt/user->id :crowberto)
             :creator                 (user-details (mt/fetch-user :crowberto))
             :entity_id               true
@@ -89,8 +87,6 @@
                                                    {:name                    "A Segment"
                                                     :description             "I did it!"
                                                     :show_in_getting_started false
-                                                    :caveats                 nil
-                                                    :points_of_interest      nil
                                                     :table_id                id
                                                     :definition              {:filter [:= [:field 10 nil] 20]}}))))))
 
@@ -132,8 +128,6 @@
       (is (= {:name                    "Costa Rica"
               :description             nil
               :show_in_getting_started false
-              :caveats                 nil
-              :points_of_interest      nil
               :creator_id              (mt/user->id :rasta)
               :creator                 (user-details (mt/fetch-user :rasta))
               :entity_id               true
@@ -148,15 +142,13 @@
                 :name                    "Costa Rica"
                 :description             nil
                 :show_in_getting_started false
-                :caveats                 nil
-                :points_of_interest      nil
                 :table_id                456
                 :revision_message        "I got me some revisions"
                 :definition              {:filter [:!= [:field 2 nil] "cans"]}})))))))
 
 (deftest partial-update-test
   (testing "PUT /api/segment/:id"
-    (testing "Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?"
+    (testing "Can I update a segment's name without specifying `:show_in_getting_started`?"
       (mt/with-temp Segment [segment]
         ;; just make sure API call doesn't barf
         (is (some? (mt/user-http-request :crowberto :put 200 (str "segment/" (u/the-id segment))
@@ -212,8 +204,6 @@
         (is (=? {:name                    "Toucans in the rainforest"
                  :description             "Lookin' for a blueberry"
                  :show_in_getting_started false
-                 :caveats                 nil
-                 :points_of_interest      nil
                  :creator_id              (mt/user->id :rasta)
                  :creator                 (user-details (mt/fetch-user :rasta))
                  :created_at              true
@@ -247,8 +237,6 @@
       (is (= {:name                    "Toucans in the rainforest"
               :description             "Lookin' for a blueberry"
               :show_in_getting_started false
-              :caveats                 nil
-              :points_of_interest      nil
               :creator_id              (mt/user->id :crowberto)
               :creator                 (user-details (mt/fetch-user :crowberto))
               :created_at              true
@@ -338,8 +326,6 @@
                                                  :name                    "One Segment to rule them all, one segment to define them"
                                                  :description             "One segment to bring them all, and in the DataModel bind them"
                                                  :show_in_getting_started false
-                                                 :caveats                 nil
-                                                 :points_of_interest      nil
                                                  :definition              {:filter [:= [:field 2 nil] "cans"]}}]
                     Revision [{revision-id :id} {:model       "Segment"
                                                  :model_id    id
@@ -348,8 +334,6 @@
                                                                :name                    "One Segment to rule them all, one segment to define them"
                                                                :description             "One segment to bring them all, and in the DataModel bind them"
                                                                :show_in_getting_started false
-                                                               :caveats                 nil
-                                                               :points_of_interest      nil
                                                                :definition              {:filter [:= [:field 2 nil] "cans"]}}
                                                  :is_creation true}]
                     Revision [_                 {:model    "Segment"
@@ -360,8 +344,6 @@
                                                             :name                    "Changed Segment Name"
                                                             :description             "One segment to bring them all, and in the DataModel bind them"
                                                             :show_in_getting_started false
-                                                            :caveats                 nil
-                                                            :points_of_interest      nil
                                                             :definition              {:filter [:= [:field 2 nil] "cans"]}}
                                                  :message  "updated"}]]
       (testing "the api response"

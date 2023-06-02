@@ -17,8 +17,6 @@
   {:description             nil
    :how_is_this_calculated  nil
    :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
    :archived                false
    :entity_id               true
    :definition              nil})

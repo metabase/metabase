@@ -18,8 +18,6 @@
 (def ^:private metric-defaults
   {:description             nil
    :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
    :how_is_this_calculated  nil
    :created_at              true
    :updated_at              true
@@ -97,8 +95,6 @@
                                :crowberto :post 200 "metric" {:name                    "A Metric"
                                                               :description             "I did it!"
                                                               :show_in_getting_started false
-                                                              :caveats                 nil
-                                                              :points_of_interest      nil
                                                               :how_is_this_calculated  nil
                                                               :table_id                id
                                                               :definition              {:database 21
@@ -151,8 +147,6 @@
                 :name                    "Costa Rica"
                 :description             nil
                 :show_in_getting_started false
-                :caveats                 nil
-                :points_of_interest      nil
                 :how_is_this_calculated  nil
                 :table_id                456
                 :revision_message        "I got me some revisions"
@@ -253,8 +247,6 @@
                                               :name                    "One Metric to rule them all, one metric to define them"
                                               :description             "One metric to bring them all, and in the DataModel bind them"
                                               :show_in_getting_started false
-                                              :caveats                 nil
-                                              :points_of_interest      nil
                                               :how_is_this_calculated  nil
                                               :definition              {:database 123
                                                                         :query    {:filter [:= [:field 10 nil] 20]}}}]
@@ -310,16 +302,12 @@
                                                :name                    "One Metric to rule them all, one metric to define them"
                                                :description             "One metric to bring them all, and in the DataModel bind them"
                                                :show_in_getting_started false
-                                               :caveats                 nil
-                                               :points_of_interest      nil
                                                :how_is_this_calculated  nil
                                                :definition              {:creator_id              (mt/user->id :crowberto)
                                                                          :table_id                table-id
                                                                          :name                    "Reverted Metric Name"
                                                                          :description             nil
                                                                          :show_in_getting_started false
-                                                                         :caveats                 nil
-                                                                         :points_of_interest      nil
                                                                          :how_is_this_calculated  nil
                                                                          :definition              {:database 123
                                                                                                    :query    {:filter [:= [:field 10 nil] 20]}}}}]
@@ -330,8 +318,6 @@
                                                              :name                    "One Metric to rule them all, one metric to define them"
                                                              :description             "One metric to bring them all, and in the DataModel bind them"
                                                              :show_in_getting_started false
-                                                             :caveats                 nil
-                                                             :points_of_interest      nil
                                                              :how_is_this_calculated  nil
                                                              :definition              {:database 123
                                                                                        :query    {:filter [:= [:field 10 nil] 20]}}}
@@ -344,8 +330,6 @@
                                                           :name                    "Changed Metric Name"
                                                           :description             "One metric to bring them all, and in the DataModel bind them"
                                                           :show_in_getting_started false
-                                                          :caveats                 nil
-                                                          :points_of_interest      nil
                                                           :how_is_this_calculated  nil
                                                           :definition              {:database 123
                                                                                     :query    {:filter [:= [:field 10 nil] 20]}}}

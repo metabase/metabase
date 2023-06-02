@@ -40,8 +40,6 @@
     :is_full_sync                true
     :is_on_demand                false
     :description                 nil
-    :caveats                     nil
-    :points_of_interest          nil
     :features                    (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
     :cache_field_values_schedule "0 50 0 * * ? *"
     :metadata_sync_schedule      "0 50 * * * ? *"
@@ -309,7 +307,7 @@
              (dissoc (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table)))
                      :updated_at))))
     (testing "Can update description, caveat, points of interest to be empty (#11097)"
-      (doseq [property [:caveats :points_of_interest :description]]
+      (doseq [property [:description]]
         (mt/with-temp Table [table]
           (is (= ""
                  (get (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
@@ -317,7 +315,7 @@
                       property))))))
 
     (testing "Don't change visibility_type when updating properties (#22287)"
-      (doseq [property [:caveats :points_of_interest :description :display_name]]
+      (doseq [property [:description :display_name]]
         (mt/with-temp Table [table {:visibility_type "hidden"}]
          (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                                    {property (mt/random-name)})

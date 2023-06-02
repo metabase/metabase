@@ -54,8 +54,6 @@
                                      :active                  true
                                      :id                      (mt/id :users)
                                      :db_id                   (mt/id)
-                                     :caveats                 nil
-                                     :points_of_interest      nil
                                      :show_in_getting_started false})
                  :semantic_type    "type/Name"
                  :name             "NAME"

@@ -860,7 +860,7 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update a `Database`."
-  [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
+  [id :as {{:keys [name engine details is_full_sync is_on_demand description schedules
                    auto_run_queries refingerprint cache_ttl settings]} :body}]
   {name               (s/maybe su/NonBlankString)
    engine             (s/maybe DBEngineString)
@@ -868,8 +868,6 @@
    details            (s/maybe su/Map)
    schedules          (s/maybe sync.schedules/ExpandedSchedulesMap)
    description        (s/maybe s/Str)   ; s/Str instead of su/NonBlankString because we don't care
-   caveats            (s/maybe s/Str)   ; whether someone sets these to blank strings
-   points_of_interest (s/maybe s/Str)
    auto_run_queries   (s/maybe s/Bool)
    cache_ttl          (s/maybe su/IntGreaterThanZero)
    settings           (s/maybe su/Map)}
@@ -900,8 +898,6 @@
                                    :is_full_sync       full-sync?
                                    :is_on_demand       (boolean is_on_demand)
                                    :description        description
-                                   :caveats            caveats
-                                   :points_of_interest points_of_interest
                                    :auto_run_queries   auto_run_queries}
                                   ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
                                   (when (seq settings)

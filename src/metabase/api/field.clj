@@ -130,14 +130,12 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update `Field` with ID."
-  [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
+  [id :as {{:keys [description display_name fk_target_field_id semantic_type
                    coercion_strategy visibility_type has_field_values settings nfc_path json_unfolding]
             :as   body} :body}]
-  {caveats            (s/maybe su/NonBlankString)
-   description        (s/maybe su/NonBlankString)
+  {description        (s/maybe su/NonBlankString)
    display_name       (s/maybe su/NonBlankString)
    fk_target_field_id (s/maybe su/IntGreaterThanZero)
-   points_of_interest (s/maybe su/NonBlankString)
    semantic_type      (s/maybe su/FieldSemanticOrRelationTypeKeywordOrString)
    coercion_strategy  (s/maybe su/CoercionStrategyKeywordOrString)
    visibility_type    (s/maybe FieldVisibilityType)
@@ -177,7 +175,7 @@
                                               :fk_target_field_id (when-not removed-fk? fk-target-field-id)
                                               :effective_type effective-type
                                               :coercion_strategy coercion-strategy)
-                                       :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
+                                       :present #{:description :fk_target_field_id :semantic_type :visibility_type
                                                   :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
                                        :non-nil #{:display_name :settings}))))
     (when (some? json_unfolding)

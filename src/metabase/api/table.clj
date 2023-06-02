@@ -63,7 +63,7 @@
   {id ms/PositiveInt}
   (when-let [changes (not-empty (u/select-keys-when body
                                   :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                                  :present [:description :caveats :points_of_interest :visibility_type]))]
+                                  :present [:description :visibility_type]))]
     (api/check-500 (pos? (t2/update! Table id changes))))
   (let [updated-table        (t2/select-one Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
@@ -101,14 +101,12 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
   "Update `Table` with ID."
-  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
+  [id :as {{:keys [display_name entity_type visibility_type description
                    show_in_getting_started field_order], :as body} :body}]
   {display_name            (s/maybe su/NonBlankString)
    entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
    description             (s/maybe s/Str)
-   caveats                 (s/maybe s/Str)
-   points_of_interest      (s/maybe s/Str)
    show_in_getting_started (s/maybe s/Bool)
    field_order             (s/maybe FieldOrder)}
   (first (update-tables! [id] body)))
@@ -116,15 +114,13 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/"
   "Update all `Table` in `ids`."
-  [:as {{:keys [ids display_name entity_type visibility_type description caveats points_of_interest
+  [:as {{:keys [ids display_name entity_type visibility_type description
                 show_in_getting_started], :as body} :body}]
   {ids                     (su/non-empty [su/IntGreaterThanZero])
    display_name            (s/maybe su/NonBlankString)
    entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
    description             (s/maybe s/Str)
-   caveats                 (s/maybe s/Str)
-   points_of_interest      (s/maybe s/Str)
    show_in_getting_started (s/maybe s/Bool)}
   (update-tables! ids body))
 

@@ -189,7 +189,6 @@
 
 (def ^:private dashboard-defaults
   {:archived                false
-   :caveats                 nil
    :collection_id           nil
    :collection_position     nil
    :collection              true
@@ -200,7 +199,6 @@
    :entity_id               true
    :made_public_by_id       nil
    :parameters              []
-   :points_of_interest      nil
    :cache_ttl               nil
    :position                nil
    :public_uuid             nil
@@ -595,24 +593,20 @@
 
 (deftest update-dashboard-guide-columns-test
   (testing "PUT /api/dashboard/:id"
-    (testing "allow `:caveats` and `:points_of_interest` to be empty strings, and `:show_in_getting_started` should be a boolean"
+    (testing "allow `:show_in_getting_started` should be a boolean"
       (mt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
         (with-dashboards-in-writeable-collection [dashboard-id]
           (is (= (merge dashboard-defaults {:name                    "Test Dashboard"
                                             :creator_id              (mt/user->id :rasta)
                                             :collection              false
                                             :collection_id           true
-                                            :caveats                 ""
-                                            :points_of_interest      ""
                                             :cache_ttl               1337
                                             :last-edit-info
                                             {:timestamp true, :id true, :first_name "Rasta"
                                              :last_name "Toucan", :email "rasta@metabase.com"}
                                             :show_in_getting_started true})
                  (dashboard-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                                           {:caveats                 ""
-                                                            :points_of_interest      ""
-                                                            :cache_ttl               1337
+                                                           {:cache_ttl               1337
                                                             :show_in_getting_started true})))))))))
 
 (deftest update-dashboard-clear-description-test
