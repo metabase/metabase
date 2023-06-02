@@ -393,7 +393,16 @@
                                                   (meta/id :categories :name)]]]}]}
                   query')))
         (is (= "Venues, Sorted by Category → Name ascending"
-               (lib/describe-query query')))))))
+               (lib/describe-query query'))))
+      (testing "inside aggregations"
+        (let [query'        (lib/aggregate query (lib/distinct categories-name))
+              [aggregation] (lib/aggregations query')]
+          (is (= "Venues, Distinct values of Category → Name"
+                 (lib/describe-query query')))
+          (are [style expected] (= expected
+                                   (lib/display-name query' -1 aggregation style))
+            :long    "Distinct values of Category → Name"
+            :default "Distinct values of Name"))))))
 
 (deftest ^:parallel source-card-table-display-info-test
   (let [query (assoc lib.tu/venues-query :lib/metadata lib.tu/metadata-provider-with-card)
