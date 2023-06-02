@@ -286,5 +286,5 @@
     (is (= ["ID" "NAME" "a"] (expressionable-expressions-for-position 1)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position nil)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 2)))
-    (= (lib.metadata.calculation/visible-columns query)
-       (lib/expressionable-columns query nil))))
+    (is (= (lib.metadata.calculation/visible-columns query)
+           (lib/expressionable-columns query nil)))))
