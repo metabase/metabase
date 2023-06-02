@@ -367,15 +367,17 @@
                                          :where  [:= :id id]}))))]
     (run! update-one! (t2/reducible-query {:select [:id :object]
                                            :from   [:revision]
-                                           :where  [:or
-                                                    ;; these match legacy field refs in column_settings
-                                                    [:like :object "%ref\\\\\",[\\\\\"field-id%"]
-                                                    [:like :object "%ref\\\\\",[\\\\\"field-literal%"]
-                                                    [:like :object "%ref\\\\\",[\\\\\"fk->%"]
-                                                    ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
-                                                    [:like :object "%ref\\\\\\\",[\\\\\\\"field-id%"]
-                                                    [:like :object "%ref\\\\\\\",[\\\\\\\"field-literal%"]
-                                                    [:like :object "%ref\\\\\\\",[\\\\\\\"fk->%"]]}))))
+                                           :where  [:and
+                                                    [:= :model "Card"]
+                                                    [:or
+                                                     ;; these match legacy field refs in column_settings
+                                                     [:like :object "%ref\\\\\",[\\\\\"field-id%"]
+                                                     [:like :object "%ref\\\\\",[\\\\\"field-literal%"]
+                                                     [:like :object "%ref\\\\\",[\\\\\"fk->%"]
+                                                     ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
+                                                     [:like :object "%ref\\\\\\\",[\\\\\\\"field-id%"]
+                                                     [:like :object "%ref\\\\\\\",[\\\\\\\"field-literal%"]
+                                                     [:like :object "%ref\\\\\\\",[\\\\\\\"fk->%"]]]}))))
 
 (define-reversible-migration RevisionAddJoinAliasToColumnSettingsFieldRefs
   ;; This migration is essentially the same as `AddJoinAliasToColumnSettingsFieldRefs`, but for card revisions.
