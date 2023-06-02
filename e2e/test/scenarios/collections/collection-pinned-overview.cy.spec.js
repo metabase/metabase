@@ -268,13 +268,13 @@ describe("scenarios > collection pinned items overview", () => {
     openRootCollection();
 
     getPinnedSection().within(() => {
-      cy.findByText(HEADING_1_TEXT, { exact: false }).should("exist");
+      cy.findByText(HEADING_1_TEXT).should("exist");
 
-      cy.findByText(HEADING_1_MARKDOWN, { exact: false }).should("not.exist");
-      cy.findByText(HEADING_2_MARKDOWN, { exact: false }).should("not.exist");
-      cy.findByText(HEADING_2_TEXT, { exact: false }).should("not.exist");
-      cy.findByText(PARAGRAPH_MARKDOWN, { exact: false }).should("not.exist");
-      cy.findByText(PARAGRAPH_TEXT, { exact: false }).should("not.exist");
+      cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
+      cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
+      cy.findByText(HEADING_2_TEXT).should("not.exist");
+      cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
+      cy.findByText(PARAGRAPH_TEXT).should("not.exist");
     });
   });
 
@@ -289,13 +289,13 @@ describe("scenarios > collection pinned items overview", () => {
     openRootCollection();
 
     getPinnedSection().within(() => {
-      cy.findByText(HEADING_1_TEXT, { exact: false }).should("exist");
+      cy.findByText(HEADING_1_TEXT).should("exist");
 
-      cy.findByText(HEADING_1_MARKDOWN, { exact: false }).should("not.exist");
-      cy.findByText(HEADING_2_MARKDOWN, { exact: false }).should("not.exist");
-      cy.findByText(HEADING_2_TEXT, { exact: false }).should("not.exist");
-      cy.findByText(PARAGRAPH_MARKDOWN, { exact: false }).should("not.exist");
-      cy.findByText(PARAGRAPH_TEXT, { exact: false }).should("not.exist");
+      cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
+      cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
+      cy.findByText(HEADING_2_TEXT).should("not.exist");
+      cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
+      cy.findByText(PARAGRAPH_TEXT).should("not.exist");
     });
   });
 
@@ -309,13 +309,13 @@ describe("scenarios > collection pinned items overview", () => {
     openRootCollection();
 
     getPinnedSection().within(() => {
-      cy.findByText(HEADING_1_TEXT, { exact: false }).should("exist");
+      cy.findByText(HEADING_1_TEXT).should("exist");
 
-      cy.findByText(HEADING_1_MARKDOWN, { exact: false }).should("not.exist");
-      cy.findByText(HEADING_2_MARKDOWN, { exact: false }).should("not.exist");
-      cy.findByText(HEADING_2_TEXT, { exact: false }).should("not.exist");
-      cy.findByText(PARAGRAPH_MARKDOWN, { exact: false }).should("not.exist");
-      cy.findByText(PARAGRAPH_TEXT, { exact: false }).should("not.exist");
+      cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
+      cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
+      cy.findByText(HEADING_2_TEXT).should("not.exist");
+      cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
+      cy.findByText(PARAGRAPH_TEXT).should("not.exist");
     });
   });
 });

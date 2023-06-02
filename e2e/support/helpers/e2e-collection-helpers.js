@@ -80,7 +80,7 @@ export const changeCardDescription = (cardName, description) => {
   openRootCollection();
 
   getPinnedSection().within(() => {
-    cy.findByText(cardName, { exact: true }).click();
+    cy.findByText(cardName).click();
   });
 
   questionInfoButton().click();
@@ -94,7 +94,7 @@ export const changeDashboardDescription = (cardName, description) => {
   openRootCollection();
 
   getPinnedSection().within(() => {
-    cy.findByText(cardName, { exact: true }).click();
+    cy.findByText(cardName).click();
   });
 
   cy.findByTestId("dashboard-header-info-button").click();
