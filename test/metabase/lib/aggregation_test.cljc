@@ -168,10 +168,11 @@
              :display-name "Sum of double-price"}
             (col-info-for-aggregation-clause
              (lib.tu/venues-query-with-last-stage
-              {:expressions {"double-price" [:*
-                                             {:lib/uuid (str (random-uuid))}
-                                             (lib.tu/field-clause :venues :price {:base-type :type/Integer})
-                                             2]}})
+               {:expressions [[:*
+                               {:lib/uuid (str (random-uuid))
+                                :lib/expression-name "double-price"}
+                               (lib.tu/field-clause :venues :price {:base-type :type/Integer})
+                               2]]})
              [:sum
               {:lib/uuid (str (random-uuid))}
               [:expression {:base-type :type/Integer, :lib/uuid (str (random-uuid))} "double-price"]])))))
@@ -400,10 +401,8 @@
                  [{:lib/type :mbql.stage/mbql
                    :source-table int?
                    :expressions
-                   {"double-price"
-                    [:* {} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?] 2]
-                    "budget?"
-                    [:< {} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?] 2]}
+                   [[:* {:lib/expression-name "double-price"} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?] 2]
+                    [:< {:lib/expression-name "budget?"} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?] 2]]
                    :aggregation
                    [[:sum {} [:expression {} "double-price"]]
                     [:count {}]
