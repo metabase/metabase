@@ -101,6 +101,26 @@ describe("MetadataEditor", () => {
         screen.queryByPlaceholderText("Find a schema"),
       ).not.toBeInTheDocument();
     });
+
+    it("should allow to navigate to and from table settings", async () => {
+      await setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
+
+      userEvent.click(screen.getByText(ORDERS_TABLE_NO_SCHEMA.display_name));
+      userEvent.click(screen.getByLabelText("Settings"));
+      expect(await screen.findByText("Settings")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(SAMPLE_DB_NO_SCHEMA.name));
+      expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(ORDERS_TABLE_NO_SCHEMA.display_name));
+      userEvent.click(screen.getByLabelText("Settings"));
+      expect(await screen.findByText("Settings")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(ORDERS_TABLE_NO_SCHEMA.display_name));
+      expect(
+        await screen.findByDisplayValue(ORDERS_TABLE_NO_SCHEMA.display_name),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("single schema database", () => {
