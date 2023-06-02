@@ -72,7 +72,7 @@
       (:display-name (lib.metadata/table query source-table))
       ;; handle card__<id> source tables.
       (let [card-id (lib.util/string-table-id->card-id source-table)]
-        (i18n/tru "Saved Question #{0}" card-id)))
+        (i18n/tru "Question {0}" card-id)))
     (i18n/tru "Native Query")))
 
 (defmethod lib.metadata.calculation/display-info-method :mbql/join
