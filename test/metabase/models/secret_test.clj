@@ -133,19 +133,19 @@
             ^File tmp-file  (doto (File/createTempFile "value-to-file-test_" ".txt")
                               (.deleteOnExit))]
         (spit tmp-file file-secret-val)
-        (t2.with-temp/with-temp [ Secret [secret {:name   "file based secret"
-                                                  :kind   :perm-cert
-                                                  :source "file-path"
-                                                  :value  (.getAbsolutePath tmp-file)}]]
+        (t2.with-temp/with-temp [Secret secret {:name   "file based secret"
+                                                :kind   :perm-cert
+                                                :source "file-path"
+                                                :value  (.getAbsolutePath tmp-file)}]
           (is (instance? java.io.File (secret/value->file! secret nil)))
           (is (= (secret/value->file! secret nil)
                  (secret/value->file! secret nil))
               "Secret did not return the same file"))))
     (testing "for upload files (#23034)"
-      (t2.with-temp/with-temp [ Secret [secret {:name   "file based secret"
-                                                :kind   :perm-cert
-                                                :source nil
-                                                :value  (.getBytes "super secret")}]]
+      (t2.with-temp/with-temp [Secret secret {:name   "file based secret"
+                                              :kind   :perm-cert
+                                              :source nil
+                                              :value  (.getBytes "super secret")}]
         (is (instance? java.io.File (secret/value->file! secret nil)))
         (is (= (secret/value->file! secret nil)
                (secret/value->file! secret nil))
