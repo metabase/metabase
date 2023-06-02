@@ -445,6 +445,13 @@
     arg
     [arg]))
 
+(defn many-or-one
+  "Returns coll if it has multiple elements, or else returns its only element"
+  [coll]
+  (if (next coll)
+    coll
+    (first coll)))
+
 (defn select-nested-keys
   "Like `select-keys`, but can also handle nested keypaths:
 

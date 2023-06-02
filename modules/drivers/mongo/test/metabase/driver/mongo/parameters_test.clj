@@ -43,12 +43,6 @@
                            (assoc :base_type base-type))
                          {:type value-type, :value value})))
 
-(defn- comma-separated-numbers [nums]
-  (params/->CommaSeparatedNumbers nums))
-
-(defn- multiple-values [& values]
-  (params/->MultipleValues values))
-
 (deftest substitute-test
   (testing "non-parameterized strings should not be substituted"
     (is (= "wow"
@@ -99,15 +93,15 @@
                                 (substitute nil params)))))))
   (testing "comma-separated numbers"
     (is (= "{$in: [1, 2, 3]}"
-           (substitute {:id (comma-separated-numbers [1 2 3])}
+           (substitute {:id [1 2 3]}
                        [(param :id)]))))
   (testing "multiple-values single (#22486)"
     (is (= "{$in: [\"33 Taps\"]}"
-           (substitute {:id (multiple-values "33 Taps")}
+           (substitute {:id ["33 Taps"]}
                        [(param :id)]))))
   (testing "multiple-values multi (#22486)"
     (is (= "{$in: [\"33 Taps\", \"Cha Cha Chicken\"]}"
-           (substitute {:id (multiple-values "33 Taps" "Cha Cha Chicken")}
+           (substitute {:id ["33 Taps" "Cha Cha Chicken"]}
                        [(param :id)])))))
 
 (defprotocol ^:private ToBSON
@@ -164,13 +158,10 @@
           (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-11-01T00:00:00Z")}}
                                             {"date" {:$lt  (ISODate "2019-12-01T00:00:00Z")}}]}}])
                  (substitute-date-range "lastmonth")))))))
-  (testing "multiple values"
-    (doseq [[message v] {"values are a vector of numbers" [1 2 3]
-                         "comma-separated numbers"        (comma-separated-numbers [1 2 3])}]
-      (testing message
-        (is (= (to-bson [{:$match {"id" {:$in [1 2 3]}}}])
-               (substitute {:id (field-filter "id" :number v)}
-                           ["[{$match: " (param :id) "}]"]))))))
+  (testing "multiple values (numbers)"
+    (is (= (to-bson [{:$match {"id" {:$in [1 2 3]}}}])
+           (substitute {:id (field-filter "id" :number [1 2 3])}
+                       ["[{$match: " (param :id) "}]"]))))
   (testing "single date"
     (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-08")}}
                                       {"date" {:$lt  (ISODate "2019-12-09")}}]}}])
