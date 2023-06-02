@@ -360,7 +360,7 @@
 ;;;
 ;;; The condition is
 ;;;
-;;;    order.user_id  =  user_id
+;;;    order.user_id  =  user.id
 ;;;    ^^^^^^^^^^^^^  ^  ^^^^^^^
 ;;;          1        2     3
 ;;;
@@ -368,13 +368,13 @@
 ;;;
 ;;; 1. LHS/source column: the column in the left-hand side of the condition, e.g. the `order.user_id` in the example
 ;;;    above. Either comes from the source Table, or a previous stage of the query, or a previously-joined
-;;;    Table/Model/Saved Question. `order.user_id` presumably is an FK to `user_id`, and while this is typical, is not
+;;;    Table/Model/Saved Question. `order.user_id` presumably is an FK to `user.id`, and while this is typical, is not
 ;;;    required.
 ;;;
 ;;; 2. The operator: `=` in the example above. Corresponds to an `:=` MBQL clause. `=` is selected by default.
 ;;;
-;;; 3. RHS/destination/target column: the column in the right-hand side of the condition e.g. `user_id` in the example
-;;;    above. `user_id` is a column in the Table/Model/Saved Question we are joining against.
+;;; 3. RHS/destination/target column: the column in the right-hand side of the condition e.g. `user.id` in the example
+;;;    above. `user.id` is a column in the Table/Model/Saved Question we are joining against.
 ;;;
 ;;; The Query Builder allows selecting any of these three parts in any order. The functions below return possible
 ;;; options for each respective part. At the time of this writing, selecting one does not filter out incompatible
