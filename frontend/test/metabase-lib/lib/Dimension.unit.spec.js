@@ -773,7 +773,6 @@ describe("Dimension", () => {
           expect(dimension.getMLv1CompatibleDimension().mbql()).toEqual([
             "expression",
             "Hello World",
-            null,
           ]);
         });
       });
