@@ -19,19 +19,15 @@ const createImage = () => {
 };
 
 describe("getLeadingText", () => {
-  it("returns text from a sole heading", () => {
-    const h1 = createHeading("Lorem ipsum");
+  it("extracts leading text from sole elements", () => {
+    const h1 = createHeading("Lorem ipsum 1");
+    const p = createParagraph("Lorem ipsum 2");
 
     expect(getLeadingText([h1])).toBe(h1.textContent);
-  });
-
-  it("returns text from a sole p", () => {
-    const p = createParagraph("Lorem ipsum");
-
     expect(getLeadingText([p])).toBe(p.textContent);
   });
 
-  it("returns text from a mix of h1 and p", () => {
+  it("extracts leading text from a mix of h1 and p", () => {
     const h1 = createHeading("Lorem ipsum 1");
     const p = createParagraph("Lorem ipsum 2");
 
@@ -41,7 +37,7 @@ describe("getLeadingText", () => {
 
   it("skips elements without content", () => {
     const h1 = createHeading("");
-    const p = createParagraph("Lorem ipsum 2");
+    const p = createParagraph("Lorem ipsum");
     const img = createImage();
 
     expect(getLeadingText([p, img, h1])).toBe(p.textContent);
@@ -49,7 +45,7 @@ describe("getLeadingText", () => {
     expect(getLeadingText([img, h1, p])).toBe(p.textContent);
   });
 
-  it("returns an empty string when no element has any content", () => {
+  it("extracts an empty string when no element has any content", () => {
     const h1 = createHeading("");
     const p = createParagraph("");
     const img = createImage();
