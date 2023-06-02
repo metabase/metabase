@@ -36,6 +36,7 @@ import { getSetting } from "metabase/selectors/settings";
 
 import Link from "metabase/core/components/Link/Link";
 import Collections from "metabase/entities/collections/collections";
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import DashboardHeaderView from "../components/DashboardHeaderView";
 import { SIDEBAR_NAME } from "../constants";
 import {
@@ -235,7 +236,7 @@ class DashboardHeader extends Component {
     } = this.props;
 
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
-    const isAnalyticsDashboard = collection.type === "instance-analytics";
+    const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
     const hasModelActionsEnabled = Object.values(databases).some(
       hasDatabaseActionsEnabled,
@@ -363,7 +364,7 @@ class DashboardHeader extends Component {
       );
     }
 
-    if (!isFullscreen && !isEditing && !isAnalyticsDashboard && canEdit) {
+    if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
         <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
           <DashboardHeaderButton

@@ -17,7 +17,8 @@ import { Collection, Dashboard } from "metabase-types/api";
 import Icon from "metabase/components/Icon";
 import EditBar from "metabase/components/EditBar";
 import HeaderModal from "metabase/components/HeaderModal";
-import Tooltip from "metabase/core/components/Tooltip/Tooltip";
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { getCollectionIcon } from "metabase/entities/collections";
 import {
   EditWarning,
   HeaderRow,
@@ -155,12 +156,12 @@ function DashboardHeaderView({
                 data-testid="dashboard-name-heading"
                 onChange={handleUpdateCaption}
               />
-              {collection.type === "instance-analytics" && (
-                <Tooltip
+              {isInstanceAnalyticsCollection(collection) && (
+                <Icon
+                  {...getCollectionIcon(collection)}
+                  color={color("brand")}
                   tooltip={t`This is a read-only Instance Analytics dashboard.`}
-                >
-                  <Icon name="beaker" color={color("brand")} />
-                </Tooltip>
+                />
               )}
             </HeaderCaptionContainer>
             <HeaderBadges>

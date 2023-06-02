@@ -14,8 +14,9 @@ const setup = () => {
   fetchMock.get(
     "path:/api/collection/10",
     createMockCollection({
-      name: "Performance",
+      name: "Custom Reports",
       id: 10,
+      type: "instance-analytics",
     }),
   );
 
