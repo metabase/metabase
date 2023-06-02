@@ -31,7 +31,10 @@
 ;;; ---------------------------------------------- Setting up the Store ----------------------------------------------
 
 (def ^:private uninitialized-store
-  (delay (throw (Exception. (tru "Error: Query Processor store is not initialized.")))))
+  (reify
+    clojure.lang.IDeref
+    (deref [_this]
+      (throw (ex-info (tru "Error: Query Processor store is not initialized.") {})))))
 
 (def ^:private ^:dynamic *store*
   "Dynamic var used as the QP store for a given query execution."

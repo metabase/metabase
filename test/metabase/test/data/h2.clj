@@ -4,6 +4,7 @@
    [metabase.db :as mdb]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.h2]
    [metabase.driver.sql.util :as sql.u]
    [metabase.models.database :refer [Database]]
    [metabase.test.data.impl :as data.impl]
@@ -16,6 +17,8 @@
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(comment metabase.driver.h2/keep-me)
 
 (sql-jdbc.tx/add-test-extensions! :h2)
 

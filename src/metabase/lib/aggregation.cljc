@@ -118,7 +118,7 @@
     :max       "max"
     :median    "median"
     :min       "min"
-    :stddev    "std_dev"
+    :stddev    "stddev"
     :sum       "sum"
     :var       "var"))
 
