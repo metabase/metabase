@@ -212,9 +212,13 @@
                                                  :where  [:and
                                                           [:or
                                                            ;; these match legacy field refs in column_settings
-                                                           [:like :visualization_settings "%\",[\"field-id%"]
-                                                           [:like :visualization_settings "%\",[\"field-literal%"]
-                                                           [:like :visualization_settings "%\",[\"fk->%"]]]})))))
+                                                           [:like :visualization_settings "%ref\\\\\",[\\\\\"field-id%"]
+                                                           [:like :visualization_settings "%ref\\\\\",[\\\\\"field-literal%"]
+                                                           [:like :visualization_settings "%ref\\\\\",[\\\\\"fk->%"]
+                                                           ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
+                                                           [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field-id%"]
+                                                           [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field-literal%"]
+                                                           [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"fk->%"]]]})))))
 
 (defn- update-legacy-field-refs-in-result-metadata [result-metadata]
   (let [old-to-new (fn [ref]
@@ -246,9 +250,10 @@
                                          :result_metadata updated}))))
                             (t2/reducible-query {:select [:id :result_metadata]
                                                  :from   [:report_card]
-                                                 :where  [:and
-                                                          [:<> :result_metadata nil]
-                                                          [:<> :result_metadata "[]"]]})))))
+                                                 :where  [:or
+                                                           [:like :result_metadata "%field-id%"]
+                                                           [:like :result_metadata "%field-literal%"]
+                                                           [:like :result_metadata "%fk->%"]]})))))
 
 (defn- remove-opts
   "Removes options from the `field_ref` options map. If the resulting map is empty, it's replaced it with nil."
