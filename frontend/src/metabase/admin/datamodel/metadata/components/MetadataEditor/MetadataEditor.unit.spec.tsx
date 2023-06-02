@@ -33,11 +33,11 @@ const SAMPLE_DB = createSampleDatabase({
   tables: [ORDERS_TABLE, PRODUCTS_TABLE],
 });
 
-const PEOPLE_TABLE = createPeopleTable({
+const PEOPLE_TABLE_MULTI_SCHEMA = createPeopleTable({
   db_id: 2,
 });
 
-const REVIEWS_TABLE = createReviewsTable({
+const REVIEWS_TABLE_MULTI_SCHEMA = createReviewsTable({
   db_id: 2,
   schema: "PRIVATE",
 });
@@ -45,7 +45,18 @@ const REVIEWS_TABLE = createReviewsTable({
 const SAMPLE_DB_MULTI_SCHEMA = createSampleDatabase({
   id: 2,
   name: "Multi schema",
-  tables: [PEOPLE_TABLE, REVIEWS_TABLE],
+  tables: [PEOPLE_TABLE_MULTI_SCHEMA, REVIEWS_TABLE_MULTI_SCHEMA],
+});
+
+const ORDERS_TABLE_NO_SCHEMA = createOrdersTable({
+  id: 10,
+  schema: "",
+});
+
+const SAMPLE_DB_NO_SCHEMA = createSampleDatabase({
+  id: 3,
+  name: "No schema",
+  tables: [ORDERS_TABLE_NO_SCHEMA],
 });
 
 interface SetupOpts {
@@ -85,6 +96,20 @@ const setup = async ({
 };
 
 describe("MetadataEditor", () => {
+  describe("no schema database", () => {
+    it("should select the first database and skip schema selection by default", async () => {
+      await setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
+
+      expect(screen.getByText(SAMPLE_DB_NO_SCHEMA.name)).toBeInTheDocument();
+      expect(
+        screen.getByText(ORDERS_TABLE_NO_SCHEMA.display_name),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText("Find a schema"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("single schema database", () => {
     it("should select the first database and the only schema by default", async () => {
       await setup();
@@ -143,6 +168,8 @@ describe("MetadataEditor", () => {
 
       userEvent.click(screen.getByRole("radio", { name: "Original schema" }));
       expect(screen.getByText(ORDERS_TABLE.name)).toBeInTheDocument();
+      expect(screen.getByText(field.name)).toBeInTheDocument();
+      expect(screen.queryByText(field.display_name)).not.toBeInTheDocument();
     });
 
     it("should display visible tables", async () => {
@@ -290,65 +317,81 @@ describe("MetadataEditor", () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
       expect(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name)).toBeInTheDocument();
-      expect(screen.getByText(PEOPLE_TABLE.schema)).toBeInTheDocument();
-      expect(screen.getByText(REVIEWS_TABLE.schema)).toBeInTheDocument();
       expect(
-        screen.queryByText(PEOPLE_TABLE.display_name),
+        screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(REVIEWS_TABLE_MULTI_SCHEMA.schema),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       ).not.toBeInTheDocument();
     });
 
     it("should allow to search for a schema", async () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      const searchValue = PEOPLE_TABLE.schema.substring(0, 3);
+      const searchValue = PEOPLE_TABLE_MULTI_SCHEMA.schema.substring(0, 3);
       userEvent.type(screen.getByPlaceholderText("Find a schema"), searchValue);
 
-      expect(screen.getByText(PEOPLE_TABLE.schema)).toBeInTheDocument();
-      expect(screen.queryByText(REVIEWS_TABLE.schema)).not.toBeInTheDocument();
+      expect(
+        screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(REVIEWS_TABLE_MULTI_SCHEMA.schema),
+      ).not.toBeInTheDocument();
     });
 
     it("should allow to search for a table", async () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
       expect(
-        await screen.findByText(PEOPLE_TABLE.display_name),
+        await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       ).toBeInTheDocument();
       expect(
-        screen.queryByText(REVIEWS_TABLE.display_name),
+        screen.queryByText(REVIEWS_TABLE_MULTI_SCHEMA.display_name),
       ).not.toBeInTheDocument();
 
       userEvent.click(screen.getByText("Schemas"));
-      expect(screen.getByText(PEOPLE_TABLE.schema)).toBeInTheDocument();
-      expect(screen.getByText(REVIEWS_TABLE.schema)).toBeInTheDocument();
+      expect(
+        screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(REVIEWS_TABLE_MULTI_SCHEMA.schema),
+      ).toBeInTheDocument();
     });
 
     it("should allow to navigate to and from table settings", async () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
-      userEvent.click(await screen.findByText(PEOPLE_TABLE.display_name));
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
+      userEvent.click(
+        await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
+      );
       userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
       userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
       expect(await screen.findByText("2 schemas")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
-      userEvent.click(screen.getByText(PEOPLE_TABLE.display_name));
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
       userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
       expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
 
-      userEvent.click(await screen.findByText(PEOPLE_TABLE.display_name));
+      userEvent.click(
+        await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
+      );
       userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(PEOPLE_TABLE.display_name));
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
       expect(
-        await screen.findByDisplayValue(PEOPLE_TABLE.display_name),
+        await screen.findByDisplayValue(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       ).toBeInTheDocument();
     });
   });
@@ -362,9 +405,11 @@ describe("MetadataEditor", () => {
 
       userEvent.click(screen.getByText(SAMPLE_DB.name));
       userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
-      userEvent.click(await screen.findByText(PEOPLE_TABLE.schema));
+      userEvent.click(
+        await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+      );
       expect(
-        await screen.findByText(PEOPLE_TABLE.display_name),
+        await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       ).toBeInTheDocument();
     });
   });
