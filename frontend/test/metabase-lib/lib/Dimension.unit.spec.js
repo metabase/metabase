@@ -755,6 +755,28 @@ describe("Dimension", () => {
           });
         });
       });
+
+      describe("getMLv1CompatibleDimension", () => {
+        it("should strip away *-type options", () => {
+          const dimension = Dimension.parseMBQL(
+            [
+              "expression",
+              "Hello World",
+              {
+                "base-type": "type/Text",
+                "effective-type": "type/Text",
+              },
+            ],
+            metadata,
+          );
+
+          expect(dimension.getMLv1CompatibleDimension().mbql()).toEqual([
+            "expression",
+            "Hello World",
+            null,
+          ]);
+        });
+      });
     });
 
     describe("dimensions()", () => {
@@ -966,6 +988,28 @@ describe("Dimension", () => {
         it("should return an int field for count", () => {
           const { base_type } = aggregation(["count"]).field();
           expect(base_type).toBe("type/Integer");
+        });
+      });
+
+      describe("getMLv1CompatibleDimension", () => {
+        it("should strip away *-type options", () => {
+          const dimension = Dimension.parseMBQL(
+            [
+              "aggregation",
+              1,
+              {
+                "base-type": "type/Integer",
+                "effective-type": "type/Integer",
+              },
+            ],
+            metadata,
+          );
+
+          expect(dimension.getMLv1CompatibleDimension().mbql()).toEqual([
+            "aggregation",
+            1,
+            null,
+          ]);
         });
       });
     });

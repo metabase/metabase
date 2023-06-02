@@ -1307,6 +1307,10 @@ export class ExpressionDimension extends Dimension {
     });
   }
 
+  getMLv1CompatibleDimension() {
+    return this.withoutOptions("base-type", "effective-type");
+  }
+
   icon(): string {
     const field = this.field();
     return field ? field.icon() : "unknown";
@@ -1481,6 +1485,10 @@ export class AggregationDimension extends Dimension {
     });
   }
 
+  getMLv1CompatibleDimension() {
+    return this.withoutOptions("base-type", "effective-type");
+  }
+
   /**
    * Raw aggregation
    */
@@ -1527,6 +1535,19 @@ export class AggregationDimension extends Dimension {
 
   mbql() {
     return ["aggregation", this._aggregationIndex, this._options];
+  }
+
+  withoutOptions(...options: string[]): AggregationDimension {
+    if (!this._options) {
+      return this;
+    }
+
+    return new AggregationDimension(
+      this._aggregationIndex,
+      _.omit(this._options, ...options),
+      this._metadata,
+      this._query,
+    );
   }
 
   icon() {
