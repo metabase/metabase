@@ -10,7 +10,8 @@
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.models :refer [NativeQuerySnippet]]
    [metabase.query-processor :as qp]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)))
 
@@ -403,20 +404,20 @@
 
 (deftest e2e-snippet-test
   (mt/test-driver :mongo
-    (is (= [[1 "African"]
-            [2 "American"]
-            [3 "Artisan"]]
-           (mt/with-temp NativeQuerySnippet [snippet {:name    "first 3 checkins"
-                                                      :content (to-bson {:_id {:$in [1 2 3]}})}]
+    (t2.with-temp/with-temp [NativeQuerySnippet snippet {:name    "first 3 checkins"
+                                                         :content (to-bson {:_id {:$in [1 2 3]}})}]
+      (is (= [[1 "African"]
+              [2 "American"]
+              [3 "Artisan"]]
              (mt/rows
-               (qp/process-query
-                 (mt/query categories
-                           {:type       :native
-                            :native     {:query         (json/generate-string [{:$match (json-raw "{{snippet: first 3 checkins}}")}])
-                                         :collection    "categories"
-                                         :template-tags {"snippet: first 3 checkins" {:name         "snippet: first 3 checkins"
-                                                                                      :display-name "Snippet: First 3 checkins"
-                                                                                      :type         :snippet
-                                                                                      :snippet-name "first 3 checkins"
-                                                                                      :snippet-id   (:id snippet)}}}
-                            :parameters []}))))))))
+              (qp/process-query
+               (mt/query categories
+                 {:type       :native
+                  :native     {:query         (json/generate-string [{:$match (json-raw "{{snippet: first 3 checkins}}")}])
+                               :collection    "categories"
+                               :template-tags {"snippet: first 3 checkins" {:name         "snippet: first 3 checkins"
+                                                                            :display-name "Snippet: First 3 checkins"
+                                                                            :type         :snippet
+                                                                            :snippet-name "first 3 checkins"
+                                                                            :snippet-id   (:id snippet)}}}
+                  :parameters []}))))))))
