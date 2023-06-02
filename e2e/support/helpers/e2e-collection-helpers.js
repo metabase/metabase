@@ -70,3 +70,22 @@ export const openUnpinnedItemMenu = name => {
     cy.findByText(name).closest("tr").icon("ellipsis").click();
   });
 };
+
+export const openRootCollection = () => {
+  cy.visit("/collection/root");
+  cy.wait("@getPinnedItems");
+};
+
+export const changeCardDescription = (cardName, description) => {
+  openRootCollection();
+
+  getPinnedSection().within(() => {
+    cy.findByText(cardName).click();
+  });
+
+  cy.findByTestId("qb-header-info-button").click();
+
+  cy.findByTestId("sidebar-right").within(() => {
+    cy.findByRole("textbox").type(description).blur();
+  });
+};

@@ -1,9 +1,11 @@
 import {
   popover,
   restore,
+  changeCardDescription,
   dragAndDrop,
   getPinnedSection,
   openPinnedItemMenu,
+  openRootCollection,
   openUnpinnedItemMenu,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -49,6 +51,18 @@ const SQL_QUESTION_DETAILS = {
     query: "select {{filter}}",
   },
 };
+
+const HEADING_1_TEXT = "Heading 1";
+const HEADING_1_MARKDOWN = `# ${HEADING_1_TEXT}`;
+const HEADING_2_TEXT = "Heading 2";
+const HEADING_2_MARKDOWN = `## ${HEADING_2_TEXT}`;
+const PARAGRAPH_TEXT = "Paragraph with link";
+const PARAGRAPH_MARKDOWN = "Paragraph with [link](https://example.com)";
+const MARKDOWN = [
+  HEADING_1_MARKDOWN,
+  HEADING_2_MARKDOWN,
+  PARAGRAPH_MARKDOWN,
+].join("\n");
 
 describe("scenarios > collection pinned items overview", () => {
   beforeEach(() => {
@@ -241,9 +255,25 @@ describe("scenarios > collection pinned items overview", () => {
       .findByText("Orders, Count, Grouped by Created At (year)")
       .should("exist");
   });
-});
 
-const openRootCollection = () => {
-  cy.visit("/collection/root");
-  cy.wait("@getPinnedItems");
-};
+  it("should render only the first line of description without markdown formatting on pinned models", () => {
+    cy.request("PUT", "/api/card/1", { dataset: true });
+
+    openRootCollection();
+    openUnpinnedItemMenu(MODEL_NAME);
+    popover().findByText("Pin this").click();
+    cy.wait("@getPinnedItems");
+    changeCardDescription(MODEL_NAME, MARKDOWN);
+    openRootCollection();
+
+    getPinnedSection().within(() => {
+      cy.findByText(HEADING_1_MARKDOWN, { exact: false }).should("not.exist");
+      cy.findByText(HEADING_1_TEXT, { exact: false }).should("exist");
+      cy.findByText(HEADING_2_MARKDOWN, { exact: false }).should("not.exist");
+      cy.findByText(HEADING_2_TEXT, { exact: false }).should("not.exist");
+      cy.findByText(HEADING_1_TEXT, { exact: false }).should("exist");
+      cy.findByText(PARAGRAPH_MARKDOWN, { exact: false }).should("not.exist");
+      cy.findByText(PARAGRAPH_TEXT, { exact: false }).should("not.exist");
+    });
+  });
+});
