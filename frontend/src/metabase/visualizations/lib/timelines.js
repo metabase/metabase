@@ -148,21 +148,17 @@ function renderEventTicks({
     .attr("transform", (d, i) => `translate(${eventPoints[i]}, 0)`);
 
   eventTicks
-    .insert(d => {
-      const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    .append("g")
+    .attr("transform", getIconTransform())
+    .html(d => {
       const icon = getIcon(d);
-      const iconSvgText = Icons[icon].source;
-
-      group.innerHTML = iconSvgText;
-      const svg = group.firstChild;
-      svg.classList.add("event-icon");
-      svg.setAttribute("width", ICON_SIZE);
-      svg.setAttribute("height", ICON_SIZE);
-      svg.setAttribute("aria-label", `${icon} icon`);
-
-      return group;
+      return Icons[icon].source;
     })
-    .attr("transform", () => getIconTransform());
+    .select("svg")
+    .attr("width", RECT_SIZE)
+    .attr("height", RECT_SIZE)
+    .attr("class", "event-icon")
+    .attr("aria-label", d => `${getIcon(d)} icon`);
 
   eventTicks
     .append("rect")
