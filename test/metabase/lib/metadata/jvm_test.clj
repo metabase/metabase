@@ -3,15 +3,23 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.test :as mt]))
 
 (deftest ^:parallel fetch-field-test
   (let [field (#'lib.metadata.jvm/fetch-instance :metadata/field (mt/id :categories :id))]
     (is (not (me/humanize (mc/validate lib.metadata/ColumnMetadata field))))))
+
+(deftest ^:parallel fetch-database-test
+  (is (=? {:lib/type :metadata/database}
+          (lib.metadata/database (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))
+  (testing "Should return nil correctly"
+    (is (nil? (lib.metadata.protocols/database (lib.metadata.jvm/application-database-metadata-provider Integer/MAX_VALUE))))))
 
 (deftest ^:parallel saved-question-metadata-test
   (let [card  {:dataset-query {:database (mt/id)
@@ -35,3 +43,50 @@
              {:lib/desired-column-alias "Cat__ID"}
              {:lib/desired-column-alias "Cat__NAME"}]
             (lib.metadata.calculation/metadata query)))))
+
+(deftest ^:parallel join-with-aggregation-reference-in-fields-metadata-test
+  (mt/dataset sample-dataset
+    (let [query (mt/mbql-query products
+                  {:joins [{:source-query {:source-table $$orders
+                                           :breakout     [$orders.product_id]
+                                           :aggregation  [[:sum $orders.quantity]]}
+                            :alias        "Orders"
+                            :condition    [:= $id &Orders.orders.product_id]
+                            :fields       [&Orders.orders.product_id
+                                           &Orders.*sum/Integer]}]
+                   :fields [$id]})
+          mlv2-query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                (lib.convert/->pMBQL query))]
+      (is (=? [{:base-type :type/BigInteger
+                :semantic-type :type/PK
+                :table-id (mt/id :products)
+                :name "ID"
+                :lib/source :source/fields
+                :lib/source-column-alias "ID"
+                :effective-type :type/BigInteger
+                :id (mt/id :products :id)
+                :lib/desired-column-alias "ID"
+                :display-name "ID"}
+               {:metabase.lib.field/join-alias "Orders"
+                :base-type :type/Integer
+                :semantic-type :type/FK
+                :table-id (mt/id :orders)
+                :name "PRODUCT_ID"
+                :lib/source :source/joins
+                :lib/source-column-alias "PRODUCT_ID"
+                :effective-type :type/Integer
+                :id (mt/id :orders :product_id)
+                :lib/desired-column-alias "Orders__PRODUCT_ID"
+                :display-name "Product ID"
+                :source_alias "Orders"}
+               {:metabase.lib.field/join-alias "Orders"
+                :lib/type :metadata/field
+                :base-type :type/Integer
+                :name "sum"
+                :lib/source :source/joins
+                :lib/source-column-alias "sum"
+                :effective-type :type/Integer
+                :lib/desired-column-alias "Orders__sum"
+                :display-name "Sum"
+                :source_alias "Orders"}]
+              (lib.metadata.calculation/metadata mlv2-query))))))

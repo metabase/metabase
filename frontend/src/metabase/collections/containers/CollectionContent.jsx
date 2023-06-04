@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 import { useDropzone } from "react-dropzone";
@@ -10,11 +10,11 @@ import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getIsBookmarked } from "metabase/collections/selectors";
 import { getSetting } from "metabase/selectors/settings";
 import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import Header from "metabase/collections/containers/CollectionHeader";
@@ -32,6 +32,7 @@ import { isSmallScreen } from "metabase/lib/dom";
 import Databases from "metabase/entities/databases";
 
 import UploadOverlay from "../components/UploadOverlay";
+import { getComposedDragProps } from "./utils";
 
 import {
   CollectionEmptyContent,
@@ -65,7 +66,6 @@ function mapStateToProps(state, props) {
   return {
     isAdmin: getUserIsAdmin(state),
     isBookmarked: getIsBookmarked(state, props),
-    metadata: getMetadata(state),
     isNavbarOpen: getIsNavbarOpen(state),
     uploadsEnabled: canAccessUploadsDb,
   };
@@ -87,7 +87,6 @@ function CollectionContent({
   createBookmark,
   deleteBookmark,
   isAdmin,
-  metadata,
   isNavbarOpen,
   openNavbar,
   uploadFile,
@@ -203,7 +202,7 @@ function CollectionContent({
 
   const canUpload = uploadsEnabled && collection.can_write;
 
-  const rootProps = canUpload ? getRootProps() : {};
+  const dropzoneProps = canUpload ? getComposedDragProps(getRootProps()) : {};
 
   const unpinnedQuery = {
     collection: collectionId,
@@ -232,119 +231,129 @@ function CollectionContent({
         const hasPinnedItems = pinnedItems.length > 0;
 
         return (
-          <CollectionRoot {...rootProps}>
-            {canUpload && <UploadOverlay isDragActive={isDragActive} />}
+          <CollectionRoot {...dropzoneProps}>
+            {canUpload && (
+              <UploadOverlay
+                isDragActive={isDragActive}
+                collection={collection}
+              />
+            )}
             <CollectionMain>
-              <Header
-                collection={collection}
-                isAdmin={isAdmin}
-                isBookmarked={isBookmarked}
-                isPersonalCollectionChild={isPersonalCollectionChild(
-                  collection,
-                  collectionList,
-                )}
-                onCreateBookmark={handleCreateBookmark}
-                onDeleteBookmark={handleDeleteBookmark}
-                canUpload={canUpload}
-              />
-              <PinnedItemOverview
-                databases={databases}
-                bookmarks={bookmarks}
-                createBookmark={createBookmark}
-                deleteBookmark={deleteBookmark}
-                items={pinnedItems}
-                collection={collection}
-                metadata={metadata}
-                onMove={handleMove}
-                onCopy={handleCopy}
-                onToggleSelected={toggleItem}
-              />
-              <Search.ListLoader
-                query={unpinnedQuery}
-                loadingAndErrorWrapper={false}
-                keepListWhileLoading
-                wrapped
-              >
-                {({
-                  list: unpinnedItems = [],
-                  metadata = {},
-                  loading: loadingUnpinnedItems,
-                }) => {
-                  const hasPagination = metadata.total > PAGE_SIZE;
+              <ErrorBoundary>
+                <Header
+                  collection={collection}
+                  isAdmin={isAdmin}
+                  isBookmarked={isBookmarked}
+                  isPersonalCollectionChild={isPersonalCollectionChild(
+                    collection,
+                    collectionList,
+                  )}
+                  onCreateBookmark={handleCreateBookmark}
+                  onDeleteBookmark={handleDeleteBookmark}
+                  canUpload={canUpload}
+                />
+              </ErrorBoundary>
+              <ErrorBoundary>
+                <PinnedItemOverview
+                  databases={databases}
+                  bookmarks={bookmarks}
+                  createBookmark={createBookmark}
+                  deleteBookmark={deleteBookmark}
+                  items={pinnedItems}
+                  collection={collection}
+                  onMove={handleMove}
+                  onCopy={handleCopy}
+                  onToggleSelected={toggleItem}
+                />
+              </ErrorBoundary>
+              <ErrorBoundary>
+                <Search.ListLoader
+                  query={unpinnedQuery}
+                  loadingAndErrorWrapper={false}
+                  keepListWhileLoading
+                  wrapped
+                >
+                  {({
+                    list: unpinnedItems = [],
+                    metadata = {},
+                    loading: loadingUnpinnedItems,
+                  }) => {
+                    const hasPagination = metadata.total > PAGE_SIZE;
 
-                  const unselected = [...pinnedItems, ...unpinnedItems].filter(
-                    item => !getIsSelected(item),
-                  );
-                  const hasUnselected = unselected.length > 0;
-
-                  const handleSelectAll = () => {
-                    toggleAll(unselected);
-                  };
-
-                  const loading = loadingPinnedItems || loadingUnpinnedItems;
-                  const isEmpty =
-                    !loading && !hasPinnedItems && unpinnedItems.length === 0;
-
-                  if (isEmpty && !loadingUnpinnedItems) {
-                    return (
-                      <CollectionEmptyContent>
-                        <CollectionEmptyState collectionId={collectionId} />
-                      </CollectionEmptyContent>
+                    const unselected = unpinnedItems.filter(
+                      item => !getIsSelected(item),
                     );
-                  }
+                    const hasUnselected = unselected.length > 0;
 
-                  return (
-                    <CollectionTable data-testid="collection-table">
-                      <ItemsTable
-                        databases={databases}
-                        bookmarks={bookmarks}
-                        createBookmark={createBookmark}
-                        deleteBookmark={deleteBookmark}
-                        items={unpinnedItems}
-                        collection={collection}
-                        sortingOptions={unpinnedItemsSorting}
-                        onSortingOptionsChange={
-                          handleUnpinnedItemsSortingChange
-                        }
-                        selectedItems={selected}
-                        hasUnselected={hasUnselected}
-                        getIsSelected={getIsSelected}
-                        onToggleSelected={toggleItem}
-                        onDrop={clear}
-                        onMove={handleMove}
-                        onCopy={handleCopy}
-                        onSelectAll={handleSelectAll}
-                        onSelectNone={clear}
-                      />
-                      <div className="flex justify-end my3">
-                        {hasPagination && (
-                          <PaginationControls
-                            showTotal
-                            page={page}
-                            pageSize={PAGE_SIZE}
-                            total={metadata.total}
-                            itemsLength={unpinnedItems.length}
-                            onNextPage={handleNextPage}
-                            onPreviousPage={handlePreviousPage}
-                          />
-                        )}
-                      </div>
-                      <BulkActions
-                        selected={selected}
-                        collection={collection}
-                        onArchive={handleBulkArchive}
-                        onMoveStart={handleBulkMoveStart}
-                        onMove={handleBulkMove}
-                        onCloseModal={handleCloseModal}
-                        onCopy={clear}
-                        selectedItems={selectedItems}
-                        selectedAction={selectedAction}
-                        isNavbarOpen={isNavbarOpen}
-                      />
-                    </CollectionTable>
-                  );
-                }}
-              </Search.ListLoader>
+                    const handleSelectAll = () => {
+                      toggleAll(unselected);
+                    };
+
+                    const loading = loadingPinnedItems || loadingUnpinnedItems;
+                    const isEmpty =
+                      !loading && !hasPinnedItems && unpinnedItems.length === 0;
+
+                    if (isEmpty && !loadingUnpinnedItems) {
+                      return (
+                        <CollectionEmptyContent>
+                          <CollectionEmptyState collectionId={collectionId} />
+                        </CollectionEmptyContent>
+                      );
+                    }
+
+                    return (
+                      <CollectionTable data-testid="collection-table">
+                        <ItemsTable
+                          databases={databases}
+                          bookmarks={bookmarks}
+                          createBookmark={createBookmark}
+                          deleteBookmark={deleteBookmark}
+                          items={unpinnedItems}
+                          collection={collection}
+                          sortingOptions={unpinnedItemsSorting}
+                          onSortingOptionsChange={
+                            handleUnpinnedItemsSortingChange
+                          }
+                          selectedItems={selected}
+                          hasUnselected={hasUnselected}
+                          getIsSelected={getIsSelected}
+                          onToggleSelected={toggleItem}
+                          onDrop={clear}
+                          onMove={handleMove}
+                          onCopy={handleCopy}
+                          onSelectAll={handleSelectAll}
+                          onSelectNone={clear}
+                        />
+                        <div className="flex justify-end my3">
+                          {hasPagination && (
+                            <PaginationControls
+                              showTotal
+                              page={page}
+                              pageSize={PAGE_SIZE}
+                              total={metadata.total}
+                              itemsLength={unpinnedItems.length}
+                              onNextPage={handleNextPage}
+                              onPreviousPage={handlePreviousPage}
+                            />
+                          )}
+                        </div>
+                        <BulkActions
+                          selected={selected}
+                          collection={collection}
+                          onArchive={handleBulkArchive}
+                          onMoveStart={handleBulkMoveStart}
+                          onMove={handleBulkMove}
+                          onCloseModal={handleCloseModal}
+                          onCopy={clear}
+                          selectedItems={selectedItems}
+                          selectedAction={selectedAction}
+                          isNavbarOpen={isNavbarOpen}
+                        />
+                      </CollectionTable>
+                    );
+                  }}
+                </Search.ListLoader>
+              </ErrorBoundary>
             </CollectionMain>
             <ItemsDragLayer
               selectedItems={selected}

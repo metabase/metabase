@@ -1,4 +1,4 @@
-import React, { ChangeEvent, ReactNode, useCallback } from "react";
+import { ChangeEvent, ReactNode, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import { Link } from "react-router";
@@ -133,4 +133,5 @@ export const getFieldRawName = (field: Field) => {
   return field.nfc_path ? field.nfc_path.join(".") : field.name;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(MetadataTableColumn);

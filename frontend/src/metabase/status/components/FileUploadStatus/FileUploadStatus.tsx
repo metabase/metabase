@@ -1,5 +1,3 @@
-import React from "react";
-
 import { useSelector } from "metabase/lib/redux";
 import { getAllUploads } from "metabase/redux/uploads";
 import Collections from "metabase/entities/collections/collections";
@@ -57,6 +55,7 @@ const FileUploadStatusContent = ({
   return <FileUploadStatusLarge uploads={uploads} collection={collection} />;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Collections.loadList({ loadingAndErrorWrapper: false })(
   FileUploadStatus,
 );

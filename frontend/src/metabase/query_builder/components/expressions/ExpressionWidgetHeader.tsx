@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import { Header, HeaderButton } from "./ExpressionWidgetHeader.styled";
@@ -11,7 +10,7 @@ interface Props {
   onBack: () => void;
 }
 
-const ExpressionWidgetHeader = ({
+export const ExpressionWidgetHeader = ({
   title = DEFAULT_SECTION_NAME,
   onBack,
 }: Props): JSX.Element => {
@@ -23,5 +22,3 @@ const ExpressionWidgetHeader = ({
     </Header>
   );
 };
-
-export default ExpressionWidgetHeader;

@@ -1,6 +1,5 @@
-import React from "react";
 import * as Urls from "metabase/lib/urls";
-import Icon from "metabase/components/Icon/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import { BackButtonLink } from "./MetadataBackButton.styled";
 
@@ -28,4 +27,5 @@ const MetadataBackButton = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MetadataBackButton;

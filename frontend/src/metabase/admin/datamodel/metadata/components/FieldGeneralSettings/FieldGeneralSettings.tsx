@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useCallback, useMemo } from "react";
+import { ChangeEvent, useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";
@@ -352,4 +352,5 @@ const FieldCachedValuesSection = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(FieldGeneralSettings);

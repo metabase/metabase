@@ -27,7 +27,8 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -190,9 +191,9 @@
 
 (deftest check-that-we-can-export-the-results-of-a-nested-query
   (mt/with-temp-copy-of-db
-    (mt/with-temp Card [card {:dataset_query {:database (mt/id)
-                                              :type     :native
-                                              :native   {:query "SELECT * FROM USERS;"}}}]
+    (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
+                                                        :type     :native
+                                                        :native   {:query "SELECT * FROM USERS;"}}}]
       (letfn [(do-test []
                 (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
                                                    :query (json/generate-string
@@ -515,7 +516,7 @@
     (testing "fallback to field-values"
       (with-redefs [api.dataset/parameter-field-values (constantly "field-values")]
         (testing "if value-field not found in source card"
-          (mt/with-temp Card [{source-card-id :id}]
+          (t2.with-temp/with-temp [Card {source-card-id :id}]
             (is (= "field-values"
                    (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
                                          {:parameter  {:values_source_type   "card"
@@ -526,7 +527,7 @@
                                                        :id                   "abc"}})))))
 
         (testing "if value-field not found in source card"
-          (mt/with-temp Card [{source-card-id :id} {:archived true}]
+          (t2.with-temp/with-temp [Card {source-card-id :id} {:archived true}]
             (is (= "field-values"
                    (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
                                          {:parameter  {:values_source_type   "card"

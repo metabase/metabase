@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import { ReactNode } from "react";
 import { extractCollectionId } from "metabase/lib/urls";
 import CollectionContent from "../../containers/CollectionContent";
 
@@ -26,4 +26,5 @@ const CollectionLanding = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CollectionLanding;

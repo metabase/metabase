@@ -1,8 +1,7 @@
-import React from "react";
 import { updateIn } from "icepick";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { COLLAPSED_ROWS_SETTING } from "metabase/lib/data_grid";
 

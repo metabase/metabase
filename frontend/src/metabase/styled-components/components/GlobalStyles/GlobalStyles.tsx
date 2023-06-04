@@ -1,4 +1,3 @@
-import React from "react";
 import { css, Global } from "@emotion/react";
 import { FontFile } from "metabase-types/api";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
@@ -32,4 +31,5 @@ const GlobalStyles = ({ font, fontFiles }: GlobalStylesProps): JSX.Element => {
   return <Global styles={styles} />;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default GlobalStyles;

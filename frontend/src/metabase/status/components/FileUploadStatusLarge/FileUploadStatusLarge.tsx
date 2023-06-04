@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import Link from "metabase/core/components/Link";
 import { Collection } from "metabase-types/api";
@@ -68,4 +67,5 @@ const getDescription = (upload: FileUpload) => {
   return "";
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FileUploadLarge;

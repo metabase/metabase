@@ -1,12 +1,12 @@
 /* eslint "react/prop-types": "warn" */
 /*eslint-disable react/no-danger */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 
 import { t } from "ttag";
 import cx from "classnames";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Tooltip from "metabase/core/components/Tooltip";
 

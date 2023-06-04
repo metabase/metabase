@@ -18,6 +18,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
@@ -39,10 +40,10 @@
     (filter mi/can-read? <>)
     (hydrate <> :can_write)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch an alert by ID"
   [id]
+  {id ms/PositiveInt}
   (-> (api/read-check (pulse/retrieve-alert id))
       (hydrate :can_write)))
 
@@ -243,10 +244,10 @@
       ;; Finally, return the updated Alert
       updated-alert)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:id/subscription"
+(api/defendpoint DELETE "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
   [id]
+  {id ms/PositiveInt}
   (validation/check-has-application-permission :subscription false)
   (let [alert (pulse/retrieve-alert id)]
     (api/read-check alert)

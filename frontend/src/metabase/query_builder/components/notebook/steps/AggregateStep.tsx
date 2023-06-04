@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
@@ -53,4 +52,5 @@ function AggregateStep({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AggregateStep;

@@ -48,7 +48,7 @@
     [:dispatch-type/integer ::field.id]
     [:dispatch-type/string ::field.literal]]])
 
-(defmethod expression/type-of* :field
+(defmethod expression/type-of-method :field
   [[_tag opts _id-or-name]]
   (or ((some-fn :effective-type :base-type) opts)
       ::expression/type.unknown))
@@ -56,7 +56,7 @@
 (mbql-clause/define-tuple-mbql-clause :expression
   ::common/non-blank-string)
 
-(defmethod expression/type-of* :expression
+(defmethod expression/type-of-method :expression
   [[_tag opts _expression-name]]
   (or ((some-fn :effective-type :base-type) opts)
       ::expression/type.unknown))
@@ -74,7 +74,7 @@
    ::aggregation-options
    :string])
 
-(defmethod expression/type-of* :aggregation
+(defmethod expression/type-of-method :aggregation
   [[_tag opts _index]]
   (or ((some-fn :effective-type :base-type) opts)
       ::expression/type.unknown))

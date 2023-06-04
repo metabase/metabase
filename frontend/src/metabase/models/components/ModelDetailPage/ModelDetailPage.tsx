@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import TabContent from "metabase/core/components/TabContent";
@@ -111,4 +110,5 @@ function ModelDetailPage({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelDetailPage;

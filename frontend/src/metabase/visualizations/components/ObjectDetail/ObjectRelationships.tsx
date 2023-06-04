@@ -1,15 +1,14 @@
-import React from "react";
 import { jt, t } from "ttag";
 import { inflect } from "inflection";
 
-import { ForeignKey } from "metabase-types/api";
-
 import IconBorder from "metabase/components/IconBorder";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
+import type ForeignKey from "metabase-lib/metadata/ForeignKey";
 
+import { ForeignKeyReferences } from "./types";
 import {
   ObjectRelationContent,
   ObjectRelationships,
@@ -18,9 +17,7 @@ import {
 export interface RelationshipsProps {
   objectName: string;
   tableForeignKeys: ForeignKey[];
-  tableForeignKeyReferences: {
-    [key: number]: { status: number; value: number };
-  };
+  tableForeignKeyReferences: ForeignKeyReferences;
   foreignKeyClicked: (fk: ForeignKey) => void;
 }
 
@@ -37,7 +34,9 @@ export function Relationships({
   const fkCountsByTable = foreignKeyCountsByOriginTable(tableForeignKeys);
 
   const sortedForeignTables = tableForeignKeys.sort((a, b) =>
-    a.origin.table.display_name.localeCompare(b.origin.table.display_name),
+    (a.origin?.table?.displayName() ?? "").localeCompare(
+      b.origin?.table?.displayName() ?? "",
+    ),
   );
 
   return (
@@ -55,8 +54,16 @@ export function Relationships({
           <Relationship
             key={`${fk.origin_id}-${fk.destination_id}`}
             fk={fk}
-            fkCountInfo={tableForeignKeyReferences?.[fk.origin.id]}
-            fkCount={fkCountsByTable?.[fk.origin.table.id] || 0}
+            fkCountInfo={
+              fk.origin?.id != null
+                ? tableForeignKeyReferences?.[Number(fk.origin.id)]
+                : null
+            }
+            fkCount={
+              (fk.origin?.table != null &&
+                fkCountsByTable?.[fk.origin.table?.id]) ||
+              0
+            }
             foreignKeyClicked={foreignKeyClicked}
           />
         ))}
@@ -81,7 +88,7 @@ function Relationship({
   const fkCountValue = fkCountInfo?.value || 0;
   const isLoaded = fkCountInfo?.status === 1;
   const fkClickable = isLoaded && Boolean(fkCountInfo.value);
-  const originTableName = fk.origin.table.display_name;
+  const originTableName = fk.origin?.table?.displayName() ?? "";
 
   const relationName = inflect(originTableName, fkCountValue);
 
@@ -89,7 +96,7 @@ function Relationship({
     fkCount > 1 ? (
       <span className="text-medium text-normal">
         {" "}
-        {t`via ${fk.origin.display_name}`}
+        {t`via ${fk.origin?.displayName()}`}
       </span>
     ) : null;
 

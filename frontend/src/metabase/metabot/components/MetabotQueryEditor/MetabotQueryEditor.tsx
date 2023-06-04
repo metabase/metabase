@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { checkNotNull } from "metabase/core/utils/types";
@@ -78,6 +78,7 @@ const MetabotQueryEditor = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   ExplicitSize(),
   connect(mapStateToProps, mapDispatchToProps),

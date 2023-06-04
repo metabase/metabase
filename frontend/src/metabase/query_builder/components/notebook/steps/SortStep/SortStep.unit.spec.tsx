@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 
 import { render, screen, getIcon, queryIcon } from "__support__/ui";
@@ -11,9 +10,9 @@ import SortStep from "./SortStep";
 
 function createQueryWithOrderBy(direction: Lib.OrderByDirection = "asc") {
   const initialQuery = createQuery();
-  const [column] = Lib.orderableColumns(initialQuery);
-  const query = Lib.orderBy(initialQuery, column, direction);
-  return { query, columnInfo: Lib.displayInfo(query, column) };
+  const [column] = Lib.orderableColumns(initialQuery, 0);
+  const query = Lib.orderBy(initialQuery, 0, column, direction);
+  return { query, columnInfo: Lib.displayInfo(query, 0, column) };
 }
 
 function setup(step = createMockNotebookStep()) {
@@ -38,8 +37,8 @@ function setup(step = createMockNotebookStep()) {
 
   function gerRecentOrderByClause() {
     const query = getNextQuery();
-    const clause = Lib.orderBys(query)[0];
-    return Lib.displayInfo(query, clause);
+    const clause = Lib.orderBys(query, 0)[0];
+    return Lib.displayInfo(query, 0, clause);
   }
 
   return { getNextQuery, gerRecentOrderByClause, updateQuery };
@@ -137,6 +136,6 @@ describe("SortStep", () => {
     userEvent.click(getIcon("close"));
 
     const nextQuery = getNextQuery();
-    expect(Lib.orderBys(nextQuery)).toHaveLength(0);
+    expect(Lib.orderBys(nextQuery, 0)).toHaveLength(0);
   });
 });

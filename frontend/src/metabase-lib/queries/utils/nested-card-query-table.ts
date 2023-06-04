@@ -63,7 +63,7 @@ function createVirtualTableUsingQuestionMetadata(question: Question): Table {
     id: getQuestionVirtualTableId(question.id()),
     name: questionDisplayName,
     display_name: questionDisplayName,
-    db: question?.database(),
+    db: question?.database() ?? undefined,
     fields,
     metadata,
   });

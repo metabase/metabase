@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import _ from "underscore";
 
 import { t } from "ttag";
@@ -63,4 +62,5 @@ const ConfirmContent = ({
   </ModalContent>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ConfirmContent;

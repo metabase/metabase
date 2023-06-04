@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import TabButton from "../TabButton";
-import TabRow from "./TabRow";
+import { TabButton } from "../TabButton";
+import { TabRow } from "./TabRow";
 
 const TestTabRow = () => {
   const [value, setValue] = useState(1);

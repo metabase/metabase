@@ -1,4 +1,3 @@
-import React from "react";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import TimelineCard from "metabase/timelines/questions/components/TimelineCard/TimelineCard";
 
@@ -46,4 +45,5 @@ const TimelineList = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TimelineList;

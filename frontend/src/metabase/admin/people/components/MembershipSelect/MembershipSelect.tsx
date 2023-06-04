@@ -1,7 +1,7 @@
-import React from "react";
+import { Fragment } from "react";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import {
@@ -101,7 +101,7 @@ export const MembershipSelect = ({
     <PopoverWithTrigger triggerElement={triggerElement}>
       <MembershipSelectContainer>
         {groupSections.map((section, index) => (
-          <React.Fragment key={index}>
+          <Fragment key={index}>
             {section.header && (
               <MembershipSelectHeader>{section.header}</MembershipSelectHeader>
             )}
@@ -140,11 +140,12 @@ export const MembershipSelect = ({
                 </MembershipSelectItem>
               );
             })}
-          </React.Fragment>
+          </Fragment>
         ))}
       </MembershipSelectContainer>
     </PopoverWithTrigger>
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MembershipSelect;

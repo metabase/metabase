@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
@@ -8,7 +8,6 @@ import { State } from "metabase-types/store";
 import type {
   ConcreteTableId,
   DatasetData,
-  ForeignKey,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -39,6 +38,7 @@ import { getUser } from "metabase/selectors/user";
 import { MetabaseApi } from "metabase/services";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
+import ForeignKey from "metabase-lib/metadata/ForeignKey";
 import type {
   ObjectId,
   OnVisualizationClickType,
@@ -90,8 +90,7 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     question: getQuestion(state)!,
     table,
-    // FIXME: remove the type cast
-    tableForeignKeys: getTableForeignKeys(state) as ForeignKey[],
+    tableForeignKeys: getTableForeignKeys(state),
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
     zoomedRowID,
     zoomedRow,
@@ -179,11 +178,11 @@ export function ObjectDetailView({
       return;
     }
 
-    if (table && table.fks == null && !isVirtualCardId(table.id)) {
+    if (table && _.isEmpty(table.fks) && !isVirtualCardId(table.id)) {
       fetchTableFks(table.id as ConcreteTableId);
     }
     // load up FK references
-    if (tableForeignKeys) {
+    if (!_.isEmpty(tableForeignKeys)) {
       loadFKReferences();
     }
     window.addEventListener("keydown", onKeyDown, true);
@@ -219,7 +218,7 @@ export function ObjectDetailView({
   }, [maybeLoading, passedData, question, zoomedRowID, pkIndex]);
 
   useEffect(() => {
-    if (tableForeignKeys && prevZoomedRowId !== zoomedRowID) {
+    if (!_.isEmpty(tableForeignKeys) && prevZoomedRowId !== zoomedRowID) {
       loadFKReferences();
     }
   }, [tableForeignKeys, prevZoomedRowId, zoomedRowID, loadFKReferences]);
@@ -234,7 +233,8 @@ export function ObjectDetailView({
 
   useEffect(() => {
     // if the card changed or table metadata loaded then reload fk references
-    const tableFKsJustLoaded = !prevTableForeignKeys && tableForeignKeys;
+    const tableFKsJustLoaded =
+      _.isEmpty(prevTableForeignKeys) && !_.isEmpty(tableForeignKeys);
     if (data !== prevData || tableFKsJustLoaded) {
       loadFKReferences();
     }
@@ -291,7 +291,7 @@ export function ObjectDetailView({
 
   const hasPk = !!data.cols.find(isPK);
   const hasRelationships =
-    showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);
+    showRelations && !_.isEmpty(tableForeignKeys) && hasPk;
 
   return (
     <ObjectDetailContainer wide={hasRelationships} className={className}>
@@ -449,7 +449,6 @@ export function ObjectDetailHeader({
                   disabled={!canZoomPreviousRow}
                   onClick={viewPreviousObjectDetail}
                   icon="chevronup"
-                  iconSize={20}
                 />
                 <Button
                   data-testid="view-next-object-detail"
@@ -458,7 +457,6 @@ export function ObjectDetailHeader({
                   disabled={!canZoomNextRow}
                   onClick={viewNextObjectDetail}
                   icon="chevrondown"
-                  iconSize={20}
                 />
               </>
             )}
@@ -469,7 +467,6 @@ export function ObjectDetailHeader({
                 borderless
                 onClick={closeObjectDetail}
                 icon="close"
-                iconSize={20}
               />
             </CloseButton>
           </div>
@@ -533,6 +530,7 @@ export function ObjectDetailBody({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,

@@ -1,7 +1,6 @@
-import React from "react";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import visualizations from "metabase/visualizations";
 import type { Series } from "metabase-types/api";
@@ -46,4 +45,5 @@ function AddSeriesButton({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AddSeriesButton;

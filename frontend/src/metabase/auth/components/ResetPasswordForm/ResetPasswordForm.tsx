@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import _ from "underscore";
@@ -34,7 +34,7 @@ interface ResetPasswordFormProps {
   onSubmit: (data: ResetPasswordData) => void;
 }
 
-const ResetPasswordForm = ({
+export const ResetPasswordForm = ({
   onValidatePassword,
   onSubmit,
 }: ResetPasswordFormProps): JSX.Element => {
@@ -86,5 +86,3 @@ const ResetPasswordForm = ({
     </div>
   );
 };
-
-export default ResetPasswordForm;

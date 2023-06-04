@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import Subhead from "metabase/components/type/Subhead";
@@ -28,4 +27,5 @@ function NewQuestionView({ query, updateQuestion }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default NewQuestionView;

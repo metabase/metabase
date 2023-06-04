@@ -276,7 +276,9 @@
        'uuid? u/uuid-regex
        nil)]))
 
-(def ^:private no-regex-schemas #{(mc/type ms/NonBlankString)})
+(def ^:private no-regex-schemas #{(mc/type ms/NonBlankString)
+                                  (mc/type (mc/schema [:maybe ms/PositiveInt]))
+                                  (mc/type [:enum "a" "b"])})
 
 (defn add-route-param-schema
   "Expand a `route` string like \"/:id\" into a Compojure route form with regexes to match parameters based on
@@ -288,20 +290,23 @@
   (if (vector? route)
     route
     (let [[wildcard & wildcards]
-          (for [[k schema] arg->schema
-                :when (re-find (re-pattern (str ":" k)) route)
-                :let [[schema-type re] (->matching-regex schema)]]
-            (if re
-              [route (keyword k) re]
-              (when (and config/is-dev? (not (contains? no-regex-schemas schema-type)))
-                (log/warn (colorize/red (str "Warning: missing route-param regex for schema: "
-                                             route " " [k schema])))
-                (log/warn (colorize/green (str "Either add " (pr-str schema-type) " to "
-                                               "metabase.api.common.internal/->matching-regex or "
-                                               "metabase.api.common.internal/no-regex-schemas."))))))]
+          (->> "metabase.api.common.internal/no-regex-schemas."
+               (str "Either add " (pr-str schema-type) " to "
+                    "metabase.api.common.internal/->matching-regex or ")
+               colorize/green
+               log/warn
+               (when (and config/is-dev? (not (contains? no-regex-schemas schema-type)))
+                 (log/warn (colorize/red (str "Warning: missing route-param regex for schema: "
+                                              route " " [k schema]))))
+               (if re
+                 [route (keyword k) re])
+               (for [[k schema] arg->schema
+                     :when (re-find (re-pattern (str ":" k)) route)
+                     :let [[schema-type re] (->matching-regex schema)]])
+               (remove nil?))]
       (cond
         ;; multiple hits -> tack them onto the original route shape.
-        wildcards (reduce into wildcard (mapv #(drop 1 %) wildcards))
+        wildcards (vec (reduce into wildcard (mapv #(drop 1 %) wildcards)))
         wildcard wildcard
         :else route))))
 
@@ -338,13 +343,11 @@
    (mtx/string-transformer)
    (mtx/json-transformer)))
 
-(defn- extract-symbols [x]
+(defn- extract-symbols [in]
   (let [*symbols (atom [])]
     (walk/postwalk
-     (fn [x]
-       (when (symbol? x) (swap! *symbols conj x))
-       x)
-     x)
+     (fn [x] (when (symbol? x) (swap! *symbols conj x)) x)
+     in)
     @*symbols))
 
 (defn- mauto-let-form [arg->schema arg-symbol]

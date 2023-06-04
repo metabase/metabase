@@ -1,5 +1,3 @@
-import React from "react";
-
 import type {
   Dashboard,
   DashboardOrderedCard,
@@ -109,4 +107,5 @@ function ClickBehaviorSidebarMainView({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ClickBehaviorSidebarMainView;

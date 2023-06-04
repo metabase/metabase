@@ -82,23 +82,31 @@ describe("scenarios > dashboard > permissions", () => {
   it("should let admins view all cards in a dashboard", () => {
     visitDashboard(dashboardId);
     // Admin can see both questions
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("First Question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("foo");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Second Question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("bar");
   });
 
   it("should display dashboards with some cards locked down", () => {
     cy.signIn("nodata");
     visitDashboard(dashboardId);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don't have permission to see this card.");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Second Question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("bar");
   });
 
   it("should display an error if they don't have perms for the dashboard", () => {
     cy.signIn("nocollection");
     visitDashboard(dashboardId);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don’t have permission to see that.");
   });
 });

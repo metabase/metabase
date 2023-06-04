@@ -38,6 +38,7 @@ describe("issue 25322", () => {
       throttleFieldValuesRequest(dashboard_id);
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameterDetails.name).click();
     popover().findByTestId("loading-spinner").should("exist");
   });

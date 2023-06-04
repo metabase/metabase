@@ -4,9 +4,9 @@ import {
   popover,
   restore,
   visitDashboard,
+  setModelMetadata,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { setModelMetadata } from "../helpers/e2e-models-metadata-helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -51,9 +51,12 @@ describe("issue 23024", () => {
 
     cy.icon("filter").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Text or Category").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Is").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column to filter on")
       .parent()
       .within(() => {

@@ -1,6 +1,5 @@
 (ns metabase.query-processor-test.test-mlv2
   (:require
-   [clojure.string :as str]
    [clojure.test :as t :refer :all]
    [malli.core :as mc]
    [malli.error :as me]
@@ -30,85 +29,17 @@
   place, [[metabase.models.query.permissions-test/invalid-queries-test]]."
   false)
 
-(defn- skip-conversion-tests?
-  "Whether to skip conversion tests against a `legacy-query`."
-  [legacy-query]
-  (or
-   *skip-conversion-tests*
-   ;; #29904: `:fields` in `:joins` are supposed to be returned even if `:fields` is specified.
-   (mbql.u/match-one legacy-query
-     {:fields fields, :joins joins}
-     (mbql.u/match-one joins
-       {:fields (join-fields :guard (partial not= :none))}
-       "#29904"))
-   ;; #29938: conversion for `:case` with default value does not work correctly
-   (mbql.u/match-one legacy-query
-     :case
-     (mbql.u/match-one &match
-       {:default _default}
-       "#29938"))
-   ;; #29942: missing schema for `:cum-sum` and `:cum-count` aggregations
-   (mbql.u/match-one legacy-query
-     #{:cum-sum :cum-count}
-     "#29942")
-   ;; #29946: nested arithmetic expressions wrapping a `:field` clause
-   (mbql.u/match-one legacy-query
-     #{:+ :- :*}
-     (mbql.u/match-one &match
-       #{:+ :- :*}
-       (mbql.u/match-one &match
-         :field
-         "#29946")))
-   ;; #29949: missing schema
-   (mbql.u/match-one legacy-query
-     :regex-match-first
-     "#29949")
-   ;; #29950: string filter clauses with options like `:case-sensitive` option not handled correctly
-   (mbql.u/match-one legacy-query
-     {:case-sensitive _case-sensitive?}
-     "#29950")
-   ;; #29958: `:convert-timezone` with 2 args is broken
-   (mbql.u/match-one legacy-query
-     [:convert-timezone _expr _source-timezone]
-     "#29958")))
-
 (defn- skip-metadata-calculation-tests? [legacy-query]
-  (or
    ;; #29907: wrong column name for joined columns in `:breakout`
    (mbql.u/match-one legacy-query
      {:breakout breakouts}
      (mbql.u/match-one breakouts
        [:field _id-or-name {:join-alias _join-alias}]
-       "#29907"))
-   ;; #29910: `:datetime-add`, `:datetime-subtract`, and `:convert-timezone` broken with string literals
-   (mbql.u/match-one legacy-query
-     #{:datetime-add :datetime-subtract :convert-timezone}
-     (mbql.u/match-one &match
-       [_tag (_literal :guard string?) & _]
-       "#29910"))
-   ;; #29935: metadata for an `:aggregation` with a `:case` expression not working
-   (mbql.u/match-one legacy-query
-     {:aggregation aggregations}
-     (mbql.u/match-one aggregations
-       :case
-       "#29935"))
-   ;; #29936: metadata for an `:aggregation` that is a `:metric`
-   (mbql.u/match-one legacy-query
-     {:aggregation aggregations}
-     (mbql.u/match-one aggregations
-       :metric
-       "#29936"))
-   ;; #29941 : metadata resolution for query with a `card__` source-table does not work correctly for `:field` <name>
-   ;; #clauses
-   (mbql.u/match-one legacy-query
-     {:source-table (_id :guard #(str/starts-with? % "card__"))}
-     (mbql.u/match-one &match
-       [:field (_field-name :guard string?) _opts]
-       "#29941"))))
+       "#29907")))
 
 (defn- test-mlv2-metadata [original-query _qp-metadata]
   {:pre [(map? original-query)]}
-  (when-not (or (skip-conversion-tests? original-query)
+  (when-not (or *skip-conversion-tests*
                 (skip-metadata-calculation-tests? original-query))
     (do-with-legacy-query-testing-context
      original-query
@@ -128,7 +59,7 @@
               (is (any? mlv2-metadata)))))))))))
 
 (defn- test-mlv2-conversion [query]
-  (when-not (skip-conversion-tests? query)
+  (when-not *skip-conversion-tests*
     (do-with-legacy-query-testing-context
      query
      (^:once fn* []

@@ -1,5 +1,3 @@
-import React from "react";
-
 import Question from "metabase/entities/questions";
 
 import type { CardId } from "metabase-types/api";
@@ -13,4 +11,5 @@ const QuestionName = ({ questionId }: { questionId: CardId }) => (
 
 const QuestionSelect = ItemSelect(QuestionPicker, QuestionName, "question");
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QuestionSelect;

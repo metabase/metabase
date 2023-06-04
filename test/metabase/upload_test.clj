@@ -2,9 +2,12 @@
   (:require
    [clj-bom.core :as bom]
    [clojure.java.io :as io]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.mysql :as mysql]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Field Table]]
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
@@ -25,24 +28,47 @@
 (def datetime-type  :metabase.upload/datetime)
 (def text-type      :metabase.upload/text)
 
+(defn- do-with-mysql-local-infile-activated
+  "Helper for [[with-mysql-local-infile-activated]]"
+  [thunk]
+  (if (or
+       (not= :mysql driver/*driver*)
+       (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                   (jdbc/query
+                    ["show global variables like 'local_infile'"])
+                   first
+                   :value)))
+    (thunk)
+    (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+      (try
+        (jdbc/query conn-spec
+         "set global local_infile = 1")
+        (thunk)
+        (finally
+          (jdbc/query conn-spec
+                      "set global local_infile = 0"))))))
+
+(defmacro with-mysql-local-infile-activated
+  "Turn on local_infile for MySQL"
+  [& body]
+  `(do-with-mysql-local-infile-activated (fn [] ~@body)))
+
 (deftest type-detection-and-parse-test
-  (doseq [[string-value  expected-value expected-type]
-          [["0"          false          bool-type]
-           ["1"          true           bool-type]
-           ["t"          true           bool-type]
-           ["T"          true           bool-type]
-           ["tRuE"       true           bool-type]
-           ["f"          false          bool-type]
-           ["F"          false          bool-type]
-           ["FAlse"      false          bool-type]
-           ["Y"          true           bool-type]
-           ["n"          false          bool-type]
-           ["yes"        true           bool-type]
-           ["NO"         false          bool-type]
+  (doseq [[string-value  expected-value expected-type seps]
+          [["0.0"        0              float-type "."]
+           ["0.0"        0              float-type ".,"]
+           ["0,0"        0              float-type ",."]
+           ["0,0"        0              float-type ", "]
+           ["0.0"        0              float-type ".’"]
            ["$2"         2              int-type]
            ["$ 3"        3              int-type]
            ["-43€"       -43            int-type]
            ["£1000"      1000           int-type]
+           ["£1000"      1000           int-type "."]
+           ["£1000"      1000           int-type ".,"]
+           ["£1000"      1000           int-type ",."]
+           ["£1000"      1000           int-type ", "]
+           ["£1000"      1000           int-type ".’"]
            ["-¥9"        -9             int-type]
            ["₹ -13"      -13            int-type]
            ["₪13"        13             int-type]
@@ -52,23 +78,36 @@
            ["2"          2              int-type]
            ["-86"        -86            int-type]
            ["9,986,000"  9986000        int-type]
-           [",,,"        nil            int-type]   ;; TODO: this should be a vchar in the future
-           ["9.986.000"  "9.986.000"    vchar-type] ;; TODO: this should be an integer in the future
+           ["9,986,000"  9986000        int-type "."]
+           ["9,986,000"  9986000        int-type ".,"]
+           ["9.986.000"  9986000        int-type ",."]
+           ["9’986’000"  9986000        int-type ".’"]
+           ["9.986.000"  "9.986.000"    vchar-type ".,"]
            ["3.14"       3.14           float-type]
-           [".14"        0.14           float-type]
-           ["0.14"       0.14           float-type]
-           ["-9986.567"  -9986.567      float-type]
-           ["$2.0"       2.0            float-type]
-           ["$ 3.50"     3.50           float-type]
-           ["-4300.23€"  -4300.23       float-type]
+           ["3.14"       3.14           float-type "."]
+           ["3.14"       3.14           float-type ".,"]
+           ["3,14"       3.14           float-type ",."]
+           ["3,14"       3.14           float-type ", "]
+           ["3.14"       3.14           float-type ".’"]
+           [".14"        ".14"          vchar-type ".,"] ;; TODO: this should be a float type
+           ["0.14"       0.14           float-type ".,"]
+           ["-9986.567"  -9986.567      float-type ".,"]
+           ["$2.0"       2              float-type ".,"]
+           ["$ 3.50"     3.50           float-type ".,"]
+           ["-4300.23€"  -4300.23       float-type ".,"]
            ["£1,000.23"  1000.23        float-type]
-           ["£1.000,23"  "£1.000,23"    vchar-type] ;; TODO: this should be a float in the future
-           ["-¥9.99"     -9.99          float-type]
-           ["₹ -13.23"   -13.23         float-type]
-           ["₪13.01"     13.01          float-type]
-           ["₩13.33"     13.33          float-type]
-           ["₿42.243646" 42.243646      float-type]
-           ["-99.99¢"    -99.99         float-type]
+           ["£1,000.23"  1000.23        float-type "."]
+           ["£1,000.23"  1000.23        float-type ".,"]
+           ["£1.000,23"  1000.23        float-type ",."]
+           ["£1 000,23"  1000.23        float-type ", "]
+           ["£1’000.23"  1000.23        float-type ".’"]
+           ["-¥9.99"     -9.99          float-type ".,"]
+           ["₹ -13.23"   -13.23         float-type ".,"]
+           ["₪13.01"     13.01          float-type ".,"]
+           ["₩13.33"     13.33          float-type ".,"]
+           ["₿42.243646" 42.243646      float-type ".,"]
+           ["-99.99¢"    -99.99         float-type ".,"]
+           ["."          "."            vchar-type]
            [(apply str (repeat 255 "x")) (apply str (repeat 255 "x")) vchar-type]
            [(apply str (repeat 256 "x")) (apply str (repeat 256 "x")) text-type]
            ["86 is my favorite number"   "86 is my favorite number"   vchar-type]
@@ -77,14 +116,15 @@
            ["2022-01-01T01:00:00"           #t "2022-01-01T01:00" datetime-type]
            ["2022-01-01T01:00:00.00"        #t "2022-01-01T01:00" datetime-type]
            ["2022-01-01T01:00:00.000000000" #t "2022-01-01T01:00" datetime-type]]]
-    (let [type   (upload/value->type string-value)
-          parser (#'upload/upload-type->parser type)]
-      (testing (format "\"%s\" is a %s" string-value type)
-        (is (= expected-type
-               type)))
-      (testing (format "\"%s\" is parsed into %s" string-value expected-value)
-        (is (= expected-value
-               (parser string-value)))))))
+    (mt/with-temporary-setting-values [custom-formatting (when seps {:type/Number {:number_separators seps}})]
+      (let [type   (upload/value->type string-value)
+            parser (#'upload/upload-type->parser type)]
+        (testing (format "\"%s\" is a %s" string-value type)
+          (is (= expected-type
+                 type)))
+        (testing (format "\"%s\" is parsed into %s" string-value expected-value)
+          (is (= expected-value
+                 (parser string-value))))))))
 
 (deftest type-coalescing-test
   (doseq [[type-a type-b expected] [[bool-type     bool-type     bool-type]
@@ -242,13 +282,14 @@
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-        (upload/load-from-csv
-         driver/*driver*
-         (mt/id)
-         "upload_test"
-         (csv-file-with ["id    ,nulls,string ,bool ,number       ,date      ,datetime"
-                         "2\t   ,,          a ,true ,1.1\t        ,2022-01-01,2022-01-01T00:00:00"
-                         "\" 3\",,           b,false,\"$ 1,000.1\",2022-02-01,2022-02-01T00:00:00"]))
+        (with-mysql-local-infile-activated
+          (upload/load-from-csv
+           driver/*driver*
+           (mt/id)
+           "upload_test"
+           (csv-file-with ["id    ,nulls,string ,bool ,number       ,date      ,datetime"
+                           "2\t   ,,          a ,true ,1.1\t        ,2022-01-01,2022-01-01T00:00:00"
+                           "\" 3\",,           b,false,\"$ 1,000.1\",2022-02-01,2022-02-01T00:00:00"])))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :db_id (mt/id))]
@@ -285,13 +326,14 @@
   (testing "Upload a CSV file with a datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-        (upload/load-from-csv
-         driver/*driver*
-         (mt/id)
-         "upload_test"
-         (csv-file-with ["datetime"
-                         "2022-01-01"
-                         "2022-01-01T00:00:00"]))
+        (with-mysql-local-infile-activated
+          (upload/load-from-csv
+           driver/*driver*
+           (mt/id)
+           "upload_test"
+           (csv-file-with ["datetime"
+                           "2022-01-01"
+                           "2022-01-01T00:00:00"])))
         (testing "Fields exists after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :db_id (mt/id))]
@@ -306,29 +348,30 @@
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-        (upload/load-from-csv
-         driver/*driver*
-         (mt/id)
-         "upload_test"
-         (csv-file-with ["id,bool"
-                         "1,true"
-                         "2,false"
-                         "3,TRUE"
-                         "4,FALSE"
-                         "5,t    "
-                         "6,   f"
-                         "7,\tT"
-                         "8,F\t"
-                         "9,y"
-                         "10,n"
-                         "11,Y"
-                         "12,N"
-                         "13,yes"
-                         "14,no"
-                         "15,YES"
-                         "16,NO"
-                         "17,1"
-                         "18,0"]))
+        (with-mysql-local-infile-activated
+          (upload/load-from-csv
+           driver/*driver*
+           (mt/id)
+           "upload_test"
+           (csv-file-with ["id,bool"
+                           "1,true"
+                           "2,false"
+                           "3,TRUE"
+                           "4,FALSE"
+                           "5,t    "
+                           "6,   f"
+                           "7,\tT"
+                           "8,F\t"
+                           "9,y"
+                           "10,n"
+                           "11,Y"
+                           "12,N"
+                           "13,yes"
+                           "14,no"
+                           "15,YES"
+                           "16,NO"
+                           "17,1"
+                           "18,0"])))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :db_id (mt/id))]
@@ -350,13 +393,14 @@
             short-name (subs long-name 0 (- length-limit (count "_yyyyMMddHHmmss")))]
         (is (pos? length-limit) "driver/table-name-length-limit has been set")
         (mt/with-empty-db
-          (upload/load-from-csv
-           driver/*driver*
-           (mt/id)
-           (upload/unique-table-name driver/*driver* long-name)
-           (csv-file-with ["id,bool"
-                           "1,true"
-                           "2,false"]))
+          (with-mysql-local-infile-activated
+            (upload/load-from-csv
+             driver/*driver*
+             (mt/id)
+             (upload/unique-table-name driver/*driver* long-name)
+             (csv-file-with ["id,bool"
+                             "1,true"
+                             "2,false"])))
           (testing "It truncates it to the right number of characters, allowing for the timestamp"
             (sync/sync-database! (mt/db))
             (let [table    (t2/select-one Table :db_id (mt/id) :%lower.name [:like (str short-name "%")])
@@ -388,13 +432,14 @@
   (testing "Upload a CSV file with duplicate column names"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-        (upload/load-from-csv
-         driver/*driver*
-         (mt/id)
-         "upload_test"
-         (csv-file-with ["unknown,unknown,unknown,unknown_2"
-                         "1,Serenity,Malcolm Reynolds,Pistol"
-                         "2,Millennium Falcon, Han Solo,Blaster"]))
+        (with-mysql-local-infile-activated
+          (upload/load-from-csv
+           driver/*driver*
+           (mt/id)
+           "upload_test"
+           (csv-file-with ["unknown,unknown,unknown,unknown_2"
+                           "1,Serenity,Malcolm Reynolds,Pistol"
+                           "2,Millennium Falcon, Han Solo,Blaster"])))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :db_id (mt/id))]
@@ -407,49 +452,14 @@
   (testing "Upload a CSV file with column names that are reserved by the DB"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-        (upload/load-from-csv
-         driver/*driver*
-         (mt/id)
-         "upload_test"
-         (csv-file-with ["true,false,group"
-                         "1,Serenity,Malcolm Reynolds"
-                         "2,Millennium Falcon, Han Solo"]))
-        (testing "Table and Fields exist after sync"
-          (sync/sync-database! (mt/db))
-          (let [table (t2/select-one Table :db_id (mt/id))]
-            (is (=? {:name #"(?i)upload_test"} table))
-            (testing "Check the data was uploaded into the table correctly"
-              (is (= ["true", "false", "group"]
-                     (column-names-for-table table))))))))))
-
-(deftest load-from-csv-failed-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (mt/with-empty-db
-      (testing "Can't upload a CSV with missing values"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo #"Error executing write query: "
-             (upload/load-from-csv
-              driver/*driver*
-              (mt/id)
-              "upload_test"
-              (csv-file-with ["id,column_that_doesnt_have_a_value" "2"])))))
-      (testing "Check that the table isn't created if the upload fails"
-        (sync/sync-database! (mt/db))
-        (is (nil? (t2/select-one Table :db_id (mt/id))))))))
-
-(deftest load-from-csv-BOM-test
-  (testing "Upload a CSV file with a byte-order mark (BOM)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-      (mt/with-empty-db
-        (upload/load-from-csv
-         driver/*driver*
-         (mt/id)
-         "upload_test"
-         (csv-file-with ["id,ship,captain"
-                         "1,Serenity,Malcolm Reynolds"
-                         "2,Millennium Falcon, Han Solo"]
-                        "star-wars"
-                        (partial bom/bom-writer "UTF-8")))
+        (with-mysql-local-infile-activated
+          (upload/load-from-csv
+           driver/*driver*
+           (mt/id)
+           "upload_test"
+           (csv-file-with ["id,ship,captain"
+                           "1,Serenity,Malcolm Reynolds"
+                           "2,Millennium Falcon, Han Solo"])))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :db_id (mt/id))]
@@ -457,3 +467,167 @@
             (testing "Check the data was uploaded into the table correctly"
               (is (= ["id", "ship", "captain"]
                      (column-names-for-table table))))))))))
+
+(deftest load-from-csv-failed-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (mt/with-empty-db
+      (with-mysql-local-infile-activated
+        (testing "Can't upload a CSV with missing values"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo (condp = driver/*driver*
+                                            :postgres #"ERROR: missing data for column \"column_that_doesnt_have_a_value\""
+                                            :mysql #"ERROR: missing data in row \".*\""
+                                            #"Error executing write query: ")
+               (upload/load-from-csv
+                driver/*driver*
+                (mt/id)
+                "upload_test"
+                (csv-file-with ["id,column_that_doesnt_have_a_value" "2"]))))))
+      (testing "Check that the table isn't created if the upload fails"
+        (sync/sync-database! (mt/db))
+        (is (nil? (t2/select-one Table :db_id (mt/id))))))))
+
+(deftest load-from-csv-tab-test
+  (testing "Upload a CSV file with tabs in the values"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (with-mysql-local-infile-activated
+          (upload/load-from-csv
+           driver/*driver*
+           (mt/id)
+           "upload_test"
+           (csv-file-with ["id,ship,captain"
+                           "1,Serenity,Malcolm\tReynolds"
+                           "2,Millennium\tFalcon,Han\tSolo"])))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["id", "ship", "captain"]
+                     (column-names-for-table table)))
+              (is (= [[1 "Serenity" "Malcolm\tReynolds"]
+                      [2 "Millennium\tFalcon" "Han\tSolo"]]
+                     (rows-for-table table))))))))))
+
+(deftest load-from-csv-carriage-return-test
+  (testing "Upload a CSV file with carriage returns in the values"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (with-mysql-local-infile-activated
+          (upload/load-from-csv
+           driver/*driver*
+           (mt/id)
+           "upload_test"
+           (csv-file-with ["id,ship,captain"
+                           "1,Serenity,\"Malcolm\rReynolds\""
+                           "2,\"Millennium\rFalcon\",\"Han\rSolo\""])))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["id", "ship", "captain"]
+                     (column-names-for-table table)))
+              (is (= [[1 "Serenity" "Malcolm\rReynolds"]
+                      [2 "Millennium\rFalcon" "Han\rSolo"]]
+                     (rows-for-table table))))))))))
+
+(deftest load-from-csv-BOM-test
+  (testing "Upload a CSV file with a byte-order mark (BOM)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (with-mysql-local-infile-activated
+          (upload/load-from-csv
+           driver/*driver*
+           (mt/id)
+           "upload_test"
+           (csv-file-with ["id,ship,captain"
+                           "1,Serenity,Malcolm Reynolds"
+                           "2,Millennium Falcon, Han Solo"]
+                          "star-wars"
+                          (partial bom/bom-writer "UTF-8"))))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["id", "ship", "captain"]
+                     (column-names-for-table table))))))))))
+
+(deftest load-from-csv-injection-test
+  (testing "Upload a CSV file with very rude values"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (with-mysql-local-infile-activated
+          (upload/load-from-csv
+           driver/*driver*
+           (mt/id)
+           "upload_test"
+           (csv-file-with ["id integer); --,ship,captain"
+                           "1,Serenity,--Malcolm Reynolds"
+                           "2,;Millennium Falcon,Han Solo\""]
+                          "\"; -- Very rude filename")))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["id_integer_____", "ship", "captain"]
+                     (column-names-for-table table)))
+              (is (= [[1   "Serenity"           "--Malcolm Reynolds"]
+                      [2   ";Millennium Falcon" "Han Solo\""]]
+                     (rows-for-table table))))))))))
+
+(deftest load-from-csv-eof-marker-test
+  (testing "Upload a CSV file with Postgres's 'end of input' marker"
+    (mt/test-drivers [:postgres]
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["name"
+                         "Malcolm"
+                         "\\."
+                         "Han"]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= [["Malcolm"] ["\\."] ["Han"]]
+                     (rows-for-table table))))))))))
+
+(deftest mysql-settings-test
+  (testing "Ensure that local_infile is set to true for better MySQL testing"
+    (mt/test-drivers [:mysql]
+      (with-mysql-local-infile-activated
+        (is (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                        (jdbc/query
+                         ["show global variables like 'local_infile'"])
+                        first
+                        :value)))))))
+
+(deftest load-from-csv-mysql-slow-way-test
+  (testing "MySQL upload should work fine with local_infile disabled"
+    (mt/test-drivers [:mysql]
+      (mt/with-empty-db
+        (with-redefs [mysql/get-global-variable (constantly "OFF")]
+          (upload/load-from-csv
+           driver/*driver*
+           (mt/id)
+           "upload_test"
+           (csv-file-with ["id,ship,captain"
+                           "1,Serenity,Malcolm Reynolds"
+                           "2,Millennium Falcon,Han Solo"])))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["id", "ship", "captain"]
+                     (column-names-for-table table)))
+              (is (= [[1 "Serenity" "Malcolm Reynolds"]
+                      [2 "Millennium Falcon" "Han Solo"]]
+                     (rows-for-table table))))))))))

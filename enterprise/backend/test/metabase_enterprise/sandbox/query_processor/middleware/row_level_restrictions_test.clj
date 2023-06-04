@@ -23,6 +23,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.util :as u]
@@ -30,7 +31,8 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      SHARED GTAP DEFINITIONS & HELPER FNS                                      |
@@ -213,7 +215,7 @@
                                           :condition [:= $venue_id &v.venues.id]}]
                           :aggregation  [[:count]]}
 
-                  ::row-level-restrictions/original-metadata [{:base_type     :type/BigInteger
+                  ::row-level-restrictions/original-metadata [{:base_type     :type/Integer
                                                                :semantic_type :type/Quantity
                                                                :name          "count"
                                                                :display_name  "Count"
@@ -227,8 +229,10 @@
                    :joins       [{:source-table $$venues
                                   :alias        "v"
                                   :strategy     :left-join
-                                  :condition    [:= $venue_id &v.venues.id]}]}))))))
+                                  :condition    [:= $venue_id &v.venues.id]}]}))))))))
 
+(deftest middleware-native-quest-test
+  (testing "Make sure the middleware does the correct transformation given the GTAPs we have"
     (testing "Should substitute appropriate value in native query"
       (met/with-gtaps {:gtaps      {:venues (venues-category-native-gtap-def)}
                        :attributes {"cat" 50}}
@@ -241,7 +245,7 @@
                                                          "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\" ASC")
                                             :params []}}
 
-                  ::row-level-restrictions/original-metadata [{:base_type     :type/BigInteger
+                  ::row-level-restrictions/original-metadata [{:base_type     :type/Integer
                                                                :semantic_type :type/Quantity
                                                                :name          "count"
                                                                :display_name  "Count"
@@ -340,6 +344,14 @@
         (is (= [[100]]
                (run-venues-count-query)))))
 
+    (testing "A non-admin impersonating an admin (i.e. when running a public or embedded question) should always bypass sandboxes (#30535)"
+      (met/with-gtaps-for-user :rasta {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                                       :attributes {"cat" 50}}
+        (mt/with-test-user :rasta
+         (mw.session/as-admin
+          (is (= [[100]]
+               (run-venues-count-query)))))))
+
     (testing "Users with view access to the related collection should bypass segmented permissions"
       (mt/with-temp-copy-of-db
         (mt/with-temp* [Collection [collection]
@@ -362,7 +374,7 @@
                   "querying of a card as a nested query. Part of the row level perms check is looking at the table (or "
                   "card) to see if row level permissions apply. This was broken when it wasn't expecting a card and "
                   "only expecting resolved source-tables")
-      (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
+      (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues)}]
         (let [query {:database (mt/id)
                      :type     :query
                      :query    {:source-table (format "card__%s" (u/the-id card))

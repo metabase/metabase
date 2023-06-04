@@ -10,8 +10,12 @@
    [java-time :as t]
    [metabase.driver :as driver]
    [metabase.mbql.util :as mbql.u]
+   [metabase.public-settings :as public-settings]
    [metabase.search.util :as search-util]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  (:import
+   (java.text NumberFormat)
+   (java.util Locale)))
 
 (set! *warn-on-reflection* true)
 
@@ -67,7 +71,7 @@
        (catch Exception _
          false)))
 
-(def ^:private currency-regex "Digits, perhaps with separators and at least one digit" #"[$€£¥₹₪₩₿¢\s]")
+(def ^:private currency-regex "Supported currency signs" #"[$€£¥₹₪₩₿¢\s]")
 
 (defn- with-currency
   "Returns a regex that matches a positive or negative number, including currency symbols"
@@ -78,9 +82,24 @@
                    number-regex
                    "\\s*" currency-regex "?")))
 
-;; These are pulled out so that the regex is only compiled once, not for every invocation of value->type
-(def ^:private int-regex "Digits, perhaps with separators and at least one digit" (with-currency #"[\d,]+"))
-(def ^:private float-regex "Digits, perhaps with separators and at least one digit" (with-currency #"[\d,]*\.\d+"))
+(defn- get-number-separators []
+  (get-in (public-settings/custom-formatting) [:type/Number :number_separators] ".,"))
+
+(defn- int-regex [number-separators]
+  (with-currency
+    (case number-separators
+      ("." ".,") #"\d[\d,]*"
+      ",." #"\d[\d.]*"
+      ", " #"\d[\d \u00A0]*"
+      ".’" #"\d[\d’]*")))
+
+(defn- float-regex [number-separators]
+  (with-currency
+    (case number-separators
+      ("." ".,") #"\d[\d,]*\.\d+"
+      ",." #"\d[\d.]*\,[\d]+"
+      ", " #"\d[\d \u00A0]*\,[\d.]+"
+      ".’" #"\d[\d’]*\.[\d.]+")))
 
 (defn value->type
   "The most-specific possible type for a given value. Possibilities are:
@@ -92,18 +111,20 @@
     - nil, in which case other functions are expected to replace it with ::text as the catch-all type
 
   NB: There are currently the following gotchas:
-    1. ints/floats are assumed to have commas as separators and periods as decimal points
+    1. ints/floats are assumed to use the separators and decimal points corresponding to the locale defined in the
+       application settings
     2. 0 and 1 are assumed to be booleans, not ints."
   [value]
-  (cond
-    (str/blank? value)                                      nil
-    (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" value) ::boolean
-    (datetime-string?                                value) ::datetime
-    (date-string?                                    value) ::date
-    (re-matches int-regex                            value) ::int
-    (re-matches float-regex                          value) ::float
-    (re-matches #".{1,255}"                          value) ::varchar_255
-    :else                                                   ::text))
+  (let [number-separators (get-number-separators)]
+    (cond
+      (str/blank? value)                                      nil
+      (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" value) ::boolean
+      (datetime-string? value)                                ::datetime
+      (date-string? value)                                    ::date
+      (re-matches (int-regex number-separators) value)        ::int
+      (re-matches (float-regex number-separators) value)      ::float
+      (re-matches #".{1,255}" value)                          ::varchar_255
+      :else                                                   ::text)))
 
 (defn- row->types
   [row]
@@ -178,18 +199,33 @@
   [s]
   (str/replace s currency-regex ""))
 
-(defn- remove-separators
-  [s]
-  (str/replace s "," ""))
+(let [us (NumberFormat/getInstance (Locale. "en" "US"))
+      de (NumberFormat/getInstance (Locale. "de" "DE"))
+      fr (NumberFormat/getInstance (Locale. "fr" "FR"))
+      ch (NumberFormat/getInstance (Locale. "de" "CH"))]
+  (defn- parse-plain-number [number-separators s]
+    (case number-separators
+      ("." ".,") (. us parse s)
+      ",."       (. de parse s)
+      ", "       (. fr parse (str/replace s \space \u00A0)) ; \u00A0 is a non-breaking space
+      ".’"       (. ch parse s))))
 
-(def ^:private upload-type->parser
-  {::varchar_255 identity
-   ::text        identity
-   ::int         #(parse-long (remove-currency-signs (remove-separators (str/trim %))))
-   ::float       #(parse-double (remove-currency-signs (remove-separators (str/trim %))))
-   ::boolean     #(parse-bool (str/trim %))
-   ::date        #(parse-date (str/trim %))
-   ::datetime    #(parse-datetime (str/trim %))})
+(defn- parse-number
+  [number-separators s]
+  (->> s
+       (str/trim)
+       (remove-currency-signs)
+       (parse-plain-number number-separators)))
+
+(defn- upload-type->parser [upload-type]
+  (case upload-type
+    ::varchar_255 identity
+    ::text        identity
+    ::int         (partial parse-number (get-number-separators))
+    ::float       (partial parse-number (get-number-separators))
+    ::boolean     #(parse-bool (str/trim %))
+    ::date        #(parse-date (str/trim %))
+    ::datetime    #(parse-datetime (str/trim %))))
 
 (defn- parsed-rows
   "Returns a vector of parsed rows from a `csv-file`.

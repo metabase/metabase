@@ -128,6 +128,7 @@
   org.clojure/java.jmx                      {:mvn/version "1.0.0"}              ; JMX bean library, for exporting diagnostic info
   org.clojure/math.combinatorics            {:mvn/version "0.1.6"}              ; combinatorics functions
   org.clojure/math.numeric-tower            {:mvn/version "0.0.5"}              ; math functions like `ceil`
+  org.clojure/tools.cli                     {:mvn/version "1.0.214"}            ; command-line argument parsing
   org.clojure/tools.logging                 {:mvn/version "1.2.4"}              ; logging framework
   org.clojure/tools.macro                   {:mvn/version "0.1.5"}              ; local macros
   org.clojure/tools.namespace               {:mvn/version "1.4.4"}
@@ -207,7 +208,7 @@
     com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
     djblue/portal                {:mvn/version "0.40.0"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
-    io.github.metabase/hawk      {:sha "45ed36008014f9ac1ea66beb56fb1c4c39f8342b"}
+    io.github.metabase/hawk      {:sha "70611745e3cb8b95d5793a88581d5c330148715b"}
     jonase/eastwood              {:mvn/version "1.3.0"}                     ; inspects namespaces and reports possible problems using tools.analyzer
     lambdaisland/deep-diff2      {:mvn/version "2.7.169"}                   ; way better diffs
     methodical/methodical        {:mvn/version "0.15.1"}                    ; drop-in replacements for Clojure multimethods and adds several advanced features
@@ -264,8 +265,7 @@
   :run
   {:main-opts ["-m" "metabase.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=dev"
-               "-Djava.awt.headless=true"                   ; prevent Java icon from randomly popping up in macOS dock
-               "-Dmb.jetty.port=3000"]}
+               "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
 
   ;; alias for CI-specific options.
   :ci
@@ -304,7 +304,7 @@
     cider/piggieback                   {:mvn/version "0.5.3"}
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
     com.lambdaisland/glogi             {:mvn/version "1.2.164"}
-    io.github.metabase/hawk            {:sha "45ed36008014f9ac1ea66beb56fb1c4c39f8342b"}
+    io.github.metabase/hawk            {:sha "70611745e3cb8b95d5793a88581d5c330148715b"}
     ;; Forcibly targeting a newer release than ships by default with shadow-cljs 2.20.20.
     ;; It fixes an issue where TypeScript can't parse the `cljs_env.js` output file.
     org.clojure/google-closure-library {:mvn/version "0.0-20230227-c7c0a541"}
@@ -587,7 +587,7 @@
   ;;;
   ;;; clj -X:dev:drivers:build:build-dev:build-test
   :build-test
-  {:exec-fn   hawk.core/find-and-run-tests-cli
+  {:exec-fn   mb.hawk.core/find-and-run-tests-cli
    :exec-args {:only ["bin/build/test"]}}
 
 

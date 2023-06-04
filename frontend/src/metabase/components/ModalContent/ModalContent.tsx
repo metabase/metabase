@@ -1,7 +1,8 @@
-import React, { Component, ReactNode } from "react";
+/* eslint-disable react/prop-types */
+import { Component, ReactNode } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 interface ModalContentProps extends CommonModalProps {
   id?: string;
@@ -19,6 +20,7 @@ interface CommonModalProps {
   centeredTitle?: boolean;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class ModalContent extends Component<ModalContentProps> {
   static propTypes = {
     id: PropTypes.string,

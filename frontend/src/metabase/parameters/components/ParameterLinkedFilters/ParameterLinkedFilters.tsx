@@ -1,16 +1,12 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import Toggle from "metabase/core/components/Toggle";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import {
-  Field,
-  FieldId,
-  Parameter,
-  ParameterId,
-  Table,
-} from "metabase-types/api";
+import { FieldId, Parameter, ParameterId } from "metabase-types/api";
+import Table from "metabase-lib/metadata/Table";
+import Field from "metabase-lib/metadata/Field";
 import { usableAsLinkedFilter } from "../../utils/linked-filters";
 import useFilterFields from "./use-filter-fields";
 import {
@@ -215,4 +211,5 @@ const LinkedField = ({ fieldId }: LinkedFieldProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ParameterLinkedFilters;

@@ -1,4 +1,5 @@
-import React, { useState, useLayoutEffect, useCallback } from "react";
+import { useState, useLayoutEffect, useCallback } from "react";
+import * as React from "react";
 import _ from "underscore";
 import Input, { InputProps } from "metabase/core/components/Input";
 
@@ -55,4 +56,5 @@ const InputBlurChange = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default InputBlurChange;

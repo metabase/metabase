@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import _ from "underscore";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
@@ -102,6 +102,7 @@ const mapDispatchToProps = {
   updateTableSandboxingPermission,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   withRouter,
   connect(mapStateToProps, mapDispatchToProps),

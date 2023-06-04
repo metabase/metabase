@@ -16,10 +16,12 @@ describe("issue 23515", () => {
     cy.wait("@getPinnedItems");
     cy.wait("@getCardQuery");
 
-    cy.icon("triangle_right").click();
-    cy.findByText("Rows 5-8 of first 2000").should("be.visible");
+    cy.findByLabelText("Next page").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Rows 4-6 of first 2000").should("be.visible");
 
-    cy.icon("triangle_left").click();
-    cy.findByText("Rows 1-4 of first 2000").should("be.visible");
+    cy.findByLabelText("Previous page").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Rows 1-3 of first 2000").should("be.visible");
   });
 });

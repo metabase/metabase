@@ -1,4 +1,4 @@
-import React, { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
+import { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
 import { t } from "ttag";
 import Tooltip from "metabase/core/components/Tooltip";
 import { FieldAlignment, FieldOrientation } from "./types";
@@ -91,6 +91,7 @@ const FormField = forwardRef(function FormField(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(FormField, {
   Root: FieldRoot,
   Label: FieldLabel,

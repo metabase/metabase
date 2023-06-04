@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -90,6 +89,7 @@ type Props = {
   hideEmptinessOperators?: boolean;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ExcludeDatePicker({
   className,
   onFilterChange,

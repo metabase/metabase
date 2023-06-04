@@ -1,4 +1,4 @@
-import React, { ChangeEvent, KeyboardEvent, useCallback } from "react";
+import { ChangeEvent, KeyboardEvent, useCallback } from "react";
 import { User } from "metabase-types/api";
 import {
   PromptInput,
@@ -67,4 +67,5 @@ const MetabotPrompt = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MetabotPrompt;

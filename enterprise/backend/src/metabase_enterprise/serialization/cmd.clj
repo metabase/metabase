@@ -166,7 +166,7 @@
     (dump/dump path
                databases
                tables
-               (field/with-values fields)
+               (mapcat field/with-values (u/batches-of 32000 fields))
                metrics
                (select-segments-in-tables tables state)
                collections
@@ -179,27 +179,17 @@
   (dump/dump-dimensions path)
   (log/info (trs "END DUMP to {0} via user {1}" path user)))
 
-(defn- v2-extract
-  "Extract entities to store. Takes map of options.
-   :collections - optional seq of collection IDs"
-  [{:keys [collections] :as opts}]
-  (let [opts (cond-> opts
-               collections
-               (assoc :targets (for [c collections] ["Collection" c])))]
-    ;; if we have `:targets` (either because we created them from `:collections`, or because they were specified
-    ;; elsewhere) use [[v2.extract/extract-subtrees]]
-    (if (:targets opts)
-      (v2.extract/extract-subtrees opts)
-      (v2.extract/extract-metabase opts))))
-
 (defn v2-dump
   "Exports Metabase app data to directory at path"
-  [path opts]
+  [path {:keys [user-email collections] :as opts}]
   (log/info (trs "Exporting Metabase to {0}" path) (u/emoji "🏭 🚛💨"))
   (mdb/setup-db!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (serdes/with-cache
-    (-> (v2-extract opts)
+    (-> (cond-> opts
+         (seq collections) (assoc :targets (v2.extract/make-targets-of-type "Collection" collections))
+         user-email        (assoc :user-id (t2/select-one-pk User :email user-email :is_superuser true)))
+        v2.extract/extract
         (v2.storage/store! path)))
   (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦")))
 

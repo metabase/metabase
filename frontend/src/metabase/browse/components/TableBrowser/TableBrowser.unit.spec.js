@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import TableBrowser from "./TableBrowser";
 
@@ -21,7 +20,7 @@ describe("TableBrowser", () => {
     );
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
-    expect(screen.getByLabelText("bolt icon")).toBeInTheDocument();
+    expect(screen.getByLabelText("bolt_filled icon")).toBeInTheDocument();
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
   });
 
@@ -44,7 +43,7 @@ describe("TableBrowser", () => {
     );
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
-    expect(screen.queryByLabelText("bolt icon")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("bolt_filled icon")).not.toBeInTheDocument();
     expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
@@ -67,7 +66,7 @@ describe("TableBrowser", () => {
     );
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
-    expect(screen.getByLabelText("bolt icon")).toBeInTheDocument();
+    expect(screen.getByLabelText("bolt_filled icon")).toBeInTheDocument();
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
   });
 });

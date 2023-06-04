@@ -47,6 +47,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       setValueAndBlurInput("Orders", "New orders");
       cy.wait("@updateTable");
       cy.findByDisplayValue("New orders").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Table display_name").should("be.visible");
 
       startNewQuestion();
@@ -57,34 +58,32 @@ describe("scenarios > admin > datamodel > editor", () => {
       });
     });
 
+    // QUESTION - can we check update in the admin instead?
     it("should allow changing the table description", () => {
       visitTableMetadata();
       setValueAndBlurInput(ORDERS_DESCRIPTION, "New description");
       cy.wait("@updateTable");
       cy.findByDisplayValue("New description").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Table description").should("be.visible");
-
-      cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
-      cy.findByText("Orders").should("be.visible");
-      cy.findByText("New description").should("be.visible");
     });
 
     it("should allow clearing the table description", () => {
       visitTableMetadata();
       clearAndBlurInput(ORDERS_DESCRIPTION);
       cy.wait("@updateTable");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Table description").should("be.visible");
-
-      cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
-      cy.findByText("Orders").should("be.visible");
-      cy.findByText("No description yet").should("be.visible");
     });
 
     it("should allow changing the table visibility", () => {
       visitTableMetadata();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Hidden").click();
       cy.wait("@updateTable");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Table visibility_type").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("5 Hidden Tables").should("be.visible");
 
       startNewQuestion();
@@ -95,8 +94,10 @@ describe("scenarios > admin > datamodel > editor", () => {
       });
 
       visitTableMetadata();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Queryable").click();
       cy.wait("@updateTable");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("4 Hidden Tables").should("be.visible");
 
       startNewQuestion();
@@ -114,10 +115,13 @@ describe("scenarios > admin > datamodel > editor", () => {
       });
       cy.wait("@updateField");
       getFieldSection("TAX").findByDisplayValue("New tax").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Tax").should("be.visible");
 
       openOrdersTable();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New tax").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Tax").should("not.exist");
     });
 
@@ -130,13 +134,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       getFieldSection("TOTAL")
         .findByDisplayValue("New description")
         .should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Total").should("be.visible");
-
-      cy.visit(
-        `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
-      );
-      cy.findByText("Total").should("be.visible");
-      cy.findByText("New description").should("be.visible");
     });
 
     it("should allow clearing the field description", () => {
@@ -145,13 +144,8 @@ describe("scenarios > admin > datamodel > editor", () => {
         clearAndBlurInput("The total billed amount.");
       });
       cy.wait("@updateField");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Total").should("be.visible");
-
-      cy.visit(
-        `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
-      );
-      cy.findByText("Total").should("be.visible");
-      cy.findByText("No description yet").should("be.visible");
     });
 
     it("should allow changing the field visibility", () => {
@@ -160,11 +154,15 @@ describe("scenarios > admin > datamodel > editor", () => {
       popover().findByText("Do not include").click();
       cy.wait("@updateField");
       getFieldSection("TAX").findByText("Do not include").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Do not include").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Tax").should("be.visible");
 
       openOrdersTable();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Total").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Tax").should("not.exist");
     });
 
@@ -174,6 +172,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       searchAndSelectValue("Currency");
       cy.wait("@updateField");
       getFieldSection("TAX").findByText("Currency").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Tax").should("be.visible");
 
       getFieldSection("TAX").findByText("US Dollar").click();
@@ -181,6 +180,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.wait("@updateField");
 
       openOrdersTable();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Tax (CA$)").should("be.visible");
     });
 
@@ -192,6 +192,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       getFieldSection("USER_ID")
         .findByText("Products → ID")
         .should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated User ID").should("be.visible");
 
       startNewQuestion();
@@ -203,6 +204,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       popover().within(() => {
         cy.findByText("Products").click();
       });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("User ID").should("be.visible");
     });
 
@@ -273,14 +275,17 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow hiding and restoring all tables in a schema", () => {
       visitTableMetadata();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("4 Queryable Tables").should("be.visible");
       cy.findByLabelText("Hide all").click();
       cy.wait("@updateTables");
 
       visitTableMetadata();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("8 Hidden Tables").should("be.visible");
       cy.findByLabelText("Unhide all").click();
       cy.wait("@updateTables");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("8 Queryable Tables").should("be.visible");
     });
   });
@@ -296,10 +301,13 @@ describe("scenarios > admin > datamodel > editor", () => {
       setValueAndBlurInput("Tax", "New tax");
       cy.wait("@updateField");
       cy.findByDisplayValue("New tax").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Tax").should("be.visible");
 
       openOrdersTable();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New tax").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Tax").should("not.exist");
     });
 
@@ -308,50 +316,58 @@ describe("scenarios > admin > datamodel > editor", () => {
       setValueAndBlurInput("The total billed amount.", "New description");
       cy.wait("@updateField");
       cy.findByDisplayValue("New description").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Total").should("be.visible");
-
-      cy.visit(
-        `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
-      );
-      cy.findByText("Total").should("be.visible");
-      cy.findByText("New description").should("be.visible");
     });
 
     it("should allow changing the field visibility", () => {
       visitFieldMetadata({ fieldId: ORDERS.TAX });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Everywhere").click();
       popover().findByText("Do not include").click();
       cy.wait("@updateField");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Do not include").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Tax").should("be.visible");
 
       openOrdersTable();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Total").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Tax").should("not.exist");
     });
 
     it("should allow changing the field semantic type and currency", () => {
       visitFieldMetadata({ fieldId: ORDERS.TAX });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No semantic type").click();
       searchAndSelectValue("Currency");
       cy.wait("@updateField");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Currency").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Tax").should("be.visible");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("US Dollar").click();
       searchAndSelectValue("Canadian Dollar");
       cy.wait("@updateField");
 
       openOrdersTable();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Tax (CA$)").should("be.visible");
     });
 
     it("should allow changing the field foreign key target", () => {
       visitFieldMetadata({ fieldId: ORDERS.USER_ID });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("People → ID").click();
       popover().findByText("Products → ID").click();
       cy.wait("@updateField");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Products → ID").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated User ID").should("be.visible");
 
       startNewQuestion();
@@ -363,6 +379,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       popover().within(() => {
         cy.findByText("Products").click();
       });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("User ID").should("be.visible");
     });
   });
@@ -381,6 +398,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       setValueAndBlurInput("Orders", "New orders");
       cy.findByDisplayValue("New orders").should("be.visible");
       cy.wait("@updateTable");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Table display_name");
       cy.signOut();
 
@@ -403,11 +421,14 @@ describe("scenarios > admin > datamodel > editor", () => {
       );
       cy.wait("@updateField");
       getFieldSection("TAX").findByDisplayValue("New tax").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Tax").should("be.visible");
 
       cy.signInAsNormalUser();
       openOrdersTable();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New tax").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Tax").should("not.exist");
     });
 
@@ -419,11 +440,14 @@ describe("scenarios > admin > datamodel > editor", () => {
       setValueAndBlurInput("Total", "New total");
       cy.wait("@updateField");
       cy.findByDisplayValue("New total").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Total").should("be.visible");
 
       cy.signInAsNormalUser();
       openOrdersTable();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New total").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Total").should("not.exist");
     });
 
@@ -434,13 +458,16 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       cy.signIn("none");
       visitFieldMetadata({ fieldId: ORDERS.USER_ID });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("People → ID").click();
       popover().within(() => {
         cy.findByText("Reviews → ID").should("not.exist");
         cy.findByText("Products → ID").click();
       });
       cy.wait("@updateField");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Products → ID").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated User ID").should("be.visible");
 
       cy.signInAsNormalUser();
@@ -453,6 +480,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       popover().within(() => {
         cy.findByText("Products").click();
       });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("User ID").should("be.visible");
     });
 
@@ -463,6 +491,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       cy.signIn("none");
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.PRODUCT_ID });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Use original value").click();
       popover().findByText("Use foreign key").click();
       popover().findByText("Title").click();
@@ -470,6 +499,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       cy.signInAsNormalUser();
       openReviewsTable({ limit: 1 });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Rustic Paper Wallet").should("be.visible");
     });
 
@@ -478,6 +508,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       cy.signIn("none");
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.PRODUCT_ID });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Use original value").click();
       popover().within(() => {
         cy.findByText("Use original value").should("be.visible");
@@ -490,6 +521,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       cy.signIn("none");
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.RATING });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Use original value").click();
       popover().within(() => {
         cy.findByText("Use original value").should("be.visible");
@@ -498,13 +530,16 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       cy.signInAsAdmin();
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.RATING });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Use original value").click();
       popover().findByText("Custom mapping").click();
       cy.wait("@updateFieldDimension");
 
       cy.signIn("none");
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.RATING });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Custom mapping").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(CUSTOM_MAPPING_ERROR).should("be.visible");
     });
   });

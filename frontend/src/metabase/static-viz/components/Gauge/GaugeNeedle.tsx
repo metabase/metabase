@@ -1,5 +1,3 @@
-import React from "react";
-
 import { getCirclePositionInSvgCoordinate } from "./utils";
 import type { Position } from "./types";
 
@@ -17,6 +15,7 @@ const EQUILATERAL_TRIANGLE_ANGLE = CIRCLE_ANGLE / 6;
 
 // Draw equilateral triangle within a circle with radius = `GAUGE_NEEDLE_RADIUS`,
 // that's why I name some variables with `_RADIUS` prefix even though I'm drawing a triangle.
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function GaugeNeedle({
   color,
   outlineColor,

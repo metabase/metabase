@@ -1,23 +1,27 @@
 /* eslint-disable react/prop-types */
-import React, { useState, useRef } from "react";
+import { useState, useRef } from "react";
+
+import * as React from "react";
 import { jt, t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
 
-import Database from "metabase/entities/databases";
+import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 
 import { getSetting } from "metabase/selectors/settings";
 import { updateSettings } from "metabase/admin/settings/settings";
 
 import type { State } from "metabase-types/store";
-import type { Schema, Database as DatabaseType } from "metabase-types/api";
 
 import Link from "metabase/core/components/Link";
 import Select, { SelectChangeEvent } from "metabase/core/components/Select";
 import Input from "metabase/core/components/Input";
 import ActionButton from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";
+
+import Database from "metabase-lib/metadata/Database";
+import Schema from "metabase-lib/metadata/Schema";
 
 import SettingHeader from "../SettingHeader";
 import {
@@ -32,14 +36,16 @@ const FEEDBACK_TIMEOUT = 5000;
 const enableErrorMessage = t`There was a problem enabling uploads. Please try again shortly.`;
 const disableErrorMessage = t`There was a problem disabling uploads. Please try again shortly.`;
 
+export interface UploadSettings {
+  uploads_enabled: boolean;
+  uploads_database_id: number | null;
+  uploads_schema_name: string | null;
+  uploads_table_prefix: string | null;
+}
+
 export interface UploadSettingProps {
-  databases: DatabaseType[];
-  settings: {
-    uploads_enabled: boolean;
-    uploads_database_id: number | null;
-    uploads_schema_name: string | null;
-    uploads_table_prefix: string | null;
-  };
+  databases: Database[];
+  settings: UploadSettings;
   updateSettings: (
     settings: Record<string, string | number | boolean | null>,
   ) => Promise<void>;
@@ -190,7 +196,7 @@ export function UploadSettingsView({
           />
         </div>
         {!!showSchema && (
-          <Schemas.ListLoader query={{ dbId }}>
+          <Schemas.ListLoader query={{ dbId, getAll: true }}>
             {({ list: schemaList }: { list: Schema[] }) => (
               <div>
                 <SectionTitle>{t`Schema`}</SectionTitle>
@@ -275,6 +281,6 @@ export function UploadSettingsView({
 }
 
 export const UploadSettings = _.compose(
-  Database.loadList(),
+  Databases.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
 )(UploadSettingsView);

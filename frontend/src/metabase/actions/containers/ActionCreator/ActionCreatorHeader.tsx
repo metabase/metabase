@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { t } from "ttag";
 
 import type { WritebackActionType } from "metabase-types/api";
@@ -51,4 +51,5 @@ const ActionCreatorHeader = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionCreatorHeader;

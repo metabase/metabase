@@ -1,4 +1,3 @@
-import React from "react";
 import {
   ToggleButton,
   ToggleColorRange,
@@ -24,4 +23,5 @@ const ColorRangeToggle = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorRangeToggle;

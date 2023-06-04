@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -84,4 +84,5 @@ function ModelCacheControl({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelCacheControl;

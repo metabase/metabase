@@ -67,13 +67,19 @@ export function filterWidget() {
 }
 
 export const openQuestionActions = () => {
-  cy.findByTestId("qb-header-action-panel").within(() => {
-    cy.icon("ellipsis").click();
-  });
+  cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
+};
+
+export const collectionTable = () => {
+  return cy.findByTestId("collection-table");
+};
+
+export const queryBuilderHeader = () => {
+  return cy.findByTestId("qb-header");
 };
 
 export const closeQuestionActions = () => {
-  cy.findByTestId("qb-header").click();
+  queryBuilderHeader().click();
 };
 
 export const questionInfoButton = () => {
@@ -99,3 +105,19 @@ export const moveColumnDown = (column, distance) => {
 export const queryBuilderMain = () => {
   return cy.findByTestId("query-builder-main");
 };
+
+export const dashboardHeader = () => {
+  return cy.get("main header");
+};
+
+export const dashboardParametersContainer = () => {
+  return cy.findByTestId("dashboard-parameters-widget-container");
+};
+
+export const undoToast = () => {
+  return cy.findByTestId("toast-undo");
+};
+
+export function dashboardCards() {
+  return cy.get("#Dashboard-Cards-Container");
+}

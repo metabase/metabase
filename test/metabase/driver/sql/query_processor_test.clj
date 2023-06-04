@@ -186,7 +186,7 @@
                mbql->native
                sql.qp-test-util/sql->sql-map)))))
 
-(deftest ^:paralell handle-source-query-params-test
+(deftest ^:parallel handle-source-query-params-test
   (driver/with-driver :h2
     (mt/with-everything-store
       (testing "params from source queries should get passed in to the top-level. Semicolons should be removed"
@@ -224,18 +224,18 @@
 (defn- compile-join [driver]
   (driver/with-driver driver
     (qp.store/with-store
-      (qp.store/store-database! (t2/instance :metabase.models.database/Database
+      (qp.store/store-database! (t2/instance :model/Database
                                              {:id       1
                                               :name     "test-data"
                                               :engine   driver
                                               :details  {}
                                               :settings {}}))
-      (qp.store/store-table!    (t2/instance :metabase.models.table/Table
+      (qp.store/store-table!    (t2/instance :model/Table
                                              {:id     1
                                               :db_id  1
                                               :schema "public"
                                               :name   "checkins"}))
-      (qp.store/store-field!    (t2/instance :metabase.models.field/Field
+      (qp.store/store-field!    (t2/instance :model/Field
                                              {:id            1
                                               :table_id      1
                                               :name          "id"
@@ -503,44 +503,47 @@
                  mbql->native
                  sql.qp-test-util/sql->sql-map))))))
 
+(def ^:private reference-aggregation-expressions-in-joins-test-expected-sql
+  '{:select [source.ID                           AS ID
+             source.NAME                         AS NAME
+             source.CATEGORY_ID                  AS CATEGORY_ID
+             source.LATITUDE                     AS LATITUDE
+             source.LONGITUDE                    AS LONGITUDE
+             source.PRICE                        AS PRICE
+             source.RelativePrice                AS RelativePrice
+             source.CategoriesStats__CATEGORY_ID AS CategoriesStats__CATEGORY_ID
+             source.CategoriesStats__MaxPrice    AS CategoriesStats__MaxPrice
+             source.CategoriesStats__AvgPrice    AS CategoriesStats__AvgPrice
+             source.CategoriesStats__MinPrice    AS CategoriesStats__MinPrice]
+    :from   [{:select    [VENUES.ID          AS ID
+                          VENUES.NAME        AS NAME
+                          VENUES.CATEGORY_ID AS CATEGORY_ID
+                          VENUES.LATITUDE    AS LATITUDE
+                          VENUES.LONGITUDE   AS LONGITUDE
+                          VENUES.PRICE       AS PRICE
+                          CAST (VENUES.PRICE AS float)
+                          /
+                          CASE WHEN CategoriesStats.AvgPrice = 0 THEN NULL
+                          ELSE CategoriesStats.AvgPrice END AS RelativePrice
+                          CategoriesStats.CATEGORY_ID AS CategoriesStats__CATEGORY_ID
+                          CategoriesStats.MaxPrice    AS CategoriesStats__MaxPrice
+                          CategoriesStats.AvgPrice    AS CategoriesStats__AvgPrice
+                          CategoriesStats.MinPrice    AS CategoriesStats__MinPrice]
+              :from      [VENUES]
+              :left-join [{:select   [VENUES.CATEGORY_ID AS CATEGORY_ID
+                                      MAX (VENUES.PRICE) AS MaxPrice
+                                      AVG (VENUES.PRICE) AS AvgPrice
+                                      MIN (VENUES.PRICE) AS MinPrice]
+                           :from     [VENUES]
+                           :group-by [VENUES.CATEGORY_ID]
+                           :order-by [VENUES.CATEGORY_ID ASC]} AS CategoriesStats
+                          ON VENUES.CATEGORY_ID = CategoriesStats.CATEGORY_ID]}
+             AS source]
+    :limit  [3]})
+
 (deftest ^:parallel reference-aggregation-expressions-in-joins-test
   (testing "See if we can correctly compile a query that references expressions that come from a join"
-    (is (= '{:select [source.ID                           AS ID
-                      source.NAME                         AS NAME
-                      source.CATEGORY_ID                  AS CATEGORY_ID
-                      source.LATITUDE                     AS LATITUDE
-                      source.LONGITUDE                    AS LONGITUDE
-                      source.PRICE                        AS PRICE
-                      source.RelativePrice                AS RelativePrice
-                      source.CategoriesStats__CATEGORY_ID AS CategoriesStats__CATEGORY_ID
-                      source.CategoriesStats__MaxPrice    AS CategoriesStats__MaxPrice
-                      source.CategoriesStats__AvgPrice    AS CategoriesStats__AvgPrice
-                      source.CategoriesStats__MinPrice    AS CategoriesStats__MinPrice]
-             :from   [{:select    [VENUES.ID          AS ID
-                                   VENUES.NAME        AS NAME
-                                   VENUES.CATEGORY_ID AS CATEGORY_ID
-                                   VENUES.LATITUDE    AS LATITUDE
-                                   VENUES.LONGITUDE   AS LONGITUDE
-                                   VENUES.PRICE       AS PRICE
-                                   CAST (VENUES.PRICE AS float)
-                                   /
-                                   CASE WHEN CategoriesStats.AvgPrice = 0 THEN NULL
-                                   ELSE CategoriesStats.AvgPrice END AS RelativePrice
-                                   CategoriesStats.CATEGORY_ID AS CategoriesStats__CATEGORY_ID
-                                   CategoriesStats.MaxPrice    AS CategoriesStats__MaxPrice
-                                   CategoriesStats.AvgPrice    AS CategoriesStats__AvgPrice
-                                   CategoriesStats.MinPrice    AS CategoriesStats__MinPrice]
-                       :from      [VENUES]
-                       :left-join [{:select   [VENUES.CATEGORY_ID AS CATEGORY_ID
-                                               MAX (VENUES.PRICE) AS MaxPrice
-                                               AVG (VENUES.PRICE) AS AvgPrice
-                                               MIN (VENUES.PRICE) AS MinPrice]
-                                    :from     [VENUES]
-                                    :group-by [VENUES.CATEGORY_ID]
-                                    :order-by [VENUES.CATEGORY_ID ASC]} AS CategoriesStats
-                                   ON VENUES.CATEGORY_ID = CategoriesStats.CATEGORY_ID]}
-                      AS source]
-             :limit  [3]}
+    (is (= reference-aggregation-expressions-in-joins-test-expected-sql
            (-> (mt/mbql-query venues
                  {:fields      [$id
                                 $name
@@ -554,6 +557,36 @@
                                 &CategoriesStats.*AvgPrice/Integer
                                 &CategoriesStats.*MinPrice/Integer]
                   :expressions {"RelativePrice" [:/ $price &CategoriesStats.*AvgPrice/Integer]}
+                  :joins       [{:strategy     :left-join
+                                 :condition    [:= $category_id &CategoriesStats.venues.category_id]
+                                 :source-query {:source-table $$venues
+                                                :aggregation  [[:aggregation-options [:max $price] {:name "MaxPrice"}]
+                                                               [:aggregation-options [:avg $price] {:name "AvgPrice"}]
+                                                               [:aggregation-options [:min $price] {:name "MinPrice"}]]
+                                                :breakout     [$category_id]}
+                                 :alias        "CategoriesStats"
+                                 :fields       :all}]
+                  :limit       3})
+               mbql->native
+               sql.qp-test-util/sql->sql-map)))))
+
+(deftest ^:parallel wrong-type-info-test
+  (testing (str "Same as the test above, but the :field refs have base types different from what the QP would normally "
+                "calculate; query should still work")
+    (is (= reference-aggregation-expressions-in-joins-test-expected-sql
+           (-> (mt/mbql-query venues
+                 {:fields      [$id
+                                $name
+                                $category_id
+                                $latitude
+                                $longitude
+                                $price
+                                [:expression "RelativePrice"]
+                                &CategoriesStats.category_id
+                                &CategoriesStats.*MaxPrice/Number
+                                &CategoriesStats.*AvgPrice/Number
+                                &CategoriesStats.*MinPrice/Number]
+                  :expressions {"RelativePrice" [:/ $price &CategoriesStats.*AvgPrice/Number]}
                   :joins       [{:strategy     :left-join
                                  :condition    [:= $category_id &CategoriesStats.venues.category_id]
                                  :source-query {:source-table $$venues

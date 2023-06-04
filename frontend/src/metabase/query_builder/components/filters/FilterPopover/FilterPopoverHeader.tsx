@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import cx from "classnames";
 
 import Filter from "metabase-lib/queries/structured/Filter";
@@ -16,6 +15,7 @@ type Props = {
   onBack: () => void;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function FilterPopoverHeader({
   className,
   showFieldPicker,
@@ -53,10 +53,7 @@ export default function FilterPopoverHeader({
           className={cx("text-default py1", {
             pr2: !showOperatorSelectorOnOwnRow,
           })}
-          title={
-            (field.table ? field.table.displayName() + " – " : "") +
-            field.displayName()
-          }
+          title={field.displayName({ includeTable: true })}
           onBack={onBack}
         />
       )}

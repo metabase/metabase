@@ -1,4 +1,4 @@
-import React, { HTMLAttributes } from "react";
+import { HTMLAttributes } from "react";
 import SkeletonCaption from "../SkeletonCaption";
 import { SkeletonImage, SkeletonRoot } from "./PieSkeleton.styled";
 
@@ -35,4 +35,5 @@ const PieSkeleton = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default PieSkeleton;

@@ -19,12 +19,16 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
     cy.visit("/admin/troubleshooting/tasks");
     cy.wait("@first");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Troubleshooting logs");
-    cy.icon("chevronleft").as("previous");
-    cy.icon("chevronright").as("next");
+    cy.findByLabelText("Previous page").as("previous");
+    cy.findByLabelText("Next page").as("next");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("1 - 50");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("field values scanning");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("513");
 
     shouldBeDisabled("@previous");
@@ -33,9 +37,13 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
     cy.get("@next").click();
     cy.wait("@second");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(`51 - ${total}`);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("1 - 50").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("analyze");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("200");
 
     shouldNotBeDisabled("@previous");
@@ -44,11 +52,11 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
 });
 
 function shouldNotBeDisabled(selector) {
-  cy.get(selector).parent().should("not.have.attr", "disabled");
+  cy.get(selector).should("be.enabled");
 }
 
 function shouldBeDisabled(selector) {
-  cy.get(selector).parent().should("have.attr", "disabled");
+  cy.get(selector).should("be.disabled");
 }
 
 /**

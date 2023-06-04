@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { t, jt } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -105,4 +105,5 @@ function ModelCachingControl({ database }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelCachingControl;

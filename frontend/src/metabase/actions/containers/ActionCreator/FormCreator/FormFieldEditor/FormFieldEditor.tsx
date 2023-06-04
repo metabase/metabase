@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import Radio from "metabase/core/components/Radio";
@@ -100,7 +100,7 @@ function FormFieldEditor({
   return (
     <FormFieldContainer>
       <EditorContainer>
-        <Column>{isEditable && <DragHandle name="grabber2" />}</Column>
+        <Column>{isEditable && <DragHandle name="grabber" />}</Column>
         <Column full>
           <Header>
             <Title>{field.title}</Title>
@@ -138,4 +138,5 @@ function FormFieldEditor({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormFieldEditor;

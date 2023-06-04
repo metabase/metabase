@@ -59,25 +59,28 @@ describe("scenarios > collection items listing", () => {
       visitRootCollection();
 
       // First page
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
       cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
 
-      cy.findByTestId("next-page-btn").click();
+      cy.findByLabelText("Next page").click();
       cy.wait("@getCollectionItems");
 
       // Second page
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
       cy.findAllByTestId("collection-entry").should(
         "have.length",
         TOTAL_ITEMS - PAGE_SIZE,
       );
-      cy.findByTestId("next-page-btn").should("be.disabled");
+      cy.findByLabelText("Next page").should("be.disabled");
 
-      cy.findByTestId("previous-page-btn").click();
+      cy.findByLabelText("Previous page").click();
 
       // First page
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
       cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
@@ -224,14 +227,16 @@ describe("scenarios > collection items listing", () => {
 
       visitRootCollection();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
 
-      cy.findByTestId("next-page-btn").click();
+      cy.findByLabelText("Next page").click();
       cy.wait("@getCollectionItems");
 
       toggleSortingFor(/Last edited at/i);
       cy.wait("@getCollectionItems");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
     });
   });

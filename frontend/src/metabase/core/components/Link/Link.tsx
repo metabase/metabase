@@ -1,4 +1,3 @@
-import React from "react";
 import Tooltip from "metabase/core/components/Tooltip";
 import { LinkRoot } from "./Link.styled";
 import type { LinkProps } from "./types";
@@ -40,6 +39,7 @@ const Link = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(Link, {
   Root: LinkRoot,
 });

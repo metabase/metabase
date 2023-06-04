@@ -1,4 +1,4 @@
-import React from "react";
+import { Component, cloneElement } from "react";
 
 import _ from "underscore";
 
@@ -15,8 +15,11 @@ const updateDocumentTitle = _.debounce(() => {
     .join(SEPARATOR);
 });
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 const title = documentTitleOrGetter => ComposedComponent =>
-  class extends React.Component {
+  class extends Component {
     static displayName =
       "Title[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
@@ -78,7 +81,7 @@ import { Route as _Route } from "react-router";
 export class Route extends _Route {
   static createRouteFromReactElement(element) {
     if (element.props.title) {
-      element = React.cloneElement(element, {
+      element = cloneElement(element, {
         component: title(element.props.title)(
           element.props.component || (({ children }) => children),
         ),

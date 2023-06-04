@@ -53,6 +53,7 @@ describe.skip("issue 17775", () => {
     // Make sure filter can be connected to the custom column using UI, rather than using API.
     cy.get("main header").find(".Icon-gear").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column to filter on")
       .parent()
       .within(() => {
@@ -71,6 +72,7 @@ describe.skip("issue 17775", () => {
 
     setQuarterAndYear({ quarter: "Q1", year: "2019" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65");
 
     cy.findAllByText("February 11, 2019, 9:40 PM").should("have.length", 2);

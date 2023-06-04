@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -66,6 +66,7 @@ const isOverwriteMode = (
   return saveType === "overwrite";
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class SaveQuestionModal extends Component<SaveQuestionModalProps> {
   handleSubmit = async (details: FormValues) => {
     const { originalQuestion } = this.props;

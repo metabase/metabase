@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Fragment } from "react";
 import { SettingDescription, SettingTitle } from "./SettingHeader.styled";
 
 const SettingHeader = ({ id, setting }) => (
@@ -7,9 +7,9 @@ const SettingHeader = ({ id, setting }) => (
     <SettingTitle htmlFor={id}>{setting.display_name}</SettingTitle>
     <SettingDescription>
       {setting.warningMessage && (
-        <React.Fragment>
+        <Fragment>
           <strong>{setting.warningMessage}</strong>{" "}
-        </React.Fragment>
+        </Fragment>
       )}
       {setting.description}
       {setting.note && <div>{setting.note}</div>}

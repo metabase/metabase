@@ -52,9 +52,9 @@
    :parameters             mi/transform-parameters-list
    :parameter_mappings     mi/transform-parameters-list})
 
-;;; You can read/write a Card if you can read/write its parent Collection
 (doto :model/Card
   (derive :metabase/model)
+  ;; You can read/write a Card if you can read/write its parent Collection
   (derive ::perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))

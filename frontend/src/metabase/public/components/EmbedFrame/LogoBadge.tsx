@@ -1,4 +1,3 @@
-import React from "react";
 import { t, jt } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
 import {
@@ -33,4 +32,5 @@ function LogoBadge({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default LogoBadge;

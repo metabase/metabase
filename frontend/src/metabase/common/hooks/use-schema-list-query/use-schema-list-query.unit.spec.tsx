@@ -1,7 +1,10 @@
-import React from "react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import {
+  PERMISSION_ERROR,
+  setupDatabasesEndpoints,
+  setupUnauthorizedDatabasesEndpoints,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -37,8 +40,17 @@ const TestComponent = () => {
   );
 };
 
-const setup = () => {
-  setupDatabasesEndpoints([TEST_DATABASE]);
+interface SetupOpts {
+  hasDataAccess?: boolean;
+}
+
+const setup = ({ hasDataAccess = true }: SetupOpts = {}) => {
+  if (hasDataAccess) {
+    setupDatabasesEndpoints([TEST_DATABASE]);
+  } else {
+    setupUnauthorizedDatabasesEndpoints([TEST_DATABASE]);
+  }
+
   renderWithProviders(<TestComponent />);
 };
 
@@ -52,5 +64,11 @@ describe("useSchemaListQuery", () => {
     setup();
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
     expect(screen.getByText(TEST_TABLE.schema)).toBeInTheDocument();
+  });
+
+  it("should show error from the response", async () => {
+    setup({ hasDataAccess: false });
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    expect(screen.getByText(PERMISSION_ERROR)).toBeInTheDocument();
   });
 });

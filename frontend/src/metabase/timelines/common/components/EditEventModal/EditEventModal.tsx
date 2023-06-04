@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import { Timeline, TimelineEvent, TimelineEventData } from "metabase-types/api";
 import EventForm from "../../containers/EventForm";
@@ -54,4 +54,5 @@ const EditEventModal = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EditEventModal;

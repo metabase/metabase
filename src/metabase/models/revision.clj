@@ -3,10 +3,11 @@
    [clojure.data :as data]
    [metabase.db.util :as mdb.u]
    [metabase.models.interface :as mi]
-   [metabase.models.revision.diff :refer [diff-string]]
+   [metabase.models.revision.diff :refer [build-sentence diff-strings*]]
    [metabase.models.user :refer [User]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [methodical.core :as methodical]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]
@@ -45,50 +46,73 @@
       {:before before
        :after  after})))
 
-(defmulti diff-str
-  "Return a string describing the difference between `object-1` and `object-2`."
+(defmulti diff-strings
+  "Return a seq of string describing the difference between `object-1` and `object-2`.
+
+  Each string in the seq should be i18n-ed."
   {:arglists '([model object-1 object-2])}
   mi/dispatch-on-model)
 
-(defmethod diff-str :default
+(defmethod diff-strings :default
   [model o1 o2]
-  (when-let [[before after] (data/diff o1 o2)]
-    (diff-string (name model) before after)))
+  (diff-strings* (name model) o1 o2))
 
-;;; # Revision Entity
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(models/defmodel Revision :revision)
+(def Revision
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Revision)
 
-(defn- pre-insert [revision]
+(methodical/defmethod t2/table-name :model/Revision [_model] :revision)
+
+(doto :model/Revision
+  (derive :metabase/model))
+
+(t2/deftransforms :model/Revision
+  {:object mi/transform-json})
+
+(t2/define-before-insert :model/Revision
+  [revision]
   (assoc revision :timestamp :%now))
 
-(defn- do-post-select-for-object
-  "Call the appropriate `post-select` methods (including the type functions) on the `:object` this Revision recorded.
-  This is important for things like Card revisions, where the `:dataset_query` property needs to be normalized when
-  coming out of the DB."
-  [{:keys [model], :as revision}]
+(t2/define-before-update :model/Revision
+  [_revision]
+  (fn [& _] (throw (Exception. (tru "You cannot update a Revision!")))))
+
+(t2/define-after-select :model/Revision
+  ;; Call the appropriate `post-select` methods (including the type functions) on the `:object` this Revision recorded.
+  ;; This is important for things like Card revisions, where the `:dataset_query` property needs to be normalized when
+  ;; coming out of the DB.
+  [{:keys [model] :as revision}]
   ;; in some cases (such as tests) we have 'fake' models that cannot be resolved normally; don't fail entirely in
   ;; those cases
   (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol model)))]
     (cond-> revision
       model (update :object (partial models/do-post-select model)))))
 
-(mi/define-methods
- Revision
- {:types       (constantly {:object :json})
-  :pre-insert  pre-insert
-  :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a Revision!"))))
-  :post-select do-post-select-for-object})
-
-
 ;;; # Functions
+
+(defn- revision-changes
+  [model prev-revision revision]
+  (cond
+    (:is_creation revision)  [(deferred-tru "created this")]
+    (:is_reversion revision) [(deferred-tru "reverted to an earlier version")]
+    :else                    (diff-strings model (:object prev-revision) (:object revision))))
+
+(defn- revision-description-info
+  [model prev-revision revision]
+  (let [changes (revision-changes model prev-revision revision)]
+    {:description          (build-sentence changes)
+     ;; this is used on FE
+     :has_multiple_changes (> (count changes) 1)}))
 
 (defn add-revision-details
   "Add enriched revision data such as `:diff` and `:description` as well as filter out some unnecessary props."
   [model revision prev-revision]
   (-> revision
-      (assoc :diff        (diff-map model (:object prev-revision) (:object revision))
-             :description (diff-str model (:object prev-revision) (:object revision)))
+      (assoc :diff (diff-map model (:object prev-revision) (:object revision)))
+      (merge (revision-description-info model prev-revision revision))
       ;; add revision user details
       (hydrate :user)
       (update :user select-keys [:id :first_name :last_name :common_name])

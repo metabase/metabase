@@ -1,5 +1,7 @@
-import React, { MouseEvent, ReactNode } from "react";
+import { MouseEvent, ReactNode } from "react";
+import * as React from "react";
 import Tooltip from "metabase/core/components/Tooltip";
+import { IconName } from "metabase/core/components/Icon";
 import {
   MenuExternalLink,
   MenuItemContent,
@@ -10,7 +12,7 @@ import {
 
 export interface EntityMenuItemProps {
   title?: string;
-  icon?: string;
+  icon?: IconName;
   action?: (event: MouseEvent<HTMLDivElement>) => void;
   link?: string;
   externalLink?: boolean;
@@ -32,7 +34,8 @@ const EntityMenuItem = ({
   onClose,
 }: EntityMenuItemProps): JSX.Element | null => {
   if (link && action) {
-    return <div />;
+    // You cannot specify both action and link props!
+    return null;
   }
 
   const content = (
@@ -140,4 +143,5 @@ const LinkMenuItem = ({
   </Tooltip>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EntityMenuItem;

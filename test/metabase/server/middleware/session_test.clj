@@ -5,12 +5,15 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time :as t]
-   [metabase.api.common :refer [*current-user* *current-user-id*]]
+   [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.config :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models :refer [PermissionsGroupMembership Session User]]
+   [metabase.models.setting :as setting]
+   [metabase.models.setting-test :as setting-test]
+   [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.public-settings.premium-features-test
@@ -19,7 +22,8 @@
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
    [ring.mock.request :as ring.mock]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)))
@@ -83,7 +87,7 @@
 
 ;; if request is an HTTPS request then we should set `:secure true`. There are several different headers we check for
 ;; this. Make sure they all work.
-(deftest secure-cookie-test
+(deftest ^:parallel secure-cookie-test
   (doseq [[headers expected] [[{"x-forwarded-proto" "https"}    true]
                               [{"x-forwarded-proto" "http"}     false]
                               [{"x-forwarded-protocol" "https"} true]
@@ -114,7 +118,7 @@
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -61 :second) true  "session that is 61 seconds old"]
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]]]
         (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
-          (mt/with-temp User [{user-id :id}]
+          (t2.with-temp/with-temp [User {user-id :id}]
             (let [session-id (str (UUID/randomUUID))]
               (t2/insert! (t2/table-name Session) {:id session-id, :user_id user-id, :created_at created-at})
               (let [session (#'mw.session/current-user-info-for-session session-id nil)]
@@ -186,20 +190,20 @@
    identity
    (fn [e] (throw e))))
 
-(deftest no-session-id-in-request-test
+(deftest ^:parallel no-session-id-in-request-test
   (testing "no session-id in the request"
     (is (= nil
            (-> (wrapped-handler (ring.mock/request :get "/anyurl"))
                :metabase-session-id)))))
 
-(deftest header-test
+(deftest ^:parallel header-test
   (testing "extract session-id from header"
     (is (= "foobar"
            (:metabase-session-id
             (wrapped-handler
              (ring.mock/header (ring.mock/request :get "/anyurl") session-header "foobar")))))))
 
-(deftest cookie-test
+(deftest ^:parallel cookie-test
   (testing "extract session-id from cookie"
     (is (= "cookie-session"
            (:metabase-session-id
@@ -207,7 +211,7 @@
              (assoc (ring.mock/request :get "/anyurl")
                     :cookies {session-cookie {:value "cookie-session"}})))))))
 
-(deftest both-header-and-cookie-test
+(deftest ^:parallel both-header-and-cookie-test
   (testing "if both header and cookie session-ids exist, then we expect the cookie to take precedence"
     (is (= "cookie-session"
            (:metabase-session-id
@@ -215,7 +219,7 @@
              (assoc (ring.mock/header (ring.mock/request :get "/anyurl") session-header "foobar")
                     :cookies {session-cookie {:value "cookie-session"}})))))))
 
-(deftest anti-csrf-headers-test
+(deftest ^:parallel anti-csrf-headers-test
   (testing "`wrap-session-id` should handle anti-csrf headers they way we'd expect"
     (let [request (-> (ring.mock/request :get "/anyurl")
                       (assoc :cookies {embedded-session-cookie {:value (str test-uuid)}})
@@ -343,7 +347,7 @@
   (-> (ring.mock/request :get "/anyurl")
       (assoc :metabase-user-id user-id)))
 
-(deftest add-user-id-key-test
+(deftest ^:parallel add-user-id-key-test
   (testing "with valid user-id"
     (is (= {:user-id (mt/user->id :rasta)
             :user    {:id    (mt/user->id :rasta)
@@ -356,6 +360,33 @@
             :user    {}}
            (user-bound-handler
             (request-with-user-id 0))))))
+
+
+;;; ----------------------------------------------   with-current-user -------------------------------------------------
+
+(deftest with-current-user-test
+  (testing "with-current-user correctly binds the appropriate vars for the provided user ID"
+    (mw.session/with-current-user (mt/user->id :rasta)
+      ;; Set a user-local value for rasta so that we can make sure that the user-local settings map is correctly bound
+      (setting-test/test-user-local-only-setting! "XYZ")
+
+      (is (= (mt/user->id :rasta) *current-user-id*))
+      (is (= "rasta@metabase.com" (:email @*current-user*)))
+      (is (false? api/*is-superuser?*))
+      (is (= nil i18n/*user-locale*))
+      (is (false? api/*is-group-manager?*))
+      (is (= (user/permissions-set (mt/user->id :rasta)) @api/*current-user-permissions-set*))
+      (is (partial= {:test-user-local-only-setting "XYZ"} @@setting/*user-local-values*)))))
+
+(deftest as-admin-test
+  (testing "as-admin overrides *is-superuser?* and *current-user-permissions-set*"
+    (mw.session/with-current-user (mt/user->id :rasta)
+      (mw.session/as-admin
+       ;; Current user ID remains the same
+       (is (= (mt/user->id :rasta) *current-user-id*))
+       ;; *is-superuser?* and permissions set are overrided
+       (is (true? api/*is-superuser?*))
+       (is (= #{"/"} @api/*current-user-permissions-set*))))))
 
 
 ;;; ----------------------------------------------------- Locale -----------------------------------------------------
@@ -376,7 +407,7 @@
 
     (testing "w/ Session"
       (testing "for user with no `:locale`"
-        (mt/with-temp User [{user-id :id}]
+        (t2.with-temp/with-temp [User {user-id :id}]
           (let [session-id (str (UUID/randomUUID))]
             (t2/insert! Session {:id session-id, :user_id user-id})
             (is (= nil
@@ -387,7 +418,7 @@
                      (session-locale session-id :headers {"x-metabase-locale" "es-mx"})))))))
 
       (testing "for user *with* `:locale`"
-        (mt/with-temp User [{user-id :id} {:locale "es-MX"}]
+        (t2.with-temp/with-temp [User {user-id :id} {:locale "es-MX"}]
           (let [session-id (str (UUID/randomUUID))]
             (t2/insert! Session {:id session-id, :user_id user-id, :created_at :%now})
             (is (= "es_MX"

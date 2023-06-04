@@ -5,6 +5,7 @@
                             + - * / time abs concat replace ref var])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.card :as lib.card]
    [metabase.lib.column-group :as lib.column-group]
@@ -29,6 +30,7 @@
    [metabase.shared.util.namespaces :as shared.ns]))
 
 (comment lib.aggregation/keep-me
+         lib.binning/keep-me
          lib.breakout/keep-me
          lib.card/keep-me
          lib.column-group/keep-me
@@ -52,8 +54,13 @@
 
 (shared.ns/import-fns
   [lib.aggregation
-   aggregations
    aggregate
+   aggregation-clause
+   aggregation-operator-columns
+   aggregations
+   aggregations-metadata
+   available-aggregation-operators
+   selected-aggregation-operators
    count
    avg
    count-where
@@ -66,7 +73,13 @@
    stddev
    sum
    sum-where
-   var]
+   var
+   cum-count
+   cum-sum]
+  [lib.binning
+   available-binning-strategies
+   binning
+   with-binning]
   [lib.breakout
    breakout
    breakoutable-columns
@@ -78,10 +91,13 @@
    field
    query-for-table-id
    query-for-table-name
-   table]
+   table
+   ref-lookup]
   [lib.expression
    expression
    expressions
+   expressions-metadata
+   expressionable-columns
    +
    -
    *
@@ -124,10 +140,14 @@
    lower]
   [lib.field
    fields
-   with-fields]
+   with-fields
+   fieldable-columns]
   [lib.filter
    filter
    filters
+   filterable-columns
+   filterable-column-operators
+   filter-clause
    and
    or
    not
@@ -149,7 +169,13 @@
    join-fields
    joins
    with-join-alias
-   with-join-fields]
+   with-join-fields
+   join-strategy
+   with-join-strategy
+   available-join-strategies
+   join-condition-lhs-columns
+   join-condition-rhs-columns
+   join-condition-operators]
   [lib.limit
    current-limit
    limit]
@@ -192,5 +218,4 @@
    describe-relative-datetime
    available-temporal-buckets
    temporal-bucket
-   temporal-bucket-option
    with-temporal-bucket])

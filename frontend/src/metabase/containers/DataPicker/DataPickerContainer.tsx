@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { useMount } from "react-use";
@@ -9,8 +9,9 @@ import { getSetting } from "metabase/selectors/settings";
 import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
 
-import type { Database, DatabaseId } from "metabase-types/api";
+import type { DatabaseId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import Database from "metabase-lib/metadata/Database";
 
 import {
   getRootCollectionVirtualSchemaId,
@@ -169,6 +170,7 @@ const DataPickerContainer = _.compose(
   connect(mapStateToProps),
 )(DataPicker);
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(DataPickerContainer, {
   Provider: DataPickerContextProvider,
 });

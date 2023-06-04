@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { useField } from "formik";
 import { t } from "ttag";
 import FormField from "metabase/core/components/FormField";
@@ -30,4 +30,5 @@ const DatabaseSectionField = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseSectionField;

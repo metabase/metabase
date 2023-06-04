@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import Button, { ButtonProps } from "metabase/core/components/Button";
@@ -24,10 +23,12 @@ function ModelDetailLink({ model, ...props }: Props) {
       to={Urls.modelDetail(model)}
       icon="reference"
       onlyIcon
+      iconSize={16}
       role="link"
       data-testid="model-detail-link"
     />
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelDetailLink;

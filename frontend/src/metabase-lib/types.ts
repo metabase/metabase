@@ -8,6 +8,12 @@ export type Query = unknown & { _opaque: typeof Query };
 declare const MetadataProvider: unique symbol;
 export type MetadataProvider = unknown & { _opaque: typeof MetadataProvider };
 
+declare const TableMetadata: unique symbol;
+export type TableMetadata = unknown & { _opaque: typeof TableMetadata };
+
+declare const CardMetadata: unique symbol;
+export type CardMetadata = unknown & { _opaque: typeof CardMetadata };
+
 export type Limit = number | null;
 
 declare const OrderByClause: unique symbol;
@@ -44,6 +50,9 @@ export type ColumnDisplayInfo = {
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
   table?: TableInlineDisplayInfo;
+
+  breakoutPosition?: number;
+  orderByPosition?: number;
 };
 
 export type OrderByClauseDisplayInfo = Pick<
@@ -52,3 +61,15 @@ export type OrderByClauseDisplayInfo = Pick<
 > & {
   direction: OrderByDirection;
 };
+
+declare const FilterOperator: unique symbol;
+export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
+
+declare const Join: unique symbol;
+export type Join = unknown & { _opaque: typeof Join };
+
+export type JoinStrategy =
+  | "left-join"
+  | "right-join"
+  | "inner-join"
+  | "full-join";

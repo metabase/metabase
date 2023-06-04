@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [honey.sql :as sql]
    [java-time :as t]
    [metabase.config :as config]
    [metabase.db.spec :as mdb.spec]
@@ -26,12 +27,14 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log])
   (:import
+   (java.io File)
    (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)))
 
@@ -57,6 +60,7 @@
                               :percentile-aggregations false
                               :full-join               false
                               :uploads                 true
+                              :schemas                 false
                               ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
                               ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
                               ;; users in the UI
@@ -616,3 +620,65 @@
   [_driver]
   ;; https://dev.mysql.com/doc/refman/8.0/en/identifier-length.html
   64)
+
+(defn- format-load
+  [_clause [file-path table-name]]
+  [(format "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" file-path (sql/format-entity table-name))])
+
+(sql/register-clause! ::load format-load :insert-into)
+
+(defn- sanitize-value
+  ;; Per https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-field-line-handling
+  ;; Backslash is the MySQL escape character within strings in SQL statements. Thus, to specify a literal backslash,
+  ;; you must specify two backslashes for the value to be interpreted as a single backslash. The escape sequences
+  ;; '\t' and '\n' specify tab and newline characters, respectively.
+  [v]
+  (cond
+    (string? v)
+    (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
+                                   "\n" "\\n"
+                                   "\r" "\\r"
+                                   "\t" "\\t"})
+    (boolean? v)
+    (if v 1 0)
+    :else
+    v))
+
+(defn- row->tsv
+  [column-count row]
+  (when (not= column-count (count row))
+    (throw (Exception. (format "ERROR: missing data in row \"%s\"" (str/join "," row)))))
+  (->> row
+       (map sanitize-value)
+       (str/join "\t")))
+
+(defn- get-global-variable
+  "The value of the given global variable in the DB. Does not do any type coercion, so, e.g., booleans come back as
+  \"ON\" and \"OFF\"."
+  [db-id var-name]
+  (:value
+   (first
+    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-id)
+                ["show global variables like ?" var-name]))))
+
+(defmethod driver/insert-into :mysql
+  [driver db-id ^String table-name column-names values]
+  ;; `local_infile` must be turned on per
+  ;; https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-local
+  (if (not= (get-global-variable db-id "local_infile") "ON")
+    ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
+    ((get-method driver/insert-into :sql-jdbc) driver db-id table-name column-names values)
+    (let [temp-file (File/createTempFile table-name ".tsv")
+          file-path (.getAbsolutePath temp-file)]
+      (try
+        (let [tsv (->> values
+                       (map (partial row->tsv (count column-names)))
+                       (str/join "\n"))
+              sql (sql/format {::load   [file-path (keyword table-name)]
+                               :columns (map keyword column-names)}
+                              :quoted true
+                              :dialect (sql.qp/quote-style driver))]
+          (spit file-path tsv)
+          (qp.writeback/execute-write-sql! db-id sql))
+        (finally
+          (.delete temp-file))))))
