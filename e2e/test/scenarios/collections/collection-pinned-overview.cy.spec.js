@@ -330,6 +330,9 @@ describe("scenarios > collection pinned items overview", () => {
     changePinnedCardDescription(QUESTION_NAME, MARKDOWN);
     openRootCollection();
 
+    // prevent replacing skeleton in DOM
+    cy.intercept("POST", `/api/card/**/query`, { statusCode: 500, body: null });
+
     cy.findByTestId("skeleton-description-icon").realHover();
 
     popover().within(() => {
