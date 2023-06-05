@@ -379,7 +379,10 @@ class DashboardHeader extends Component {
       });
 
       extraButtons.push({
-        title: t`Export as PDF`,
+        title:
+          dashboard.ordered_tabs.length > 1
+            ? t`Export tab as PDF`
+            : t`Export as PDF`,
         icon: "document",
         action: () => {
           this.saveAsImage();
