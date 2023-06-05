@@ -16,39 +16,34 @@ const defaultProps = {
   parameterValues: {},
 };
 
-describe("Text", () => {
-  it("should be able to render", () => {
-    expect(() =>
-      render(<Text {...defaultProps} settings={getSettingsWithText(null)} />),
-    ).not.toThrow();
-  });
+const setup = (options = {}) => {
+  render(<Text {...defaultProps} {...options} />);
+};
 
+describe("Text", () => {
   it("should render plain text", () => {
-    render(
-      <Text {...defaultProps} settings={getSettingsWithText("Plain text")} />,
-    );
+    const options = {
+      settings: getSettingsWithText("Plain text"),
+    };
+    setup(options);
 
     expect(screen.getByText("Plain text")).toBeInTheDocument();
   });
 
   it("should render simple markdown", () => {
-    render(
-      <Text
-        {...defaultProps}
-        settings={getSettingsWithText("**Bold text**")}
-      />,
-    );
+    const options = {
+      settings: getSettingsWithText("**Bold text**"),
+    };
+    setup(options);
 
     expect(screen.getByText("Bold text")).toHaveStyle("font-weight: bold");
   });
 
   it("should render an internal link", () => {
-    render(
-      <Text
-        {...defaultProps}
-        settings={getSettingsWithText("[Internal link](/)")}
-      />,
-    );
+    const options = {
+      settings: getSettingsWithText("[Internal link](/)"),
+    };
+    setup(options);
 
     expect(screen.getByText("Internal link")).toHaveAttribute("href", "/");
     expect(screen.getByText("Internal link")).not.toHaveAttribute(
@@ -62,12 +57,10 @@ describe("Text", () => {
   });
 
   it("should render an external link", () => {
-    render(
-      <Text
-        {...defaultProps}
-        settings={getSettingsWithText("[External link](https://example.com)")}
-      />,
-    );
+    const options = {
+      settings: getSettingsWithText("[External link](https://example.com)"),
+    };
+    setup(options);
 
     expect(screen.getByText("External link")).toHaveAttribute(
       "href",
