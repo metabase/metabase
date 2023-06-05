@@ -176,13 +176,13 @@
         lib.schema.temporal-bucketing/ordered-datetime-bucketing-units))
 
 (defmethod lib.metadata.calculation/display-name-method :type/temporal-bucketing-option
-  [_query _stage-number {:keys [unit]}]
+  [_query _stage-number {:keys [unit]} _style]
   (describe-temporal-unit unit))
 
 (defmethod lib.metadata.calculation/display-info-method :type/temporal-bucketing-option
-  [query stage-number {:keys [default] :as option}]
-  {:display-name (lib.metadata.calculation/display-name query stage-number option)
-   :default default})
+  [query stage-number option]
+  (merge {:display-name (lib.metadata.calculation/display-name query stage-number option)}
+         (select-keys option [:default :selected])))
 
 (defmulti available-temporal-buckets-method
   "Implementation for [[available-temporal-buckets]]. Return a set of units from
