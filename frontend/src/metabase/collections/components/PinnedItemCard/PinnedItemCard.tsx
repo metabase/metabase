@@ -8,7 +8,7 @@ import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import Markdown from "metabase/core/components/Markdown";
-import { parseMarkdown } from "metabase/lib/markdown";
+import { getLeadingText, parseMarkdown } from "metabase/lib/markdown";
 import Database from "metabase-lib/metadata/Database";
 
 import {
