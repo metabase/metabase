@@ -51,8 +51,8 @@
 (deftest read-snippet-api-test
   (grant-native-perms)
   (testing "GET /api/native-query-snippet/:id"
-    (mt/with-temp NativeQuerySnippet [snippet {:content "-- SQL comment here"
-                                               :name    "comment"}]
+    (t2.with-temp/with-temp [NativeQuerySnippet snippet {:content "-- SQL comment here"
+                                                         :name    "comment"}]
       (testing "all users should be able to see all snippets in CE"
         (doseq [test-user [:crowberto :rasta]]
           (testing (format "with test user %s" test-user)
@@ -68,16 +68,16 @@
              (mt/user-http-request :rasta :post 400 (snippet-url) {})))
 
       (is (name-schema-error? (mt/user-http-request :rasta
-                               :post 400 (snippet-url)
-                               {:content "NULL"})))
+                                                    :post 400 (snippet-url)
+                                                    {:content "NULL"})))
 
       (is (name-schema-error? (mt/user-http-request :rasta :post 400 (snippet-url)
-                               {:content "NULL"
-                                :name    " starts with a space"})))
+                                                    {:content "NULL"
+                                                     :name    " starts with a space"})))
 
       (is (name-schema-error? (mt/user-http-request :rasta :post 400 (snippet-url)
-                               {:content "NULL"
-                                :name    "contains a } character"})))))
+                                                    {:content "NULL"
+                                                     :name    "contains a } character"})))))
 
   (testing "successful create returns new snippet's data"
     (doseq [[message user] {"admin user should be able to create" :crowberto
@@ -101,7 +101,7 @@
 
   (testing "Attempting to create a Snippet with a name that's already in use should throw an error"
     (try
-      (mt/with-temp NativeQuerySnippet [_ {:name "test-snippet-1", :content "1"}]
+      (t2.with-temp/with-temp [NativeQuerySnippet _ {:name "test-snippet-1", :content "1"}]
         (is (= "A snippet with that name already exists. Please pick a different name."
                (mt/user-http-request :crowberto :post 400 (snippet-url) {:name "test-snippet-1", :content "2"})))
         (is (= 1
@@ -112,7 +112,7 @@
   (testing "Shouldn't be able to specify non-default creator_id"
     (try
       (let [snippet (mt/user-http-request :crowberto :post 200 (snippet-url)
-                     {:name "test-snippet", :content "1", :creator_id (mt/user->id :rasta)})]
+                                          {:name "test-snippet", :content "1", :creator_id (mt/user->id :rasta)})]
         (is (= (mt/user->id :crowberto)
                (:creator_id snippet))))
       (finally
@@ -125,12 +125,12 @@
       (letfn [(create! [expected-status-code collection-id]
                 (try
                   (let [response (mt/user-http-request :rasta :post expected-status-code (snippet-url)
-                                  {:name "test-snippet", :description "Just null", :content "NULL", :collection_id collection-id})]
+                                                       {:name "test-snippet", :description "Just null", :content "NULL", :collection_id collection-id})]
                     {:response response
                      :db       (some->> (:id response) (t2/select-one NativeQuerySnippet :id))})
                   (finally
                     (t2/delete! NativeQuerySnippet :name "test-snippet"))))]
-        (mt/with-temp Collection [{collection-id :id} {:namespace "snippets"}]
+        (t2.with-temp/with-temp [Collection {collection-id :id} {:namespace "snippets"}]
           (let [{:keys [response db]} (create! 200 collection-id)]
             (testing "\nAPI response"
               (is (= {:name "test-snippet", :collection_id collection-id}
@@ -141,7 +141,7 @@
                            db)))))
 
         (testing "\nShould throw an error if the Collection isn't in the 'snippets' namespace"
-          (mt/with-temp Collection [{collection-id :id}]
+          (t2.with-temp/with-temp [Collection {collection-id :id}]
             (is (= {:errors               {:collection_id "A NativeQuerySnippet can only go in Collections in the :snippets namespace."}
                     :allowed-namespaces   ["snippets"]
                     :collection-namespace nil}
@@ -154,8 +154,8 @@
 (deftest update-snippet-api-test
   (grant-native-perms)
   (testing "PUT /api/native-query-snippet/:id"
-    (mt/with-temp NativeQuerySnippet [snippet {:content "-- SQL comment here"
-                                               :name    "comment"}]
+    (t2.with-temp/with-temp [NativeQuerySnippet snippet {:content "-- SQL comment here"
+                                                         :name    "comment"}]
       (testing "update stores updated snippet"
         (doseq [[message user] {"admin user should be able to update"     :crowberto
                                 "non-admin user should be able to update" :rasta}]
@@ -179,7 +179,7 @@
                                 [:id :name]))))))
 
       (testing "Shouldn't be able to change creator_id"
-        (mt/with-temp NativeQuerySnippet [snippet {:name "test-snippet", :content "1", :creator_id (mt/user->id :lucky)}]
+        (t2.with-temp/with-temp [NativeQuerySnippet snippet {:name "test-snippet", :content "1", :creator_id (mt/user->id :lucky)}]
           (mt/user-http-request :crowberto :put 200 (snippet-url (:id snippet)) {:creator_id (mt/user->id :rasta)})
           (is (= (mt/user->id :lucky)
                  (t2/select-one-fn :creator_id NativeQuerySnippet :id (:id snippet)))))))))

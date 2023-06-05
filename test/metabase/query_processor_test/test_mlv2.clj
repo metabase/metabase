@@ -30,19 +30,12 @@
   false)
 
 (defn- skip-metadata-calculation-tests? [legacy-query]
-  (or
    ;; #29907: wrong column name for joined columns in `:breakout`
    (mbql.u/match-one legacy-query
      {:breakout breakouts}
      (mbql.u/match-one breakouts
        [:field _id-or-name {:join-alias _join-alias}]
-       "#29907"))
-   ;; #29910: `:datetime-add`, `:datetime-subtract`, and `:convert-timezone` broken with string literals
-   (mbql.u/match-one legacy-query
-     #{:datetime-add :datetime-subtract :convert-timezone}
-     (mbql.u/match-one &match
-       [_tag (_literal :guard string?) & _]
-       "#29910"))))
+       "#29907")))
 
 (defn- test-mlv2-metadata [original-query _qp-metadata]
   {:pre [(map? original-query)]}

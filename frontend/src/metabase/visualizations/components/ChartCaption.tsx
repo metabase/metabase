@@ -1,5 +1,5 @@
 import { useCallback, ReactNode } from "react";
-import { IconProps } from "metabase/components/Icon";
+import { IconProps } from "metabase/core/components/Icon";
 import {
   Series,
   TransformedSeries,

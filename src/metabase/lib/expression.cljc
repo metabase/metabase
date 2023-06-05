@@ -110,21 +110,9 @@
   [query stage-number [tag _opts & args] _style]
   (infix-display-name query stage-number (get infix-operator-display-name tag) args))
 
-(defn- infix-column-name
-  [query stage-number operator-str args]
-  (str/join (str \_ operator-str \_)
-            (map (partial lib.metadata.calculation/column-name query stage-number)
-                 args)))
-
-(def ^:private infix-operator-column-name
-  {:+ "plus"
-   :- "minus"
-   :/ "divided_by"
-   :* "times"})
-
 (defmethod lib.metadata.calculation/column-name-method ::infix-operator
-  [query stage-number [tag _opts & args]]
-  (infix-column-name query stage-number (get infix-operator-column-name tag) args))
+  [_query _stage-number _expr]
+  "expression")
 
 ;;; `:+`, `:-`, and `:*` all have the same logic; also used for [[metabase.lib.schema.expression/type-of]].
 ;;;
@@ -280,3 +268,39 @@
 (defmethod lib.ref/ref-method :expression
   [expression-clause]
   expression-clause)
+
+(mu/defn expressionable-columns :- [:sequential lib.metadata/ColumnMetadata]
+  "Get column metadata for all the columns that can be used expressions in
+  the stage number `stage-number` of the query `query` and in expression index `expression-position`
+  If `stage-number` is omitted, the last stage is used.
+  Pass nil to `expression-position` for new expressions.
+  The rules for determining which columns can be broken out by are as follows:
+
+  1. custom `:expressions` in this stage of the query, that come before the `expression-position`
+
+  2. Fields 'exported' by the previous stage of the query, if there is one;
+     otherwise Fields from the current `:source-table`
+
+  3. Fields exported by explicit joins
+
+  4. Fields in Tables that are implicitly joinable."
+
+  ([query :- ::lib.schema/query
+    expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+   (expressionable-columns query -1 expression-position))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+   (let [indexed-expressions (into {} (map-indexed (fn [idx expr]
+                                                     [(lib.util/expression-name expr) idx])
+                                                   (expressions query stage-number)))
+         unavailable-expressions (fn [column]
+                                   (or (not expression-position)
+                                       (not= (:lib/source column) :source/expressions)
+                                       (< (get indexed-expressions (:name column)) expression-position)))
+         stage (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)]
+     (->> columns
+          (filterv unavailable-expressions)
+          not-empty))))

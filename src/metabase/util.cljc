@@ -445,6 +445,13 @@
     arg
     [arg]))
 
+(defn many-or-one
+  "Returns coll if it has multiple elements, or else returns its only element"
+  [coll]
+  (if (next coll)
+    coll
+    (first coll)))
+
 (defn select-nested-keys
   "Like `select-keys`, but can also handle nested keypaths:
 
@@ -471,6 +478,11 @@
              (as-> s s
                (str/replace s #"\s" "")
                (re-matches #"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$" s)))))
+
+(defn batches-of
+  "Returns coll split into seqs of up to n items"
+  [n coll]
+  (partition n n nil coll))
 
 (def ^{:arglists '([n])} safe-inc
   "Increment `n` if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."

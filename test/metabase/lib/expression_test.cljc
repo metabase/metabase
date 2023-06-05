@@ -131,7 +131,7 @@
                [:expression {:lib/uuid (str (random-uuid))} "double-price"]]]
     (is (= "Sum of double-price"
            (lib.metadata.calculation/display-name query -1 expr)))
-    (is (= "sum_double-price"
+    (is (= "sum"
            (lib.metadata.calculation/column-name query -1 expr)))))
 
 (deftest ^:parallel coalesce-names-test
@@ -274,3 +274,17 @@
           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
               (lib/expression "expr" "value")
               (lib/expressions)))))
+
+(deftest ^:parallel expressionable-columns-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+                  (lib/expression "a" 1)
+                  (lib/expression "b" 2))
+        expressionable-expressions-for-position (fn [pos]
+                                                  (some->> (lib/expressionable-columns query pos)
+                                                           (map :lib/desired-column-alias)))]
+    (is (= ["ID" "NAME"] (expressionable-expressions-for-position 0)))
+    (is (= ["ID" "NAME" "a"] (expressionable-expressions-for-position 1)))
+    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position nil)))
+    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 2)))
+    (is (= (lib.metadata.calculation/visible-columns query)
+           (lib/expressionable-columns query nil)))))

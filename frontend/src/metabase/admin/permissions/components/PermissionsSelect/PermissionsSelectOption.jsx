@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import {
@@ -39,7 +39,7 @@ export function PermissionsSelectOption({
     >
       <Tooltip tooltip={hint} isOpen={shouldShowTooltip}>
         <IconContainer color={iconColor}>
-          <Icon name={icon} size={14} />
+          <Icon name={icon} />
         </IconContainer>
       </Tooltip>
       <PermissionsSelectLabel>{label}</PermissionsSelectLabel>

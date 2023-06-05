@@ -453,6 +453,12 @@
     ;; afterwards
     [:field id-or-name (not-empty opts)]))
 
+(defmethod canonicalize-mbql-clause :aggregation
+  [[_tag index opts]]
+  (if (empty? opts)
+    [:aggregation index]
+    [:aggregation index opts]))
+
 ;;; legacy Field clauses
 
 (defmethod canonicalize-mbql-clause :field-id

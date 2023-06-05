@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { isObscured } from "metabase/lib/dom";
 import {
@@ -109,7 +109,6 @@ export default class ExpressionEditorSuggestions extends Component {
                   <Icon
                     name={icon}
                     color={isHighlighted ? highlighted : normal}
-                    size="14"
                     className="mr1"
                   />
                   <SuggestionSpan

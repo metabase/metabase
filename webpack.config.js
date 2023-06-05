@@ -62,7 +62,7 @@ const config = (module.exports = {
 
   externals: {
     canvg: "canvg",
-    dompurify: "dompurify"
+    dompurify: "dompurify",
   },
 
   // output to "dist"
@@ -99,6 +99,7 @@ const config = (module.exports = {
       {
         test: /\.(eot|woff2?|ttf|svg|png)$/,
         type: "asset/resource",
+        resourceQuery: { not: [/component|source/] },
       },
       {
         test: /\.css$/,
@@ -120,6 +121,24 @@ const config = (module.exports = {
         exclude: /node_modules/,
         enforce: "pre",
         use: ["source-map-loader"],
+      },
+      {
+        test: /\.svg/,
+        type: "asset/source",
+        resourceQuery: /source/, // *.svg?source
+      },
+      {
+        test: /\.svg$/i,
+        issuer: /\.[jt]sx?$/,
+        resourceQuery: /component/, // *.svg?component
+        use: [
+          {
+            loader: "@svgr/webpack",
+            options: {
+              ref: true,
+            },
+          },
+        ],
       },
     ],
   },
@@ -241,7 +260,8 @@ if (WEBPACK_BUNDLE === "hot") {
   config.output.filename = "[name].hot.bundle.js?[contenthash]";
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
-  config.output.publicPath = "http://localhost:8080/" + config.output.publicPath;
+  config.output.publicPath =
+    "http://localhost:8080/" + config.output.publicPath;
 
   config.module.rules.unshift({
     test: /\.(tsx?|jsx?)$/,

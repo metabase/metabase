@@ -28,7 +28,8 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (metabase.plugins.jdbc_proxy ProxyDriver)))
 
@@ -233,7 +234,7 @@
             qual-tbl-nm  (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) tbl-nm)
             view-nm      "late_binding_view"
             qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
-        (mt/with-temp Database [database {:engine :redshift, :details db-details}]
+        (t2.with-temp/with-temp [Database database {:engine :redshift, :details db-details}]
           (try
             ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
             (execute!
@@ -267,7 +268,7 @@
       (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
             view-nm      "weird_late_binding_view"
             qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
-        (mt/with-temp Database [database {:engine :redshift, :details db-details}]
+        (t2.with-temp/with-temp [Database database {:engine :redshift, :details db-details}]
           (try
             (execute!
              (str "CREATE OR REPLACE VIEW %1$s AS ("
@@ -309,7 +310,7 @@
                   temp-username)
         (try
           (binding [redshift.test/*use-original-filtered-syncable-schemas-impl?* true]
-            (mt/with-temp Database [db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
+            (t2.with-temp/with-temp [Database db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
               (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db))]
                 (let [schemas (reduce conj
                                       #{}

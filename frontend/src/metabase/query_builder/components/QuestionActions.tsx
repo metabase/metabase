@@ -165,7 +165,7 @@ const QuestionActions = ({
   if (!isDataset) {
     extraButtons.push({
       title: t`Add to dashboard`,
-      icon: "dashboard",
+      icon: "add_to_dash",
       action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
       testId: ADD_TO_DASH_TESTID,
     });
@@ -189,7 +189,7 @@ const QuestionActions = ({
     if (isDataset) {
       extraButtons.push({
         title: t`Turn back to saved question`,
-        icon: "model_framed",
+        icon: "insight",
         action: turnDatasetIntoQuestion,
       });
     }
@@ -198,7 +198,7 @@ const QuestionActions = ({
   if (!question.query().readOnly()) {
     extraButtons.push({
       title: t`Duplicate`,
-      icon: "segment",
+      icon: "clone",
       action: () => onOpenModal(MODAL_TYPES.CLONE),
       testId: CLONE_TESTID,
     });
@@ -207,7 +207,7 @@ const QuestionActions = ({
   if (canWrite) {
     extraButtons.push({
       title: t`Archive`,
-      icon: "view_archive",
+      icon: "archive",
       action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
       testId: ARCHIVE_TESTID,
     });
