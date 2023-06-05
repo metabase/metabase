@@ -90,7 +90,7 @@ export function Text({
   if (isEditing) {
     return (
       <EditModeContainer
-        className={cx(className, "text-edit-container")}
+        className={cx(className)}
         isEmpty={!hasContent}
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}

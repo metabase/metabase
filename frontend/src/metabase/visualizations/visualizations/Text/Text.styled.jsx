@@ -15,6 +15,16 @@ export const EditModeContainer = styled.div`
   &:hover {
     padding: calc(0.75rem - 1px); // adjust for border on hover
   }
+
+  .DashCard:hover &,
+  .DashCard:focus-within & {
+    border: 1px solid ${color("brand")};
+  }
+
+  .DashCard.resizing & {
+    border: 1px solid ${color("brand")};
+  }
+
   ${({ isPreviewing, isEmpty }) =>
     (!isPreviewing || isEmpty) &&
     "padding: calc(0.75rem - 1px);"} // adjust for border on preview/no entered content

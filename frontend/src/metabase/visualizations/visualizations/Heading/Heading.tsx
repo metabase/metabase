@@ -1,6 +1,5 @@
 import { useMemo, MouseEvent } from "react";
 
-import cx from "classnames";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -48,7 +47,6 @@ export function Heading({
   if (isEditing) {
     return (
       <InputContainer
-        className={cx("text-edit-container")}
         isEmpty={!hasContent}
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
