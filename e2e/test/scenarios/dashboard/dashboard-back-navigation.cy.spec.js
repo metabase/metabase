@@ -100,8 +100,8 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
   });
 
   it("should preserve query results when navigating between the dashboard and the query builder", () => {
-    // addTextCardToDashboard(1);
-    visitDashboard(1);
+    createDashboardWithCards();
+    cy.get("@dashboardId").then(visitDashboard);
     cy.wait("@dashboard");
     cy.wait("@dashcardQuery");
 
@@ -112,7 +112,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     });
 
     queryBuilderHeader().within(() => {
-      cy.findByLabelText("Back to Orders in a dashboard").click();
+      cy.findByLabelText("Back to Test Dashboard").click();
     });
 
     getDashboardCard(0).within(() => {
@@ -131,7 +131,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     });
 
     collectionTable().within(() => {
-      cy.findByText("Orders in a dashboard").click();
+      cy.findByText("Test Dashboard").click();
       cy.wait("@dashboard");
       cy.wait("@dashcardQuery");
       cy.get("@dashcardQuery.all").should("have.length", 2);
@@ -180,3 +180,39 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     });
   });
 });
+
+const createDashboardWithCards = () => {
+  cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+    cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+      cards: [
+        {
+          id: -1,
+          card_id: 1,
+          row: 0,
+          col: 0,
+          size_x: 8,
+          size_y: 8,
+        },
+        {
+          id: -2,
+          card_id: null,
+          col: 8,
+          row: 0,
+          size_x: 4,
+          size_y: 4,
+          visualization_settings: {
+            virtual_card: {
+              name: null,
+              display: "text",
+              visualization_settings: {},
+              dataset_query: {},
+              archived: false,
+            },
+            text: "Text card",
+          },
+        },
+      ],
+    });
+    cy.wrap(dashboard_id).as("dashboardId");
+  });
+};
