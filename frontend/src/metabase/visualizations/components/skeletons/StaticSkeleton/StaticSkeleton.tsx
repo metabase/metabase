@@ -54,7 +54,11 @@ const StaticSkeleton = ({
         <SkeletonDescription
           alwaysShowTooltip={hasMoreElementsToShow}
           placement="bottom"
-          tooltip={<Markdown>{description}</Markdown>}
+          tooltip={
+            <Markdown disallowHeading unstyleLinks>
+              {description}
+            </Markdown>
+          }
         >
           {getLeadingText(descriptionElements)}
         </SkeletonDescription>

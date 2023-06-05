@@ -56,13 +56,12 @@ function PinnedItemCard({
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
   const icon = item.getIcon().name;
   const { description, name, model } = item;
-
   const defaultedDescription = description || DEFAULT_DESCRIPTION[model] || "";
   const descriptionElements = parseMarkdown(defaultedDescription);
   const hasMoreElementsToShow = descriptionElements.length > 1;
 
   const maybeEnableTooltip = (
-    event: MouseEvent<HTMLDivElement, MouseEvent>,
+    event: MouseEvent<HTMLDivElement>,
     setterFn: Dispatch<SetStateAction<boolean>>,
   ) => {
     const target = event.target as HTMLDivElement;
@@ -108,7 +107,11 @@ function PinnedItemCard({
           <Description
             alwaysShowTooltip={hasMoreElementsToShow}
             placement="bottom"
-            tooltip={<Markdown>{defaultedDescription}</Markdown>}
+            tooltip={
+              <Markdown disallowHeading unstyleLinks>
+                {defaultedDescription}
+              </Markdown>
+            }
             tooltipMaxWidth={TOOLTIP_MAX_WIDTH}
           >
             {getLeadingText(descriptionElements)}
