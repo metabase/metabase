@@ -263,10 +263,6 @@
 
   * `saved` means we should include the saved questions virtual database. Default: `false`.
 
-  * `include_cards` here means we should also include virtual Table entries for saved Questions, e.g. so we can easily
-    use them as source Tables in queries. This is a deprecated alias for `saved=true` + `include=tables` (for the saved
-    questions virtual DB). Prefer using `include` and `saved` instead.
-
   * `include_editable_data_model` will only include DBs for which the current user has data model editing
     permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if
     Enterprise Edition code is available the advanced-permissions feature is enabled.
@@ -274,9 +270,8 @@
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
 
   * `include_only_uploadable` will only include DBs into which Metabase can insert new data."
-  [include_cards include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics]
-  {include_cards                 [:maybe :boolean]
-   include                       (mu/with-api-error-message
+  [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics]
+  {include                       (mu/with-api-error-message
                                    [:maybe [:= "tables"]]
                                    (deferred-tru "include must be either empty or the value 'tables'"))
    include_analytics             [:maybe :boolean]
@@ -284,14 +279,10 @@
    include_editable_data_model   [:maybe :boolean]
    exclude_uneditable_details    [:maybe :boolean]
    include_only_uploadable       [:maybe :boolean]}
-  (when (and config/is-dev? include_cards)
-    ;; don't need to i18n since this is dev-facing only
-    (log/warn "GET /api/database?include_cards is deprecated."
-              "Prefer using ?include=tables&saved=true instead."))
   (let [include-tables?                 (= include "tables")
-        include-saved-questions-db?     (or saved include_cards)
-        include-saved-questions-tables? (when include-saved-questions-db?
-                                          (if include_cards true include-tables?))
+        include-saved-questions-db?     saved
+        include-saved-questions-tables? (and include-saved-questions-db?
+                                             include-tables?)
         db-list-res                     (or (dbs-list :include-tables?                 include-tables?
                                                       :include-saved-questions-db?     include-saved-questions-db?
                                                       :include-saved-questions-tables? include-saved-questions-tables?
