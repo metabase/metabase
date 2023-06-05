@@ -1,4 +1,3 @@
-import React from "react";
 import { IndexRedirect, Redirect } from "react-router";
 import { Route } from "metabase/hoc/Title";
 import ModelDetailPage from "metabase/models/containers/ModelDetailPage/ModelDetailPage";

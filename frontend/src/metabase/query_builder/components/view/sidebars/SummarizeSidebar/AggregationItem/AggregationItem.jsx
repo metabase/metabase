@@ -1,10 +1,9 @@
-import React from "react";
 import PropTypes from "prop-types";
 
 import { color } from "metabase/lib/colors";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { AggregationItemRoot } from "./AggregationItem.styled";
 

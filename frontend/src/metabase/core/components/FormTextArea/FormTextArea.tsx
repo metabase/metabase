@@ -1,10 +1,4 @@
-import React, {
-  ChangeEvent,
-  forwardRef,
-  ReactNode,
-  Ref,
-  useCallback,
-} from "react";
+import { ChangeEvent, forwardRef, ReactNode, Ref, useCallback } from "react";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import TextArea, { TextAreaProps } from "metabase/core/components/TextArea";

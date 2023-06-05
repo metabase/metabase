@@ -14,7 +14,7 @@ export function getCollectionActions() {
 }
 
 export function openCollectionMenu() {
-  getCollectionActions().within(() => cy.icon("ellipsis").click());
+  getCollectionActions().icon("ellipsis").click();
 }
 
 export function getSidebarSectionTitle(name) {
@@ -45,10 +45,7 @@ export function getPersonalCollectionName(user) {
 }
 
 export function openCollectionItemMenu(item, index = 0) {
-  cy.findAllByText(item)
-    .eq(index)
-    .closest("tr")
-    .within(() => cy.icon("ellipsis").click());
+  cy.findAllByText(item).eq(index).closest("tr").icon("ellipsis").click();
 }
 
 export const getPinnedSection = () => {
@@ -70,8 +67,6 @@ export const openPinnedItemMenu = name => {
 
 export const openUnpinnedItemMenu = name => {
   getUnpinnedSection().within(() => {
-    cy.findByText(name)
-      .closest("tr")
-      .within(() => cy.icon("ellipsis").click());
+    cy.findByText(name).closest("tr").icon("ellipsis").click();
   });
 };

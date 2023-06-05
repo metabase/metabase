@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { jt, t } from "ttag";

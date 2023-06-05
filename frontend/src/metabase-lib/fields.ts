@@ -17,3 +17,10 @@ export function withFields(
 ): Query {
   return ML.with_fields(query, stageIndex, newFields);
 }
+
+export function fieldableColumns(
+  query: Query,
+  stageIndex: number,
+): ColumnMetadata[] {
+  return ML.fieldable_columns(query, stageIndex);
+}

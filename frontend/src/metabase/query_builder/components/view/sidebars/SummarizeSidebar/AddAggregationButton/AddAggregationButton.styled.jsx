@@ -5,7 +5,7 @@ export const AddAggregationButtonRoot = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.625rem;
+  padding: 0.25rem;
   transition: all 0.2s linear;
   color: ${color("summarize")};
   background-color: ${color("bg-light")};

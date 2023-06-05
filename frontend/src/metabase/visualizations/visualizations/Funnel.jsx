@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
@@ -8,8 +8,6 @@ import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
-
-import { iconPropTypes } from "metabase/components/Icon";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -28,7 +26,7 @@ import FunnelBar from "../components/FunnelBar";
 import LegendHeader from "../components/LegendHeader";
 
 const propTypes = {
-  headerIcon: PropTypes.shape(iconPropTypes),
+  headerIcon: PropTypes.object,
 };
 
 export default class Funnel extends Component {

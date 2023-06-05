@@ -8,7 +8,8 @@
    [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- mbql-query [inner-query]
   {:database 1, :type :query, :query (merge {:source-table 1}
@@ -147,9 +148,9 @@
   (testing "Check that a metric w/ multiple aggregation syntax (nested vector) still works correctly"
     ;; so-called "multiple aggregation syntax" is the norm now -- query normalization will do this automatically
     (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
-      (mt/with-temp Metric [metric {:table_id   (mt/id :venues)
-                                    :definition {:aggregation [[:sum [:field (mt/id :venues :price) nil]]]
-                                                 :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
+      (t2.with-temp/with-temp [Metric metric {:table_id   (mt/id :venues)
+                                              :definition {:aggregation [[:sum [:field (mt/id :venues :price) nil]]]
+                                                           :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
         (is (= [[2 118]
                 [3  39]
                 [4  24]]
@@ -180,7 +181,7 @@
 
 (deftest named-metrics-test
   (testing "make sure we can name a :metric"
-    (mt/with-temp Metric [metric {:definition {:aggregation [[:sum [:field 20 nil]]]}}]
+    (t2.with-temp/with-temp [Metric metric {:definition {:aggregation [[:sum [:field 20 nil]]]}}]
       (is (= (mbql-query
               {:aggregation [[:aggregation-options [:sum [:field 20 nil]] {:display-name "Named Metric"}]]
                :breakout    [[:field 10 nil]]})
@@ -191,7 +192,7 @@
 (deftest include-display-name-test
   (testing (str "if the `:metric` is wrapped in aggregation options that do *not* give it a display name, "
                 "`:display-name` should be added to the options")
-    (mt/with-temp Metric [metric {:definition {:aggregation [[:sum [:field 20 nil]]]}}]
+    (t2.with-temp/with-temp [Metric metric {:definition {:aggregation [[:sum [:field 20 nil]]]}}]
       (is (= (mbql-query
               {:aggregation [[:aggregation-options
                               [:sum [:field 20 nil]]
@@ -202,9 +203,9 @@
                            :breakout    [[:field 10 nil]]}))))))
 
   (testing "a Metric whose :aggregation is already named should not get wrapped in an `:aggregation-options` clause"
-    (mt/with-temp Metric [metric {:definition {:aggregation [[:aggregation-options
-                                                              [:sum [:field 20 nil]]
-                                                              {:display-name "My Cool Aggregation"}]]}}]
+    (t2.with-temp/with-temp [Metric metric {:definition {:aggregation [[:aggregation-options
+                                                                        [:sum [:field 20 nil]]
+                                                                        {:display-name "My Cool Aggregation"}]]}}]
       (is (= (mbql-query
               {:aggregation [[:aggregation-options [:sum [:field 20 nil]] {:display-name "My Cool Aggregation"}]]
                :breakout    [[:field 10 nil]]})
@@ -213,9 +214,9 @@
                            :breakout    [[:field 10 nil]]}))))))
 
   (testing "...but if it's wrapped in `:aggregation-options`, but w/o given a display name, we should merge the options"
-    (mt/with-temp Metric [metric {:definition {:aggregation [[:aggregation-options
-                                                              [:sum [:field 20 nil]]
-                                                              {:name "auto_generated_name"}]]}}]
+    (t2.with-temp/with-temp [Metric metric {:definition {:aggregation [[:aggregation-options
+                                                                        [:sum [:field 20 nil]]
+                                                                        {:name "auto_generated_name"}]]}}]
       (is (= (mbql-query
               {:aggregation [[:aggregation-options
                               [:sum [:field 20 nil]]

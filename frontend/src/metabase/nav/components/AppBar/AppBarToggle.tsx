@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { isMac } from "metabase/lib/browser";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -31,7 +30,7 @@ const AppBarToggle = ({
       >
         <SidebarIcon
           isLogoVisible={isLogoVisible}
-          size={28}
+          size={24}
           name={isNavBarOpen ? "sidebar_open" : "sidebar_closed"}
         />
       </SidebarButton>

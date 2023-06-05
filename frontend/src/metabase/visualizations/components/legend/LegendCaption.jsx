@@ -1,6 +1,5 @@
-import React from "react";
 import PropTypes from "prop-types";
-import { iconPropTypes } from "metabase/components/Icon";
+
 import Tooltip from "metabase/core/components/Tooltip";
 import Markdown from "metabase/core/components/Markdown";
 import Ellipsified from "metabase/core/components/Ellipsified";
@@ -17,7 +16,7 @@ const propTypes = {
   className: PropTypes.string,
   title: PropTypes.string,
   description: PropTypes.string,
-  icon: PropTypes.shape(iconPropTypes),
+  icon: PropTypes.object,
   actionButtons: PropTypes.node,
   onSelectTitle: PropTypes.func,
 };

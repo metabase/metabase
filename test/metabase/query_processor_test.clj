@@ -6,7 +6,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [hawk.init]
+   [mb.hawk.init]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
    [metabase.models.field :refer [Field]]
@@ -44,7 +44,7 @@
   {:pre [(every? keyword? (cons feature more-features))]}
   ;; Can't use [[normal-drivers-with-feature]] during test initialization, because it means we end up having to load
   ;; plugins and a bunch of other nonsense.
-  (hawk.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers-with-feature feature more-features)))
+  (mb.hawk.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers-with-feature feature more-features)))
   (let [features (set (cons feature more-features))]
     (set (for [driver (normal-drivers)
                :let   [driver (tx/the-driver-with-test-extensions driver)]

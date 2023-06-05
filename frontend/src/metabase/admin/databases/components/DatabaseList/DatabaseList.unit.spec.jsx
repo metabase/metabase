@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "__support__/ui";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import DatabaseList from "./DatabaseList";

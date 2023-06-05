@@ -1,4 +1,3 @@
-import React from "react";
 import fetchMock from "fetch-mock";
 import { renderWithProviders, screen } from "__support__/ui";
 

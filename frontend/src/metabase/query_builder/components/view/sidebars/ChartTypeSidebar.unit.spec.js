@@ -1,4 +1,3 @@
-import React from "react";
 import { render, fireEvent, screen, within } from "@testing-library/react";
 import { createMockMetadata } from "__support__/metadata";
 import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";

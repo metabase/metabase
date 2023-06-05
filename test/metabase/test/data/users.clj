@@ -15,8 +15,8 @@
    [metabase.util :as u]
    [metabase.util.password :as u.password]
    [schema.core :as s]
-   [toucan.util.test :as tt]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -215,9 +215,9 @@
     (u/the-id test-user-name-or-user-id)))
 
 (defn do-with-group-for-user [group test-user-name-or-user-id f]
-  (tt/with-temp* [PermissionsGroup           [group group]
-                  PermissionsGroupMembership [_ {:group_id (u/the-id group)
-                                                 :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]]
+  (t2.with-temp/with-temp [PermissionsGroup           group group
+                           PermissionsGroupMembership _     {:group_id (u/the-id group)
+                                                             :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]
     (f group)))
 
 (defmacro with-group

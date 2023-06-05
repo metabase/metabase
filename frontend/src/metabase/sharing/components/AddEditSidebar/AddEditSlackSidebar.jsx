@@ -1,9 +1,8 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import SchedulePicker from "metabase/containers/SchedulePicker";
 import SendTestPulse from "metabase/components/SendTestPulse";
 import Sidebar from "metabase/dashboard/components/Sidebar";

@@ -1,10 +1,10 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
 
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Dimension from "metabase-lib/Dimension";
 import StructuredQuery, {
   DimensionOption,

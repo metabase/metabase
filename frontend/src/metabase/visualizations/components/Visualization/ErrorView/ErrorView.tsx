@@ -1,12 +1,11 @@
-import React from "react";
-
 import Tooltip from "metabase/core/components/Tooltip";
 
+import type { IconName } from "metabase/core/components/Icon";
 import { Root, ShortMessage, StyledIcon } from "./ErrorView.styled";
 
 interface ErrorViewProps {
   error: string;
-  icon: string;
+  icon: IconName;
   isDashboard: boolean;
   isSmall: boolean;
 }

@@ -1,9 +1,7 @@
-import React from "react";
-
 import moment from "moment-timezone";
 import { has24HourModeSetting } from "metabase/lib/time";
 import NumericInput from "metabase/components/NumericInput";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { AmPmLabel } from "./HoursMinutesInput.styled";
 

@@ -9,6 +9,7 @@ import {
   ReferenceOptions,
   TemplateTagReference,
 } from "metabase-types/api";
+import { normalize } from "metabase-lib/queries/utils/normalize";
 
 export const isFieldReference = (mbql: any): mbql is FieldReference => {
   return Array.isArray(mbql) && mbql.length === 3 && mbql[0] === "field";
@@ -75,7 +76,7 @@ export const getNormalizedDimensionReference = (
     const normalizedOptions = normalizeReferenceOptions(mbql[2]);
     normalizedReference[2] = normalizedOptions;
 
-    return normalizedReference;
+    return normalize(normalizedReference);
   }
 
   return mbql;

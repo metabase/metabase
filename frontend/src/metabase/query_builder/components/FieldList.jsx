@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 
 import Dimension from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
@@ -25,7 +25,7 @@ export default class FieldList extends Component {
       extraItems: segmentOptions.map(segment => ({
         filter: ["segment", segment.id],
         name: segment.name,
-        icon: "star_outline",
+        icon: "star",
         className: "List-item--segment",
       })),
     });

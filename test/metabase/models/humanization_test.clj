@@ -4,12 +4,12 @@
    [metabase.models.humanization :as humanization]
    [metabase.models.table :refer [Table]]
    [metabase.test.util :as tu]
-   [toucan.util.test :as tt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- get-humanized-display-name [actual-name strategy]
   (with-redefs [humanization/humanization-strategy (constantly strategy)]
-    (tt/with-temp Table [{table-id :id} {:name actual-name}]
+    (t2.with-temp/with-temp [Table {table-id :id} {:name actual-name}]
       (t2/select-one-fn :display_name Table, :id table-id))))
 
 (deftest humanized-display-name-test
@@ -34,7 +34,7 @@
                                                            :simple   "Fussybird Sightings"
                                                            :none     "fussybird_sightings"}}]
       (tu/with-temporary-setting-values [humanization-strategy "simple"]
-        (tt/with-temp Table [{table-id :id} {:name actual-name}]
+        (t2.with-temp/with-temp [Table {table-id :id} {:name actual-name}]
           (letfn [(display-name [] (t2/select-one-fn :display_name Table, :id table-id))]
             (testing "initial display name"
               (is (= (:initial expected)
@@ -52,7 +52,7 @@
   (testing "check that if we give a field a custom display_name that changing strategy doesn't overwrite it"
     (doseq [initial-strategy ["simple" "none"]]
       (tu/with-temporary-setting-values [humanization-strategy initial-strategy]
-        (tt/with-temp Table [{table-id :id} {:name "toucansare_cool", :display_name "My Favorite Table"}]
+        (t2.with-temp/with-temp [Table {table-id :id} {:name "toucansare_cool", :display_name "My Favorite Table"}]
           (doseq [new-strategy ["simple" "none"]]
             (testing (format "switch from %s -> %s" initial-strategy new-strategy)
               (humanization/humanization-strategy! new-strategy)

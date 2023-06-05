@@ -20,7 +20,8 @@
    [metabase.util :as u]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -106,7 +107,7 @@
         (jdbc/execute! spec ["CREATE DATABASE \"views_test\";"]
                        {:transaction? false})
         ;; create the DB object
-        (mt/with-temp Database [database {:engine :snowflake, :details (assoc details :db "views_test")}]
+        (t2.with-temp/with-temp [Database database {:engine :snowflake, :details (assoc details :db "views_test")}]
           (let [sync! #(sync/sync-database! database)]
             ;; create a view
             (doseq [statement ["CREATE VIEW \"views_test\".\"PUBLIC\".\"example_view\" AS SELECT 'hello world' AS \"name\";"
@@ -279,9 +280,9 @@
 (deftest normalize-test
   (mt/test-driver :snowflake
     (testing "details should be normalized coming out of the DB"
-      (mt/with-temp Database [db {:name    "Legacy Snowflake DB"
-                                  :engine  :snowflake,
-                                  :details {:account  "my-instance"
-                                            :regionid "us-west-1"}}]
+      (t2.with-temp/with-temp [Database db {:name    "Legacy Snowflake DB"
+                                            :engine  :snowflake,
+                                            :details {:account  "my-instance"
+                                                      :regionid "us-west-1"}}]
         (is (= {:account "my-instance.us-west-1"}
                (:details db)))))))

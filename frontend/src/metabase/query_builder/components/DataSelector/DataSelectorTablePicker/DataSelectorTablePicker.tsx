@@ -1,10 +1,9 @@
-import React from "react";
 import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { isSyncCompleted } from "metabase/lib/syncing";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { isNotNull } from "metabase/core/utils/types";
@@ -97,7 +96,7 @@ const DataSelectorTablePicker = ({
       table && selectedTable ? table.id === selectedTable.id : false;
 
     const renderItemIcon = ({ table }: { table: Table }) =>
-      table ? <Icon name="table2" size={18} /> : null;
+      table ? <Icon name="table" /> : null;
 
     const handleChange = ({ table }: { table: Table }) => onChangeTable(table);
 

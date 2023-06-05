@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, forwardRef, Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
@@ -11,7 +11,7 @@ import { Grid, ScrollSync } from "react-virtualized";
 
 import "./TableInteractive.css";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -94,7 +94,7 @@ class TableInteractive extends Component {
     };
     this.columnHasResized = {};
     this.headerRefs = [];
-    this.detailShortcutRef = React.createRef();
+    this.detailShortcutRef = createRef();
 
     window.METABASE_TABLE = this;
   }
@@ -794,7 +794,7 @@ class TableInteractive extends Component {
                   <Icon
                     className="Icon mr1"
                     name={isAscending ? "chevronup" : "chevrondown"}
-                    size={8}
+                    size={10}
                   />
                 )}
                 {columnTitle}
@@ -802,7 +802,7 @@ class TableInteractive extends Component {
                   <Icon
                     className="Icon ml1"
                     name={isAscending ? "chevronup" : "chevrondown"}
-                    size={8}
+                    size={10}
                   />
                 )}
               </Ellipsified>,
@@ -1135,7 +1135,7 @@ export default _.compose(
   ),
 )(TableInteractive);
 
-const DetailShortcut = React.forwardRef((_props, ref) => (
+const DetailShortcut = forwardRef((_props, ref) => (
   <div
     id="detail-shortcut"
     className="TableInteractive-cellWrapper cursor-pointer"

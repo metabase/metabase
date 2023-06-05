@@ -1,4 +1,4 @@
-import React from "react";
+import { isValidElement } from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
 
@@ -215,9 +215,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
     );
   }
 
-  return parts.filter(
-    part => React.isValidElement(part) || part.name || part.icon,
-  );
+  return parts.filter(part => isValidElement(part) || part.name || part.icon);
 }
 
 QuestionTableBadges.propTypes = {

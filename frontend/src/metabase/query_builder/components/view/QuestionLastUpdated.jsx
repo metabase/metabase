@@ -1,10 +1,8 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import moment from "moment-timezone";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { SectionRoot } from "./QuestionLastUpdated.styled";
 
 export default function QuestionLastUpdated({ result, ...props }) {

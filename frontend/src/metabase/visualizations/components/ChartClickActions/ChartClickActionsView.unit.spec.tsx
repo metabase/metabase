@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "__support__/ui";
 import DefaultMode from "metabase/modes/components/modes/DefaultMode";
 import { checkNotNull } from "metabase/core/utils/types";

@@ -1,11 +1,11 @@
-import React from "react";
 import Tooltip from "metabase/core/components/Tooltip";
+import { IconName } from "metabase/core/components/Icon";
 import { ColorButton } from "./NotebookStep.styled";
 
 interface ActionButtonProps {
   className?: string;
 
-  icon?: string;
+  icon?: IconName;
   title: string;
   color: string;
   transparent?: boolean;
@@ -36,7 +36,7 @@ function ActionButton({
       color={color}
       transparent={transparent}
       iconVertical={large}
-      iconSize={large ? 18 : 14}
+      iconSize={large ? 20 : 16}
       aria-label={label}
       onClick={onClick}
       {...props}

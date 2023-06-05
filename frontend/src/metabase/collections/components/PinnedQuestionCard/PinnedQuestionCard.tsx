@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import {
   isFullyParametrized,
@@ -7,6 +6,7 @@ import {
 import Visualization from "metabase/visualizations/components/Visualization";
 import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import ActionMenu from "metabase/collections/components/ActionMenu";
+import { IconName } from "metabase/core/components/Icon";
 import Database from "metabase-lib/metadata/Database";
 import PinnedQuestionLoader from "./PinnedQuestionLoader";
 import {
@@ -91,7 +91,7 @@ const PinnedQuestionCard = ({
         <CardStaticSkeleton
           name={item.name}
           description={item.description ?? t`A question`}
-          icon={item.getIcon()}
+          icon={item.getIcon() as unknown as { name: IconName }}
           tooltip={getSkeletonTooltip(item)}
         />
       )}
