@@ -143,6 +143,26 @@ describe("MetadataFieldSettings", () => {
       expect(screen.queryByText("Unfold JSON")).not.toBeInTheDocument();
     });
 
+    it("should display type casting settings for supported fields", async () => {
+      await setup();
+      expect(
+        screen.getByText("Cast to a specific data type"),
+      ).toBeInTheDocument();
+
+      userEvent.click(screen.getByText("Don't cast"));
+      userEvent.type(screen.getByPlaceholderText("Find..."), "Micro");
+      expect(
+        screen.getByText("Coercion/UNIXMicroSeconds->DateTime"),
+      ).toBeInTheDocument();
+    });
+
+    it("should not display type casting settings for non-supported fields", async () => {
+      await setup({ field: ORDERS_DISCOUNT_FIELD });
+      expect(
+        screen.queryByText("Cast to a specific data type"),
+      ).not.toBeInTheDocument();
+    });
+
     it("should allow to navigate to and from field settings", async () => {
       await setup();
       expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
