@@ -1,5 +1,6 @@
 import { Fragment, useState } from "react";
 import PropTypes from "prop-types";
+import cx from "classnames";
 
 import { jt, t } from "ttag";
 import Link from "metabase/core/components/Link";
@@ -11,7 +12,6 @@ import EmptyState from "metabase/components/EmptyState";
 import SearchResult from "metabase/search/components/SearchResult";
 import Subhead from "metabase/components/type/Subhead";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
 import NoResults from "assets/img/no_results.svg";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -150,8 +150,10 @@ export default function SearchApp({ location }) {
                 <SearchControls>
                   {filters.length > 0 ? (
                     <Link
-                      className="flex align-center mb3"
-                      color={filter == null ? color("brand") : "inherit"}
+                      className={cx("flex align-center mb3", {
+                        "text-brand": filter == null,
+                        "text-inherit": filter != null,
+                      })}
                       onClick={() => handleFilterChange(null)}
                       to={{
                         pathname: location.pathname,
@@ -168,9 +170,11 @@ export default function SearchApp({ location }) {
                     return (
                       <Link
                         key={f.filter}
-                        className="mb3 flex align-center"
+                        className={cx("mb3 flex align-center", {
+                          "text-brand": isActive,
+                          "text-medium": !isActive,
+                        })}
                         onClick={() => handleFilterChange(f)}
-                        color={color(isActive ? "brand" : "text-medium")}
                         to={{
                           pathname: location.pathname,
                           query: { ...location.query, type: f.filter },
