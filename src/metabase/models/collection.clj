@@ -28,7 +28,8 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
-   [toucan2.protocols :as t2.protocols])
+   [toucan2.protocols :as t2.protocols]
+   [toucan2.realize :as t2.realize])
   (:import
    (metabase.models.collection.root RootCollection)))
 
@@ -742,7 +743,7 @@
 (t2/define-after-insert :model/Collection
   [collection]
   (u/prog1 collection
-    (copy-parent-permissions! collection)))
+    (copy-parent-permissions! (toucan2.realize/realize collection))))
 
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
 
@@ -859,10 +860,10 @@
 
 (t2/define-before-update :model/Collection
   [collection]
-  (let [collection-before-updates (t2/original collection)
+  (let [collection-before-updates (t2/instance :model/Collection (t2/original collection))
         {collection-name :name
          color           :color
-         :as collection-updates}  (t2/changes collection)]
+         :as collection-updates}  (or (t2/changes collection) {})]
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (:personal_owner_id collection-before-updates)
@@ -1104,10 +1105,10 @@
   (or (user->existing-personal-collection user-or-id)
       (try
         (first (t2/insert-returning-instances! Collection
-                                               :name              (user->personal-collection-name user-or-id :site)
-                                               :personal_owner_id (u/the-id user-or-id)
-                                               ;; a nice slate blue color
-                                               :color             "#31698A"))
+                                               {:name              (user->personal-collection-name user-or-id :site)
+                                                :personal_owner_id (u/the-id user-or-id)
+                                                ;; a nice slate blue color
+                                                :color             "#31698A"}))
         ;; if an Exception was thrown why trying to create the Personal Collection, we can assume it was a race
         ;; condition where some other thread created it in the meantime; try one last time to fetch it
         (catch Throwable _

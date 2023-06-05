@@ -617,7 +617,7 @@
           (t2/update! Dashboard {:collection_id (u/the-id collection)} {:archived true})
           (is (partial= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                         (mt/boolean-ids-and-timestamps
-                  (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))
+                         (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))
     (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
                     User       [{user1-id :id} {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}]
                     User       [{user2-id :id} {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}]
@@ -1032,7 +1032,7 @@
                (api-get-collection-ancestors a :archived true))))
       (testing "children"
         (is (partial= [(collection-item "B")]
-                       (api-get-collection-children a :archived true)))))))
+                      (api-get-collection-children a :archived true)))))))
 
 (deftest personal-collection-ancestors-test
   (testing "Effective ancestors of a personal collection will contain a :personal_owner_id"
