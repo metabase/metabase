@@ -8,7 +8,8 @@
    [metabase.pulse.render :as render]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;; Let's make sure rendering Pulses actually works
 
@@ -20,8 +21,8 @@
    (render/render-pulse-card-for-display (pulse/defaulted-timezone card) card results)))
 
 (defn- render-results [query]
-  (mt/with-temp Card [card {:dataset_query query
-                            :display       :line}]
+  (t2.with-temp/with-temp [Card card {:dataset_query query
+                                      :display       :line}]
     (render-pulse-card card)))
 
 (deftest render-test

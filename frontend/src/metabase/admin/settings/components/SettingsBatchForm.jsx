@@ -309,7 +309,7 @@ class SettingsBatchForm extends Component {
             })
           ) : (
             <Button
-              mr={1}
+              className="mr1"
               primary={!disabled}
               success={submitting === "success"}
               disabled={disabled || pristine}

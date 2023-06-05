@@ -6,7 +6,7 @@ import _ from "underscore";
 import { formatNumber, formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { NoBreakoutError } from "metabase/visualizations/lib/errors";
@@ -222,7 +222,7 @@ export default class Smart extends Component {
               <Variation color={changeColor}>
                 <Icon
                   size={13}
-                  pr={1}
+                  className="pr1"
                   name={isNegative ? "arrow_down" : "arrow_up"}
                 />
                 {changeDisplay}

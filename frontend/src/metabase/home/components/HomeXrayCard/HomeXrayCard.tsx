@@ -1,28 +1,25 @@
-import HomeCard from "../HomeCard";
+import { HomeCard } from "../HomeCard";
 import {
   CardIcon,
-  CardIconContainer,
   CardTitle,
   CardTitlePrimary,
   CardTitleSecondary,
 } from "./HomeXrayCard.styled";
 
-export interface HomeXrayCardProps {
+interface HomeXrayCardProps {
   title: string;
   url: string;
   message: string;
 }
 
-const HomeXrayCard = ({
+export const HomeXrayCard = ({
   title,
   url,
   message,
 }: HomeXrayCardProps): JSX.Element => {
   return (
     <HomeCard url={url}>
-      <CardIconContainer>
-        <CardIcon name="bolt" />
-      </CardIconContainer>
+      <CardIcon name="bolt_filled" />
       <CardTitle>
         <CardTitleSecondary>{message}</CardTitleSecondary>{" "}
         <CardTitlePrimary>{title}</CardTitlePrimary>
@@ -30,6 +27,3 @@ const HomeXrayCard = ({
     </HomeCard>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default HomeXrayCard;

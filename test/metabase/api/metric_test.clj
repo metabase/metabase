@@ -107,7 +107,7 @@
 (deftest update-test
   (testing "PUT /api/metric"
     (testing "test security. Requires superuser perms"
-      (mt/with-temp Metric [metric]
+      (t2.with-temp/with-temp [Metric metric]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request
                 :rasta :put 403 (str "metric/" (u/the-id metric))
@@ -161,7 +161,7 @@
 
 (deftest archive-test
   (testing "Can we archive a Metric with the PUT endpoint?"
-    (mt/with-temp Metric [{:keys [id]}]
+    (t2.with-temp/with-temp [Metric {:keys [id]}]
       (is (some? (mt/user-http-request
                   :crowberto :put 200 (str "metric/" id)
                   {:archived true, :revision_message "Archive the Metric"})))
@@ -170,7 +170,7 @@
 
 (deftest unarchive-test
   (testing "Can we unarchive a Metric with the PUT endpoint?"
-    (mt/with-temp Metric [{:keys [id]} {:archived true}]
+    (t2.with-temp/with-temp [Metric {:keys [id]} {:archived true}]
       (is (some? (mt/user-http-request
                   :crowberto :put 200 (str "metric/" id)
                   {:archived false, :revision_message "Unarchive the Metric"})))
@@ -179,7 +179,7 @@
 (deftest delete-test
   (testing "DELETE /api/metric/:id"
     (testing "test security. Requires superuser perms"
-      (mt/with-temp Metric [{:keys [id]}]
+      (t2.with-temp/with-temp [Metric {:keys [id]}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request
                 :rasta :delete 403 (str "metric/" id) :revision_message "yeeeehaw!")))))
@@ -290,7 +290,7 @@
 (deftest revert-metric-test
   (testing "POST /api/metric/:id/revert"
     (testing "test security. Requires superuser perms"
-      (mt/with-temp Metric [{:keys [id]}]
+      (t2.with-temp/with-temp [Metric {:keys [id]}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request
                 :rasta :post 403 (format "metric/%d/revert" id)
@@ -419,6 +419,6 @@
 
 (deftest metric-related-entities-test
   (testing "Test related/recommended entities"
-    (mt/with-temp Metric [{metric-id :id}]
+    (t2.with-temp/with-temp [Metric {metric-id :id}]
       (is (= #{:table :metrics :segments}
              (-> (mt/user-http-request :crowberto :get 200 (format "metric/%s/related" metric-id)) keys set))))))

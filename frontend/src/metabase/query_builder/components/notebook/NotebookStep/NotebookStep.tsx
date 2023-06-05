@@ -1,10 +1,11 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
+import cx from "classnames";
 
 import { color as c } from "metabase/lib/colors";
 import { useToggle } from "metabase/hooks/use-toggle";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import ExpandingContent from "metabase/components/ExpandingContent";
 
@@ -67,8 +68,7 @@ function NotebookStep({
           button: (
             <ActionButton
               key={`actionButton_${stepUi.title}`}
-              mr={isLastStep ? 2 : 1}
-              mt={isLastStep ? 2 : undefined}
+              className={cx({ "mr2 mt2": isLastStep, mr1: !isLastStep })}
               color={stepUi.getColor()}
               large={hasLargeActionButtons}
               {...stepUi}
@@ -147,10 +147,10 @@ function NotebookStep({
             {!readOnly && (
               <StepButtonContainer>
                 <ActionButton
-                  ml={[1, 2]}
-                  className={
-                    !hasPreviewButton ? "hidden disabled" : "text-brand-hover"
-                  }
+                  className={cx("ml1", {
+                    "hidden disabled": !hasPreviewButton,
+                    "text-brand-hover": hasPreviewButton,
+                  })}
                   icon="play"
                   title={t`Preview`}
                   color={c("text-light")}

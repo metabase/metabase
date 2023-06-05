@@ -11,7 +11,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time LocalDateTime)))
 
@@ -156,7 +157,7 @@
 
 ;; create-pulse-channel!
 (deftest create-pulse-channel!-test
-  (mt/with-temp Pulse [{:keys [id]}]
+  (t2.with-temp/with-temp [Pulse {:keys [id]}]
     (mt/with-model-cleanup [Pulse]
       (testing "disabled"
         (is (= {:enabled        false
@@ -220,9 +221,9 @@
                                  {:id (mt/user->id :crowberto)}]})))))))
 
 (deftest update-pulse-channel!-test
-  (mt/with-temp Pulse [{pulse-id :id}]
+  (t2.with-temp/with-temp [Pulse {pulse-id :id}]
     (testing "simple starting case where we modify the schedule hour and add a recipient"
-      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
+      (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
                 :entity_id      true
                 :channel_type   :email
@@ -240,7 +241,7 @@
                  :recipients    [{:email "foo@bar.com"}]})))))
 
     (testing "monthly schedules require a schedule_frame and can optionally omit they schedule_day"
-      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
+      (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
                 :entity_id      true
                 :channel_type  :email
@@ -260,7 +261,7 @@
                  :recipients     [{:email "foo@bar.com"} {:id (mt/user->id :rasta)}]})))))
 
     (testing "weekly schedule should have a day in it, show that we can get full users"
-      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
+      (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
                 :entity_id      true
                 :channel_type   :email
@@ -279,7 +280,7 @@
                  :recipients    [{:email "foo@bar.com"} {:id (mt/user->id :rasta)}]})))))
 
     (testing "hourly schedules don't require day/hour settings (should be nil), fully change recipients"
-      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]
+      (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]
         (pulse-channel/update-recipients! channel-id [(mt/user->id :rasta)])
         (is (= {:enabled       true
                 :entity_id     true
@@ -299,7 +300,7 @@
                  :recipients    [{:id (mt/user->id :crowberto)}]})))))
 
     (testing "custom details for channels that need it"
-      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
+      (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled       true
                 :entity_id     true
                 :channel_type  :email

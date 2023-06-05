@@ -24,7 +24,7 @@ export function getTimelineEvents({
       } ${titleText}`,
       description: r.description,
       timestamp: r.timestamp,
-      icon: "pencil",
+      icon: "pencil" as const,
       revision: r,
     };
   });

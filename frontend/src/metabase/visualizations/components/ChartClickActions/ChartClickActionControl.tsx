@@ -1,7 +1,7 @@
 import { ClickAction, isRegularClickAction } from "metabase/modes/types";
 import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import {
   ClickActionButtonIcon,
   FormattingControl,
@@ -35,7 +35,9 @@ export const ChartClickActionControl = ({
           small
           icon={
             typeof action.icon === "string" && (
-              <ClickActionButtonIcon name={action.icon} />
+              <ClickActionButtonIcon
+                name={action.icon as unknown as IconName}
+              />
             )
           }
           onClick={() => onClick(action)}
@@ -56,7 +58,7 @@ export const ChartClickActionControl = ({
         <Tooltip tooltip={action.tooltip}>
           <SortControl onlyIcon onClick={() => onClick(action)}>
             {typeof action.icon === "string" && (
-              <Icon size={12} name={action.icon} />
+              <Icon size={12} name={action.icon as unknown as IconName} />
             )}
           </SortControl>
         </Tooltip>
@@ -67,7 +69,7 @@ export const ChartClickActionControl = ({
         <Tooltip tooltip={action.tooltip}>
           <FormattingControl onlyIcon onClick={() => onClick(action)}>
             {typeof action.icon === "string" && (
-              <Icon size={16} name={action.icon} />
+              <Icon size={16} name={action.icon as unknown as IconName} />
             )}
           </FormattingControl>
         </Tooltip>
@@ -80,7 +82,9 @@ export const ChartClickActionControl = ({
           icon={
             action.icon ? (
               typeof action.icon === "string" ? (
-                <ClickActionButtonIcon name={action.icon} />
+                <ClickActionButtonIcon
+                  name={action.icon as unknown as IconName}
+                />
               ) : (
                 <IconWrapper>{action.icon}</IconWrapper>
               )

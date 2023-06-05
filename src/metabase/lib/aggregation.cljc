@@ -1,7 +1,6 @@
 (ns metabase.lib.aggregation
   (:refer-clojure :exclude [count distinct max min var])
   (:require
-   [clojure.math :as math]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.equality :as lib.equality]
@@ -66,20 +65,36 @@
   [query stage-number [_tag _opts index] style]
   (lib.metadata.calculation/display-name query stage-number (resolve-aggregation query stage-number index) style))
 
-(defmethod lib.metadata.calculation/display-name-method :count
-  [query stage-number [_count _opts x] style]
+(lib.hierarchy/derive ::count-aggregation ::aggregation)
+
+;;; count and cumulative count can both be used either with no args (count of rows) or with one arg (count of X, which
+;;; I think means count where X is not NULL or something like that. Basically `count(x)` in SQL)
+(doseq [tag [:count
+             :cum-count]]
+  (lib.hierarchy/derive tag ::count-aggregation))
+
+(defmethod lib.metadata.calculation/display-name-method ::count-aggregation
+  [query stage-number [tag _opts x] style]
   ;; x is optional.
   (if x
-    (i18n/tru "Count of {0}" (lib.metadata.calculation/display-name query stage-number x style))
-    (i18n/tru "Count")))
+    (let [x-display-name (lib.metadata.calculation/display-name query stage-number x style)]
+      (case tag
+        :count     (i18n/tru "Count of {0}" x-display-name)
+        :cum-count (i18n/tru "Cumulative count of {0}" x-display-name)))
+    (case tag
+      :count     (i18n/tru "Count")
+      :cum-count (i18n/tru "Cumulative count"))))
 
-(defmethod lib.metadata.calculation/column-name-method :count
-  [query stage-number [_count _opts x]]
-  (if x
-    (str "count_" (lib.metadata.calculation/column-name query stage-number x))
-    "count"))
+(defmethod lib.metadata.calculation/column-name-method ::count-aggregation
+  [_query _stage-number [tag :as _clause]]
+  (case tag
+    :count     "count"
+    :cum-count "cum_count"))
 
-(lib.hierarchy/derive :count ::aggregation)
+(defmethod lib.metadata.calculation/metadata-method ::count-aggregation
+  [query stage-number clause]
+  (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
+         :semantic-type :type/Quantity))
 
 (defmethod lib.metadata.calculation/display-name-method :case
   [_query _stage-number _case _style]
@@ -89,10 +104,11 @@
   [_query _stage-number _case]
   "case")
 
+;;; TODO - Should `:case` derive from `::aggregation` as well???
+
 (lib.hierarchy/derive ::unary-aggregation ::aggregation)
 
 (doseq [tag [:avg
-             :cum-count
              :cum-sum
              :distinct
              :max
@@ -104,28 +120,24 @@
   (lib.hierarchy/derive tag ::unary-aggregation))
 
 (defmethod lib.metadata.calculation/column-name-method ::unary-aggregation
-  [query stage-number [tag _opts arg]]
-  (let [arg (lib.metadata.calculation/column-name-method query stage-number arg)]
-    (str
-     (case tag
-       :avg       "avg_"
-       :cum-count "cum_count_"
-       :cum-sum   "cum_sum_"
-       :distinct  "distinct_"
-       :max       "max_"
-       :median    "median_"
-       :min       "min_"
-       :stddev    "std_dev_"
-       :sum       "sum_"
-       :var       "var_")
-     arg)))
+  [_query _stage-number [tag _opts _arg]]
+  (case tag
+    :avg       "avg"
+    :cum-sum   "sum"
+    :distinct  "count"
+    :max       "max"
+    :median    "median"
+    :min       "min"
+    :stddev    "stddev"
+    :sum       "sum"
+    :var       "var"))
+
 
 (defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
   [query stage-number [tag _opts arg] style]
   (let [arg (lib.metadata.calculation/display-name query stage-number arg style)]
     (case tag
       :avg       (i18n/tru "Average of {0}"            arg)
-      :cum-count (i18n/tru "Cumulative count of {0}"   arg)
       :cum-sum   (i18n/tru "Cumulative sum of {0}"     arg)
       :distinct  (i18n/tru "Distinct values of {0}"    arg)
       :max       (i18n/tru "Max of {0}"                arg)
@@ -140,12 +152,8 @@
   (i18n/tru "{0}th percentile of {1}" p (lib.metadata.calculation/display-name query stage-number x style)))
 
 (defmethod lib.metadata.calculation/column-name-method :percentile
-  [query stage-number [_percentile _opts x p]]
-  ;; if `p` is between `0` and `1` then just use the first two digits for the name, e.g. `p95_whatever`
-  (let [p (if (< 0 p 1)
-            (int (math/round (* p 100.0)))
-            p)]
-    (lib.util/format "p%s_%s" p (lib.metadata.calculation/column-name query stage-number x))))
+  [_query _stage-number _clause]
+  "percentile")
 
 (lib.hierarchy/derive :percentile ::aggregation)
 
@@ -317,17 +325,11 @@
     :operator (:short aggregation-operator)
     :args [column]}))
 
-(def ^:private SelectedColumnMetadata
-  [:merge
-   lib.metadata/ColumnMetadata
-   [:map
-    [:selected? {:optional true} :boolean]]])
-
 (def ^:private SelectedOperatorWithColumns
   [:merge
    ::lib.schema.aggregation/operator
    [:map
-    [:columns {:optional true} [:sequential SelectedColumnMetadata]]
+    [:columns {:optional true} [:sequential lib.metadata/ColumnMetadata]]
     [:selected? {:optional true} :boolean]]])
 
 (mu/defn selected-aggregation-operators :- [:maybe [:sequential SelectedOperatorWithColumns]]
@@ -346,8 +348,7 @@
                        (mapv (fn [col]
                                (let [a-ref (lib.ref/ref col)]
                                  (cond-> col
-                                   (or (lib.equality/= a-ref agg-col)
-                                       (lib.equality/= a-ref (lib.util/with-default-effective-type agg-col)))
+                                   (lib.equality/ref= a-ref agg-col)
                                    (assoc :selected? true))))
                              cols))))))
             agg-operators))))

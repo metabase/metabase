@@ -449,7 +449,6 @@ export function ObjectDetailHeader({
                   disabled={!canZoomPreviousRow}
                   onClick={viewPreviousObjectDetail}
                   icon="chevronup"
-                  iconSize={20}
                 />
                 <Button
                   data-testid="view-next-object-detail"
@@ -458,7 +457,6 @@ export function ObjectDetailHeader({
                   disabled={!canZoomNextRow}
                   onClick={viewNextObjectDetail}
                   icon="chevrondown"
-                  iconSize={20}
                 />
               </>
             )}
@@ -469,7 +467,6 @@ export function ObjectDetailHeader({
                 borderless
                 onClick={closeObjectDetail}
                 icon="close"
-                iconSize={20}
               />
             </CloseButton>
           </div>

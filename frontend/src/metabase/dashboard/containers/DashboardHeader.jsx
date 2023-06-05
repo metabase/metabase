@@ -10,7 +10,7 @@ import { getIsNavbarOpen } from "metabase/redux/app";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 

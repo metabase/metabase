@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
 import { color } from "metabase/lib/colors";
@@ -54,9 +54,13 @@ export default DashboardMoveModal;
 
 const DashboardMoveToast = ({ collectionId }) => (
   <ToastRoot>
-    <Icon name="collection" mr={1} color="white" />
+    <Icon name="collection" className="mr1" color="white" />
     {jt`Dashboard moved to ${(
-      <Collection.Link id={collectionId} ml={1} color={color("brand")} />
+      <Collection.Link
+        id={collectionId}
+        className="ml1"
+        color={color("brand")}
+      />
     )}`}
   </ToastRoot>
 );

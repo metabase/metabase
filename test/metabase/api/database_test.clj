@@ -303,18 +303,18 @@
 (deftest delete-database-test
   (testing "DELETE /api/database/:id"
     (testing "Check that a superuser can delete a Database"
-      (mt/with-temp Database [db]
+      (t2.with-temp/with-temp [Database db]
         (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
         (is (false? (t2/exists? Database :id (u/the-id db))))))
 
     (testing "Check that a non-superuser cannot delete a Database"
-      (mt/with-temp Database [db]
+      (t2.with-temp/with-temp [Database db]
         (mt/user-http-request :rasta :delete 403 (format "database/%d" (:id db)))))))
 
 (deftest update-database-test
   (testing "PUT /api/database/:id"
     (testing "Check that we can update fields in a Database"
-      (mt/with-temp Database [{db-id :id}]
+      (t2.with-temp/with-temp [Database {db-id :id}]
         (let [updates {:name         "Cam's Awesome Toucan Database"
                        :engine       "h2"
                        :is_full_sync false
@@ -341,7 +341,7 @@
         (is (= {:auto_run_queries false}
                (select-keys (create-db-via-api! {:auto_run_queries false}) [:auto_run_queries]))))
       (testing "when updating a Database"
-        (mt/with-temp Database [{db-id :id} {:engine ::test-driver}]
+        (t2.with-temp/with-temp [Database {db-id :id} {:engine ::test-driver}]
           (let [updates {:auto_run_queries false}]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
           (is (= false
@@ -349,7 +349,7 @@
 
     (testing "should not be able to modify `cache_ttl` in OSS"
       (with-redefs [premium-features/enable-advanced-config? (constantly false)]
-        (mt/with-temp Database [{db-id :id} {:engine ::test-driver}]
+        (t2.with-temp/with-temp [Database {db-id :id} {:engine ::test-driver}]
           (let [updates {:cache_ttl 13}]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
           (is (= nil
@@ -357,7 +357,7 @@
 
     (testing "should be able to set and unset `cache_ttl` in EE"
       (with-redefs [premium-features/enable-advanced-config? (constantly true)]
-        (mt/with-temp Database [{db-id :id} {:engine ::test-driver}]
+        (t2.with-temp/with-temp [Database {db-id :id} {:engine ::test-driver}]
           (let [updates1 {:cache_ttl 1337}
                 updates2 {:cache_ttl nil}
                 updates1! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates1))
@@ -371,8 +371,8 @@
 
 (deftest enable-model-actions-with-user-controlled-scheduling-test
   (testing "Should be able to enable/disable actions for a database with user-controlled scheduling (metabase#30699)"
-    (mt/with-temp Database [{db-id :id} {:details  {:let-user-control-scheduling true}
-                                         :settings {:database-enable-actions true}}]
+    (t2.with-temp/with-temp [Database {db-id :id} {:details  {:let-user-control-scheduling true}
+                                                   :settings {:database-enable-actions true}}]
       (is (false? (get-in (mt/user-http-request :crowberto
                                                 :put 200
                                                 (format "database/%s" db-id)
@@ -584,7 +584,7 @@
     (doseq [query-param ["?include_tables=true"
                          "?include=tables"]]
       (testing query-param
-        (mt/with-temp Database [_ {:engine (u/qualified-name ::test-driver)}]
+        (t2.with-temp/with-temp [Database _ {:engine (u/qualified-name ::test-driver)}]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 (str "database" query-param)))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= (expected-tables db)
@@ -592,8 +592,8 @@
 
 (deftest databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
-    (mt/with-temp Card [_ (assoc (card-with-native-query "Some Card")
-                                 :result_metadata [{:name "col_name"}])]
+    (t2.with-temp/with-temp [Card _ (assoc (card-with-native-query "Some Card")
+                                           :result_metadata [{:name "col_name"}])]
       (testing "We should be able to include the saved questions virtual DB (without Tables) with the param ?saved=true"
         (is (= {:name               "Saved Questions"
                 :id                 mbql.s/saved-questions-virtual-database-id
@@ -612,7 +612,7 @@
 (deftest fetch-databases-with-invalid-driver-test
   (testing "GET /api/database"
     (testing "\nEndpoint should still work even if there is a Database saved with a invalid driver"
-      (mt/with-temp Database [{db-id :id} {:engine "my-invalid-driver"}]
+      (t2.with-temp/with-temp [Database {db-id :id} {:engine "my-invalid-driver"}]
         (testing (format "\nID of Database with invalid driver = %d" db-id)
           (doseq [params [nil
                           "?saved=true"
@@ -658,7 +658,7 @@
                       (:data (mt/user-http-request :crowberto :get 200 (str "database" params)))))]
         (testing "Check that we get back 'virtual' tables for Saved Questions"
           (testing "The saved questions virtual DB should be the last DB in the list"
-            (mt/with-temp Card [card (card-with-native-query "Maz Quote Views Per Month")]
+            (t2.with-temp/with-temp [Card card (card-with-native-query "Maz Quote Views Per Month")]
               ;; run the Card which will populate its result_metadata column
               (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
               ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
@@ -668,7 +668,7 @@
                 (check-tables-included response (virtual-table-for-card card)))))
 
           (testing "Make sure saved questions are NOT included if the setting is disabled"
-            (mt/with-temp Card [card (card-with-native-query "Maz Quote Views Per Month")]
+            (t2.with-temp/with-temp [Card card (card-with-native-query "Maz Quote Views Per Month")]
               (mt/with-temporary-setting-values [enable-nested-queries false]
                 ;; run the Card which will populate its result_metadata column
                 (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
@@ -731,10 +731,10 @@
           (mt/with-temp* [Card [ok-card  (ok-mbql-card)]
                           Card [bad-card (merge
                                           (mt/$ids checkins
-                                            (card-with-mbql-query "Cum Count Card"
-                                              :source-table $$checkins
-                                              :aggregation  [[:cum-count]]
-                                              :breakout     [!month.date]))
+                                                   (card-with-mbql-query "Cum Count Card"
+                                                                         :source-table $$checkins
+                                                                         :aggregation  [[:cum-count]]
+                                                                         :breakout     [!month.date]))
                                           {:result_metadata [{:name "num_toucans"}]})]]
             (let [response (fetch-virtual-database)]
               (is (schema= SavedQuestionsDB
@@ -744,8 +744,8 @@
 
 (deftest db-metadata-saved-questions-db-test
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
-    (mt/with-temp Card [card (assoc (card-with-native-query "Birthday Card")
-                                    :result_metadata [{:name "age_in_bird_years"}])]
+    (t2.with-temp/with-temp [Card card (assoc (card-with-native-query "Birthday Card")
+                                              :result_metadata [{:name "age_in_bird_years"}])]
       (let [response (mt/user-http-request :crowberto :get 200
                                            (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id))]
         (is (schema= {:name               (s/eq "Saved Questions")
@@ -822,14 +822,14 @@
                    :metadata_sync_schedule      "0 0 * * * ? *"}]
     (testing "Can we UPDATE the schedules for an existing database?"
       (testing "We cannot if we don't mark `:let-user-control-scheduling`"
-        (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
+        (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
           (is (=? (select-keys (mt/db) [:cache_field_values_schedule :metadata_sync_schedule])
                   (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
                                         (assoc db :schedules attempted))))
           (is (not= expected
                     (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
       (testing "We can if we mark `:let-user-control-scheduling`"
-        (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
+        (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
           (is (=? expected
                   (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
                                         (-> (into {} db)
@@ -839,9 +839,9 @@
                  (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
       (testing "if we update back to metabase managed schedules it randomizes for us"
         (let [original-custom-schedules expected]
-          (mt/with-temp Database [db (merge {:engine "h2" :details (assoc (:details (mt/db))
-                                                                          :let-user-control-scheduling true)}
-                                            original-custom-schedules)]
+          (t2.with-temp/with-temp [Database db (merge {:engine "h2" :details (assoc (:details (mt/db))
+                                                                                    :let-user-control-scheduling true)}
+                                                      original-custom-schedules)]
             (is (=? {:id (u/the-id db)}
                     (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
                                           (assoc-in db [:details :let-user-control-scheduling] false))))
@@ -852,8 +852,8 @@
 
 (deftest fetch-db-with-expanded-schedules
   (testing "If we FETCH a database will it have the correct 'expanded' schedules?"
-    (mt/with-temp Database [db {:metadata_sync_schedule      "0 0 * * * ? *"
-                                :cache_field_values_schedule "0 0 23 ? * 6L *"}]
+    (t2.with-temp/with-temp [Database db {:metadata_sync_schedule      "0 0 * * * ? *"
+                                          :cache_field_values_schedule "0 0 23 ? * 6L *"}]
       (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
               :metadata_sync_schedule      "0 0 * * * ? *"
               :schedules                   {:cache_field_values schedule-map-for-last-friday-at-11pm
@@ -873,7 +873,7 @@
   (testing "Can we trigger a metadata sync for a DB?"
     (let [sync-called?    (promise)
           analyze-called? (promise)]
-      (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
+      (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
         (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
                       analyze/analyze-db!             (deliver-when-db analyze-called? db)]
           (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (u/the-id db)))
@@ -906,7 +906,7 @@
 (deftest can-rescan-fieldvalues-for-a-db
   (testing "Can we RESCAN all the FieldValues for a DB?"
     (let [update-field-values-called? (promise)]
-      (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
+      (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
         (with-redefs [field-values/update-field-values! (fn [synced-db]
                                                           (when (= (u/the-id synced-db) (u/the-id db))
                                                             (deliver update-field-values-called? :sync-called)))]
@@ -1293,7 +1293,7 @@
 
 (deftest slashes-in-identifiers-test
   (testing "We should handle Databases with slashes in identifiers correctly (#12450)"
-    (mt/with-temp Database [{db-id :id} {:name "my/database"}]
+    (t2.with-temp/with-temp [Database {db-id :id} {:name "my/database"}]
       (doseq [schema-name ["my/schema"
                            "my//schema"
                            "my\\schema"
@@ -1302,7 +1302,7 @@
                            "my_schema/"
                            "my_schema\\"]]
         (testing (format "\nschema name = %s" (pr-str schema-name))
-          (mt/with-temp Table [_ {:db_id db-id, :schema schema-name, :name "my/table"}]
+          (t2.with-temp/with-temp [Table _ {:db_id db-id, :schema schema-name, :name "my/table"}]
             (testing "\nFetch schemas"
               (testing "\nGET /api/database/:id/schemas/"
                 (is (= [schema-name]
@@ -1430,7 +1430,7 @@
 (deftest db-ids-with-deprecated-drivers-test
   (mt/with-driver :driver-deprecation-test-legacy
     (testing "GET /api/database/db-ids-with-deprecated-drivers"
-      (mt/with-temp Database [{db-id :id} {:engine :driver-deprecation-test-legacy}]
+      (t2.with-temp/with-temp [Database {db-id :id} {:engine :driver-deprecation-test-legacy}]
         (is (not-empty (filter #(= % db-id) (mt/user-http-request
                                              :crowberto
                                              :get
@@ -1440,17 +1440,17 @@
 (deftest secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver
     (testing "File path values for secrets are returned as plaintext in the API (#20030)"
-      (mt/with-temp Database [database {:engine  :secret-test-driver
-                                        :name    "Test secret DB with password path"
-                                        :details {:host           "localhost"
-                                                  :password-path "/path/to/password.txt"}}]
+      (t2.with-temp/with-temp [Database database {:engine  :secret-test-driver
+                                                  :name    "Test secret DB with password path"
+                                                  :details {:host           "localhost"
+                                                            :password-path "/path/to/password.txt"}}]
         (is (= {:password-source "file-path"
                 :password-value  "/path/to/password.txt"}
                (as-> (u/the-id database) d
-                     (format "database/%d" d)
-                     (mt/user-http-request :crowberto :get 200 d)
-                     (:details d)
-                     (select-keys d [:password-source :password-value]))))))))
+                 (format "database/%d" d)
+                 (mt/user-http-request :crowberto :get 200 d)
+                 (:details d)
+                 (select-keys d [:password-source :password-value]))))))))
 
 ;; these descriptions use deferred-tru because the `defsetting` macro complains if they're not, but since these are in
 ;; tests they won't get scraped for i18n purposes so it's ok.

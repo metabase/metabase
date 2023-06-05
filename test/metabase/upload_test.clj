@@ -63,6 +63,8 @@
            ["$2"         2              int-type]
            ["$ 3"        3              int-type]
            ["-43€"       -43            int-type]
+           ["(86)"       -86            int-type]
+           ["($86)"      -86            int-type]
            ["£1000"      1000           int-type]
            ["£1000"      1000           int-type "."]
            ["£1000"      1000           int-type ".,"]
@@ -88,6 +90,7 @@
            ["3.14"       3.14           float-type ".,"]
            ["3,14"       3.14           float-type ",."]
            ["3,14"       3.14           float-type ", "]
+           ["(3.14)"     -3.14          float-type]
            ["3.14"       3.14           float-type ".’"]
            [".14"        ".14"          vchar-type ".,"] ;; TODO: this should be a float type
            ["0.14"       0.14           float-type ".,"]

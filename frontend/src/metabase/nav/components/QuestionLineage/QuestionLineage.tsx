@@ -1,10 +1,11 @@
 import { t } from "ttag";
 import Link from "metabase/core/components/Link/Link";
 import Badge from "metabase/components/Badge";
+import { IconName } from "metabase/core/components/Icon";
 import Question from "metabase-lib/Question";
 
 export interface QuestionLineageProps {
-  icon?: string;
+  icon?: IconName;
   question?: Question;
   originalQuestion?: Question;
 }

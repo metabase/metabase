@@ -18,7 +18,8 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -305,15 +306,15 @@
 (deftest max-results-bare-rows-test
   (mt/test-driver :sqlserver
     (testing "Should support overriding the ROWCOUNT for a specific SQL Server DB (#9940)"
-      (mt/with-temp Database [db {:name    "SQL Server with ROWCOUNT override"
-                                  :engine  "sqlserver"
-                                  :details (-> (:details (mt/db))
-                                               ;; SQL server considers a ROWCOUNT of 0 to be unconstrained
-                                               ;; we are putting this in the details map, since that's where connection
-                                               ;; properties go in a client save operation, but it will be MOVED to the
-                                               ;; settings map instead (which is where DB-local settings go), via the
-                                               ;; driver/normalize-db-details implementation for :sqlserver
-                                               (assoc :rowcount-override 0))}]
+      (t2.with-temp/with-temp [Database db {:name    "SQL Server with ROWCOUNT override"
+                                            :engine  "sqlserver"
+                                            :details (-> (:details (mt/db))
+                                                         ;; SQL server considers a ROWCOUNT of 0 to be unconstrained
+                                                         ;; we are putting this in the details map, since that's where connection
+                                                         ;; properties go in a client save operation, but it will be MOVED to the
+                                                         ;; settings map instead (which is where DB-local settings go), via the
+                                                         ;; driver/normalize-db-details implementation for :sqlserver
+                                                         (assoc :rowcount-override 0))}]
         ;; TODO FIXME -- This query probably shouldn't be returning ANY rows given that we're setting the LIMIT to zero.
         ;; For now I've had to keep a bug where it always returns at least one row regardless of the limit. See comments
         ;; in [[metabase.query-processor.middleware.limit/limit-xform]].
@@ -339,10 +340,10 @@
                                        "SELECT V FROM @DATA\n"
                                        "\n"
                                        "SELECT COUNT(1) FROM @TEMP\n")}
-                         mt/native-query
-                         ;; add default query constraints to ensure the default limit of 2000 is overridden by the
-                         ;; `:rowcount-override` connection property we defined in the details above
-                         (assoc :constraints (qp.constraints/default-query-constraints))
-                         qp/process-query
-                         mt/rows
-                         ffirst))))))))
+                          mt/native-query
+                          ;; add default query constraints to ensure the default limit of 2000 is overridden by the
+                          ;; `:rowcount-override` connection property we defined in the details above
+                          (assoc :constraints (qp.constraints/default-query-constraints))
+                          qp/process-query
+                          mt/rows
+                          ffirst))))))))

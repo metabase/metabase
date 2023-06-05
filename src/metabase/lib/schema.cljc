@@ -52,7 +52,7 @@
    [:ref ::id/table-card-id-string]])
 
 (defn- expression-ref-error-for-stage [stage]
-  (let [expression-names (set (keys (:expressions stage)))]
+  (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))]
     (mbql.match/match-one (dissoc stage :joins :lib/stage-metadata)
       [:expression _opts (expression-name :guard (complement expression-names))]
       (str "Invalid :expression reference: no expression named " (pr-str expression-name)))))

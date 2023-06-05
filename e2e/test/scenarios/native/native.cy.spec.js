@@ -7,6 +7,8 @@ import {
   rightSidebar,
   filter,
   filterField,
+  getCollectionIdFromSlug,
+  visitCollection,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -28,6 +30,22 @@ describe("scenarios > question > native", () => {
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("18,760");
+  });
+
+  it("should suggest the currently viewed collection when saving question", () => {
+    getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
+      visitCollection(THIRD_COLLECTION_ID);
+    });
+    openNativeEditor({ fromCurrentPage: true }).type(
+      "select count(*) from orders",
+    );
+
+    cy.findByTestId("qb-header").within(() => {
+      cy.findByText("Save").click();
+    });
+    modal().within(() => {
+      cy.findByTestId("select-button").should("have.text", "Third collection");
+    });
   });
 
   it("displays an error", () => {

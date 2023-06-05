@@ -2,11 +2,10 @@
   (:require
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
-   [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.mbql.util.match :as mbql.match]
    [metabase.util.malli :as mu]))
 
 (defn- stage-paths
@@ -15,31 +14,61 @@
         join-condition-paths (for [idx join-indices]
                                [:joins idx :conditions])
         join-field-paths (for [idx join-indices]
-                           [:joins idx :fields])
-        expr-paths (for [[expr-name] (lib.expression/expressions query stage-number)]
-                     [:expressions expr-name])]
-    (concat [[:order-by] [:breakout] [:filters] [:fields] [:aggregation]]
-            expr-paths
+                           [:joins idx :fields])]
+    (concat [[:order-by] [:breakout] [:filters] [:fields] [:aggregation] [:expressions]]
             join-field-paths
             join-condition-paths)))
 
 (declare remove-local-references)
 (declare remove-stage-references)
 
+(defn- find-matching-order-by-index
+  [query stage-number [target-op {:keys [temporal-unit binning]} target-ref-id]]
+  (->> (lib.util/query-stage query stage-number)
+       :order-by
+       m/indexed
+       (m/find-first (fn [[_idx [_dir _ ordered-clause]]]
+                       (and (= (first ordered-clause) target-op)
+                            (= (:temporal-unit (second ordered-clause)) temporal-unit)
+                            (= (:binning (second ordered-clause)) binning)
+                            (= (last ordered-clause) target-ref-id))))
+       first))
+
+(defn- sync-order-by-options-with-breakout
+  [query stage-number target-clause new-options]
+  (if-let [order-by-idx (find-matching-order-by-index query stage-number target-clause)]
+    (lib.util/update-query-stage
+      query stage-number
+      update-in [:order-by order-by-idx 2 1]
+      (comp #(m/remove-vals nil? %) merge)
+      new-options)
+    query))
+
+(defn- remove-breakout-order-by
+  [query stage-number target-clause]
+  (if-let [order-by-idx (find-matching-order-by-index query stage-number target-clause)]
+    (lib.util/update-query-stage
+      query
+      stage-number
+      lib.util/remove-clause
+      [:order-by]
+      (get-in (lib.util/query-stage query stage-number) [:order-by order-by-idx]))
+    query))
+
 (defn- remove-replace-location
   [query stage-number unmodified-query-for-stage location target-clause remove-replace-fn]
   (let [result (lib.util/update-query-stage query stage-number
-                                             remove-replace-fn location target-clause)
+                                            remove-replace-fn location target-clause)
         target-uuid (lib.util/clause-uuid target-clause)]
     (if (not= query result)
-      (mbql.u/match-one location
-        [:expressions expr-name]
+      (mbql.match/match-one location
+        [:expressions]
         (-> result
             (remove-local-references
               stage-number
               unmodified-query-for-stage
               :expression
-              expr-name)
+              (lib.util/expression-name target-clause))
             (remove-stage-references stage-number unmodified-query-for-stage target-uuid))
 
         [:aggregation]
@@ -66,13 +95,10 @@
   (let [stage (lib.util/query-stage query stage-number)
         to-remove (mapcat
                     (fn [location]
-                      (when-let [sub-loc (get-in stage location)]
-                        (let [clauses (if (lib.util/clause-uuid sub-loc)
-                                        [sub-loc]
-                                        sub-loc)]
-                          (->> clauses
-                               (keep #(mbql.u/match-one sub-loc
-                                        [target-op _ target-ref-id] [location %]))))))
+                      (when-let [clauses (get-in stage location)]
+                        (->> clauses
+                             (keep #(mbql.match/match-one %
+                                      [target-op _ target-ref-id] [location %])))))
                     (stage-paths query stage-number))]
     (reduce
       (fn [query [location target-clause]]
@@ -94,20 +120,43 @@
         query))
     query))
 
-(defn- remove-replace* [query stage-number target-clause remove-replace-fn]
+(defn- remove-replace* [query stage-number target-clause remove-or-replace replacement]
   (binding [mu/*enforce* false]
     (let [target-clause (lib.common/->op-arg query stage-number target-clause)
           stage (lib.util/query-stage query stage-number)
           location (m/find-first
                      (fn [possible-location]
-                       (when-let [sub-loc (get-in stage possible-location)]
-                         (let [clauses (if (lib.util/clause? sub-loc)
-                                         [sub-loc]
-                                         sub-loc)
-                               target-uuid (lib.util/clause-uuid target-clause)]
+                       (when-let [clauses (get-in stage possible-location)]
+                         (let [target-uuid (lib.util/clause-uuid target-clause)]
                            (when (some (comp #{target-uuid} :lib/uuid second) clauses)
                              possible-location))))
-                     (stage-paths query stage-number))]
+                     (stage-paths query stage-number))
+          replace? (= :replace remove-or-replace)
+          replacement-clause (when replace?
+                               (lib.common/->op-arg query stage-number replacement))
+          remove-replace-fn (if replace?
+                              #(lib.util/replace-clause %1 %2 %3 replacement-clause)
+                              lib.util/remove-clause)
+          changing-breakout? (= [:breakout] location)
+          sync-breakout-ordering? (and replace?
+                                    changing-breakout?
+                                    (and (= (first target-clause)
+                                            (first replacement-clause))
+                                         (= (last target-clause)
+                                            (last replacement-clause))))
+          query (cond
+                  sync-breakout-ordering?
+                  (sync-order-by-options-with-breakout
+                    query
+                    stage-number
+                    target-clause
+                    (select-keys (second replacement-clause) [:binning :temporal-unit]))
+
+                  changing-breakout?
+                  (remove-breakout-order-by query stage-number target-clause)
+
+                  :else
+                  query)]
       (if location
         (remove-replace-location query stage-number query location target-clause remove-replace-fn)
         query))))
@@ -120,7 +169,7 @@
   ([query :- :metabase.lib.schema/query
     stage-number :- :int
     target-clause]
-   (remove-replace* query stage-number target-clause lib.util/remove-clause)))
+   (remove-replace* query stage-number target-clause :remove nil)))
 
 (mu/defn replace-clause :- :metabase.lib.schema/query
   "Replaces the `target-clause` with `new-clause` in the `query` stage."
@@ -132,5 +181,4 @@
     stage-number :- :int
     target-clause
     new-clause]
-   (let [replacement (lib.common/->op-arg query stage-number new-clause)]
-     (remove-replace* query stage-number target-clause #(lib.util/replace-clause %1 %2 %3 replacement)))))
+   (remove-replace* query stage-number target-clause :replace new-clause)))
