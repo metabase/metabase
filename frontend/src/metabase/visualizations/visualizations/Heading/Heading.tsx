@@ -4,6 +4,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
+import { isEmpty } from "metabase/lib/validate";
 import type {
   BaseDashboardOrderedCard,
   VisualizationSettings,
@@ -41,7 +42,7 @@ export function Heading({
     e.stopPropagation();
 
   const content = settings.text;
-  const hasNoContent = !content;
+  const hasNoContent = isEmpty(content);
   const placeholder = t`Heading`;
 
   if (isEditing) {
@@ -60,7 +61,7 @@ export function Heading({
             isEditing={isEditing}
             onMouseDown={preventDragging}
           >
-            {content || placeholder}
+            {!isEmpty(content) ? content : placeholder}
           </HeadingContent>
         ) : (
           <TextInput

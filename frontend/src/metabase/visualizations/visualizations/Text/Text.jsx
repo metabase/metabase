@@ -12,6 +12,7 @@ import { substitute_tags } from "cljs/metabase.shared.parameters.parameters";
 import { withInstanceLanguage, siteLocale } from "metabase/lib/i18n";
 
 import { useToggle } from "metabase/hooks/use-toggle";
+import { isEmpty } from "metabase/lib/validate";
 
 import {
   ClickToEditWrapper,
@@ -84,7 +85,7 @@ export function Text({
     );
   }
 
-  const hasNoContent = !content;
+  const hasNoContent = isEmpty(content);
   const placeholder = t`You can use Markdown here, and include variables {{like_this}}`;
 
   if (isEditing) {
@@ -113,7 +114,7 @@ export function Text({
                 },
               )}
             >
-              {content || placeholder}
+              {!isEmpty(content) ? content : placeholder}
             </ReactMarkdown>
           </ClickToEditWrapper>
         ) : (
