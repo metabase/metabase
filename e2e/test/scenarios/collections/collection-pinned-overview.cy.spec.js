@@ -338,11 +338,12 @@ describe("scenarios > collection pinned items overview", () => {
       openUnpinnedItemMenu(DASHBOARD_NAME);
       popover().findByText("Pin this").click();
       cy.wait("@getPinnedItems");
-      changeDashboardDescription(DASHBOARD_NAME, MARKDOWN);
-      openRootCollection();
     });
 
     it("should render only the first line of description without markdown formatting", () => {
+      changeDashboardDescription(DASHBOARD_NAME, MARKDOWN);
+      openRootCollection();
+
       getPinnedSection().within(() => {
         cy.findByText(HEADING_1_TEXT).should("exist");
 
@@ -355,6 +356,9 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     it("should render description tooltip with markdown formatting", () => {
+      changeDashboardDescription(DASHBOARD_NAME, MARKDOWN);
+      openRootCollection();
+
       getPinnedSection().findByText(HEADING_1_TEXT).realHover();
 
       popover().within(() => {
@@ -365,6 +369,28 @@ describe("scenarios > collection pinned items overview", () => {
       });
 
       popover().invoke("text").should("eq", MARKDOWN_AS_TEXT);
+    });
+
+    it("should render description tooltip when ellipis was necessary", () => {
+      changeDashboardDescription(DASHBOARD_NAME, HEADING_LONG_MARKDOWN);
+      openRootCollection();
+
+      getPinnedSection().findByText(HEADING_LONG).realHover();
+
+      popover().within(() => {
+        cy.findByText(HEADING_LONG_MARKDOWN).should("not.exist");
+      });
+
+      popover().invoke("text").should("eq", HEADING_LONG);
+    });
+
+    it("should not render description tooltip when ellipis is not necessary", () => {
+      changeDashboardDescription(DASHBOARD_NAME, HEADING_SHORT_MARKDOWN);
+      openRootCollection();
+
+      getPinnedSection().findByText(HEADING_SHORT).realHover();
+
+      cy.get(POPOVER_ELEMENT).should("not.exist");
     });
   });
 
@@ -375,11 +401,12 @@ describe("scenarios > collection pinned items overview", () => {
       });
 
       openRootCollection();
-      changePinnedCardDescription(SQL_QUESTION_DETAILS.name, MARKDOWN);
-      openRootCollection();
     });
 
     it("should render only the first line of description without markdown formatting", () => {
+      changePinnedCardDescription(SQL_QUESTION_DETAILS.name, MARKDOWN);
+      openRootCollection();
+
       getPinnedSection().within(() => {
         cy.findByText(HEADING_1_TEXT).should("exist");
 
@@ -392,6 +419,9 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     it("should render description tooltip with markdown formatting", () => {
+      changePinnedCardDescription(SQL_QUESTION_DETAILS.name, MARKDOWN);
+      openRootCollection();
+
       getPinnedSection().findByText(HEADING_1_TEXT).realHover();
 
       popover().within(() => {
@@ -402,6 +432,34 @@ describe("scenarios > collection pinned items overview", () => {
       });
 
       popover().invoke("text").should("eq", MARKDOWN_AS_TEXT);
+    });
+
+    it("should render description tooltip when ellipis was necessary", () => {
+      changePinnedCardDescription(
+        SQL_QUESTION_DETAILS.name,
+        HEADING_LONG_MARKDOWN,
+      );
+      openRootCollection();
+
+      getPinnedSection().findByText(HEADING_LONG).realHover();
+
+      popover().within(() => {
+        cy.findByText(HEADING_LONG_MARKDOWN).should("not.exist");
+      });
+
+      popover().invoke("text").should("eq", HEADING_LONG);
+    });
+
+    it("should not render description tooltip when ellipis is not necessary", () => {
+      changePinnedCardDescription(
+        SQL_QUESTION_DETAILS.name,
+        HEADING_SHORT_MARKDOWN,
+      );
+      openRootCollection();
+
+      getPinnedSection().findByText(HEADING_SHORT).realHover();
+
+      cy.get(POPOVER_ELEMENT).should("not.exist");
     });
   });
 
