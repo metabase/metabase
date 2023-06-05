@@ -301,7 +301,7 @@
   To revert 1 action, you should have n=2."
   [model model-id n]
   (assert (> n 1), "n = 1 means revert to the current revision, which is a no-op.")
-  (let [ids (t2/select-pks-vec Revision :model (name model) :model_id model-id {:order-by [[:timestamp :desc]]
+  (let [ids (t2/select-pks-vec Revision :model (name model) :model_id model-id {:order-by [[:id :desc]]
                                                                                 :limit    n})]
    (assert (= n (count ids)), "There are less revisions than required to revert")
    (revision/revert! :entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids))))

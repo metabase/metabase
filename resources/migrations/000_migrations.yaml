@@ -14776,7 +14776,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-027
-      author: calherres
+      author: calherries
       comment: Added 0.47.0 - Migrate field_ref in report_card.result_metadata from legacy format
       changes:
         - customChange:
@@ -14784,11 +14784,11 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-028
-      author: calherres
+      author: calherries
       comment: Added 0.47.0 - Add join-alias to the report_card.visualization_settings.column_settings field refs
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.AddJoinAliasToColumnSettingsFieldRefs"
+            class: "metabase.db.custom_migrations.AddJoinAliasToVisualizationSettingsFieldRefs"
 
   - changeSet:
       id: v47.00-029
@@ -14811,6 +14811,47 @@ databaseChangeLog:
                   type: varchar(256)
                   defaultValue: null
                   remarks: 'This is used to differentiate instance-analytics collections from all other collections.'
+
+  - changeSet:
+      id: v47.00-035
+      author: calherries
+      comment: Added 0.47.0 - Drop foreign key constraint on implicit_action.action_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: implicit_action
+            constraintName: fk_implicit_action_action_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: implicit_action
+            baseColumnNames: action_id
+            referencedTableName: action
+            referencedColumnNames: id
+            constraintName: fk_implicit_action_action_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v47.00-036
+      author: calherries
+      comment: Added 0.47.0 - Set primary key to action_id for implicit_action table
+      changes:
+        - addPrimaryKey:
+            tableName: implicit_action
+            columnNames: action_id
+            constraintName: pk_implicit_action
+
+  - changeSet:
+      id: v47.00-037
+      author: calherries
+      comment: Added 0.47.0 - Add foreign key constraint on implicit_action.action_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: implicit_action
+            baseColumnNames: action_id
+            referencedTableName: action
+            referencedColumnNames: id
+            constraintName: fk_implicit_action_action_id
+            onDelete: CASCADE
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
