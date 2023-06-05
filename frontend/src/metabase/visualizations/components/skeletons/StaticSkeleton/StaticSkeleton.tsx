@@ -1,6 +1,9 @@
 import { HTMLAttributes } from "react";
+
 import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
+import { getLeadingText, parseMarkdown } from "metabase/lib/markdown";
+
 import {
   SkeletonDescription,
   SkeletonIcon,
@@ -10,7 +13,6 @@ import {
   SkeletonTooltipIcon,
   SkeletonTooltipIconContainer,
 } from "./StaticSkeleton.styled";
-import { getLeadingText, parseMarkdown } from "./utils";
 
 export interface StaticSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   name?: string | null;
