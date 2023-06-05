@@ -10,7 +10,8 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -528,10 +529,10 @@
                 [field
                  expression]
                 (->> (mt/run-mbql-query times
-                                        {:expressions {"expr" expression}
-                                         :limit       1
-                                         :fields      [field                  ;; original row for comparision
-                                                       [:expression "expr"]]});; result
+                       {:expressions {"expr" expression}
+                        :limit       1
+                        :fields      [field                   ;; original row for comparision
+                                      [:expression "expr"]]}) ;; result
                      mt/rows
                      first))]
         (testing "timestamp with out timezone columns"
@@ -540,56 +541,56 @@
               (is (= ["2004-03-19T09:19:09Z"
                       "2004-03-19T10:19:09+09:00"]
                      (mt/$ids (test-convert-tz
-                                $times.dt
-                                [:convert-timezone $times.dt "Asia/Seoul" "Asia/Shanghai"])))))
+                                  $times.dt
+                                  [:convert-timezone $times.dt "Asia/Seoul" "Asia/Shanghai"])))))
             (testing "source-timezone is required"
               (is (thrown-with-msg?
-                    clojure.lang.ExceptionInfo
-                    #"input column doesnt have a set timezone. Please set the source parameter in convertTimezone to convert it."
-                    (mt/$ids (test-convert-tz
-                               $times.dt
-                               [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul"]))))))
+                   clojure.lang.ExceptionInfo
+                   #"input column doesnt have a set timezone. Please set the source parameter in convertTimezone to convert it."
+                   (mt/$ids (test-convert-tz
+                                $times.dt
+                                [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul"]))))))
 
           (when (driver/database-supports? driver/*driver* :set-timezone (mt/db))
             (mt/with-report-timezone-id "Europe/Rome"
               (testing "results should be displayed in the converted timezone, not report-tz"
                 (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T17:19:09+09:00"]
                        (mt/$ids (test-convert-tz
-                                  $times.dt
-                                  [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul" "Europe/Rome"]))))))))
+                                    $times.dt
+                                    [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul" "Europe/Rome"]))))))))
 
         (testing "timestamp with time zone columns"
           (mt/with-report-timezone-id "UTC"
             (testing "convert to +09:00"
               (is (= ["2004-03-19T02:19:09Z" "2004-03-19T11:19:09+09:00"]
                      (mt/$ids (test-convert-tz
-                                $times.dt_tz
-                                [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Seoul"])))))
+                                  $times.dt_tz
+                                  [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Seoul"])))))
 
             (testing "timestamp with time zone columns shouldn't have `source-timezone`"
               (is (thrown-with-msg?
-                    clojure.lang.ExceptionInfo
-                    #"input column already has a set timezone. Please remove the source parameter in convertTimezone."
-                    (mt/$ids (test-convert-tz
-                               $times.dt_tz
-                               [:convert-timezone [:field (mt/id :times :dt_tz) nil]
-                                "Asia/Seoul"
-                                "UTC"]))))))
+                   clojure.lang.ExceptionInfo
+                   #"input column already has a set timezone. Please remove the source parameter in convertTimezone."
+                   (mt/$ids (test-convert-tz
+                                $times.dt_tz
+                                [:convert-timezone [:field (mt/id :times :dt_tz) nil]
+                                 "Asia/Seoul"
+                                 "UTC"]))))))
 
           (when (driver/database-supports? driver/*driver* :set-timezone (mt/db))
             (mt/with-report-timezone-id "Europe/Rome"
               (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
                 (is (= ["2004-03-19T03:19:09+01:00" "2004-03-19T11:19:09+09:00"]
                        (mt/$ids (test-convert-tz
-                                  $times.dt_tz
-                                  [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Seoul"]))))))))
+                                    $times.dt_tz
+                                    [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Seoul"]))))))))
 
         (testing "with literal datetime"
           (mt/with-report-timezone-id "UTC"
             (is (= "2022-10-03T14:10:20+07:00"
                    (->> (mt/run-mbql-query times
-                                           {:expressions {"expr" [:convert-timezone "2022-10-03T07:10:20" "Asia/Saigon" "UTC"]}
-                                            :fields      [[:expression "expr"]]})
+                          {:expressions {"expr" [:convert-timezone "2022-10-03T07:10:20" "Asia/Saigon" "UTC"]}
+                           :fields      [[:expression "expr"]]})
                         mt/rows
                         ffirst)))))))))
 
@@ -613,10 +614,10 @@
                       first))))
 
         (testing "convert-timezone nested with date-math, date-extract"
-          (is (= ["2004-03-19T09:19:09Z"       ;; original
-                  "2004-03-19T18:19:09+09:00"  ;; converted
-                  "2004-03-19T20:19:09+09:00"  ;; date-added
-                  20]                          ;; hour
+          (is (= ["2004-03-19T09:19:09Z"      ;; original
+                  "2004-03-19T18:19:09+09:00" ;; converted
+                  "2004-03-19T20:19:09+09:00" ;; date-added
+                  20]                         ;; hour
                  (->> (mt/run-mbql-query
                         times
                         {:expressions {"converted"  [:convert-timezone $times.dt "Asia/Seoul" "UTC"]
@@ -644,9 +645,9 @@
                       (mt/formatted-rows [str str int])))))
 
         (testing "convert-timezone twice should works"
-          (is (= ["2004-03-19T09:19:09Z"      ;; original column
-                  "2004-03-19T16:19:09+07:00" ;; at +07
-                  "2004-03-19T18:19:09+09:00"];; at +09
+          (is (= ["2004-03-19T09:19:09Z"       ;; original column
+                  "2004-03-19T16:19:09+07:00"  ;; at +07
+                  "2004-03-19T18:19:09+09:00"] ;; at +09
                  (->> (mt/run-mbql-query
                         times
                         {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
@@ -664,7 +665,7 @@
                  (->> (mt/run-mbql-query
                         times
                         {:expressions {"converted" [:convert-timezone $times.dt "Asia/Seoul" "UTC"]
-                                       "hour"       [:get-hour [:expression "converted"]]}
+                                       "hour" [:get-hour [:expression "converted"]]}
                          :filter      [:between [:expression "hour"] 17 18]
                          :fields      [[:expression "converted"]]})
                       mt/rows
@@ -681,17 +682,18 @@
                       first))))
 
         (testing "nested custom expression should works"
-          (mt/with-temp Card [card
-                              {:dataset_query
-                               (mt/mbql-query
-                                 times
-                                 {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
-                                                "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul"
-                                                               "Asia/Saigon"]}
-                                  :filter      [:= $times.index 1]
-                                  :fields      [$times.dt
-                                                [:expression "to-07"]
-                                                [:expression "to-07-to-09"]]})}]
+          (t2.with-temp/with-temp [Card
+                                   card
+                                   {:dataset_query
+                                    (mt/mbql-query
+                                        times
+                                        {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
+                                                       "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul"
+                                                                      "Asia/Saigon"]}
+                                         :filter      [:= $times.index 1]
+                                         :fields      [$times.dt
+                                                       [:expression "to-07"]
+                                                       [:expression "to-07-to-09"]]})}]
             (testing "mbql query"
               (is (= [["2004-03-19T09:19:09Z"
                        "2004-03-19T16:19:09+07:00"
@@ -709,9 +711,9 @@
                          "2004-03-19T16:19:09Z"
                          "2004-03-19T18:19:09Z"]]
                        (->> (mt/native-query {:query         (format "select * from {{%s}} %s" card-tag
-                                                                    (case driver/*driver*
-                                                                      :oracle ""
-                                                                      "as source"))
+                                                                     (case driver/*driver*
+                                                                       :oracle ""
+                                                                       "as source"))
                                               :template-tags {card-tag {:card-id      (:id card)
                                                                         :type         :card
                                                                         :display-name "CARD ID"

@@ -16,7 +16,8 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)
@@ -242,9 +243,9 @@
       (mt/with-temporary-setting-values [enable-public-sharing true
                                          enable-embedding      true]
         (embed-test/with-new-secret-key
-          (mt/with-temp Card [card (if viz-settings
-                                     (assoc card-defaults :visualization_settings viz-settings)
-                                     card-defaults)]
+          (t2.with-temp/with-temp [Card card (if viz-settings
+                                               (assoc card-defaults :visualization_settings viz-settings)
+                                               card-defaults)]
             (doseq [export-format (keys assertions)
                     endpoint      (or endpoints [:dataset :card :public :embed])]
               (testing endpoint

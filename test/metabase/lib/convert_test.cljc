@@ -268,7 +268,12 @@
      :parameters [{:target [:dimension [:field 16 {:source-field 5}]],
                    :type :category,
                    :value [:param-value]}],
-     :type :native}))
+     :type :native}
+
+    {:database 1
+     :type     :query
+     :query    {:source-table 224
+                :expressions {"a" 1}}}))
 
 (deftest ^:parallel round-trip-options-test
   (testing "Round-tripping (p)MBQL caluses with options (#30280)"

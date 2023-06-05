@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";

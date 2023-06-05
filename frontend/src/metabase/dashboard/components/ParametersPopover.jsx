@@ -4,7 +4,7 @@ import { t } from "ttag";
 import styled from "@emotion/styled";
 import _ from "underscore";
 import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 
 const PopoverBody = styled.div`

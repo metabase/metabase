@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Input from "metabase/core/components/Input";
 
 const SearchInput = styled(Input)`

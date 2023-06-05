@@ -5,7 +5,7 @@ import { t } from "ttag";
 import cx from "classnames";
 import { color } from "metabase/lib/colors";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ListSearchField from "metabase/components/ListSearchField";
 import { ListCellItem, FilterContainer } from "./AccordionListCell.styled";

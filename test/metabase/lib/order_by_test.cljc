@@ -141,12 +141,12 @@
                   :base-type          :type/Integer}
                  {:lib/type     :metadata/field
                   :base-type    :type/Integer
-                  :name         "sum_PRICE"
+                  :name         "sum"
                   :display-name "Sum of Price"
                   :lib/source   :source/aggregations}
                  {:lib/type     :metadata/field
                   :base-type    :type/Float
-                  :name         "avg_PRICE_plus_1"
+                  :name         "avg"
                   :display-name "Average of Price + 1"
                   :lib/source   :source/aggregations}]
                 (lib/orderable-columns query)))))))
@@ -646,6 +646,26 @@
                  {:display-name "ID",            :lib/source :source/implicitly-joinable}
                  {:display-name "Name",          :lib/source :source/implicitly-joinable}]
                 (lib/orderable-columns query')))))))
+
+(deftest ^:parallel orderable-columns-include-all-visible-columns-test
+  (testing "Include all visible columns, not just projected ones (#31233)"
+    (is (= ["ID"
+            "NAME"
+            "CATEGORY_ID"
+            "LATITUDE"
+            "LONGITUDE"
+            "PRICE"
+            "Categories__ID" ; this column is not projected, but should still be returned.
+            "Categories__NAME"]
+           (map :lib/desired-column-alias
+                (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/join (-> (lib/join-clause
+                                   (meta/table-metadata :categories)
+                                   [(lib/=
+                                     (lib/field "VENUES" "CATEGORY_ID")
+                                     (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Categories"))])
+                                  (lib/with-join-fields [(lib/with-join-alias (lib/field "CATEGORIES" "NAME") "Categories")])))
+                    lib/orderable-columns))))))
 
 (deftest ^:parallel order-by-aggregation-test
   (testing "Should be able to order by an aggregation (#30089)"

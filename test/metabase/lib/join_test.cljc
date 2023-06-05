@@ -6,6 +6,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -13,7 +14,7 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel resolve-join-test
-  (let [query       (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query       lib.tu/venues-query
         join-clause (-> ((lib/join-clause
                           (meta/table-metadata :categories)
                           [(lib/=
@@ -158,7 +159,7 @@
                                            :query    {:source-table (meta/id :checkins)
                                                       :aggregation  [[:count]]
                                                       :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}
-        metadata-provider (lib.tu/composed-metadata-provider
+        metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
                            meta/metadata-provider
                            (lib.tu/mock-metadata-provider
                             {:cards [card-1]}))
@@ -298,3 +299,106 @@
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_bfaf4e7b"}]
             (lib.metadata.calculation/metadata query)))))
+
+(deftest ^:parallel join-strategy-test
+  (let [query  (lib.tu/query-with-join)
+        [join] (lib/joins query)]
+    (testing "join without :strategy"
+      (is (= :left-join
+             (lib/join-strategy join))))
+    (testing "join with explicit :strategy"
+      (let [join' (lib/with-join-strategy join :right-join)]
+        (is (=? {:strategy :right-join}
+                join'))
+        (is (= :right-join
+               (lib/join-strategy join')))))))
+
+(deftest ^:parallel with-join-strategy-test
+  (testing "Make sure `with-join-alias` works with unresolved functions"
+    (is (=? {:stages [{:joins [{:strategy :right-join}]}]}
+            (-> lib.tu/venues-query
+                (lib/join (-> (lib/join-clause (fn [_query _stage-number]
+                                                 (meta/table-metadata :categories))
+                                               [(lib/=
+                                                 (lib/field "VENUES" "CATEGORY_ID")
+                                                 (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                              (lib/with-join-strategy :right-join))))))))
+
+(deftest ^:parallel available-join-strategies-test
+  (is (= [:left-join :right-join :inner-join]
+         (lib/available-join-strategies (lib.tu/query-with-join)))))
+
+(defn- query-with-join-with-fields
+  "A query against `VENUES` joining `CATEGORIES` with `:fields` set to return only `NAME`."
+  []
+  (-> lib.tu/venues-query
+      (lib/join (-> (lib/join-clause
+                     (meta/table-metadata :categories)
+                     [(lib/=
+                       (lib/field "VENUES" "CATEGORY_ID")
+                       (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                    (lib/with-join-alias "Cat")
+                    (lib/with-join-fields [(lib/with-join-alias (lib/field "CATEGORIES" "NAME") "Cat")])))))
+
+(deftest ^:parallel join-condition-lhs-columns-test
+  (let [query lib.tu/venues-query]
+    (doseq [rhs [nil (lib/with-join-alias (lib.metadata/field query (meta/id :venues :category-id)) "Cat")]]
+      (testing (str "rhs = " (pr-str rhs))
+        ;; sort PKs then FKs then everything else
+        (is (=? [{:lib/desired-column-alias "ID"}
+                 {:lib/desired-column-alias "CATEGORY_ID"}
+                 {:lib/desired-column-alias "NAME"}
+                 {:lib/desired-column-alias "LATITUDE"}
+                 {:lib/desired-column-alias "LONGITUDE"}
+                 {:lib/desired-column-alias "PRICE"}]
+                (lib/join-condition-lhs-columns query rhs)))))))
+
+(deftest ^:parallel join-condition-lhs-columns-with-previous-join-test
+  (testing "Include columns from previous join(s)"
+    (let [query (query-with-join-with-fields)]
+      (doseq [rhs [nil (lib/with-join-alias (lib.metadata/field query (meta/id :users :id)) "User")]]
+        (testing (str "rhs = " (pr-str rhs))
+          (is (=? [{:lib/desired-column-alias "ID"}
+                   {:lib/desired-column-alias "Cat__ID"} ;; FIXME #31233
+                   {:lib/desired-column-alias "CATEGORY_ID"}
+                   {:lib/desired-column-alias "NAME"}
+                   {:lib/desired-column-alias "LATITUDE"}
+                   {:lib/desired-column-alias "LONGITUDE"}
+                   {:lib/desired-column-alias "PRICE"}
+                   {:lib/desired-column-alias "Cat__NAME"}]
+                  (lib/join-condition-lhs-columns query rhs)))
+          (is (= (lib/join-condition-lhs-columns query rhs)
+                 (lib/join-condition-lhs-columns query -1 rhs))))))))
+
+(deftest ^:parallel join-condition-rhs-columns-test
+  (let [query lib.tu/venues-query]
+    (doseq [lhs          [nil (lib.metadata/field query (meta/id :venues :id))]
+            joined-thing [(meta/table-metadata :venues)
+                          meta/saved-question-CardMetadata]]
+      (testing (str "lhs = " (pr-str lhs)
+                    "\njoined-thing = " (pr-str joined-thing))
+        (is (=? [{:lib/desired-column-alias "ID"}
+                 {:lib/desired-column-alias "CATEGORY_ID"}
+                 {:lib/desired-column-alias "NAME"}
+                 {:lib/desired-column-alias "LATITUDE"}
+                 {:lib/desired-column-alias "LONGITUDE"}
+                 {:lib/desired-column-alias "PRICE"}]
+                (map #(select-keys % [:lib/desired-column-alias])
+                     (lib/join-condition-rhs-columns query joined-thing lhs))))))))
+
+(deftest ^:parallel join-condition-operators-test
+  ;; just make sure that this doesn't barf and returns the expected output given any combination of LHS or RHS fields
+  ;; for now until we actually implement filtering there
+  (let [query lib.tu/venues-query]
+    (doseq [lhs [nil (lib.metadata/field query (meta/id :categories :id))]
+            rhs [nil (lib.metadata/field query (meta/id :venues :category-id))]]
+      (testing (pr-str (list `lib/join-condition-operators `lib.tu/venues-query lhs rhs))
+        (is (=? [{:short :=}
+                 {:short :>}
+                 {:short :<}
+                 {:short :>=}
+                 {:short :<=}
+                 {:short :!=}]
+                (lib/join-condition-operators lib.tu/venues-query lhs rhs)))
+        (is (= (lib/join-condition-operators lib.tu/venues-query lhs rhs)
+               (lib/join-condition-operators lib.tu/venues-query -1 lhs rhs)))))))

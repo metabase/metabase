@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
 import { color, lighten } from "metabase/lib/colors";

@@ -31,13 +31,13 @@
 
 (deftest serialize-dashboard-test
   (testing "without tabs"
-    (tt/with-temp* [Dashboard           [{dashboard-id :id :as dashboard} {:name "Test Dashboard"}]
-                    Card                [{card-id :id}]
-                    Card                [{series-id-1 :id}]
-                    Card                [{series-id-2 :id}]
-                    DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
-                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
+    (t2.with-temp/with-temp [Dashboard           {dashboard-id :id :as dashboard} {:name "Test Dashboard"}
+                             Card                {card-id :id}     {}
+                             Card                {series-id-1 :id} {}
+                             Card                {series-id-2 :id} {}
+                             DashboardCard       {dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}
+                             DashboardCardSeries _                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}
+                             DashboardCardSeries _                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
       (is (= {:name               "Test Dashboard"
               :auto_apply_filters true
               :collection_id      nil
@@ -58,12 +58,13 @@
                        [(assoc card
                                :id      (= dashcard-id id)
                                :card_id (= card-id card_id)
-                               :series  (= [series-id-1 series-id-2] series))]))))))
+                               :series  (= [series-id-1 series-id-2] series))])))))))
 
+(deftest serialize-dashboard-with-tabs-test
   (testing "with tabs"
-    (mt/with-temp* [Dashboard           [{dashboard-id :id :as dashboard} {:name "Test Dashboard"}]
-                    :model/DashboardTab [{tab-id :id} {:dashboard_id dashboard-id :name "Test Tab" :position 0}]
-                    DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id :dashboard_tab_id tab-id}]]
+    (t2.with-temp/with-temp [Dashboard           {dashboard-id :id :as dashboard} {:name "Test Dashboard"}
+                             :model/DashboardTab {tab-id :id}                     {:dashboard_id dashboard-id :name "Test Tab" :position 0}
+                             DashboardCard       {dashcard-id :id}                {:dashboard_id dashboard-id :dashboard_tab_id tab-id}]
       (is (=? {:name               "Test Dashboard"
                :auto_apply_filters true
                :collection_id      nil
@@ -78,174 +79,148 @@
                :tabs               [{:id      tab-id
                                      :name    "Test Tab"
                                      :position 0}]}
-             (revision/serialize-instance Dashboard (:id dashboard) dashboard))))))
+              (revision/serialize-instance Dashboard (:id dashboard) dashboard))))))
 
 (deftest diff-dashboards-str-test
   (testing "update general info ---"
-    (is (= "added a description and renamed it from \"Diff Test\" to \"Diff Test Changed\"."
-           (build-sentence
-             (revision/diff-strings
-               Dashboard
-               {:name        "Diff Test"
-                :description nil
-                :cards       []}
-               {:name        "Diff Test Changed"
-                :description "foobar"
-                :cards       []}))))
+    (are [x y expected] (= expected
+                           (build-sentence (revision/diff-strings Dashboard x y)))
+      {:name        "Diff Test"
+       :description nil
+       :cards       []}
+      {:name        "Diff Test Changed"
+       :description "foobar"
+       :cards       []}
+      "added a description and renamed it from \"Diff Test\" to \"Diff Test Changed\"."
 
-    (is (= "renamed it from \"Apple\" to \"Next\" and modified the cards."
-           (build-sentence
-             (revision/diff-strings
-               Dashboard
-               {:name "Apple"
-                :cards [{:id 1} {:id 2}]}
-               {:name "Next"
-                :cards [{:id 1} {:id 3}]}))))
+      {:name  "Apple"
+       :cards [{:id 1} {:id 2}]}
+      {:name  "Next"
+       :cards [{:id 1} {:id 3}]}
+      "renamed it from \"Apple\" to \"Next\" and modified the cards."
 
-    (is (= "set auto apply filters to false."
-           (build-sentence
-             (revision/diff-strings
-               Dashboard
-               {:name               "Diff Test"
-                :auto_apply_filters true}
-               {:name               "Diff Test"
-                :auto_apply_filters false}))))
+      {:name               "Diff Test"
+       :auto_apply_filters true}
+      {:name               "Diff Test"
+       :auto_apply_filters false}
+      "set auto apply filters to false."
 
-    ;; multiple changes
-    (is (= "changed the cache ttl from \"333\" to \"1,227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
-           (build-sentence
-             (revision/diff-strings
-               Dashboard
-               {:name        "Diff Test"
-                :description nil
-                :cache_ttl   333
-                :cards       [{:size_x  4
-                               :size_y  4
-                               :row     0
-                               :col     0
-                               :id      1
-                               :card_id 1
-                               :series  [5 6]}
-                              {:size_x  4
-                               :size_y  4
-                               :row     0
-                               :col     0
-                               :id      2
-                               :card_id 2
-                               :series  []}]}
-               {:name        "Diff Test"
-                :description nil
-                :cache_ttl   1227
-                :cards       [{:size_x  4
-                               :size_y  4
-                               :row     0
-                               :col     0
-                               :id      1
-                               :card_id 1
-                               :series  [4 5]}
-                              {:size_x  4
-                               :size_y  4
-                               :row     2
-                               :col     0
-                               :id      2
-                               :card_id 2
-                               :series  [3 4 5]}]})))))
+      ;; multiple changes
+      {:name        "Diff Test"
+       :description nil
+       :cache_ttl   333
+       :cards       [{:size_x  4
+                      :size_y  4
+                      :row     0
+                      :col     0
+                      :id      1
+                      :card_id 1
+                      :series  [5 6]}
+                     {:size_x  4
+                      :size_y  4
+                      :row     0
+                      :col     0
+                      :id      2
+                      :card_id 2
+                      :series  []}]}
+      {:name        "Diff Test"
+       :description nil
+       :cache_ttl   1227
+       :cards       [{:size_x  4
+                      :size_y  4
+                      :row     0
+                      :col     0
+                      :id      1
+                      :card_id 1
+                      :series  [4 5]}
+                     {:size_x  4
+                      :size_y  4
+                      :row     2
+                      :col     0
+                      :id      2
+                      :card_id 2
+                      :series  [3 4 5]}]}
+      (str "changed the cache ttl from \"333\" to \"1,227\", rearranged the cards, modified the series on card 1 and "
+           "added some series to card 2."))))
 
- (testing "update cards ---"
-  (is (= "added a card."
-         (build-sentence
-           (revision/diff-strings
-             Dashboard
-             {:cards [{:id 1} {:id 2}]}
-             {:cards [{:id 1} {:id 2} {:id 3}]}))))
+(deftest ^:parallel diff-dashboards-str-update-cards-test
+  (testing "update cards ---"
+    (are [x y expected] (= expected
+                           (build-sentence (revision/diff-strings Dashboard x y)))
+      {:cards [{:id 1} {:id 2}]}
+      {:cards [{:id 1} {:id 2} {:id 3}]}
+      "added a card."
 
-  (is (= "removed a card."
-         (build-sentence
-           (revision/diff-strings
-             Dashboard
-             {:cards [{:id 1} {:id 2}]}
-             {:cards [{:id 1}]}))))
+      {:cards [{:id 1} {:id 2}]}
+      {:cards [{:id 1}]}
+      "removed a card."
 
-  (is (= "rearranged the cards."
-         (build-sentence
-           (revision/diff-strings
-             Dashboard
-             {:cards [{:id 1 :row 0} {:id 2 :row 1}]}
-             {:cards [{:id 1 :row 1} {:id 2 :row 2}]}))))
+      {:cards [{:id 1 :row 0} {:id 2 :row 1}]}
+      {:cards [{:id 1 :row 1} {:id 2 :row 2}]}
+      "rearranged the cards."
 
-  (is (= "modified the cards."
-         (build-sentence
-           (revision/diff-strings
-             Dashboard
-             {:cards [{:id 1} {:id 2}]}
-             {:cards [{:id 1} {:id 3}]})))))
+      {:cards [{:id 1} {:id 2}]}
+      {:cards [{:id 1} {:id 3}]}
+      "modified the cards.")))
 
- (testing "update collection ---"
-  (t2.with-temp/with-temp
-    [Collection {coll-id :id} {:name "New collection"}]
-    (is (= "moved this Dashboard to New collection."
-           (build-sentence
-             (revision/diff-strings
+(deftest diff-dashboards-str-update-collection-test
+  (testing "update collection ---"
+    (t2.with-temp/with-temp
+      [Collection {coll-id :id} {:name "New collection"}]
+      (is (= "moved this Dashboard to New collection."
+             (build-sentence
+              (revision/diff-strings
                Dashboard
                {:name "Apple"}
                {:name          "Apple"
                 :collection_id coll-id})))))
-  (t2.with-temp/with-temp
-    [Collection {coll-id-1 :id} {:name "Old collection"}
-     Collection {coll-id-2 :id} {:name "New collection"}]
-    (is (= "moved this Dashboard from Old collection to New collection."
-           (build-sentence
-             (revision/diff-strings
+    (t2.with-temp/with-temp
+      [Collection {coll-id-1 :id} {:name "Old collection"}
+       Collection {coll-id-2 :id} {:name "New collection"}]
+      (is (= "moved this Dashboard from Old collection to New collection."
+             (build-sentence
+              (revision/diff-strings
                Dashboard
                {:name          "Apple"
                 :collection_id coll-id-1}
                {:name          "Apple"
-                :collection_id coll-id-2}))))))
+                :collection_id coll-id-2})))))))
 
- (testing "update tabs"
-   (is (= "added a tab."
-          (build-sentence
-            (revision/diff-strings
-              Dashboard
-              {:tabs [{:id 0 :name "First tab" :position 0}]}
-              {:tabs [{:id 0 :name "First tab" :position 0}
-                      {:id 1 :name "Second tab" :position 1}]}))))
+(deftest ^:parallel diff-dashboards-str-update-tabs-test
+  (testing "update tabs"
+    (are [x y expected] (= expected
+                           (build-sentence (revision/diff-strings Dashboard x y)))
+      {:tabs [{:id 0 :name "First tab" :position 0}]}
+      {:tabs [{:id 0 :name "First tab" :position 0}
+              {:id 1 :name "Second tab" :position 1}]}
+      "added a tab."
 
-   (is (= "removed 2 tabs."
-          (build-sentence
-            (revision/diff-strings
-              Dashboard
-              {:tabs [{:id 0 :name "First tab" :position 0}
-                      {:id 1 :name "Second tab" :position 1}
-                      {:id 2 :name "Third tab" :position 2}]}
-              {:tabs [{:id 0 :name "First tab" :position 0}]}))))
+      {:tabs [{:id 0 :name "First tab" :position 0}
+              {:id 1 :name "Second tab" :position 1}
+              {:id 2 :name "Third tab" :position 2}]}
+      {:tabs [{:id 0 :name "First tab" :position 0}]}
+      "removed 2 tabs."
 
-   (is (= "rearranged the tabs."
-          (build-sentence
-            (revision/diff-strings
-              Dashboard
-              {:tabs [{:id 0 :name "First tab" :position 0}
-                      {:id 1 :name "Second tab" :position 1}]}
-              {:tabs [{:id 1 :name "Second tab" :position 0}
-                      {:id 0 :name "First tab" :position 1}]}))))
+      {:tabs [{:id 0 :name "First tab" :position 0}
+              {:id 1 :name "Second tab" :position 1}]}
+      {:tabs [{:id 1 :name "Second tab" :position 0}
+              {:id 0 :name "First tab" :position 1}]}
+      "rearranged the tabs."
 
-   (is (= "modified the tabs."
-          (build-sentence
-            (revision/diff-strings
-              Dashboard
-              {:tabs [{:id 0 :name "Tab A" :position 0}
-                      {:id 1 :name "Tab B" :position 1}]}
-              {:tabs [{:id 1 :name "Tab B new name and position" :position 0}
-                      {:id 0 :name "Tab A new name and position" :position 1}]}))))))
+      {:tabs [{:id 0 :name "Tab A" :position 0}
+              {:id 1 :name "Tab B" :position 1}]}
+      {:tabs [{:id 1 :name "Tab B new name and position" :position 0}
+              {:id 0 :name "Tab A new name and position" :position 1}]}
+      "modified the tabs.")))
 
 (deftest revert-dashboard!-test
-  (tt/with-temp* [Dashboard           [{dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}]
-                  Card                [{card-id :id}]
-                  Card                [{series-id-1 :id}]
-                  Card                [{series-id-2 :id}]
-                  DashboardCard       [{dashcard-id :id :as dashboard-card} {:dashboard_id dashboard-id, :card_id card-id}]
-                  DashboardCardSeries [_                                    {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
-                  DashboardCardSeries [_                                    {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
+  (t2.with-temp/with-temp [Dashboard           {dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}
+                           Card                {card-id :id}                        {}
+                           Card                {series-id-1 :id}                    {}
+                           Card                {series-id-2 :id}                    {}
+                           DashboardCard       {dashcard-id :id :as dashboard-card} {:dashboard_id dashboard-id, :card_id card-id}
+                           DashboardCardSeries _                                    {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}
+                           DashboardCardSeries _                                    {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
     (let [check-ids            (fn [[{:keys [id card_id series] :as card}]]
                                  [(assoc card
                                          :id      (= dashcard-id id)
@@ -326,7 +301,7 @@
   To revert 1 action, you should have n=2."
   [model model-id n]
   (assert (> n 1), "n = 1 means revert to the current revision, which is a no-op.")
-  (let [ids (t2/select-pks-vec Revision :model (name model) :model_id model-id {:order-by [[:timestamp :desc]]
+  (let [ids (t2/select-pks-vec Revision :model (name model) :model_id model-id {:order-by [[:id :desc]]
                                                                                 :limit    n})]
    (assert (= n (count ids)), "There are less revisions than required to revert")
    (revision/revert! :entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids))))
@@ -514,24 +489,24 @@
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
-      (tt/with-temp Dashboard [dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
+      (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
         (is (schema= u/uuid-regex
                      (:public_uuid dashboard)))))
 
     (testing "...but if public sharing is *disabled* it should come back as `nil`"
       (tu/with-temporary-setting-values [enable-public-sharing false]
-        (tt/with-temp Dashboard [dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
+        (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
           (is (= nil
                  (:public_uuid dashboard))))))))
 
 (deftest post-update-test
-  (tt/with-temp* [Collection          [{collection-id-1 :id}]
-                  Collection          [{collection-id-2 :id}]
-                  Dashboard           [{dashboard-id :id} {:name "Lucky the Pigeon's Lucky Stuff", :collection_id collection-id-1}]
-                  Card                [{card-id :id}]
-                  Pulse               [{pulse-id :id} {:dashboard_id dashboard-id, :collection_id collection-id-1}]
-                  DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                  PulseCard           [_ {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]]
+  (t2.with-temp/with-temp [Collection    {collection-id-1 :id} {}
+                           Collection    {collection-id-2 :id} {}
+                           Dashboard     {dashboard-id :id}    {:name "Lucky the Pigeon's Lucky Stuff", :collection_id collection-id-1}
+                           Card          {card-id :id}         {}
+                           Pulse         {pulse-id :id}        {:dashboard_id dashboard-id, :collection_id collection-id-1}
+                           DashboardCard {dashcard-id :id}     {:dashboard_id dashboard-id, :card_id card-id}
+                           PulseCard     _                     {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]
     (testing "Pulse name and collection-id updates"
       (t2/update! Dashboard dashboard-id {:name "Lucky's Close Shaves" :collection_id collection-id-2})
       (is (= "Lucky's Close Shaves"
@@ -539,7 +514,7 @@
       (is (= collection-id-2
              (t2/select-one-fn :collection_id Pulse :id pulse-id))))
     (testing "PulseCard syncing"
-      (tt/with-temp Card [{new-card-id :id}]
+      (t2.with-temp/with-temp [Card {new-card-id :id}]
         (dashboard/add-dashcards! dashboard-id [{:card_id new-card-id
                                                  :row     0
                                                  :col     0
@@ -554,11 +529,10 @@
                         :id         "_CATEGORY_NAME_"
                         :type       "category"}]
     (testing "A new dashboard creates a new ParameterCard"
-      (tt/with-temp* [Card      [{card-id :id}]
-                      Dashboard [{dashboard-id :id}
-                                 {:parameters [(merge default-params
-                                                      {:values_source_type    "card"
-                                                       :values_source_config {:card_id card-id}})]}]]
+      (t2.with-temp/with-temp [Card      {card-id :id}      {}
+                               Dashboard {dashboard-id :id} {:parameters [(merge default-params
+                                                                                 {:values_source_type    "card"
+                                                                                  :values_source_config {:card_id card-id}})]}]
         (is (=? {:card_id                   card-id
                  :parameterized_object_type :dashboard
                  :parameterized_object_id   dashboard-id
@@ -566,9 +540,8 @@
                 (t2/select-one 'ParameterCard :card_id card-id)))))
 
     (testing "Adding a card_id creates a new ParameterCard"
-      (tt/with-temp* [Card      [{card-id :id}]
-                      Dashboard [{dashboard-id :id}
-                                 {:parameters [default-params]}]]
+      (t2.with-temp/with-temp [Card      {card-id :id}      {}
+                               Dashboard {dashboard-id :id} {:parameters [default-params]}]
         (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))
         (t2/update! Dashboard dashboard-id {:parameters [(merge default-params
                                                                 {:values_source_type    "card"
@@ -580,11 +553,10 @@
                 (t2/select-one 'ParameterCard :card_id card-id)))))
 
     (testing "Removing a card_id deletes old ParameterCards"
-      (tt/with-temp* [Card      [{card-id :id}]
-                      Dashboard [{dashboard-id :id}
-                                 {:parameters [(merge default-params
-                                                      {:values_source_type    "card"
-                                                       :values_source_config {:card_id card-id}})]}]]
+      (t2.with-temp/with-temp [Card      {card-id :id}      {}
+                               Dashboard {dashboard-id :id} {:parameters [(merge default-params
+                                                                                 {:values_source_type    "card"
+                                                                                  :values_source_config {:card_id card-id}})]}]
         ;; same setup as earlier test, we know the ParameterCard exists right now
         (t2/delete! Dashboard :id dashboard-id)
         (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))))))
@@ -595,14 +567,14 @@
 
 (defn do-with-dash-in-collection [f]
   (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection    [collection]
-                    Dashboard     [dash  {:collection_id (u/the-id collection)}]
-                    Database      [db    {:engine :h2}]
-                    Table         [table {:db_id (u/the-id db)}]
-                    Card          [card  {:dataset_query {:database (u/the-id db)
-                                                          :type     :query
-                                                          :query    {:source-table (u/the-id table)}}}]
-                    DashboardCard [_ {:dashboard_id (u/the-id dash), :card_id (u/the-id card)}]]
+    (t2.with-temp/with-temp [Collection    collection {}
+                             Dashboard     dash       {:collection_id (u/the-id collection)}
+                             Database      db         {:engine :h2}
+                             Table         table      {:db_id (u/the-id db)}
+                             Card          card       {:dataset_query {:database (u/the-id db)
+                                                                       :type     :query
+                                                                       :query    {:source-table (u/the-id table)}}}
+                             DashboardCard _          {:dashboard_id (u/the-id dash), :card_id (u/the-id card)}]
       (f db collection dash))))
 
 (defmacro with-dash-in-collection
@@ -644,7 +616,7 @@
                    (-> dashboard :ordered_cards count)))))))))
 
 (deftest validate-collection-namespace-test
-  (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]
+  (t2.with-temp/with-temp [Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Dashboard in a non-normal Collection"
       (let [dashboard-name (mt/random-name)]
         (try
@@ -656,7 +628,7 @@
             (t2/delete! Dashboard :name dashboard-name)))))
 
     (testing "Shouldn't be able to move a Dashboard to a non-normal Collection"
-      (mt/with-temp Dashboard [{card-id :id}]
+      (t2.with-temp/with-temp [Dashboard {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Dashboard can only go in Collections in the \"default\" namespace"
@@ -668,9 +640,9 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #":parameters must be a sequence of maps with :id and :type keys"
-           (mt/with-temp Dashboard [_ {:parameters {:a :b}}]))))
+           (t2.with-temp/with-temp [Dashboard _ {:parameters {:a :b}}]))))
     (testing "updating"
-      (mt/with-temp Dashboard [{:keys [id]} {:parameters []}]
+      (t2.with-temp/with-temp [Dashboard {:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with :id and :type keys"
@@ -703,10 +675,10 @@
 
 (deftest should-add-default-values-source-test
   (testing "shoudld add default if not exists"
-    (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                               :slug   "category_name"
-                                                               :id     "_CATEGORY_NAME_"
-                                                               :type   "category"}]}]
+    (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                                         :slug   "category_name"
+                                                                         :id     "_CATEGORY_NAME_"
+                                                                         :type   "category"}]}]
       (is (=? [{:name                 "Category Name"
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
@@ -716,13 +688,13 @@
   (testing "shoudld not override if existsed "
     (mt/with-temp* [Card      [{card-id :id}]
                     Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                                  :slug   "category_name"
-                                                                  :id     "_CATEGORY_NAME_"
-                                                                  :type   "category"
-                                                                  :values_query_type    "list"
-                                                                  :values_source_type   "card"
-                                                                  :values_source_config {:card_id card-id
-                                                                                         :value_field [:field 2 nil]}}]}]]
+                                                                 :slug   "category_name"
+                                                                 :id     "_CATEGORY_NAME_"
+                                                                 :type   "category"
+                                                                 :values_query_type    "list"
+                                                                 :values_source_type   "card"
+                                                                 :values_source_config {:card_id card-id
+                                                                                        :value_field [:field 2 nil]}}]}]]
       (is (=? [{:name                 "Category Name"
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"

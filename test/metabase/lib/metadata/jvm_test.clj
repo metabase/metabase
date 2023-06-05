@@ -8,15 +8,21 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models :refer [Card]]
-   [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest ^:parallel fetch-field-test
   (let [field (#'lib.metadata.jvm/fetch-instance :metadata/field (mt/id :categories :id))]
     (is (not (me/humanize (mc/validate lib.metadata/ColumnMetadata field))))))
+
+(deftest ^:parallel fetch-database-test
+  (is (=? {:lib/type :metadata/database}
+          (lib.metadata/database (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))
+  (testing "Should return nil correctly"
+    (is (nil? (lib.metadata.protocols/database (lib.metadata.jvm/application-database-metadata-provider Integer/MAX_VALUE))))))
 
 (deftest ^:parallel saved-question-metadata-test
   (let [card  {:dataset-query {:database (mt/id)
@@ -84,17 +90,18 @@
                 :lib/source-column-alias "sum"
                 :effective-type :type/Integer
                 :lib/desired-column-alias "Orders__sum"
-                :display-name "Sum"
+                :display-name "Sum of Quantity"
                 :source_alias "Orders"}]
               (lib.metadata.calculation/metadata mlv2-query))))))
 
 (deftest ^:synchronized with-temp-source-question-metadata-test
-  (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues
-                                             {:joins
-                                              [{:source-table $$categories
-                                                :condition    [:= $category_id &c.categories.id]
-                                                :fields       :all
-                                                :alias        "c"}]})}]
+  (t2.with-temp/with-temp [Card card {:dataset_query
+                                      (mt/mbql-query venues
+                                                     {:joins
+                                                      [{:source-table $$categories
+                                                        :condition    [:= $category_id &c.categories.id]
+                                                        :fields       :all
+                                                        :alias        "c"}]})}]
     (let [query      {:database (mt/id)
                       :type     :query
                       :query    {:source-table (str "card__" (u/the-id card))}}

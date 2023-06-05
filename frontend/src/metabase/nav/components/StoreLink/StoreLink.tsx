@@ -7,7 +7,7 @@ const StoreLink = () => {
     <Tooltip tooltip={t`Explore paid features`}>
       <StoreIconRoot href="https://metabase.com/upgrade">
         <StoreIconWrapper>
-          <StoreIcon name="store" size={18} />
+          <StoreIcon name="store" size={20} />
         </StoreIconWrapper>
       </StoreIconRoot>
     </Tooltip>

@@ -11,6 +11,7 @@ import {
   enterCustomColumnDetails,
   visualize,
   getNotebookStep,
+  checkExpressionEditorHelperPopoverPosition,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -304,6 +305,19 @@ describe("scenarios > question > summarize sidebar", () => {
 
     popover().contains("Title");
     popover().contains("199 distinct values");
+  });
+
+  it("should render custom expression helper near the custom expression field", async () => {
+    openReviewsTable({ mode: "notebook" });
+    summarize({ mode: "notebook" });
+
+    popover().within(() => {
+      cy.findByText("Custom Expression").click();
+
+      enterCustomColumnDetails({ formula: "floor" });
+
+      checkExpressionEditorHelperPopoverPosition();
+    });
   });
 });
 

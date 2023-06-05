@@ -37,7 +37,7 @@ regexextract([URL], "^[^?#]+\?utm_campaign=(.*)")
 
 Here, the regex pattern [`^[^?#]+\?` matches all valid URL strings](https://www.oreilly.com/library/view/regular-expressions-cookbook/9780596802837/ch07s13.html). You can replace `utm_campaign=` with whatever query parameter you like. At the end of the regex pattern, the [capturing group](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions/Groups_and_Backreferences) `(.*)` gets all of the characters that appear after the query parameter `utm_campaign=`.
 
-Now, you can use **Campaign Name** in places where you need clean labels, such as [filter dropdown menus](../../../dashboards/filters.md#creating-a-dropdown-filter), [charts](../../sharing/visualizing-results.md), and [embedding parameters](../../../embedding/signed-embedding-parameters.md).
+Now, you can use **Campaign Name** in places where you need clean labels, such as [filter dropdown menus](../../../dashboards/filters.md), [charts](../../sharing/visualizing-results.md), and [embedding parameters](../../../embedding/signed-embedding-parameters.md).
 
 ## Accepted data types
 

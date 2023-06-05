@@ -2,7 +2,7 @@ import { ComponentPropsWithoutRef, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import DashboardPicker from "metabase/containers/DashboardPicker";
@@ -106,7 +106,7 @@ export const AddToDashSelectDashModal = ({
       />
       <Link onClick={() => setShouldCreateDashboard(true)} to="">
         <LinkContent>
-          <Icon name="add" mx={1} />
+          <Icon name="add" className="mx1" />
           <h4>{t`Create a new dashboard`}</h4>
         </LinkContent>
       </Link>

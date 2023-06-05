@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { getSelectedSubDimensionName } from "../utils";
 
@@ -71,11 +71,12 @@ export const DimensionListItem = ({
     <DimensionListItemRoot
       data-testid="dimension-list-item"
       isSelected={isSelected}
+      aria-label={name}
       aria-selected={isSelected}
     >
       <DimensionListItemContent>
         <DimensionListItemTitleContainer onClick={handleChange}>
-          <DimensionListItemIcon name={iconName} size={18} />
+          <DimensionListItemIcon name={iconName} />
           <DimensionListItemTitle data-testid="dimension-list-item-name">
             {name}
           </DimensionListItemTitle>
@@ -107,8 +108,11 @@ export const DimensionListItem = ({
         )}
 
         {isSelected && (
-          <DimensionListItemRemoveButton aria-label="Remove dimension">
-            <Icon name="close" onClick={handleRemove} />
+          <DimensionListItemRemoveButton
+            onClick={handleRemove}
+            aria-label={t`Remove dimension`}
+          >
+            <Icon name="close" />
           </DimensionListItemRemoveButton>
         )}
       </DimensionListItemContent>
@@ -117,9 +121,9 @@ export const DimensionListItem = ({
         <Tooltip tooltip={t`Add grouping`}>
           <DimensionListItemAddButton
             onClick={handleAdd}
-            aria-label="Add dimension"
+            aria-label={t`Add dimension`}
           >
-            <Icon name="add" size={12} />
+            <Icon name="add" />
           </DimensionListItemAddButton>
         </Tooltip>
       )}

@@ -9,6 +9,7 @@ import {
   enterCustomColumnDetails,
   filter,
   getNotebookStep,
+  checkExpressionEditorHelperPopoverPosition,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -656,6 +657,17 @@ describe("scenarios > question > custom column", () => {
     // Shift+Tab and we're back at the editor
     cy.realPress(["Shift", "Tab"]);
     cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
+  });
+
+  it("should render custom expression helper near the custom expression field", async () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    popover().within(() => {
+      enterCustomColumnDetails({ formula: "floor" });
+
+      checkExpressionEditorHelperPopoverPosition();
+    });
   });
 });
 
