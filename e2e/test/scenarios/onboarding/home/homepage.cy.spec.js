@@ -195,6 +195,26 @@ describe("scenarios > home > custom homepage", () => {
       popover().findByText("Orders in a dashboard").click();
       modal().findByText("Save").click();
       cy.location("pathname").should("equal", "/dashboard/1");
+    });
+  });
+
+  describe("custom homepage set", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
+      cy.request("PUT", "/api/setting/custom-homepage-dashboard", { value: 1 });
+    });
+
+    it("should redirect you if you do not have permissions for set dashboard", () => {
+      cy.signIn("nocollection");
+      cy.visit("/");
+
+      cy.location("pathname").should("equal", "/");
+    });
+
+    it("should not show you a toast after it has been dismissed", () => {
+      cy.visit("/");
       cy.findByRole("status").within(() => {
         cy.findByText(
           /Your admin has set this dashboard as your homepage/,
@@ -219,22 +239,6 @@ describe("scenarios > home > custom homepage", () => {
       cy.findByTestId("undo-list")
         .contains(/Your admin has set this dashboard as your homepage/)
         .should("not.exist");
-    });
-  });
-
-  describe("custom homepage set", () => {
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
-      cy.request("PUT", "/api/setting/custom-homepage-dashboard", { value: 1 });
-    });
-
-    it("should redirect you if you do not have permissions for set dashboard", () => {
-      cy.signIn("nocollection");
-      cy.visit("/");
-
-      cy.location("pathname").should("equal", "/");
     });
   });
 });
