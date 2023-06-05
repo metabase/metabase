@@ -89,7 +89,6 @@ export interface DatabaseQuery {
 export interface DatabaseListQuery {
   include?: "tables";
   include_cards?: boolean;
-  include_tables?: boolean;
   saved?: boolean;
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;

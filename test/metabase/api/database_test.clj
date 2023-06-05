@@ -588,16 +588,13 @@
           (is (< 1 (count (:data (mt/user-http-request :rasta :get 200 "database" :limit 1 :offset 0))))))))
 
 
-    ;; ?include=tables and ?include_tables=true mean the same thing so test them both the same way
-    (doseq [query-param ["?include_tables=true"
-                         "?include=tables"]]
-      (testing query-param
-        (let [old-ids (t2/select-pks-set Database)]
-          (t2.with-temp/with-temp [Database _ {:engine (u/qualified-name ::test-driver)}]
-            (doseq [db (:data (get-all (str "database" query-param) old-ids))]
-              (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
-                (is (= (expected-tables db)
-                       (:tables db)))))))))
+    (testing "`?include=tables`"
+      (let [old-ids (t2/select-pks-set Database)]
+        (t2.with-temp/with-temp [Database _ {:engine (u/qualified-name ::test-driver)}]
+          (doseq [db (:data (get-all "database?include=tables" old-ids))]
+            (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
+              (is (= (expected-tables db)
+                     (:tables db))))))))
     (testing "`?include_only_uploadable=true` -- excludes drivers that don't support uploads"
       (let [old-ids (t2/select-pks-set Database)]
         (t2.with-temp/with-temp [Database _ {:engine ::test-driver}]
