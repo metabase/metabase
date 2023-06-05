@@ -22,6 +22,7 @@ export interface CollectionHeaderProps {
   onDeleteBookmark: (collection: Collection) => void;
   onUpload: (file: File, collectionId: CollectionId) => void;
   canUpload: boolean;
+  uploadsEnabled: boolean;
 }
 
 const CollectionHeader = ({
@@ -35,7 +36,11 @@ const CollectionHeader = ({
   onDeleteBookmark,
   onUpload,
   canUpload,
+  uploadsEnabled,
 }: CollectionHeaderProps): JSX.Element => {
+  const showUploadButton =
+    collection.can_write && (canUpload || !uploadsEnabled);
+
   return (
     <HeaderRoot>
       <CollectionCaption
@@ -43,8 +48,13 @@ const CollectionHeader = ({
         onUpdateCollection={onUpdateCollection}
       />
       <HeaderActions data-testid="collection-menu">
-        {canUpload && (
-          <CollectionUpload collection={collection} onUpload={onUpload} />
+        {showUploadButton && (
+          <CollectionUpload
+            collection={collection}
+            uploadsEnabled={uploadsEnabled}
+            isAdmin={isAdmin}
+            onUpload={onUpload}
+          />
         )}
         <CollectionTimeline collection={collection} />
         <CollectionBookmark
