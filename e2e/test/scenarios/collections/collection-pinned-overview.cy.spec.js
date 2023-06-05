@@ -298,24 +298,28 @@ describe("scenarios > collection pinned items overview", () => {
     });
   });
 
-  it("should render only the first line of description without markdown formatting on pinned dashboards", () => {
-    cy.request("PUT", "/api/card/1", { dataset: true });
+  describe("scenarios > collection pinned items overview > pinned dashboard description tooltip", () => {
+    beforeEach(() => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
 
-    openRootCollection();
-    openUnpinnedItemMenu(DASHBOARD_NAME);
-    popover().findByText("Pin this").click();
-    cy.wait("@getPinnedItems");
-    changeDashboardDescription(DASHBOARD_NAME, MARKDOWN);
-    openRootCollection();
+      openRootCollection();
+      openUnpinnedItemMenu(DASHBOARD_NAME);
+      popover().findByText("Pin this").click();
+      cy.wait("@getPinnedItems");
+      changeDashboardDescription(DASHBOARD_NAME, MARKDOWN);
+      openRootCollection();
+    });
 
-    getPinnedSection().within(() => {
-      cy.findByText(HEADING_1_TEXT).should("exist");
+    it("should render only the first line of description without markdown formatting", () => {
+      getPinnedSection().within(() => {
+        cy.findByText(HEADING_1_TEXT).should("exist");
 
-      cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
-      cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
-      cy.findByText(HEADING_2_TEXT).should("not.exist");
-      cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
-      cy.findByText(PARAGRAPH_TEXT).should("not.exist");
+        cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
+        cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
+        cy.findByText(HEADING_2_TEXT).should("not.exist");
+        cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
+        cy.findByText(PARAGRAPH_TEXT).should("not.exist");
+      });
     });
   });
 
