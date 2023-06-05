@@ -22,6 +22,21 @@ export const theme: MantineThemeOverride = {
             fontWeight: 700,
             fontSize: "14px",
           },
+          radio: {
+            "&:checked": {
+              backgroundColor: theme.colors.brand[0],
+              borderColor: theme.colors.brand[0],
+            },
+          },
+        };
+      },
+    },
+    RadioGroup: {
+      styles(theme) {
+        return {
+          description: {
+            marginBottom: theme.spacing.xs,
+          },
         };
       },
     },

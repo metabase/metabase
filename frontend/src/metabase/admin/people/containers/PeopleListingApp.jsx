@@ -1,11 +1,13 @@
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
+import { Group } from "@mantine/core";
 
 import * as Urls from "metabase/lib/urls";
 
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
-import Radio from "metabase/core/components/Radio";
+// import Radio from "metabase/core/components/Radio";
+import { Radio } from "metabase/ui/components/inputs/Radio";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import SearchInput from "../components/SearchInput";
@@ -41,16 +43,20 @@ function PeopleListingApp({ children, isAdmin }) {
         onResetClick={() => updateSearchInputValue("")}
       />
       {isAdmin && (
-        <Radio
-          className="ml2 text-bold"
-          value={status}
-          options={[
-            { name: t`Active`, value: USER_STATUS.active },
-            { name: t`Deactivated`, value: USER_STATUS.deactivated },
-          ]}
-          showButtons
-          onChange={updateStatus}
-        />
+        <Radio.Group value={status} onChange={updateStatus}>
+          <Group>
+            <Radio
+              label={t`Active`}
+              value={USER_STATUS.active}
+              checked={status === USER_STATUS.active}
+            />
+            <Radio
+              label={t`Deactivated`}
+              value={USER_STATUS.deactivated}
+              checked={status === USER_STATUS.deactivated}
+            />
+          </Group>
+        </Radio.Group>
       )}
     </div>
   );

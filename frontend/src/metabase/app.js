@@ -74,7 +74,7 @@ function _init(reducers, getRoutes, callback) {
   ReactDOM.render(
     <Provider store={store} ref={ref => (root = ref)}>
       <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
-        <MantineProvider theme={theme}>
+        <MantineProvider theme={theme} withNormalizeCSS>
           <GlobalStyles />
           <Router history={history}>{routes}</Router>
         </MantineProvider>
