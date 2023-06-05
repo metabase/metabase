@@ -19,6 +19,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
+const PG_DB_ID = 2;
 
 describe("scenarios > dashboard > dashboard back navigation", () => {
   beforeEach(() => {
@@ -105,7 +106,8 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
   });
 
   it("should preserve query results when navigating between the dashboard and the query builder", () => {
-    createAndVisitDashboardWithCards();
+    createDashboardWithCards();
+    cy.get("@dashboardId").then(visitDashboard);
     cy.wait("@dashboard");
     cy.wait("@dashcardQuery");
 
@@ -178,7 +180,50 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
   });
 });
 
-const createAndVisitDashboardWithCards = () => {
+describe(
+  "scenarios > dashboard > dashboard back navigation",
+  { tags: ["@external", "@actions"] },
+  () => {
+    beforeEach(() => {
+      restore("postgres-12");
+      cy.signInAsAdmin();
+      cy.intercept("GET", "/api/dashboard/*").as("dashboard");
+      cy.intercept("GET", "/api/card/*").as("card");
+      cy.intercept("POST", `/api/dashboard/*/dashcard/*/card/*/query`).as(
+        "dashcardQuery",
+      );
+    });
+
+    it("should restore a dashboard with loading cards", () => {
+      createDashboardWithSlowCard();
+      cy.get("@dashboardId").then(dashboardId => {
+        cy.visit({
+          url: `/dashboard/${dashboardId}`,
+          qs: { sleep: 60 },
+        });
+      });
+      cy.wait("@dashboard");
+
+      getDashboardCard().within(() => {
+        cy.findByTestId("loading-spinner").should("be.visible");
+        cy.findByText("Sleep card").click();
+        cy.wait("@card");
+      });
+
+      queryBuilderHeader().within(() => {
+        cy.findByLabelText("Back to Sleep dashboard").click();
+        cy.get("@dashboard.all").should("have.length", 1);
+        cy.get("@dashcardQuery.all").should("have.length", 2);
+      });
+
+      getDashboardCard().within(() => {
+        cy.findByText("0").should("be.visible");
+      });
+    });
+  },
+);
+
+const createDashboardWithCards = () => {
   const questionDetails = {
     name: "Orders",
     query: { "source-table": ORDERS_ID },
@@ -268,6 +313,68 @@ const createAndVisitDashboardWithCards = () => {
       });
     });
 
-    visitDashboard(dashboard_id);
+    cy.wrap(dashboard_id).as("dashboardId");
+  });
+};
+
+const createDashboardWithSlowCard = () => {
+  const questionDetails = {
+    name: "Sleep card",
+    database: PG_DB_ID,
+    native: {
+      query: "SELECT {{sleep}}, pg_sleep({{sleep}});",
+      "template-tags": {
+        sleep: {
+          id: "fake-uuid",
+          name: "sleep",
+          "display-name": "sleep",
+          type: "number",
+          default: 0,
+        },
+      },
+    },
+  };
+
+  const filterDetails = {
+    name: "sleep",
+    slug: "sleep",
+    id: "96917420",
+    type: "number/=",
+    sectionId: "number",
+  };
+
+  const dashboardDetails = {
+    name: "Sleep dashboard",
+    parameters: [filterDetails],
+  };
+
+  const dashcardDetails = {
+    row: 0,
+    col: 0,
+    size_x: 8,
+    size_y: 8,
+  };
+
+  const parameterMapping = {
+    parameter_id: filterDetails.id,
+    target: ["variable", ["template-tag", "sleep"]],
+  };
+
+  cy.createNativeQuestionAndDashboard({
+    questionDetails,
+    dashboardDetails,
+  }).then(({ body: { id, card_id, dashboard_id } }) => {
+    cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+      cards: [
+        {
+          id,
+          card_id,
+          ...dashcardDetails,
+          parameter_mappings: [{ ...parameterMapping, card_id }],
+        },
+      ],
+    });
+
+    cy.wrap(dashboard_id).as("dashboardId");
   });
 };
