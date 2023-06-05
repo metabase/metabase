@@ -1,7 +1,5 @@
 import Cookies from "js-cookie";
 
-// METABASE_SESSION_COOKIE is only used for e2e tests. In normal usage cookie is set automatically by login endpoints
-export const METABASE_SESSION_COOKIE = "metabase.SESSION";
 export const METABASE_SEEN_ALERT_SPLASH_COOKIE = "metabase.SEEN_ALERT_SPLASH";
 
 // Handles management of Metabase cookie work

@@ -18,21 +18,6 @@ export function cancelable<T>(promise: Promise<T>): CancellablePromise<T> {
   return Object.assign(wrappedPromise, { cancel: () => (canceled = true) });
 }
 
-// if a promise doesn't resolve/reject within a given duration it will reject
-export function timeout(
-  promise: Promise<unknown>,
-  duration: number,
-  error: unknown,
-) {
-  return new Promise((resolve, reject) => {
-    promise.then(resolve, reject);
-    setTimeout(
-      () => reject(error || new Error("Operation timed out")),
-      duration,
-    );
-  });
-}
-
 // returns a promise that resolves after a given duration
 export function delay(duration: number) {
   return new Promise((resolve, reject) => setTimeout(resolve, duration));

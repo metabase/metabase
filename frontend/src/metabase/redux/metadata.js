@@ -3,7 +3,7 @@ import { createThunkAction, fetchData } from "metabase/lib/redux";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
-import { MetabaseApi, RevisionsApi } from "metabase/services";
+import { MetabaseApi } from "metabase/services";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
@@ -14,8 +14,6 @@ import Fields from "metabase/entities/fields";
 
 const deprecated = message => console.warn("DEPRECATED: " + message);
 
-export const FETCH_DATABASE_METADATA =
-  Databases.actions.fetchDatabaseMetadata.toString();
 export const fetchDatabaseMetadata = (dbId, reload = false) => {
   deprecated("metabase/redux/metadata fetchDatabaseMetadata");
   return Databases.actions.fetchDatabaseMetadata({ id: dbId }, { reload });
@@ -41,16 +39,9 @@ export const fetchField = createThunkAction(
   },
 );
 
-export const FETCH_FIELD_VALUES = Fields.actions.fetchFieldValues.toString();
 export const fetchFieldValues = (id, reload = false) => {
   deprecated("metabase/redux/metadata fetchFieldValues");
   return Fields.actions.fetchFieldValues({ id }, reload);
-};
-
-export const UPDATE_FIELD_VALUES = Fields.actions.updateFieldValues.toString();
-export const updateFieldValues = (fieldId, fieldValuePairs) => {
-  deprecated("metabase/redux/metadata updateFieldValues");
-  return Fields.actions.updateFieldValues({ id: fieldId }, fieldValuePairs);
 };
 
 export { ADD_PARAM_VALUES } from "metabase/entities/fields";
@@ -66,31 +57,6 @@ export const addFields = fieldMaps => {
 };
 
 export const FETCH_REVISIONS = "metabase/metadata/FETCH_REVISIONS";
-export const fetchRevisions = createThunkAction(
-  FETCH_REVISIONS,
-  (type, id, reload = false) => {
-    return async (dispatch, getState) => {
-      const requestStatePath = ["revisions", type, id];
-      const existingStatePath = ["revisions"];
-      const getData = async () => {
-        return {
-          type,
-          id,
-          revisions: await RevisionsApi.get({ id, entity: type }),
-        };
-      };
-
-      return await fetchData({
-        dispatch,
-        getState,
-        requestStatePath,
-        existingStatePath,
-        getData,
-        reload,
-      });
-    };
-  },
-);
 
 export const addRemappings = (fieldId, remappings) => {
   deprecated("metabase/redux/metadata addRemappings");

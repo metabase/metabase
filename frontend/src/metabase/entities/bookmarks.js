@@ -111,10 +111,6 @@ function getIcon(bookmark) {
   return bookmarkEntity.objectSelectors.getIcon(bookmark);
 }
 
-export function isModelBookmark(bookmark) {
-  return bookmark.type === "card" && bookmark.dataset;
-}
-
 export const getOrderedBookmarks = createSelector(
   [Bookmarks.selectors.getList],
   bookmarks => _.sortBy(bookmarks, bookmark => bookmark.index),

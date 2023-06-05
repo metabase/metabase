@@ -100,15 +100,6 @@ export function getDateStyleFromSettings() {
   return customFormattingSettings?.["type/Temporal"]?.date_style;
 }
 
-export function getDefaultTimezone() {
-  return moment.tz.guess();
-}
-
-export function getNumericDateStyleFromSettings() {
-  const dateStyle = getDateStyleFromSettings();
-  return /\//.test(dateStyle || "") ? dateStyle : "M/D/YYYY";
-}
-
 export function getRelativeTime(timestamp: string) {
   return moment(timestamp).fromNow();
 }
@@ -133,10 +124,6 @@ export function getTimeStyleFromSettings() {
 export function has24HourModeSetting() {
   const timeStyle = getTimeStyleFromSettings();
   return timeStyle === TIME_FORMAT_24_HOUR;
-}
-
-export function hasTimePart(date: moment.Moment | null) {
-  return date != null && (date.hours() !== 0 || date.minutes() !== 0);
 }
 
 export function hoursToSeconds(hours: number) {

@@ -1,33 +1,8 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-const LAYOUT_PROPS = [
-  "m",
-  "ml",
-  "mr",
-  "mt",
-  "mb",
-  "mx",
-  "my",
-  "p",
-  "pl",
-  "pr",
-  "pt",
-  "pb",
-  "px",
-  "py",
-  "bg",
-  "color",
-  "hover",
-  "bordered",
-];
-
 const EMAIL_REGEX =
   /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-
-export function stripLayoutProps(props) {
-  return _.omit(props, LAYOUT_PROPS);
-}
 
 function s4() {
   return Math.floor((1 + Math.random()) * 0x10000)

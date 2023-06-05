@@ -13,11 +13,3 @@ export function regexpEscape(s) {
   // "$&" in the replacement string is replaced with the matched string
   return s.replace(regexpSpecialChars, "\\$&");
 }
-
-export function caseInsensitiveSearch(haystack, needle) {
-  return (
-    !needle ||
-    (haystack != null &&
-      haystack.toLowerCase().indexOf(needle.toLowerCase()) >= 0)
-  );
-}

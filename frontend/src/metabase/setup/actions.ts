@@ -10,7 +10,6 @@ import {
   trackDatabaseStepCompleted,
   trackTrackingChanged,
   trackUserStepCompleted,
-  trackWelcomeStepCompleted,
 } from "./analytics";
 import {
   getAvailableLocales,
@@ -65,11 +64,6 @@ export const loadDefaults = createAsyncThunk<void, void, ThunkConfig>(
 export const SELECT_STEP = "metabase/setup/SUBMIT_WELCOME_STEP";
 export const selectStep = createAction<number>(SELECT_STEP);
 
-export const SUBMIT_WELCOME = "metabase/setup/SUBMIT_WELCOME_STEP";
-export const submitWelcome = createAsyncThunk(SUBMIT_WELCOME, () => {
-  trackWelcomeStepCompleted();
-});
-
 export const UPDATE_LOCALE = "metabase/setup/UPDATE_LOCALE";
 export const updateLocale = createAsyncThunk(
   UPDATE_LOCALE,
@@ -77,9 +71,6 @@ export const updateLocale = createAsyncThunk(
     await loadLocalization(locale.code);
   },
 );
-
-export const SUBMIT_LANGUAGE = "metabase/setup/SUBMIT_LANGUAGE";
-export const submitLanguage = createAction(SUBMIT_LANGUAGE);
 
 export const submitUser = createAsyncThunk(
   "metabase/setup/SUBMIT_USER_INFO",

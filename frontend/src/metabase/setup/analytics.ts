@@ -46,19 +46,3 @@ export const trackUserStepCompleted = () => {
 export const trackDatabaseStepCompleted = (engine?: string) => {
   trackStructEvent("Setup", "Database Step", engine);
 };
-
-export const trackPreferencesStepCompleted = (isTrackingAllowed: boolean) => {
-  trackStructEvent("Setup", "Preferences Step", isTrackingAllowed);
-};
-
-export const trackSetupCompleted = () => {
-  trackStructEvent("Setup", "Complete");
-};
-
-export const trackPasswordValidationError = () => {
-  trackStructEvent("Setup", "Error", "password validation");
-};
-
-export const trackDatabaseValidationError = (engine: string) => {
-  trackStructEvent("Setup", "Error", "database validation: " + engine);
-};

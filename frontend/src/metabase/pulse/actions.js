@@ -15,7 +15,6 @@ import { getEditingPulse, getPulseFormInput } from "./selectors";
 
 export const SET_EDITING_PULSE = "SET_EDITING_PULSE";
 export const UPDATE_EDITING_PULSE = "UPDATE_EDITING_PULSE";
-export const SAVE_PULSE = "SAVE_PULSE";
 export const SAVE_EDITING_PULSE = "SAVE_EDITING_PULSE";
 export const TEST_PULSE = "TEST_PULSE";
 
@@ -96,15 +95,6 @@ export const fetchPulseCardPreview = createThunkAction(
   function (id) {
     return async function (dispatch, getState) {
       return await PulseApi.preview_card({ id: id });
-    };
-  },
-);
-
-export const fetchPulsesByDashboardId = createThunkAction(
-  FETCH_PULSE_LIST_BY_DASHBOARD_ID,
-  function (dashboard_id) {
-    return async function (dispatch, getState) {
-      return await PulseApi.list({ dashboard_id: dashboard_id });
     };
   },
 );

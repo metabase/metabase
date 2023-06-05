@@ -30,16 +30,6 @@ export type GetRemoveMembershipConfirmation = (
   deletedMembershipId: number,
 ) => Partial<ConfirmationState> | null;
 
-export type GetRevokeManagerPeopleRedirect = (
-  currentUser: User,
-  currentUserMemberships: Member[],
-) => string | null;
-
-export type GetRevokeManagerGroupsRedirect = (
-  currentUser: User,
-  currentUserMemberships: Member[],
-) => string | null;
-
 export type PluginGroupManagersType = {
   UserTypeToggle: (props: any) => JSX.Element;
   UserTypeCell: ((props: any) => JSX.Element) | null;
