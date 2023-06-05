@@ -336,23 +336,40 @@ describe("scenarios > collection pinned items overview", () => {
     });
   });
 
-  it("should render only the first line of description without markdown formatting on pinned native questions", () => {
-    cy.createNativeQuestion(SQL_QUESTION_DETAILS).then(({ body: { id } }) => {
-      cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+  describe("scenarios > collection pinned items overview > pinned native question description tooltip", () => {
+    beforeEach(() => {
+      cy.createNativeQuestion(SQL_QUESTION_DETAILS).then(({ body: { id } }) => {
+        cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+      });
+
+      openRootCollection();
+      changePinnedCardDescription(SQL_QUESTION_DETAILS.name, MARKDOWN);
+      openRootCollection();
     });
 
-    openRootCollection();
-    changePinnedCardDescription(SQL_QUESTION_DETAILS.name, MARKDOWN);
-    openRootCollection();
+    it("should render only the first line of description without markdown formatting", () => {
+      getPinnedSection().within(() => {
+        cy.findByText(HEADING_1_TEXT).should("exist");
 
-    getPinnedSection().within(() => {
-      cy.findByText(HEADING_1_TEXT).should("exist");
+        cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
+        cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
+        cy.findByText(HEADING_2_TEXT).should("not.exist");
+        cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
+        cy.findByText(PARAGRAPH_TEXT).should("not.exist");
+      });
+    });
 
-      cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
-      cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
-      cy.findByText(HEADING_2_TEXT).should("not.exist");
-      cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
-      cy.findByText(PARAGRAPH_TEXT).should("not.exist");
+    it("should render description tooltip with markdown formatting", () => {
+      getPinnedSection().findByText(HEADING_1_TEXT).realHover();
+
+      popover().within(() => {
+        cy.findByText(MARKDOWN).should("not.exist");
+        cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
+        cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
+        cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
+      });
+
+      popover().invoke("text").should("eq", MARKDOWN_AS_TEXT);
     });
   });
 
