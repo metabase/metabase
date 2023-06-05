@@ -32,7 +32,8 @@ export type DatabaseFeature =
   | "left-join"
   | "right-join"
   | "inner-join"
-  | "full-join";
+  | "full-join"
+  | "nested-field-columns";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;

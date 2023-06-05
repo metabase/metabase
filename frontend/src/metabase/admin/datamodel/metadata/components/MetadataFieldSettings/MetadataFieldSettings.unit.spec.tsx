@@ -1,7 +1,10 @@
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import { Database, Field, Table } from "metabase-types/api";
-import { createMockFieldValues } from "metabase-types/api/mocks";
+import { Database, Field, FieldValues, Table } from "metabase-types/api";
+import {
+  createMockField,
+  createMockFieldValues,
+} from "metabase-types/api/mocks";
 import {
   createOrdersDiscountField,
   createOrdersIdField,
@@ -13,8 +16,7 @@ import {
   createProductsTable,
   createReviewsTable,
   createSampleDatabase,
-  ORDERS,
-  PEOPLE,
+  ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
 import {
   setupDatabasesEndpoints,
@@ -27,6 +29,7 @@ import {
   waitForElementToBeRemoved,
   within,
 } from "__support__/ui";
+import { TYPE } from "metabase-lib/types/constants";
 import { getMetadataRoutes } from "../../routes";
 
 const ORDERS_ID_FIELD = createOrdersIdField();
@@ -37,12 +40,21 @@ const ORDERS_USER_ID_FIELD = createOrdersUserIdField();
 
 const ORDERS_DISCOUNT_FIELD = createOrdersDiscountField();
 
+const ORDERS_JSON_FIELD = createMockField({
+  id: 100,
+  name: "JSON",
+  display_name: "Json",
+  table_id: ORDERS_ID,
+  base_type: TYPE.JSON,
+});
+
 const ORDERS_TABLE = createOrdersTable({
   fields: [
     ORDERS_ID_FIELD,
     ORDERS_PRODUCT_ID_FIELD,
     ORDERS_USER_ID_FIELD,
     ORDERS_DISCOUNT_FIELD,
+    ORDERS_JSON_FIELD,
   ],
 });
 
@@ -50,6 +62,7 @@ const PRODUCTS_TABLE = createProductsTable();
 
 const SAMPLE_DB = createSampleDatabase({
   tables: [ORDERS_TABLE, PRODUCTS_TABLE],
+  features: ["nested-field-columns"],
 });
 
 const PEOPLE_ID_FIELD = createPeopleIdField();
@@ -70,25 +83,22 @@ const SAMPLE_DB_MULTI_SCHEMA = createSampleDatabase({
   tables: [PEOPLE_TABLE_MULTI_SCHEMA, REVIEWS_TABLE_MULTI_SCHEMA],
 });
 
-const FIELD_VALUES = [
-  createMockFieldValues({ field_id: ORDERS.ID }),
-  createMockFieldValues({ field_id: PEOPLE.ID }),
-];
-
 interface SetupOpts {
   database?: Database;
   table?: Table;
   field?: Field;
+  fieldValues?: FieldValues;
 }
 
 const setup = async ({
   database = SAMPLE_DB,
   table = ORDERS_TABLE,
   field = ORDERS_ID_FIELD,
+  fieldValues = createMockFieldValues({ field_id: Number(field.id) }),
 }: SetupOpts = {}) => {
   setupDatabasesEndpoints([database]);
   setupSearchEndpoints([]);
-  setupFieldsValuesEndpoints(FIELD_VALUES);
+  setupFieldsValuesEndpoints([fieldValues]);
 
   renderWithProviders(
     <Route path="admin/datamodel">{getMetadataRoutes()}</Route>,
@@ -121,6 +131,16 @@ describe("MetadataFieldSettings", () => {
       expect(
         screen.getByDisplayValue(ORDERS_ID_FIELD.display_name),
       ).toBeInTheDocument();
+    });
+
+    it("should display json unfolding settings for json fields", async () => {
+      await setup({ field: ORDERS_JSON_FIELD });
+      expect(screen.getByText("Unfold JSON")).toBeInTheDocument();
+    });
+
+    it("should not display json unfolding settings for non-json fields", async () => {
+      await setup({ field: ORDERS_DISCOUNT_FIELD });
+      expect(screen.queryByText("Unfold JSON")).not.toBeInTheDocument();
     });
 
     it("should allow to navigate to and from field settings", async () => {
