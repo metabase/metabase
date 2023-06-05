@@ -295,7 +295,7 @@
   "Adds a boolean field `:database-enabled-actions` to each action according to the `database-enable-actions` setting for
    the action's database."
   [actions]
-  (let [action-ids (map :id actions)
+  (let [action-ids                  (map :id actions)
         get-database-enable-actions (fn [db]
                                       (boolean (some-> db :settings mi/encrypted-json-out :database-enable-actions)))
         id->database-enable-actions (into {}
