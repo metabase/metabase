@@ -46,9 +46,12 @@
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.timeline :as timeline]
    [metabase.plugins.classloader :as classloader]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.data :as data]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log :as tu.log]
@@ -1167,3 +1170,66 @@
       (if (neg? @a)
         (apply f args)
         (throw (ex-info "Not yet" {:remaining @a}))))))
+
+(defn do-with-user-attributes [test-user-name-or-user-id attributes-map thunk]
+  (let [user-id (test.users/test-user-name-or-user-id->user-id test-user-name-or-user-id)]
+    (with-temp-vals-in-db User user-id {:login_attributes attributes-map}
+      (thunk))))
+
+(defmacro with-user-attributes
+  "Execute `body` with the attributes for a User temporarily set to `attributes-map`. `test-user-name-or-user-id` can be
+  either one of the predefined test users e.g. `:rasta` or a User ID.
+
+    (with-user-attributes :rasta {\"cans\" 2} ...)"
+  {:style/indent 2}
+  [test-user-name-or-user-id attributes-map & body]
+  `(do-with-user-attributes ~test-user-name-or-user-id ~attributes-map (fn [] ~@body)))
+
+(defn- do-with-conn-impersonation-defs
+  {:style/indent 2}
+  [group [{:keys [db-id attribute] :as impersonation-def} & more] f]
+  (if-not impersonation-def
+    (f)
+    (t2.with-temp/with-temp [:model/ConnectionImpersonation _ {:db_id db-id
+                                                               :group_id (u/the-id group)
+                                                               :attribute attribute}]
+      (do-with-conn-impersonation-defs group more f))))
+
+(defn do-with-impersonations-for-user [args test-user-name-or-user-id f]
+  (letfn [(thunk []
+            ;; remove perks for All Users group)]))
+            (perms/revoke-data-perms! (perms-group/all-users) (data/db))
+            ;; create new perms group
+            (test.users/with-group-for-user [group test-user-name-or-user-id]
+              ;; grant native access to the group
+              (perms/update-data-perms-graph! [(u/the-id group) (data/id) :data :native] :write)
+              (let [{:keys [impersonations attributes]} args]
+                ;; set user login_attributes
+                (with-user-attributes test-user-name-or-user-id attributes
+                  (def impersonations impersonations)
+                  (do-with-conn-impersonation-defs group impersonations
+                    (fn []
+                      ;; bind user as current user, then run f
+                      (if (keyword? test-user-name-or-user-id)
+                        (test.users/with-test-user test-user-name-or-user-id
+                          (f group))
+                        (mw.session/with-current-user (u/the-id test-user-name-or-user-id)
+                          (f group)))))))))]
+    (thunk)))
+
+(defmacro with-impersonations-for-user
+  "Like `with-impersonations`, but for an arbitrary User. `test-user-name-or-user-id` can be a predefined test user e.g.
+  `:rasta` or an arbitrary User ID."
+  [test-user-name-or-user-id impersonations-and-attributes-map & body]
+  `(do-with-impersonations-for-user ~impersonations-and-attributes-map
+                                    ~test-user-name-or-user-id
+                                    (fn [~'&group] ~@body)))
+
+(defmacro with-impersonations
+  "Execute `body` with `impersonations` and optionally user `attributes` in effect for the :rasta test user, for the
+  current test database. All underlying objects and permissions are created automatically.
+
+  Introduces `&group` anaphor, bound to the PermissionsGroup associated with this Connection Impersonation policy."
+  {:style/indent :defn}
+  [impersonations-and-attributes-map & body]
+  `(do-with-impersonations-for-user ~impersonations-and-attributes-map :rasta (fn [~'&group] ~@body)))
