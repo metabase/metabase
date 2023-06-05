@@ -9,7 +9,7 @@ import { AggregationItemRoot } from "./AggregationItem.styled";
 
 const propTypes = {
   className: PropTypes.string,
-  aggregation: PropTypes.object,
+  aggregation: PropTypes.oneOfType([PropTypes.object, PropTypes.array]),
   index: PropTypes.number.isRequired,
   query: PropTypes.object,
   onRemove: PropTypes.func,

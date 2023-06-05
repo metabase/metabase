@@ -10,7 +10,7 @@ import { AddAggregationButtonRoot } from "./AddAggregationButton.styled";
 
 const propTypes = {
   query: PropTypes.object,
-  shouldShowLabel: PropTypes.boolean,
+  shouldShowLabel: PropTypes.bool,
   updateAndRunQuery: PropTypes.func.isRequired,
 };
 
