@@ -349,17 +349,17 @@ class DashboardGrid extends Component {
     totalNumGridCols,
   }) => {
     const { isEditing } = this.props;
-    const isHeadingCard = dc.card.display === "heading";
-    const isTextCard = dc.card.display === "text";
 
-    const shouldChangeTextCardEditingStyling =
-      isEditing && (isHeadingCard || isTextCard);
+    const shouldChangeResizeHandle = isEditingTextOrHeadingCard(
+      dc.card.display,
+      isEditing,
+    );
 
     return (
       <DashboardCard
         key={String(dc.id)}
         className={cx("DashCard", {
-          TextCard: shouldChangeTextCardEditingStyling,
+          BrandColorResizeHandle: shouldChangeResizeHandle,
         })}
         isAnimationDisabled={this.state.isAnimationPaused}
       >
@@ -409,6 +409,12 @@ class DashboardGrid extends Component {
       </div>
     );
   }
+}
+
+function isEditingTextOrHeadingCard(display, isEditing) {
+  const isTextOrHeadingCard = display === "heading" || display === "text";
+
+  return isEditing && isTextOrHeadingCard;
 }
 
 export default _.compose(

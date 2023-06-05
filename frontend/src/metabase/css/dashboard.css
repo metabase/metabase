@@ -162,12 +162,9 @@
   box-shadow: 3px 3px 8px var(--color-shadow);
 }
 
-/* ! move into separate file */
-.TextCard:hover .react-resizable-handle:after,
-.TextCard.react-resizable-handle:hover:after {
+.BrandColorResizeHandle .react-resizable-handle:after {
   border-color: var(--color-brand) !important;
 }
-/* ! move into separate file */
 
 .Dash--editing .DashCard.react-draggable-dragging,
 .Dash--editing .DashCard.react-resizable-resizing {
