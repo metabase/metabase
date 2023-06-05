@@ -13,17 +13,14 @@ export const parameters = {
   },
 };
 
-// Pasta from - https://mantine.dev/guides/storybook/
-
 function ThemeWrapper(props) {
   return (
-    <MantineProvider theme={theme} withGlobalStyles withNormalizeCSS>
+    <MantineProvider theme={theme} withNormalizeCSS>
       {props.children}
     </MantineProvider>
   );
 }
 
-// enhance your stories with decorator that uses ThemeWrapper
 export const decorators = [
   renderStory => <ThemeWrapper>{renderStory()}</ThemeWrapper>,
 ];
