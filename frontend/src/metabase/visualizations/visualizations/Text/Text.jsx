@@ -54,7 +54,7 @@ export function Text({
   const handleTextChange = text => onUpdateVisualizationSettings({ text });
   const preventDragging = e => e.stopPropagation();
 
-  const isSingleRow = gridSize && gridSize.height === 1;
+  const isSingleRow = gridSize?.height === 1;
 
   let parametersByTag = {};
   if (dashcard && dashcard.parameter_mappings) {
