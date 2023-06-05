@@ -36,7 +36,7 @@ describe("scenarios > dashboard tabs", () => {
     });
     saveDashboard();
 
-    cy.findByRole("tab", { name: "Page 1" }).click();
+    cy.findByRole("tab", { name: "Tab 1" }).click();
     dashboardCards().within(() => {
       cy.findByText("Orders, count").should("not.exist");
     });
@@ -50,14 +50,14 @@ describe("scenarios > dashboard tabs", () => {
     editDashboard();
     createNewTab();
 
-    cy.findByRole("tab", { name: "Page 1" }).findByRole("button").click();
+    cy.findByRole("tab", { name: "Tab 1" }).findByRole("button").click();
     popover().within(() => {
       cy.findByText("Delete").click();
     });
-    cy.findByRole("tab", { name: "Page 1" }).should("not.exist");
+    cy.findByRole("tab", { name: "Tab 1" }).should("not.exist");
 
     undo();
-    cy.findByRole("tab", { name: "Page 1" }).click();
+    cy.findByRole("tab", { name: "Tab 1" }).click();
 
     dashboardCards().within(() => {
       cy.findByText("Orders, count").should("not.exist");

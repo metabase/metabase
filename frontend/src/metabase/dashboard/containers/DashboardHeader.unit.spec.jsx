@@ -10,11 +10,11 @@ const TEST_DASHBOARD = createMockDashboard();
 
 const TEST_DASHBOARD_WITH_TABS = createMockDashboard({
   ordered_tabs: [
-    getDefaultTab({ tabId: 1, dashId: 1, name: "Page 1" }),
+    getDefaultTab({ tabId: 1, dashId: 1, name: "Tab 1" }),
     getDefaultTab({
       tabId: 2,
       dashId: 1,
-      name: "Page 2",
+      name: "Tab 2",
     }),
   ],
 });
