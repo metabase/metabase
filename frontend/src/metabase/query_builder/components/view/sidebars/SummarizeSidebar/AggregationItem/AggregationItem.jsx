@@ -29,6 +29,7 @@ export const AggregationItem = ({
       triggerElement={
         <AggregationItemRoot
           color={color("summarize")}
+          aria-label={aggregation.displayName()}
           data-testid="aggregation-item"
         >
           <span className="mx1">{aggregation.displayName()}</span>

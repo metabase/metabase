@@ -71,6 +71,7 @@ export const DimensionListItem = ({
     <DimensionListItemRoot
       data-testid="dimension-list-item"
       isSelected={isSelected}
+      aria-label={name}
       aria-selected={isSelected}
     >
       <DimensionListItemContent>
