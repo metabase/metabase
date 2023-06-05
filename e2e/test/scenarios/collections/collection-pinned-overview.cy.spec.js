@@ -64,6 +64,9 @@ const MARKDOWN = [
   HEADING_2_MARKDOWN,
   PARAGRAPH_MARKDOWN,
 ].join("\n");
+const MARKDOWN_AS_TEXT = [HEADING_1_TEXT, HEADING_2_TEXT, PARAGRAPH_TEXT].join(
+  "\n",
+);
 
 describe("scenarios > collection pinned items overview", () => {
   beforeEach(() => {
@@ -317,5 +320,27 @@ describe("scenarios > collection pinned items overview", () => {
       cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
       cy.findByText(PARAGRAPH_TEXT).should("not.exist");
     });
+  });
+
+  it("should render tooltip with markdown formatting in question visualization", () => {
+    openRootCollection();
+    openUnpinnedItemMenu(QUESTION_NAME);
+    popover().findByText("Pin this").click();
+    cy.wait(["@getPinnedItems", "@getCardQuery"]);
+    changeCardDescription(QUESTION_NAME, MARKDOWN);
+    openRootCollection();
+
+    getPinnedSection().within(() => {
+      cy.findAllByTestId("legend-description-icon").realHover();
+    });
+
+    popover().within(() => {
+      cy.findByText(MARKDOWN).should("not.exist");
+      cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
+      cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
+      cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
+    });
+
+    popover().invoke("text").should("eq", MARKDOWN_AS_TEXT);
   });
 });

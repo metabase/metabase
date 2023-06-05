@@ -48,7 +48,10 @@ const LegendCaption = ({
             }
             maxWidth="22em"
           >
-            <LegendDescriptionIcon className="hover-child hover-child--smooth" />
+            <LegendDescriptionIcon
+              className="hover-child hover-child--smooth"
+              data-testid="legend-description-icon"
+            />
           </Tooltip>
         )}
         {actionButtons && <LegendActions>{actionButtons}</LegendActions>}
