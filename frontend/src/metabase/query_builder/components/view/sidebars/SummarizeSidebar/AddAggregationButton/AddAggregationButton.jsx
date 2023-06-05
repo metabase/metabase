@@ -10,7 +10,7 @@ import { AddAggregationButtonRoot } from "./AddAggregationButton.styled";
 
 const propTypes = {
   query: PropTypes.object,
-  shouldShowLabel: PropTypes.boolean,
+  shouldShowLabel: PropTypes.bool,
   updateAndRunQuery: PropTypes.func.isRequired,
 };
 
@@ -25,7 +25,10 @@ export const AddAggregationButton = ({
     <PopoverWithTrigger
       triggerElement={
         <Tooltip tooltip={LABEL} isEnabled={!shouldShowLabel}>
-          <AddAggregationButtonRoot data-testid="add-aggregation-button">
+          <AddAggregationButtonRoot
+            aria-label={t`Add aggregation`}
+            data-testid="add-aggregation-button"
+          >
             <Icon name="add" mr={shouldShowLabel ? 1 : "none"} />
             {shouldShowLabel ? LABEL : null}
           </AddAggregationButtonRoot>
