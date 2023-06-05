@@ -74,13 +74,13 @@ const Header = () => (
     id="upload-settings"
     setting={{
       display_name: t`Allow users to upload data to Collections`,
-      description: jt`Users will be able to upload CSV files that will be stored in the db you choose and turned into Models. The ${(
+      description: jt`Users will be able to upload CSV files that will be stored in the ${(
         <Link
           className="link"
           key="db-link"
           to="/admin/databases"
-        >{t`Database`}</Link>
-      )} must also have Model actions enabled.`,
+        >{t`database`}</Link>
+      )} you choose and turned into models.`,
     }}
   />
 );
@@ -108,15 +108,6 @@ export function UploadSettingsView({
   const enableButtonRef = useRef<ActionButton>(null);
   const disableButtonRef = useRef<ActionButton>(null);
   const updateButtonRef = useRef<ActionButton>(null);
-
-  if (!databaseOptions?.length) {
-    return (
-      <>
-        <Header />
-        <EmptyState message={t`No actions-enabled databases available.`} />
-      </>
-    );
-  }
 
   const resetButtons = () => {
     enableButtonRef?.current?.resetState();
@@ -174,6 +165,8 @@ export function UploadSettingsView({
     schemaName !== settings.uploads_schema_name ||
     tablePrefix !== settings.uploads_table_prefix;
 
+  const hasValidDatabases = databaseOptions.length > 0;
+
   return (
     <PaddedForm aria-label={t`Upload Settings Form`}>
       <Header />
@@ -183,6 +176,7 @@ export function UploadSettingsView({
           <Select
             value={dbId ?? 0}
             placeholder={t`Select a database`}
+            disabled={!hasValidDatabases}
             options={databaseOptions}
             onChange={(e: SelectChangeEvent<number>) => {
               setDbId(e.target.value);
@@ -270,18 +264,32 @@ export function UploadSettingsView({
             failedText={t`Failed to enable uploads`}
             actionFn={handleEnableUploads}
             primary={!!hasValidSettings}
-            disabled={!hasValidSettings}
+            disabled={!hasValidSettings || !hasValidDatabases}
             useLoadingSpinner
             type="submit"
           />
         )}
       </FlexContainer>
+      {!hasValidDatabases && <NoValidDatabasesMessage />}
       {errorMessage && <ColorText color="danger">{errorMessage}</ColorText>}
     </PaddedForm>
   );
 }
 
+const NoValidDatabasesMessage = () => (
+  <>
+    <p>
+      {t`None of your databases are compatible with this version of the uploads feature.`}
+    </p>
+    <p>
+      {jt`Metabase currently supports ${(
+        <strong key="db-types">{t`Postgres, MySQL, and H2`}</strong>
+      )} for uploads and needs a connection with write privileges.`}
+    </p>
+  </>
+);
+
 export const UploadSettings = _.compose(
-  Databases.loadList(),
+  Databases.loadList({ query: { include_only_uploadable: true } }),
   connect(mapStateToProps, mapDispatchToProps),
 )(UploadSettingsView);
