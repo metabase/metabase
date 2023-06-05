@@ -288,7 +288,7 @@
                                  _ [[k v]]))
                              column_settings)))))))
 
-(define-reversible-migration AddJoinAliasToVisualizationSettingsFieldRefs
+(define-reversible-migration AddJoinAliasToColumnSettingsFieldRefs
   (let [update-one! (fn [{:keys [id visualization_settings] :as card}]
                       (let [updated (add-join-alias-to-column-settings-refs card)]
                         (when (not= visualization_settings updated)
