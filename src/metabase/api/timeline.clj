@@ -4,6 +4,7 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.models.collection :as collection]
+   [metabase.models.collection.root :as collection.root]
    [metabase.models.timeline :as timeline :refer [Timeline]]
    [metabase.models.timeline-event
     :as timeline-event
@@ -52,7 +53,7 @@
                                      (collection/visible-collection-ids->honeysql-filter-clause
                                       (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
                           :order-by [[:%lower.name :asc]]})
-                       (map timeline/hydrate-root-collection))]
+                       (map collection.root/hydrate-root-collection))]
     (cond->> (hydrate timelines :creator [:collection :can_write])
       (= include "events")
       (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
@@ -72,7 +73,7 @@
       ;; `collection_id` `nil` means we need to assoc 'root' collection
       ;; because hydrate `:collection` needs a proper `:id` to work.
       (nil? (:collection_id timeline))
-      timeline/hydrate-root-collection
+      collection.root/hydrate-root-collection
 
       (= include "events")
       (timeline-event/include-events-singular {:events/all?  archived?

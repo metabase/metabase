@@ -1,11 +1,13 @@
 (ns metabase.models.collection.root
   (:require
+   [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [potemkin.types :as p.types]
-   [toucan2.protocols :as t2.protocols]))
+   [toucan2.protocols :as t2.protocols]
+   [toucan2.tools.hydrate :refer [hydrate]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Root Collection Special Placeholder Object                                   |
@@ -46,3 +48,14 @@
   [x]
   ;; TODO -- not sure this makes sense because other places we check whether `::is-root?` is present or not.
   (instance? RootCollection x))
+
+(defn- hydrated-root-collection
+  []
+  (-> (collection/root-collection-with-ui-details nil)
+      (hydrate :can_write)))
+
+(defn hydrate-root-collection
+  "Hydrate `:collection` onto entity when the id is `nil`."
+  [{:keys [collection_id] :as entity}]
+  (cond-> entity
+    (nil? collection_id) (assoc :collection (hydrated-root-collection))))

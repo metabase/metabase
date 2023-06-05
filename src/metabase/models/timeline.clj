@@ -1,7 +1,7 @@
 (ns metabase.models.timeline
   (:require
    [java-time :as t]
-   [metabase.models.collection :as collection]
+   [metabase.models.collection.root :as collection.root]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
    [metabase.models.timeline-event :as timeline-event]
@@ -40,18 +40,6 @@
 
 ;;;; functions
 
-(defn- root-collection
-  []
-  (-> (collection/root-collection-with-ui-details nil)
-      (hydrate :can_write)))
-
-(defn hydrate-root-collection
-  "Hydrate `:collection` on [[Timelines]] when the id is `nil`."
-  [{:keys [collection_id] :as timeline}]
-  (if (nil? collection_id)
-    (assoc timeline :collection (root-collection))
-    timeline))
-
 (defn timelines-for-collection
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
@@ -61,7 +49,7 @@
                               :archived (boolean archived?))
                    :creator
                    [:collection :can_write])
-    (nil? collection-id) (->> (map hydrate-root-collection))
+    (nil? collection-id) (->> (map collection.root/hydrate-root-collection))
     events? (timeline-event/include-events options)))
 
 (defmethod serdes/hash-fields :model/Timeline

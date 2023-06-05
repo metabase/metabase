@@ -24,6 +24,7 @@
             ViewLog]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
+   [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.params :as params]
@@ -194,6 +195,7 @@
                           :last_query_start
                           :collection
                           [:moderation_reviews :moderator_details])
+                 collection.root/hydrate-root-collection
                  (cond-> ;; card
                    (:dataset raw-card) (hydrate :persisted))
                  api/read-check

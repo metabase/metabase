@@ -229,6 +229,7 @@
                :param_fields
                :param_values
                :collection)
+      collection.root/hydrate-root-collection
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
