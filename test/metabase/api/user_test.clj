@@ -102,7 +102,7 @@
             lucky     "lucky@metabase.com"
             rasta     "rasta@metabase.com"]
         (testing "Returns all users when user-visibility is all users"
-          (mt/with-temporary-setting-values [user-visibility "all users"]
+          (mt/with-temporary-setting-values [user-visibility :all]
             (is (= [crowberto lucky rasta]
                    (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
                         (filter mt/test-user?)
@@ -114,7 +114,7 @@
                         (filter mt/test-user?)
                         (map :email)))))))
         (testing "Returns users in the group when user-visibility is same group"
-          (mt/with-temporary-setting-values [user-visibility "same group"]
+          (mt/with-temporary-setting-values [user-visibility :group]
             (mt/with-temp* [PermissionsGroup           [{group-id :id} {:name "Test delete group"}]
                             PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta) :group_id group-id}]
                             PermissionsGroupMembership [_ {:user_id (mt/user->id :crowberto) :group_id group-id}]]
@@ -122,7 +122,7 @@
                      (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
                           (map :email))))))
         (testing "Returns only self when user-visibility is none"
-          (mt/with-temporary-setting-values [user-visibility "none"]
+          (mt/with-temporary-setting-values [user-visibility :none]
             (is (= [rasta]
                    (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
                         (filter mt/test-user?)
