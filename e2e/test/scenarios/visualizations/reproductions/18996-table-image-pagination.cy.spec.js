@@ -1,4 +1,4 @@
-import { restore, visitDashboard } from "e2e/support/helpers";
+import { restore, visitDashboard, getDashboardCard } from "e2e/support/helpers";
 
 const questionDetails = {
   name: "18996",
@@ -41,10 +41,10 @@ describe("issue 18996", () => {
       visitDashboard(dashboard_id);
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Rows \d+-\d+ of 10/).should("be.visible");
-    cy.icon("triangle_right").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Rows \d+-\d+ of 10/).should("be.visible");
+    getDashboardCard().within(() => {
+      cy.findByText(/Rows \d+-\d+ of 10/).should("be.visible");
+      cy.icon("chevronright").click();
+      cy.findByText(/Rows \d+-\d+ of 10/).should("be.visible");
+    });
   });
 });

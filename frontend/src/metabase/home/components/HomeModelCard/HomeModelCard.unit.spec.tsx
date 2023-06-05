@@ -1,23 +1,25 @@
-import { render, screen } from "@testing-library/react";
-import HomeModelCard, { HomeModelCardProps } from "./HomeModelCard";
+import { render, screen } from "__support__/ui";
+import { HomeModelCard, HomeModelIconProps } from "./HomeModelCard";
+
+interface SetupOpts {
+  title: string;
+  icon: HomeModelIconProps;
+  url: string;
+}
+
+const setup = ({ title, icon, url }: SetupOpts) => {
+  render(<HomeModelCard title={title} icon={icon} url={url} />);
+};
 
 describe("HomeModelCard", () => {
   it("should render correctly", () => {
-    const props = getProps({
+    setup({
       title: "Orders",
       icon: { name: "table" },
+      url: "/question/1",
     });
-
-    render(<HomeModelCard {...props} />);
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(screen.getByLabelText("table icon")).toBeInTheDocument();
   });
-});
-
-const getProps = (opts?: Partial<HomeModelCardProps>): HomeModelCardProps => ({
-  title: "Orders",
-  icon: { name: "card" },
-  url: "/question/1",
-  ...opts,
 });

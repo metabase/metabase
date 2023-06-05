@@ -91,6 +91,7 @@
   tx.env/keep-me)
 
 ;; Add more stuff here as needed
+#_{:clj-kondo/ignore [:discouraged-var]}
 (p/import-vars
  [actions.test-util
   with-actions
@@ -207,7 +208,6 @@
   with-test-user]
 
  [tt
-  with-temp
   with-temp*
   with-temp-defaults]
 
@@ -402,7 +402,7 @@
   application DB. Example usage:
 
     (deftest update-user-first-name-test
-      (mt/with-temp User [user]
+      (t2.with-temp/with-temp [User user]
         (update-user-first-name! user \"Cam\")
         (is (= (merge (mt/object-defaults User)
                       (select-keys user [:id :last_name :created_at :updated_at])
@@ -421,3 +421,8 @@
      (mb.hawk.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
      (initialize/initialize-if-needed! :db)
      (t2.model/resolve-model toucan-model))))
+
+;;; these are deprecated at runtime so Kondo doesn't complain, also because we can't go around deprecating stuff from
+;;; other libaries any other way. They're marked deprecated to encourage you to use the `t2.with-temp` versions.
+#_{:clj-kondo/ignore [:discouraged-var]}
+(alter-meta! #'with-temp* assoc :deprecated true)

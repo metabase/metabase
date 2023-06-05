@@ -4,7 +4,7 @@ import { t } from "ttag";
 import Tooltip from "metabase/core/components/Tooltip";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { AddAggregationButtonRoot } from "./AddAggregationButton.styled";
 
@@ -26,7 +26,7 @@ export const AddAggregationButton = ({
       triggerElement={
         <Tooltip tooltip={LABEL} isEnabled={!shouldShowLabel}>
           <AddAggregationButtonRoot data-testid="add-aggregation-button">
-            <Icon name="add" size="12" mr={shouldShowLabel ? 1 : "none"} />
+            <Icon name="add" mr={shouldShowLabel ? 1 : "none"} />
             {shouldShowLabel ? LABEL : null}
           </AddAggregationButtonRoot>
         </Tooltip>

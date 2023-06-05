@@ -14,7 +14,8 @@
 (defn- store-in-cache! [cache ks value]
   (let [value (if (some? value) value ::nil)]
     (swap! cache assoc-in ks value)
-    value))
+    (when-not (= value ::nil)
+      value)))
 
 (defn- store-database! [cache database-metadata]
   (let [database-metadata (-> database-metadata
@@ -48,6 +49,8 @@
     (for [id ids]
       (get-in-cache cache [metadata-type id]))))
 
+;;; wraps another metadata provider and caches results. Implements
+;;; the [[lib.metadata.protocols/CachedMetadataProvider]] protocol which allows warming the cache before use.
 (deftype CachedProxyMetadataProvider [cache metadata-provider]
   lib.metadata.protocols/MetadataProvider
   (database [_this]            (get-in-cache-or-fetch cache [:metadata/database]            #(lib.metadata.protocols/database metadata-provider)))

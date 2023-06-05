@@ -160,7 +160,6 @@ describe("FieldValuesWidget", () => {
       it("should not call fetchFieldValues", () => {
         const { fetchFieldValues } = renderFieldValuesWidget({
           fields: [field],
-          fetchFieldValues,
         });
         expect(fetchFieldValues).not.toHaveBeenCalled();
       });

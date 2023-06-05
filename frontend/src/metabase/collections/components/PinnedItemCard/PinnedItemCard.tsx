@@ -7,6 +7,7 @@ import ActionMenu from "metabase/collections/components/ActionMenu";
 import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import { IconName } from "metabase/core/components/Icon";
 import Markdown from "metabase/core/components/Markdown";
 import { getLeadingText, parseMarkdown } from "metabase/lib/markdown";
 import Database from "metabase-lib/metadata/Database";
@@ -76,7 +77,7 @@ function PinnedItemCard({
       <ItemCard flat>
         <Body>
           <Header>
-            <ItemIcon name={icon} />
+            <ItemIcon name={icon as unknown as IconName} />
             <ActionsContainer>
               {item.model === "dataset" && <ModelDetailLink model={item} />}
               <ActionMenu

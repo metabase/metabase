@@ -1,5 +1,6 @@
 (ns metabase.lib.schema.expression.temporal
   (:require
+   [clojure.set :as set]
    [malli.core :as mc]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
@@ -25,13 +26,30 @@
   :int
   ::temporal-bucketing/unit.date-time.interval)
 
+(defmethod expression/type-of-method :lib.type-of/type-is-temporal-type-of-first-arg [[_tag _opts temporal]]
+  ;; For datetime-add, datetime-subtract, etc. the first arg is a temporal value. However, some valid values are
+  ;; formatted strings for which type-of returns eg. #{:type/String :type/DateTime}. Since we're doing date arithmetic,
+  ;; we know for sure it's the temporal type.
+  (let [inner-type (expression/type-of temporal)]
+    (if (set? inner-type)
+      (let [temporal-set (set/intersection inner-type #{:type/Date :type/DateTime})]
+        (if (= (count temporal-set) 1)
+          (first temporal-set)
+          temporal-set))
+      inner-type)))
+
+;; For most purposes, `:lib.type-of/type-is-temporal-type-of-first-arg` is the same as
+;; `:lib.type-of/type-is-type-of-first-arg`. In particular, for the unambiguous `lib.metadata.calculation/type-of`, they
+;; are identical. They only differ when there's a set of possibilities in `lib.schema.expression/type-of`.
+(lib.hierarchy/derive :lib.type-of/type-is-temporal-type-of-first-arg :lib.type-of/type-is-type-of-first-arg)
+
 ;;; TODO -- we should constrain this so that you can only use a Date unit if expr is a date, etc.
 (doseq [op [:datetime-add :datetime-subtract]]
   (mbql-clause/define-tuple-mbql-clause op
     #_expr   [:ref ::expression/temporal]
     #_amount :int
     #_unit   [:ref ::temporal-bucketing/unit.date-time.interval])
-  (lib.hierarchy/derive op :lib.type-of/type-is-type-of-first-arg))
+  (lib.hierarchy/derive op :lib.type-of/type-is-temporal-type-of-first-arg))
 
 (doseq [op [:get-year :get-month :get-day :get-hour :get-minute :get-second :get-quarter]]
   (mbql-clause/define-tuple-mbql-clause op :- :type/Integer
@@ -76,7 +94,7 @@
   [:target   [:schema [:ref ::timezone-id]]]
   [:source   [:? [:schema [:ref ::timezone-id]]]])
 
-(lib.hierarchy/derive :convert-timezone :lib.type-of/type-is-type-of-first-arg)
+(lib.hierarchy/derive :convert-timezone :lib.type-of/type-is-temporal-type-of-first-arg)
 
 (mbql-clause/define-tuple-mbql-clause :now :- :type/DateTimeWithTZ)
 

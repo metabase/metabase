@@ -3,7 +3,7 @@ import * as React from "react";
 import _ from "underscore";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";
-import { IconProps } from "metabase/components/Icon";
+import { IconName, IconProps } from "metabase/core/components/Icon";
 
 import {
   FullWidthLink,
@@ -19,7 +19,7 @@ import {
 interface SidebarLinkProps {
   children: string;
   url?: string;
-  icon?: string | IconProps | React.ReactElement;
+  icon?: IconName | IconProps | React.ReactElement;
   isSelected?: boolean;
   hasDefaultIconStyle?: boolean;
   left?: React.ReactNode;

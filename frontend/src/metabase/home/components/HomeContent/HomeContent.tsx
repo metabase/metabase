@@ -1,46 +1,52 @@
+import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
+import { getUser } from "metabase/selectors/user";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import {
+  useDatabaseListQuery,
+  usePopularItemListQuery,
+  useRecentItemListQuery,
+} from "metabase/common/hooks";
 import { PopularItem, RecentItem, User } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";
-import HomePopularSection from "../HomePopularSection";
-import HomeRecentSection from "../HomeRecentSection";
-import HomeXraySection from "../../containers/HomeXraySection";
+import { HomePopularSection } from "../HomePopularSection";
+import { HomeRecentSection } from "../HomeRecentSection";
+import { HomeXraySection } from "../HomeXraySection";
+import { getIsXrayEnabled } from "../../selectors";
 import { isWithinWeeks } from "../../utils";
 
-export interface HomeContentProps {
-  user: User;
-  databases?: Database[];
-  recentItems?: RecentItem[];
-  popularItems?: PopularItem[];
-  isXrayEnabled: boolean;
-}
+export const HomeContent = (): JSX.Element | null => {
+  const user = useSelector(getUser);
+  const isXrayEnabled = useSelector(getIsXrayEnabled);
+  const { data: databases } = useDatabaseListQuery();
+  const { data: recentItems } = useRecentItemListQuery({ reload: true });
+  const { data: popularItems } = usePopularItemListQuery({ reload: true });
 
-const HomeContent = (props: HomeContentProps): JSX.Element | null => {
-  if (isLoading(props)) {
+  if (!user || isLoading(user, databases, recentItems, popularItems)) {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  if (isPopularSection(props)) {
+  if (isPopularSection(user, recentItems, popularItems)) {
     return <HomePopularSection />;
   }
 
-  if (isRecentSection(props)) {
+  if (isRecentSection(user, recentItems)) {
     return <HomeRecentSection />;
   }
 
-  if (isXraySection(props)) {
+  if (isXraySection(databases, isXrayEnabled)) {
     return <HomeXraySection />;
   }
 
   return null;
 };
 
-const isLoading = ({
-  user,
-  databases,
-  recentItems,
-  popularItems,
-}: HomeContentProps): boolean => {
+const isLoading = (
+  user: User,
+  databases: Database[] | undefined,
+  recentItems: RecentItem[] | undefined,
+  popularItems: PopularItem[] | undefined,
+): boolean => {
   if (!user.has_question_and_dashboard) {
     return databases == null;
   } else if (user.is_installer || !isWithinWeeks(user.first_login, 1)) {
@@ -50,11 +56,11 @@ const isLoading = ({
   }
 };
 
-const isPopularSection = ({
-  user,
-  recentItems = [],
-  popularItems = [],
-}: HomeContentProps): boolean => {
+const isPopularSection = (
+  user: User,
+  recentItems: RecentItem[] = [],
+  popularItems: PopularItem[] = [],
+): boolean => {
   return (
     !user.is_installer &&
     user.has_question_and_dashboard &&
@@ -63,19 +69,16 @@ const isPopularSection = ({
   );
 };
 
-const isRecentSection = ({
-  user,
-  recentItems = [],
-}: HomeContentProps): boolean => {
+const isRecentSection = (
+  user: User,
+  recentItems: RecentItem[] = [],
+): boolean => {
   return user.has_question_and_dashboard && recentItems.length > 0;
 };
 
-const isXraySection = ({
-  databases = [],
-  isXrayEnabled,
-}: HomeContentProps): boolean => {
+const isXraySection = (
+  databases: Database[] = [],
+  isXrayEnabled: boolean,
+): boolean => {
   return databases.some(isSyncCompleted) && isXrayEnabled;
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default HomeContent;

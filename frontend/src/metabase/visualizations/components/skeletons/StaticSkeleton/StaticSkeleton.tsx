@@ -1,5 +1,6 @@
 import { HTMLAttributes } from "react";
 
+import { IconName } from "metabase/core/components/Icon";
 import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
 import { getLeadingText, parseMarkdown } from "metabase/lib/markdown";
@@ -22,7 +23,7 @@ export interface StaticSkeletonProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export interface StaticSkeletonIconProps {
-  name: string;
+  name: IconName;
 }
 
 const StaticSkeleton = ({
