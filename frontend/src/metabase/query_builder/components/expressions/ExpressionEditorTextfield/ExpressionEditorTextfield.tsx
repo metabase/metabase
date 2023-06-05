@@ -1,4 +1,5 @@
-import React, { RefObject } from "react";
+import { RefObject } from "react";
+import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import AceEditor, { ICommand, IMarker } from "react-ace";
@@ -470,6 +471,7 @@ class ExpressionEditorTextfield extends React.Component<
           isFocused={isFocused}
           hasError={Boolean(errorMessage)}
           ref={this.suggestionTarget}
+          data-testid="expression-editor-textfield"
         >
           <EditorEqualsSign>=</EditorEqualsSign>
           <AceEditor

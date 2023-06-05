@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -48,8 +47,8 @@ type SetupOpts = {
 function patchQuestion(question: Question) {
   if (question.isStructured()) {
     const query = question._getMLv2Query();
-    const [sampleColumn] = Lib.orderableColumns(query);
-    const nextQuery = Lib.orderBy(query, sampleColumn);
+    const [sampleColumn] = Lib.orderableColumns(query, 0);
+    const nextQuery = Lib.orderBy(query, 0, sampleColumn);
     return question.setDatasetQuery(Lib.toLegacyQuery(nextQuery));
   } else {
     const query = question.query() as NativeQuery;

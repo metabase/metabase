@@ -1,4 +1,3 @@
-import React from "react";
 import { t, jt } from "ttag";
 import _ from "underscore";
 

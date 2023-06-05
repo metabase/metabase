@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from "react";
+import { useRef, useMemo } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -117,6 +117,7 @@ export function ActionSidebarFn({
           ref={actionSettingsModalRef}
           fit
           enableMouseEvents
+          closeOnClickOutside
           triggerElement={
             !dashcard.action ? (
               <Button primary={!dashcard.action} fullWidth>

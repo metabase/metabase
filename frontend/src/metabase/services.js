@@ -11,7 +11,6 @@ import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
 export const ActivityApi = {
-  list: GET("/api/activity"),
   recent_views: GET("/api/activity/recent_views"),
   most_recently_viewed_dashboard: GET(
     "/api/activity/most_recently_viewed_dashboard",
@@ -175,8 +174,17 @@ export const CardApi = {
   // related
   related: GET("/api/card/:cardId/related"),
   adHocRelated: POST("/api/card/related"),
+  compatibleCards: GET("/api/card/:cardId/series"),
   parameterValues: GET("/api/card/:cardId/params/:paramId/values"),
   parameterSearch: GET("/api/card/:cardId/params/:paramId/search/:query"),
+};
+
+export const ModelIndexApi = {
+  list: GET("/api/model-index"),
+  get: GET("/api/model-index/:id"),
+  create: POST("/api/model-index"),
+  update: PUT("/api/model-index/:id"),
+  delete: DELETE("/api/model-index/:id"),
 };
 
 export const DashboardApi = {

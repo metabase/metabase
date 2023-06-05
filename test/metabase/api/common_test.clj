@@ -1,7 +1,7 @@
 (ns metabase.api.common-test
   (:require
    [clojure.test :refer :all]
-   [hawk.assert-exprs.approximately-equal :as hawk.approx]
+   [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [metabase.api.common :as api]
    [metabase.api.common.internal :as api.internal]
    [metabase.server.middleware.exceptions :as mw.exceptions]
@@ -144,3 +144,10 @@
               (macroexpand '(metabase.api.common/defendpoint-schema ^:multipart compojure.core/GET "/:id" [id]
                               {id metabase.util.schema/IntGreaterThanZero}
                               (select-one Card :id id))))))))
+
+(deftest parse-multi-values-param-test
+  (testing "single value returns a vector with 1 elem"
+    (is (= [1] (api/parse-multi-values-param "1" parse-long))))
+
+  (testing "multi values a vector as well"
+    (is (= [1 2 3] (api/parse-multi-values-param ["1" "2" "3"] parse-long)))))

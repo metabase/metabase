@@ -50,6 +50,8 @@
     :model/LoginHistory
     :model/FieldValues
     :metabase.models.metric-important-field/MetricImportantField
+    :model/ModelIndex
+    :model/ModelIndexValue
     :model/ModerationReview
     :metabase.models.parameter-card/ParameterCard
     :metabase.models.permissions/Permissions

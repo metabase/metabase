@@ -1,8 +1,6 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import SelectButton from "./SelectButton";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/SelectButton",
   component: SelectButton,

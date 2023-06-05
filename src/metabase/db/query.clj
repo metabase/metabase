@@ -63,7 +63,7 @@
     (let [rgx #"\{\s*\{\s*[^\}]+\s*\}\s*\}"]
       (str/replace sql rgx (fn [match] (str/replace match #"\s*" ""))))))
 
-(def format-sql
+(def ^{:arglists '([sql] [sql db-type])} format-sql
   "Return a nicely-formatted version of a `sql` string."
   (comp fix-sql-params format-sql*))
 

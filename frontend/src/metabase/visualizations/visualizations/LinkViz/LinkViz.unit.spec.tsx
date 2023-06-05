@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -203,6 +202,38 @@ describe("LinkViz", () => {
 
       expect(screen.getByLabelText("database icon")).toBeInTheDocument();
       expect(screen.getByText("Table Uno")).toBeInTheDocument();
+    });
+
+    it("sets embedded links to open in new tabs", () => {
+      setup({
+        isEditing: false,
+        dashcard: tableLinkDashcard,
+        settings:
+          tableLinkDashcard.visualization_settings as LinkCardVizSettings,
+      });
+
+      expect(screen.getByRole("link")).toHaveAttribute("target", "_blank");
+    });
+
+    it("sets embedded entity links to not open in new tabs", () => {
+      // here, we're mocking this appearing in an iframe by manipulating window.top !== window.self
+      const topCache = window.top;
+      // @ts-expect-error we need to delete this for it to actually update
+      delete window.top;
+      // @ts-expect-error it doesn't actually matter if this is valid
+      window.top = {};
+
+      setup({
+        isEditing: false,
+        dashcard: tableLinkDashcard,
+        settings:
+          tableLinkDashcard.visualization_settings as LinkCardVizSettings,
+      });
+
+      expect(screen.getByRole("link")).not.toHaveAttribute("target");
+      // @ts-expect-error we need to delete this for it to actually update
+      delete window.top;
+      window.top = topCache;
     });
 
     it("clicking a search item should update the entity", async () => {

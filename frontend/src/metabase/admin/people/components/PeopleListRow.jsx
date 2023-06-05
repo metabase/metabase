@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 import moment from "moment-timezone";
 
@@ -8,7 +8,7 @@ import { getFullName } from "metabase/lib/user";
 import * as Urls from "metabase/lib/urls";
 
 import EntityMenu from "metabase/components/EntityMenu";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 import UserAvatar from "metabase/components/UserAvatar";
@@ -63,7 +63,7 @@ const PeopleListRow = ({
       </td>
       <td>{user.email}</td>
       {showDeactivated ? (
-        <React.Fragment>
+        <Fragment>
           <td>{moment(user.updated_at).fromNow()}</td>
           <td>
             <Tooltip tooltip={t`Reactivate this account`}>
@@ -76,9 +76,9 @@ const PeopleListRow = ({
               </Link>
             </Tooltip>
           </td>
-        </React.Fragment>
+        </Fragment>
       ) : (
-        <React.Fragment>
+        <Fragment>
           <td>
             {isLoadingGroups ? (
               <LoadingSpinner />
@@ -121,7 +121,7 @@ const PeopleListRow = ({
               />
             )}
           </td>
-        </React.Fragment>
+        </Fragment>
       )}
     </tr>
   );

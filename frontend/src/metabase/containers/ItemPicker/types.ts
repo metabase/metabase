@@ -1,10 +1,10 @@
-import { IconProps } from "metabase/components/Icon";
+import { IconProps } from "metabase/core/components/Icon";
 
 import type { Collection } from "metabase-types/api";
 
 export type PickerModel = "card" | "collection" | "dataset" | "dashboard";
 
-export type PickerItemId = number | null;
+export type PickerItemId = string | number | null;
 
 export type PickerValue = { id: PickerItemId; model: PickerModel };
 

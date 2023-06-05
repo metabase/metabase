@@ -1,4 +1,3 @@
-import React from "react";
 import { IndexRedirect, Redirect, Route } from "react-router";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
@@ -80,8 +79,9 @@ const TEST_FIELD = createMockField({
 });
 
 const TEST_FK_TABLE_1_ID = 2;
+const TEST_FK_FIELD_ID = 4;
 const TEST_FK_FIELD = createMockField({
-  id: 4,
+  id: TEST_FK_FIELD_ID,
   table_id: TEST_FK_TABLE_1_ID,
 });
 
@@ -97,7 +97,7 @@ const TEST_FIELDS = [
     display_name: "Field 3",
     table_id: TEST_TABLE_ID,
     semantic_type: TYPE.FK,
-    fk_target_field_id: TEST_FK_FIELD.id,
+    fk_target_field_id: TEST_FK_FIELD_ID,
     target: TEST_FK_FIELD,
   }),
 ];

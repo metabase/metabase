@@ -35,7 +35,7 @@ export type StoreDashcard = DashboardOrderedCard & {
   isRemoved?: boolean;
 };
 
-export type SelectedTabId = DashboardId | null;
+export type SelectedTabId = number | null;
 
 export type TabDeletionId = number;
 
@@ -69,6 +69,7 @@ export interface DashboardState {
 
   isEditing: Dashboard | null;
   isAddParameterPopoverOpen: boolean;
+  isNavigatingBackToDashboard: boolean;
 
   slowCards: Record<DashCardId, unknown>;
 

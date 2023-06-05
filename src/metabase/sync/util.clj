@@ -304,7 +304,7 @@
 
 (defmethod name-for-logging Database
   [{database-name :name, id :id, engine :engine,}]
-  (trs "{0} Database {1} ''{2}''" (name engine) (or id "") database-name))
+  (trs "{0} Database {1} ''{2}''" (name engine) (str (or id "")) database-name))
 
 (defmethod name-for-logging Table [{schema :schema, id :id, table-name :name}]
   (trs "Table {0} ''{1}''" (or id "") (str (when (seq schema) (str schema ".")) table-name)))

@@ -1,4 +1,3 @@
-import React from "react";
 import moment, { Moment } from "moment-timezone";
 
 import { parseTimestamp } from "metabase/lib/time";

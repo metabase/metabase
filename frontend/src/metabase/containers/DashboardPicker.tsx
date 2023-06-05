@@ -1,6 +1,4 @@
-import React from "react";
 import { CollectionId } from "metabase-types/api";
-
 import ItemPicker, { PickerValue, PickerItemId } from "./ItemPicker";
 
 export interface DashboardPickerProps {

@@ -43,6 +43,7 @@ export interface Parameter extends ParameterValuesConfig {
   sectionId?: string;
   default?: any;
   required?: boolean;
+  options?: ParameterOptions;
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
@@ -83,6 +84,10 @@ export type ParameterValue = [RowValue];
 export interface ParameterValues {
   values: ParameterValue[];
   has_more_values: boolean;
+}
+
+export interface ParameterOptions {
+  "case-sensitive": boolean;
 }
 
 export type ParameterMappingOptions = {

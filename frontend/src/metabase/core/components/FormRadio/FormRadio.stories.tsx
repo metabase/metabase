@@ -1,4 +1,3 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import Form from "../Form";
 import FormProvider from "../FormProvider";
@@ -10,7 +9,6 @@ const TEST_OPTIONS = [
   { name: "Bar", value: "bar" },
 ];
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/FormRadio",
   component: FormRadio,

@@ -6,6 +6,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.composed-provider
+    :as lib.metadata.composed-provider]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
@@ -157,7 +159,7 @@
         time-field        (assoc (meta/field-metadata :orders :created-at)
                                  :base-type      :type/Time
                                  :effective-type :type/Time)
-        metadata-provider (lib.tu/composed-metadata-provider
+        metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
                            (lib.tu/mock-metadata-provider
                             {:fields [date-field
                                       time-field]})
@@ -383,15 +385,24 @@
       (are [style expected] (= expected
                                (lib/display-name query -1 categories-name style))
         :default "Name"
-        :long    "Categories → Name")
+        :long    "Category → Name")
       (let [query' (lib/order-by query categories-name)]
         (testing "Implicitly joinable columns should NOT be given a join alias"
           (is (=? {:stages [{:order-by [[:asc {} [:field
                                                   (complement :join-alias)
                                                   (meta/id :categories :name)]]]}]}
                   query')))
-        (is (= "Venues, Sorted by Categories → Name ascending"
-               (lib/describe-query query')))))))
+        (is (= "Venues, Sorted by Category → Name ascending"
+               (lib/describe-query query'))))
+      (testing "inside aggregations"
+        (let [query'        (lib/aggregate query (lib/distinct categories-name))
+              [aggregation] (lib/aggregations query')]
+          (is (= "Venues, Distinct values of Category → Name"
+                 (lib/describe-query query')))
+          (are [style expected] (= expected
+                                   (lib/display-name query' -1 aggregation style))
+            :long    "Distinct values of Category → Name"
+            :default "Distinct values of Name"))))))
 
 (deftest ^:parallel source-card-table-display-info-test
   (let [query (assoc lib.tu/venues-query :lib/metadata lib.tu/metadata-provider-with-card)
@@ -413,7 +424,7 @@
                                              :query    {:source-table (meta/id :checkins)
                                                         :aggregation  [[:count]]
                                                         :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}
-          metadata-provider (lib.tu/composed-metadata-provider
+          metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
                              meta/metadata-provider
                              (lib.tu/mock-metadata-provider
                               {:cards [card-1]}))
@@ -453,8 +464,57 @@
                 :lib/source               :source/breakouts
                 :lib/source-column-alias  "LAST_LOGIN"
                 :lib/desired-column-alias "LAST_LOGIN"}
-               {:name                     "avg_count"
+               {:name                     "avg"
                 :lib/source               :source/aggregations
-                :lib/source-column-alias  "avg_count"
-                :lib/desired-column-alias "avg_count"}]
+                :lib/source-column-alias  "avg"
+                :lib/desired-column-alias "avg"}]
               (lib.metadata.calculation/metadata query))))))
+
+(deftest ^:parallel with-fields-test
+  (let [query           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                            (lib/with-fields [(lib/field "VENUES" "ID") (lib/field "VENUES" "NAME")]))
+        fields-metadata (fn [query]
+                          (map (partial lib.metadata.calculation/metadata query)
+                               (lib/fields query)))
+        metadatas       (fields-metadata query)]
+    (is (=? [{:name "ID"}
+             {:name "NAME"}]
+            metadatas))
+    (testing "Set fields with metadatas"
+      (let [fields' [(last metadatas)]
+            query'  (lib/with-fields query fields')]
+        (is (=? [{:name "NAME"}]
+                (fields-metadata query')))))
+    (testing "remove fields by passing"
+      (doseq [new-fields [nil []]]
+        (testing (pr-str new-fields)
+          (let [query' (lib/with-fields query new-fields)]
+            (is (empty? (fields-metadata query')))
+            (letfn [(has-fields? [query]
+                      (get-in query [:stages 0 :fields]))]
+              (is (has-fields? query)
+                  "sanity check")
+              (is (not (has-fields? query'))))))))))
+
+(deftest ^:parallel fieldable-columns-test
+  (testing "query with no :fields"
+    (is (=? [{:lib/desired-column-alias "ID", :selected? true}
+             {:lib/desired-column-alias "NAME", :selected? true}
+             {:lib/desired-column-alias "CATEGORY_ID", :selected? true}
+             {:lib/desired-column-alias "LATITUDE", :selected? true}
+             {:lib/desired-column-alias "LONGITUDE", :selected? true}
+             {:lib/desired-column-alias "PRICE", :selected? true}]
+            (lib/fieldable-columns (lib/query-for-table-name meta/metadata-provider "VENUES"))))))
+
+(deftest ^:parallel fieldable-columns-query-with-fields-test
+  (testing "query with :fields"
+    (is (=? [{:lib/desired-column-alias "ID", :selected? true}
+             {:lib/desired-column-alias "NAME", :selected? true}
+             {:lib/desired-column-alias "CATEGORY_ID", :selected? false}
+             {:lib/desired-column-alias "LATITUDE", :selected? false}
+             {:lib/desired-column-alias "LONGITUDE", :selected? false}
+             {:lib/desired-column-alias "PRICE", :selected? false}]
+            (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                (lib/with-fields [(meta/field-metadata :venues :id)
+                                  (meta/field-metadata :venues :name)])
+                lib/fieldable-columns )))))

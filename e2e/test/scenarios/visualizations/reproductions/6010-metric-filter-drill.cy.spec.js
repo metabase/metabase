@@ -17,7 +17,7 @@ describe("issue 6010", () => {
 
     cy.get(".dot").eq(0).click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/View these Orders/).click();
+    cy.findByText(/See these Orders/).click();
     cy.wait("@dataset");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

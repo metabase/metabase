@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { t } from "ttag";
 
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -44,7 +44,7 @@ export default function ColllectionUpload({
       placement="bottom"
     >
       <label htmlFor="upload-csv">
-        <CollectionHeaderButton as="span" to="" icon="arrow_up" />
+        <CollectionHeaderButton as="span" to="" icon="upload" iconSize={20} />
       </label>
       <UploadInput
         id="upload-csv"

@@ -6,16 +6,76 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
+      version:
+        description: 'Intended version (e.g. v0.46.3)'
+        required: true
 
 env:
   MAX_HASH_LENGTH: 8
   CUSTOM_REPO: ${{ secrets.CUSTOM_RELEASE_REPO }}
 
 jobs:
+  check-commit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+    - name: Ensure that the intended version (${{ github.event.inputs.version }}) was never released before
+      run: |
+        if [[ "${{ github.event.inputs.version }}" = v* ]]; then
+          echo "Checking if ${{ github.event.inputs.version }} conflicts with a past release..."
+        else
+          echo "ERROR: the intended version must start with 'v', e.g. 'v0.46.3."
+          echo "ABORT!"
+          exit -1
+        fi
+        CANONICAL_REFS=https://github.com/metabase/metabase/archive/refs
+        URL=${CANONICAL_REFS}/tags/${{ github.event.inputs.version }}.zip
+        HTTP_CODE=$(curl -s -L -o /dev/null --head -w "%{HTTP_CODE}" ${URL})
+        if [[ $HTTP_CODE =~ "200" ]]; then
+          echo "ERROR: that version was already released in the past."
+          echo "ABORT!"
+          exit -1
+        else
+          if [[ $HTTP_CODE =~ "404" ]]; then
+            echo "That version has not been released yet."
+            echo "Proceeding to the next step..."
+            exit 0
+          else
+            echo "ERROR: Unhandled case of HTTP $HTTP_CODE while checking ${URL}"
+            echo "ABORT!"
+            exit -1
+          fi
+        fi
+
+    - name: Check out the code to verify the release branch
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # IMPORTANT! to get all the branches
+    - name: Ensure that the specified commit exists in the latest release branch
+      run: |
+        echo "Checking if the specified commit is in a release branch..."
+        COMMIT=${{ github.event.inputs.commit }}
+        git branch -a --contains $COMMIT > branches.txt
+        if [[ $(grep -c master branches.txt) =~ 1 ]]; then
+          echo "Found in master branch. ABORT!"
+          exit -1
+        fi
+        if [[ $(grep -c 'release-x' branches.txt) =~ 1 ]]; then
+          echo "Found the commit $COMMIT in:"
+          git branch -a --contains $COMMIT
+          echo "Proceeding to the next step..."
+          exit 0
+        else
+          echo "Commit $COMMIT is not found in a single release branch"
+          echo "ABORT!."
+          exit -1
+        fi
+
   build:
     if: ${{ github.repository }} != 'metabase/metabase'
-    name: Build Metabase ${{ matrix.edition }} @${{ github.event.inputs.commit }}
     runs-on: ubuntu-22.04
+    needs: check-commit
+    name: Build Metabase ${{ matrix.edition }} @${{ github.event.inputs.commit }}
     timeout-minutes: 40
     strategy:
       matrix:
@@ -24,7 +84,7 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
     steps:
-    - name: Fail early if custom docker relaese repo is missing
+    - name: Fail early if custom docker release repo is missing
       if: ${{ env.CUSTOM_REPO == null }}
       run: exit 1
     - name: Check out the code
@@ -37,8 +97,29 @@ jobs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: pre-release-build
+
+    - name: Determine the canonical version ## EE is always v1.x.y, OSS is always v0.x.y
+      uses: actions/github-script@v6
+      id: canonical_version
+      env:
+        INTENDED_VERSION: ${{ github.event.inputs.version }}
+        EDITION: ${{ matrix.edition }}
+      with:
+        result-encoding: string
+        script: |
+          var canonical_version;
+          const ver = process.env.INTENDED_VERSION;
+          if (process.env.EDITION === "ee") {
+            canonical_version = ver.replace(/^v0\./, "v1."); // always e.g. v1.47.2
+          } else {
+            canonical_version = ver.replace(/^v1\./, "v0."); // always e.g. v0.45.6
+          }
+          console.log("The canonical version of this", process.env.EDITION, "edition is", canonical_version);
+          return canonical_version;
+
     - name: Build
-      run: ./bin/build.sh
+      run: ./bin/build.sh :edition :${{ matrix.edition }} :version ${{ steps.canonical_version.outputs.result }}
+
     - name: Prepare uberjar artifact
       uses: ./.github/actions/prepare-uberjar-artifact
 
@@ -68,9 +149,69 @@ jobs:
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
+  run-sanity-check:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    needs: check-uberjar-health
+    strategy:
+      matrix:
+        edition: [oss, ee]
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      DISPLAY: ""
+      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      MB_SNOWPLOW_AVAILABLE: true
+      MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
+    services:
+      maildev:
+        image: maildev/maildev:2.0.5
+        ports:
+          - "1080:1080"
+          - "1025:1025"
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+    - name: Check out the code
+      uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event.inputs.commit }}
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+    - name: Prepare JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: 11
+        distribution: "temurin"
+    - name: Prepare Cypress environment
+      uses: ./.github/actions/prepare-cypress
+    - name: Run Snowplow micro
+      uses: ./.github/actions/run-snowplow-micro
+    - uses: actions/download-artifact@v3
+      name: Retrieve uberjar artifact for ${{ matrix.edition }}
+      with:
+        name: metabase-${{ matrix.edition }}-uberjar
+    - name: Get the version info
+      run: |
+        jar xf target/uberjar/metabase.jar version.properties
+        mv version.properties resources/
+    - name: Run a few important Cypress tests as sanity check
+      run: yarn test-cypress-run --folder onboarding
+      env:
+        TERM: xterm
+    - name: Upload Cypress Artifacts upon failure
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: cypress-failed-tests-recording
+        path: |
+          ./cypress
+          ./logs/test.log
+        if-no-files-found: ignore
+
   containerize:
     runs-on: ubuntu-22.04
-    needs: check-uberjar-health
+    needs: run-sanity-check
     timeout-minutes: 15
     strategy:
       matrix:

@@ -1,9 +1,7 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
 import Radio from "./Radio";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/Radio",
   component: Radio,

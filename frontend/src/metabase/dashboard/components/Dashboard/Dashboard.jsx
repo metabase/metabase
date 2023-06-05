@@ -1,5 +1,5 @@
 // TODO: merge with metabase/dashboard/containers/Dashboard.jsx
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
@@ -53,6 +53,7 @@ class Dashboard extends Component {
     isNavbarOpen: PropTypes.bool.isRequired,
     isHeaderVisible: PropTypes.bool,
     isAdditionalInfoVisible: PropTypes.bool,
+    isNavigatingBackToDashboard: PropTypes.bool,
 
     dashboard: PropTypes.object,
     dashboardId: PropTypes.number,
@@ -106,8 +107,8 @@ class Dashboard extends Component {
 
   constructor(props) {
     super(props);
-    this.parametersWidgetRef = React.createRef();
-    this.parametersAndCardsContainerRef = React.createRef();
+    this.parametersWidgetRef = createRef();
+    this.parametersAndCardsContainerRef = createRef();
   }
 
   static getDerivedStateFromProps({ parameters }, { parametersListLength }) {
@@ -143,7 +144,7 @@ class Dashboard extends Component {
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
       (!prevProps.dashboard && this.props.dashboard)
     ) {
-      this.props.fetchDashboardCardData({ reload: false, clear: true });
+      this.props.fetchDashboardCardData({ reload: false, clearCache: true });
     }
   }
 
@@ -164,14 +165,17 @@ class Dashboard extends Component {
       loadDashboardParams,
       location,
       setErrorPage,
+      isNavigatingBackToDashboard,
     } = this.props;
 
-    initialize();
+    initialize({ clearCache: !isNavigatingBackToDashboard });
 
     loadDashboardParams();
 
     try {
-      await fetchDashboard(dashboardId, location.query);
+      await fetchDashboard(dashboardId, location.query, {
+        clearCache: !isNavigatingBackToDashboard,
+      });
       if (editingOnLoad) {
         this.setEditing(this.props.dashboard);
       }

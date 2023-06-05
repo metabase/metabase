@@ -12,9 +12,12 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
+
+(comment mg/keep-me)
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
@@ -602,6 +605,29 @@
              (perms/set-has-partial-permissions-for-set? perms paths))))))
 
 
+;;; -------------------------------------- set-has-any-native-query-permissions? ---------------------------------------
+
+(deftest set-has-any-native-query-permissions?-test
+  (doseq [[expected inputs]
+          {true
+           [#{"/"}
+            #{"/db/1/"}
+            #{"/db/1/native/"}
+            #{"/db/1/" "/db/2/schema/PUBLIC/table/1/"}
+            #{"/db/1/native/" "/db/2/schema/PUBLIC/table/1/"}]
+
+           false
+           [#{}
+            #{"/db/1"}
+            #{"/db/1/native"}
+            #{"/db/1/schema/"}
+            #{"/db/1/schema/PUBLIC/table/1/"}]}
+          input inputs]
+    (testing (pr-str (list 'set-has-any-native-query-permissions?-test input))
+      (is (= expected
+             (perms/set-has-any-native-query-permissions? input))))))
+
+
 ;;; ------------------------------------ perms-objects-set-for-parent-collection -------------------------------------
 
 (deftest perms-objects-set-for-parent-collection-test
@@ -640,7 +666,7 @@
 
 (deftest graph-set-partial-permissions-for-table-test
   (testing "Test that setting partial permissions for a table retains permissions for other tables -- #3888"
-    (mt/with-temp PermissionsGroup [group]
+    (t2.with-temp/with-temp [PermissionsGroup group]
       (testing "before"
         ;; first, graph permissions only for VENUES
         (perms/grant-permissions! group (perms/data-perms-path (mt/id) "PUBLIC" (mt/id :venues)))
@@ -667,17 +693,17 @@
 
 (deftest broken-out-read-query-perms-in-graph-test
   (testing "Make sure we can set the new broken-out read/query perms for a Table and the graph works as we'd expect"
-    (mt/with-temp PermissionsGroup [group]
+    (t2.with-temp/with-temp [PermissionsGroup group]
       (perms/grant-permissions! group (perms/table-read-path (t2/select-one Table :id (mt/id :venues))))
       (is (= {(mt/id :venues) {:read :all}}
              (test-data-graph group))))
 
-    (mt/with-temp PermissionsGroup [group]
+    (t2.with-temp/with-temp [PermissionsGroup group]
       (perms/grant-permissions! group (perms/table-segmented-query-path (t2/select-one Table :id (mt/id :venues))))
       (is (= {(mt/id :venues) {:query :segmented}}
              (test-data-graph group))))
 
-    (mt/with-temp PermissionsGroup [group]
+    (t2.with-temp/with-temp [PermissionsGroup group]
       (perms/update-data-perms-graph! [(u/the-id group) (mt/id) :data :schemas]
                                       {"PUBLIC"
                                        {(mt/id :venues)
@@ -688,7 +714,7 @@
 
 (deftest root-permissions-graph-test
   (testing "A \"/\" permission grants all dataset permissions"
-    (mt/with-temp Database [{db-id :id}]
+    (t2.with-temp/with-temp [Database {db-id :id}]
       (let [{:keys [group_id]} (t2/select-one Permissions :object "/")]
         (is (= {db-id {:data       {:native  :write
                                     :schemas :all}
@@ -702,7 +728,7 @@
 
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"
-    (mt/with-temp Database [{db-id :id}]
+    (t2.with-temp/with-temp [Database {db-id :id}]
       (perms/revoke-data-perms! (perms-group/all-users) db-id)
       (let [ks [:groups (u/the-id (perms-group/all-users)) db-id :data]]
         (letfn [(perms []
@@ -736,7 +762,7 @@
 (deftest get-graph-should-unescape-slashes-test
   (testing "If a schema name contains slash, getting graph should unescape it"
     (testing "slash"
-      (mt/with-temp PermissionsGroup [group]
+      (t2.with-temp/with-temp [PermissionsGroup group]
         (perms/grant-permissions! group (perms/data-perms-path (mt/id) "schema/with_slash" (mt/id :venues)))
         (is (= "schema/with_slash"
                (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas])
@@ -744,7 +770,7 @@
                    first)))))
 
     (testing "back slash"
-      (mt/with-temp PermissionsGroup [group]
+      (t2.with-temp/with-temp [PermissionsGroup group]
         (perms/grant-permissions! group (perms/data-perms-path (mt/id) "schema\\with_backslash" (mt/id :venues)))
         (is (= "schema\\with_backslash"
                (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas])
@@ -753,7 +779,7 @@
 
 (deftest no-op-partial-graph-updates
   (testing "Partial permission graphs with no changes to the existing graph do not error when run repeatedly (#25221)"
-    (mt/with-temp PermissionsGroup [group]
+    (t2.with-temp/with-temp [PermissionsGroup group]
       ;; Bind *current-user* so that permission revisions are written, which was the source of the original error
       (mt/with-current-user (mt/user->id :rasta)
         (is (nil? (perms/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :none :schemas :none}}}}
@@ -779,23 +805,23 @@
                   (u/the-id (t2/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
 
     (testing "(should apply to descendants as well)"
-      (mt/with-temp Collection [collection {:location (collection/children-location
-                                                       (collection/user->personal-collection
-                                                        (mt/user->id :lucky)))}]
+      (t2.with-temp/with-temp [Collection collection {:location (collection/children-location
+                                                                 (collection/user->personal-collection
+                                                                  (mt/user->id :lucky)))}]
         (is (thrown? Exception
                      (perms/revoke-collection-permissions! (perms-group/all-users) collection)))))))
 
 (deftest revoke-collection-permissions-test
   (testing "Should be able to revoke permissions for non-personal Collections"
-    (mt/with-temp Collection [{collection-id :id}]
+    (t2.with-temp/with-temp [Collection {collection-id :id}]
       (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
       (testing "Collection should still exist"
         (is (some? (t2/select-one Collection :id collection-id)))))))
 
 (deftest disallow-granting-personal-collection-perms-test
-  (mt/with-temp Collection [collection {:location (collection/children-location
-                                                   (collection/user->personal-collection
-                                                    (mt/user->id :lucky)))}]
+  (t2.with-temp/with-temp [Collection collection {:location (collection/children-location
+                                                             (collection/user->personal-collection
+                                                              (mt/user->id :lucky)))}]
     (doseq [[perms-type f] {"read"  perms/grant-collection-read-permissions!
                             "write" perms/grant-collection-readwrite-permissions!}]
       (testing (format "Should throw Exception if you use the helper function to grant %s perms for a Personal Collection"
@@ -811,7 +837,7 @@
                (f (perms-group/all-users) collection))))))))
 
 (deftest grant-revoke-root-collection-permissions-test
-  (mt/with-temp PermissionsGroup [{group-id :id}]
+  (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
     (letfn [(perms []
               (t2/select-fn-set :object Permissions {:where [:and
                                                              [:like :object "/collection/%"]
@@ -844,11 +870,11 @@
                (perms)))))))
 
 (deftest grant-revoke-application-permissions-test
-  (mt/with-temp PermissionsGroup [{group-id :id}]
+  (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
     (letfn [(perms []
               (t2/select-fn-set :object Permissions
-                               {:where [:and [:= :group_id group-id]
-                                             [:like :object "/application/%"]]}))]
+                                {:where [:and [:= :group_id group-id]
+                                         [:like :object "/application/%"]]}))]
       (is (= nil (perms)))
       (doseq [[perm-type perm-path] [[:subscription "/application/subscription/"]
                                      [:monitoring "/application/monitoring/"]

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { useMount } from "react-use";

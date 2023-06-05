@@ -43,16 +43,14 @@
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
   themselves. Recipients that are plain email addresses are preserved."
   [pulses]
-  (if-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-    (if (segmented-user?)
-      (for [pulse pulses]
-        (assoc pulse :channels
-               (for [channel (:channels pulse)]
-                 (assoc channel :recipients
-                        (filter (fn [recipient] (or (not (:id recipient))
-                                                    (= (:id recipient) api/*current-user-id*)))
-                                (:recipients channel))))))
-      pulses)
+  (if (premium-features/segmented-user?)
+    (for [pulse pulses]
+      (assoc pulse :channels
+             (for [channel (:channels pulse)]
+               (assoc channel :recipients
+                      (filter (fn [recipient] (or (not (:id recipient))
+                                                  (= (:id recipient) api/*current-user-id*)))
+                              (:recipients channel))))))
     pulses))
 
 (defn- maybe-filter-pulse-recipients
@@ -160,18 +158,16 @@
   before writing the pulse updates to avoid them being deleted unintentionally. We only merge in recipients that are
   Metabase users, not raw email addresses, which sandboxed users can still view and modify."
   [pulse-updates pulse-before-update]
-  (if-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-    (if (segmented-user?)
-      (let [recipients-to-add (filter
-                               (fn [{id :id}] (and id (not= id api/*current-user-id*)))
-                               (:recipients (api.alert/email-channel pulse-before-update)))]
-        (assoc pulse-updates :channels
-               (for [channel (:channels pulse-updates)]
-                 (if (= "email" (:channel_type channel))
-                   (assoc channel :recipients
-                          (concat (:recipients channel) recipients-to-add))
-                   channel))))
-      pulse-updates)
+  (if (premium-features/segmented-user?)
+    (let [recipients-to-add (filter
+                             (fn [{id :id}] (and id (not= id api/*current-user-id*)))
+                             (:recipients (api.alert/email-channel pulse-before-update)))]
+      (assoc pulse-updates :channels
+             (for [channel (:channels pulse-updates)]
+               (if (= "email" (:channel_type channel))
+                 (assoc channel :recipients
+                        (concat (:recipients channel) recipients-to-add))
+                 channel))))
     pulse-updates))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -233,8 +229,7 @@
                        (assoc-in [:slack :configured] (slack/slack-configured?))
                        (assoc-in [:email :configured] (email/email-configured?)))]
     {:channels (cond
-                 (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-                   (segmented-user?))
+                 (premium-features/segmented-user?)
                  (dissoc chan-types :slack)
 
                  ;; no Slack integration, so we are g2g

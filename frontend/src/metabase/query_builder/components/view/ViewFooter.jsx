@@ -1,6 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -107,7 +105,6 @@ const ViewFooter = ({
         }
         right={[
           QuestionRowCount.shouldRender({
-            question,
             result,
             isObjectDetail,
           }) && <QuestionRowCount key="row_count" className="mx1" />,

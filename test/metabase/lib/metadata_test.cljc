@@ -37,7 +37,7 @@
                   :name           "CATEGORY_ID"
                   :base-type      :type/Integer
                   :effective-type :type/Integer
-                  :semantic-type  nil}
+                  :semantic-type  :type/FK}
                  x)
       (lib.metadata/stage-column query "CATEGORY_ID")
       (lib.metadata/stage-column query -1 "CATEGORY_ID"))))

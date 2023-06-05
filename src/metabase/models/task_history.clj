@@ -1,16 +1,9 @@
 (ns metabase.models.task-history
   (:require
-   [cheshire.core :as json]
    [cheshire.generate :refer [add-encoder encode-map]]
    [java-time :as t]
-   [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.common :refer [*current-user-id*]]
-   [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
@@ -36,76 +29,6 @@
 
 (t2/deftransforms :model/TaskHistory
   {:task_details mi/transform-json})
-
-(defn- task-details-for-snowplow
-  "Ensure task_details is less than 2048 characters.
-
-  2048 is the length limit for task_details in our snowplow schema, if exceeds this limit,
-  the event will be considered a bad rows and ignored.
-
-  Most of the times it's < 200 characters, but there are cases task-details contains an exception.
-  In those case, we want to make sure the stacktrace are ignored from the task-details.
-
-  Return nil if After trying to strip out the stacktraces and the stringified task-details
-  still has more than 2048 chars."
-  [task-details]
-  (let [;; task-details is {:throwable e} during sync
-        ;; check [[metabase.sync.util/run-step-with-metadata]]
-        task-details (cond-> task-details
-                       (some? (:throwable task-details))
-                       (update :throwable dissoc :trace :via)
-
-                       ;; if task-history is created via `with-task-history
-                       ;; the exception is manually caught and includes a stacktrace
-                       true
-                       (dissoc :stacktrace)
-
-                       true
-                       (dissoc :trace :via))
-        as-string     (json/generate-string task-details)]
-    (if (>= (count as-string) 2048)
-      nil
-      as-string)))
-
-(defn- task->snowplow-event
-  [task]
-  (let [task-details (:task_details task)]
-    (merge {:task_id      (:id task)
-            :task_name    (:task task)
-            :duration     (:duration task)
-            :task_details (task-details-for-snowplow task-details)
-            :started_at   (u.date/format-rfc3339 (:started_at task))
-            :ended_at     (u.date/format-rfc3339 (:ended_at task))}
-           (when-let [db-id (:db_id task)]
-             {:db_id     db-id
-              :db_engine (t2/select-one-fn :engine Database :id db-id)}))))
-
-(t2/define-after-insert :model/TaskHistory
-  [task]
-  (u/prog1 task
-    (snowplow/track-event! ::snowplow/new-task-history *current-user-id* (task->snowplow-event <>))))
-
-;;; Permissions to read or write Task. If `advanced-permissions` is enabled it requires superusers or non-admins with
-;;; monitoring permissions, Otherwise it requires superusers.
-(defmethod mi/perms-objects-set :model/TaskHistory
-  [_task _read-or-write]
-  #{(if (premium-features/enable-advanced-permissions?)
-      (perms/application-perms-path :monitoring)
-      "/")})
-
-(defn cleanup-task-history!
-  "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.
-  This is intended for a quick cleanup of old rows. Returns `true` if something was deleted."
-  [num-rows-to-keep]
-  ;; Ideally this would be one query, but MySQL does not allow nested queries with a limit. The query below orders the
-  ;; tasks by the time they finished, newest first. Then finds the first row after skipping `num-rows-to-keep`. Using
-  ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
-  ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
-  ;; disk.
-  (when-let [clean-before-date (t2/select-one-fn :ended_at TaskHistory {:limit    1
-                                                                        :offset   num-rows-to-keep
-                                                                        :order-by [[:ended_at :desc]]})]
-    (t2/delete! (t2/table-name TaskHistory) :ended_at [:<= clean-before-date])))
 
 (s/defn all
   "Return all TaskHistory entries, applying `limit` and `offset` if not nil"

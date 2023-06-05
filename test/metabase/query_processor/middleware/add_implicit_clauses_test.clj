@@ -13,7 +13,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest ordering-test
   (testing "check we fetch Fields in the right order"
@@ -102,7 +103,7 @@
 
 (deftest default-bucketing-test
   (testing "datetime Fields should get default bucketing of :day"
-    (mt/with-temp Field [field {:table_id (mt/id :venues), :position 2, :name "aaaaa", :base_type :type/DateTime}]
+    (t2.with-temp/with-temp [Field field {:table_id (mt/id :venues), :position 2, :name "aaaaa", :base_type :type/DateTime}]
       (is (= (:query
               (mt/mbql-query venues
                 {:fields [$id $name

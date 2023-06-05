@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
 import { formatNumber, formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { NoBreakoutError } from "metabase/visualizations/lib/errors";
@@ -27,7 +27,7 @@ import {
   Variation,
 } from "./SmartScalar.styled";
 
-export default class Smart extends React.Component {
+export default class Smart extends Component {
   static uiName = t`Trend`;
   static identifier = "smartscalar";
   static iconName = "smartscalar";

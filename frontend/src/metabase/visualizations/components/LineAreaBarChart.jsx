@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";
-import { iconPropTypes } from "metabase/components/Icon";
 
 import "./LineAreaBarChart.css";
 
@@ -23,12 +22,7 @@ import {
 import { getOrderedSeries } from "metabase/visualizations/lib/series";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import { isEmpty } from "metabase/lib/validate";
-import {
-  isNumeric,
-  isDate,
-  isDimension,
-  isMetric,
-} from "metabase-lib/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 
 import {
   LineAreaBarChartRoot,
@@ -108,50 +102,6 @@ export default class LineAreaBarChart extends Component {
     validateStacking(settings);
   }
 
-  static seriesAreCompatible(initialSeries, newSeries) {
-    const initialSettings = getComputedSettingsForSeries([initialSeries]);
-    const newSettings = getComputedSettingsForSeries([newSeries]);
-
-    const initialDimensions = getColumnsFromNames(
-      initialSeries.data.cols,
-      initialSettings["graph.dimensions"],
-    );
-    const newDimensions = getColumnsFromNames(
-      newSeries.data.cols,
-      newSettings["graph.dimensions"],
-    );
-    const newMetrics = getColumnsFromNames(
-      newSeries.data.cols,
-      newSettings["graph.metrics"],
-    );
-
-    // must have at least one dimension and one metric
-    if (newDimensions.length === 0 || newMetrics.length === 0) {
-      return false;
-    }
-
-    // all metrics must be numeric
-    if (!_.all(newMetrics, isNumeric)) {
-      return false;
-    }
-
-    // both or neither primary dimension must be dates
-    if (isDate(initialDimensions[0]) !== isDate(newDimensions[0])) {
-      return false;
-    }
-
-    // both or neither primary dimension must be numeric
-    // a timestamp field is both date and number so don't enforce the condition if both fields are dates; see #2811
-    if (
-      isNumeric(initialDimensions[0]) !== isNumeric(newDimensions[0]) &&
-      !(isDate(initialDimensions[0]) && isDate(newDimensions[0]))
-    ) {
-      return false;
-    }
-
-    return true;
-  }
-
   static placeholderSeries = [
     {
       card: {
@@ -189,7 +139,7 @@ export default class LineAreaBarChart extends Component {
     actionButtons: PropTypes.node,
     showTitle: PropTypes.bool,
     isDashboard: PropTypes.bool,
-    headerIcon: PropTypes.shape(iconPropTypes),
+    headerIcon: PropTypes.object,
   };
 
   static defaultProps = {};
@@ -413,13 +363,6 @@ export default class LineAreaBarChart extends Component {
       </LineAreaBarChartRoot>
     );
   }
-}
-
-function getColumnsFromNames(cols, names) {
-  if (!names) {
-    return [];
-  }
-  return names.map(name => _.findWhere(cols, { name }));
 }
 
 function transformSingleSeries(s, series, seriesIndex) {

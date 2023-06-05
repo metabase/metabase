@@ -26,6 +26,7 @@ import {
 } from "../selectors";
 
 import { isVirtualDashCard } from "../utils";
+import { trackAutoApplyFiltersDisabled } from "../analytics";
 
 import { setDashboardAttributes, setDashCardAttributes } from "./core";
 import { setSidebar, closeSidebar } from "./ui";
@@ -334,13 +335,18 @@ export const toggleAutoApplyFilters = createThunkAction(
   isEnabled => (dispatch, getState) => {
     const dashboardId = getDashboardId(getState());
 
-    dispatch(
-      setDashboardAttributes({
-        id: dashboardId,
-        attributes: { auto_apply_filters: isEnabled },
-      }),
-    );
-    dispatch(saveDashboardAndCards(true));
+    if (dashboardId) {
+      dispatch(
+        setDashboardAttributes({
+          id: dashboardId,
+          attributes: { auto_apply_filters: isEnabled },
+        }),
+      );
+      dispatch(saveDashboardAndCards(true));
+      if (!isEnabled) {
+        trackAutoApplyFiltersDisabled(dashboardId);
+      }
+    }
   },
 );
 

@@ -1,9 +1,9 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import {
   downloadQueryResults,
   DownloadQueryResultsOpts,

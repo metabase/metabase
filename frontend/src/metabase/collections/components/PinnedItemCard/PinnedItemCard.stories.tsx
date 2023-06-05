@@ -1,10 +1,7 @@
-import React from "react";
-
 import { action } from "@storybook/addon-actions";
 import type { ComponentStory } from "@storybook/react";
 import PinnedItemCard from "./PinnedItemCard";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Collections/PinnedItemCard",
   component: PinnedItemCard,

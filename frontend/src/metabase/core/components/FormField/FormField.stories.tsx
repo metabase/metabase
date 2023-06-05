@@ -1,12 +1,11 @@
-import React from "react";
 import type { ComponentProps } from "react";
+import { isValidElement, cloneElement } from "react";
 import type { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
 
 import Toggle from "../Toggle/Toggle";
 import FormField from "./FormField";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/FormField",
   component: FormField,
@@ -27,8 +26,8 @@ const Template: ComponentStory<typeof FormField> = ({
   return (
     <div style={{ maxWidth: 400 }}>
       <FormField {...args}>
-        {React.isValidElement<inputProps>(children) &&
-          React.cloneElement(children, {
+        {isValidElement<inputProps>(children) &&
+          cloneElement(children, {
             value,
             onChange: handleChange,
           })}

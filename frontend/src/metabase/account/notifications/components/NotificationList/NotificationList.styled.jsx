@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Label from "metabase/components/type/Label";
 import { TextButton } from "metabase/components/Button.styled";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 export const NotificationHeader = styled.div`
   display: flex;

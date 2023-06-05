@@ -246,6 +246,86 @@
                                                           [:<> :result_metadata nil]
                                                           [:<> :result_metadata "[]"]]})))))
 
+(defn- remove-opts
+  "Removes options from the `field_ref` options map. If the resulting map is empty, it's replaced it with nil."
+  [field_ref & opts-to-remove]
+  (match field_ref
+    ["field" id opts] ["field" id (not-empty (apply dissoc opts opts-to-remove))]
+    _ field_ref))
+
+(defn- remove-join-alias-from-column-settings-field-refs [visualization_settings]
+  (update visualization_settings "column_settings"
+          (fn [column_settings]
+            (into {}
+                  (map (fn [[k v]]
+                         (match (vec (json/parse-string k))
+                           ["ref" ["field" id opts]]
+                           [(json/generate-string ["ref" (remove-opts ["field" id opts] "join-alias")]) v]
+                           _ [k v]))
+                       column_settings)))))
+
+(defn- add-join-alias-to-column-settings-refs [{:keys [visualization_settings result_metadata]}]
+  (let [result_metadata        (json/parse-string result_metadata)
+        visualization_settings (json/parse-string visualization_settings)
+        column-key->metadata   (group-by #(-> (get % "field_ref")
+                                              ;; like the FE's `getColumnKey` function, remove "join-alias",
+                                              ;; "temporal-unit" and "binning" options from the field_ref
+                                              (remove-opts "join-alias" "temporal-unit" "binning"))
+                                         result_metadata)]
+    (json/generate-string
+     (update visualization_settings "column_settings"
+             (fn [column_settings]
+               (into {}
+                     (mapcat (fn [[k v]]
+                               (match (vec (json/parse-string k))
+                                 ["ref" ["field" id opts]]
+                                 (for [column-metadata (column-key->metadata ["field" id opts])
+                                       ;; remove "temporal-unit" and "binning" options from the matching field refs,
+                                       ;; but not "join-alias" as before.
+                                       :let [field-ref (-> (get column-metadata "field_ref")
+                                                           (remove-opts "temporal-unit" "binning"))]]
+                                   [(json/generate-string ["ref" field-ref]) v])
+                                 _ [[k v]]))
+                             column_settings)))))))
+
+(define-reversible-migration AddJoinAliasToColumnSettingsFieldRefs
+  (let [update-one! (fn [{:keys [id visualization_settings] :as card}]
+                      (let [updated (add-join-alias-to-column-settings-refs card)]
+                        (when (not= visualization_settings updated)
+                          (t2/query-one {:update :report_card
+                                         :set    {:visualization_settings updated}
+                                         :where  [:= :id id]}))))]
+    (run! update-one! (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
+                                           :from   [:report_card]
+                                           :where  [:and
+                                                    [:or
+                                                     [:= :query_type nil]
+                                                     [:= :query_type "query"]]
+                                                    [:or
+                                                     [:like :visualization_settings "%ref\\\\\",[\\\\\"field%"]
+                                                     ; MySQL with NO_BACKSLASH_ESCAPES disabled
+                                                     [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                    [:like :result_metadata "%join-alias%"]]})))
+  (let [update! (fn [{:keys [id visualization_settings]}]
+                  (let [updated (-> visualization_settings
+                                    json/parse-string
+                                    remove-join-alias-from-column-settings-field-refs
+                                    json/generate-string)]
+                    (when (not= visualization_settings updated)
+                      (t2/query-one {:update :report_card
+                                     :set    {:visualization_settings updated}
+                                     :where  [:= :id id]}))))]
+    (run! update! (t2/reducible-query {:select [:id :visualization_settings]
+                                       :from   [:report_card]
+                                       :where  [:and
+                                                [:or
+                                                 [:= :query_type nil]
+                                                 [:= :query_type "query"]]
+                                                [:or
+                                                 [:like :visualization_settings "%ref\\\\\",[\\\\\"field%"]
+                                                 [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                [:like :visualization_settings "%join-alias%"]]}))))
+
 (defn- update-card-row-on-downgrade-for-dashboard-tab
   [dashboard-id]
   (let [ordered-tab+cards (->> (t2/query {:select    [:report_dashboardcard.* [:dashboard_tab.position :tab_position]]
