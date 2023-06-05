@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import BaseSelectList from "metabase/components/SelectList";
 import { alpha, color } from "metabase/lib/colors";
 
