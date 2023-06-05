@@ -27,6 +27,20 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
+(defn cleanup-task-history!
+  "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.
+  This is intended for a quick cleanup of old rows. Returns `true` if something was deleted."
+  [num-rows-to-keep]
+  ;; Ideally this would be one query, but MySQL does not allow nested queries with a limit. The query below orders the
+  ;; tasks by the time they finished, newest first. Then finds the first row after skipping `num-rows-to-keep`. Using
+  ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
+  ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
+  ;; disk.
+  (when-let [clean-before-date (t2/select-one-fn :ended_at TaskHistory {:limit    1
+                                                                        :offset   num-rows-to-keep
+                                                                        :order-by [[:ended_at :desc]]})]
+    (t2/delete! (t2/table-name TaskHistory) :ended_at [:<= clean-before-date])))
+
 (t2/deftransforms :model/TaskHistory
   {:task_details mi/transform-json})
 
