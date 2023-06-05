@@ -21,6 +21,7 @@ import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from "__support__/ui";
 import { getMetadataRoutes } from "../../routes";
 
@@ -72,6 +73,15 @@ const setup = async ({
     },
   );
 
+  await waitUntilLoaded();
+};
+
+const fieldLink = (field: Field) => {
+  const section = within(screen.getByLabelText(field.name));
+  return section.getByLabelText("Field settings");
+};
+
+const waitUntilLoaded = async () => {
   await waitForElementToBeRemoved(() => screen.queryByText(/Loading/));
 };
 
@@ -86,6 +96,24 @@ describe("MetadataFieldSettings", () => {
       expect(
         screen.getByDisplayValue(ORDERS_ID_FIELD.display_name),
       ).toBeInTheDocument();
+    });
+
+    it("should allow to navigate to and from field settings", async () => {
+      await setup();
+
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await waitUntilLoaded();
+      expect(screen.getByText(ORDERS_TABLE.display_name)).toBeInTheDocument();
+
+      userEvent.click(fieldLink(ORDERS_ID_FIELD));
+      await waitUntilLoaded();
+      expect(screen.getByText("General")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(SAMPLE_DB.name));
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      userEvent.click(fieldLink(ORDERS_ID_FIELD));
+      await waitUntilLoaded();
+      expect(screen.getByText("General")).toBeInTheDocument();
     });
   });
 });
