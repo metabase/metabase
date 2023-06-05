@@ -23,6 +23,8 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.secret :as secret]
    [metabase.models.table :refer [Table]]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
@@ -30,9 +32,9 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
@@ -1196,3 +1198,35 @@
                         (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
               (is (nil? (some (partial re-matches #"metabase_cache(.*)")
                               (driver/syncable-schemas driver/*driver* (mt/db))))))))))))
+
+(deftest conn-impersonation-test
+  (mt/test-driver :postgres
+    (premium-features-test/with-premium-features #{:advanced-permissions}
+      (let [db-name "conn_impersonation_test"
+            details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (drop-if-exists-and-create-db! db-name)
+        (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.table_with_access;"
+                           "DROP TABLE IF EXISTS PUBLIC.table_without_access;"
+                           "CREATE TABLE PUBLIC.table_with_access (x INTEGER NOT NULL);"
+                           "CREATE TABLE PUBLIC.table_without_access (y INTEGER NOT NULL);"
+                           "DROP ROLE IF EXISTS impersonation_role;"
+                           "CREATE ROLE impersonation_role;"
+                           "REVOKE ALL PRIVILEGES ON DATABASE \"conn_impersonation_test\" FROM impersonation_role;"
+                           "GRANT SELECT ON TABLE \"conn_impersonation_test\".PUBLIC.table_with_access TO impersonation_role;"]]
+          (jdbc/execute! spec [statement]))
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
+          (mt/with-db database (sync/sync-database! database)
+            (tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                     :attributes     {"impersonation_attr" "impersonation_role"}}
+              (is (= []
+                     (-> {:query "SELECT * FROM \"table_with_access\";"}
+                         mt/native-query
+                         mt/process-query
+                         mt/rows)))
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                     #"permission denied for table table_without_access"
+                     (-> {:query "SELECT * FROM \"table_without_access\";"}
+                         mt/native-query
+                         mt/process-query
+                         mt/rows))))))))))
