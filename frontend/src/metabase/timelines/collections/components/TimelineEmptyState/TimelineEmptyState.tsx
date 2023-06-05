@@ -50,7 +50,7 @@ const TimelineEmptyState = ({
           </svg>
         </EmptyStateChart>
         <EmptyStateTooltip>
-          <EmptyStateTooltipIcon name="mail" />
+          <EmptyStateTooltipIcon name="mail_filled" />
           <EmptyStateTooltipBody>
             <EmptyStateTooltipTitle>{t`Launch of v2.0`}</EmptyStateTooltipTitle>
             <EmptyStateTooltipDate value={date} unit="day" data-server-date />
@@ -59,7 +59,7 @@ const TimelineEmptyState = ({
         <EmptyStateThread>
           <EmptyStateThreadLine />
           <EmptyStateThreadIconContainer>
-            <EmptyStateThreadIcon name="balloons" />
+            <EmptyStateThreadIcon name="star" />
           </EmptyStateThreadIconContainer>
           <EmptyStateThreadLine />
         </EmptyStateThread>

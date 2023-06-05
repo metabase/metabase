@@ -6,7 +6,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 import Popover from "metabase/components/Popover";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 export default class SelectionModule extends Component {
   constructor(props, context) {
@@ -230,7 +230,7 @@ export default class SelectionModule extends Component {
           className="text-light no-decoration pr1 flex align-center"
           onClick={this.props.remove.bind(null, this.props.index)}
         >
-          <Icon name="close" size={14} />
+          <Icon name="close" />
         </a>
       );
     }

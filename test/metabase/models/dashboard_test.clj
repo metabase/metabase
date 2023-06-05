@@ -616,7 +616,7 @@
                    (-> dashboard :ordered_cards count)))))))))
 
 (deftest validate-collection-namespace-test
-  (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]
+  (t2.with-temp/with-temp [Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Dashboard in a non-normal Collection"
       (let [dashboard-name (mt/random-name)]
         (try
@@ -628,7 +628,7 @@
             (t2/delete! Dashboard :name dashboard-name)))))
 
     (testing "Shouldn't be able to move a Dashboard to a non-normal Collection"
-      (mt/with-temp Dashboard [{card-id :id}]
+      (t2.with-temp/with-temp [Dashboard {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Dashboard can only go in Collections in the \"default\" namespace"
@@ -640,9 +640,9 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #":parameters must be a sequence of maps with :id and :type keys"
-           (mt/with-temp Dashboard [_ {:parameters {:a :b}}]))))
+           (t2.with-temp/with-temp [Dashboard _ {:parameters {:a :b}}]))))
     (testing "updating"
-      (mt/with-temp Dashboard [{:keys [id]} {:parameters []}]
+      (t2.with-temp/with-temp [Dashboard {:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with :id and :type keys"
@@ -675,10 +675,10 @@
 
 (deftest should-add-default-values-source-test
   (testing "shoudld add default if not exists"
-    (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                               :slug   "category_name"
-                                                               :id     "_CATEGORY_NAME_"
-                                                               :type   "category"}]}]
+    (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                                         :slug   "category_name"
+                                                                         :id     "_CATEGORY_NAME_"
+                                                                         :type   "category"}]}]
       (is (=? [{:name                 "Category Name"
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
@@ -688,13 +688,13 @@
   (testing "shoudld not override if existsed "
     (mt/with-temp* [Card      [{card-id :id}]
                     Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                                  :slug   "category_name"
-                                                                  :id     "_CATEGORY_NAME_"
-                                                                  :type   "category"
-                                                                  :values_query_type    "list"
-                                                                  :values_source_type   "card"
-                                                                  :values_source_config {:card_id card-id
-                                                                                         :value_field [:field 2 nil]}}]}]]
+                                                                 :slug   "category_name"
+                                                                 :id     "_CATEGORY_NAME_"
+                                                                 :type   "category"
+                                                                 :values_query_type    "list"
+                                                                 :values_source_type   "card"
+                                                                 :values_source_config {:card_id card-id
+                                                                                        :value_field [:field 2 nil]}}]}]]
       (is (=? [{:name                 "Category Name"
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"

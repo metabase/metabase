@@ -8,7 +8,8 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defmacro ^:private chain-filter [field field->value & options]
   `(chain-filter/chain-filter
@@ -551,7 +552,7 @@
           (testing "no FieldValues"
             (thunk))
           (testing "with FieldValues for myfield"
-            (mt/with-temp FieldValues [_ {:field_id %myfield, :values ["value" nil ""]}]
+            (t2.with-temp/with-temp [FieldValues _ {:field_id %myfield, :values ["value" nil ""]}]
               (mt/with-temp-vals-in-db Field %myfield {:has_field_values "auto-list"}
                 (testing "Sanity check: make sure we will actually use the cached FieldValues"
                   (is (field-values/field-should-have-field-values? %myfield))

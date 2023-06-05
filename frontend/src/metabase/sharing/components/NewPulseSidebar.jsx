@@ -3,7 +3,7 @@
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t, jt } from "ttag";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Text from "metabase/components/type/Text";
 import Link from "metabase/core/components/Link";
 import Sidebar from "metabase/dashboard/components/Sidebar";
@@ -75,7 +75,7 @@ function NewPulseSidebar({
             <div className="flex align-center mb1">
               <Icon
                 name={slackConfigured ? "slack_colorized" : "slack"}
-                size={24}
+                size={16}
                 className={cx("mr1", {
                   "text-light": !slackConfigured,
                   "hover-child hover--inherit": slackConfigured,

@@ -49,6 +49,8 @@
     (for [id ids]
       (get-in-cache cache [metadata-type id]))))
 
+;;; wraps another metadata provider and caches results. Implements
+;;; the [[lib.metadata.protocols/CachedMetadataProvider]] protocol which allows warming the cache before use.
 (deftype CachedProxyMetadataProvider [cache metadata-provider]
   lib.metadata.protocols/MetadataProvider
   (database [_this]            (get-in-cache-or-fetch cache [:metadata/database]            #(lib.metadata.protocols/database metadata-provider)))

@@ -27,6 +27,10 @@
     name generation. For a joined column, this might look like \"Venues → Price\"."
   [:enum :default :long])
 
+(def ^:dynamic *display-name-style*
+  "Display name style to use when not explicitly passed in to [[display-name]]."
+  :default)
+
 (defmulti display-name-method
   "Calculate a nice human-friendly display name for something."
   {:arglists '([query stage-number x display-name-style])}
@@ -48,7 +52,7 @@
    (display-name query -1 x))
 
   ([query stage-number x]
-   (display-name query stage-number x :default))
+   (display-name query stage-number x *display-name-style*))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
