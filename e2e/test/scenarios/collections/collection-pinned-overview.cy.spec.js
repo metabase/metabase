@@ -1,8 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   POPOVER_ELEMENT,
-  changeDashboardDescription,
   changePinnedCardDescription,
+  changePinnedDashboardDescription,
   dragAndDrop,
   getPinnedSection,
   openPinnedItemMenu,
@@ -341,7 +341,7 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     it("should render only the first line of description without markdown formatting", () => {
-      changeDashboardDescription(DASHBOARD_NAME, MARKDOWN);
+      changePinnedDashboardDescription(DASHBOARD_NAME, MARKDOWN);
       openRootCollection();
 
       getPinnedSection().within(() => {
@@ -356,7 +356,7 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     it("should render description tooltip with markdown formatting", () => {
-      changeDashboardDescription(DASHBOARD_NAME, MARKDOWN);
+      changePinnedDashboardDescription(DASHBOARD_NAME, MARKDOWN);
       openRootCollection();
 
       getPinnedSection().findByText(HEADING_1_TEXT).realHover();
@@ -372,7 +372,7 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     it("should render description tooltip when ellipis was necessary", () => {
-      changeDashboardDescription(DASHBOARD_NAME, HEADING_LONG_MARKDOWN);
+      changePinnedDashboardDescription(DASHBOARD_NAME, HEADING_LONG_MARKDOWN);
       openRootCollection();
 
       getPinnedSection().findByText(HEADING_LONG).realHover();
@@ -385,7 +385,7 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     it("should not render description tooltip when ellipis is not necessary", () => {
-      changeDashboardDescription(DASHBOARD_NAME, HEADING_SHORT_MARKDOWN);
+      changePinnedDashboardDescription(DASHBOARD_NAME, HEADING_SHORT_MARKDOWN);
       openRootCollection();
 
       getPinnedSection().findByText(HEADING_SHORT).realHover();

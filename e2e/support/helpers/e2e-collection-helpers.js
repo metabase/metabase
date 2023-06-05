@@ -90,7 +90,7 @@ export const changePinnedCardDescription = (cardName, description) => {
   });
 };
 
-export const changeDashboardDescription = (cardName, description) => {
+export const changePinnedDashboardDescription = (cardName, description) => {
   openRootCollection();
 
   getPinnedSection().within(() => {
