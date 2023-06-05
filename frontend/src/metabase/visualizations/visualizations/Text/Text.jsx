@@ -51,8 +51,7 @@ export function Text({
     useToggle(justAdded);
   const isPreviewing = !isFocused;
 
-  const handleTextChange = text =>
-    onUpdateVisualizationSettings({ text: text });
+  const handleTextChange = text => onUpdateVisualizationSettings({ text });
   const preventDragging = e => e.stopPropagation();
 
   const isSingleRow = gridSize && gridSize.height === 1;
