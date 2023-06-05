@@ -1,5 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  POPOVER_ELEMENT,
   changeDashboardDescription,
   changePinnedCardDescription,
   dragAndDrop,
@@ -67,6 +68,11 @@ const MARKDOWN = [
 const MARKDOWN_AS_TEXT = [HEADING_1_TEXT, HEADING_2_TEXT, PARAGRAPH_TEXT].join(
   "\n",
 );
+const HEADING_SHORT = "Short description";
+const HEADING_SHORT_MARKDOWN = `# ${HEADING_SHORT}`;
+const HEADING_LONG =
+  "This is a very long description that will require visual truncation in the user interface";
+const HEADING_LONG_MARKDOWN = `# ${HEADING_LONG}`;
 
 describe("scenarios > collection pinned items overview", () => {
   beforeEach(() => {
@@ -268,11 +274,12 @@ describe("scenarios > collection pinned items overview", () => {
       openUnpinnedItemMenu(MODEL_NAME);
       popover().findByText("Pin this").click();
       cy.wait("@getPinnedItems");
-      changePinnedCardDescription(MODEL_NAME, MARKDOWN);
-      openRootCollection();
     });
 
     it("should render only the first line of description without markdown formatting on pinned models", () => {
+      changePinnedCardDescription(MODEL_NAME, MARKDOWN);
+      openRootCollection();
+
       getPinnedSection().within(() => {
         cy.findByText(HEADING_1_TEXT).should("exist");
 
@@ -285,6 +292,9 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     it("should render description tooltip with markdown formatting in pinned models", () => {
+      changePinnedCardDescription(MODEL_NAME, MARKDOWN);
+      openRootCollection();
+
       getPinnedSection().findByText(HEADING_1_TEXT).realHover();
 
       popover().within(() => {
@@ -295,6 +305,28 @@ describe("scenarios > collection pinned items overview", () => {
       });
 
       popover().invoke("text").should("eq", MARKDOWN_AS_TEXT);
+    });
+
+    it("should render description tooltip when ellipis was necessary", () => {
+      changePinnedCardDescription(MODEL_NAME, HEADING_LONG_MARKDOWN);
+      openRootCollection();
+
+      getPinnedSection().findByText(HEADING_LONG).realHover();
+
+      popover().within(() => {
+        cy.findByText(HEADING_LONG_MARKDOWN).should("not.exist");
+      });
+
+      popover().invoke("text").should("eq", HEADING_LONG);
+    });
+
+    it("should not render description tooltip when ellipis is not necessary", () => {
+      changePinnedCardDescription(MODEL_NAME, HEADING_SHORT_MARKDOWN);
+      openRootCollection();
+
+      getPinnedSection().findByText(HEADING_SHORT).realHover();
+
+      cy.get(POPOVER_ELEMENT).should("not.exist");
     });
   });
 
