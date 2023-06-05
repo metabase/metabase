@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { t } from "ttag";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import MetabaseSettings from "metabase/lib/settings";
@@ -95,4 +95,5 @@ const ExpressionEditorHelpText = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ExpressionEditorHelpText;

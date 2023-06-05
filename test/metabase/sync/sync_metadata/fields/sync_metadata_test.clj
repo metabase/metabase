@@ -3,15 +3,15 @@
    [clojure.test :refer :all]
    [metabase.models.table :refer [Table]]
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
-   [toucan.util.test :as tt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- updates-that-will-be-performed
   ([new-metadata-from-sync metadata-in-application-db]
    ;; use alphabetical field_order by default because the default, database, will update the position
    (updates-that-will-be-performed new-metadata-from-sync metadata-in-application-db {:field_order :alphabetical}))
   ([new-metadata-from-sync metadata-in-application-db table]
-   (tt/with-temp Table [table table]
+   (t2.with-temp/with-temp [Table table table]
      (let [update-operations (atom [])]
        (with-redefs [t2/update! (fn [model id updates]
                                   (swap! update-operations conj [(name model) id updates])

@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import { ReactNode } from "react";
 import { MetabotVariant } from "metabase/core/components/MetabotLogo/MetabotLogo";
 import {
   MetabotText,
@@ -20,4 +20,5 @@ const MetabotMessage = ({ children, metabotVariant }: MetabotMessageProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MetabotMessage;

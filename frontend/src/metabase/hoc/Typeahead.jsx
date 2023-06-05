@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 
 import _ from "underscore";
@@ -16,6 +16,9 @@ const DEFAULT_FILTER_OPTIONS = (value, option) => {
 
 const DEFAULT_OPTION_IS_EQUAL = (a, b) => a === b;
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export default ({
     optionFilter = DEFAULT_FILTER_OPTIONS,
     optionIsEqual = DEFAULT_OPTION_IS_EQUAL,

@@ -1,11 +1,11 @@
-import React from "react";
 import { t } from "ttag";
 import Link from "metabase/core/components/Link/Link";
 import Badge from "metabase/components/Badge";
+import { IconName } from "metabase/core/components/Icon";
 import Question from "metabase-lib/Question";
 
 export interface QuestionLineageProps {
-  icon?: string;
+  icon?: IconName;
   question?: Question;
   originalQuestion?: Question;
 }
@@ -29,4 +29,5 @@ const QuestionLineage = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QuestionLineage;

@@ -1,4 +1,3 @@
-import React from "react";
 import { SelectAll } from "metabase/components/Calendar";
 import Filter from "metabase-lib/queries/structured/Filter";
 import {
@@ -38,4 +37,5 @@ const SingleDatePicker = ({
   />
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SingleDatePicker;

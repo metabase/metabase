@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
@@ -13,7 +13,7 @@ import {
   getDayOfWeekOptions,
   HOUR_OPTIONS,
 } from "metabase/lib/date-time";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Modal from "metabase/components/Modal";
 import {
   CreateAlertModalContent,

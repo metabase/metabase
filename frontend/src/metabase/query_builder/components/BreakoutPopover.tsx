@@ -1,5 +1,3 @@
-import React from "react";
-
 import type { ConcreteFieldReference } from "metabase-types/api";
 import type Breakout from "metabase-lib/queries/structured/Breakout";
 import type DimensionOptions from "metabase-lib/DimensionOptions";
@@ -30,18 +28,10 @@ const BreakoutPopover = ({
   alwaysExpanded,
   width = 400,
 }: BreakoutPopoverProps) => {
-  const table = query.table();
-  // FieldList requires table
-  if (!table) {
-    return null;
-  }
-
   const fieldOptions = breakoutOptions || query.breakoutOptions(breakout);
 
   return (
     <BreakoutFieldList
-      className={className}
-      width={width}
       field={breakout}
       query={query}
       metadata={query.metadata()}
@@ -52,13 +42,16 @@ const BreakoutPopover = ({
           onClose();
         }
       }}
-      table={table}
-      enableSubDimensions
+      // forward AccordionList props
+      className={className}
       maxHeight={maxHeight}
+      width={width}
       alwaysExpanded={alwaysExpanded}
-      searchable={false}
+      // forward DimensionList props
+      enableSubDimensions
     />
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default BreakoutPopover;

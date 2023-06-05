@@ -1,4 +1,4 @@
-import React, { HTMLAttributes } from "react";
+import { HTMLAttributes } from "react";
 import SkeletonCaption from "../SkeletonCaption";
 import { SkeletonRoot } from "./EmptySkeleton.styled";
 
@@ -19,4 +19,5 @@ const EmptySkeleton = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EmptySkeleton;

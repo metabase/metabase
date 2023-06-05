@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
@@ -40,4 +39,5 @@ const ConfirmMessage = ({ message }: { message?: string }) => (
   <div>{message ?? t`This action cannot be undone.`}</div>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionParametersInputModal;

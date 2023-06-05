@@ -81,7 +81,7 @@ describe("scenarios > question > snippets", () => {
     cy.get(".ScalarValue").contains("2");
   });
 
-  it.skip("should update the snippet and apply it to the current query (metabase#15387)", () => {
+  it("should update the snippet and apply it to the current query (metabase#15387)", () => {
     // Create snippet 1
     cy.request("POST", "/api/native-query-snippet", {
       content: "ORDERS",

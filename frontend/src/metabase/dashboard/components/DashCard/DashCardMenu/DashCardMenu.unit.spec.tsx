@@ -1,4 +1,3 @@
-import React from "react";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { checkNotNull } from "metabase/core/utils/types";
@@ -50,7 +49,10 @@ const TEST_CARD_UNAUTHORIZED = createMockCard({
 const TEST_RESULT = createMockDataset();
 
 const TEST_RESULT_ERROR = createMockDataset({
-  error: "An error occurred",
+  error: {
+    status: 500,
+    data: "An error occurred",
+  },
 });
 
 interface SetupOpts {

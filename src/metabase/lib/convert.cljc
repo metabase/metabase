@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [malli.core :as mc]
+   [malli.error :as me]
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -51,7 +52,10 @@
       (let [new-stage (clean-location almost-stage error-type error-location)]
         (log/warnf "Clean: Removing bad clause in %s due to error %s:\n%s"
                    (u/colorize :yellow (pr-str error-location))
-                   (u/colorize :yellow (pr-str error-type))
+                   (u/colorize :yellow (pr-str (or error-type
+                                                   ;; if `error-type` is missing, which seems to happen sometimes,
+                                                   ;; fall back to humanizing the entire error.
+                                                   (me/humanize (mc/explain ::lib.schema/stage.mbql almost-stage)))))
                    (u/colorize :red (u/pprint-to-str (first (data/diff almost-stage new-stage)))))
         (if (= new-stage almost-stage)
           almost-stage
@@ -98,7 +102,14 @@
 
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
-  (let [aggregations (->pMBQL (:aggregation stage))]
+  (let [aggregations (->pMBQL (:aggregation stage))
+        expressions (->> stage
+                         :expressions
+                         (mapv (fn [[k v]]
+                                 (-> v
+                                     ->pMBQL
+                                     (lib.util/named-expression-clause k))))
+                         not-empty)]
     (binding [*legacy-index->pMBQL-uuid* (into {}
                                                (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
                                                               [idx ag-uuid]))
@@ -108,8 +119,8 @@
           (if-not (get stage k)
             stage
             (update stage k ->pMBQL)))
-        (m/assoc-some stage :aggregation aggregations)
-        (disj stage-keys :aggregation)))))
+        (m/assoc-some stage :aggregation aggregations :expressions expressions)
+        (disj stage-keys :aggregation :expressions)))))
 
 (defmethod ->pMBQL :mbql/join
   [join]
@@ -267,8 +278,8 @@
              :get-week :get-year :get-month :get-day :get-hour
              :get-minute :get-second :get-quarter
              :datetime-add :datetime-subtract
-             :concat :substring :replace :regexextract :length
-             :trim :ltrim :rtrim :upper :lower]]
+             :concat :substring :replace :regexextract :regex-match-first
+             :length :trim :ltrim :rtrim :upper :lower]]
   (lib.hierarchy/derive tag ::expression))
 
 (defmethod ->legacy-MBQL ::aggregation-or-expression
@@ -366,8 +377,18 @@
             (-> stage
                 disqualify
                 (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
+                (m/update-existing :expressions (fn [expressions]
+                                                  (into {}
+                                                        (for [expression expressions
+                                                              :let [legacy-clause (->legacy-MBQL expression)]]
+                                                          [(lib.util/expression-name expression)
+                                                           ;; We wrap literals in :value ->pMBQL
+                                                           ;; so unwrap this direction
+                                                           (if (= :value (first legacy-clause))
+                                                             (second legacy-clause)
+                                                             legacy-clause)]))))
                 (update-list->legacy-boolean-expression :filters :filter))
-            (disj stage-keys :aggregation :filters))))
+            (disj stage-keys :aggregation :filters :expressions))))
 
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage

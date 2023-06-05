@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
@@ -51,4 +50,5 @@ function BreakoutStep({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default BreakoutStep;

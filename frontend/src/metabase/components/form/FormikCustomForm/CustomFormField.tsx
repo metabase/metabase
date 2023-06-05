@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { forwardRef, useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import { useMount, useUnmount } from "react-use";
@@ -106,11 +106,11 @@ function RawCustomFormField(
 /**
  * @deprecated
  */
-const CustomFormField = React.forwardRef<
-  HTMLInputElement,
-  CustomFormFieldProps
->(function CustomFormField(props, ref) {
-  return <RawCustomFormField {...props} forwardedRef={ref} />;
-});
+const CustomFormField = forwardRef<HTMLInputElement, CustomFormFieldProps>(
+  function CustomFormField(props, ref) {
+    return <RawCustomFormField {...props} forwardedRef={ref} />;
+  },
+);
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CustomFormField;

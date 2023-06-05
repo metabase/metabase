@@ -1,13 +1,23 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
-
-import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
+import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/selectors/metadata";
+import {
+  createSampleDatabase,
+  PRODUCTS,
+} from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 import Dimension from "metabase-lib/Dimension";
-
 import { CategoryFingerprint } from "./CategoryFingerprint";
 
+const state = createMockState({
+  entities: createMockEntitiesState({
+    databases: [createSampleDatabase()],
+  }),
+});
+const metadata = getMetadata(state);
+
 const categoryField = Dimension.parseMBQL(
-  ["field", PRODUCTS.CATEGORY.id, null],
+  ["field", PRODUCTS.CATEGORY, null],
   metadata,
 ).field();
 

@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -71,4 +70,5 @@ const EmbeddingLegalese = ({ setting, onChange }: EmbeddingLegaleseProps) => (
   </div>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EmbeddingLegalese;

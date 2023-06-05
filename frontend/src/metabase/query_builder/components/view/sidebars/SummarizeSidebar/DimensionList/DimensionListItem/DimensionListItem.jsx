@@ -1,10 +1,9 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { getSelectedSubDimensionName } from "../utils";
 
@@ -76,7 +75,7 @@ export const DimensionListItem = ({
     >
       <DimensionListItemContent>
         <DimensionListItemTitleContainer onClick={handleChange}>
-          <DimensionListItemIcon name={iconName} size={18} />
+          <DimensionListItemIcon name={iconName} />
           <DimensionListItemTitle data-testid="dimension-list-item-name">
             {name}
           </DimensionListItemTitle>
@@ -120,7 +119,7 @@ export const DimensionListItem = ({
             onClick={handleAdd}
             aria-label="Add dimension"
           >
-            <Icon name="add" size={12} />
+            <Icon name="add" />
           </DimensionListItemAddButton>
         </Tooltip>
       )}

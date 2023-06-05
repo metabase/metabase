@@ -29,9 +29,9 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 (def ^Integer category-cardinality-threshold
@@ -77,7 +77,21 @@
 ;;; |                                             Entity & Lifecycle                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(models/defmodel FieldValues :metabase_fieldvalues)
+(def FieldValues
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/FieldValues)
+
+(methodical/defmethod t2/table-name :model/FieldValues [_model] :metabase_fieldvalues)
+
+(doto :model/FieldValues
+  (derive :metabase/model)
+  (derive :hook/timestamped?))
+
+(t2/deftransforms :model/FieldValues
+  {:human_readable_values mi/transform-json-no-keywordization
+   :values                mi/transform-json
+   :type                  mi/transform-keyword})
 
 (defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
   (when (s/check (s/maybe [(s/maybe su/NonBlankString)]) human-readable-values)
@@ -117,7 +131,8 @@
   [field-or-id]
   (t2/delete! FieldValues :field_id (u/the-id field-or-id)))
 
-(defn- pre-insert [{:keys [field_id] :as field-values}]
+(t2/define-before-insert :model/FieldValues
+  [{:keys [field_id] :as field-values}]
   (u/prog1 (merge {:type :full}
                   field-values)
     (assert-valid-human-readable-values field-values)
@@ -126,22 +141,23 @@
     (when (= (:type <>) :full)
       (clear-advanced-field-values-for-field! field_id))))
 
-(defn- pre-update [{:keys [id type field_id values hash_key] :as field-values}]
-  (u/prog1 field-values
-    (assert-valid-human-readable-values field-values)
-    (when (or type hash_key)
-      (throw (ex-info (tru "Can't update type or hash_key for a FieldValues.")
-                      {:type        type
-                       :hash_key    hash_key
-                       :status-code 400})))
-    ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
-    (when (and values
-           (= (or type (t2/select-one-fn :type FieldValues :id id))
-              :full))
-     (clear-advanced-field-values-for-field! (or field_id
-                                                 (t2/select-one-fn :field_id FieldValues :id id))))))
+(t2/define-before-update :model/FieldValues
+  [field-values]
+  (let [{:keys [type values hash_key]} (t2/changes field-values)]
+    (u/prog1 field-values
+      (assert-valid-human-readable-values field-values)
+      (when (or type hash_key)
+        (throw (ex-info (tru "Can't update type or hash_key for a FieldValues.")
+                        {:type        type
+                         :hash_key    hash_key
+                         :status-code 400})))
+      ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
+      (when (and values
+                 (= (:type field-values) :full))
+        (clear-advanced-field-values-for-field! (:field_id field-values))))))
 
-(defn- post-select [field-values]
+(t2/define-after-select :model/FieldValues
+  [field-values]
   (cond-> field-values
     (contains? field-values :human_readable_values)
     (update :human_readable_values (fn [human-readable-values]
@@ -163,17 +179,8 @@
                                        :else
                                        [])))))
 
-(mi/define-methods
- FieldValues
- {:properties  (constantly {::mi/timestamped? true})
-  :types       (constantly {:human_readable_values :json-no-keywordization
-                            :values                :json
-                            :type                  :keyword})
-  :pre-insert  pre-insert
-  :pre-update  pre-update
-  :post-select post-select})
 
-(defmethod serdes/hash-fields FieldValues
+(defmethod serdes/hash-fields :model/FieldValues
   [_field-values]
   [(serdes/hydrated-hash :field)])
 

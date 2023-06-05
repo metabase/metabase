@@ -1,4 +1,4 @@
-import React, {
+import {
   ChangeEvent,
   KeyboardEvent,
   forwardRef,
@@ -155,4 +155,5 @@ const EditableText = forwardRef(function EditableText(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(EditableText, { Root: EditableTextRoot });

@@ -7,4 +7,5 @@ const FormFooter = styled.div`
   gap: 0.5rem;
 `;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormFooter;

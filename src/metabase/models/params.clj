@@ -25,7 +25,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -77,7 +78,8 @@
 
 (defn- field-ids->param-field-values-ignoring-current-user
   [param-field-ids]
-  (t2/select-fn->fn :field_id identity ['FieldValues :values :human_readable_values :field_id]
+  (t2/select-fn->fn :field_id (comp identity t2.realize/realize)
+                    ['FieldValues :values :human_readable_values :field_id]
                     :type :full
                     :field_id [:in param-field-ids]))
 

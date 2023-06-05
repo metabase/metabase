@@ -55,7 +55,7 @@ const getDatabasesSidebar = (metadata: Metadata): DataSidebarProps => {
       id: database.id,
       name: database.name,
       entityId: getDatabaseEntityId(database),
-      icon: "database",
+      icon: "database" as const,
     }));
 
   return {
@@ -86,7 +86,7 @@ const getTablesSidebar = (
         id: getSchemaId(schema.name),
         name: schema.name,
         entityId: getSchemaEntityId(schema),
-        icon: "folder",
+        icon: "folder" as const,
         children: schema
           .getTables()
           .sort((a, b) => a.displayName().localeCompare(b.displayName()))
@@ -94,7 +94,7 @@ const getTablesSidebar = (
             id: getTableId(table.id),
             entityId: getTableEntityId(table),
             name: table.displayName(),
-            icon: "table",
+            icon: "table" as const,
           })),
       };
     });
@@ -129,7 +129,7 @@ export const getDataFocusSidebar: Selector<State, DataSidebarProps | null> =
         return getDatabasesSidebar(metadata);
       }
 
-      const database = getDatabase(metadata, databaseId);
+      const database = getDatabase(metadata, parseInt(databaseId));
 
       return getTablesSidebar(database, schemaName, tableId);
     },

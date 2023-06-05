@@ -1,4 +1,5 @@
-import React, { forwardRef } from "react";
+import { forwardRef } from "react";
+import * as React from "react";
 
 import FormInputWidget from "metabase/core/components/FormInput";
 import FormTextAreaWidget from "metabase/core/components/FormTextArea";
@@ -43,4 +44,5 @@ const ActionFormFieldWidget = forwardRef(function FormFieldWidget(
   return <Widget {...formField} nullable ref={ref} />;
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionFormFieldWidget;

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -218,9 +218,10 @@ function NoActionsState({
 
 function mostRecentFirst(action: WritebackAction) {
   const createdAt = parseTimestamp(action["created_at"]);
-  return -createdAt.unix();
+  return -createdAt.valueOf();
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Actions.loadList({
     query: (state: State, { model }: OwnProps) => ({

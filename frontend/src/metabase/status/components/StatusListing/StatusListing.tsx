@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { useBeforeUnload } from "react-use";
 
@@ -34,4 +33,5 @@ const StatusListingView = () => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default StatusListingView;

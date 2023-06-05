@@ -1,6 +1,5 @@
-import React from "react";
+import { Icon } from "metabase/core/components/Icon";
 
-import Icon from "metabase/components/Icon";
 import {
   ActionOptionListItem,
   ActionOptionTitle,
@@ -14,6 +13,7 @@ interface ActionOptionProps {
   onClick: () => void;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ActionOptionItem({
   name,
   description,

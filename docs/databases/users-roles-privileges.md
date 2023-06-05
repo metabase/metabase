@@ -132,14 +132,14 @@ GRANT metabase_model_caching TO metabase;
 
 ## Multi-tenant permissions
 
-If you're setting up multi-tenant permissions for customers who need SQL access, you can [create one database connection per customer](https://www.metabase.com/learn/permissions/multi-tenant-permissions#option-2-granting-customers-native-sql-access-to-their-schema). That means each customer will connect to the database using their own database user.
+If you're setting up multi-tenant permissions for customers who need SQL access, you can [create one database connection per customer](https://www.metabase.com/learn/permissions/multi-tenant-permissions#granting-customers-native-sql-access-to-their-schema). That means each customer will connect to the database using their own database user.
 
 Let's say you have customers named Tangerine and Lemon:
 
 - Create new database users `metabase_tangerine` and `metabase_lemon`.
 - Create a `customer_facing_analytics` role with the `CONNECT` privilege.
 - Create roles to bundle privileges specific to each customer's use case. For example:
-  - `tangerine_queries` to bundle read privileges for people to query and create stored procedures against the Orange schema.
+  - `tangerine_queries` to bundle read privileges for people to query and create stored procedures against the Tangerine schema.
   - `lemon_queries` to bundle read privileges for people to query tables in the Lemon schema.
   - `lemon_actions` to bundle the write privileges needed to create [actions](#privileges-to-enable-actions) on a Lemonade table in the Lemon schema.
 - Add each user to their respective roles.

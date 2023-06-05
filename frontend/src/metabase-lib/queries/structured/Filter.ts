@@ -33,6 +33,7 @@ interface FilterDisplayNameOpts {
   includeOperator?: boolean;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Filter extends MBQLClause {
   /**
    * Replaces the filter in the parent query and returns the new StructuredQuery
@@ -95,7 +96,7 @@ export default class Filter extends MBQLClause {
   isValid() {
     if (this.isStandard()) {
       // has an operator name and dimension or expression
-      const dimension = this.dimension();
+      const dimension = this.dimension().getMLv1CompatibleDimension();
 
       if (!dimension && isExpression(this[1])) {
         return true;
@@ -118,7 +119,7 @@ export default class Filter extends MBQLClause {
       if (operator) {
         const args = this.arguments();
 
-        // has the mininum number of arguments
+        // has the minimum number of arguments
         if (args.length < operator.fields.length) {
           return false;
         }

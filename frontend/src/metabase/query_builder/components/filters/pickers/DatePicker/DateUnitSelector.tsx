@@ -1,5 +1,3 @@
-import React from "react";
-
 import Select, { Option } from "metabase/core/components/Select";
 import * as Lib from "metabase-lib";
 
@@ -43,4 +41,5 @@ const DateUnitSelector = ({
   </Select>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DateUnitSelector;

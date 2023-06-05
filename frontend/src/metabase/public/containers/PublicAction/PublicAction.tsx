@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 
 import title from "metabase/hoc/Title";
 import { PublicApi } from "metabase/services";
@@ -54,4 +54,5 @@ function PublicAction({ action, publicId, onError }: Props) {
 
 const getPageTitle = ({ action }: Props) => action.name;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default title(getPageTitle)(PublicAction);

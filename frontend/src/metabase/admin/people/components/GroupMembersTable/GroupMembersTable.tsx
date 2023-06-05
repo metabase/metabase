@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
-import React, { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { getFullName } from "metabase/lib/user";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import PaginationControls from "metabase/components/PaginationControls";
 
@@ -87,7 +87,7 @@ function GroupMembersTable({
   );
 
   return (
-    <React.Fragment>
+    <Fragment>
       <AdminContentTable columnTitles={columnTitles}>
         {showAddUser && (
           <AddMemberRow
@@ -128,10 +128,11 @@ function GroupMembersTable({
           <h2 className="text-medium">{t`A group is only as good as its members.`}</h2>
         </div>
       )}
-    </React.Fragment>
+    </Fragment>
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default User.loadList({
   reload: true,
   pageSize: 25,

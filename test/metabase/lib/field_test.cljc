@@ -6,6 +6,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.composed-provider
+    :as lib.metadata.composed-provider]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
@@ -131,19 +133,16 @@
 
 (deftest ^:parallel unresolved-lib-field-with-temporal-bucket-test
   (let [query (lib/query-for-table-name meta/metadata-provider "CHECKINS")
-        f (lib/with-temporal-bucket (lib/field (meta/id :checkins :date)) :year)]
+        f (lib/with-temporal-bucket (lib/field (meta/id :checkins :date)) :day-of-month)]
     (is (fn? f))
     (let [field (f query -1)]
-      (is (=? [:field {:temporal-unit :year} (meta/id :checkins :date)]
+      (is (=? [:field {:temporal-unit :day-of-month} (meta/id :checkins :date)]
               field))
-      (testing "(lib/temporal-bucket <column-metadata>)"
-        (is (= :year
-               (lib/temporal-bucket (lib.metadata.calculation/metadata query -1 field)))))
       (testing "(lib/temporal-bucket <field-ref>)"
         (is (= {:lib/type :type/temporal-bucketing-option
-                :unit :year}
-               (lib/temporal-bucket-option field))))
-      (is (= "Date (year)"
+                :unit :day-of-month}
+               (lib/temporal-bucket field))))
+      (is (= "Date: Day of month"
              (lib.metadata.calculation/display-name query -1 field))))))
 
 (def ^:private temporal-bucketing-mock-metadata
@@ -160,7 +159,7 @@
         time-field        (assoc (meta/field-metadata :orders :created-at)
                                  :base-type      :type/Time
                                  :effective-type :type/Time)
-        metadata-provider (lib.tu/composed-metadata-provider
+        metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
                            (lib.tu/mock-metadata-provider
                             {:fields [date-field
                                       time-field]})
@@ -183,8 +182,9 @@
       (testing "should calculate correct effective type"
         (is (= effective-type
                (lib.metadata.calculation/type-of (:query temporal-bucketing-mock-metadata) x'))))
-      (testing "lib/temporal-bucket should return the unit"
-        (is (= unit
+      (testing "lib/temporal-bucket should return the option"
+        (is (= {:lib/type :type/temporal-bucketing-option
+                :unit     unit}
                (lib/temporal-bucket x')))
         (testing "should generate a :field ref with correct :temporal-unit"
           (is (=? [:field
@@ -197,7 +197,6 @@
       (testing "remove the temporal unit"
         (let [x'' (lib/with-temporal-bucket x' nil)]
           (is (nil? (lib/temporal-bucket x'')))
-          (is (nil? (lib/temporal-bucket-option x'')))
           (is (= x
                  x''))))
       (testing "change the temporal unit, THEN remove it"
@@ -210,9 +209,13 @@
 (deftest ^:parallel available-temporal-buckets-test
   (doseq [{:keys [metadata expected-options]}
           [{:metadata         (get-in temporal-bucketing-mock-metadata [:fields :date])
-            :expected-options lib.temporal-bucket/date-bucket-options}
+            :expected-options (-> lib.temporal-bucket/date-bucket-options
+                                  (update 0 dissoc :default)
+                                  (assoc-in [2 :default] true))}
            {:metadata         (get-in temporal-bucketing-mock-metadata [:fields :datetime])
-            :expected-options lib.temporal-bucket/datetime-bucket-options}
+            :expected-options (-> lib.temporal-bucket/datetime-bucket-options
+                                  (update 2 dissoc :default)
+                                  (assoc-in [4 :default] true))}
            {:metadata         (get-in temporal-bucketing-mock-metadata [:fields :time])
             :expected-options lib.temporal-bucket/time-bucket-options}]]
     (testing (str (:base-type metadata) " Field")
@@ -222,7 +225,8 @@
                  (lib/available-temporal-buckets (:query temporal-bucketing-mock-metadata) x)))
           (testing "Bucketing with any of the options should work"
             (doseq [expected-option expected-options]
-              (is (= (:unit expected-option)
+              (is (= {:lib/type :type/temporal-bucketing-option
+                     :unit      (:unit expected-option)}
                      (lib/temporal-bucket (lib/with-temporal-bucket x expected-option))))))
           (testing "Bucket it, should still return the same available units"
             (is (= expected-options
@@ -230,20 +234,23 @@
                                                    (lib/with-temporal-bucket x :month-of-year))))))))))
 
 (deftest ^:parallel unresolved-lib-field-with-binning-test
-  (let [query   (lib/query-for-table-name meta/metadata-provider "ORDERS")
-        binning {:strategy :num-bins
-                 :num-bins 10}
-        f       (lib/with-binning (lib/field (meta/id :orders :subtotal)) binning)]
+  (let [query         (lib/query-for-table-name meta/metadata-provider "ORDERS")
+        binning       {:strategy :num-bins
+                       :num-bins 10}
+        binning-typed (assoc binning
+                             :lib/type    ::lib.binning/binning
+                             :metadata-fn fn?)
+        f             (lib/with-binning (lib/field (meta/id :orders :subtotal)) binning)]
     (is (fn? f))
     (let [field (f query -1)]
       (is (=? [:field {:binning binning} (meta/id :orders :subtotal)]
               field))
       (testing "(lib/binning <column-metadata>)"
-        (is (= binning
-               (lib/binning (lib.metadata.calculation/metadata query -1 field)))))
+        (is (=? binning-typed
+                (lib/binning (lib.metadata.calculation/metadata query -1 field)))))
       (testing "(lib/binning <field-ref>)"
-        (is (= binning
-               (lib/binning field))))
+        (is (=? binning-typed
+                (lib/binning field))))
       #?(:clj
          ;; i18n/trun doesn't work in the CLJS tests, only in proper FE, so this test is JVM-only.
          (is (= "Subtotal: 10 bins"
@@ -260,8 +267,10 @@
           :let                  [x' (lib/with-binning x binning1)]]
     (testing (str what " strategy = " (:strategy binning2) "\n\n" (u/pprint-to-str x') "\n")
       (testing "lib/binning should return the binning settings"
-        (is (= binning1
-               (lib/binning x'))))
+        (is (=? (merge binning1
+                       {:lib/type    ::lib.binning/binning
+                        :metadata-fn fn?})
+                (lib/binning x'))))
       (testing "should generate a :field ref with correct :binning"
         (is (=? [:field
                  {:lib/uuid string?
@@ -276,8 +285,10 @@
       (testing "change the binning setting, THEN remove it"
         (let [x''  (lib/with-binning x' binning2)
               x''' (lib/with-binning x'' nil)]
-          (is (= binning2
-                 (lib/binning x'')))
+          (is (=? (merge binning2
+                         {:lib/type    ::lib.binning/binning
+                          :metadata-fn fn?})
+                  (lib/binning x'')))
           (is (nil? (lib/binning x''')))
           (is (= x
                  x''')))))))
@@ -299,9 +310,41 @@
           (testing "when binned, should still return the same available units"
             (let [binned (lib/with-binning x (second expected-options))]
               (is (= (-> expected-options second :mbql)
-                     (lib/binning binned)))
+                     (-> binned lib/binning (dissoc :lib/type :metadata-fn))))
               (is (= expected-options
                      (lib/available-binning-strategies query binned))))))))))
+
+(deftest ^:parallel binning-display-info-test
+  (testing "numeric binning"
+    (let [query          (lib/query-for-table-name meta/metadata-provider "ORDERS")
+          field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "ORDERS" "SUBTOTAL")
+          strategies     (lib.binning/numeric-binning-strategies)]
+      (doseq [[strat exp] (zipmap strategies [{:display-name "Auto binned" :default true}
+                                              {:display-name "10 bins"}
+                                              {:display-name "50 bins"}
+                                              {:display-name "100 bins"}
+                                              nil])]
+        (is (= exp
+               (some->> strat
+                        (lib.binning/with-binning field-metadata)
+                        lib.binning/binning
+                        (lib/display-info query)))))))
+
+  (testing "coordinate binning"
+    (let [query          (lib/query-for-table-name meta/metadata-provider "PEOPLE")
+          field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "PEOPLE" "LATITUDE")
+          strategies     (lib.binning/coordinate-binning-strategies)]
+      (doseq [[strat exp] (zipmap strategies [{:display-name "Auto binned" :default true}
+                                              {:display-name "0.1°"}
+                                              {:display-name "1°"}
+                                              {:display-name "10°"}
+                                              {:display-name "20°"}
+                                              nil])]
+        (is (= exp
+               (some->> strat
+                        (lib.binning/with-binning field-metadata)
+                        lib.binning/binning
+                        (lib/display-info query))))))))
 
 (deftest ^:parallel joined-field-column-name-test
   (let [card  {:dataset-query {:database (meta/id)
@@ -342,15 +385,24 @@
       (are [style expected] (= expected
                                (lib/display-name query -1 categories-name style))
         :default "Name"
-        :long    "Categories → Name")
+        :long    "Category → Name")
       (let [query' (lib/order-by query categories-name)]
         (testing "Implicitly joinable columns should NOT be given a join alias"
           (is (=? {:stages [{:order-by [[:asc {} [:field
                                                   (complement :join-alias)
                                                   (meta/id :categories :name)]]]}]}
                   query')))
-        (is (= "Venues, Sorted by Categories → Name ascending"
-               (lib/describe-query query')))))))
+        (is (= "Venues, Sorted by Category → Name ascending"
+               (lib/describe-query query'))))
+      (testing "inside aggregations"
+        (let [query'        (lib/aggregate query (lib/distinct categories-name))
+              [aggregation] (lib/aggregations query')]
+          (is (= "Venues, Distinct values of Category → Name"
+                 (lib/describe-query query')))
+          (are [style expected] (= expected
+                                   (lib/display-name query' -1 aggregation style))
+            :long    "Distinct values of Category → Name"
+            :default "Distinct values of Name"))))))
 
 (deftest ^:parallel source-card-table-display-info-test
   (let [query (assoc lib.tu/venues-query :lib/metadata lib.tu/metadata-provider-with-card)
@@ -372,7 +424,7 @@
                                              :query    {:source-table (meta/id :checkins)
                                                         :aggregation  [[:count]]
                                                         :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}
-          metadata-provider (lib.tu/composed-metadata-provider
+          metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
                              meta/metadata-provider
                              (lib.tu/mock-metadata-provider
                               {:cards [card-1]}))
@@ -412,8 +464,57 @@
                 :lib/source               :source/breakouts
                 :lib/source-column-alias  "LAST_LOGIN"
                 :lib/desired-column-alias "LAST_LOGIN"}
-               {:name                     "avg_count"
+               {:name                     "avg"
                 :lib/source               :source/aggregations
-                :lib/source-column-alias  "avg_count"
-                :lib/desired-column-alias "avg_count"}]
+                :lib/source-column-alias  "avg"
+                :lib/desired-column-alias "avg"}]
               (lib.metadata.calculation/metadata query))))))
+
+(deftest ^:parallel with-fields-test
+  (let [query           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                            (lib/with-fields [(lib/field "VENUES" "ID") (lib/field "VENUES" "NAME")]))
+        fields-metadata (fn [query]
+                          (map (partial lib.metadata.calculation/metadata query)
+                               (lib/fields query)))
+        metadatas       (fields-metadata query)]
+    (is (=? [{:name "ID"}
+             {:name "NAME"}]
+            metadatas))
+    (testing "Set fields with metadatas"
+      (let [fields' [(last metadatas)]
+            query'  (lib/with-fields query fields')]
+        (is (=? [{:name "NAME"}]
+                (fields-metadata query')))))
+    (testing "remove fields by passing"
+      (doseq [new-fields [nil []]]
+        (testing (pr-str new-fields)
+          (let [query' (lib/with-fields query new-fields)]
+            (is (empty? (fields-metadata query')))
+            (letfn [(has-fields? [query]
+                      (get-in query [:stages 0 :fields]))]
+              (is (has-fields? query)
+                  "sanity check")
+              (is (not (has-fields? query'))))))))))
+
+(deftest ^:parallel fieldable-columns-test
+  (testing "query with no :fields"
+    (is (=? [{:lib/desired-column-alias "ID", :selected? true}
+             {:lib/desired-column-alias "NAME", :selected? true}
+             {:lib/desired-column-alias "CATEGORY_ID", :selected? true}
+             {:lib/desired-column-alias "LATITUDE", :selected? true}
+             {:lib/desired-column-alias "LONGITUDE", :selected? true}
+             {:lib/desired-column-alias "PRICE", :selected? true}]
+            (lib/fieldable-columns (lib/query-for-table-name meta/metadata-provider "VENUES"))))))
+
+(deftest ^:parallel fieldable-columns-query-with-fields-test
+  (testing "query with :fields"
+    (is (=? [{:lib/desired-column-alias "ID", :selected? true}
+             {:lib/desired-column-alias "NAME", :selected? true}
+             {:lib/desired-column-alias "CATEGORY_ID", :selected? false}
+             {:lib/desired-column-alias "LATITUDE", :selected? false}
+             {:lib/desired-column-alias "LONGITUDE", :selected? false}
+             {:lib/desired-column-alias "PRICE", :selected? false}]
+            (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                (lib/with-fields [(meta/field-metadata :venues :id)
+                                  (meta/field-metadata :venues :name)])
+                lib/fieldable-columns )))))

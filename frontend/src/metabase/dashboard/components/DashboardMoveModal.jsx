@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
 import { color } from "metabase/lib/colors";
@@ -18,7 +18,7 @@ const mapDispatchToProps = {
   setDashboardCollection: Dashboards.actions.setCollection,
 };
 
-class DashboardMoveModalInner extends React.Component {
+class DashboardMoveModalInner extends Component {
   render() {
     const { dashboard, onClose, setDashboardCollection } = this.props;
     const title = t`Move dashboard to…`;

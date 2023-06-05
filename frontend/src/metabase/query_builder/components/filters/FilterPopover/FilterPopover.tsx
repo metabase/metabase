@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import * as React from "react";
 import { t } from "ttag";
 
 import { usePrevious } from "react-use";
 
 import { color } from "metabase/lib/colors";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
-import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
-import ExpressionWidgetHeader from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
+import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import type { Expression } from "metabase-types/api";
 import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
 import { FieldDimension } from "metabase-lib/Dimension";
@@ -51,6 +52,7 @@ type Props = {
   checkedColor?: string;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function FilterPopover({
   isNew: isNewProp,
   filter: filterProp,

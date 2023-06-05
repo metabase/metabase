@@ -1,4 +1,3 @@
-import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
@@ -42,4 +41,5 @@ const SettingsLicense = ({ upgradeUrl }: SettingsLicenseProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(SettingsLicense);

@@ -1,6 +1,4 @@
 /* istanbul ignore file */
-import React from "react";
-
 import {
   renderWithProviders,
   screen,

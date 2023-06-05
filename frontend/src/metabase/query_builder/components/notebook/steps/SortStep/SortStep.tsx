@@ -1,7 +1,6 @@
-import React from "react";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import * as Lib from "metabase-lib";
 
@@ -61,13 +60,14 @@ function SortStep({
       isLastOpened={isLastOpened}
       renderName={clause => (
         <SortDisplayName
-          displayInfo={Lib.displayInfo(topLevelQuery, clause)}
+          displayInfo={Lib.displayInfo(topLevelQuery, stageIndex, clause)}
           onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
         />
       )}
       renderPopover={clause => (
         <SortColumnPicker
           query={topLevelQuery}
+          stageIndex={stageIndex}
           columnGroups={groupedColumns}
           onSelect={(column: Lib.ColumnMetadata) => {
             const isUpdate = clause != null;
@@ -108,4 +108,5 @@ function SortDisplayName({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SortStep;

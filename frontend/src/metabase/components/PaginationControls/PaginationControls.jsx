@@ -1,10 +1,8 @@
-import React from "react";
+import { Fragment } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-import Icon, { IconWrapper } from "metabase/components/Icon";
+import Button from "metabase/core/components/Button";
 
 export default function PaginationControls({
   page,
@@ -30,37 +28,32 @@ export default function PaginationControls({
       <span className="mr1">
         {page * pageSize + 1} - {page * pageSize + itemsLength}
         {showTotal && (
-          <React.Fragment>
+          <Fragment>
             <span className="text-light">&nbsp;{t`of`}&nbsp;</span>
             <span data-testid="pagination-total">{total}</span>
-          </React.Fragment>
+          </Fragment>
         )}
       </span>
-      <PaginationButton
+      <Button
+        onlyIcon
+        icon="chevronleft"
         onClick={onPreviousPage}
         disabled={isPreviousDisabled}
         data-testid="previous-page-btn"
-      >
-        <Icon name="chevronleft" />
-      </PaginationButton>
-      <PaginationButton
-        small
+        aria-label={t`Previous page`}
+      />
+
+      <Button
+        onlyIcon
+        icon="chevronright"
         onClick={onNextPage}
         disabled={isNextDisabled}
         data-testid="next-page-btn"
-      >
-        <Icon name="chevronright" />
-      </PaginationButton>
+        aria-label={t`Next page`}
+      />
     </div>
   );
 }
-
-const PaginationButton = styled(IconWrapper.withComponent("button"))`
-  &:disabled {
-    background-color: transparent;
-    color: ${color("text-light")};
-  }
-`;
 
 PaginationControls.propTypes = {
   page: PropTypes.number.isRequired,

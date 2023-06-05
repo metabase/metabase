@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import * as React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
@@ -234,4 +234,5 @@ const DatePicker: React.FC<Props> = props => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatePicker;

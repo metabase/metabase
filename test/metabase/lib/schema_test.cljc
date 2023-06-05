@@ -68,7 +68,8 @@
 
 (def ^:private valid-expression
   [:+
-   {:lib/uuid (str (random-uuid))}
+   {:lib/uuid (str (random-uuid))
+    :lib/expression-name "price + 2"}
    [:field
     {:lib/uuid (str (random-uuid))}
     2]
@@ -79,15 +80,15 @@
                          (me/humanize (mc/explain ::lib.schema/stage stage)))
     {:lib/type     :mbql.stage/mbql
      :source-table 1
-     :expressions  {"price + 2" valid-expression}
+     :expressions  [valid-expression]
      :fields       [[:expression {:lib/uuid (str (random-uuid))} "price + 2"]]}
     nil
 
     {:lib/type     :mbql.stage/mbql
      :source-table 1
-     :expressions  {"price + 1" valid-expression}
-     :fields       [[:expression {:lib/uuid (str (random-uuid))} "price + 2"]]}
-    ["Invalid :expression reference: no expression named \"price + 2\""]
+     :expressions  [valid-expression]
+     :fields       [[:expression {:lib/uuid (str (random-uuid))} "price + 1"]]}
+    ["Invalid :expression reference: no expression named \"price + 1\""]
 
     {:lib/type     :mbql.stage/mbql
      :source-table 1
@@ -107,7 +108,7 @@
                                     [:field {:join-alias "Q1", :lib/uuid (str (random-uuid))} 2]]]
                      :stages      [{:lib/type     :mbql.stage/mbql
                                     :source-table 3
-                                    :expressions  {"price + 2" valid-expression}
+                                    :expressions  [valid-expression]
                                     :order-by     [[:asc
                                                     {:lib/uuid (str (random-uuid))}
                                                     [:expression {:lib/uuid (str (random-uuid))} "price + 2"]]]}

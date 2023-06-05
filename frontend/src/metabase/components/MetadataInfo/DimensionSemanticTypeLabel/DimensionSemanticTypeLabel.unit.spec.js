@@ -1,23 +1,32 @@
-import React from "react";
-
-import { render, screen, getIcon } from "__support__/ui";
+import { renderWithProviders, screen, getIcon } from "__support__/ui";
+import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
+  createSampleDatabase,
   PRODUCTS,
   ORDERS,
-  metadata,
-} from "__support__/sample_database_fixture";
-
+} from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 import Dimension from "metabase-lib/Dimension";
 import DimensionSemanticTypeLabel from "./DimensionSemanticTypeLabel";
 
+const state = createMockState({
+  entities: createMockEntitiesState({
+    databases: [createSampleDatabase()],
+  }),
+});
+const metadata = getMetadata(state);
+
 function setup(dimension) {
-  return render(<DimensionSemanticTypeLabel dimension={dimension} />);
+  return renderWithProviders(
+    <DimensionSemanticTypeLabel dimension={dimension} />,
+  );
 }
 
 describe("DimensionSemanticTypeLabel", () => {
   describe("given a dimension with a semantic type", () => {
     const fieldDimension = Dimension.parseMBQL(
-      ["field", PRODUCTS.CREATED_AT.id, null],
+      ["field", PRODUCTS.CREATED_AT, null],
       metadata,
     );
     fieldDimension.field().semantic_type = "type/CreationDate";
@@ -35,7 +44,7 @@ describe("DimensionSemanticTypeLabel", () => {
 
   describe("given a dimension without a semantic type", () => {
     const fieldDimension = Dimension.parseMBQL(
-      ["field", ORDERS.TAX.id, null],
+      ["field", ORDERS.TAX, null],
       metadata,
     );
 

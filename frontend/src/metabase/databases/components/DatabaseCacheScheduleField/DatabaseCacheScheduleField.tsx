@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback } from "react";
+import { ReactNode, useCallback } from "react";
 import { useField, useFormikContext } from "formik";
 import { t } from "ttag";
 import FormField from "metabase/core/components/FormField";
@@ -133,4 +133,5 @@ const ScheduleOption = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseCacheScheduleField;

@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
+
+import * as React from "react";
 
 import Popover from "metabase/components/Popover";
 import FilterComponent from "metabase/query_builder/components/Filter";
@@ -69,6 +71,7 @@ type State = {
   isOpen: boolean;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class FilterWidget extends Component<Props, State> {
   rootRef: React.RefObject<HTMLDivElement>;
 

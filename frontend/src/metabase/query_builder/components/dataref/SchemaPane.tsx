@@ -1,5 +1,5 @@
 import { ngettext, msgid } from "ttag";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 
 import Schemas from "metabase/entities/schemas";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
@@ -30,8 +30,8 @@ const SchemaPane = ({
   schema,
 }: SchemaPaneProps) => {
   const tables = useMemo(
-    () => schema.tables.sort((a, b) => a.name.localeCompare(b.name)),
-    [schema.tables],
+    () => schema.getTables().sort((a, b) => a.name.localeCompare(b.name)),
+    [schema],
   );
   return (
     <SidebarContent
@@ -68,6 +68,7 @@ const SchemaPane = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Schemas.load({
   id: (_state: State, props: SchemaPaneProps) => props.schema.id,
 })(SchemaPane);

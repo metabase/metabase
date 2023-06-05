@@ -93,6 +93,16 @@
   [query-map]
   (-> query-map convert/->legacy-MBQL fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
+(defn ^:export append-stage
+  "Adds a new blank stage to the end of the pipeline"
+  [a-query]
+  (lib.core/append-stage a-query))
+
+(defn ^:export drop-stage
+  "Drops the final stage in the pipeline"
+  [a-query]
+  (lib.core/drop-stage a-query))
+
 (defn ^:export orderable-columns
   "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To
   add an order by, pass the result to [[order-by]]."
@@ -167,6 +177,52 @@
    (breakout a-query -1 x))
   ([a-query stage-number x]
    (lib.core/breakout a-query stage-number (lib.core/ref x))))
+
+(defn ^:export binning
+  "Retrieve the current binning state of a `:field` clause, field metadata, etc. as an opaque object, or `nil` if it
+  does not have binning options set."
+  [x]
+  (lib.core/binning x))
+
+(defn ^:export with-binning
+  "Given `x` (a field reference) and a `binning` value, return a new `:field` clause with its `:binning` options set.
+
+  If `binning` is `nil`, removes any `:binning` options currently present.
+
+  `binning` can be one of the opaque values returned by [[available-binning-strategies]], or a literal
+  [[metabase.lib.schema.binning/binning]] value."
+  [x binning-option]
+  (lib.core/with-binning x binning-option))
+
+(defn ^:export available-binning-strategies
+  "Get a list of available binning strategies for `x` (a field reference, generally) in the context of `a-query` and
+  optionally `stage-number`. The returned list contains opaque objects which should be passed to [[display-info]]."
+  ([a-query x]
+   (-> (lib.core/available-binning-strategies a-query x)
+       to-array))
+  ([a-query stage-number x]
+   (-> (lib.core/available-binning-strategies a-query stage-number x)
+       to-array)))
+
+(defn ^:export temporal-bucket
+  "Get the current temporal bucketing options associated with something, if any."
+  [x]
+  (lib.core/temporal-bucket x))
+
+(defn ^:export with-temporal-bucket
+  "Add a temporal bucketing option to an MBQL clause (or something that can be converted to an MBQL clause)."
+  [x bucketing-option]
+  (lib.core/with-temporal-bucket x bucketing-option))
+
+(defn ^:export available-temporal-buckets
+  "Get a list of available temporal bucketing options for `x` (a field reference, generally) in the context of `a-query`
+  and optionally `stage-number`. The returned list contains opaque objects which should be passed to [[display-info]]."
+  ([a-query x]
+   (-> (lib.core/available-temporal-buckets a-query x)
+       to-array))
+  ([a-query stage-number x]
+   (-> (lib.core/available-temporal-buckets a-query stage-number x)
+       to-array)))
 
 (defn ^:export remove-clause
   "Removes the `target-clause` in the filter of the `query`."
@@ -266,3 +322,159 @@
   (let [n    (if (string? n) (keyword n) n)
         unit (if (string? unit) (keyword unit) unit)]
       (lib.core/describe-relative-datetime n unit)))
+
+(defn ^:export aggregate
+  "Adds an aggregation to query."
+  ([a-query an-aggregate-clause]
+   (aggregate a-query -1 an-aggregate-clause))
+  ([a-query stage-number an-aggregate-clause]
+   (lib.core/aggregate a-query stage-number an-aggregate-clause)))
+
+(defn ^:export aggregations
+  "Get the aggregations in a given stage of a query."
+  ([a-query]
+   (aggregations a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/aggregations a-query stage-number))))
+
+(defn ^:export aggregation-clause
+  "Returns a standalone aggregation clause for an `aggregation-operator` and
+   a `column`.
+   For aggregations requiring an argument `column` is mandatory, otherwise
+   it is optional."
+  ([aggregation-operator]
+   (lib.core/aggregation-clause aggregation-operator))
+  ([aggregation-operator column]
+   (lib.core/aggregation-clause aggregation-operator column)))
+
+(defn ^:export available-aggregation-operators
+  "Get the available aggregation operators for the stage with `stage-number` of
+  the query `a-query`.
+  If `stage-number` is omitted, the last stage is used."
+  ([a-query]
+   (available-aggregation-operators a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/available-aggregation-operators a-query stage-number))))
+
+(defn ^:export aggregation-operator-columns
+  "Get the columns `aggregation-operator` can be applied to.
+  The columns are valid for the stage of the query that was used in
+  [[available-binning-strategies]] to get `available-aggregation`."
+  [aggregation-operator]
+  (to-array (lib.core/aggregation-operator-columns aggregation-operator)))
+
+(defn ^:export selected-aggregation-operators
+  "Mark the operator and the column (if any) in `agg-operators` selected by `agg-clause`."
+  [agg-operators agg-clause]
+  (to-array (lib.core/selected-aggregation-operators (seq agg-operators) agg-clause)))
+
+(defn ^:export filterable-columns
+  "Get the available filterable columns for the stage with `stage-number` of
+  the query `a-query`.
+  If `stage-number` is omitted, the last stage is used."
+  ([a-query]
+   (filterable-columns a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/filterable-columns a-query stage-number))))
+
+(defn ^:export filterable-column-operators
+  "Returns the operators for which `filterable-column` is applicable."
+  [filterable-column]
+  (to-array (lib.core/filterable-column-operators filterable-column)))
+
+(defn ^:export filter-clause
+  "Returns a standalone filter clause for a `filter-operator`,
+  a `column`, and arguments."
+  [filter-operator column & args]
+  (apply lib.core/filter-clause filter-operator column args))
+
+(defn ^:export fields
+  "Get the current `:fields` in a query. Unlike the lib core version, this will return an empty sequence if `:fields` is
+  not specified rather than `nil` for JS-friendliness."
+  ([a-query]
+   (fields a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/fields a-query stage-number))))
+
+(defn ^:export with-fields
+  "Specify the `:fields` for a query. Pass an empty sequence or `nil` to remove `:fields`."
+  ([a-query new-fields]
+   (with-fields a-query -1 new-fields))
+  ([a-query stage-number new-fields]
+   (lib.core/with-fields a-query stage-number new-fields)))
+
+(defn ^:export fieldable-columns
+  "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query."
+  [a-query stage-number]
+  (to-array (lib.core/fieldable-columns a-query stage-number)))
+
+(defn ^:export join-strategy
+  "Get the strategy (type) of a given join as a plain string like `left-join`."
+  [a-join]
+  (u/qualified-name (lib.core/join-strategy a-join)))
+
+(defn ^:export with-join-strategy
+  "Return a copy of `a-join` with its `:strategy` set to `strategy`."
+  [a-join strategy]
+  (lib.core/with-join-strategy a-join (keyword strategy)))
+
+(defn ^:export available-join-strategies
+  "Get available join strategies for the current Database (based on the Database's
+  supported [[metabase.driver/driver-features]]) as strings like `left-join`."
+  [a-query stage-number]
+  (to-array (map u/qualified-name (lib.core/available-join-strategies a-query stage-number))))
+
+(defn ^:export join-condition-lhs-columns
+  "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
+  is the one that comes from the source Table/Card/previous stage of the query or a previous join.
+
+  If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
+  pass in the chosen RHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
+
+  Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns.
+
+  Unlike most other things that return columns, implicitly-joinable columns ARE NOT returned here."
+  [a-query stage-number rhs-column-or-nil]
+  (to-array (lib.core/join-condition-lhs-columns a-query stage-number rhs-column-or-nil)))
+
+(defn ^:export join-condition-rhs-columns
+  "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
+  is the one that belongs to the thing being joined, `joined-thing`, which can be something like a
+  Table ([[metabase.lib.metadata/TableMetadata]]), Saved Question/Model ([[metabase.lib.metadata/CardMetadata]]),
+  another query, etc. -- anything you can pass to [[join-clause]].
+
+  If the lhs-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
+  pass in the chosen LHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
+
+  Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns."
+  [a-query stage-number joined-thing lhs-column-or-nil]
+  (to-array (lib.core/join-condition-rhs-columns a-query stage-number joined-thing lhs-column-or-nil)))
+
+(defn ^:export join-condition-operators
+  "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
+  UI, this can be chosen at any point before or after choosing the LHS and RHS. Invalid options are not currently
+  filtered out based on values of the LHS or RHS, but in the future we can add this -- see #31174."
+  [a-query stage-number lhs-column-or-nil rhs-column-or-nil]
+  (to-array (lib.core/join-condition-operators a-query stage-number lhs-column-or-nil rhs-column-or-nil)))
+
+(defn ^:export expression
+  "Adds an expression to query."
+  ([a-query expression-name an-expression-clause]
+   (expression a-query -1 expression-name an-expression-clause))
+  ([a-query stage-number expression-name an-expression-clause]
+   (lib.core/expression a-query stage-number expression-name an-expression-clause)))
+
+(defn ^:export expressions
+  "Get the expressions map from a given stage of a `query`."
+  ([a-query]
+   (expressions a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/expressions a-query stage-number))))
+
+(defn ^:export expressionable-columns
+  "Return an array of Column metadatas about the columns that can be used in an expression in a given stage of `a-query`.
+   Pass the current `expression-position` or `null` for new expressions."
+  ([a-query expression-position]
+   (expressionable-columns a-query expression-position))
+  ([a-query stage-number expression-position]
+   (to-array (lib.core/expressionable-columns a-query stage-number expression-position))))

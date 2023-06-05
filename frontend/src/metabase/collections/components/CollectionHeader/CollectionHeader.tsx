@@ -1,4 +1,3 @@
-import React from "react";
 import { withRouter } from "react-router";
 import type { Location } from "history";
 
@@ -65,4 +64,5 @@ const CollectionHeader = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default withRouter(CollectionHeader);

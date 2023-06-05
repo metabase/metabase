@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
-import useActionForm from "metabase/actions/hooks/use-action-form";
 import { getFormTitle } from "metabase/actions/utils";
 
 import type {
@@ -50,21 +49,13 @@ function ActionVizForm({
 }: ActionFormProps) {
   const [showModal, setShowModal] = useState(false);
   const title = getFormTitle(action);
-  const { getCleanValues } = useActionForm({
-    action,
-    initialValues: dashcardParamValues,
-  });
 
   // only show confirmation if there are no missing parameters
   const showConfirmMessage =
-    shouldShowConfirmation(action) && !missingParameters.length;
+    shouldShowConfirmation(action) && missingParameters.length === 0;
 
   const onClick = () => {
-    if (missingParameters.length > 0 || showConfirmMessage) {
-      setShowModal(true);
-    } else {
-      onSubmit(getCleanValues());
-    }
+    setShowModal(true);
   };
 
   const onModalSubmit = async (params: ParametersForActionExecution) => {
@@ -118,4 +109,5 @@ function ActionVizForm({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionVizForm;

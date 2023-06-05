@@ -1,10 +1,4 @@
-import React, {
-  MouseEvent,
-  useEffect,
-  useCallback,
-  useRef,
-  useState,
-} from "react";
+import { MouseEvent, useEffect, useCallback, useRef, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
@@ -13,7 +7,7 @@ import { withRouter } from "react-router";
 import { Location, LocationDescriptorObject } from "history";
 
 import { usePrevious } from "react-use";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { useKeyboardShortcut } from "metabase/hooks/use-keyboard-shortcut";
 import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
@@ -197,6 +191,7 @@ function SearchBar({
     </SearchBarRoot>
   );
 }
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   withRouter,
   connect(null, mapDispatchToProps),

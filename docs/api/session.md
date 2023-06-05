@@ -60,6 +60,34 @@ Login with Google Auth.
 
 *  **`request`**
 
+## `POST /api/session/pulse/unsubscribe`
+
+Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email.
+
+### PARAMS:
+
+*  **`email`** string
+
+*  **`hash`** string
+
+*  **`pulse-id`** value must be an integer greater than zero.
+
+*  **`request`**
+
+## `POST /api/session/pulse/unsubscribe/undo`
+
+Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email.
+
+### PARAMS:
+
+*  **`email`** string
+
+*  **`hash`** string
+
+*  **`pulse-id`** value must be an integer greater than zero.
+
+*  **`request`**
+
 ## `POST /api/session/reset_password`
 
 Reset password with a reset token.

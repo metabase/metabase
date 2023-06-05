@@ -12,6 +12,8 @@ export const SectionTitle = styled.h3`
 
 export const AggregationsContainer = styled(Section)`
   padding-top: 0;
+  display: inline-flex;
+  align-items: start;
 `;
 
 export const DimensionListContainer = styled(Section)`

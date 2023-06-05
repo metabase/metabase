@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getIn } from "icepick";
 
 import { useMount, usePrevious } from "react-use";
@@ -210,4 +210,5 @@ function ClickBehaviorSidebar({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ClickBehaviorSidebar;

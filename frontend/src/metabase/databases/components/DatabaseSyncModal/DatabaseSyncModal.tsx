@@ -1,4 +1,3 @@
-import React from "react";
 import { jt, t } from "ttag";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
@@ -49,4 +48,5 @@ const DatabaseSyncModal = ({ sampleUrl, onClose }: DatabaseSyncModalProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseSyncModal;

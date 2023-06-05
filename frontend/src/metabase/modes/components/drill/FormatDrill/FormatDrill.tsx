@@ -1,15 +1,11 @@
-import React from "react";
 import { t } from "ttag";
-
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import { updateSettings } from "metabase/visualizations/lib/settings";
-
 import type { VisualizationSettings } from "metabase-types/api";
-
+import type { ClickActionPopoverProps, Drill } from "metabase/modes/types";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
-import type { ClickActionPopoverProps, Drill } from "../../../types";
 import { PopoverRoot } from "./FormatDrill.styled";
 
 const FormatDrill: Drill = ({ question, clicked }) => {
@@ -75,4 +71,5 @@ const FormatDrill: Drill = ({ question, clicked }) => {
   ];
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormatDrill;

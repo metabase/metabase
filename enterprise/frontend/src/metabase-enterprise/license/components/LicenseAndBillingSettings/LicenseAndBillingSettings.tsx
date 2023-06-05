@@ -1,4 +1,3 @@
-import React from "react";
 import { t, jt } from "ttag";
 import { connect } from "react-redux";
 import moment from "moment-timezone";
@@ -177,6 +176,7 @@ const LicenseAndBillingSettings = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   (state: State): StateProps => ({
     settingValues: state.admin.settings.settings,

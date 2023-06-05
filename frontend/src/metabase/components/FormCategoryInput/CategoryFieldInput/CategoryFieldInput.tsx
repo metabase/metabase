@@ -1,4 +1,3 @@
-import React from "react";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import type Field from "metabase-lib/metadata/Field";
@@ -62,4 +61,5 @@ function CategoryFieldInput({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CategoryFieldInput;

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -13,7 +13,7 @@ import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import Card from "metabase/components/Card";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Filter from "metabase/query_builder/components/Filter";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -56,7 +56,7 @@ const mapDispatchToProps = {
   invalidateCollections: Collections.actions.invalidateLists,
 };
 
-class AutomaticDashboardAppInner extends React.Component {
+class AutomaticDashboardAppInner extends Component {
   state = {
     savedDashboardId: null,
   };
@@ -281,12 +281,11 @@ const SuggestionsList = ({ suggestions, section }) => (
                     name={RELATED_CONTENT[s].icon}
                     color={color("accent4")}
                     mr={1}
-                    size={22}
                   />
                   <h4 className="text-wrap">{item.title}</h4>
                   <ItemDescription className="hover-child">
                     <Tooltip tooltip={item.description}>
-                      <Icon name="question" color={color("bg-dark")} />
+                      <Icon name="info_outline" color={color("bg-dark")} />
                     </Tooltip>
                   </ItemDescription>
                 </ItemContent>

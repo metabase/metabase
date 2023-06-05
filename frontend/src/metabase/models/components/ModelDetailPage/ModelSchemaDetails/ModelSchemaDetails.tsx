@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t, ngettext, msgid } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -61,4 +61,5 @@ function ModelSchemaDetails({ model, hasEditMetadataLink }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelSchemaDetails;

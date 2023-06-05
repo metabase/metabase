@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import ClickMappings from "metabase/dashboard/components/ClickMappings";
@@ -39,4 +38,5 @@ function CrossfilterOptions({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CrossfilterOptions;

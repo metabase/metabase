@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio/Radio";
 import Modal from "metabase/components/Modal";
@@ -115,4 +115,5 @@ const getRadioOptions = (
   ];
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ValuesSourceSettings;

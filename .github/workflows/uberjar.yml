@@ -87,8 +87,10 @@ jobs:
     steps:
     - name: Extract and clean branch name
       shell: bash
-      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/} | sed 's/[^-._a-zA-Z0-9]/-/g')"
+      run: echo "branch=$(echo $GITHUB_REF_NAME | sed 's/[^-._a-zA-Z0-9]/-/g')" >> $GITHUB_OUTPUT
       id: extract_branch
+    - name: Verify the intended tag of the container image
+      run: echo "Container image will be tagged as ${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}"
     - name: Check out the code (Dockerfile needed)
       uses: actions/checkout@v3
       with:
@@ -102,11 +104,11 @@ jobs:
       run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
     - name: Set up Docker Buildx
       id: buildx
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v2.5.0
       with:
         driver-opts: network=host
     - name: Build ${{ matrix.edition }} container
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         context: bin/docker/.
         platforms: linux/amd64
@@ -123,7 +125,7 @@ jobs:
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       timeout-minutes: 3
     - name: Login to Docker Hub
-      uses: docker/login-action@v1
+      uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -203,8 +205,10 @@ jobs:
     steps:
       - name: Extract and clean branch name
         shell: bash
-        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/} | sed 's/[^-._a-zA-Z0-9]/-/g')"
+        run: echo "branch=$(echo $GITHUB_REF_NAME | sed 's/[^-._a-zA-Z0-9]/-/g')" >> $GITHUB_OUTPUT
         id: extract_branch
+      - name: Verify the intended tag of the container image
+        run: echo "Container image will be tagged as ${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}"
       - name: Check out the code (Dockerfile needed)
         uses: actions/checkout@v3
         with:
@@ -223,12 +227,12 @@ jobs:
           platforms: 'arm64'
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v2.5.0
         with:
           driver-opts: network=host
       # Build experimental ubuntu-based images only for master
       - name: Build ${{ matrix.edition }} Ubuntu based multi-arch container
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           context: bin/docker/.
           platforms: linux/amd64,linux/arm64
@@ -246,7 +250,7 @@ jobs:
         run: while ! curl -s 'http://localhost:3001/api/health' | grep '{"status":"ok"}'; do sleep 1; done
         timeout-minutes: 3
       - name: Login to Docker Hub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}

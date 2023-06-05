@@ -13,6 +13,7 @@ import {
   rightSidebar,
   getDashboardCardMenu,
   addOrUpdateDashboardCard,
+  openQuestionsSidebar,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -191,7 +192,7 @@ describe("scenarios > dashboard", () => {
   it("should add a question", () => {
     visitDashboard(1);
     cy.icon("pencil").click();
-    cy.get(".QueryBuilder-section .Icon-add").click();
+    openQuestionsSidebar();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders, Count").click();
     saveDashboard();
@@ -233,7 +234,7 @@ describe("scenarios > dashboard", () => {
     cy.findByText("This dashboard is looking empty.");
     // add previously created question to it
     cy.icon("pencil").click();
-    cy.icon("add").last().click();
+    openQuestionsSidebar();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("11007").click();
 
@@ -535,7 +536,7 @@ describe("scenarios > dashboard", () => {
     cy.intercept("GET", "/api/search*").as("search");
     visitDashboard(1);
     cy.icon("pencil").click();
-    cy.icon("add").last().click();
+    openQuestionsSidebar();
 
     sidebar().within(() => {
       // From the list
@@ -600,6 +601,87 @@ describe("scenarios > dashboard", () => {
     getDashboardCardMenu().click();
     popover().findByText("Edit question").click();
     cy.findByRole("button", { name: "Visualize" }).should("be.visible");
+  });
+
+  it("should allow making card hide when it is empty", () => {
+    const FILTER_ID = "d7988e02";
+
+    cy.log("Add filter to the dashboard");
+    cy.request("PUT", "/api/dashboard/1", {
+      parameters: [
+        {
+          id: FILTER_ID,
+          name: "ID",
+          slug: "id",
+          type: "id",
+        },
+      ],
+    });
+
+    cy.log("Connect filter to the existing card");
+    cy.request("PUT", "/api/dashboard/1/cards", {
+      cards: [
+        {
+          id: 1,
+          card_id: 1,
+          row: 0,
+          col: 0,
+          size_x: 12,
+          size_y: 8,
+          parameter_mappings: [
+            {
+              parameter_id: FILTER_ID,
+              card_id: 1,
+              target: ["dimension", ["field", ORDERS.ID]],
+            },
+          ],
+          visualization_settings: {},
+        },
+      ],
+    });
+
+    visitDashboard(1);
+    editDashboard();
+
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("palette").click({ force: true });
+    });
+
+    cy.findByRole("dialog").within(() => {
+      cy.findByRole("switch", {
+        name: "Hide this card if there are no results",
+      }).click();
+      cy.button("Done").click();
+    });
+
+    saveDashboard();
+
+    // Verify the card is hidden when the value is correct but produces empty results
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter an ID").type("-1{enter}");
+      cy.button("Add filter").click();
+    });
+
+    cy.findByTestId("dashcard").should("not.exist");
+
+    // Verify it becomes visible once the filter is cleared
+    filterWidget().within(() => {
+      cy.icon("close").click();
+    });
+
+    cy.findByTestId("dashcard").findByText("Orders");
+
+    // Verify the card is visible when it returned an error
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter an ID").type("text{enter}");
+      cy.button("Add filter").click();
+    });
+
+    cy.findByTestId("dashcard").within(() => {
+      cy.findByText("There was a problem displaying this chart.");
+    });
   });
 });
 

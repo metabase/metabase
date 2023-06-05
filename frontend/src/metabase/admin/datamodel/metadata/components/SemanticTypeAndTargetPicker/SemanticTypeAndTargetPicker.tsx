@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 import { currency } from "cljs/metabase.shared.util.currency";
@@ -210,4 +210,5 @@ const hasMultipleSchemas = (field: Field[]) => {
   return schemas.size > 1;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SemanticTypeAndTargetPicker;

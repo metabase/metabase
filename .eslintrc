@@ -15,6 +15,7 @@
     "no-empty": [1, { "allowEmptyCatch": true }],
     "curly": [1, "all"],
     "eqeqeq": [1, "smart"],
+    "import/no-default-export": 2,
     "import/no-commonjs": 1,
     "import/order": [
       "error",
@@ -96,6 +97,7 @@
   "extends": [
     "eslint:recommended",
     "plugin:react/recommended",
+    "plugin:react/jsx-runtime",
     "plugin:react-hooks/recommended",
     "plugin:import/errors",
     "plugin:import/warnings"

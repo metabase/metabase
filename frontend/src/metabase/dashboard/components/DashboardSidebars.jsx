@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
@@ -8,7 +8,7 @@ import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
-import DashboardInfoSidebar from "./DashboardInfoSidebar";
+import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
 import { ActionSidebar } from "./ActionSidebar";
 
@@ -45,6 +45,7 @@ DashboardSidebars.propTypes = {
   closeSidebar: PropTypes.func.isRequired,
   setDashboardAttribute: PropTypes.func,
   saveDashboardAndCards: PropTypes.func,
+  selectedTabId: PropTypes.number,
 };
 
 export function DashboardSidebars({
@@ -73,16 +74,18 @@ export function DashboardSidebars({
   closeSidebar,
   setDashboardAttribute,
   saveDashboardAndCards,
+  selectedTabId,
 }) {
   const handleAddCard = useCallback(
     cardId => {
       addCardToDashboard({
         dashId: dashboard.id,
         cardId: cardId,
+        tabId: selectedTabId,
       });
       MetabaseAnalytics.trackStructEvent("Dashboard", "Add Card");
     },
-    [addCardToDashboard, dashboard.id],
+    [addCardToDashboard, dashboard.id, selectedTabId],
   );
 
   if (isFullscreen) {

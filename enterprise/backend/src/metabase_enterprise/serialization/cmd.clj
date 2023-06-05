@@ -166,7 +166,7 @@
     (dump/dump path
                databases
                tables
-               (field/with-values fields)
+               (mapcat field/with-values (u/batches-of 32000 fields))
                metrics
                (select-segments-in-tables tables state)
                collections
@@ -186,8 +186,10 @@
   (mdb/setup-db!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (serdes/with-cache
-    (-> (v2.extract/extract (merge opts {:targets (v2.extract/make-targets-of-type "Collection" collections)
-                                         :user-id (t2/select-one-pk User :email user-email :is_superuser true)}))
+    (-> (cond-> opts
+         (seq collections) (assoc :targets (v2.extract/make-targets-of-type "Collection" collections))
+         user-email        (assoc :user-id (t2/select-one-pk User :email user-email :is_superuser true)))
+        v2.extract/extract
         (v2.storage/store! path)))
   (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦")))
 

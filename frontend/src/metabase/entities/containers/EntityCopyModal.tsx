@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import { dissoc } from "icepick";
 import { t } from "ttag";
 
@@ -43,4 +42,5 @@ const EntityCopyModal = ({
   </ModalContent>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EntityCopyModal;

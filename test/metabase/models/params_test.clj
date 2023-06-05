@@ -7,10 +7,10 @@
    [metabase.models.params :as params]
    [metabase.test :as mt]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.util.test :as tt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest wrap-field-id-if-needed-test
+(deftest ^:parallel wrap-field-id-if-needed-test
   (doseq [[x expected] {10                                      [:field 10 nil]
                         [:field 10 nil]                         [:field 10 nil]
                         [:field "name" {:base-type :type/Text}] [:field "name" {:base-type :type/Text}]}]
@@ -66,14 +66,14 @@
 
 (deftest hydrate-param-fields-for-card-test
   (testing "check that we can hydrate param_fields for a Card"
-    (tt/with-temp Card [card {:dataset_query
-                              {:database (mt/id)
-                               :type     :native
-                               :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
-                                          :template-tags {"name" {:name         "name"
-                                                                  :display_name "Name"
-                                                                  :type         :dimension
-                                                                  :dimension    [:field (mt/id :venues :id) nil]}}}}}]
+    (t2.with-temp/with-temp [Card card {:dataset_query
+                                        {:database (mt/id)
+                                         :type     :native
+                                         :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
+                                                    :template-tags {"name" {:name         "name"
+                                                                            :display_name "Name"
+                                                                            :type         :dimension
+                                                                            :dimension    [:field (mt/id :venues :id) nil]}}}}}]
       (is (= {(mt/id :venues :id) {:id               (mt/id :venues :id)
                                    :table_id         (mt/id :venues)
                                    :display_name     "ID"
@@ -111,7 +111,7 @@
                  :param_fields
                  mt/derecordize))))))
 
-(deftest card->template-tag-test
+(deftest ^:parallel card->template-tag-test
   (let [card {:dataset_query (mt/native-query {:template-tags {"id"   {:name         "id"
                                                                        :display_name "ID"
                                                                        :type         :dimension

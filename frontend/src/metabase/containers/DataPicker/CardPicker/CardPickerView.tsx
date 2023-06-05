@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import SelectList from "metabase/components/SelectList";
@@ -138,4 +138,5 @@ function CardPickerView({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CardPickerView;

@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import _ from "underscore";
 
 import User from "metabase/entities/users";

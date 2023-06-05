@@ -5,6 +5,7 @@ import type {
   QueryMode,
 } from "metabase-lib/queries/drills/types";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Mode {
   _question: Question;
   _queryMode: QueryMode;
@@ -25,7 +26,7 @@ export default class Mode {
   actionsForClick(
     clicked: ClickObject | undefined,
     settings: Record<string, any>,
-    extraData: Record<string, any>,
+    extraData?: Record<string, any>,
   ): ClickAction[] {
     const mode = this._queryMode;
     const question = this._question;

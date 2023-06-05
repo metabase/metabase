@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import Actions from "metabase/entities/actions";
@@ -53,6 +53,7 @@ const ActionExecuteModal = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Actions.load({
     id: (state: State, props: OwnProps) => props.actionId,
