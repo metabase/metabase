@@ -1,19 +1,11 @@
-import { Meta, Canvas } from "@storybook/blocks";
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
 import { Radio } from "./";
-import { Box } from "@mantine/core";
 
-<Meta title="Inputs/Radio/Overview" />
+<Meta title="Inputs/Radio & Radio Group" component={Radio} />
 
-# Radio
+# Radio & Radio.Group
 
 Our themed wrapper around [Mantine Radio](https://mantine.dev/core/radio/)
-
-<Box my={5}>
-  <Radio.Group label="Pick a data type">
-    <Radio label="Date" value="date" />
-    <Radio label="Birthday" value="birthday" />
-  </Radio.Group>
-</Box>
 
 ## Docs
 
@@ -23,3 +15,43 @@ Our themed wrapper around [Mantine Radio](https://mantine.dev/core/radio/)
 ## Caveats
 
 - As of right now, don't use the size prop.
+- Please don't use the `error` prop on Radio components (We'll standardize on this as other inputs get converted).
+
+## Usage
+
+In almost all circumstances you'll want to use `<Raio.Group>` to provide a set of options.
+
+## General
+
+<Canvas>
+  <Story name="Default">
+    <Radio.Group>
+      <Radio label="Yes" value="yes" checked />
+      <Radio label="No" value="no" />
+    </Radio.Group>
+  </Story>
+</Canvas>
+
+## Disabled
+
+<Canvas>
+  <Story name="Disabled">
+    <Radio.Group>
+      <Radio label="Yes" value="yes" disabled />
+      <Radio label="No" value="no" disabled checked />
+    </Radio.Group>
+  </Story>
+</Canvas>
+
+## Using the Radio group props
+
+You can use `label` and `description` on the Radio.Group component to provide a label and description for the set of choices.
+
+<Canvas>
+  <Story name="Radio Group props">
+    <Radio.Group label="A set of options" description="Choose one please">
+      <Radio label="I cannot be selected" checked disabled />
+      <Radio label="Select another me" />
+    </Radio.Group>
+  </Story>
+</Canvas>

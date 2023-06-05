@@ -1,6 +1,7 @@
+import React from "react";
 import "metabase/css/index.css";
 import { MantineProvider } from "@mantine/core";
-import { theme } from "metabase/ui/theme";
+import { theme } from "../frontend/src/metabase/ui/theme";
 
 export const parameters = {
   actions: { argTypesRegex: "^on[A-Z].*" },
