@@ -7,7 +7,7 @@ import CollectionCaption from "./CollectionCaption";
 import CollectionBookmark from "./CollectionBookmark";
 import CollectionMenu from "./CollectionMenu";
 import CollectionTimeline from "./CollectionTimeline";
-import CollectionUpload from "./CollectionUpload";
+import { CollectionUpload } from "./CollectionUpload";
 
 import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 

@@ -17,8 +17,7 @@ import { UploadInfoModal } from "./CollectionUploadInfoModal";
 
 const UPLOAD_FILE_TYPES = [".csv"];
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function ColllectionUpload({
+export function CollectionUpload({
   collection,
   uploadsEnabled,
   isAdmin,
