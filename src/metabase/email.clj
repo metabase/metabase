@@ -1,5 +1,6 @@
 (ns metabase.email
   (:require
+   [iapetos.core :as prometheus]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -9,6 +10,7 @@
    [postal.support :refer [make-props]]
    [schema.core :as s])
   (:import
+   (iapetos.registry IapetosRegistry)
    (javax.mail Session)))
 
 (set! *warn-on-reflection* true)
@@ -71,6 +73,26 @@
                (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
              (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
 
+(defonce ^:private ^{:doc "Prometheus registry for email-related metrics collectors."} ^IapetosRegistry registry nil)
+
+(defn setup-metrics!
+  "Register metrics collectors for the email subsystem."
+  [global-registry]
+  (alter-var-root #'registry (constantly
+                               (-> global-registry
+                                   (prometheus/subsystem "email")
+                                   (prometheus/register
+                                     (prometheus/counter :metabase/messages
+                                                         {:description (tru "Number of emails sent.")})
+                                     (prometheus/counter :metabase/message-errors
+                                                         {:description (tru "Number of errors when sending emails.")}))))))
+
+(defn shutdown-metrics!
+  "Clear metrics collectors of the email subsystem."
+  []
+  (prometheus/clear registry)
+  (alter-var-root #'registry (constantly nil)))
+
 ;; ## PUBLIC INTERFACE
 
 (def ^{:arglists '([smtp-credentials email-details])} send-email!
@@ -121,23 +143,29 @@
   does not catch and swallow thrown exceptions, it will bubble up."
   {:style/indent 0}
   [{:keys [subject recipients message-type message]} :- EmailMessage]
-  (when-not (email-smtp-host)
-    (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
-  ;; Now send the email
-  (send-email! (smtp-settings)
-               (merge
-                {:from    (if-let [from-name (email-from-name)]
-                            (str from-name " <" (email-from-address) ">")
-                            (email-from-address))
-                 :to      recipients
-                 :subject subject
-                 :body    (case message-type
-                            :attachments message
-                            :text        message
-                            :html        [{:type    "text/html; charset=utf-8"
-                                           :content message}])}
-                (when-let [reply-to (email-reply-to)]
-                  {:reply-to reply-to}))))
+  (try
+    (when-not (email-smtp-host)
+      (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
+    ;; Now send the email
+    (send-email! (smtp-settings)
+                 (merge
+                  {:from    (if-let [from-name (email-from-name)]
+                              (str from-name " <" (email-from-address) ">")
+                              (email-from-address))
+                   :to      recipients
+                   :subject subject
+                   :body    (case message-type
+                              :attachments message
+                              :text        message
+                              :html        [{:type    "text/html; charset=utf-8"
+                                             :content message}])}
+                  (when-let [reply-to (email-reply-to)]
+                    {:reply-to reply-to})))
+    (catch Throwable e
+      (some-> registry :metabase/message-errors prometheus/inc)
+      (throw e))
+    (finally
+      (some-> registry :metabase/messages prometheus/inc))))
 
 (def ^:private SMTPStatus
   "Schema for the response returned by various functions in [[metabase.email]]. Response will be a map with the key

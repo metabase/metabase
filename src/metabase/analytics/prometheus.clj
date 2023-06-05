@@ -9,6 +9,7 @@
    [iapetos.collector :as collector]
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
+   [metabase.email :as email]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.server :as server]
    [metabase.troubleshooting :as troubleshooting]
@@ -220,6 +221,7 @@
       (locking #'system
         (when-not system
           (let [sys (make-prometheus-system port "metabase-registry")]
+            (email/setup-metrics! (.-registry ^PrometheusSystem sys))
             (alter-var-root #'system (constantly sys))))))))
 
 (defn shutdown!
@@ -229,6 +231,7 @@
     (locking #'system
       (when system
         (try (stop-web-server system)
+             (email/shutdown-metrics!)
              (alter-var-root #'system (constantly nil))
              (log/info (trs "Prometheus web-server shut down"))
              (catch Exception e
