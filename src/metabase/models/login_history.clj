@@ -9,7 +9,8 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.connection :as t2.conn]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
@@ -62,7 +63,7 @@
 (t2/define-after-select :model/LoginHistory
   [{session-id :session_id, :as login-history}]
   ;; session ID is sensitive, so it's better if we don't even return it. Replace it with a more generic `active` key.
-  (cond-> login-history
+  (cond-> (t2.realize/realize login-history)
     (contains? login-history :session_id) (assoc :active (boolean session-id))
     true                                  (dissoc :session_id)))
 
