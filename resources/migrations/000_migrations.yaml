@@ -14778,7 +14778,6 @@ databaseChangeLog:
       id: v47.00-027
       author: calherries
       comment: Added 0.47.0 - Migrate field_ref in report_card.result_metadata from legacy format
-      validCheckSum: 8:f38598170766acaaa8fd3b20ef683372
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateLegacyResultMetadataFieldRefs"
@@ -14786,7 +14785,7 @@ databaseChangeLog:
   - changeSet:
       id: v47.00-028
       author: calherries
-      # The author and customChange.class was changed. It's ok to ignore this checkSum
+      # The customChange.class was changed. It's ok to ignore this checkSum
       validCheckSum: 8:f38598170766acaaa8fd3b20ef683372
       comment: Added 0.47.0 - Add join-alias to the report_card.visualization_settings.column_settings field refs
       changes:
