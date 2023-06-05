@@ -12,6 +12,8 @@ import type {
   WritebackParameter,
 } from "metabase-types/api";
 
+import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreator";
+import Modal from "metabase/components/Modal";
 import ActionParametersInputForm, {
   ActionParametersInputModal,
 } from "../../containers/ActionParametersInputForm";
@@ -31,7 +33,10 @@ interface ActionFormProps {
   isSettings: boolean;
   shouldDisplayButton: boolean;
   isEditingDashcard: boolean;
+  canEditAction: boolean | undefined;
   onSubmit: OnSubmitActionForm;
+
+  onActionEdit: (newAction: WritebackAction) => void;
 }
 
 function ActionVizForm({
@@ -45,9 +50,13 @@ function ActionVizForm({
   isSettings,
   shouldDisplayButton,
   isEditingDashcard,
+  canEditAction,
   onSubmit,
+
+  onActionEdit,
 }: ActionFormProps) {
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const title = getFormTitle(action);
 
   // only show confirmation if there are no missing parameters
@@ -66,6 +75,14 @@ function ActionVizForm({
     return result;
   };
 
+  const handleActionEdit = () => {
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+  };
+
   if (shouldDisplayButton) {
     return (
       <>
@@ -75,7 +92,7 @@ function ActionVizForm({
           focus={isEditingDashcard}
           onClick={onClick}
         />
-        {showModal && (
+        {showModal && !showEditModal && (
           <ActionParametersInputModal
             action={action}
             dashboard={dashboard}
@@ -85,10 +102,24 @@ function ActionVizForm({
             title={title}
             showConfirmMessage={showConfirmMessage}
             confirmMessage={action.visualization_settings?.confirmMessage}
+            onEdit={canEditAction ? handleActionEdit : undefined}
             onSubmit={onModalSubmit}
             onClose={() => setShowModal(false)}
             onCancel={() => setShowModal(false)}
           />
+        )}
+        {showEditModal && (
+          <Modal wide onClose={closeEditModal} closeOnClickOutside>
+            <ActionCreator
+              initialAction={action}
+              action={action}
+              modelId={action.model_id}
+              databaseId={action.database_id}
+              actionId={action.id}
+              onSubmit={onActionEdit}
+              onClose={closeEditModal}
+            />
+          </Modal>
         )}
       </>
     );

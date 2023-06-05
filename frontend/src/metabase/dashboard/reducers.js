@@ -43,6 +43,7 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   tabsReducer,
+  UPDATE_DASHCARD_ACTION,
 } from "./actions";
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
@@ -237,6 +238,21 @@ const dashcards = handleActions(
           ? assocIn(dashcard, ["card"], card)
           : dashcard,
       ),
+    [UPDATE_DASHCARD_ACTION]: (
+      state,
+      { payload: { id: dashcardId, action } },
+    ) => ({
+      ...state,
+      [dashcardId]: {
+        ...state[dashcardId],
+        action: {
+          ...action,
+
+          database_enabled_actions:
+            state[dashcardId]?.action?.database_enabled_actions || false,
+        },
+      },
+    }),
   },
   INITIAL_DASHBOARD_STATE.dashcards,
 );

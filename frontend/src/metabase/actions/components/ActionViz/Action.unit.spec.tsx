@@ -8,6 +8,10 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import {
+  setupCardsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 
 import type { ActionDashboardCard, ParameterTarget } from "metabase-types/api";
 import {
@@ -17,9 +21,13 @@ import {
   createMockQueryAction,
   createMockImplicitQueryAction,
   createMockDashboard,
+  createMockCard,
+  createMockStructuredDatasetQuery,
+  createMockDatabase,
 } from "metabase-types/api/mocks";
 
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
+import { createMockEntitiesState } from "__support__/store";
 import Action, { ActionProps } from "./Action";
 
 const DASHBOARD_ID = 123;
@@ -57,6 +65,12 @@ const ACTION = createMockQueryAction({
         inputType: "number",
       }),
     },
+  },
+});
+
+const database = createMockDatabase({
+  settings: {
+    "database-enable-actions": true,
   },
 });
 
@@ -106,6 +120,13 @@ async function setup({
       dispatch={jest.fn()}
       {...props}
     />,
+    {
+      storeInitialState: {
+        entities: createMockEntitiesState({
+          databases: [database],
+        }),
+      },
+    },
   );
 
   // Wait until UI is ready
@@ -254,6 +275,47 @@ describe("Actions > ActionViz > Action", () => {
         });
       });
     });
+
+    it("should allow to edit underlying action if a user has edit permissions", async () => {
+      const card = createMockCard({
+        database_id: DATABASE_ID,
+        dataset_query: createMockStructuredDatasetQuery({
+          database: DATABASE_ID,
+        }),
+        display: "action",
+        can_write: true,
+        dataset: true,
+      });
+
+      setupDatabasesEndpoints([database]);
+      setupCardsEndpoints([card]);
+      fetchMock.get(`path:/api/action/${ACTION.id}`, ACTION);
+
+      await setup({
+        dashcard: createMockActionDashboardCard({
+          card_id: card.id,
+          card,
+        }),
+      });
+
+      userEvent.click(screen.getByRole("button"));
+
+      const editActionEl = getIcon("pencil");
+      expect(editActionEl).toBeInTheDocument();
+
+      userEvent.click(editActionEl);
+
+      await screen.findByText("Action parameters");
+
+      expect(screen.getByText("My Awesome Action")).toBeInTheDocument();
+      expect(screen.getByText("Cancel")).toBeInTheDocument();
+
+      expect(screen.getByText("Update")).toBeInTheDocument();
+    });
+
+    // TODO: add this test
+    // eslint-disable-next-line jest/no-commented-out-tests
+    // it.skip("should open updated action form after action editing", async () => {});
   });
 
   describe("Form actions", () => {

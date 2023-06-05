@@ -1,8 +1,11 @@
-import { useMemo, useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import Tooltip from "metabase/core/components/Tooltip";
-import { executeRowAction } from "metabase/dashboard/actions";
+import {
+  executeRowAction,
+  onUpdateDashCardAction,
+} from "metabase/dashboard/actions";
 import { getEditingDashcardId } from "metabase/dashboard/selectors";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
@@ -13,12 +16,12 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
-
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
+import { useQuestionQuery } from "metabase/common/hooks";
 import {
   getDashcardParamValues,
-  getNotProvidedActionParameters,
   getMappedActionParameters,
+  getNotProvidedActionParameters,
   shouldShowConfirmation,
 } from "./utils";
 import ActionVizForm from "./ActionVizForm";
@@ -29,12 +32,17 @@ interface OwnProps {
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
   parameterValues: { [id: string]: ParameterValueOrArray };
-  isEditingDashcard: boolean;
+
   dispatch: Dispatch;
 }
 
+interface StateProps {
+  isEditingDashcard: boolean;
+}
+
 export type ActionProps = Pick<VisualizationProps, "settings" | "isSettings"> &
-  OwnProps;
+  OwnProps &
+  StateProps;
 
 function ActionComponent({
   dashcard,
@@ -45,6 +53,10 @@ function ActionComponent({
   parameterValues,
   isEditingDashcard,
 }: ActionProps) {
+  const { data: model } = useQuestionQuery({
+    id: dashcard.card_id || dashcard.action?.model_id,
+  });
+
   const actionSettings = dashcard.action?.visualization_settings;
   const actionDisplayType =
     settings?.actionDisplayType ?? actionSettings?.type ?? "button";
@@ -82,6 +94,8 @@ function ActionComponent({
     shouldConfirm
   );
 
+  const canWrite = model?.canWriteActions();
+
   const onSubmit = useCallback(
     (parameters: ParametersForActionExecution) =>
       executeRowAction({
@@ -93,6 +107,15 @@ function ActionComponent({
       }),
     [dashboard, dashcard, dispatch, shouldDisplayButton],
   );
+
+  const onActionEdit = (newAction: WritebackAction) => {
+    dispatch(
+      onUpdateDashCardAction({
+        id: dashcard.id,
+        action: newAction,
+      }),
+    );
+  };
 
   return (
     <ActionVizForm
@@ -106,7 +129,9 @@ function ActionComponent({
       isSettings={isSettings}
       shouldDisplayButton={shouldDisplayButton}
       isEditingDashcard={isEditingDashcard}
+      canEditAction={canWrite}
       onSubmit={onSubmit}
+      onActionEdit={onActionEdit}
     />
   );
 }
