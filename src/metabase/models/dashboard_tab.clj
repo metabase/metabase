@@ -1,6 +1,5 @@
 (ns metabase.models.dashboard-tab
   (:require
-   [clojure.data :refer [diff]]
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]

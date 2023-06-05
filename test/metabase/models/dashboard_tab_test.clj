@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.models :refer [Card Collection Dashboard DashboardCard]]
-   [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.test :as mt]
