@@ -321,6 +321,19 @@ describe("scenarios > collection pinned items overview", () => {
         cy.findByText(PARAGRAPH_TEXT).should("not.exist");
       });
     });
+
+    it("should render description tooltip with markdown formatting", () => {
+      getPinnedSection().findByText(HEADING_1_TEXT).realHover();
+
+      popover().within(() => {
+        cy.findByText(MARKDOWN).should("not.exist");
+        cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
+        cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
+        cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
+      });
+
+      popover().invoke("text").should("eq", MARKDOWN_AS_TEXT);
+    });
   });
 
   it("should render only the first line of description without markdown formatting on pinned native questions", () => {
@@ -375,28 +388,6 @@ describe("scenarios > collection pinned items overview", () => {
     openRootCollection();
 
     cy.findByTestId("legend-description-icon").realHover();
-
-    popover().within(() => {
-      cy.findByText(MARKDOWN).should("not.exist");
-      cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
-      cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
-      cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
-    });
-
-    popover().invoke("text").should("eq", MARKDOWN_AS_TEXT);
-  });
-
-  it("should render description tooltip with markdown formatting in pinned models", () => {
-    cy.request("PUT", "/api/card/1", { dataset: true });
-
-    openRootCollection();
-    openUnpinnedItemMenu(MODEL_NAME);
-    popover().findByText("Pin this").click();
-    cy.wait("@getPinnedItems");
-    changePinnedCardDescription(MODEL_NAME, MARKDOWN);
-    openRootCollection();
-
-    getPinnedSection().findByText(HEADING_1_TEXT).realHover();
 
     popover().within(() => {
       cy.findByText(MARKDOWN).should("not.exist");
