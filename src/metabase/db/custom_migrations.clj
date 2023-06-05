@@ -191,10 +191,10 @@
     (m/update-existing viz-settings "column_settings" update-keys
                        (fn [k]
                          (-> k
-                             (json/parse-string)
-                             (vec)
-                             (old-to-new)
-                             (json/generate-string))))))
+                             json/parse-string
+                             vec
+                             old-to-new
+                             json/generate-string)))))
 
 (define-migration MigrateLegacyColumnSettingsFieldRefs
   (let [update! (fn [{:keys [id visualization_settings]}]
@@ -234,9 +234,9 @@
                                       ["field" y {:source-field x}])
                        _ ref))]
     (->> result-metadata
-         (json/parse-string)
+         json/parse-string
          (map #(m/update-existing % "field_ref" old-to-new))
-         (json/generate-string))))
+         json/generate-string)))
 
 (define-migration MigrateLegacyResultMetadataFieldRefs
   (let [update! (fn [{:keys [id result_metadata]}]
