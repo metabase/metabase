@@ -709,7 +709,7 @@
   [_]
   (throw (Exception. (tru "You cannot update a permissions entry! Delete it and create a new one."))))
 
-(t2/define-before-delete :model/permissions
+(t2/define-before-delete :model/Permissions
   [permissions]
   (log/debug (u/colorize 'red (trs "Revoking permissions for group {0}: {1}"
                                    (:group_id permissions)
