@@ -3,6 +3,8 @@
    [cheshire.generate :refer [add-encoder encode-map]]
    [java-time :as t]
    [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -26,6 +28,14 @@
   (derive :metabase/model)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
+
+;;; Permissions to read or write Task. If `advanced-permissions` is enabled it requires superusers or non-admins with
+;;; monitoring permissions, Otherwise it requires superusers.
+(defmethod mi/perms-objects-set TaskHistory
+  [_task _read-or-write]
+  #{(if (premium-features/enable-advanced-permissions?)
+      (perms/application-perms-path :monitoring)
+      "/")})
 
 (defn cleanup-task-history!
   "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.
