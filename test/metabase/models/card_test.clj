@@ -766,9 +766,13 @@
             (testing (format "we should track when %s changes" col)
               (is (= 1 (t2/count Revision :model "Card" :model_id (:id card)))))
 
-            ;; these columns are expected to not have a description because it's always
-            ;; comes with a dataset_query changes
-            (when-not (#{:table_id :database_id :query_type} col)
+            (when-not (#{
+                         ;; these columns are expected to not have a description because it's always
+                         ;; comes with a dataset_query changes
+                         :table_id :database_id :query_type
+                         ;; we don't need a description for made_public_by_id because whenever this field changes
+                         ;; public_uuid will changes and we had a description for it.
+                         :made_public_by_id} col)
               (testing (format "we should have a revision description for %s" col)
                 (is (some? (build-sentence
                              (revision/diff-strings

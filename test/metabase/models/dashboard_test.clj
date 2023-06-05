@@ -284,6 +284,8 @@
                 (testing (format "we should track when %s changes" col)
                   (is (= 2 (t2/count Revision :model "Dashboard" :model_id (:id dashboard)))))
 
+                ;; we don't need a description for made_public_by_id because whenever this field changes
+                ;; public_uuid will changes and we had a description for it.
                 (when-not (#{:made_public_by_id} col)
                   (testing (format "we should have a revision description for %s" col)
                     (is (some? (build-sentence
