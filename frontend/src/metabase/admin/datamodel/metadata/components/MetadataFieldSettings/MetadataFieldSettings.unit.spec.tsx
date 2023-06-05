@@ -165,6 +165,11 @@ describe("MetadataFieldSettings", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("should show an access denied error if the foreign key field has an inaccessible target", async () => {
+      await setup({ field: ORDERS_USER_ID_FIELD });
+      expect(screen.getByText("Field access denied")).toBeInTheDocument();
+    });
+
     it("should allow to navigate to and from field settings", async () => {
       await setup();
       expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
