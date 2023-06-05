@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
@@ -27,10 +28,12 @@ export const EditModeContainer = styled.div`
 
   ${({ isPreviewing, isEmpty }) =>
     (!isPreviewing || isEmpty) &&
-    "padding: calc(0.75rem - 1px);"} // adjust for border on preview/no entered content
+    css`
+      padding: calc(0.75rem - 1px);
+    `} // adjust for border on preview/no entered content
   ${({ isEmpty }) =>
     isEmpty &&
-    `
+    css`
       border: 1px solid ${color("brand")};
       color: ${color("text-light")};
     `}
@@ -75,9 +78,9 @@ export const DisplayContainer = styled.div`
 
   ${({ isSingleRow }) =>
     isSingleRow &&
-    `
-    @media screen and (min-width: 1280px) {
+    css`
+      @media screen and (min-width: 1280px) {
         font-size: 0.85em;
-    }
-  `}
+      }
+    `}
 `;

@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
@@ -32,14 +33,15 @@ export const InputContainer = styled.div<InputContainerProps>`
 
   ${({ isPreviewing, isEmpty }) =>
     (!isPreviewing || isEmpty) &&
-    `
-    padding-left: calc(0.75rem - 1px);`} // adjust for border on preview/no entered content
+    css`
+      padding-left: calc(0.75rem - 1px);
+    `} // adjust for border on preview/no entered content
   ${({ isEmpty }) =>
     isEmpty &&
-    `
+    css`
       border: 1px solid ${color("brand")};
       color: ${color("text-light")};
-  `}
+    `}
 `;
 
 export const TextInput = styled.input`
@@ -83,7 +85,7 @@ export const HeadingContent = styled.h2<HeadingContentProps>`
   pointer-events: all;
   ${({ isEditing }) =>
     isEditing &&
-    `
-    cursor: text;
-  `}
+    css`
+      cursor: text;
+    `}
 `;
