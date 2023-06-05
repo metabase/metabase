@@ -37,7 +37,7 @@ import {
   RemappingHydratedChartData,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
-import { IconProps } from "metabase/components/Icon";
+import { IconProps } from "metabase/core/components/Icon";
 import {
   validateChartDataSettings,
   validateDatasetRows,

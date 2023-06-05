@@ -21,7 +21,7 @@
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
-   [toucan.util.test :as tt]))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest native-query-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -153,23 +153,23 @@
            (native-timestamp-query (mt/id) "2018-08-31 00:00:00" "UTC"))
         "A UTC date is returned, we should read/return it as UTC")
 
-    (is (= "2018-08-31T00:00:00-05:00"
-           (test.tz/with-system-timezone-id "America/Chicago"
-             (tt/with-temp* [Database [db {:engine  :bigquery-cloud-sdk
-                                           :details (assoc (:details (mt/db))
-                                                           :use-jvm-timezone true)}]]
-               (native-timestamp-query db "2018-08-31 00:00:00-05" "America/Chicago"))))
-        (str "This test includes a `use-jvm-timezone` flag of true that will assume that the date coming from BigQuery "
-             "is already in the JVM's timezone. The test puts the JVM's timezone into America/Chicago an ensures that "
-             "the correct date is compared"))
+    (test.tz/with-system-timezone-id "America/Chicago"
+      (t2.with-temp/with-temp [Database db {:engine  :bigquery-cloud-sdk
+                                            :details (assoc (:details (mt/db))
+                                                            :use-jvm-timezone true)}]
+        (is (= "2018-08-31T00:00:00-05:00"
+               (native-timestamp-query db "2018-08-31 00:00:00-05" "America/Chicago"))
+            (str "This test includes a `use-jvm-timezone` flag of true that will assume that the date coming from BigQuery "
+                 "is already in the JVM's timezone. The test puts the JVM's timezone into America/Chicago an ensures that "
+                 "the correct date is compared"))))
 
-    (is (= "2018-08-31T00:00:00+07:00"
-           (test.tz/with-system-timezone-id "Asia/Jakarta"
-             (tt/with-temp* [Database [db {:engine  :bigquery-cloud-sdk
-                                           :details (assoc (:details (mt/db))
-                                                           :use-jvm-timezone true)}]]
-               (native-timestamp-query db "2018-08-31 00:00:00+07" "Asia/Jakarta"))))
-        "Similar to the above test, but covers a positive offset")))
+    (test.tz/with-system-timezone-id "Asia/Jakarta"
+      (t2.with-temp/with-temp [Database db {:engine  :bigquery-cloud-sdk
+                                            :details (assoc (:details (mt/db))
+                                                            :use-jvm-timezone true)}]
+        (is (= "2018-08-31T00:00:00+07:00"
+               (native-timestamp-query db "2018-08-31 00:00:00+07" "Asia/Jakarta"))
+            "Similar to the above test, but covers a positive offset")))))
 
 ;; if I run a BigQuery query, does it get a remark added to it?
 (defn- query->native [query]
@@ -211,25 +211,25 @@
             " `v3_test_data.venues`.`name` AS `name` "
             "FROM `v3_test_data.venues` "
             "LIMIT 1")
-           (tt/with-temp* [Database [db    {:engine  :bigquery-cloud-sdk
-                                            :details (assoc (:details (mt/db))
-                                                            :include-user-id-and-hash false)}]
-                           Table    [table {:name   "venues"
-                                            :db_id  (u/the-id db)
-                                            :schema (get-in db [:details :dataset-filters-patterns])}]
-                           Field    [_     {:table_id (u/the-id table)
-                                            :name "id"
-                                            :base_type "type/Integer"}]
-                           Field    [_     {:table_id (u/the-id table)
-                                            :name "name"
-                                            :base_type "type/Text"}]]
+           (t2.with-temp/with-temp [Database db    {:engine  :bigquery-cloud-sdk
+                                                    :details (assoc (:details (mt/db))
+                                                                    :include-user-id-and-hash false)}
+                                    Table    table {:name   "venues"
+                                                    :db_id  (u/the-id db)
+                                                    :schema (get-in db [:details :dataset-filters-patterns])}
+                                    Field    _     {:table_id (u/the-id table)
+                                                    :name "id"
+                                                    :base_type "type/Integer"}
+                                    Field    _     {:table_id (u/the-id table)
+                                                    :name "name"
+                                                    :base_type "type/Text"}]
              (query->native
-               {:database (u/the-id db)
-                :type     :query
-                :query    {:source-table (u/the-id table)
-                           :limit        1}
-                :info     {:executed-by 1000
-                           :query-hash  (byte-array [1 2 3 4])}}))))))
+              {:database (u/the-id db)
+               :type     :query
+               :query    {:source-table (u/the-id table)
+                          :limit        1}
+               :info     {:executed-by 1000
+                          :query-hash  (byte-array [1 2 3 4])}}))))))
 
 (deftest unprepare-params-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -282,9 +282,9 @@
 
 (deftest reconcile-temporal-types-test
   (mt/with-everything-store
-    (tt/with-temp* [Field [date-field      {:name "date", :base_type :type/Date, :database_type "date"}]
-                    Field [datetime-field  {:name "datetime", :base_type :type/DateTime, :database_type "datetime"}]
-                    Field [timestamp-field {:name "timestamp", :base_type :type/DateTimeWithLocalTZ, :database_type "timestamp"}]]
+    (t2.with-temp/with-temp [Field date-field      {:name "date", :base_type :type/Date, :database_type "date"}
+                             Field datetime-field  {:name "datetime", :base_type :type/DateTime, :database_type "datetime"}
+                             Field timestamp-field {:name "timestamp", :base_type :type/DateTimeWithLocalTZ, :database_type "timestamp"}]
       (binding [*print-meta* true]
         (let [fields                     {:date      date-field
                                           :datetime  datetime-field
@@ -688,12 +688,12 @@
                                                        " = date_trunc(date_add(current_date(), INTERVAL -1 year), year)")]
                  :type/DateTime            [:year (str "WHERE datetime_trunc(ABC.datetime, year)"
                                                        " = datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year)")]
-               ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead
+                 ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead
                  :type/DateTimeWithLocalTZ [:year (str "WHERE timestamp_trunc(ABC.datetimewithlocaltz, year)"
                                                        " = timestamp(datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year))")]}]
-          (mt/with-temp Field [f {:name          (u/lower-case-en (name field-type))
-                                  :base_type     field-type
-                                  :database_type (name (bigquery.tx/base-type->bigquery-type field-type))}]
+          (t2.with-temp/with-temp [Field f {:name          (u/lower-case-en (name field-type))
+                                            :base_type     field-type
+                                            :database_type (name (bigquery.tx/base-type->bigquery-type field-type))}]
             (testing (format "%s field" field-type)
               (is (= [expected-sql]
                      (hsql/format {:where (sql.qp/->honeysql
@@ -714,12 +714,12 @@
                                                            " = date_trunc(date_add(current_date('" timezone "'), INTERVAL -1 year), year)")]
                      :type/DateTime            [:year (str "WHERE datetime_trunc(ABC.datetime, year)"
                                                            " = datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year)")]
-                   ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead, but when it converts to a timestamp it needs to specify the tz
+                     ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead, but when it converts to a timestamp it needs to specify the tz
                      :type/DateTimeWithLocalTZ [:year (str "WHERE timestamp_trunc(ABC.datetimewithlocaltz, year, '" timezone "')"
                                                            " = timestamp(datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year), '" timezone "')")]}]
-              (mt/with-temp Field [f {:name          (u/lower-case-en (name field-type))
-                                      :base_type     field-type
-                                      :database_type (name (bigquery.tx/base-type->bigquery-type field-type))}]
+              (t2.with-temp/with-temp [Field f {:name          (u/lower-case-en (name field-type))
+                                                :base_type     field-type
+                                                :database_type (name (bigquery.tx/base-type->bigquery-type field-type))}]
                 (testing (format "%s field" field-type)
                   (is (= [expected-sql]
                          (hsql/format {:where (sql.qp/->honeysql

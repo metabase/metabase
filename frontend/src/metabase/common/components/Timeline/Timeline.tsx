@@ -5,7 +5,7 @@ import { getRelativeTime } from "metabase/lib/time";
 import type { RevisionOrModerationEvent } from "metabase/plugins";
 import type { Revision } from "metabase-types/api";
 import Button from "metabase/core/components/Button";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { color } from "metabase/lib/colors";

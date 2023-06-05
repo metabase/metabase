@@ -15,10 +15,6 @@
               (with-meta (meta body)))])
         (with-meta (meta body)))))
 
-(defn with-temp [{:keys [node]}]
-  (let [[_ db-ref binding+opts & body] (:children node)]
-    {:node (with-temp-inner body [db-ref binding+opts])}))
-
 (defn with-temp* [{:keys [node]}]
   (let [[_ bindings & body] (:children node)]
     {:node (with-temp-inner body (:children bindings))}))

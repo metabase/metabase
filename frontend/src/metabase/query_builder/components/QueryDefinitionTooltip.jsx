@@ -5,7 +5,7 @@ import { t } from "ttag";
 import FieldSet from "metabase/components/FieldSet";
 import QueryDefinition from "./QueryDefinition";
 
-export default class QueryDefinitionTooltip extends Component {
+export class QueryDefinitionTooltip extends Component {
   static propTypes = {
     type: PropTypes.string,
     object: PropTypes.object.isRequired,

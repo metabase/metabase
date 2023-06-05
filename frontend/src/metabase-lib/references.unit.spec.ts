@@ -58,6 +58,7 @@ describe("reference predicates", () => {
   describe("isExpressionReference", () => {
     it("returns true for valid expression references", () => {
       const validReferences = [
+        ["expression", "name"],
         ["expression", "string", null],
         ["expression", "column_name", { "base-type": "number" }],
       ];
