@@ -225,23 +225,36 @@
   (let [filtered-dbs (filter-databases-by-data-model-perms [db])]
     (api/check-403 (first filtered-dbs))))
 
+(defn- uploadable-db?
+  "Are uploads supported for this database?"
+  [db]
+  (driver/database-supports? (driver.u/database->driver db) :uploads db))
+
 (defn- dbs-list
   [& {:keys [include-tables?
              include-saved-questions-db?
              include-saved-questions-tables?
              include-editable-data-model?
+<<<<<<< HEAD
              include-analytics?
              exclude-uneditable-details?]}]
   (let [dbs (t2/select Database (merge {:order-by [:%lower.name :%lower.engine]}
                                        (when-not include-analytics?
                                          {:where [:= :is_audit false]})))
+=======
+             exclude-uneditable-details?
+             include-only-uploadable?]}]
+  (let [dbs (t2/select Database {:where [:= :is_audit false]
+                                 :order-by [:%lower.name :%lower.engine]})
+>>>>>>> d1be57f4dd (Add `include_only_uploadable?` flag to database endpoint)
         filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter mi/can-write? %))
       filter-by-data-access?       (#(filter mi/can-read? %))
-      include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
+      include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
+      include-only-uploadable?     (#(filter uploadable-db? %)))))
 
 (api/defendpoint GET "/"
   "Fetch all `Databases`.
@@ -262,9 +275,9 @@
     Enterprise Edition code is available the advanced-permissions feature is enabled.
 
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
-    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled."
-  [include_tables include_cards include saved include_editable_data_model exclude_uneditable_details
-   include_analytics]
+
+  * `include_only_uploadable` will only include DBs into which Metabase can insert new data."
+  [include_tables include_cards include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics]
   {include_tables                [:maybe :boolean]
    include_cards                 [:maybe :boolean]
    include                       (mu/with-api-error-message
@@ -273,7 +286,8 @@
    include_analytics             [:maybe :boolean]
    saved                         [:maybe :boolean]
    include_editable_data_model   [:maybe :boolean]
-   exclude_uneditable_details    [:maybe :boolean]}
+   exclude_uneditable_details    [:maybe :boolean]
+   include_only_uploadable       [:maybe :boolean]}
   (when (and config/is-dev?
              (or include_tables include_cards))
     ;; don't need to i18n since this is dev-facing only
@@ -288,7 +302,8 @@
                                                       :include-saved-questions-tables? include-saved-questions-tables?
                                                       :include-editable-data-model?    include_editable_data_model
                                                       :exclude-uneditable-details?     exclude_uneditable_details
-                                                      :include-analytics?              include_analytics)
+                                                      :include-analytics?              include_analytics
+                                                      :include-only-uploadable?        include_only_uploadable)
                                             [])]
     {:data  db-list-res
      :total (count db-list-res)}))

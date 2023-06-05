@@ -562,6 +562,15 @@
 
 (defmethod driver/database-supports? [::no-nested-query-support :nested-queries] [_driver _feature _db] false)
 
+(defn- get-all
+  [endpoint existing-ids]
+  (let [new?        (complement (set existing-ids))
+        dbs         (->> (mt/user-http-request :rasta :get 200 endpoint)
+                         :data
+                         (filter (comp new? :id)))]
+    {:data  dbs
+     :total (count dbs)}))
+
 (deftest databases-list-test
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
@@ -583,11 +592,24 @@
     (doseq [query-param ["?include_tables=true"
                          "?include=tables"]]
       (testing query-param
-        (t2.with-temp/with-temp [Database _ {:engine (u/qualified-name ::test-driver)}]
-          (doseq [db (:data (mt/user-http-request :rasta :get 200 (str "database" query-param)))]
-            (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
-              (is (= (expected-tables db)
-                     (:tables db))))))))))
+        (let [old-ids (t2/select-pks-set Database)]
+          (t2.with-temp/with-temp [Database _ {:engine (u/qualified-name ::test-driver)}]
+            (doseq [db (:data (get-all (str "database" query-param) old-ids))]
+              (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
+                (is (= (expected-tables db)
+                       (:tables db)))))))))
+    (testing "`?include_only_uploadable=true` -- excludes drivers that don't support uploads"
+      (let [old-ids (t2/select-pks-set Database)]
+        (t2.with-temp/with-temp [Database _ {:engine ::test-driver}]
+          (is (= {:data  []
+                  :total 0}
+                 (get-all "database?include_only_uploadable=true" old-ids))))))
+    (testing "`?include_only_uploadable=true` -- includes drivers that do support uploads"
+      (let [old-ids (t2/select-pks-set Database)]
+        (t2.with-temp/with-temp [Database _ {:engine :postgres :name "The Chosen One"}]
+          (let [result (get-all "database?include_only_uploadable=true" old-ids)]
+            (is (= 1 (:total result)))
+            (is (= "The Chosen One" (-> result :data first :name)))))))))
 
 (deftest databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
