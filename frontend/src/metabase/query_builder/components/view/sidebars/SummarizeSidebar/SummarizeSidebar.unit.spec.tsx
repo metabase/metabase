@@ -338,8 +338,4 @@ describe("SummarizeSidebar", () => {
     const nextQuestion = getUpdatedQuestion();
     expect(nextQuestion.display()).toBe("line");
   });
-
-  it.todo(
-    "shouldn't call update the question or rerun the query if nothing changed",
-  );
 });
