@@ -20,6 +20,7 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const PG_DB_ID = 2;
+const PERMISSION_ERROR = "Sorry, you don't have permission to see this card.";
 
 describe("scenarios > dashboard > dashboard back navigation", () => {
   beforeEach(() => {
@@ -28,6 +29,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     setActionsEnabledForDB(SAMPLE_DB_ID);
 
     cy.intercept("POST", `/api/dataset`).as("dataset");
+    cy.intercept("GET", "/api/card/*").as("card");
     cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
     cy.intercept("PUT", `/api/card/*`).as("updateCard");
     cy.intercept("GET", `/api/dashboard/*`).as("dashboard");
@@ -177,6 +179,26 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
       cy.findByText("Orders question").should("be.visible");
       cy.findByText("Count").should("be.visible"); // aggregated data
     });
+  });
+
+  it("should navigate back to a dashboard with permission errors", () => {
+    createDashboardWithPermissionError();
+    cy.signInAsNormalUser();
+    cy.get("@dashboardId").then(visitDashboard);
+    cy.wait("@dashboard");
+    cy.wait("@dashcardQuery");
+
+    getDashboardCard(1).findByText(PERMISSION_ERROR);
+    getDashboardCard(0).findByText("Orders 1").click();
+    cy.wait("@card");
+
+    queryBuilderHeader()
+      .findByLabelText("Back to Orders in a dashboard")
+      .click();
+
+    getDashboardCard(1).findByText(PERMISSION_ERROR);
+    cy.get("@dashboard.all").should("have.length", 1);
+    cy.get("@dashcardQuery.all").should("have.length", 1);
   });
 });
 
@@ -376,5 +398,53 @@ const createDashboardWithSlowCard = () => {
     });
 
     cy.wrap(dashboard_id).as("dashboardId");
+  });
+};
+
+const createDashboardWithPermissionError = () => {
+  const question1Details = {
+    name: "Orders 1",
+    query: { "source-table": ORDERS_ID },
+  };
+
+  const question2Details = {
+    name: "Orders 2",
+    query: { "source-table": ORDERS_ID },
+    collection_id: 1,
+  };
+
+  const dashboardDetails = {
+    name: "Orders in a dashboard",
+  };
+
+  const dashcard1Details = {
+    row: 0,
+    col: 0,
+    size_x: 6,
+    size_y: 6,
+  };
+
+  const dashcard2Details = {
+    row: 0,
+    col: 6,
+    size_x: 6,
+    size_y: 6,
+  };
+
+  cy.createQuestion(question1Details).then(({ body: { id: card_id_1 } }) => {
+    cy.createQuestion(question2Details).then(({ body: { id: card_id_2 } }) => {
+      cy.createDashboard(dashboardDetails).then(
+        ({ body: { id: dashboard_id } }) => {
+          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+            cards: [
+              { id: -1, card_id: card_id_1, ...dashcard1Details },
+              { id: -2, card_id: card_id_2, ...dashcard2Details },
+            ],
+          });
+
+          cy.wrap(dashboard_id).as("dashboardId");
+        },
+      );
+    });
   });
 };
