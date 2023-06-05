@@ -52,12 +52,17 @@ export function Heading({
         onClick={toggleFocusOn}
       >
         {isPreviewing ? (
-          <HeadingContent isEditing={isEditing} onMouseDown={preventDragging}>
+          <HeadingContent
+            data-testid="editing-dashboard-heading-preview"
+            isEditing={isEditing}
+            onMouseDown={preventDragging}
+          >
             {hasContent ? content : placeholder}
           </HeadingContent>
         ) : (
           <TextInput
             name="heading"
+            data-testid="editing-dashboard-heading-input"
             placeholder={placeholder}
             value={content}
             autoFocus={justAdded || isFocused}
@@ -72,7 +77,9 @@ export function Heading({
 
   return (
     <HeadingContainer>
-      <HeadingContent>{content}</HeadingContent>
+      <HeadingContent data-testid="saved-dashboard-heading-content">
+        {content}
+      </HeadingContent>
     </HeadingContainer>
   );
 }
