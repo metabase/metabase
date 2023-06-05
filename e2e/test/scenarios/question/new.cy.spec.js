@@ -248,7 +248,7 @@ describe("scenarios > question > new", () => {
       visitCollection(THIRD_COLLECTION_ID);
     });
 
-    cy.findByLabelText("Navigation bar").within(() => {
+    cy.findByTestId("app-bar").within(() => {
       cy.findByText("New").click();
     });
 

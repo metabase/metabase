@@ -54,9 +54,8 @@ describe("scenarios > models > create", () => {
     navigateToNewModelPage();
     cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
 
-    cy.findByTestId("dataset-edit-bar").within(() => {
-      cy.contains("button", "Save").click();
-    });
+    cy.findByText("Save").click();
+
     modal().within(() => {
       cy.findByTestId("select-button").should("have.text", "Third collection");
     });
@@ -74,9 +73,7 @@ describe("scenarios > models > create", () => {
       cy.findByText("Orders").click();
     });
 
-    cy.findByTestId("dataset-edit-bar").within(() => {
-      cy.contains("button", "Save").click();
-    });
+    cy.findByText("Save").click();
 
     modal().within(() => {
       cy.findByTestId("select-button").should("have.text", "Third collection");
