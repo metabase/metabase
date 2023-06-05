@@ -1139,13 +1139,6 @@ saved later when it is ready."
   (when (or is_on_demand is_full_sync)
     (future (sync/sync-table! table))))
 
-(defn- syncable-schema?
-  [driver database schema-name]
-  (or (nil? schema-name)
-      (let [schema-filter-prop                      (driver.u/find-schema-filters-prop driver)
-            [inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns (:name schema-filter-prop) database)]
-        (driver.s/include-schema? inclusion-patterns exclusion-patterns schema-name))))
-
 (defn upload-csv!
   "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
   syncing and scanning the new data, and creating an appropriate model which is then returned. May throw validation or
@@ -1160,13 +1153,14 @@ saved later when it is ready."
                               (throw (Exception. (tru "The uploads database does not exist."))))
         driver            (driver.u/database->driver database)
         schema-name       (public-settings/uploads-schema-name)
-        _check-schema     (or (syncable-schema? driver database schema-name)
-                              (throw (ex-info (tru "The schema {0} is not syncable." schema-name)
-                                              {:status-code 422})))
+        _check-schema     (when-not (or (nil? schema-name)
+                                        (driver.s/include-schema? database schema-name))
+                            (throw (ex-info (tru "The schema {0} is not syncable." schema-name)
+                                            {:status-code 422})))
         filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
                               filename)
-        _check-setting    (or (driver/database-supports? driver :uploads nil)
-                              (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
+        _check-setting    (when-not (driver/database-supports? driver :uploads nil)
+                            (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
         table-name        (->> (str (public-settings/uploads-table-prefix) filename-prefix)
                                (upload/unique-table-name driver)
                                (u/lower-case-en))
@@ -1175,7 +1169,8 @@ saved later when it is ready."
                             (str schema-name "." table-name))
         _load!            (upload/load-from-csv driver db-id schema+table-name csv-file)
         ;; Syncs are needed immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-        table-metadata    (first (filter (fn [{:keys [name]}] (= (u/lower-case-en name) table-name)) (:tables (fetch-metadata/db-metadata database))))
+        table-metadata    (first (filter (fn [{:keys [name]}] (= (u/lower-case-en name) table-name))
+                                         (:tables (fetch-metadata/db-metadata database))))
         actual-schema     (:schema table-metadata)]
     (when (nil? table-metadata)
       (driver/drop-table driver db-id table-name)
