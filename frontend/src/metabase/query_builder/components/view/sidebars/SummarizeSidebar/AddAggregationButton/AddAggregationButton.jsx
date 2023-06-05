@@ -29,7 +29,6 @@ export const AddAggregationButton = ({
           <AddAggregationButtonRoot data-testid="add-aggregation-button">
             <Icon
               name="add"
-              data-testid="add-aggregation-button"
               className={cx({ mr1: shouldShowLabel })}
             />
             {shouldShowLabel ? LABEL : null}
