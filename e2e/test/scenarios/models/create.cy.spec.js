@@ -54,7 +54,7 @@ describe("scenarios > models > create", () => {
     navigateToNewModelPage();
     cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
 
-    cy.findByText("Save").click();
+    cy.findByRole("button", { name: "Save" }).click();
 
     modal().within(() => {
       cy.findByTestId("select-button").should("have.text", "Third collection");
@@ -73,7 +73,7 @@ describe("scenarios > models > create", () => {
       cy.findByText("Orders").click();
     });
 
-    cy.findByText("Save").click();
+    cy.findByRole("button", { name: "Save" }).click();
 
     modal().within(() => {
       cy.findByTestId("select-button").should("have.text", "Third collection");
