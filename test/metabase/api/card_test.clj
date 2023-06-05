@@ -2952,7 +2952,7 @@
             (try (upload-example-csv! nil)
                  (catch Exception e
                    (is (= {:status-code 422}
-                          (.getData e)))
+                          (ex-data e)))
                    (is (re-matches #"^The CSV file was uploaded to public\.example(.*) but the table could not be found on sync\.$"
                                    (.getMessage e))))))
           (testing "\nThe table should be deleted"
