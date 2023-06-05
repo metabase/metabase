@@ -4,13 +4,14 @@
    [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest delete-subscriptions-test
   (testing "DELETE /api/ee/audit-app/user/:id/subscriptions"
     (testing "Should require a token with `:audit-app`"
       (premium-features-test/with-premium-features #{}
-        (mt/with-temp User [{user-id :id}]
+        (t2.with-temp/with-temp [User {user-id :id}]
           (is (= "This API endpoint is only enabled if you have a premium token with the :audit-app feature."
                  (mt/user-http-request user-id
                                        :delete 402

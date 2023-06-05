@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
@@ -55,4 +55,5 @@ function ClickBehaviorSidebarOverlay({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ClickBehaviorSidebarOverlay;

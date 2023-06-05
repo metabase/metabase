@@ -151,7 +151,9 @@
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
 
 (defn ^:command environment-variables-documentation
-  "Generates a markdown file containing documentation for environment variables relevant to configuring Metabase."
+  "Generates a markdown file containing documentation for environment variables relevant to configuring Metabase.
+  The command only includes environment variables registered as defsettings.
+  For a full list of environment variables, see https://www.metabase.com/docs/latest/configuring-metabase/environment-variables."
   []
   (classloader/require 'metabase.cmd.env-var-dox)
   ((resolve 'metabase.cmd.env-var-dox/generate-dox!)))
@@ -212,9 +214,8 @@
                :update-fn (fnil conj [])]
               [nil "--collections ID_LIST"       "(Legacy-style) Export collections in comma-separated list of IDs, e.g. '123,456'."
                :parse-fn  (fn [s] (map #(Integer/parseInt %) (str/split s #"\s*,\s*")))]
-              ["-C" "--no-collections"           "Do not export any collections or contents; overrides -c."
-               :id        :collections
-               :update-fn (constantly [])]
+              ["-C" "--no-collections"           "Do not export any content in collections."]
+              ["-S" "--no-settings"              "Do not export settings.yaml"]
               ["-D" "--no-data-model"            "Do not export any data model entities; useful for subsequent exports."]
               ["-f" "--include-field-values"     "Include field values along with field metadata."]
               ["-s" "--include-database-secrets" "Include database connection details (in plain text; use caution)."]]}

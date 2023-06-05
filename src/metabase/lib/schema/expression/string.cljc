@@ -10,10 +10,11 @@
 (mbql-clause/define-tuple-mbql-clause :length :- :type/Integer
   [:schema [:ref ::expression/string]])
 
-(mbql-clause/define-tuple-mbql-clause :regexextract :- :type/Text
-  #_str [:schema [:ref ::expression/string]]
-  ;; TODO regex type?
-  #_regex [:schema [:ref ::expression/string]])
+(doseq [op [:regexextract :regex-match-first]]
+  (mbql-clause/define-tuple-mbql-clause op :- :type/Text
+    #_str [:schema [:ref ::expression/string]]
+    ;; TODO regex type?
+    #_regex [:schema [:ref ::expression/string]]))
 
 (mbql-clause/define-tuple-mbql-clause :replace :- :type/Text
   #_str [:schema [:ref ::expression/string]]

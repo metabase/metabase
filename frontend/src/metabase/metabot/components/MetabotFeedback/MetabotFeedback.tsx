@@ -1,4 +1,3 @@
-import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
@@ -81,4 +80,5 @@ const FeedbackTypeSelect = ({ onSubmitFeedback }: FeedbackTypeSelectProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(MetabotFeedback);

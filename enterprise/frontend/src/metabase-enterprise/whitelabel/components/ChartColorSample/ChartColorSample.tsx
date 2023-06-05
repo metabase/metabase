@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from "react";
+import { memo, useMemo } from "react";
 import _ from "underscore";
 import {
   ChartAxis,
@@ -53,4 +53,5 @@ const getBarHeight = (index: number) => {
   return `${BAR_HEIGHTS[index % BAR_HEIGHTS.length] * 100}%`;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(ChartColorSample);

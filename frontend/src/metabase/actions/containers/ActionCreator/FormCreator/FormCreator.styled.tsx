@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
 import { color, lighten } from "metabase/lib/colors";
@@ -40,7 +40,7 @@ export const ExplainerTitle = styled.h3`
   margin-bottom: ${space(1)};
 `;
 
-export const ExplainerText = styled.p`
+export const ExplainerText = styled.div`
   font-weight: 400;
   line-height: 1.5rem;
   color: ${color("text-medium")};
@@ -64,6 +64,7 @@ export const ExplainerLink = styled(ExternalLink)`
   margin-top: ${space(2)};
 
   color: ${color("brand")};
+
   &:hover {
     color: ${lighten("brand", 0.1)};
   }

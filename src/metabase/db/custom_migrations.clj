@@ -173,7 +173,7 @@
                      :set    {:json_unfolding true}
                      :where  [:in :metabase_field.id field-ids-to-update]}))))
 
-(defn- update-legacy-field-refs [viz-settings]
+(defn- update-legacy-field-refs-in-viz-settings [viz-settings]
   (let [old-to-new (fn [old]
                      (match old
                        ["ref" ref] ["ref" (match ref
@@ -205,9 +205,150 @@
                                  :set    {:visualization_settings visualization_settings}
                                  :where  [:= :id id]}))]
     (run! update! (eduction (keep (fn [{:keys [id visualization_settings]}]
-                                    (let [updated (update-legacy-field-refs visualization_settings)]
+                                    (let [updated (update-legacy-field-refs-in-viz-settings visualization_settings)]
                                       (when (not= visualization_settings updated)
                                         {:id                     id
                                          :visualization_settings updated}))))
                             (t2/reducible-query {:select [:id :visualization_settings]
                                                  :from   [:report_card]})))))
+
+(defn- update-legacy-field-refs-in-result-metadata [result-metadata]
+  (let [old-to-new (fn [ref]
+                     (match ref
+                       ["field-id" x] ["field" x nil]
+                       ["field-literal" x y] ["field" x {"base-type" y}]
+                       ["fk->" x y] (let [x (match x
+                                              [_x0 x1] x1
+                                              x x)
+                                          y (match y
+                                              [_y0 y1] y1
+                                              y y)]
+                                      ["field" y {:source-field x}])
+                       _ ref))]
+    (->> result-metadata
+         (json/parse-string)
+         (map #(m/update-existing % "field_ref" old-to-new))
+         (json/generate-string))))
+
+(define-migration MigrateLegacyResultMetadataFieldRefs
+  (let [update! (fn [{:keys [id result_metadata]}]
+                  (t2/query-one {:update :report_card
+                                 :set    {:result_metadata result_metadata}
+                                 :where  [:= :id id]}))]
+    (run! update! (eduction (keep (fn [{:keys [id result_metadata]}]
+                                    (let [updated (update-legacy-field-refs-in-result-metadata result_metadata)]
+                                      (when (not= result_metadata updated)
+                                        {:id                     id
+                                         :result_metadata updated}))))
+                            (t2/reducible-query {:select [:id :result_metadata]
+                                                 :from   [:report_card]
+                                                 :where  [:and
+                                                          [:<> :result_metadata nil]
+                                                          [:<> :result_metadata "[]"]]})))))
+
+(defn- remove-opts
+  "Removes options from the `field_ref` options map. If the resulting map is empty, it's replaced it with nil."
+  [field_ref & opts-to-remove]
+  (match field_ref
+    ["field" id opts] ["field" id (not-empty (apply dissoc opts opts-to-remove))]
+    _ field_ref))
+
+(defn- remove-join-alias-from-column-settings-field-refs [visualization_settings]
+  (update visualization_settings "column_settings"
+          (fn [column_settings]
+            (into {}
+                  (map (fn [[k v]]
+                         (match (vec (json/parse-string k))
+                           ["ref" ["field" id opts]]
+                           [(json/generate-string ["ref" (remove-opts ["field" id opts] "join-alias")]) v]
+                           _ [k v]))
+                       column_settings)))))
+
+(defn- add-join-alias-to-column-settings-refs [{:keys [visualization_settings result_metadata]}]
+  (let [result_metadata        (json/parse-string result_metadata)
+        visualization_settings (json/parse-string visualization_settings)
+        column-key->metadata   (group-by #(-> (get % "field_ref")
+                                              ;; like the FE's `getColumnKey` function, remove "join-alias",
+                                              ;; "temporal-unit" and "binning" options from the field_ref
+                                              (remove-opts "join-alias" "temporal-unit" "binning"))
+                                         result_metadata)]
+    (json/generate-string
+     (update visualization_settings "column_settings"
+             (fn [column_settings]
+               (into {}
+                     (mapcat (fn [[k v]]
+                               (match (vec (json/parse-string k))
+                                 ["ref" ["field" id opts]]
+                                 (for [column-metadata (column-key->metadata ["field" id opts])
+                                       ;; remove "temporal-unit" and "binning" options from the matching field refs,
+                                       ;; but not "join-alias" as before.
+                                       :let [field-ref (-> (get column-metadata "field_ref")
+                                                           (remove-opts "temporal-unit" "binning"))]]
+                                   [(json/generate-string ["ref" field-ref]) v])
+                                 _ [[k v]]))
+                             column_settings)))))))
+
+(define-reversible-migration AddJoinAliasToColumnSettingsFieldRefs
+  (let [update-one! (fn [{:keys [id visualization_settings] :as card}]
+                      (let [updated (add-join-alias-to-column-settings-refs card)]
+                        (when (not= visualization_settings updated)
+                          (t2/query-one {:update :report_card
+                                         :set    {:visualization_settings updated}
+                                         :where  [:= :id id]}))))]
+    (run! update-one! (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
+                                           :from   [:report_card]
+                                           :where  [:and
+                                                    [:or
+                                                     [:= :query_type nil]
+                                                     [:= :query_type "query"]]
+                                                    [:or
+                                                     [:like :visualization_settings "%ref\\\\\",[\\\\\"field%"]
+                                                     ; MySQL with NO_BACKSLASH_ESCAPES disabled
+                                                     [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                    [:like :result_metadata "%join-alias%"]]})))
+  (let [update! (fn [{:keys [id visualization_settings]}]
+                  (let [updated (-> visualization_settings
+                                    json/parse-string
+                                    remove-join-alias-from-column-settings-field-refs
+                                    json/generate-string)]
+                    (when (not= visualization_settings updated)
+                      (t2/query-one {:update :report_card
+                                     :set    {:visualization_settings updated}
+                                     :where  [:= :id id]}))))]
+    (run! update! (t2/reducible-query {:select [:id :visualization_settings]
+                                       :from   [:report_card]
+                                       :where  [:and
+                                                [:or
+                                                 [:= :query_type nil]
+                                                 [:= :query_type "query"]]
+                                                [:or
+                                                 [:like :visualization_settings "%ref\\\\\",[\\\\\"field%"]
+                                                 [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                [:like :visualization_settings "%join-alias%"]]}))))
+
+(defn- update-card-row-on-downgrade-for-dashboard-tab
+  [dashboard-id]
+  (let [ordered-tab+cards (->> (t2/query {:select    [:report_dashboardcard.* [:dashboard_tab.position :tab_position]]
+                                          :from      [:report_dashboardcard]
+                                          :where     [:= :report_dashboardcard.dashboard_id dashboard-id]
+                                          :left-join [:dashboard_tab [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]]})
+                               (group-by :tab_position)
+                               ;; sort by tab position
+                               (sort-by first))
+        cards->max-height (fn [cards] (apply max (map #(+ (:row %) (:size_y %)) cards)))]
+    (loop [position+cards ordered-tab+cards
+           next-tab-row   0]
+      (when-let [[tab-pos cards] (first position+cards)]
+        (if (zero? tab-pos)
+          (recur (rest position+cards) (long (cards->max-height cards)))
+          (do
+            (t2/query {:update :report_dashboardcard
+                       :set    {:row [:+ :row next-tab-row]}
+                       :where  [:= :dashboard_tab_id (:dashboard_tab_id (first cards))]})
+            (recur (rest position+cards) (long (+ next-tab-row (cards->max-height cards))))))))))
+
+(define-reversible-migration DowngradeDashboardTab
+  (log/info "No forward migration for DowngradeDashboardTab")
+  (run! update-card-row-on-downgrade-for-dashboard-tab
+        (eduction (map :dashboard_id) (t2/reducible-query {:select-distinct [:dashboard_id]
+                                                           :from            [:dashboard_tab]}))))

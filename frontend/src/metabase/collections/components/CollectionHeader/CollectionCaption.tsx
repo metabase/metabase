@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import {
@@ -74,4 +74,5 @@ const CollectionCaption = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CollectionCaption;

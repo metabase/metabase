@@ -3,26 +3,17 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.api.search :as api.search]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models
-    :refer [Action
-            Card
-            CardBookmark
-            Collection
-            Dashboard
-            DashboardBookmark
-            DashboardCard
-            Database
-            Metric
-            PermissionsGroup
-            PermissionsGroupMembership
-            Pulse
-            PulseCard
-            QueryAction
-            Segment
-            Table]]
+    :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
+            DashboardCard Database Metric PermissionsGroup
+            PermissionsGroupMembership Pulse PulseCard QueryAction Segment Table]]
+   [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search-config]
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
@@ -51,13 +42,13 @@
    :context                    nil
    :dashboardcard_count        nil
    :database_id                false
-   :dataset_query              nil
    :description                nil
    :id                         true
    :initial_sync_status        nil
    :model_id                   false
    :model_name                 nil
    :moderated_status           nil
+   :pk_ref                     nil
    :table_description          nil
    :table_id                   false
    :table_name                 nil
@@ -100,10 +91,9 @@
   (sorted-results
    [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false)
     test-collection
-    (make-result "card test card", :model "card", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
-    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dataset_query nil, :dashboardcard_count 0)
-    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
-                 :dataset_query (update (mt/query venues) :type name), :database_id true)
+    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0)
+    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0)
+    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true, :database_id true)
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
      (table-search-results))
@@ -233,7 +223,6 @@
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
-             [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
              :else [:inline 1]]]
            (api.search/order-clause "Foo")))))
 
@@ -296,7 +285,7 @@
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card", :bookmark false, :dataset_query nil))]
+                         :model "card", :bookmark false))]
     (set [(make-card 5)
           (make-card 3)
           (make-card 0)])))
@@ -474,6 +463,58 @@
                (map #(select-keys % [:name :model :description])
                     (search-request-data-with sorted-results :crowberto :q "aviaries"))))))))
 
+(deftest indexed-entity-test
+  (testing "Should search indexed entities"
+    (mt/dataset airports
+      (let [query (mt/mbql-query municipality)]
+        (mt/with-temp* [Card [model {:dataset       true
+                                     :dataset_query query}]]
+          (let [model-index (model-index/create
+                             (mt/$ids {:model-id   (:id model)
+                                       :pk-ref     $municipality.id
+                                       :value-ref  $municipality.name
+                                       :creator-id (mt/user->id :rasta)}))
+                relevant    (comp (filter (comp #{(:id model)} :model_id))
+                                  (filter (comp #{"indexed-entity"} :model)))
+                search!     (fn [search-term]
+                              (:data (make-search-request :crowberto [:q search-term])))]
+            (model-index/add-values! model-index)
+
+            (is (= #{"Dallas-Fort Worth" "Fort Lauderdale" "Fort Myers"
+                     "Fort Worth" "Fort Smith" "Fort Wayne"}
+                   (into #{} (comp relevant (map :name)) (search! "fort"))))
+
+            (testing "Sandboxed users do not see indexed entities in search"
+              (with-redefs [premium-features/segmented-user? (constantly true)]
+                (is (= #{}
+                       (into #{} (comp relevant (map :name)) (search! "fort"))))))
+
+            (let [normalize (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
+              (is (=? {"Rome"   {:pk_ref        (mt/$ids $municipality.id)
+                                 :name          "Rome"
+                                 :model_id      (:id model)
+                                 :model_name    (:name model)}
+                       "Tromsø" {:pk_ref        (mt/$ids $municipality.id)
+                                 :name          "Tromsø"
+                                 :model_id      (:id model)
+                                 :model_name    (:name model)}}
+                      (into {} (comp relevant (map (juxt :name normalize)))
+                            (search! "rom"))))))))))
+
+  (testing "Sandboxing inhibits searching indexes"
+    (binding [api/*current-user-id* (mt/user->id :rasta)]
+      (is (= [:and
+              [:inline [:= 1 1]]
+              [:or [:like [:lower :model-index-value.name] "%foo%"]]]
+             (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
+                                                                         :search-string "foo"
+                                                                         :current-user-perms #{"/"}})))
+      (with-redefs [premium-features/segmented-user? (constantly true)]
+        (is (= [:and [:inline [:= 1 1]] [:or [:= 0 1]]]
+               (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
+                                                                           :search-string "foo"
+                                                                           :current-user-perms #{"/"}})))))))
+
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
@@ -515,8 +556,8 @@
     (with-search-items-in-root-collection "test2"
       (mt/with-temp* [Card        [action-model action-model-params]
                       Action      [{action-id :id} (archived {:name     "action test action"
-                                                :type     :query
-                                                :model_id (u/the-id action-model)})]
+                                                              :type     :query
+                                                              :model_id (u/the-id action-model)})]
                       QueryAction [_ (query-action action-id)]
                       Card        [_ (archived {:name "card test card"})]
                       Card        [_ (archived {:name "dataset test dataset" :dataset true})]
@@ -549,6 +590,7 @@
     :archived            nil
     :model               "table"
     :database_id         true
+    :pk_ref              nil
     :initial_sync_status "incomplete"}))
 
 (defmacro ^:private do-test-users {:style/indent 1} [[user-binding users] & body]
@@ -559,7 +601,7 @@
 
 (deftest table-test
   (testing "You should see Tables in the search results!\n"
-    (mt/with-temp Table [_ {:name "RoundTable"}]
+    (t2.with-temp/with-temp [Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "RoundTable")]
                (search-request-data user :q "RoundTable"))))))
@@ -571,19 +613,19 @@
                (search-request-data user :q "Foo"))))))
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
-      (mt/with-temp Table [_ {:name "RoundTable" :display_name lancelot}]
+      (t2.with-temp/with-temp [Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
                  (search-request-data user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
-      (mt/with-temp Table [_ {:name table-name}]
+      (t2.with-temp/with-temp [Table _ {:name table-name}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
                  (search-request-data user :q table-name :archived true)))))))
   (testing "*archived* tables should not appear in search results"
     (let [table-name (mt/random-name)]
-      (mt/with-temp Table [_ {:name table-name, :active false}]
+      (t2.with-temp/with-temp [Table _ {:name table-name, :active false}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
                  (search-request-data user :q table-name)))))))
@@ -636,7 +678,7 @@
                    (filter #(and (= (:model %) "pulse")
                                  (= (:id %) pulse-id)))
                    first))]
-      (mt/with-temp Pulse [pulse {:name "Electro-Magnetic Pulse"}]
+      (t2.with-temp/with-temp [Pulse pulse {:name "Electro-Magnetic Pulse"}]
         (testing "Pulses are not searchable"
           (is (= nil (search-for-pulses pulse))))
         (mt/with-temp* [Card      [card-1]
@@ -649,21 +691,6 @@
             (mt/with-temp* [Dashboard [dashboard]]
               (t2/update! Pulse (:id pulse) {:dashboard_id (:id dashboard)})
               (is (= nil (search-for-pulses pulse))))))))))
-
-(deftest card-dataset-query-test
-  (testing "Search results should match a native query's dataset_query column, but not an MBQL query's one."
-    ;; https://github.com/metabase/metabase/issues/24132
-    (let [native-card {:name          "Another SQL query"
-                       :query_type    "native"
-                       :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]
-      (mt/with-temp* [Card [_mbql-card   {:name          "Venues Count"
-                                          :query_type    "query"
-                                          :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-                      Card [_native-card native-card]
-                      Card [_dataset     (assoc native-card :name "Dataset" :dataset true)]]
-        (is (= ["Another SQL query" "Dataset"]
-               (->> (search-request-data :rasta :q "aggregation")
-                    (map :name))))))))
 
 (deftest search-db-call-count-test
   (t2.with-temp/with-temp
@@ -679,7 +706,7 @@
      Table     {table-id :id} {:db_id  db-id
                                :schema nil}
      Metric    _              {:table_id table-id
-                                :name     "metric count test 1"}
+                               :name     "metric count test 1"}
      Metric    _              {:table_id table-id
                                :name     "metric count test 1"}
      Metric    _              {:table_id table-id
@@ -690,9 +717,10 @@
                                :name     "segment count test 2"}
      Segment   _              {:table_id table-id
                                :name     "segment count test 3"}]
-    (toucan2.execute/with-call-count [call-count]
-      (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
-      ;; the call count number here are expected to change if we change the search api
-      ;; we have this test here just to keep tracks this number to remind us to put effort
-      ;; into keep this number as low as we can
-      (is (= 7 (call-count))))))
+    (with-redefs [premium-features/segmented-user? (constantly false)]
+      (toucan2.execute/with-call-count [call-count]
+        (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
+        ;; the call count number here are expected to change if we change the search api
+        ;; we have this test here just to keep tracks this number to remind us to put effort
+        ;; into keep this number as low as we can
+        (is (= 7 (call-count)))))))

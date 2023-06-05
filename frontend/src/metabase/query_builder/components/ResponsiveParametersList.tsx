@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useMemo } from "react";
+import { useCallback, useState, useMemo } from "react";
 import { msgid, ngettext } from "ttag";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import Button from "metabase/core/components/Button";
@@ -70,7 +70,6 @@ export const ResponsiveParametersList = ({
               borderless
               icon="close"
               onClick={handleFilterButtonClick}
-              iconSize={14}
             />
           </ParametersListHeader>
         )}

@@ -1,5 +1,6 @@
 (ns metabase.lib.schema.expression.temporal
   (:require
+   [clojure.set :as set]
    [malli.core :as mc]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
@@ -7,16 +8,40 @@
    [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  #?@
+  (:clj
+   [(:import
+     (java.time ZoneId))]
+   :cljs
+   [(:require
+     ["moment" :as moment]
+     ["moment-timezone" :as mtz])]))
 
-(mbql-clause/define-tuple-mbql-clause :interval
+#?(:cljs
+   ;; so the moment-timezone stuff gets loaded
+   (comment mtz/keep-me))
+
+(mbql-clause/define-tuple-mbql-clause :interval :- :type/Interval
   :int
   ::temporal-bucketing/unit.date-time.interval)
 
-;; FIXME Interval produces a fixed type but we have no :type/Interval
-(defmethod expression/type-of* :interval
-  [[_tag _opts n _unit]]
-  (expression/type-of n))
+(defmethod expression/type-of-method :lib.type-of/type-is-temporal-type-of-first-arg [[_tag _opts temporal]]
+  ;; For datetime-add, datetime-subtract, etc. the first arg is a temporal value. However, some valid values are
+  ;; formatted strings for which type-of returns eg. #{:type/String :type/DateTime}. Since we're doing date arithmetic,
+  ;; we know for sure it's the temporal type.
+  (let [inner-type (expression/type-of temporal)]
+    (if (set? inner-type)
+      (let [temporal-set (set/intersection inner-type #{:type/Date :type/DateTime})]
+        (if (= (count temporal-set) 1)
+          (first temporal-set)
+          temporal-set))
+      inner-type)))
+
+;; For most purposes, `:lib.type-of/type-is-temporal-type-of-first-arg` is the same as
+;; `:lib.type-of/type-is-type-of-first-arg`. In particular, for the unambiguous `lib.metadata.calculation/type-of`, they
+;; are identical. They only differ when there's a set of possibilities in `lib.schema.expression/type-of`.
+(lib.hierarchy/derive :lib.type-of/type-is-temporal-type-of-first-arg :lib.type-of/type-is-type-of-first-arg)
 
 ;;; TODO -- we should constrain this so that you can only use a Date unit if expr is a date, etc.
 (doseq [op [:datetime-add :datetime-subtract]]
@@ -24,7 +49,7 @@
     #_expr   [:ref ::expression/temporal]
     #_amount :int
     #_unit   [:ref ::temporal-bucketing/unit.date-time.interval])
-  (lib.hierarchy/derive op :lib.type-of/type-is-type-of-first-arg))
+  (lib.hierarchy/derive op :lib.type-of/type-is-temporal-type-of-first-arg))
 
 (doseq [op [:get-year :get-month :get-day :get-hour :get-minute :get-second :get-quarter]]
   (mbql-clause/define-tuple-mbql-clause op :- :type/Integer
@@ -39,21 +64,37 @@
                               :get-day :get-day-of-week
                               :get-month :get-quarter :get-year}]
   (mbql-clause/define-tuple-mbql-clause temporal-extract-op :- :type/Integer
-  #_:datetime [:schema [:ref ::expression/temporal]]))
+    #_:datetime [:schema [:ref ::expression/temporal]]))
 
-(mbql-clause/define-tuple-mbql-clause :get-week :- :type/Integer
-  #_:datetime [:schema [:ref ::expression/temporal]]
-  ;; TODO should this be in the options map?
-  #_:mode [:maybe [:enum :iso :us :instance]])
+(mr/def ::get-week-mode
+  [:enum :iso :us :instance])
 
-(mbql-clause/define-tuple-mbql-clause :convert-timezone
-  #_:datetime [:schema [:ref ::expression/temporal]]
-  ;; TODO could be better specified - perhaps with a build time macro to inline the timezones?
-  ;; NOT expressions?
-  #_:target [:string]
-  #_:source [:maybe [:string]])
+(mbql-clause/define-catn-mbql-clause :get-week :- :type/Integer
+  [:datetime [:schema [:ref ::expression/temporal]]]
+  ;; TODO : the mode should probably go in the options map in modern MBQL rather than have it be a separate positional
+  ;; argument. But we can't refactor everything in one go, so that will have to be a future refactor.
+  [:mode     [:? [:schema [:ref ::get-week-mode]]]])
 
-(lib.hierarchy/derive :convert-timezone :lib.type-of/type-is-type-of-first-arg)
+(mr/def ::timezone-id
+  [:and
+
+   ::common/non-blank-string
+   (into [:enum
+          {:error/message "valid timezone ID"
+           :error/fn      (fn [{:keys [value]} _]
+                            (str "invalid timezone ID: " (pr-str value)))}]
+         (sort
+          #?( ;; 600 timezones on java 17
+             :clj (ZoneId/getAvailableZoneIds)
+             ;; 596 timezones on moment-timezone 0.5.38
+             :cljs (.names (.-tz moment)))))])
+
+(mbql-clause/define-catn-mbql-clause :convert-timezone
+  [:datetime [:schema [:ref ::expression/temporal]]]
+  [:target   [:schema [:ref ::timezone-id]]]
+  [:source   [:? [:schema [:ref ::timezone-id]]]])
+
+(lib.hierarchy/derive :convert-timezone :lib.type-of/type-is-temporal-type-of-first-arg)
 
 (mbql-clause/define-tuple-mbql-clause :now :- :type/DateTimeWithTZ)
 
@@ -101,7 +142,7 @@
                [:= :default]
                [:ref ::temporal-bucketing/unit.date-time]]]]]])
 
-(defmethod expression/type-of* :absolute-datetime
+(defmethod expression/type-of-method :absolute-datetime
   [[_tag _opts value unit]]
   (or
    ;; if value is `:current`, then infer the type based on the unit. Date unit = `:type/Date`. Anything else =

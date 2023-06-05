@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import type { NotebookStepUiComponentProps } from "../types";
@@ -35,4 +34,5 @@ function SummarizeStep({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SummarizeStep;

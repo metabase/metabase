@@ -1,6 +1,7 @@
+import { checkNotNull } from "metabase/core/utils/types";
 import { createMockDatabase } from "metabase-types/api/mocks/database";
-import { Database as DatabaseApi } from "metabase-types/api";
-import Database from "metabase-lib/metadata/Database";
+import { Database } from "metabase-types/api";
+import { createMockMetadata } from "__support__/metadata";
 import { getHelpText } from "./helper-text-strings";
 
 describe("getHelpText", () => {
@@ -72,8 +73,9 @@ describe("getHelpText", () => {
   });
 });
 
-function setup(dbOpts?: Partial<DatabaseApi>) {
-  const database = new Database(createMockDatabase(dbOpts));
+function setup(dbOpts?: Partial<Database>) {
+  const database = createMockDatabase(dbOpts);
+  const metadata = createMockMetadata({ databases: [database] });
 
-  return { database };
+  return { database: checkNotNull(metadata.database(database.id)) };
 }

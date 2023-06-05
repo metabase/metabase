@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
 import { canonicalCollectionId } from "metabase/collections/utils";
@@ -57,4 +57,5 @@ const getInitialValues = (collection: Collection): TimelineData => ({
   archived: false,
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default NewTimelineModal;

@@ -1,4 +1,4 @@
-import React, { forwardRef, HTMLAttributes, Ref, useCallback } from "react";
+import { forwardRef, HTMLAttributes, Ref, useCallback } from "react";
 import ColorPill from "metabase/core/components/ColorPill";
 import { PopoverRoot } from "./ColorSelectorPopover.styled";
 
@@ -36,4 +36,5 @@ const ColorSelectorPopover = forwardRef(function ColorSelector(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorSelectorPopover;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
@@ -56,12 +56,6 @@ function ProfileLink({ user, adminItems, onLogout }) {
         icon: null,
         link: "/admin",
         event: `Navbar;Profile Dropdown;Enter Admin`,
-      },
-      {
-        title: t`Activity`,
-        icon: null,
-        link: "/activity",
-        event: `Navbar;Profile Dropdown;Activity ${tag}`,
       },
       {
         title: t`Help`,

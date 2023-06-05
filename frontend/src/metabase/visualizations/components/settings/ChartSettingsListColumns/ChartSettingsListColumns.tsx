@@ -1,4 +1,4 @@
-import React, { useCallback, ChangeEvent } from "react";
+import { useCallback, ChangeEvent } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -146,4 +146,5 @@ function ChartSettingsListColumns({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartSettingsListColumns;

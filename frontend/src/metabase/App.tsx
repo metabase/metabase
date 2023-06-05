@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from "react";
+import { ReactNode, useState } from "react";
 import { connect } from "react-redux";
 import { Location } from "history";
 
@@ -117,6 +117,7 @@ function App({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<AppStateProps, unknown, AppRouterOwnProps, State>(
   mapStateToProps,
   mapDispatchToProps,

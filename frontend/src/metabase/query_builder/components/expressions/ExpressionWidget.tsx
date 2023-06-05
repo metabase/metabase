@@ -1,4 +1,4 @@
-import React, { ReactNode, useRef, useState } from "react";
+import { ReactNode, useRef, useState } from "react";
 import { t } from "ttag";
 import { isNotNull } from "metabase/core/utils/types";
 import Button from "metabase/core/components/Button";
@@ -9,7 +9,7 @@ import type { Expression } from "metabase-types/api";
 import { isExpression } from "metabase-lib/expressions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
+import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
 import {
   ActionButtonsWrapper,
   Container,
@@ -40,7 +40,7 @@ export interface ExpressionWidgetProps {
   onClose?: () => void;
 }
 
-const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
+export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const {
     query,
     name: initialName,
@@ -156,5 +156,3 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     </Container>
   );
 };
-
-export default ExpressionWidget;

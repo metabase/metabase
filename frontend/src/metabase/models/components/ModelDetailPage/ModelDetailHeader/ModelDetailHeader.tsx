@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -113,4 +113,5 @@ function ModelDetailHeader({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelDetailHeader;

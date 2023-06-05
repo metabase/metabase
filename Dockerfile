@@ -14,6 +14,10 @@ RUN apt-get update && apt-get upgrade -y && apt-get install openjdk-11-jdk curl 
     && ./linux-install-1.11.1.1262.sh
 
 COPY . .
+
+# version is pulled from git, but git doesn't trust the directory due to different owners
+RUN git config --global --add safe.directory /home/node
+
 RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh
 
 # ###################

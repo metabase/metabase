@@ -14,6 +14,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
@@ -34,7 +35,9 @@
    :cljs
    (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
 
-(defn- clause? [clause]
+(defn clause?
+  "Returns true if this is a clause."
+  [clause]
   (and (vector? clause)
        (> (count clause) 1)
        (keyword? (first clause))
@@ -47,20 +50,41 @@
   (when (clause? clause)
     (get-in clause [1 :lib/uuid])))
 
+(defn expression-name
+  "Returns the :lib/expression-name of `clause`. Returns nil if `clause` is not a clause."
+  [clause]
+  (when (clause? clause)
+    (get-in clause [1 :lib/expression-name])))
+
+(defn named-expression-clause
+  "Top level expressions must be clauses with :lib/expression-name, so if we get a literal, wrap it in :value."
+  [clause a-name]
+  (assoc-in
+    (if (clause? clause)
+      clause
+      [:value {:lib/uuid (str (random-uuid))
+               :effective-type (lib.schema.expression/type-of clause)}
+       clause])
+    [1 :lib/expression-name] a-name))
+
 (defn replace-clause
   "Replace the `target-clause` in `stage` `location` with `new-clause`.
    If a clause has :lib/uuid equal to the `target-clause` it is swapped with `new-clause`.
    If `location` contains no clause with `target-clause` no replacement happens."
   [stage location target-clause new-clause]
   {:pre [(clause? target-clause)]}
-  (m/update-existing-in
-    stage
-    location
-    #(->> (for [clause %]
-            (if (= (clause-uuid clause) (clause-uuid target-clause))
-              new-clause
-              clause))
-          vec)))
+  (let [new-clause (if (= :expressions (first location))
+                     (named-expression-clause new-clause (expression-name target-clause))
+                     new-clause)]
+    (m/update-existing-in
+      stage
+      location
+      (fn [clause-or-clauses]
+        (->> (for [clause clause-or-clauses]
+               (if (= (clause-uuid clause) (clause-uuid target-clause))
+                 new-clause
+                 clause))
+             vec)))))
 
 (defn remove-clause
   "Remove the `target-clause` in `stage` `location`.
@@ -71,16 +95,22 @@
   {:pre [(clause? target-clause)]}
   (if-let [target (get-in stage location)]
     (let [target-uuid (clause-uuid target-clause)
+          [first-loc last-loc] [(first location) (last location)]
           result (into [] (remove (comp #{target-uuid} clause-uuid)) target)]
-      (if (seq result)
+      (cond
+        (seq result)
         (assoc-in stage location result)
-        (if (= 1 (count location))
-          (dissoc stage (first location))
-          (case [(first location) (last location)]
-            [:joins :conditions] (throw (ex-info (i18n/tru "Cannot remove the final join condition")
-                                                 {:conditions (get-in stage location)}))
-            [:joins :fields] (update-in stage (pop location) dissoc (peek location))))))
-            stage))
+
+        (= [:joins :conditions] [first-loc last-loc])
+        (throw (ex-info (i18n/tru "Cannot remove the final join condition")
+                        {:conditions (get-in stage location)}))
+
+        (= [:joins :fields] [first-loc last-loc])
+        (update-in stage (pop location) dissoc last-loc)
+
+        :else
+        (m/dissoc-in stage location)))
+    stage))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
 ;;; the near future.
@@ -344,9 +374,9 @@
          (> cumulative-byte-count max-length-bytes) (subs s 0 (dec i))
          (>= i (count s))                           s
          :else                                      (recur (inc i)
-                                                           (+
-                                                            cumulative-byte-count
-                                                            (string-byte-count (string-character-at s i))))))
+                                                           (long (+
+                                                                  cumulative-byte-count
+                                                                  (string-byte-count (string-character-at s i)))))))
 
      :cljs
      (let [buf (js/Uint8Array. max-length-bytes)
@@ -409,7 +439,9 @@
   [query]
   (-> query :stages first :source-table))
 
-(defn unique-name-generator
+(mu/defn unique-name-generator :- [:=>
+                                   [:cat ::lib.schema.common/non-blank-string]
+                                   ::lib.schema.common/non-blank-string]
   "Create a new function with the signature
 
     (f str) => str

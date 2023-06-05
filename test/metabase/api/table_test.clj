@@ -17,7 +17,8 @@
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -49,7 +50,8 @@
     :refingerprint               nil
     :auto_run_queries            true
     :settings                    nil
-    :cache_ttl                   nil}))
+    :cache_ttl                   nil
+    :is_audit                    false}))
 
 (defn- table-defaults []
   (merge
@@ -290,7 +292,7 @@
 
 (deftest update-table-test
   (testing "PUT /api/table/:id"
-    (mt/with-temp Table [table]
+    (t2.with-temp/with-temp [Table table]
       (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                             {:display_name    "Userz"
                              :visibility_type "hidden"
@@ -309,7 +311,7 @@
                      :updated_at))))
     (testing "Can update description, caveat, points of interest to be empty (#11097)"
       (doseq [property [:caveats :points_of_interest :description]]
-        (mt/with-temp Table [table]
+        (t2.with-temp/with-temp [Table table]
           (is (= ""
                  (get (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                             {property ""})
@@ -317,13 +319,13 @@
 
     (testing "Don't change visibility_type when updating properties (#22287)"
       (doseq [property [:caveats :points_of_interest :description :display_name]]
-        (mt/with-temp Table [table {:visibility_type "hidden"}]
-         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
-                                                   {property (mt/random-name)})
-         (is (= :hidden (t2/select-one-fn :visibility_type Table :id (:id table)))))))
+        (t2.with-temp/with-temp [Table table {:visibility_type "hidden"}]
+          (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                                {property (mt/random-name)})
+          (is (= :hidden (t2/select-one-fn :visibility_type Table :id (:id table)))))))
 
     (testing "A table can only be updated by a superuser"
-      (mt/with-temp Table [table]
+      (t2.with-temp/with-temp [Table table]
         (mt/user-http-request :rasta :put 403 (format "table/%d" (u/the-id table)) {:display_name "Userz"})))))
 
 ;; see how many times sync-table! gets called when we call the PUT endpoint. It should happen when you switch from
@@ -331,7 +333,7 @@
 (deftest update-table-sync-test
   (testing "PUT /api/table/:id"
     (testing "Table should get synced when it gets unhidden"
-      (mt/with-temp Table [table]
+      (t2.with-temp/with-temp [Table table]
         (let [called (atom 0)
               ;; original is private so a var will pick up the redef'd. need contents of var before
               original (var-get #'api.table/sync-unhidden-tables)]
@@ -506,11 +508,11 @@
 (deftest virtual-table-metadata-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "Make sure metadata for 'virtual' tables comes back as expected"
-      (mt/with-temp Card [card {:name          "Go Dubs!"
-                                :database_id   (mt/id)
-                                :dataset_query {:database (mt/id)
-                                                :type     :native
-                                                :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]
+      (t2.with-temp/with-temp [Card card {:name          "Go Dubs!"
+                                          :database_id   (mt/id)
+                                          :dataset_query {:database (mt/id)
+                                                          :type     :native
+                                                          :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]
         ;; run the Card which will populate its result_metadata column
         (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
         ;; Now fetch the metadata for this "table"
@@ -564,11 +566,11 @@
 (deftest include-date-dimensions-in-nested-query-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "Test date dimensions being included with a nested query"
-      (mt/with-temp Card [card {:name          "Users"
-                                :database_id   (mt/id)
-                                :dataset_query {:database (mt/id)
-                                                :type     :native
-                                                :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
+      (t2.with-temp/with-temp [Card card {:name          "Users"
+                                          :database_id   (mt/id)
+                                          :dataset_query {:database (mt/id)
+                                                          :type     :native
+                                                          :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
         (let [card-virtual-table-id (str "card__" (u/the-id card))]
           ;; run the Card which will populate its result_metadata column
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
@@ -789,10 +791,10 @@
   (testing "GET /api/table/:id/query_metadata"
     (testing "binning options for nested queries"
       (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
-        (mt/with-temp Card [card {:database_id   (mt/id)
-                                  :dataset_query {:database (mt/id)
-                                                  :type    :query
-                                                  :query    {:source-query {:source-table (mt/id :venues)}}}}]
+        (t2.with-temp/with-temp [Card card {:database_id   (mt/id)
+                                            :dataset_query {:database (mt/id)
+                                                            :type    :query
+                                                            :query    {:source-query {:source-table (mt/id :venues)}}}}]
           (letfn [(dimension-options []
                     (let [response (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" (u/the-id card)))]
                       (map #(dimension-options-for-field response %) ["latitude" "longitude"])))]

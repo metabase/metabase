@@ -1,4 +1,4 @@
-import React, { HTMLAttributes } from "react";
+import { HTMLAttributes } from "react";
 import {
   SkeletonBottomImage,
   SkeletonCenterCaption,
@@ -39,4 +39,5 @@ const SmartScalarSkeleton = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SmartScalarSkeleton;

@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import * as React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -147,4 +148,5 @@ const SingleSelectListField = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SingleSelectListField;

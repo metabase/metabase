@@ -1,14 +1,17 @@
 /* eslint-disable react/display-name */
-import React from "react";
 import _ from "underscore";
 import { createSelector } from "@reduxjs/toolkit";
 import { t, jt } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
+
 import MetabaseSettings from "metabase/lib/settings";
 import { PersistedModelsApi, UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import { DashboardSelector } from "metabase/components/DashboardSelector";
+import { refreshCurrentUser } from "metabase/redux/user";
+
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import { UploadSettings } from "./components/UploadSettings";
@@ -29,6 +32,7 @@ import FormattingWidget from "./components/widgets/FormattingWidget";
 import FullAppEmbeddingLinkWidget from "./components/widgets/FullAppEmbeddingLinkWidget";
 import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
+
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SetupCheckList from "./setup/components/SetupCheckList";
@@ -83,6 +87,24 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "string",
         widget: SiteUrlWidget,
         warningMessage: t`Only change this if you know what you're doing!`,
+      },
+      {
+        key: "custom-homepage",
+        display_name: t`Custom Homepage`,
+        type: "boolean",
+        postUpdateAction: refreshCurrentUser,
+      },
+      {
+        key: "custom-homepage-dashboard",
+        description: null,
+        getHidden: ({ "custom-homepage": customHomepage }) => !customHomepage,
+        widget: DashboardSelector,
+        postUpdateAction: refreshCurrentUser,
+        getProps: setting => ({
+          value: setting.value,
+          collectionFilter: collection =>
+            collection.personal_owner_id === null || collection.id === "root",
+        }),
       },
       {
         key: "redirect-all-requests-to-https",

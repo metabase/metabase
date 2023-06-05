@@ -1,8 +1,8 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import Icon from "metabase/components/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import { singularize } from "metabase/lib/formatting";
 
 import * as Lib from "metabase-lib";
@@ -12,6 +12,7 @@ const DEFAULT_MAX_HEIGHT = 610;
 interface QueryColumnPickerProps {
   className?: string;
   query: Lib.Query;
+  stageIndex: number;
   columnGroups: Lib.ColumnGroup[];
   maxHeight?: number;
   onSelect: (column: Lib.ColumnMetadata) => void;
@@ -25,12 +26,13 @@ type ColumnListItem = Lib.ColumnDisplayInfo & {
 type Sections = {
   name: string;
   items: ColumnListItem[];
-  icon?: string;
+  icon?: IconName;
 };
 
 function QueryColumnPicker({
   className,
   query,
+  stageIndex,
   columnGroups,
   maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
@@ -39,10 +41,10 @@ function QueryColumnPicker({
   const sections: Sections[] = useMemo(
     () =>
       columnGroups.map(group => {
-        const groupInfo = Lib.displayInfo(query, group);
+        const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
         const items = Lib.getColumnsFromColumnGroup(group).map(column => {
-          const displayInfo = Lib.displayInfo(query, column);
+          const displayInfo = Lib.displayInfo(query, stageIndex, column);
           return {
             ...displayInfo,
             column,
@@ -55,7 +57,7 @@ function QueryColumnPicker({
           items,
         };
       }),
-    [query, columnGroups],
+    [query, stageIndex, columnGroups],
   );
 
   const handleSelect = useCallback(
@@ -111,4 +113,5 @@ function getGroupIcon(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
   return;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QueryColumnPicker;

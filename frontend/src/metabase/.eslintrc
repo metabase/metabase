@@ -26,6 +26,12 @@
       }
     },
     {
+      "files": ["**/*.stories.tsx"],
+      "rules": {
+        "import/no-default-export": 0
+      }
+    },
+    {
       "files": ["lib/redux/hooks.ts"],
       "rules": {
         "no-restricted-imports": [

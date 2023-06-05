@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { Route } from "react-router";
-import React, { useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
@@ -81,6 +81,7 @@ const ApplicationPermissionsPage = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),

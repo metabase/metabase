@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { useMount } from "react-use";
@@ -170,6 +170,7 @@ const DataPickerContainer = _.compose(
   connect(mapStateToProps),
 )(DataPicker);
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(DataPickerContainer, {
   Provider: DataPickerContextProvider,
 });

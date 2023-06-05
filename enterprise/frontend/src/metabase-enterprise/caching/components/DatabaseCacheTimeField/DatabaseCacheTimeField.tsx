@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { useField, useFormikContext } from "formik";
 import { jt, t } from "ttag";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
@@ -55,4 +55,5 @@ const DatabaseCacheTimeDescription = (): JSX.Element => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseCacheTimeField;

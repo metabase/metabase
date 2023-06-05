@@ -1,35 +1,16 @@
-import { EntitiesState, State } from "metabase-types/store";
+import { State } from "metabase-types/store";
 import { createMockUser } from "metabase-types/api/mocks";
-import {
-  createMockAdminState,
-  createMockAppState,
-  createMockDashboardState,
-  createMockEmbedState,
-  createMockMetabotState,
-  createMockParametersState,
-  createMockQueryBuilderState,
-  createMockSettingsState,
-  createMockSetupState,
-  createMockUploadState,
-} from "metabase-types/store/mocks";
-
-// This is a helper for cases when entities state doesn't matter
-// Most likely, createEntitiesState from __support__/store would be a better choice
-export const createPlaceholderEntitiesState = (): EntitiesState => ({
-  actions: {},
-  alerts: {},
-  collections: {},
-  dashboards: {},
-  databases: {},
-  schemas: {},
-  tables: {},
-  fields: {},
-  metrics: {},
-  segments: {},
-  snippets: {},
-  users: {},
-  questions: {},
-});
+import { createMockAdminState } from "./admin";
+import { createMockAppState } from "./app";
+import { createMockDashboardState } from "./dashboard";
+import { createMockNormalizedEntitiesState } from "./entities";
+import { createMockEmbedState } from "./embed";
+import { createMockMetabotState } from "./metabot";
+import { createMockParametersState } from "./parameters";
+import { createMockQueryBuilderState } from "./qb";
+import { createMockSettingsState } from "./settings";
+import { createMockSetupState } from "./setup";
+import { createMockUploadState } from "./upload";
 
 export const createMockState = (opts?: Partial<State>): State => ({
   admin: createMockAdminState(),
@@ -37,7 +18,7 @@ export const createMockState = (opts?: Partial<State>): State => ({
   currentUser: createMockUser(),
   dashboard: createMockDashboardState(),
   embed: createMockEmbedState(),
-  entities: createPlaceholderEntitiesState(),
+  entities: createMockNormalizedEntitiesState(),
   metabot: createMockMetabotState(),
   parameters: createMockParametersState(),
   qb: createMockQueryBuilderState(),

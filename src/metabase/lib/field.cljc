@@ -1,8 +1,10 @@
 (ns metabase.lib.field
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
@@ -19,6 +21,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
@@ -150,10 +153,11 @@
 (defmethod lib.metadata.calculation/metadata-method :field
   [query
    stage-number
-   [_tag {:keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
+   [_tag {source-uuid :lib/uuid :keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
         metadata       (merge
-                        {:lib/type :metadata/field}
+                        {:lib/type :metadata/field
+                         :lib/source-uuid source-uuid}
                         field-metadata
                         {:display-name (or (:display-name opts)
                                            (lib.metadata.calculation/display-name query stage-number field-ref))}
@@ -178,7 +182,7 @@
   [query stage-number {field-display-name :display-name
                        field-name         :name
                        temporal-unit      :unit
-                       binning            :binning
+                       binning            ::binning
                        join-alias         :source_alias
                        fk-field-id        :fk-field-id
                        table-id           :table-id
@@ -187,18 +191,29 @@
                                (u.humanization/name->human-readable-name :simple field-name))
         join-display-name  (when (= style :long)
                              (or
-                              (when fk-field-id
-                                (let [table (lib.metadata/table query table-id)]
-                                  (lib.metadata.calculation/display-name query stage-number table style)))
-                              (when join-alias
-                                (let [join (lib.join/resolve-join query stage-number join-alias)]
-                                  (lib.metadata.calculation/display-name query stage-number join style)))))
+                               (when fk-field-id
+                                 ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
+                                 ;; "ID" dropped instead.
+                                 ;; This is very intentional: one table might have several FKs to one foreign table, each with different
+                                 ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
+                                 ;; See #30109 for more details.
+                                 (if-let [field (lib.metadata/field query fk-field-id)]
+                                   (-> (lib.metadata.calculation/display-info query stage-number field)
+                                       :display-name
+                                       lib.util/strip-id)
+                                   (let [table (lib.metadata/table query table-id)]
+                                     (lib.metadata.calculation/display-name query stage-number table style))))
+                               (when join-alias
+                                 (let [join (lib.join/resolve-join query stage-number join-alias)]
+                                   (lib.metadata.calculation/display-name query stage-number join style)))))
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)]
     (cond
-      temporal-unit (lib.util/format "%s (%s)" display-name (name temporal-unit))
-      binning       (lib.util/format "%s: %s"  display-name (lib.binning/binning-display-name binning field-metadata))
+      temporal-unit (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
+                                                               (str/replace \- \space)
+                                                               u/capitalize-en))
+      binning       (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata))
       :else         display-name)))
 
 (defmethod lib.metadata.calculation/display-name-method :field
@@ -209,7 +224,7 @@
   (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
                             join-alias    (assoc :source_alias join-alias)
                             temporal-unit (assoc :unit temporal-unit)
-                            binning       (assoc :binning binning)
+                            binning       (assoc ::binning binning)
                             source-field  (assoc :fk-field-id source-field))]
     (lib.metadata.calculation/display-name query stage-number field-metadata style)
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
@@ -283,23 +298,52 @@
   [query stage-number field-ref]
   (lib.temporal-bucket/available-temporal-buckets query stage-number (resolve-field-metadata query stage-number field-ref)))
 
+(defn- fingerprint-based-default-unit [fingerprint]
+  (u/ignore-exceptions
+    (when-let [{:keys [earliest latest]} (-> fingerprint :type :type/DateTime)]
+      (let [days (shared.ut/day-diff (shared.ut/coerce-to-timestamp earliest)
+                                     (shared.ut/coerce-to-timestamp latest))]
+        (when-not (NaN? days)
+          (condp > days
+            1 :minute
+            31 :day
+            365 :week
+            :month))))))
+
+(defn- mark-default-unit [options unit]
+  (cond->> options
+    (some #(= (:unit %) unit) options)
+    (mapv (fn [option]
+            (cond-> (dissoc option :default)
+              (= (:unit option) unit) (assoc :default true))))))
+
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/field
   [_query _stage-number field-metadata]
-  (let [effective-type ((some-fn :effective-type :base-type) field-metadata)]
-    (cond
-      (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
-      (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
-      (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
-      :else                                [])))
+  (let [effective-type ((some-fn :effective-type :base-type) field-metadata)
+        fingerprint-default (some-> field-metadata :fingerprint fingerprint-based-default-unit)]
+    (cond-> (cond
+              (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
+              (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
+              (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
+              :else                                [])
+      fingerprint-default (mark-default-unit fingerprint-default))))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
 (defmethod lib.binning/binning-method :field
   [field-clause]
-  (-> field-clause lib.options/options :binning))
+  (some-> field-clause
+          lib.options/options
+          :binning
+          (assoc :lib/type    ::lib.binning/binning
+                 :metadata-fn (fn [query stage-number]
+                                (resolve-field-metadata query stage-number field-clause)))))
 
 (defmethod lib.binning/binning-method :metadata/field
   [metadata]
-  (::binning metadata))
+  (some-> metadata
+          ::binning
+          (assoc :lib/type    ::lib.binning/binning
+                 :metadata-fn (constantly metadata))))
 
 (defmethod lib.binning/with-binning-method :field
   [field-clause binning]
@@ -397,8 +441,8 @@
     (lib.join/joined-field-desired-alias join-alias (:name field-metadata))
     (:name field-metadata)))
 
-(defn with-fields
-  "Specify the `:fields` for a query."
+(mu/defn with-fields :- ::lib.schema/query
+  "Specify the `:fields` for a query. Pass `nil` or an empty sequence to remove `:fields`."
   ([xs]
    (fn [query stage-number]
      (with-fields query stage-number xs)))
@@ -406,17 +450,52 @@
   ([query xs]
    (with-fields query -1 xs))
 
-  ([query stage-number xs]
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    xs]
    (let [xs (mapv (fn [x]
                     (lib.ref/ref (if (fn? x)
                                    (x query stage-number)
                                    x)))
                   xs)]
-     (lib.util/update-query-stage query stage-number assoc :fields xs))))
+     (lib.util/update-query-stage query stage-number u/assoc-dissoc :fields (not-empty xs)))))
 
-(defn fields
-  "Fetches the `:fields` for a query."
+(mu/defn fields :- [:maybe [:ref ::lib.schema/fields]]
+  "Fetches the `:fields` for a query. Returns `nil` if there are no `:fields`. `:fields` should never be empty; this is
+  enforced by the Malli schema."
   ([query]
    (fields query -1))
-  ([query stage-number]
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
    (:fields (lib.util/query-stage query stage-number))))
+
+(mu/defn fieldable-columns :- [:sequential lib.metadata/ColumnMetadata]
+  "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query. This is
+  basically just the columns returned by the source Table/Saved Question/Model or previous query stage.
+
+  Includes a `:selected?` key letting you know this column is already in `:fields` or not; if `:fields` is
+  unspecified, all these columns are returned by default, so `:selected?` is true for all columns (this is a little
+  strange but it matches the behavior of the QB UI)."
+  ([query]
+   (fieldable-columns query -1))
+
+  ([query :- ::lib.schema/query
+    stage-number :- :int]
+   (let [current-fields   (fields query stage-number)
+         selected-column? (if (empty? current-fields)
+                            (constantly true)
+                            (fn [column]
+                              (let [col-ref (lib.ref/ref column)]
+                                (boolean
+                                 (some (fn [fields-ref]
+                                         (lib.equality/ref= col-ref fields-ref))
+                                       current-fields)))))]
+     (mapv (fn [col]
+             (assoc col :selected? (selected-column? col)))
+           (lib.metadata.calculation/visible-columns query
+                                                     stage-number
+                                                     (lib.util/query-stage query stage-number)
+                                                     {:include-joined?              false
+                                                      :include-expressions?         false
+                                                      :include-implicitly-joinable? false})))))

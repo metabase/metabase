@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { t, jt, ngettext, msgid } from "ttag";
 
 import { color } from "metabase/lib/colors";
@@ -11,6 +11,7 @@ import type {
   DatasetColumn,
   EntityCustomDestinationClickBehavior,
 } from "metabase-types/api";
+import { IconName } from "metabase/core/components/Icon";
 import { getIconForField } from "metabase-lib/metadata/utils/fields";
 
 import { SidebarItem } from "../SidebarItem";
@@ -86,7 +87,7 @@ interface ColumnProps {
 const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
   <SidebarItem onClick={onClick}>
     <SidebarItem.Icon
-      name={getIconForField(column)}
+      name={getIconForField(column) as unknown as IconName}
       color={color("brand")}
       size={18}
     />
@@ -98,4 +99,5 @@ const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
   </SidebarItem>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Column;

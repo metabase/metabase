@@ -1,1 +1,1 @@
-export { default } from "./DatabaseStep";
+export * from "./DatabaseStep";

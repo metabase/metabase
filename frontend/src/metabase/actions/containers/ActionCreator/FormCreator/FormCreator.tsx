@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useMemo, useState } from "react";
+import { useEffect, useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
@@ -201,4 +201,5 @@ function FormCreator({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormCreator;

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import _ from "underscore";
@@ -103,4 +103,5 @@ const getLocaleOptions = (locales: LocaleData[] | null) => {
   return [{ name: t`Use site default`, value: null }, ...options];
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default UserProfileForm;

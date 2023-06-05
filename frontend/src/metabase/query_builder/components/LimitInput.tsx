@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
@@ -38,4 +38,5 @@ const LimitInput = ({
 
 LimitInput.propTypes = propTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default LimitInput;

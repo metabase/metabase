@@ -1,10 +1,11 @@
-import React, {
+import {
   ButtonHTMLAttributes,
   forwardRef,
   Ref,
   useCallback,
   useMemo,
 } from "react";
+import * as React from "react";
 import {
   SelectButtonRoot,
   SelectButtonIcon,
@@ -90,6 +91,7 @@ const SelectButton = forwardRef(function SelectButton(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(SelectButton, {
   Root: SelectButtonRoot,
   Content: SelectButtonContent,

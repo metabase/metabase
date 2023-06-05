@@ -1,8 +1,9 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
+import * as React from "react";
 import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import Icon, { IconProps } from "metabase/components/Icon";
+import { Icon, IconProps } from "metabase/core/components/Icon";
 
 import { color } from "metabase/lib/colors";
 
@@ -37,6 +38,7 @@ interface Props {
   searchString: string;
   searchQuery: SearchQuery;
   showSearch?: boolean;
+  allowFetch?: boolean;
   crumbs: any[];
   className?: string;
   style?: React.CSSProperties;
@@ -59,6 +61,7 @@ function ItemPickerView({
   searchString,
   searchQuery,
   showSearch = true,
+  allowFetch = true,
   crumbs,
   className,
   style,
@@ -73,6 +76,7 @@ function ItemPickerView({
   const [isSearchEnabled, setIsSearchEnabled] = useState(false);
 
   const isPickingNotCollection = models.some(model => model !== "collection");
+  const canFetch = (isPickingNotCollection || searchString) && allowFetch;
 
   const handleSearchInputKeyPress = useCallback(
     e => {
@@ -179,7 +183,7 @@ function ItemPickerView({
         models.includes(item.model) &&
         // remove collections unless we're searching
         // (so a user can navigate through collections)
-        (item.model !== "collection" || !!searchString)
+        (item.model !== "collection" || searchString)
       ) {
         return (
           <Item
@@ -211,7 +215,7 @@ function ItemPickerView({
       {renderHeader()}
       <ItemPickerList data-testid="item-picker-list">
         {!searchString && collections.map(renderCollectionListItem)}
-        {(isPickingNotCollection || searchString) && (
+        {canFetch && (
           <Search.ListLoader query={searchQuery} wrapped>
             {({ list }: SearchEntityListLoaderProps) => (
               <div>{list.map(renderCollectionContentListItem)}</div>
@@ -223,4 +227,5 @@ function ItemPickerView({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ItemPickerView;

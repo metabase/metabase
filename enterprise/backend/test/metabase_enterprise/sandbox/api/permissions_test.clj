@@ -15,7 +15,8 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- db-graph-keypath [group]
   [:groups (u/the-id group) (mt/id) :data])
@@ -127,8 +128,8 @@
   (testing "PUT /api/permissions/graph"
     (testing "granting sandboxed permissions for a group should *not* delete an associated GTAP (#16190)"
       (mt/with-temp-copy-of-db
-        (mt/with-temp GroupTableAccessPolicy [_ {:group_id (u/the-id (perms-group/all-users))
-                                                 :table_id (mt/id :venues)}]
+        (t2.with-temp/with-temp [GroupTableAccessPolicy _ {:group_id (u/the-id (perms-group/all-users))
+                                                           :table_id (mt/id :venues)}]
           (let [graph    (mt/user-http-request :crowberto :get 200 "permissions/graph")
                 graph'   (assoc-in graph (db-graph-keypath (perms-group/all-users))
                                    {:schemas

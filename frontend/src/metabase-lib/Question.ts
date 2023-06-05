@@ -562,7 +562,7 @@ class QuestionInner {
 
   pivot(
     breakouts: (Breakout | Dimension | Field)[] = [],
-    dimensions = [],
+    dimensions: Dimension[] = [],
   ): Question {
     return pivot(this, breakouts, dimensions) || this;
   }
@@ -1169,7 +1169,7 @@ class QuestionInner {
     );
   }
 
-  // predicate function that dermines if the question is "dirty" compared to the given question
+  // predicate function that determines if the question is "dirty" compared to the given question
   isDirtyComparedTo(originalQuestion: Question) {
     if (!this.isSaved() && this.canRun() && originalQuestion == null) {
       // if it's new, then it's dirty if it is runnable
@@ -1347,6 +1347,7 @@ class QuestionInner {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Question extends memoizeClass<QuestionInner>("query")(
   QuestionInner,
 ) {

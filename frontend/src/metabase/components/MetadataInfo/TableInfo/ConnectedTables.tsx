@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
@@ -65,4 +64,5 @@ function ConnectedTableLink({ table }: { table: Table }) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ConnectedTables;

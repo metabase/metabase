@@ -1,4 +1,3 @@
-import React from "react";
 import { CustomPicker, CustomPickerInjectedProps } from "react-color";
 import { Hue, Saturation } from "react-color/lib/components/common";
 import {
@@ -34,4 +33,5 @@ const ColorPickerControls = CustomPicker(function ColorControls(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorPickerControls;

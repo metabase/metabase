@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import Form from "metabase/core/components/Form";
@@ -28,7 +28,7 @@ interface InviteUserFormProps {
   onSubmit: (invite: InviteInfo) => void;
 }
 
-const InviteUserForm = ({
+export const InviteUserForm = ({
   user,
   invite,
   onSubmit,
@@ -70,5 +70,3 @@ const InviteUserForm = ({
     </FormProvider>
   );
 };
-
-export default InviteUserForm;

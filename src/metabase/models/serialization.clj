@@ -430,7 +430,9 @@
 (defn log-path-str
   "Returns a string for logging from a serdes path sequence (i.e. in :serdes/meta)"
   [elements]
-  (->> elements (map #(str (:model %) " " (:id %))) (str/join " > ")))
+  (->> elements
+       (map #(str (:model %) " " (:id %)))
+       (str/join " > ")))
 
 
 ;; utils
@@ -856,9 +858,9 @@
   {"card"       :model/Card
    "dataset"    :model/Card
    "collection" :model/Collection
-   "database"   :metabase.models.database/Database
+   "database"   :model/Database
    "dashboard"  :model/Dashboard
-   "table"      :metabase.models.table/Table})
+   "table"      :model/Table})
 
 (defn- export-viz-link-card
   [settings]

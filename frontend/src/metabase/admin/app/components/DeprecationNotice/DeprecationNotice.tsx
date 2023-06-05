@@ -1,4 +1,3 @@
-import React from "react";
 import { jt, t } from "ttag";
 import Link from "metabase/core/components/Link";
 import {
@@ -80,4 +79,5 @@ const getBannerContent = (
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DeprecationNotice;

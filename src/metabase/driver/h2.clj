@@ -467,7 +467,8 @@
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
   {:pre [(map? details)]}
-  (mdb.spec/spec :h2 (update details :db connection-string-set-safe-options)))
+  (mdb.spec/spec :h2 (cond-> details
+                       (string? (:db details)) (update :db connection-string-set-safe-options))))
 
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]

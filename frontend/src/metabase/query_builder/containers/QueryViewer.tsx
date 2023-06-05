@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { useSelector, useDispatch } from "metabase/lib/redux";
@@ -12,6 +12,7 @@ import type { DatasetQuery } from "metabase-types/api";
 
 import Question from "metabase-lib/Question";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function QueryViewer({
   datasetQuery,
 }: {

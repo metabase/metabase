@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
 import { ErrorDetailsProps } from "./types";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ErrorDetails({
   details,
   centered,

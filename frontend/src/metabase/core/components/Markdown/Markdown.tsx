@@ -1,4 +1,4 @@
-import React, { ComponentPropsWithRef } from "react";
+import { ComponentPropsWithRef } from "react";
 import remarkGfm from "remark-gfm";
 import ReactMarkdown from "react-markdown";
 import { MarkdownRoot } from "./Markdown.styled";
@@ -41,4 +41,5 @@ const Markdown = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Markdown;

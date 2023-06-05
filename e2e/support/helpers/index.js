@@ -28,3 +28,4 @@ export * from "./e2e-permissions-helpers";
 export * from "./e2e-visual-tests-helpers";
 export * from "./e2e-users-helpers";
 export * from "./e2e-viz-settings-helpers";
+export * from "./e2e-models-metadata-helpers";

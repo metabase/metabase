@@ -1,10 +1,10 @@
 import { t } from "ttag";
 import { pluralize, singularize } from "metabase/lib/formatting/strings";
+import { Drill } from "metabase/modes/types";
 import {
   foreignKeyDrill,
   foreignKeyDrillQuestion,
 } from "metabase-lib/queries/drills/foreign-key-drill";
-import type { Drill } from "../../types";
 
 const ForeignKeyDrill: Drill = ({ question, clicked }) => {
   const drill = foreignKeyDrill({ question, clicked });
@@ -28,4 +28,5 @@ const ForeignKeyDrill: Drill = ({ question, clicked }) => {
   ];
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ForeignKeyDrill;

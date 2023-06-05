@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { color } from "metabase/lib/colors";
 import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
 import type { StackedTooltipModel } from "../types";
@@ -111,4 +111,5 @@ const StackedDataTooltip = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default StackedDataTooltip;

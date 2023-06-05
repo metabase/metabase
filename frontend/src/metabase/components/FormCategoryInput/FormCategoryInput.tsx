@@ -1,4 +1,5 @@
-import React, { forwardRef, ReactNode, Ref, useCallback } from "react";
+import { forwardRef, ReactNode, Ref, useCallback } from "react";
+import * as React from "react";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import FormField from "metabase/core/components/FormField";
@@ -58,4 +59,5 @@ const FormCategoryInput = forwardRef(function FormInput(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormCategoryInput;

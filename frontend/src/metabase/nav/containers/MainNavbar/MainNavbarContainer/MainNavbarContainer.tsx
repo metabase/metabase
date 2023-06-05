@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { LocationDescriptor } from "history";
@@ -180,6 +180,7 @@ function MainNavbarContainer({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Bookmarks.loadList({
     loadingAndErrorWrapper: false,

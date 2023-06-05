@@ -1,4 +1,5 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import * as React from "react";
 // eslint-disable-next-line import/named
 import { Placement } from "tippy.js";
 
@@ -72,4 +73,5 @@ const Ellipsified = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Ellipsified;

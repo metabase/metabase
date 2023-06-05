@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import _ from "underscore";
 import { Location } from "history";
 import { connect } from "react-redux";
@@ -46,6 +46,7 @@ function Navbar({ isOpen, user, location, params, adminPaths }: NavbarProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Database.loadList({
     loadingAndErrorWrapper: false,

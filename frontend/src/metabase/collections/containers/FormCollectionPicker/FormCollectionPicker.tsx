@@ -1,4 +1,4 @@
-import React, {
+import {
   useCallback,
   useEffect,
   useState,
@@ -131,4 +131,5 @@ function FormCollectionPicker({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormCollectionPicker;

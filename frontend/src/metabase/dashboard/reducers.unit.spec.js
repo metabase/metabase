@@ -19,10 +19,12 @@ describe("dashboard reducers", () => {
   it("should return the initial state", () => {
     expect(initState).toEqual({
       dashboardId: null,
+      selectedTabId: null,
       dashboards: {},
       dashcardData: {},
       dashcards: {},
       isAddParameterPopoverOpen: false,
+      isNavigatingBackToDashboard: false,
       isEditing: null,
       loadingDashCards: {
         dashcardIds: [],
@@ -41,6 +43,7 @@ describe("dashboard reducers", () => {
         toastId: null,
         toastDashboardId: null,
       },
+      tabDeletions: {},
     });
   });
 

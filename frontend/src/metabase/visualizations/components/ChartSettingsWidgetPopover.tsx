@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import _ from "underscore";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
@@ -88,4 +88,5 @@ const ChartSettingsWidgetPopover = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartSettingsWidgetPopover;

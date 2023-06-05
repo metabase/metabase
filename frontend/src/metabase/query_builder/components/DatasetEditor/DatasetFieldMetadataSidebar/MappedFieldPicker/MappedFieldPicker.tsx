@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
@@ -103,4 +103,5 @@ function MappedFieldPicker({
     />
   );
 }
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Fields.load(query)(MappedFieldPicker);

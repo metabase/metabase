@@ -15,7 +15,10 @@ import { openUrl } from "metabase/redux/app";
 
 import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
+import { ModelIndexes } from "metabase/entities/model-indexes";
+
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import Revision from "metabase/entities/revisions";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
@@ -225,6 +228,14 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
+    const resultsMetadata = getResultsMetadata(getState());
+
+    if (question.isDataset()) {
+      resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
+        resultsMetadata.columns,
+      );
+    }
+
     rerunQuery = rerunQuery ?? getIsResultDirty(getState());
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
@@ -233,7 +244,6 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       ? getQuestionWithDefaultVisualizationSettings(question, series)
       : question;
 
-    const resultsMetadata = getResultsMetadata(getState());
     const questionToUpdate = questionWithVizSettings
       // Before we clean the query, we make sure question is not treated as a dataset
       // as calling table() method down the line would bring unwanted consequences
@@ -262,7 +272,16 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       updatedQuestion.type(),
     );
 
-    dispatch({ type: API_UPDATE_QUESTION, payload: updatedQuestion.card() });
+    await dispatch({
+      type: API_UPDATE_QUESTION,
+      payload: updatedQuestion.card(),
+    });
+
+    if (question.isDataset()) {
+      // this needs to happen after the question update completes in case we have changed the type
+      // of the primary key field in the same update
+      await dispatch(ModelIndexes.actions.updateModelIndexes(question));
+    }
 
     const metadataOptions = { reload: question.isDataset() };
     await dispatch(loadMetadataForCard(question.card(), metadataOptions));
@@ -286,7 +305,7 @@ export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
   revision => {
     return async dispatch => {
-      await revision.revert();
+      await dispatch(Revision.objectActions.revert(revision));
       await dispatch(reloadCard());
     };
   },

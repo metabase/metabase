@@ -11,12 +11,12 @@ export const STRING_FILTER_SUBTYPES = {
   },
   "String contains": {
     searchTerm: null,
-    value: "Bronze",
+    value: "bronze",
     representativeResult: "Incredible Bronze Pants",
   },
   "String does not contain": {
     searchTerm: null,
-    value: "Bronze",
+    value: "bronze",
     representativeResult: "Rustic Paper Wallet",
   },
   "String starts with": {

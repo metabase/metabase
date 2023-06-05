@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import ValidationError from "metabase-lib/ValidationError";
@@ -33,4 +32,5 @@ function QueryValidationError({ error }: QueryValidationErrorProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QueryValidationError;

@@ -25,7 +25,7 @@
 
 (deftest update-test
   (testing "Updating"
-    (mt/with-temp Metric [{:keys [id]} {:creator_id (mt/user->id :rasta)}]
+    (t2.with-temp/with-temp [Metric {:keys [id]} {:creator_id (mt/user->id :rasta)}]
       (testing "you should not be able to change the creator_id of a Metric"
         (is (thrown-with-msg?
              Exception
@@ -144,7 +144,7 @@
                                                                  :filter      [:and
                                                                                [:= $price 4]
                                                                                [:segment segment-id]]}))}]
-    (is (= "Venues, Sum of Categories → Name, Filtered by Price equals 4 and Checkins with ID = 1"
+    (is (= "Venues, Sum of Category → Name, Filtered by Price equals 4 and Checkins with ID = 1"
            (:definition_description (t2/hydrate metric :definition_description))))))
 
 (deftest definition-description-missing-source-table-test
@@ -154,7 +154,7 @@
                                             :definition (mt/$ids venues
                                                           {:aggregation [[:sum $category_id->categories.name]]
                                                            :filter      [:= $price 4]})}]
-      (is (= "Venues, Sum of Categories → Name, Filtered by Price equals 4"
+      (is (= "Venues, Sum of Category → Name, Filtered by Price equals 4"
              (:definition_description (t2/hydrate metric :definition_description)))))))
 
 (deftest definition-description-invalid-query-test

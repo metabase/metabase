@@ -1,9 +1,9 @@
-import React from "react";
+import * as React from "react";
 import { t } from "ttag";
 
 import { isSyncCompleted } from "metabase/lib/syncing";
 
-import Icon from "metabase/components/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
 import Database from "metabase-lib/metadata/Database";
 import Schema from "metabase-lib/metadata/Schema";
@@ -33,7 +33,7 @@ type Section = {
     name: string;
   }[];
   className?: string | null;
-  icon?: string;
+  icon?: IconName;
   loading?: boolean;
   active: boolean;
 };
@@ -59,8 +59,8 @@ const DataSelectorDatabaseSchemaPicker = ({
   const sections: Sections = databases.map(database => ({
     name: database.is_saved_questions ? t`Saved Questions` : database.name,
     items:
-      !database.is_saved_questions && database.schemas.length > 1
-        ? database.schemas.map(schema => ({
+      !database.is_saved_questions && database.getSchemas().length > 1
+        ? database.getSchemas().map(schema => ({
             schema,
             name: schema.displayName() ?? "",
           }))
@@ -69,7 +69,7 @@ const DataSelectorDatabaseSchemaPicker = ({
     icon: database.is_saved_questions ? "collection" : "database",
     loading:
       selectedDatabase?.id === database.id &&
-      database.schemas.length === 0 &&
+      database.getSchemas().length === 0 &&
       isLoading,
     active: database.is_saved_questions || isSyncCompleted(database),
   }));
@@ -96,7 +96,7 @@ const DataSelectorDatabaseSchemaPicker = ({
   const renderSectionExtra = ({ active }: { active?: boolean }) =>
     !active && <PickerSpinner size={16} borderWidth={2} />;
 
-  const renderSectionIcon = ({ icon }: { icon?: string }) =>
+  const renderSectionIcon = ({ icon }: { icon?: IconName }) =>
     icon && <Icon className="Icon text-default" name={icon} size={18} />;
 
   if (hasBackButton) {
@@ -112,7 +112,7 @@ const DataSelectorDatabaseSchemaPicker = ({
     ? databases.findIndex(db => db.id === selectedDatabase.id)
     : -1;
 
-  if (openSection >= 0 && databases[openSection]?.schemas.length === 1) {
+  if (openSection >= 0 && databases[openSection]?.getSchemas().length === 1) {
     openSection = -1;
   }
 
@@ -136,4 +136,5 @@ const DataSelectorDatabaseSchemaPicker = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataSelectorDatabaseSchemaPicker;

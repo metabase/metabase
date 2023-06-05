@@ -1,4 +1,4 @@
-import React, { forwardRef, ReactNode, Ref, useCallback, useMemo } from "react";
+import { forwardRef, ReactNode, Ref, useCallback, useMemo } from "react";
 import moment, { Moment } from "moment-timezone";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
@@ -75,4 +75,5 @@ const FormDateInput = forwardRef(function FormDateInput(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormDateInput;

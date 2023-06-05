@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -86,4 +86,5 @@ function CreateActionForm({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CreateActionForm;

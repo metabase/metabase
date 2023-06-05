@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
@@ -16,7 +17,8 @@
    [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (com.google.cloud.bigquery BigQuery)))
 
@@ -250,12 +252,13 @@
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Querying a different project-id works"
-      (mt/with-temp Database [{db-id :id :as temp-db}
-                              {:engine  :bigquery-cloud-sdk
-                               :details (-> (:details (mt/db))
-                                            (assoc :project-id "bigquery-public-data"
-                                                   :dataset-filters-type "inclusion"
-                                                   :dataset-filters-patterns "chicago_taxi_trips"))}]
+      (t2.with-temp/with-temp [Database
+                               {db-id :id :as temp-db}
+                               {:engine  :bigquery-cloud-sdk
+                                :details (-> (:details (mt/db))
+                                             (assoc :project-id "bigquery-public-data"
+                                                    :dataset-filters-type "inclusion"
+                                                    :dataset-filters-patterns "chicago_taxi_trips"))}]
         (mt/with-db temp-db
           (testing " for sync"
             (sync/sync-database! temp-db {:scan :schema})
@@ -268,10 +271,10 @@
           (testing " for querying"
             (is (= 23
                    (count (mt/first-row
-                            (mt/run-mbql-query taxi_trips
-                              {:filter [:= [:field (mt/id :taxi_trips :payment_type) nil]
-                                           "Cash"]
-                               :limit  1}))))))
+                           (mt/run-mbql-query taxi_trips
+                             {:filter [:= [:field (mt/id :taxi_trips :payment_type) nil]
+                                       "Cash"]
+                              :limit  1}))))))
           (testing " has project-id-from-credentials set correctly"
             (is (= (bigquery-project-id) (get-in temp-db [:details :project-id-from-credentials])))))))))
 
@@ -393,7 +396,7 @@
               (is (= (/ max-rows page-size) @num-page-callbacks)))))))))
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
-  (mt/with-temp Database [db-filtered database]
+  (t2.with-temp/with-temp [Database db-filtered database]
     (sync/sync-database! db-filtered {:scan :schema})
     (doseq [table (t2/select-one Table :db_id (u/the-id db-filtered))]
       (assert-table-fn table))))
@@ -495,3 +498,12 @@
                   ["2021-01-10T00:00:00Z" 6]]
                  (mt/rows
                   (qp/process-query query)))))))))
+
+(deftest format-sql-test
+  (mt/test-driver :bigquery-cloud-sdk
+     (testing "native queries are compiled and formatted without whitespace errors (#30676)"
+       (is (= (str "SELECT\n  count(*) AS `count`\nFROM\n  `v3_test_data.venues`")
+              (-> (mt/mbql-query venues {:aggregation [:count]})
+                  qp/compile-and-splice-parameters
+                  :query
+                  (mdb.query/format-sql :bigquery-cloud-sdk)))))))

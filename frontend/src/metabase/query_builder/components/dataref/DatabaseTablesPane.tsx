@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { ngettext, msgid } from "ttag";
 import _ from "underscore";
 
@@ -110,6 +110,7 @@ const DatabaseTablesPane = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Search.loadList({
     query: (_state: State, props: DatabaseTablesPaneProps) => ({

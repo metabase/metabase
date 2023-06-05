@@ -79,8 +79,8 @@
 (defn card-with-source-metadata-for-query
   "Given an MBQL `query`, return the relevant keys for creating a Card with that query and matching `:result_metadata`.
 
-    (tt/with-temp Card [card (qp.test-util/card-with-source-metadata-for-query
-                              (data/mbql-query venues {:aggregation [[:count]]}))]
+    (t2.with-temp/with-temp [Card card (qp.test-util/card-with-source-metadata-for-query
+                                        (data/mbql-query venues {:aggregation [[:count]]}))]
       ...)"
   [query]
   (let [results  (qp/process-userland-query query)

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import Fields from "metabase/entities/fields";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
@@ -56,4 +56,5 @@ const FieldFormattingSettings = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(FieldFormattingSettings);

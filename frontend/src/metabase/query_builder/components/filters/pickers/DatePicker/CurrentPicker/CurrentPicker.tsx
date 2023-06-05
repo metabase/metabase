@@ -1,5 +1,3 @@
-import React from "react";
-
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import * as Lib from "metabase-lib";
 import Filter from "metabase-lib/queries/structured/Filter";
@@ -18,6 +16,7 @@ type CurrentPickerProps = {
   onCommit: (filter?: any[]) => void;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function CurrentPicker(props: CurrentPickerProps) {
   const {
     className,

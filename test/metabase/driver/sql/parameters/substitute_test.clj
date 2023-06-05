@@ -16,8 +16,6 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (defn- optional [& args] (params/->Optional args))
@@ -115,7 +113,7 @@
   (testing "new operators"
     (testing "string operators"
       (let [query ["select * from venues where " (param "param")]]
-        (doseq [[operator {:keys [field value expected]}]
+        (doseq [[operator {:keys [field value expected options]}]
                 (partition-all
                  2
                  [:string/contains         {:field    :name
@@ -127,6 +125,16 @@
                                                         "where"
                                                         "  (\"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?)"]
                                                        ["%foo%"]]}
+                  :string/contains         {:field    :name
+                                            :value    ["FOO"]
+                                            :options  {:case-sensitive false}
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  (LOWER(\"PUBLIC\".\"VENUES\".\"NAME\") LIKE ?)"]
+                                                       ["%foo%"]]}
                   :string/does-not-contain {:field    :name
                                             :value    ["foo"]
                                             :expected [["select"
@@ -136,6 +144,19 @@
                                                         "where"
                                                         "  ("
                                                         "    NOT (\"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?)"
+                                                        "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
+                                                        "  )"]
+                                                       ["%foo%"]]}
+                  :string/does-not-contain {:field    :name
+                                            :value    ["FOO"]
+                                            :options  {:case-sensitive false}
+                                            :expected [["select"
+                                                        "  *"
+                                                        "from"
+                                                        "  venues"
+                                                        "where"
+                                                        "  ("
+                                                        "    NOT (LOWER(\"PUBLIC\".\"VENUES\".\"NAME\") LIKE ?)"
                                                         "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
                                                         "  )"]
                                                        ["%foo%"]]}
@@ -267,7 +288,8 @@
                    (-> (substitute query {"param" (params/map->FieldFilter
                                                    {:field (t2/select-one Field :id (mt/id :venues field))
                                                     :value {:type  operator
-                                                            :value value}})})
+                                                            :value value
+                                                            :options options}})})
                        vec
                        (update 0 mdb.query/format-sql :h2)
                        (update 0 str/split-lines))))))))))
@@ -622,15 +644,28 @@
             "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
             nil)))))
 
+(deftest expand-exclude-field-filter-test
+  (mt/with-driver :h2
+    (testing "exclude date parts"
+      (testing "one exclusion"
+        (is (= {:query
+                "SELECT * FROM checkins WHERE ((CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) <> CAST(extract(month from ?) AS integer)) OR (CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) IS NULL));",
+                :params [#t "2016-01-01T00:00Z[UTC]"]}
+               (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan"}))))
+      (testing "two exclusions"
+        (is (= {:query
+                "SELECT * FROM checkins WHERE (((CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) <> CAST(extract(month from ?) AS integer)) OR (CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) IS NULL)) AND ((CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) <> CAST(extract(month from ?) AS integer)) OR (CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) IS NULL)));",
+                :params [#t "2016-01-01T00:00Z[UTC]" #t "2016-02-01T00:00Z[UTC]"]}
+               (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan-Feb"})))))))
 
 ;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
 
-(s/defn ^:private checkins-identifier :- su/NonBlankString
-  "Get the identifier used for `checkins` for the current driver by looking at what the driver uses when converting MBQL
-  to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
-  []
-  (let [sql (:query (qp/compile (mt/mbql-query checkins)))]
-    (second (re-find #"(?m)FROM\s+([^\s()]+)" sql))))
+(defmacro ^:private table-identifier
+  "Get the identifier used for `table` for the current driver by looking at what the driver uses when converting MBQL
+   to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
+  [table-name]
+  `(let [sql# (:query (qp/compile (mt/mbql-query ~table-name)))]
+     (second (re-find #"(?m)FROM\s+([^\s()]+)" sql#))))
 
 ;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
 ;; TIMEZONE FIXME
@@ -650,7 +685,7 @@
            (mt/first-row
              (mt/format-rows-by [int]
                (process-native
-                 :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
+                 :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
                               :template-tags {"checkin_date" {:name         "checkin_date"
                                                               :display-name "Checkin Date"
                                                               :type         :dimension
@@ -667,7 +702,7 @@
              (mt/first-row
                (mt/format-rows-by [int]
                  (process-native
-                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
+                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
@@ -678,22 +713,46 @@
 (deftest ^:parallel e2e-relative-dates-test
   (mt/test-drivers (sql-parameters-engines)
     (testing (str "test that relative dates work correctly. It should be enough to try just one type of relative date "
-                  "here, since handling them gets delegated to the functions in `metabase.query-processor.parameters`, "
+                  "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
                   "which is fully-tested :D")
       (is (= [0]
              (mt/first-row
-               (mt/format-rows-by [int]
-                 (process-native
-                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
-                                                       (checkins-identifier))
-                                :template-tags {"checkin_date" {:name         "checkin_date"
-                                                                :display-name "Checkin Date"
-                                                                :type         :dimension
-                                                                :widget-type  :date/relative
-                                                                :dimension    [:field (mt/id :checkins :date) nil]}}}
-                   :parameters [{:type   :date/relative
-                                 :target [:dimension [:template-tag "checkin_date"]]
-                                 :value  "thismonth"}]))))))))
+              (mt/format-rows-by [int]
+                                 (process-native
+                                  :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
+                                                                      (table-identifier :checkins))
+                                               :template-tags {"checkin_date" {:name         "checkin_date"
+                                                                               :display-name "Checkin Date"
+                                                                               :type         :dimension
+                                                                               :widget-type  :date/relative
+                                                                               :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                  :parameters [{:type   :date/relative
+                                                :target [:dimension [:template-tag "checkin_date"]]
+                                                :value  "thismonth"}]))))))))
+
+(deftest ^:parallel e2e-exclude-date-parts-test
+  ;; Exclude bigquery from this test, because there's a bug with bigquery and exclusion of date parts (metabase#30790)
+  (mt/test-drivers (disj (sql-parameters-engines) :bigquery-cloud-sdk)
+    (testing (str "test that excluding date parts work correctly. It should be enough to try just one type of exclusion "
+                  "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
+                  "which is fully-tested :D")
+      (doseq [[exclusion-string expected] {"exclude-months-Jan"     14
+                                           "exclude-months-Jan-Feb" 13}]
+        (testing (format "test that excluding dates with %s works correctly" exclusion-string)
+          (is (= [expected]
+                 (mt/first-row
+                  (mt/format-rows-by [int]
+                                     (process-native
+                                      :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{last_login_date}}"
+                                                                          (table-identifier :users))
+                                                   :template-tags {"last_login_date" {:name         "last_login_date"
+                                                                                      :display-name "Last Login Date"
+                                                                                      :type         :dimension
+                                                                                      :widget-type  :date/all-options
+                                                                                      :dimension    [:field (mt/id :users :last_login) nil]}}}
+                                      :parameters [{:type   :date/all-options
+                                                    :target [:dimension [:template-tag "last_login_date"]]
+                                                    :value  exclusion-string}]))))))))))
 
 (deftest ^:parallel e2e-combine-multiple-filters-test
   (mt/test-drivers (sql-parameters-engines)
@@ -703,7 +762,7 @@
                (mt/format-rows-by [int]
                  (process-native
                    :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
-                                                       (checkins-identifier))
+                                                       (table-identifier :checkins))
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension

@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import { ReactNode } from "react";
 import cx from "classnames";
 
 interface MetadataSectionProps {
@@ -15,4 +15,5 @@ const MetadataSection = ({ first, last, children }: MetadataSectionProps) => (
   </section>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MetadataSection;
