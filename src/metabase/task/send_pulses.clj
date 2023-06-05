@@ -63,14 +63,19 @@
          (catch Throwable e
            (on-error pulse-id e)))))))
 
+; Clearing pulse channels is not done synchronously in order to support undoing feature.
 (s/defn ^:private clear-pulse-channels!
   []
-  (doseq [channel (t2/select PulseChannel)]
-    (let [pulse-channel-id (:id channel)]
-      (when (and (nil? (get-in channel [:details :emails]))
-                 (nil? (get-in channel [:details :channel]))
-                 (zero? (t2/count PulseChannelRecipient :pulse_channel_id pulse-channel-id)))
-        (t2/delete! PulseChannel :id pulse-channel-id)))))
+  (when-let [ids-to-delete (seq
+                            (for [channel (t2/select [PulseChannel :id :details]
+                                                     :id [:not-in {:select   [[:pulse_channel_id :id]]
+                                                                   :from     :pulse_channel_recipient
+                                                                   :group-by [:pulse_channel_id]
+                                                                   :having   [:>= :%count.* [:raw 1]]}])]
+                              (when (and (empty? (get-in channel [:details :emails]))
+                                         (not (get-in channel [:details :channel])))
+                                (:id channel))))]
+  (t2/delete! PulseChannel :id [:in ids-to-delete])))
 
 ;;; ------------------------------------------------------ Task ------------------------------------------------------
 
