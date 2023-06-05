@@ -79,7 +79,7 @@
     [:dataset false true]
     (deferred-tru "turned this into a model")
 
-    [:dataset false false]
+    [:dataset true false]
     (deferred-tru "changed this from a model to a saved question")
 
     [:display _ _]
