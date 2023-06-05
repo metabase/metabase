@@ -13,6 +13,7 @@ const testFiles = [
   {
     fileName: "dog_breeds.csv",
     tableName: "dog_breeds",
+    humanName: "Dog Breeds",
     rowCount: 97,
   },
   {
