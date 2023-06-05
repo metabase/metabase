@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { color } from "metabase/lib/colors";
 
 import { createMockDashboardCardWithVirtualCard } from "metabase-types/api/mocks";
 import type {
@@ -48,7 +49,7 @@ describe("Text", () => {
 
   describe("Editing Dashboard", () => {
     describe("Preview/Unfocused", () => {
-      it("should preview with placeholder when it has no content", () => {
+      it("should preview with placeholder and styling for no content", () => {
         const options = {
           settings: getSettingsWithText(""),
           isEditing: true,
@@ -58,6 +59,9 @@ describe("Text", () => {
         expect(
           screen.getByTestId("editing-dashboard-heading-preview"),
         ).toHaveTextContent("Heading");
+        expect(screen.getByTestId("editing-dashboard-heading-container"))
+          .toHaveStyle(`border: 1px solid ${color("brand")};
+                        color: ${color("text-light")};`);
       });
 
       it("should preview with text when it has content", () => {

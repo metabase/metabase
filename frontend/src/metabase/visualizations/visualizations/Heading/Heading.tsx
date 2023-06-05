@@ -47,6 +47,7 @@ export function Heading({
   if (isEditing) {
     return (
       <InputContainer
+        data-testid="editing-dashboard-heading-container"
         isEmpty={!hasContent}
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}

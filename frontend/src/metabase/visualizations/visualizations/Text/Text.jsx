@@ -90,13 +90,17 @@ export function Text({
   if (isEditing) {
     return (
       <EditModeContainer
+        data-testid="editing-dashboard-text-container"
         className={cx(className)}
         isEmpty={!hasContent}
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
       >
         {isPreviewing ? (
-          <ClickToEditWrapper onMouseDown={preventDragging}>
+          <ClickToEditWrapper
+            data-testid="editing-dashboard-text-preview"
+            onMouseDown={preventDragging}
+          >
             {/* ReactMarkdown does not allow adding an onMouseDown event handler */}
             <ReactMarkdown
               remarkPlugins={REMARK_PLUGINS}
@@ -113,6 +117,7 @@ export function Text({
           </ClickToEditWrapper>
         ) : (
           <TextInput
+            data-testid="editing-dashboard-text-input"
             name="text"
             placeholder={placeholder}
             value={content}
