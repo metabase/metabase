@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import {

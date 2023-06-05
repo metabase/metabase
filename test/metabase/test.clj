@@ -208,7 +208,6 @@
   with-test-user]
 
  [tt
-  with-temp
   with-temp*
   with-temp-defaults]
 
@@ -403,7 +402,7 @@
   application DB. Example usage:
 
     (deftest update-user-first-name-test
-      (mt/with-temp User [user]
+      (t2.with-temp/with-temp [User user]
         (update-user-first-name! user \"Cam\")
         (is (= (merge (mt/object-defaults User)
                       (select-keys user [:id :last_name :created_at :updated_at])
@@ -426,6 +425,4 @@
 ;;; these are deprecated at runtime so Kondo doesn't complain, also because we can't go around deprecating stuff from
 ;;; other libaries any other way. They're marked deprecated to encourage you to use the `t2.with-temp` versions.
 #_{:clj-kondo/ignore [:discouraged-var]}
-(doseq [varr [#'with-temp
-              #'with-temp*]]
-  (alter-meta! varr assoc :deprecated true))
+(alter-meta! #'with-temp* assoc :deprecated true)

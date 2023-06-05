@@ -10,7 +10,8 @@
    [metabase.test.mock.moviedb :as moviedb]
    [metabase.util :as u]
    [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest sync-metabase-metadata-test
   (testing ":Test that the `_metabase_metadata` table can be used to populate values for things like descriptions"
@@ -20,7 +21,7 @@
                   (update :fields #(for [field %]
                                      (select-keys field [:name :description])))
                   mt/boolean-ids-and-timestamps))]
-      (mt/with-temp Database [db {:engine ::moviedb/moviedb}]
+      (t2.with-temp/with-temp [Database db {:engine ::moviedb/moviedb}]
         ;; manually add in the movies table
         (let [table (first (t2/insert-returning-instances! Table
                                                            :db_id  (u/the-id db)

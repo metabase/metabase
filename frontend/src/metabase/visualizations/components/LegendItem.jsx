@@ -3,14 +3,14 @@ import { Component } from "react";
 import PropTypes from "prop-types";
 
 import cx from "classnames";
-import Icon, { iconPropTypes } from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import Ellipsified from "metabase/core/components/Ellipsified";
 
 import { IconContainer } from "./LegendItem.styled";
 
 const propTypes = {
-  icon: PropTypes.shape(iconPropTypes),
+  icon: PropTypes.object,
 };
 
 export default class LegendItem extends Component {

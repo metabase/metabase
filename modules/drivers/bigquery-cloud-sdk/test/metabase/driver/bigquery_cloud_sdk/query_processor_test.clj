@@ -688,12 +688,12 @@
                                                        " = date_trunc(date_add(current_date(), INTERVAL -1 year), year)")]
                  :type/DateTime            [:year (str "WHERE datetime_trunc(ABC.datetime, year)"
                                                        " = datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year)")]
-               ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead
+                 ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead
                  :type/DateTimeWithLocalTZ [:year (str "WHERE timestamp_trunc(ABC.datetimewithlocaltz, year)"
                                                        " = timestamp(datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year))")]}]
-          (mt/with-temp Field [f {:name          (u/lower-case-en (name field-type))
-                                  :base_type     field-type
-                                  :database_type (name (bigquery.tx/base-type->bigquery-type field-type))}]
+          (t2.with-temp/with-temp [Field f {:name          (u/lower-case-en (name field-type))
+                                            :base_type     field-type
+                                            :database_type (name (bigquery.tx/base-type->bigquery-type field-type))}]
             (testing (format "%s field" field-type)
               (is (= [expected-sql]
                      (hsql/format {:where (sql.qp/->honeysql
@@ -714,12 +714,12 @@
                                                            " = date_trunc(date_add(current_date('" timezone "'), INTERVAL -1 year), year)")]
                      :type/DateTime            [:year (str "WHERE datetime_trunc(ABC.datetime, year)"
                                                            " = datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year)")]
-                   ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead, but when it converts to a timestamp it needs to specify the tz
+                     ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead, but when it converts to a timestamp it needs to specify the tz
                      :type/DateTimeWithLocalTZ [:year (str "WHERE timestamp_trunc(ABC.datetimewithlocaltz, year, '" timezone "')"
                                                            " = timestamp(datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year), '" timezone "')")]}]
-              (mt/with-temp Field [f {:name          (u/lower-case-en (name field-type))
-                                      :base_type     field-type
-                                      :database_type (name (bigquery.tx/base-type->bigquery-type field-type))}]
+              (t2.with-temp/with-temp [Field f {:name          (u/lower-case-en (name field-type))
+                                                :base_type     field-type
+                                                :database_type (name (bigquery.tx/base-type->bigquery-type field-type))}]
                 (testing (format "%s field" field-type)
                   (is (= [expected-sql]
                          (hsql/format {:where (sql.qp/->honeysql

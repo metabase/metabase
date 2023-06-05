@@ -2,6 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -53,19 +54,19 @@
     {:column-name "count", :display-name "Count"}
 
     [:distinct {} (lib.tu/field-clause :venues :id)]
-    {:column-name "distinct_ID", :display-name "Distinct values of ID"}
+    {:column-name "count", :display-name "Distinct values of ID"}
 
     [:sum {} (lib.tu/field-clause :venues :id)]
-    {:column-name "sum_ID", :display-name "Sum of ID"}
+    {:column-name "sum", :display-name "Sum of ID"}
 
     [:+ {} [:count {}] 1]
-    {:column-name "count_plus_1", :display-name "Count + 1"}
+    {:column-name "expression", :display-name "Count + 1"}
 
     [:+
      {}
      [:min {} (lib.tu/field-clause :venues :id)]
      [:* {} 2 [:avg {} (lib.tu/field-clause :venues :price)]]]
-    {:column-name  "min_ID_plus_2_times_avg_PRICE"
+    {:column-name  "expression"
      :display-name "Min of ID + (2 × Average of Price)"}
 
     [:+
@@ -77,7 +78,7 @@
       [:avg {} (lib.tu/field-clause :venues :price)]
       3
       [:- {} [:max {} (lib.tu/field-clause :venues :category-id)] 4]]]
-    {:column-name  "min_ID_plus_2_times_avg_PRICE_times_3_times_max_CATEGORY_ID_minus_4"
+    {:column-name  "expression"
      :display-name "Min of ID + (2 × Average of Price × 3 × (Max of Category ID - 4))"}
 
     ;; user-specified names
@@ -97,11 +98,11 @@
      {:display-name "User-specified Name"}
      [:min {} (lib.tu/field-clause :venues :id)]
      [:* {} 2 [:avg {} (lib.tu/field-clause :venues :price)]]]
-    {:column-name  "min_ID_plus_2_times_avg_PRICE"
+    {:column-name  "expression"
      :display-name "User-specified Name"}
 
     [:percentile {} (lib.tu/field-clause :venues :id) 0.95]
-    {:column-name "p95_ID", :display-name "0.95th percentile of ID"}))
+    {:column-name "percentile", :display-name "0.95th percentile of ID"}))
 
 ;;; the following tests use raw legacy MBQL because they're direct ports of JavaScript tests from MLv1 and I wanted to
 ;;; make sure that given an existing query, the expected description was generated correctly.
@@ -144,13 +145,13 @@
     ;; :count, no field
     [:/ {} [:count {}] 2]
     {:base-type    :type/Float
-     :name         "count_divided_by_2"
+     :name         "expression"
      :display-name "Count ÷ 2"}
 
     ;; :sum
     [:sum {} [:+ {} (lib.tu/field-clause :venues :price) 1]]
     {:base-type    :type/Integer
-     :name         "sum_PRICE_plus_1"
+     :name         "sum"
      :display-name "Sum of Price + 1"}
 
     ;; options map
@@ -164,7 +165,7 @@
 (deftest ^:parallel col-info-named-aggregation-test
   (testing "col info for an `expression` aggregation w/ a named expression should work as expected"
     (is (=? {:base-type    :type/Integer
-             :name         "sum_double-price"
+             :name         "sum"
              :display-name "Sum of double-price"}
             (col-info-for-aggregation-clause
              (lib.tu/venues-query-with-last-stage
@@ -240,7 +241,7 @@
                   (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))]
     (is (=? [{:lib/type     :metadata/field
               :base-type    :type/Integer
-              :name         "sum_double-price"
+              :name         "sum"
               :display-name "Sum of double-price"}]
             (lib/aggregations-metadata query)))
     (is (= :type/Integer
@@ -410,7 +411,7 @@
                 agg-query))
         (is (=? [{:lib/type       :metadata/field
                   :effective-type :type/Integer
-                  :name           "sum_double-price"
+                  :name           "sum"
                   :display-name   "Sum of double-price"
                   :lib/source     :source/aggregations}
                  {:lib/type       :metadata/field
@@ -421,7 +422,7 @@
                  {:settings       {:is_priceless true}
                   :lib/type       :metadata/field
                   :effective-type :type/Integer
-                  :name           "sum_PRICE"
+                  :name           "sum"
                   :display-name   "Sum of Price"
                   :lib/source     :source/aggregations}]
                 (lib/aggregations-metadata agg-query)))))))
@@ -528,7 +529,7 @@
       (is (=? {:settings       {:is_priceless true}
                :lib/type       :metadata/field
                :effective-type :type/Integer
-               :name           "sum_PRICE"
+               :name           "sum"
                :display-name   "Sum of Price"
                :lib/source     :source/aggregations}
               (lib.metadata.calculation/metadata query (first (lib/aggregations-metadata query -1))))))))
@@ -634,12 +635,12 @@
               :fingerprint              {:global {:distinct-count 28, :nil% 0.0}}}
              {:lib/type                 :metadata/field
               :base-type                :type/Integer
-              :name                     "sum_case"
+              :name                     "sum"
               :display-name             "Sum of Case"
               :lib/source               :source/aggregations
               :lib/source-uuid          string?
-              :lib/source-column-alias  "sum_case"
-              :lib/desired-column-alias "sum_case"}]
+              :lib/source-column-alias  "sum"
+              :lib/desired-column-alias "sum"}]
             (lib.metadata.calculation/metadata query)))))
 
 (deftest ^:parallel count-display-name-test
@@ -668,3 +669,16 @@
                      (map (partial lib/display-name query)
                           (lib.metadata.calculation/metadata query)))
                   "display name"))))))))
+
+(deftest ^:parallel aggregation-name-from-previous-stage-test
+  (testing "Maintain the column names in refs from the QP/MLv1 (#31266)"
+    (let [query         (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                            (lib/expression "Half Price" (lib// (meta/field-metadata :products :price) 2))
+                            (lib/aggregate (lib/avg (lib/ref-lookup :expression "Half Price")))
+                            (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :products :created-at) :month))
+                            lib/append-stage)
+          ag-op         (m/find-first #(= (:short %) :max)
+                                      (lib/available-aggregation-operators query))
+          expr-metadata (last (lib/aggregation-operator-columns ag-op))]
+      (is (=? [:field {:lib/uuid string?, :base-type :type/Float} "avg"]
+              (lib/ref expr-metadata))))))

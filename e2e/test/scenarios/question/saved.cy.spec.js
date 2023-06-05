@@ -127,7 +127,7 @@ describe("scenarios > question > saved", () => {
 
     openQuestionActions();
     popover().within(() => {
-      cy.icon("segment").click();
+      cy.findByText("Duplicate").click();
     });
 
     modal().within(() => {

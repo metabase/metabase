@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 
 import { t } from "ttag";
 import { updateIn } from "icepick";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import AuditParameters from "../components/AuditParameters";
 import AuditTable from "./AuditTable";

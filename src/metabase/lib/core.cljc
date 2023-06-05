@@ -91,11 +91,13 @@
    field
    query-for-table-id
    query-for-table-name
-   table]
+   table
+   ref-lookup]
   [lib.expression
    expression
    expressions
    expressions-metadata
+   expressionable-columns
    +
    -
    *

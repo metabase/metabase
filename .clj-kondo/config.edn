@@ -134,7 +134,7 @@
    honeysql.core/call            {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
    honeysql.core/raw             {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
    java-time/with-clock          {:message "Use mt/with-clock"}
-   ;; metabase.test/with-temp       {:message "Use t2.with-temp/with-temp instead of metabase.test/with-temp"}
+   metabase.test/with-temp       {:message "Use t2.with-temp/with-temp instead of metabase.test/with-temp"}
    ;; metabase.test/with-temp*      {:message "Use t2.with-temp/with-temp instead of metabase.test/with-temp*"}
    toucan.db/select              {:message "Use t2/select instead of toucan.db/select"}
    toucan.db/select-one          {:message "Use t2/select-one instead of toucan.db/select-one"}
@@ -594,11 +594,9 @@
    metabase.test/with-log-level                                                                                              hooks.common/with-ignored-first-arg
    metabase.test/with-log-messages-for-level                                                                                 hooks.common/with-ignored-first-arg
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
-   metabase.test/with-temp                                                                                                   hooks.toucan.util.test/with-temp
    metabase.test/with-temp*                                                                                                  hooks.toucan.util.test/with-temp*
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
-   toucan.util.test/with-temp                                                                                                hooks.toucan.util.test/with-temp
    toucan.util.test/with-temp*                                                                                               hooks.toucan.util.test/with-temp*}
 
   :macroexpand

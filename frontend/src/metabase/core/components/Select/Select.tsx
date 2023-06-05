@@ -12,7 +12,7 @@ import {
 import _ from "underscore";
 import cx from "classnames";
 import { createSelector } from "@reduxjs/toolkit";
-import Icon from "metabase/components/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton, {
   SelectButtonProps,
@@ -64,7 +64,7 @@ export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
   optionDescriptionFn?: (option: TOption) => string | undefined;
   optionSectionFn?: (option: TOption) => string;
   optionDisabledFn?: (option: TOption) => boolean;
-  optionIconFn?: (option: TOption) => string | undefined;
+  optionIconFn?: (option: TOption) => IconName | undefined;
   optionClassNameFn?: (option: TOption) => string | undefined;
   optionStylesFn?: (option: TOption) => CSSProperties | undefined;
 
@@ -76,7 +76,7 @@ export interface SelectOption<TValue = Key> {
   value: TValue;
   name?: string;
   description?: string;
-  icon?: string;
+  icon?: IconName;
   iconSize?: number;
   iconColor?: string;
   disabled?: boolean;
@@ -85,7 +85,7 @@ export interface SelectOption<TValue = Key> {
 
 export interface SelectSection<TOption = SelectOption> {
   name?: string;
-  icon?: string;
+  icon?: IconName;
   items: TOption[];
 }
 
@@ -209,7 +209,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
       return (
         <Icon
           name={icon}
-          size={(item as any).iconSize || 18}
+          size={(item as any).iconSize || 16}
           color={(item as any).iconColor || color("text-dark")}
           style={{ minWidth: MIN_ICON_WIDTH }}
         />
@@ -220,7 +220,6 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
       return (
         <Icon
           name="check"
-          size={14}
           color={color("text-dark")}
           style={{ minWidth: MIN_ICON_WIDTH }}
         />
@@ -335,7 +334,7 @@ export default Uncontrollable()(Select);
 
 export interface OptionSectionProps {
   name?: string;
-  icon?: string;
+  icon?: IconName;
   children?: ReactNode;
 }
 
@@ -352,7 +351,7 @@ export interface OptionProps<TValue> {
   name?: string;
   children?: ReactNode;
 
-  icon?: string;
+  icon?: IconName;
   disabled?: boolean;
 }
 
