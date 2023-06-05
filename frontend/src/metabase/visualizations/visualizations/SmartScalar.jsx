@@ -222,7 +222,7 @@ export default class Smart extends Component {
               <Variation color={changeColor}>
                 <Icon
                   size={13}
-                  pr={1}
+                  className="pr1"
                   name={isNegative ? "arrow_down" : "arrow_up"}
                 />
                 {changeDisplay}
