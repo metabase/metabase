@@ -8,9 +8,13 @@ import {
   createOrdersProductIdField,
   createOrdersTable,
   createOrdersUserIdField,
+  createPeopleIdField,
+  createPeopleTable,
   createProductsTable,
+  createReviewsTable,
   createSampleDatabase,
   ORDERS,
+  PEOPLE,
 } from "metabase-types/api/mocks/presets";
 import {
   setupDatabasesEndpoints,
@@ -48,7 +52,28 @@ const SAMPLE_DB = createSampleDatabase({
   tables: [ORDERS_TABLE, PRODUCTS_TABLE],
 });
 
-const FIELD_VALUES = [createMockFieldValues({ field_id: ORDERS.ID })];
+const PEOPLE_ID_FIELD = createPeopleIdField();
+
+const PEOPLE_TABLE_MULTI_SCHEMA = createPeopleTable({
+  db_id: 2,
+  fields: [PEOPLE_ID_FIELD],
+});
+
+const REVIEWS_TABLE_MULTI_SCHEMA = createReviewsTable({
+  db_id: 2,
+  schema: "PRIVATE",
+});
+
+const SAMPLE_DB_MULTI_SCHEMA = createSampleDatabase({
+  id: 2,
+  name: "Multi schema",
+  tables: [PEOPLE_TABLE_MULTI_SCHEMA, REVIEWS_TABLE_MULTI_SCHEMA],
+});
+
+const FIELD_VALUES = [
+  createMockFieldValues({ field_id: ORDERS.ID }),
+  createMockFieldValues({ field_id: PEOPLE.ID }),
+];
 
 interface SetupOpts {
   database?: Database;
@@ -100,11 +125,10 @@ describe("MetadataFieldSettings", () => {
 
     it("should allow to navigate to and from field settings", async () => {
       await setup();
+      expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       await waitUntilLoaded();
-      expect(screen.getByText(ORDERS_TABLE.display_name)).toBeInTheDocument();
-
       userEvent.click(fieldLink(ORDERS_ID_FIELD));
       await waitUntilLoaded();
       expect(screen.getByText("General")).toBeInTheDocument();
@@ -112,6 +136,35 @@ describe("MetadataFieldSettings", () => {
       userEvent.click(screen.getByText(SAMPLE_DB.name));
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       userEvent.click(fieldLink(ORDERS_ID_FIELD));
+      await waitUntilLoaded();
+      expect(screen.getByText("General")).toBeInTheDocument();
+    });
+  });
+
+  describe("multi schema database", () => {
+    it("should allow to navigate to and from field settings", async () => {
+      await setup({
+        database: SAMPLE_DB_MULTI_SCHEMA,
+        table: PEOPLE_TABLE_MULTI_SCHEMA,
+        field: PEOPLE_ID_FIELD,
+      });
+
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
+      await waitUntilLoaded();
+      userEvent.click(fieldLink(PEOPLE_ID_FIELD));
+      await waitUntilLoaded();
+      expect(screen.getByText("General")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
+      userEvent.click(fieldLink(PEOPLE_ID_FIELD));
+      await waitUntilLoaded();
+      expect(screen.getByText("General")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
+      userEvent.click(fieldLink(PEOPLE_ID_FIELD));
       await waitUntilLoaded();
       expect(screen.getByText("General")).toBeInTheDocument();
     });
