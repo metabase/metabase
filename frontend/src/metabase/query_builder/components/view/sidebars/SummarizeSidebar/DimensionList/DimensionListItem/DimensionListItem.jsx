@@ -108,8 +108,11 @@ export const DimensionListItem = ({
         )}
 
         {isSelected && (
-          <DimensionListItemRemoveButton aria-label={t`Remove dimension`}>
-            <Icon name="close" onClick={handleRemove} />
+          <DimensionListItemRemoveButton
+            onClick={handleRemove}
+            aria-label={t`Remove dimension`}
+          >
+            <Icon name="close" />
           </DimensionListItemRemoveButton>
         )}
       </DimensionListItemContent>
