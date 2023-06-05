@@ -16,6 +16,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.login-history :refer [LoginHistory]]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
@@ -24,13 +25,19 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
+
+(defsetting user-visibility
+  (deferred-tru "Determines what other users non-admin users are able to see. Possible values are :all , :group, or :none.")
+  :visibility   :authenticated
+  :type         :keyword
+  :default      :all)
 
 (set! *warn-on-reflection* true)
 
@@ -186,12 +193,12 @@
 (api/defendpoint GET "/recipients"
   "Fetch a list of `Users`. Returns only active users. Meant for non-admins unlike GET /api/user.
 
-   - If user-visibility is `all users` or the user is an admin, include all users.
-   - If user-visibility is `same group`, include only users in the same group (excluding the all users group).
-   - If user-visibility is `none` or the user is sandboxed, include only themselves."
+   - If user-visibility is :all or the user is an admin, include all users.
+   - If user-visibility is :group, include only users in the same group (excluding the all users group).
+   - If user-visibility is :none or the user is sandboxed, include only themselves."
   []
   (cond
-    (or (= "all users" (public-settings/user-visibility)) api/*is-superuser?*)
+    (or (= :all (user-visibility)) api/*is-superuser?*)
     {:data   (t2/select
               (vec (cons User (user-visible-columns)))
               (cond-> (user-clauses nil nil nil nil)
@@ -201,7 +208,7 @@
      :total  (t2/count User (user-clauses nil nil nil nil))
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}
-    (and (= "same group" (public-settings/user-visibility)) (not (premium-features/segmented-user?)))
+    (and (= :group (user-visibility)) (not (premium-features/segmented-user?)))
     (let [user_group_ids (map :id (:user_group_memberships
                                    (-> (fetch-user :id api/*current-user-id*)
                                        (hydrate :user_group_memberships))))

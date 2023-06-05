@@ -638,9 +638,3 @@
   (deferred-tru "Prefix for upload table names")
   :visibility   :authenticated
   :type         :string)
-
-(defsetting user-visibility
-  (deferred-tru "Determines what other users non-admin users are able to see. Possible values are 'all users', 'same group', and 'none'.")
-  :visibility   :authenticated
-  :type         :string
-  :default      "all users")
