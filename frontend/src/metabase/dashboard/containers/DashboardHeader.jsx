@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { createRef, Component, Fragment } from "react";
+import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import PropTypes from "prop-types";
@@ -66,7 +66,6 @@ const mapDispatchToProps = {
 class DashboardHeader extends Component {
   constructor(props) {
     super(props);
-    this.addQuestionModal = createRef();
     this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
   }
 
@@ -113,6 +112,14 @@ class DashboardHeader extends Component {
     addActionToDashboard: PropTypes.func.isRequired,
 
     databases: PropTypes.object,
+
+    dashboardId: PropTypes.number,
+    selectedTabId: PropTypes.number,
+
+    location: PropTypes.shape({
+      query: PropTypes.object,
+      pathname: PropTypes.string,
+    }),
   };
 
   handleEdit(dashboard) {
@@ -380,10 +387,11 @@ class DashboardHeader extends Component {
 
       extraButtons.push({
         title:
-          dashboard.ordered_tabs.length > 1
+          dashboard.ordered_tabs?.length > 1
             ? t`Export tab as PDF`
             : t`Export as PDF`,
         icon: "document",
+        testId: "dashboard-export-pdf-button",
         action: () => {
           this.saveAsImage();
         },
