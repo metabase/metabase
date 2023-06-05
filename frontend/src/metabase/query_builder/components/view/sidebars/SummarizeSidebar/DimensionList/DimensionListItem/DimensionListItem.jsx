@@ -108,7 +108,7 @@ export const DimensionListItem = ({
         )}
 
         {isSelected && (
-          <DimensionListItemRemoveButton aria-label="Remove dimension">
+          <DimensionListItemRemoveButton aria-label={t`Remove dimension`}>
             <Icon name="close" onClick={handleRemove} />
           </DimensionListItemRemoveButton>
         )}
@@ -118,7 +118,7 @@ export const DimensionListItem = ({
         <Tooltip tooltip={t`Add grouping`}>
           <DimensionListItemAddButton
             onClick={handleAdd}
-            aria-label="Add dimension"
+            aria-label={t`Add dimension`}
           >
             <Icon name="add" />
           </DimensionListItemAddButton>
