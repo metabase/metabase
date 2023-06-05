@@ -84,16 +84,14 @@ export function Text({
     );
   }
 
-  const hasNoContent = isEmpty(content);
+  const hasContent = !isEmpty(content);
   const placeholder = t`You can use Markdown here, and include variables {{like_this}}`;
 
   if (isEditing) {
     return (
       <EditModeContainer
-        className={cx(className, "text-edit-container", {
-          "has-no-content": hasNoContent,
-        })}
-        hasNoContent={hasNoContent}
+        className={cx(className, "text-edit-container")}
+        isEmpty={!hasContent}
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
       >
@@ -108,12 +106,9 @@ export function Text({
                 styles["text-card-markdown"],
                 styles["cursor-text"],
                 getSettingsStyle(settings),
-                {
-                  "text-light": hasNoContent,
-                },
               )}
             >
-              {!isEmpty(content) ? content : placeholder}
+              {hasContent ? content : placeholder}
             </ReactMarkdown>
           </ClickToEditWrapper>
         ) : (

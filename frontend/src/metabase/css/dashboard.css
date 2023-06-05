@@ -162,11 +162,6 @@
   box-shadow: 3px 3px 8px var(--color-shadow);
 }
 
-.TextCard .has-no-content {
-  border-radius: 8px;
-  border: 1px solid var(--color-brand);
-}
-
 .TextCard.resizing .text-edit-container {
   border-radius: 8px;
   border: 1px solid var(--color-brand);

@@ -42,26 +42,20 @@ export function Heading({
     e.stopPropagation();
 
   const content = settings.text;
-  const hasNoContent = isEmpty(content);
+  const hasContent = !isEmpty(content);
   const placeholder = t`Heading`;
 
   if (isEditing) {
     return (
       <InputContainer
-        className={cx("text-edit-container", {
-          "has-no-content": hasNoContent,
-        })}
-        hasNoContent={hasNoContent}
+        className={cx("text-edit-container")}
+        isEmpty={!hasContent}
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
       >
         {isPreviewing ? (
-          <HeadingContent
-            hasNoContent={hasNoContent}
-            isEditing={isEditing}
-            onMouseDown={preventDragging}
-          >
-            {!isEmpty(content) ? content : placeholder}
+          <HeadingContent isEditing={isEditing} onMouseDown={preventDragging}>
+            {hasContent ? content : placeholder}
           </HeadingContent>
         ) : (
           <TextInput

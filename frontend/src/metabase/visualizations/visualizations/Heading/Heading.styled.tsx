@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 
 interface InputContainerProps {
   isPreviewing: boolean;
-  hasNoContent: boolean;
+  isEmpty: boolean;
 }
 
 export const InputContainer = styled.div<InputContainerProps>`
@@ -15,14 +15,21 @@ export const InputContainer = styled.div<InputContainerProps>`
   overflow: hidden;
   padding-left: 0.75rem;
   pointer-events: auto;
+  border-radius: 8px;
 
   &:hover {
     padding-left: calc(0.75rem - 1px);
   }
-  ${({ isPreviewing, hasNoContent }) =>
-    (!isPreviewing || hasNoContent) &&
+  ${({ isPreviewing, isEmpty }) =>
+    (!isPreviewing || isEmpty) &&
     `
     padding-left: calc(0.75rem - 1px);
+  `}
+  ${({ isEmpty }) =>
+    isEmpty &&
+    `
+      border: 1px solid ${color("brand")};
+      color: ${color("text-light")};
   `}
 `;
 
@@ -53,7 +60,6 @@ export const HeadingContainer = styled.div`
 `;
 
 interface HeadingContentProps {
-  hasNoContent?: boolean;
   isEditing?: boolean;
 }
 
@@ -66,12 +72,6 @@ export const HeadingContent = styled.h2<HeadingContentProps>`
   padding: 0;
   margin: 0;
   pointer-events: all;
-
-  ${({ hasNoContent }) =>
-    hasNoContent &&
-    `
-    color: ${color("text-light")};
-  `}
   ${({ isEditing }) =>
     isEditing &&
     `

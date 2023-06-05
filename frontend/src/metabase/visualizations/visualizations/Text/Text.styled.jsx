@@ -10,13 +10,20 @@ export const EditModeContainer = styled.div`
   padding: 0.75rem;
   width: 100%;
   pointer-events: auto;
+  border-radius: 8px;
 
   &:hover {
     padding: calc(0.75rem - 1px); // adjust for border on hover
   }
-  ${({ isPreviewing, hasNoContent }) =>
-    (!isPreviewing || hasNoContent) &&
-    "padding: calc(0.75rem - 1px);"}// adjust for border on preview/no entered content
+  ${({ isPreviewing, isEmpty }) =>
+    (!isPreviewing || isEmpty) &&
+    "padding: calc(0.75rem - 1px);"} // adjust for border on preview/no entered content
+  ${({ isEmpty }) =>
+    isEmpty &&
+    `
+      border: 1px solid ${color("brand")};
+      color: ${color("text-light")};
+    `}
 `;
 
 export const ClickToEditWrapper = styled.div`
