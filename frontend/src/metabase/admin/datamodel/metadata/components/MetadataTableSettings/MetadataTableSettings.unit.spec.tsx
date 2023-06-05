@@ -69,9 +69,9 @@ const setup = async ({ databases = [SAMPLE_DB] }: SetupOpts = {}) => {
   await waitForElementToBeRemoved(() => screen.queryByText(/Loading/));
 };
 
-describe("MetadataEditor", () => {
-  describe("no schema database", () => {
-    it("should allow to navigate to and from table settings", async () => {
+describe("MetadataTableSettings", () => {
+  describe("breadcrumbs", () => {
+    it("should allow to navigate to and from table settings in a no-schema database", async () => {
       await setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
 
       userEvent.click(screen.getByText(ORDERS_TABLE_NO_SCHEMA.display_name));
@@ -90,10 +90,8 @@ describe("MetadataEditor", () => {
         await screen.findByDisplayValue(ORDERS_TABLE_NO_SCHEMA.display_name),
       ).toBeInTheDocument();
     });
-  });
 
-  describe("single schema database", () => {
-    it("should allow to navigate to and from table settings", async () => {
+    it("should allow to navigate to and from table settings in a single-schema database", async () => {
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
@@ -113,41 +111,7 @@ describe("MetadataEditor", () => {
       ).toBeInTheDocument();
     });
 
-    it("should allow to rescan field values", async () => {
-      await setup();
-
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
-      userEvent.click(
-        await screen.findByRole("button", { name: "Re-scan this table" }),
-      );
-
-      await waitFor(() => {
-        const path = `path:/api/table/${ORDERS_TABLE.id}/rescan_values`;
-        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
-      });
-    });
-
-    it("should allow to discard field values", async () => {
-      await setup();
-
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
-      userEvent.click(
-        await screen.findByRole("button", {
-          name: "Discard cached field values",
-        }),
-      );
-
-      await waitFor(() => {
-        const path = `path:/api/table/${ORDERS_TABLE.id}/discard_values`;
-        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
-      });
-    });
-  });
-
-  describe("multi schema database", () => {
-    it("should allow to navigate to and from table settings", async () => {
+    it("should allow to navigate to and from table settings in a multi-schema database", async () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
       userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
@@ -178,6 +142,40 @@ describe("MetadataEditor", () => {
       expect(
         await screen.findByDisplayValue(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("table settings", () => {
+    it("should allow to rescan field values", async () => {
+      await setup();
+
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      userEvent.click(screen.getByLabelText("Settings"));
+      userEvent.click(
+        await screen.findByRole("button", { name: "Re-scan this table" }),
+      );
+
+      await waitFor(() => {
+        const path = `path:/api/table/${ORDERS_TABLE.id}/rescan_values`;
+        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+      });
+    });
+
+    it("should allow to discard field values", async () => {
+      await setup();
+
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      userEvent.click(screen.getByLabelText("Settings"));
+      userEvent.click(
+        await screen.findByRole("button", {
+          name: "Discard cached field values",
+        }),
+      );
+
+      await waitFor(() => {
+        const path = `path:/api/table/${ORDERS_TABLE.id}/discard_values`;
+        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+      });
     });
   });
 });
