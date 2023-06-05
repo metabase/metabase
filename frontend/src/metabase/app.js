@@ -30,7 +30,7 @@ import "ee-plugins"; // eslint-disable-line import/no-unresolved, import/no-dupl
 
 import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
-import { ThemeProvider } from "@emotion/react";
+import { MantineProvider } from "@mantine/core";
 
 // router
 import { Router, useRouterHistory } from "react-router";
@@ -49,6 +49,7 @@ import registerVisualizations from "metabase/visualizations/register";
 import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
 
 import GlobalStyles from "metabase/styled-components/containers/GlobalStyles";
+import { theme } from "metabase/ui/theme";
 import { getStore } from "./store";
 
 // remove trailing slash
@@ -60,10 +61,6 @@ api.basename = BASENAME;
 const browserHistory = useRouterHistory(createHistory)({
   basename: BASENAME,
 });
-
-const theme = {
-  space: [4, 8, 16, 32, 64, 128],
-};
 
 function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
@@ -77,10 +74,10 @@ function _init(reducers, getRoutes, callback) {
   ReactDOM.render(
     <Provider store={store} ref={ref => (root = ref)}>
       <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
-        <ThemeProvider theme={theme}>
+        <MantineProvider theme={theme}>
           <GlobalStyles />
           <Router history={history}>{routes}</Router>
-        </ThemeProvider>
+        </MantineProvider>
       </DragDropContextProvider>
     </Provider>,
     document.getElementById("root"),
