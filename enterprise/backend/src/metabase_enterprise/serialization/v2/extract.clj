@@ -41,7 +41,7 @@
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"
   [model-name ids]
-  (mapv vector (repeat model-name) ids))
+  (for [id ids] [model-name id]))
 
 (defn- collection-set-for-user
   "Returns a set of collection IDs to export for the provided user, if any.
