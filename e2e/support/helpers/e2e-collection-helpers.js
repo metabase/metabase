@@ -76,7 +76,7 @@ export const openRootCollection = () => {
   cy.wait("@getPinnedItems");
 };
 
-export const changeCardDescription = (cardName, description) => {
+export const changePinnedCardDescription = (cardName, description) => {
   openRootCollection();
 
   getPinnedSection().within(() => {

@@ -1,4 +1,5 @@
 import { HTMLAttributes } from "react";
+import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
 import {
   SkeletonRoot,
@@ -28,8 +29,19 @@ const SkeletonCaption = ({
         <SkeletonPlaceholder />
       )}
       {description && (
-        <Tooltip tooltip={description} maxWidth="22em">
-          <SkeletonDescription name="info" />
+        <Tooltip
+          placement="bottom"
+          maxWidth="22em"
+          tooltip={
+            <Markdown disallowHeading unstyleLinks>
+              {description}
+            </Markdown>
+          }
+        >
+          <SkeletonDescription
+            data-testid="skeleton-description-icon"
+            name="info"
+          />
         </Tooltip>
       )}
     </SkeletonRoot>

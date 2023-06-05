@@ -1,15 +1,15 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  popover,
-  restore,
-  changeCardDescription,
   changeDashboardDescription,
+  changePinnedCardDescription,
   dragAndDrop,
   getPinnedSection,
   openPinnedItemMenu,
   openRootCollection,
   openUnpinnedItemMenu,
+  popover,
+  restore,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -267,7 +267,7 @@ describe("scenarios > collection pinned items overview", () => {
     openUnpinnedItemMenu(MODEL_NAME);
     popover().findByText("Pin this").click();
     cy.wait("@getPinnedItems");
-    changeCardDescription(MODEL_NAME, MARKDOWN);
+    changePinnedCardDescription(MODEL_NAME, MARKDOWN);
     openRootCollection();
 
     getPinnedSection().within(() => {
@@ -308,7 +308,7 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     openRootCollection();
-    changeCardDescription(SQL_QUESTION_DETAILS.name, MARKDOWN);
+    changePinnedCardDescription(SQL_QUESTION_DETAILS.name, MARKDOWN);
     openRootCollection();
 
     getPinnedSection().within(() => {
@@ -322,17 +322,35 @@ describe("scenarios > collection pinned items overview", () => {
     });
   });
 
-  it("should render tooltip with markdown formatting in question visualization", () => {
+  it("should render description tooltip with markdown formatting in a skeleton", () => {
     openRootCollection();
     openUnpinnedItemMenu(QUESTION_NAME);
     popover().findByText("Pin this").click();
     cy.wait(["@getPinnedItems", "@getCardQuery"]);
-    changeCardDescription(QUESTION_NAME, MARKDOWN);
+    changePinnedCardDescription(QUESTION_NAME, MARKDOWN);
     openRootCollection();
 
-    getPinnedSection().within(() => {
-      cy.findAllByTestId("legend-description-icon").realHover();
+    cy.findByTestId("skeleton-description-icon").realHover();
+
+    popover().within(() => {
+      cy.findByText(MARKDOWN).should("not.exist");
+      cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
+      cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
+      cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
     });
+
+    popover().invoke("text").should("eq", MARKDOWN_AS_TEXT);
+  });
+
+  it("should render description tooltip with markdown formatting in question visualization", () => {
+    openRootCollection();
+    openUnpinnedItemMenu(QUESTION_NAME);
+    popover().findByText("Pin this").click();
+    cy.wait(["@getPinnedItems", "@getCardQuery"]);
+    changePinnedCardDescription(QUESTION_NAME, MARKDOWN);
+    openRootCollection();
+
+    cy.findAllByTestId("legend-description-icon").realHover();
 
     popover().within(() => {
       cy.findByText(MARKDOWN).should("not.exist");
