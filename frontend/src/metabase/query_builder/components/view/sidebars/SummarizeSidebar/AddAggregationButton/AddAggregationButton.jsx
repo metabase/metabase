@@ -27,10 +27,7 @@ export const AddAggregationButton = ({
       triggerElement={
         <Tooltip tooltip={LABEL} isEnabled={!shouldShowLabel}>
           <AddAggregationButtonRoot data-testid="add-aggregation-button">
-            <Icon
-              name="add"
-              className={cx({ mr1: shouldShowLabel })}
-            />
+            <Icon name="add" className={cx({ mr1: shouldShowLabel })} />
             {shouldShowLabel ? LABEL : null}
           </AddAggregationButtonRoot>
         </Tooltip>
@@ -49,7 +46,7 @@ export const AddAggregationButton = ({
           showCustom={false}
         />
       )}
-    </PopoverWithTrigger >
+    </PopoverWithTrigger>
   );
 };
 
