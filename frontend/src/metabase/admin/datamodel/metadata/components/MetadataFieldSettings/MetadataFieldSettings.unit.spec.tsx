@@ -123,7 +123,53 @@ const waitUntilLoaded = async () => {
 };
 
 describe("MetadataFieldSettings", () => {
-  describe("single schema database", () => {
+  describe("breadcrumbs", () => {
+    it("should allow to navigate to and from field settings for a single-schema database", async () => {
+      await setup();
+      expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
+
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await waitUntilLoaded();
+      userEvent.click(fieldLink(ORDERS_ID_FIELD));
+      await waitUntilLoaded();
+      expect(screen.getByText("General")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(SAMPLE_DB.name));
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      userEvent.click(fieldLink(ORDERS_ID_FIELD));
+      await waitUntilLoaded();
+      expect(screen.getByText("General")).toBeInTheDocument();
+    });
+
+    it("should allow to navigate to and from field settings for a multi-schema database", async () => {
+      await setup({
+        database: SAMPLE_DB_MULTI_SCHEMA,
+        table: PEOPLE_TABLE_MULTI_SCHEMA,
+        field: PEOPLE_ID_FIELD,
+      });
+
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
+      await waitUntilLoaded();
+      userEvent.click(fieldLink(PEOPLE_ID_FIELD));
+      await waitUntilLoaded();
+      expect(screen.getByText("General")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
+      userEvent.click(fieldLink(PEOPLE_ID_FIELD));
+      await waitUntilLoaded();
+      expect(screen.getByText("General")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
+      userEvent.click(fieldLink(PEOPLE_ID_FIELD));
+      await waitUntilLoaded();
+      expect(screen.getByText("General")).toBeInTheDocument();
+    });
+  });
+
+  describe("field settings", () => {
     it("should not allow to enter an empty field name", async () => {
       await setup();
 
@@ -170,23 +216,6 @@ describe("MetadataFieldSettings", () => {
       expect(screen.getByText("Field access denied")).toBeInTheDocument();
     });
 
-    it("should allow to navigate to and from field settings", async () => {
-      await setup();
-      expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
-
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      await waitUntilLoaded();
-      userEvent.click(fieldLink(ORDERS_ID_FIELD));
-      await waitUntilLoaded();
-      expect(screen.getByText("General")).toBeInTheDocument();
-
-      userEvent.click(screen.getByText(SAMPLE_DB.name));
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(fieldLink(ORDERS_ID_FIELD));
-      await waitUntilLoaded();
-      expect(screen.getByText("General")).toBeInTheDocument();
-    });
-
     it("should allow to rescan field values", async () => {
       await setup();
 
@@ -213,35 +242,6 @@ describe("MetadataFieldSettings", () => {
         const path = `path:/api/field/${ORDERS_ID_FIELD.id}/discard_values`;
         expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
       });
-    });
-  });
-
-  describe("multi schema database", () => {
-    it("should allow to navigate to and from field settings", async () => {
-      await setup({
-        database: SAMPLE_DB_MULTI_SCHEMA,
-        table: PEOPLE_TABLE_MULTI_SCHEMA,
-        field: PEOPLE_ID_FIELD,
-      });
-
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
-      await waitUntilLoaded();
-      userEvent.click(fieldLink(PEOPLE_ID_FIELD));
-      await waitUntilLoaded();
-      expect(screen.getByText("General")).toBeInTheDocument();
-
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
-      userEvent.click(fieldLink(PEOPLE_ID_FIELD));
-      await waitUntilLoaded();
-      expect(screen.getByText("General")).toBeInTheDocument();
-
-      userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
-      userEvent.click(fieldLink(PEOPLE_ID_FIELD));
-      await waitUntilLoaded();
-      expect(screen.getByText("General")).toBeInTheDocument();
     });
   });
 });
