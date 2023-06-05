@@ -1,4 +1,5 @@
 import { Route } from "react-router";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { Database, Field, FieldValues, Table } from "metabase-types/api";
 import {
@@ -26,6 +27,7 @@ import {
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
   within,
 } from "__support__/ui";
@@ -178,6 +180,34 @@ describe("MetadataFieldSettings", () => {
       userEvent.click(fieldLink(ORDERS_ID_FIELD));
       await waitUntilLoaded();
       expect(screen.getByText("General")).toBeInTheDocument();
+    });
+
+    it("should allow to rescan field values", async () => {
+      await setup();
+
+      userEvent.click(
+        screen.getByRole("button", { name: "Re-scan this field" }),
+      );
+
+      await waitFor(() => {
+        const path = `path:/api/field/${ORDERS_ID_FIELD.id}/rescan_values`;
+        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+      });
+    });
+
+    it("should allow to discard field values", async () => {
+      await setup();
+
+      userEvent.click(
+        screen.getByRole("button", {
+          name: "Discard cached field values",
+        }),
+      );
+
+      await waitFor(() => {
+        const path = `path:/api/field/${ORDERS_ID_FIELD.id}/discard_values`;
+        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+      });
     });
   });
 
