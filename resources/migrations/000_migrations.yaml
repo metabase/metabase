@@ -14776,7 +14776,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-027
-      author: calherres
+      author: calherries
       comment: Added 0.47.0 - Migrate field_ref in report_card.result_metadata from legacy format
       changes:
         - customChange:
@@ -14784,7 +14784,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-028
-      author: calherres
+      author: calherries
       comment: Added 0.47.0 - Add join-alias to the report_card.visualization_settings.column_settings field refs
       changes:
         - customChange:
