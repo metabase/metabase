@@ -8,6 +8,7 @@ import {
   startNewQuestion,
   summarize,
   openOrdersTable,
+  getNotebookStep,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -158,22 +159,23 @@ describe("binning related reproductions", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summarize").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count of rows").click();
+    popover().findByText("Count of rows").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Question \d/).click();
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    popover()
+      .findByText(/Question \d/)
+      .click();
 
     popover().within(() => {
-      cy.findByText("CREATED_AT").closest(".List-item").findByText("by month");
-
-      cy.findByText("CREATED_AT").click();
+      cy.findByRole("option", { name: "CREATED_AT" })
+        .findByText("by month")
+        .should("exist");
+      cy.findByRole("option", { name: "CREATED_AT" }).click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Question 4 → Created At: Month");
+    getNotebookStep("summarize").findByText("Question 4 → CREATED_AT: Month");
 
     visualize();
     cy.get("circle");
