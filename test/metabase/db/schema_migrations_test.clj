@@ -1056,7 +1056,6 @@
                                :from     [:core_user]
                                :order-by [[:id :asc]]}))))))
 
-
 (deftest migrate-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-031" "v47.00-032"] [_migrate!]
     (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
@@ -1103,7 +1102,7 @@
                   {:row 48 :col 0  :size_x 23 :size_y 1}
                   {:row 48 :col 23 :size_x 1  :size_y 1}]
                  migrated-to-24))
-          (is (true? (custom-migrations-test/no-cards-are-overlaped? migrated-to-24)))
+          (is (true? (custom-migrations-test/no-cards-are-overlap? migrated-to-24)))
           (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? migrated-to-24 24)))))
 
       (testing "downgrade works correctly"
@@ -1111,19 +1110,6 @@
         (let [rollbacked-to-18 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
                                                  :model/DashboardCard :id [:in dashcard-ids]
                                                  {:order-by [[:id :asc]]})]
-          (is (= [{:col 0  :row 15 :size_x 12 :size_y 8}
-                  {:col 12 :row 7  :size_x 6  :size_y 8}
-                  {:col 5  :row 2  :size_x 5  :size_y 3}
-                  {:col 0  :row 25 :size_x 7  :size_y 10}
-                  {:col 0  :row 2  :size_x 5  :size_y 3}
-                  {:col 6  :row 7  :size_x 6  :size_y 8}
-                  {:col 7  :row 25 :size_x 11 :size_y 10}
-                  {:col 0  :row 7  :size_x 6  :size_y 4}
-                  {:col 0  :row 23 :size_x 18 :size_y 2}
-                  {:col 0  :row 5  :size_x 18 :size_y 2}
-                  {:col 0  :row 0  :size_x 18 :size_y 2}
-                  {:row 36 :col 0  :size_x 17 :size_y 1}
-                  {:row 36 :col 17 :size_x 1  :size_y 1}]
-                 rollbacked-to-18))
-          (is (true? (custom-migrations-test/no-cards-are-overlaped? rollbacked-to-18)))
+          (is (= cases rollbacked-to-18))
+          (is (true? (custom-migrations-test/no-cards-are-overlap? rollbacked-to-18)))
           (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-18 18))))))))
