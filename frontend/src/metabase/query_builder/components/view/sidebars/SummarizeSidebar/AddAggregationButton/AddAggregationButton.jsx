@@ -26,7 +26,10 @@ export const AddAggregationButton = ({
     <PopoverWithTrigger
       triggerElement={
         <Tooltip tooltip={LABEL} isEnabled={!shouldShowLabel}>
-          <AddAggregationButtonRoot data-testid="add-aggregation-button">
+          <AddAggregationButtonRoot
+            aria-label={t`Add aggregation`}
+            data-testid="add-aggregation-button"
+          >
             <Icon name="add" className={cx({ mr1: shouldShowLabel })} />
             {shouldShowLabel ? LABEL : null}
           </AddAggregationButtonRoot>
