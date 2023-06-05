@@ -4,12 +4,14 @@ import userEvent from "@testing-library/user-event";
 import { Database, Field, FieldValues, Table } from "metabase-types/api";
 import {
   createMockField,
+  createMockFieldDimension,
   createMockFieldValues,
 } from "metabase-types/api/mocks";
 import {
   createOrdersDiscountField,
   createOrdersIdField,
   createOrdersProductIdField,
+  createOrdersQuantityField,
   createOrdersTable,
   createOrdersUserIdField,
   createPeopleIdField,
@@ -21,8 +23,9 @@ import {
 } from "metabase-types/api/mocks/presets";
 import {
   setupDatabasesEndpoints,
-  setupFieldsValuesEndpoints,
+  setupFieldValuesEndpoints,
   setupSearchEndpoints,
+  setupUnauthorizedFieldValuesEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -42,6 +45,19 @@ const ORDERS_USER_ID_FIELD = createOrdersUserIdField();
 
 const ORDERS_DISCOUNT_FIELD = createOrdersDiscountField();
 
+const ORDERS_QUANTITY_FIELD = createOrdersQuantityField({
+  dimensions: [
+    createMockFieldDimension({
+      type: "internal",
+      name: "Quantity",
+    }),
+  ],
+  remappings: [
+    [1, "1 remapped"],
+    [2, "2 remapped"],
+  ],
+});
+
 const ORDERS_JSON_FIELD = createMockField({
   id: 100,
   name: "JSON",
@@ -56,6 +72,7 @@ const ORDERS_TABLE = createOrdersTable({
     ORDERS_PRODUCT_ID_FIELD,
     ORDERS_USER_ID_FIELD,
     ORDERS_DISCOUNT_FIELD,
+    ORDERS_QUANTITY_FIELD,
     ORDERS_JSON_FIELD,
   ],
 });
@@ -90,6 +107,7 @@ interface SetupOpts {
   table?: Table;
   field?: Field;
   fieldValues?: FieldValues;
+  hasDataAccess?: boolean;
 }
 
 const setup = async ({
@@ -97,10 +115,16 @@ const setup = async ({
   table = ORDERS_TABLE,
   field = ORDERS_ID_FIELD,
   fieldValues = createMockFieldValues({ field_id: Number(field.id) }),
+  hasDataAccess = true,
 }: SetupOpts = {}) => {
   setupDatabasesEndpoints([database]);
   setupSearchEndpoints([]);
-  setupFieldsValuesEndpoints([fieldValues]);
+
+  if (hasDataAccess) {
+    setupFieldValuesEndpoints(fieldValues);
+  } else {
+    setupUnauthorizedFieldValuesEndpoints(fieldValues);
+  }
 
   renderWithProviders(
     <Route path="admin/datamodel">{getMetadataRoutes()}</Route>,
@@ -214,6 +238,23 @@ describe("MetadataFieldSettings", () => {
     it("should show an access denied error if the foreign key field has an inaccessible target", async () => {
       await setup({ field: ORDERS_USER_ID_FIELD });
       expect(screen.getByText("Field access denied")).toBeInTheDocument();
+    });
+
+    it("should show custom mapping if has data access", async () => {
+      await setup({ field: ORDERS_QUANTITY_FIELD });
+      expect(screen.getByText("Custom mapping")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("1 remapped")).toBeInTheDocument();
+    });
+
+    it("should show an access denied error if is custom mapping without data permissions", async () => {
+      await setup({ field: ORDERS_QUANTITY_FIELD, hasDataAccess: false });
+      expect(screen.getByText("Custom mapping")).toBeInTheDocument();
+      expect(screen.queryByDisplayValue("1 remapped")).not.toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "You need unrestricted data access on this table to map custom display values.",
+        ),
+      ).toBeInTheDocument();
     });
 
     it("should allow to rescan field values", async () => {
