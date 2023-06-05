@@ -297,7 +297,7 @@
   [actions]
   (let [action-ids (map :id actions)
         get-database-enable-actions (fn [db]
-                                      (boolean (some-> db :settings (#(json/parse-string % true)) :database-enable-actions)))
+                                      (boolean (some-> db :settings mi/encrypted-json-out :database-enable-actions)))
         id->database-enable-actions (into {}
                                           (map (juxt :id get-database-enable-actions))
                                           (t2/query {:select [:action.id :db.settings]

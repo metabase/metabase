@@ -206,7 +206,7 @@
   :out #(some-> % json-out-with-keywordization set))
 
 (def ^:private encrypted-json-in  (comp encryption/maybe-encrypt json-in))
-(def ^:private encrypted-json-out (comp json-out-with-keywordization encryption/maybe-decrypt))
+(def encrypted-json-out (comp json-out-with-keywordization encryption/maybe-decrypt))
 
 ;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
 ;; cache the decrypted JSON for one hour
