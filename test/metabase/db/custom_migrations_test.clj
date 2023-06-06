@@ -2,6 +2,7 @@
   "Tests to make sure the custom migrations work as expected."
   (:require
    [cheshire.core :as json]
+   [clojure.math :as math]
    [clojure.math.combinatorics :as math.combo]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
@@ -413,24 +414,113 @@
                  (pos? size_x)
                  (pos? size_y))) boxes))
 
+(def arr
+  (let [num-rows 20]
+    (loop [i   0
+           row 0
+           acc []]
+      (let [size-y (inc (math/round (* 6 (math/random))))]
+        (if (> i num-rows)
+          acc
+          (recur
+            (inc i)
+            (+ row size-y)
+            (concat acc (loop [col    0
+                               acc2 []]
+                          (let [size-x (inc (math/round (* 9 (math/random))))
+                                ;; probability of skipping is 5%
+                                skip?  (> (math/random) 0.95)
+                                new-col  (+ col size-x)]
+                            (if (>= new-col 18)
+                              (cons [col row (- 18 col) size-y] acc2)
+                              (if skip?
+                                (recur (+ col size-x) acc2)
+                                (recur (+ col size-x) (cons [col row size-x size-y] acc2)))))))))))))
+
+(comment
+  ;; the code used to generate the array be low
+  (def arr (let [num-rows 20]
+             (loop [i   0
+                    row 0
+                    acc []]
+               (let [size-y (inc (math/round (* 6 (math/random))))]
+                 (if (> i num-rows)
+                   acc
+                   (recur
+                     (inc i)
+                     (+ row size-y)
+                     (concat acc (loop [col    0
+                                        acc2 []]
+                                   (let [size-x (inc (math/round (* 9 (math/random))))
+                                         ;; probability of skipping is 5%
+                                         skip?  (> (math/random) 0.95)
+                                         new-col  (+ col size-x)]
+                                     (if (>= new-col 18)
+                                       (cons [col row (- 18 col) size-y] acc2)
+                                       (if skip?
+                                         (recur (+ col size-x) acc2)
+                                         (recur (+ col size-x) (cons [col row size-x size-y] acc2)))))))))))))
+  (def cards (for [[col row size_x size_y]
+                   [[0, 0, 5, 1], [5, 0, 4, 1], [9, 0, 2, 1], [11, 0, 2, 1], [13, 0, 5, 1], [0, 2, 8, 7],
+                    [8, 2, 2, 7], [10, 2, 7, 7], [17, 2, 1, 7], [17, 10, 1, 5], [17, 16, 1, 5], [0, 22, 7, 2],
+                    [7, 22, 10, 2], [17, 22, 1, 2], [0, 25, 1, 2], [1, 25, 7, 2], [8, 25, 9, 2], [17, 25, 1, 2],
+                    [15, 28, 3, 4], [0, 33, 7, 7], [7, 33, 8, 7], [15, 33, 3, 7], [0, 41, 8, 5], [8, 41, 8, 5],
+                    [16, 41, 2, 5], [0, 47, 4, 6], [4, 47, 1, 6], [5, 47, 5, 6], [10, 47, 8, 6], [0, 54, 6, 6],
+                    [6, 54, 4, 6], [10, 54, 2, 6], [12, 54, 6, 6], [0, 61, 2, 7], [2, 61, 2, 7], [4, 61, 3, 7],
+                    [7, 61, 1, 7], [8, 61, 7, 7], [15, 61, 3, 7], [0, 69, 1, 5], [1, 69, 2, 5], [3, 69, 7, 5],
+                    [10, 69, 6, 5], [16, 69, 2, 5], [0, 75, 10, 7], [10, 75, 3, 7], [13, 75, 5, 7], [0, 83, 7, 5],
+                    [7, 83, 4, 5], [11, 83, 1, 5], [12, 83, 4, 5], [16, 83, 2, 5], [0, 89, 3, 2], [3, 89, 7, 2],
+                    [10, 89, 8, 2], [0, 92, 5, 6], [5, 92, 2, 6], [7, 92, 9, 6], [16, 92, 2, 6], [0, 99, 6, 3],
+                    [6, 99, 3, 3], [9, 99, 6, 3], [15, 99, 3, 3], [0, 103, 2, 3], [2, 103, 6, 3], [8, 103, 3, 3],
+                    [11, 103, 7, 3], [0, 107, 4, 1], [4, 107, 8, 1], [12, 107, 2, 1], [14, 107, 4, 1]]]
+               {:row row
+                :col col
+                :size_x size_x
+                :size_y size_y}))
+
+  (no-cards-are-overlap? cards)
+  ;; => true
+  (no-cards-are-out-of-grid-and-has-size-0? cards 18))
+;; => true
+
 (def ^:private big-random-dashboard-cards
-    (for [[col row size_x size_y]
-          [[0, 0, 5, 1], [5, 0, 4, 1], [9, 0, 2, 1], [11, 0, 2, 1], [13, 0, 5, 1], [0, 2, 8, 7],
-           [8, 2, 2, 7], [10, 2, 7, 7], [17, 2, 1, 7], [17, 10, 1, 5], [17, 16, 1, 5], [0, 22, 7, 2],
-           [7, 22, 10, 2], [17, 22, 1, 2], [0, 25, 1, 2], [1, 25, 7, 2], [8, 25, 9, 2], [17, 25, 1, 2],
-           [15, 28, 3, 4], [0, 33, 7, 7], [7, 33, 8, 7], [15, 33, 3, 7], [0, 41, 8, 5], [8, 41, 8, 5],
-           [16, 41, 2, 5], [0, 47, 4, 6], [4, 47, 1, 6], [5, 47, 5, 6], [10, 47, 8, 6], [0, 54, 6, 6],
-           [6, 54, 4, 6], [10, 54, 2, 6], [12, 54, 6, 6], [0, 61, 2, 7], [2, 61, 2, 7], [4, 61, 3, 7],
-           [7, 61, 1, 7], [8, 61, 7, 7], [15, 61, 3, 7], [0, 69, 1, 5], [1, 69, 2, 5], [3, 69, 7, 5],
-           [10, 69, 6, 5], [16, 69, 2, 5], [0, 75, 10, 7], [10, 75, 3, 7], [13, 75, 5, 7], [0, 83, 7, 5],
-           [7, 83, 4, 5], [11, 83, 1, 5], [12, 83, 4, 5], [16, 83, 2, 5], [0, 89, 3, 2], [3, 89, 7, 2],
-           [10, 89, 8, 2], [0, 92, 5, 6], [5, 92, 2, 6], [7, 92, 9, 6], [16, 92, 2, 6], [0, 99, 6, 3],
-           [6, 99, 3, 3], [9, 99, 6, 3], [15, 99, 3, 3], [0, 103, 2, 3], [2, 103, 6, 3], [8, 103, 3, 3],
-           [11, 103, 7, 3], [0, 107, 4, 1], [4, 107, 8, 1], [12, 107, 2, 1], [14, 107, 4, 1]]]
-      {:row row
-       :col col
-       :size_x size_x
-       :size_y size_y}))
+  ;; the python code used to generate this array
+  ;; import random
+  ;; boxes = []
+  ;; num_rows = 20
+  ;; y = 0
+  ;; for _ in range(num_rows):
+  ;;     x = 0
+  ;;     h = random.randint(1, 7)
+  ;;     is_draw = random.gauss(1.2, 0.3) > 1
+  ;;     w = random.randint(1, 10)
+  ;;     while x + w < 18:
+  ;;         if is_draw:
+  ;;             boxes.append([x, y, w, h])
+  ;;         x += w
+  ;;         w = random.randint(1, 10)
+  ;;
+  ;;     # if there is still room, add another box to fit the whole row
+  ;;     if x < 18:
+  ;;         boxes.append([x, y, 18 - x, h])
+  ;;     y = y + h
+  (for [[col row size_x size_y]
+        [[0, 0, 5, 1], [5, 0, 4, 1], [9, 0, 2, 1], [11, 0, 2, 1], [13, 0, 5, 1], [0, 2, 8, 7],
+         [8, 2, 2, 7], [10, 2, 7, 7], [17, 2, 1, 7], [17, 10, 1, 5], [17, 16, 1, 5], [0, 22, 7, 2],
+         [7, 22, 10, 2], [17, 22, 1, 2], [0, 25, 1, 2], [1, 25, 7, 2], [8, 25, 9, 2], [17, 25, 1, 2],
+         [15, 28, 3, 4], [0, 33, 7, 7], [7, 33, 8, 7], [15, 33, 3, 7], [0, 41, 8, 5], [8, 41, 8, 5],
+         [16, 41, 2, 5], [0, 47, 4, 6], [4, 47, 1, 6], [5, 47, 5, 6], [10, 47, 8, 6], [0, 54, 6, 6],
+         [6, 54, 4, 6], [10, 54, 2, 6], [12, 54, 6, 6], [0, 61, 2, 7], [2, 61, 2, 7], [4, 61, 3, 7],
+         [7, 61, 1, 7], [8, 61, 7, 7], [15, 61, 3, 7], [0, 69, 1, 5], [1, 69, 2, 5], [3, 69, 7, 5],
+         [10, 69, 6, 5], [16, 69, 2, 5], [0, 75, 10, 7], [10, 75, 3, 7], [13, 75, 5, 7], [0, 83, 7, 5],
+         [7, 83, 4, 5], [11, 83, 1, 5], [12, 83, 4, 5], [16, 83, 2, 5], [0, 89, 3, 2], [3, 89, 7, 2],
+         [10, 89, 8, 2], [0, 92, 5, 6], [5, 92, 2, 6], [7, 92, 9, 6], [16, 92, 2, 6], [0, 99, 6, 3],
+         [6, 99, 3, 3], [9, 99, 6, 3], [15, 99, 3, 3], [0, 103, 2, 3], [2, 103, 6, 3], [8, 103, 3, 3],
+         [11, 103, 7, 3], [0, 107, 4, 1], [4, 107, 8, 1], [12, 107, 2, 1], [14, 107, 4, 1]]]
+    {:row row
+     :col col
+     :size_x size_x
+     :size_y size_y}))
 
 (deftest migrated-grid-18-to-24-stretch-test
   (let [migrated-to-18   (map @#'custom-migrations/migrate-dashboard-grid-from-18-to-24 big-random-dashboard-cards)
