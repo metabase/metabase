@@ -3,6 +3,7 @@ import {
   modal,
   setActionsEnabledForDB,
   createAction,
+  visitDashboardAndCreateTab,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -95,6 +96,10 @@ describe("scenarios > admin > settings > public sharing", () => {
         cy.wrap(response.body.uuid).as("dashboardUuid");
       });
 
+    cy.get("@dashboardId").then(dashboardId =>
+      visitDashboardAndCreateTab({ dashboardId }),
+    );
+
     cy.visit("/admin/settings/public-sharing");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -108,6 +113,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.findByRole("heading", { name: expectedDashboardName }).should(
         "be.visible",
       );
+      cy.findByRole("tab", { name: "Page 1" }).should("be.visible");
       cy.visit("/admin/settings/public-sharing");
     });
 

@@ -1,3 +1,4 @@
+import { visitDashboard } from "./e2e-misc-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
 
 // Metabase utility functions for commonly-used patterns
@@ -107,4 +108,17 @@ export function addTextBox(string, options = {}) {
 
 export function openQuestionsSidebar() {
   cy.findByLabelText("Add questions").click();
+}
+
+export function createNewTab() {
+  cy.findByLabelText("Create new tab").click();
+}
+
+export function visitDashboardAndCreateTab({ dashboardId, save = true }) {
+  visitDashboard(dashboardId);
+  editDashboard();
+  createNewTab();
+  if (save) {
+    saveDashboard();
+  }
 }
