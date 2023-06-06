@@ -36,7 +36,7 @@ interface ActionFormProps {
   canEditAction: boolean | undefined;
   onSubmit: OnSubmitActionForm;
 
-  onActionEdit: (newAction: WritebackAction) => void;
+  onActionEdit?: (newAction: WritebackAction) => void;
 }
 
 function ActionVizForm({

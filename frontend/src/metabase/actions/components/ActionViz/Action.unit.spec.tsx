@@ -74,6 +74,16 @@ const database = createMockDatabase({
   },
 });
 
+const card = createMockCard({
+  database_id: DATABASE_ID,
+  dataset_query: createMockStructuredDatasetQuery({
+    database: DATABASE_ID,
+  }),
+  display: "action",
+  can_write: true,
+  dataset: true,
+});
+
 function createMockActionDashboardCard(
   opts: Partial<ActionDashboardCard> = {},
 ) {
@@ -107,6 +117,11 @@ async function setup({
 }: SetupOpts = {}) {
   if (getActionIsEnabledInDatabase(dashcard)) {
     fetchMock.post(ACTION_EXEC_MOCK_PATH, { "rows-updated": [1] });
+
+    // for ActionCreator modal (action edit modal)
+    setupDatabasesEndpoints([database]);
+    setupCardsEndpoints([card, { ...card, id: ACTION_MODEL_ID }]);
+    fetchMock.get(`path:/api/action/${ACTION.id}`, ACTION);
   }
 
   renderWithProviders(
@@ -277,20 +292,6 @@ describe("Actions > ActionViz > Action", () => {
     });
 
     it("should allow to edit underlying action if a user has edit permissions", async () => {
-      const card = createMockCard({
-        database_id: DATABASE_ID,
-        dataset_query: createMockStructuredDatasetQuery({
-          database: DATABASE_ID,
-        }),
-        display: "action",
-        can_write: true,
-        dataset: true,
-      });
-
-      setupDatabasesEndpoints([database]);
-      setupCardsEndpoints([card]);
-      fetchMock.get(`path:/api/action/${ACTION.id}`, ACTION);
-
       await setup({
         dashcard: createMockActionDashboardCard({
           card_id: card.id,
@@ -298,7 +299,7 @@ describe("Actions > ActionViz > Action", () => {
         }),
       });
 
-      userEvent.click(screen.getByRole("button"));
+      userEvent.click(screen.getByText("Click me"));
 
       const editActionEl = getIcon("pencil");
       expect(editActionEl).toBeInTheDocument();
@@ -308,14 +309,52 @@ describe("Actions > ActionViz > Action", () => {
       await screen.findByText("Action parameters");
 
       expect(screen.getByText("My Awesome Action")).toBeInTheDocument();
-      expect(screen.getByText("Cancel")).toBeInTheDocument();
+
+      const cancelEditButton = screen.getByText("Cancel");
+      expect(cancelEditButton).toBeInTheDocument();
 
       expect(screen.getByText("Update")).toBeInTheDocument();
+
+      userEvent.click(cancelEditButton);
+
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByTestId("action-form")).toBeInTheDocument();
+      expect(screen.getByLabelText("Parameter 1")).toBeInTheDocument();
     });
 
-    // TODO: add this test
-    // eslint-disable-next-line jest/no-commented-out-tests
-    // it.skip("should open updated action form after action editing", async () => {});
+    it("should open action form after action editing", async () => {
+      const updatedTitle = "Test action title";
+      fetchMock.putOnce(`path:/api/action/${ACTION.id}`, {
+        ...ACTION,
+        name: updatedTitle,
+      });
+      await setup({
+        dashcard: createMockActionDashboardCard({
+          card_id: card.id,
+          card,
+        }),
+      });
+
+      userEvent.click(screen.getByText("Click me"));
+
+      userEvent.click(getIcon("pencil"));
+
+      // wait for action edit form to be loaded
+      await screen.findByText("My Awesome Action");
+
+      // edit action title
+      const actionTitleField = screen.getByTestId("editable-text");
+      userEvent.type(actionTitleField, updatedTitle);
+      userEvent.tab(); // blur field
+
+      userEvent.click(await screen.findByText("Update"));
+
+      expect(fetchMock.called(`path:/api/action/${ACTION.id}`)).toBe(true);
+
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByTestId("action-form")).toBeInTheDocument();
+      expect(screen.getByLabelText("Parameter 1")).toBeInTheDocument();
+    });
   });
 
   describe("Form actions", () => {

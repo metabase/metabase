@@ -54,7 +54,3 @@ export const onReplaceAllDashCardVisualizationSettings = createAction(
   REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS,
   (id, settings) => ({ id, settings }),
 );
-
-export const UPDATE_DASHCARD_ACTION =
-  "metabase/dashboard/UPDATE_DASHCARD_ACTION";
-export const onUpdateDashCardAction = createAction(UPDATE_DASHCARD_ACTION);
