@@ -33,13 +33,6 @@ function EditorBody() {
   );
 }
 
-// TODO: @uladzimir probably we can delete it, I'm not sure only can we get rid of getDefaultFormSettings
-function cleanFormSettings(formSettings?: ActionFormSettings) {
-  const formSettingsWithDefaults = getDefaultFormSettings(formSettings);
-
-  return formSettingsWithDefaults;
-}
-
 function ImplicitActionContextProvider({
   initialAction,
   children,
@@ -50,15 +43,15 @@ function ImplicitActionContextProvider({
 
   const handleFormSettingsChange = useCallback(
     (nextFormSettings: ActionFormSettings) => {
-      setFormSettings(cleanFormSettings(nextFormSettings));
+      setFormSettings(getDefaultFormSettings(nextFormSettings));
     },
     [],
   );
 
   const canSave = useMemo(() => {
     return !_.isEqual(
-      cleanFormSettings(formSettings),
-      cleanFormSettings(initialAction?.visualization_settings),
+      getDefaultFormSettings(formSettings),
+      getDefaultFormSettings(initialAction?.visualization_settings),
     );
   }, [formSettings, initialAction?.visualization_settings]);
 
