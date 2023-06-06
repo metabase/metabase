@@ -4,7 +4,6 @@ import { TabButton as BaseTabButton } from "metabase/core/components/TabButton";
 import BaseButton from "metabase/core/components/Button";
 
 export const Container = styled.div`
-  position: relative;
   display: flex;
   align-items: start;
   gap: 1.5rem;
