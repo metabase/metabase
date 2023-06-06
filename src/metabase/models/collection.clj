@@ -7,7 +7,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.api.common
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
