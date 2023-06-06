@@ -9,7 +9,14 @@ export const theme: MantineThemeOverride = {
   },
   primaryColor: "brand",
   primaryShade: 1,
-  fontFamily: "Lato, sans-serif",
+  fontSizes: {
+    xs: "10px",
+    sm: "14px",
+    md: "16px",
+    lg: "18px",
+    xl: "24px",
+  },
+  fontFamily: 'Lato, "Helvetica Neue", Helvetica, sans-serif',
   components: {
     Radio: {
       styles(theme) {
@@ -19,9 +26,7 @@ export const theme: MantineThemeOverride = {
           },
           label: {
             color: theme.colors.text[2],
-            marginLeft: "-2px",
             fontWeight: 700,
-            fontSize: "14px",
           },
         };
       },
