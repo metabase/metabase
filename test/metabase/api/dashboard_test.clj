@@ -2115,7 +2115,7 @@
                                                 :description "something"
                                                 :cards       [{:series [8 9], :size_y 3, :size_x 5}]}}
                :has_multiple_changes true
-               :description          "added a description and renamed it from \"b\" to \"c\", rearranged the cards and added some series to card 123."}
+               :description          "added a description and renamed it from \"b\" to \"c\", modified the cards and added some series to card 123."}
               {:is_reversion         false
                :is_creation          true
                :message              nil
