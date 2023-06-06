@@ -1,9 +1,10 @@
 import { DatasetData, Series, VisualizationSettings } from "metabase-types/api";
+import { IconName } from "metabase/core/components/Icon";
 
 export type Visualization = {
   uiName: string;
   identifier: string;
-  iconName: string;
+  iconName: IconName;
   noun: string;
   hidden?: boolean;
   noHeader: boolean;

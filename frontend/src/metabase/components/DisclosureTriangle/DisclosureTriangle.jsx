@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Motion, spring, presets } from "react-motion";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 const DisclosureTriangle = ({ open, className }) => (
   <Motion

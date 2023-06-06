@@ -2,6 +2,8 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.config :as config]
+   [metabase.core :as mbc]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -13,7 +15,8 @@
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -49,7 +52,7 @@
           (jdbc/with-db-connection [_conn spec]
             (jdbc/execute! spec ["CREATE TABLE birds (name varchar)"])
             (jdbc/execute! spec ["INSERT INTO birds values ('rasta'),('lucky')"])
-            (mt/with-temp Database [database {:engine :h2, :details connection-details}]
+            (t2.with-temp/with-temp [Database database {:engine :h2, :details connection-details}]
               (testing "database id is not in our connection map initially"
                 ;; deref'ing a var to get the atom. looks weird
                 (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
@@ -178,3 +181,17 @@
         (is (= (#'sql-jdbc.conn/jdbc-spec-hash db)
                (#'sql-jdbc.conn/jdbc-spec-hash db))
             "Same db produced different hashes due to secrets")))))
+
+(deftest connection-pool-does-not-cache-audit-db
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (when config/ee-available?
+      (t2/delete! 'Database {:where [:= :is_audit true]})
+      (let [status (mbc/ensure-audit-db-installed!)
+            audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]})
+            _ (is (= :metabase-enterprise.audit-db/installed status))
+            _ (is (= 13371337 audit-db-id))
+            first-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)
+            second-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)]
+        (is (= first-pool second-pool))
+        (is (= ::audit-db-not-in-cache!
+               (get @#'sql-jdbc.conn/database-id->connection-pool audit-db-id ::audit-db-not-in-cache!)))))))

@@ -73,7 +73,9 @@
    stddev
    sum
    sum-where
-   var]
+   var
+   cum-count
+   cum-sum]
   [lib.binning
    available-binning-strategies
    binning
@@ -89,11 +91,13 @@
    field
    query-for-table-id
    query-for-table-name
-   table]
+   table
+   ref-lookup]
   [lib.expression
    expression
    expressions
    expressions-metadata
+   expressionable-columns
    +
    -
    *
@@ -165,7 +169,13 @@
    join-fields
    joins
    with-join-alias
-   with-join-fields]
+   with-join-fields
+   join-strategy
+   with-join-strategy
+   available-join-strategies
+   join-condition-lhs-columns
+   join-condition-rhs-columns
+   join-condition-operators]
   [lib.limit
    current-limit
    limit]

@@ -6,7 +6,7 @@ import { t } from "ttag";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import { isDefaultGroup } from "metabase/lib/groups";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import SettingToggle from "../SettingToggle";

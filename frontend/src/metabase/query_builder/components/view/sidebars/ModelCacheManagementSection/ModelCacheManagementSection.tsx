@@ -71,7 +71,7 @@ function ModelCacheManagementSection({ model, onRefresh }: Props) {
             <div>
               <StatusContainer>
                 <StatusLabel>{getStatusMessage(persistedModel)}</StatusLabel>
-                {isError && <ErrorIcon name="warning" size={14} />}
+                {isError && <ErrorIcon name="warning" />}
               </StatusContainer>
               {isError && (
                 <LastRefreshTimeLabel>
@@ -81,11 +81,7 @@ function ModelCacheManagementSection({ model, onRefresh }: Props) {
             </div>
             {checkCanRefreshModelCache(persistedModel) && (
               <IconButton onClick={() => onRefresh(persistedModel)}>
-                <RefreshIcon
-                  name="refresh"
-                  tooltip={t`Refresh now`}
-                  size={14}
-                />
+                <RefreshIcon name="refresh" tooltip={t`Refresh now`} />
               </IconButton>
             )}
           </Row>

@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import Icon from "metabase/components/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import {
   HeaderRoot,
   HeaderIcon,
@@ -11,7 +11,7 @@ import {
 type Props = {
   className?: string;
   title?: string;
-  icon?: string;
+  icon?: IconName;
   onBack?: () => void;
   onClose?: () => void;
 };

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { Placement } from "tippy.js";
 
 import Tooltip from "metabase/core/components/Tooltip";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { UserTypeToggleRoot } from "./UserTypeToggle.styled";
 
 interface UserTypeCellProps {
@@ -32,7 +32,7 @@ export const UserTypeToggle = ({
         data-testid="user-type-toggle"
         onClick={handleChangeType}
       >
-        <Icon name={icon} size={14} />
+        <Icon name={icon} />
       </UserTypeToggleRoot>
     </Tooltip>
   );

@@ -411,21 +411,6 @@ const Foo = styled.div`
 const Bar = ({ color }) => <Foo color={color} />;
 ```
 
-### Emotion + [styled-system](https://styled-system.com/)
-
-e.x.
-
-```javascript
-import styled from "@emotion/styled";
-import { color } from "styled-system";
-
-const Foo = styled.div`
-  ${color}
-`;
-
-const Bar = ({ color }) => <Foo color={color} />;
-```
-
 ## Popover
 
 Popovers are popups or modals.
@@ -449,7 +434,6 @@ Here, clicking on the following will open `<Popover />` components:
 - `Pick the metric you want to see`
 - `Pick a column to group by`
 - `Sort` icon with arrows pointing up and down above `Visualize` button
-
 
 ## Unit testing
 
@@ -476,7 +460,7 @@ const setup = ({ collection }: SetupOpts) => {
     <CollectionHeader
       collection={collection}
       onUpdateCollection={onUpdateCollection}
-    />
+    />,
   );
 
   return { onUpdateCollection };
@@ -499,12 +483,13 @@ describe("CollectionHeader", () => {
     expect(onUpdateCollection).toHaveBeenCalledWith({
       ...collection,
       name: "New name",
-    })
+    });
   });
 });
 ```
 
 Key points:
+
 - `setup` function
 - `renderWithProviders` adds providers used by the app, including `redux`
 
@@ -535,5 +520,6 @@ describe("Component", () => {
 ```
 
 Key points:
+
 - `setup` function
 - Call helpers from `__support__/server-mocks` to setup endpoints for your data

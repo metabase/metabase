@@ -1447,3 +1447,15 @@
                                  [:field "date_seen" {:base-type :type/Date}]
                                  "2021-05-01T12:30:00"]}}
                (mbql.normalize/normalize query))))))
+
+(t/deftest ^:parallel normalize-aggregation-ref-test
+  (t/are [clause] (= {:database 1
+                      :type     :query
+                      :query    {:order-by [[:asc [:aggregation 0]]]}}
+                     (metabase.mbql.normalize/normalize
+                      {:database 1
+                       :type     :query
+                       :query    {:order-by [[:asc clause]]}}))
+    [:aggregation 0 nil]
+    [:aggregation 0 {}]
+    [:aggregation 0]))

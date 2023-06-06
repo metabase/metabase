@@ -100,11 +100,12 @@
    ;; for [[metabase.lib.field/fieldable-columns]] it means its already present in `:fields`
    [:selected? {:optional true} :boolean]])
 
-(def ^:private CardMetadata
-  "More or less the same as a [[metabase.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not
-  necessarily converted to pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata`
-  is probably not quite massaged into a sequence of `ColumnMetadata`s just yet.
-  See [[metabase.lib.card/card-metadata-columns]] that converts these as needed."
+(def CardMetadata
+  "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
+  a [[metabase.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily converted to
+  pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably not quite
+  massaged into a sequence of `ColumnMetadata`s just yet. See [[metabase.lib.card/card-metadata-columns]] that
+  converts these as needed."
   [:map
    [:lib/type [:= :metadata/card]]
    [:id   ::lib.schema.id/card]
@@ -130,8 +131,9 @@
    [:id       ::lib.schema.id/metric]
    [:name     ::lib.schema.common/non-blank-string]])
 
-(def ^:private TableMetadata
-  "More or less the same as a [[metabase.models.table]], but with kebab-case keys."
+(def TableMetadata
+  "Schema for metadata about a specific [[metabase.models.table]]. More or less the same as a [[metabase.models.table]],
+  but with kebab-case keys."
   [:map
    [:lib/type [:= :metadata/table]]
    [:id       ::lib.schema.id/table]
@@ -146,7 +148,10 @@
    [:lib/type [:= :metadata/database]]
    [:id ::lib.schema.id/database]
    ;; Like `:fields` for [[TableMetadata]], this is now optional -- we can fetch the Tables separately if needed.
-   [:tables {:optional true} [:sequential TableMetadata]]])
+   [:tables   {:optional true} [:sequential TableMetadata]]
+   ;; TODO -- this should validate against the driver features list in [[metabase.driver/driver-features]] if we're in
+   ;; Clj mode
+   [:features {:optional true} [:set :keyword]]])
 
 (def MetadataProvider
   "Schema for something that satisfies the [[lib.metadata.protocols/MetadataProvider]] protocol."

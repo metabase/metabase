@@ -1,20 +1,16 @@
 import Tooltip from "metabase/core/components/Tooltip";
+import { IconName } from "metabase/core/components/Icon";
 import { ColorButton } from "./NotebookStep.styled";
 
 interface ActionButtonProps {
   className?: string;
 
-  icon?: string;
+  icon?: IconName;
   title: string;
   color: string;
   transparent?: boolean;
   large?: boolean;
   onClick: () => void;
-
-  // styled-system props
-  mt?: number | number[];
-  mr?: number | number[];
-  ml?: number | number[];
 }
 
 function ActionButton({
@@ -35,7 +31,7 @@ function ActionButton({
       color={color}
       transparent={transparent}
       iconVertical={large}
-      iconSize={large ? 18 : 14}
+      iconSize={large ? 20 : 16}
       aria-label={label}
       onClick={onClick}
       {...props}
