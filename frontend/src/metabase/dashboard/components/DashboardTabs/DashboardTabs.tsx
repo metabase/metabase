@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { TabRow } from "metabase/core/components/TabRow";
+import { TabButton } from "metabase/core/components/TabButton";
 import { SelectedTabId } from "metabase-types/store";
 import { Sortable } from "metabase/core/components/Sortable";
 
 import {
   Container,
-  Tab,
   CreateTabButton,
   PlaceholderTab,
 } from "./DashboardTabs.styled";
@@ -48,7 +48,7 @@ export function DashboardTabs({ isEditing }: DashboardTabsProps) {
         ) : (
           tabs.map(tab => (
             <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
-              <Tab<SelectedTabId>
+              <TabButton.Renameable<SelectedTabId>
                 value={tab.id}
                 label={tab.name}
                 onRename={name => renameTab(tab.id, name)}
@@ -67,7 +67,7 @@ export function DashboardTabs({ isEditing }: DashboardTabsProps) {
         {isEditing && (
           <CreateTabButton
             icon="add"
-            iconSize={12}
+            iconSize={10}
             onClick={createNewTab}
             aria-label={t`Create new tab`}
           />

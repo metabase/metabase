@@ -11,8 +11,12 @@ export interface TabButtonProps {
 
 // Wrapper and Resizer are needed to auto-grow the input with its content
 // https://css-tricks.com/auto-growing-inputs-textareas/#aa-resizing-actual-input-elements
-export const TabButtonInputWrapper = styled.span`
+export const TabButtonInputWrapper = styled.span<TabButtonProps>`
   position: relative;
+  padding: 0.25rem;
+
+  border: 1px solid transparent;
+  border-radius: 6px;
 `;
 
 export const TabButtonInputResizer = styled.span`
@@ -32,7 +36,7 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
   outline: none;
   background-color: transparent;
 
-  color: ${props => (props.isSelected ? color("brand") : color("text-dark"))};
+  color: inherit;
   font-size: inherit;
   font-weight: bold;
   text-align: center;
@@ -42,32 +46,33 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
     css`
       pointer-events: none;
     `}
-
-  &:hover,
-  :focus {
-    ${props =>
-      (props.isSelected || !props.disabled) &&
-      css`
-        border: 1px solid ${color("border")};
-      `}
-  }
 `;
 
 export const TabButtonRoot = styled.div<TabButtonProps>`
-  display: flex;
+  display: inline-block;
+  height: 1.875rem;
 
-  padding: 1rem 0;
+  padding: 0.25rem;
 
   color: ${props =>
     props.isSelected && !props.disabled ? color("brand") : color("text-dark")};
   opacity: ${props => (props.disabled ? 0.3 : 1)};
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 700;
 
   cursor: ${props => (props.disabled ? "default" : "pointer")};
 
-  border-bottom: 3px solid
-    ${props => (props.isSelected ? color("brand") : "transparent")};
+  border-bottom: 0.125rem solid
+    ${props =>
+      props.isSelected && !props.disabled ? color("brand") : "transparent"};
+
+  :hover {
+    ${props =>
+      !props.disabled &&
+      css`
+        color: ${color("brand")};
+      `}
+  }
 `;
 
 export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
@@ -78,11 +83,7 @@ export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
   padding: 0.25rem;
   margin-left: 0.25rem;
 
-  ${props =>
-    props.isSelected &&
-    css`
-      color: ${color("brand")};
-    `}
+  color: inherit;
 
   ${props =>
     props.isOpen &&
