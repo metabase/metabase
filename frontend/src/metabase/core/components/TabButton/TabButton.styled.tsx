@@ -29,6 +29,7 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
   position: absolute;
   width: 100%;
   left: 0;
+  bottom: 0;
   padding: 0;
 
   border: 1px solid transparent;
@@ -49,9 +50,9 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
 `;
 
 export const TabButtonRoot = styled.div<TabButtonProps>`
-  display: inline-block;
-  height: 1.875rem;
+  display: flex;
 
+  height: 1.875rem;
   padding: 0.25rem;
 
   color: ${props =>
@@ -78,12 +79,13 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
 export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
   transition: background-color 0s;
 
-  border: none;
+  align-self: center;
 
   padding: 0.25rem;
   margin-left: 0.25rem;
 
   color: inherit;
+  border: none;
 
   ${props =>
     props.isOpen &&

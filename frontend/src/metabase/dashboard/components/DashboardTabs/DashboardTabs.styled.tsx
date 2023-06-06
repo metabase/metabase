@@ -17,5 +17,5 @@ export const PlaceholderTab = ({ label }: { label: string }) => (
 export const CreateTabButton = styled(BaseButton)`
   border: none;
   padding: 0.25rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.375rem;
 `;
