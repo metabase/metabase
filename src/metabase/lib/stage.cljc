@@ -263,7 +263,7 @@
 
 (defn- ref-to? [[tag _opts pointer :as clause] column]
   (case tag
-    :field (if (number? pointer)
+    :field (if (or (number? pointer) (string? pointer))
              (= pointer (:id column))
              (throw (ex-info "unknown type of :field ref in lib.stage/ref-to?"
                              {:clause clause
