@@ -1,0 +1,21 @@
+description: Reviews that Sample Company customers have left on our products.
+entity_type: entity/GenericTable
+schema: PUBLIC
+show_in_getting_started: false
+name: REVIEWS
+caveats: These reviews aren't tied to orders so it is possible people have reviewed products they did not purchase from us.
+active: true
+db_id: Sample Database
+serdes/meta:
+- model: Database
+  id: Sample Database
+- model: Schema
+  id: PUBLIC
+- model: Table
+  id: REVIEWS
+visibility_type: null
+field_order: database
+initial_sync_status: complete
+display_name: Reviews
+created_at: '2023-06-02T21:32:37.534499Z'
+points_of_interest: Is it? You tell us!

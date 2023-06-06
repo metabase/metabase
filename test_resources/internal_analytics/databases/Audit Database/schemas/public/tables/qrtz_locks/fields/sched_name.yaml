@@ -1,0 +1,42 @@
+description: null
+database_type: varchar
+semantic_type: type/PK
+table_id:
+- Audit Database
+- public
+- qrtz_locks
+coercion_strategy: null
+name: sched_name
+fingerprint_version: 0
+has_field_values: null
+settings: null
+caveats: null
+fk_target_field_id: null
+dimensions: []
+custom_position: 0
+effective_type: type/Text
+active: true
+nfc_path: null
+parent_id: null
+last_analyzed: null
+serdes/meta:
+- model: Database
+  id: Audit Database
+- model: Schema
+  id: public
+- model: Table
+  id: qrtz_locks
+- model: Field
+  id: sched_name
+database_is_auto_increment: false
+json_unfolding: false
+position: 0
+visibility_type: normal
+preview_display: true
+display_name: Sched Name
+database_position: 0
+database_required: true
+fingerprint: null
+created_at: '2023-06-02T21:32:55.210054Z'
+base_type: type/Text
+points_of_interest: null

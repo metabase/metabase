@@ -1,0 +1,53 @@
+description: The list price of the product. Note that this is not always the price the product sold for due to discounts, promotions, etc.
+database_type: DOUBLE PRECISION
+semantic_type: null
+table_id:
+- Sample Database
+- PUBLIC
+- PRODUCTS
+coercion_strategy: null
+name: PRICE
+fingerprint_version: 5
+has_field_values: null
+settings: null
+caveats: null
+fk_target_field_id: null
+dimensions: []
+custom_position: 0
+effective_type: type/Float
+active: true
+nfc_path: null
+parent_id: null
+last_analyzed: '2023-06-02T21:32:48.369099Z'
+serdes/meta:
+- model: Database
+  id: Sample Database
+- model: Schema
+  id: PUBLIC
+- model: Table
+  id: PRODUCTS
+- model: Field
+  id: PRICE
+database_is_auto_increment: false
+json_unfolding: false
+position: 5
+visibility_type: normal
+preview_display: true
+display_name: Price
+database_position: 5
+database_required: false
+fingerprint:
+  global:
+    distinct-count: 170
+    nil%: 0.0
+  type:
+    type/Number:
+      min: 15.691943673970439
+      q1: 37.25154462926434
+      q3: 75.45898071609447
+      max: 98.81933684368194
+      sd: 21.711481557852057
+      avg: 55.74639966792074
+created_at: '2023-06-02T21:32:38.553483Z'
+base_type: type/Float
+points_of_interest: null

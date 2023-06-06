@@ -1,0 +1,39 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Audit Database
+- public
+- core_user
+result_metadata: null
+database_id: Audit Database
+enable_embedding: false
+collection_id: 7VAuoMzQY1AIjvRenwspL
+query_type: query
+name: Core Users
+creator_id: crowberto@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Audit Database
+  query:
+    source-table:
+    - Audit Database
+    - public
+    - core_user
+  type: query
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: tUVSPRoJzK5qyfOecZdM8
+  label: core_users
+display: table
+entity_id: tUVSPRoJzK5qyfOecZdM8
+collection_preview: true
+visualization_settings:
+  column_settings: null
+parameters: []
+dataset: false
+created_at: '2023-06-05T18:09:42.790823Z'
+public_uuid: null

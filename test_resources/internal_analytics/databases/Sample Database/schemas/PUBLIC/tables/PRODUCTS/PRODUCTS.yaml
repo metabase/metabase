@@ -1,0 +1,21 @@
+description: Includes a catalog of all the products ever sold by the famed Sample Company.
+entity_type: entity/ProductTable
+schema: PUBLIC
+show_in_getting_started: false
+name: PRODUCTS
+caveats: The rating column is an integer from 1-5 where 1 is dreadful and 5 is the best thing ever.
+active: true
+db_id: Sample Database
+serdes/meta:
+- model: Database
+  id: Sample Database
+- model: Schema
+  id: PUBLIC
+- model: Table
+  id: PRODUCTS
+visibility_type: null
+field_order: database
+initial_sync_status: complete
+display_name: Products
+created_at: '2023-06-02T21:32:37.368038Z'
+points_of_interest: Is it? You tell us!

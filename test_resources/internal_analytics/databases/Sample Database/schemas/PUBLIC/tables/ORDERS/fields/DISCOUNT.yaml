@@ -1,0 +1,53 @@
+description: Discount amount.
+database_type: DOUBLE PRECISION
+semantic_type: type/Discount
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+coercion_strategy: null
+name: DISCOUNT
+fingerprint_version: 5
+has_field_values: null
+settings: null
+caveats: null
+fk_target_field_id: null
+dimensions: []
+custom_position: 0
+effective_type: type/Float
+active: true
+nfc_path: null
+parent_id: null
+last_analyzed: '2023-06-02T21:32:48.369099Z'
+serdes/meta:
+- model: Database
+  id: Sample Database
+- model: Schema
+  id: PUBLIC
+- model: Table
+  id: ORDERS
+- model: Field
+  id: DISCOUNT
+database_is_auto_increment: false
+json_unfolding: false
+position: 6
+visibility_type: normal
+preview_display: true
+display_name: Discount
+database_position: 6
+database_required: false
+fingerprint:
+  global:
+    distinct-count: 701
+    nil%: 0.898
+  type:
+    type/Number:
+      min: 0.17088996672584322
+      q1: 2.9786226681458743
+      q3: 7.338187788658235
+      max: 61.69684269960571
+      sd: 3.053663125001991
+      avg: 5.161255547580326
+created_at: '2023-06-02T21:32:38.361003Z'
+base_type: type/Float
+points_of_interest: null

@@ -58,6 +58,10 @@
       :else
       ::no-op)))
 
+(def analytics-root-dir-resource
+  "Where to look for analytics content created by Metabase to load into the app instance on startup."
+  (io/resource "internal_analytics"))
+
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
   :feature :none
@@ -70,5 +74,5 @@
       (when (not config/is-prod?)
         (log/warn "Audit DB was not installed correctly!!")))
     ;; Install internal analytics content when the resource exists:
-    (when-let [analytics-root-dir (io/resource "internal_analytics")]
-      (serialization.cmd/v2-load analytics-root-dir {}))))
+    (when analytics-root-dir-resource
+      (serialization.cmd/v2-load analytics-root-dir-resource {}))))

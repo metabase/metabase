@@ -1,0 +1,53 @@
+description: This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees on some products are not included here, but instead are accounted for in the subtotal.
+database_type: DOUBLE PRECISION
+semantic_type: null
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+coercion_strategy: null
+name: TAX
+fingerprint_version: 5
+has_field_values: null
+settings: null
+caveats: null
+fk_target_field_id: null
+dimensions: []
+custom_position: 0
+effective_type: type/Float
+active: true
+nfc_path: null
+parent_id: null
+last_analyzed: '2023-06-02T21:32:48.369099Z'
+serdes/meta:
+- model: Database
+  id: Sample Database
+- model: Schema
+  id: PUBLIC
+- model: Table
+  id: ORDERS
+- model: Field
+  id: TAX
+database_is_auto_increment: false
+json_unfolding: false
+position: 4
+visibility_type: normal
+preview_display: true
+display_name: Tax
+database_position: 4
+database_required: false
+fingerprint:
+  global:
+    distinct-count: 797
+    nil%: 0.0
+  type:
+    type/Number:
+      min: 0.0
+      q1: 2.273340386603857
+      q3: 5.337275338216307
+      max: 11.12
+      sd: 2.3206651358900316
+      avg: 3.8722100000000004
+created_at: '2023-06-02T21:32:38.361003Z'
+base_type: type/Float
+points_of_interest: null
