@@ -9,8 +9,8 @@ import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import ExpressionWidgetHeader from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
-import ExpressionWidget, { ExpressionWidgetProps } from "./ExpressionWidget";
+import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
+import { ExpressionWidget, ExpressionWidgetProps } from "./ExpressionWidget";
 
 describe("ExpressionWidget", () => {
   it("should render proper controls", () => {

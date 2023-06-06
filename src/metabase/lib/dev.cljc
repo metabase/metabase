@@ -69,7 +69,8 @@
    (fn [query stage-number]
      (case expression-or-aggregation
        :expression
-       (if (contains? (:expressions (lib.util/query-stage query stage-number)) index-or-name)
+       (if (some (comp #{index-or-name} lib.util/expression-name)
+                 (:expressions (lib.util/query-stage query stage-number)))
          (lib.options/ensure-uuid [:expression {} index-or-name])
          (throw (ex-info (str "Undefined expression " index-or-name)
                          {:expression-name index-or-name

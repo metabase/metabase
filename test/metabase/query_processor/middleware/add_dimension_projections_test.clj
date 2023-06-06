@@ -8,7 +8,8 @@
     :as qp.add-dimension-projections]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -249,7 +250,7 @@
 
 (deftest external-remappings-metadata-test
   (testing "test that external remappings get the appropriate `:remapped_from`/`:remapped_to` info"
-    (mt/with-temp Field [{category-id :id} {:name "CATEGORY", :display_name "Category"}]
+    (t2.with-temp/with-temp [Field {category-id :id} {:name "CATEGORY", :display_name "Category"}]
       (is (partial= {:status    :completed
                      :row_count 0
                      :data      {:rows []

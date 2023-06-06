@@ -102,7 +102,14 @@
 
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
-  (let [aggregations (->pMBQL (:aggregation stage))]
+  (let [aggregations (->pMBQL (:aggregation stage))
+        expressions (->> stage
+                         :expressions
+                         (mapv (fn [[k v]]
+                                 (-> v
+                                     ->pMBQL
+                                     (lib.util/named-expression-clause k))))
+                         not-empty)]
     (binding [*legacy-index->pMBQL-uuid* (into {}
                                                (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
                                                               [idx ag-uuid]))
@@ -112,8 +119,8 @@
           (if-not (get stage k)
             stage
             (update stage k ->pMBQL)))
-        (m/assoc-some stage :aggregation aggregations)
-        (disj stage-keys :aggregation)))))
+        (m/assoc-some stage :aggregation aggregations :expressions expressions)
+        (disj stage-keys :aggregation :expressions)))))
 
 (defmethod ->pMBQL :mbql/join
   [join]
@@ -370,8 +377,18 @@
             (-> stage
                 disqualify
                 (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
+                (m/update-existing :expressions (fn [expressions]
+                                                  (into {}
+                                                        (for [expression expressions
+                                                              :let [legacy-clause (->legacy-MBQL expression)]]
+                                                          [(lib.util/expression-name expression)
+                                                           ;; We wrap literals in :value ->pMBQL
+                                                           ;; so unwrap this direction
+                                                           (if (= :value (first legacy-clause))
+                                                             (second legacy-clause)
+                                                             legacy-clause)]))))
                 (update-list->legacy-boolean-expression :filters :filter))
-            (disj stage-keys :aggregation :filters))))
+            (disj stage-keys :aggregation :filters :expressions))))
 
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage

@@ -58,7 +58,7 @@ To move a question, dashboard, or pulse into a collection, or from one collectio
 
 ![Selecting questions](./images/question-checkbox.png)
 
-Note that you have to have Curate permission for the collection that you're moving a question into _and_ the collection you're moving the question out of.
+Note that you have to have Curate permission for the collection that you're moving a question into _and_ the collection you're moving the question out of. Metabase admins can move items into (and out of) anyone's [personal collection](#your-personal-collection).
 
 ## Events and timelines
 

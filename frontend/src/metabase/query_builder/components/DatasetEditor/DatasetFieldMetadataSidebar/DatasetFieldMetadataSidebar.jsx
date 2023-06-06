@@ -80,7 +80,8 @@ function getFormFields({ dataset, field }) {
       value: type.id,
     }));
 
-  const canIndex = dataset.isSaved() && ModelIndexes.utils.canIndexField(field);
+  const canIndex =
+    dataset.isSaved() && ModelIndexes.utils.canIndexField(field, dataset);
 
   return formFieldValues =>
     [
