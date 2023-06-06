@@ -216,4 +216,10 @@
   ;; Use this to dump Internal Analytics:
   (v2-dump "resources/internal_analytics" {:collection-ids [(t2/select-one-fn :id 'Collection {:where [:= :type "internal_analytics"]})]})
 
+  ;; TODO ought to remove some unwanted stuff:
+
+  ;; Sample Database:
+
+  ;; Personal Collections:
+
   )
