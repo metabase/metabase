@@ -1,7 +1,6 @@
 import React from "react";
 import "metabase/css/index.css";
-import { MantineProvider } from "@mantine/core";
-import { theme } from "../frontend/src/metabase/ui/theme";
+import { ThemeProvider } from "../frontend/src/metabase/ui";
 
 export const parameters = {
   actions: { argTypesRegex: "^on[A-Z].*" },
@@ -13,14 +12,6 @@ export const parameters = {
   },
 };
 
-function ThemeWrapper(props) {
-  return (
-    <MantineProvider theme={theme} withNormalizeCSS>
-      {props.children}
-    </MantineProvider>
-  );
-}
-
 export const decorators = [
-  renderStory => <ThemeWrapper>{renderStory()}</ThemeWrapper>,
+  renderStory => <ThemeProvider>{renderStory()}</ThemeProvider>,
 ];

@@ -30,7 +30,6 @@ import "ee-plugins"; // eslint-disable-line import/no-unresolved, import/no-dupl
 
 import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
-import { MantineProvider } from "@mantine/core";
 
 // router
 import { Router, useRouterHistory } from "react-router";
@@ -40,6 +39,7 @@ import { syncHistoryWithStore } from "react-router-redux";
 // drag and drop
 import HTML5Backend from "react-dnd-html5-backend";
 import { DragDropContextProvider } from "react-dnd";
+import { ThemeProvider } from "metabase/ui";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { initializeEmbedding } from "metabase/lib/embed";
 import api from "metabase/lib/api";
@@ -49,7 +49,6 @@ import registerVisualizations from "metabase/visualizations/register";
 import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
 
 import GlobalStyles from "metabase/styled-components/containers/GlobalStyles";
-import { theme } from "metabase/ui/theme";
 import { getStore } from "./store";
 
 // remove trailing slash
@@ -74,10 +73,10 @@ function _init(reducers, getRoutes, callback) {
   ReactDOM.render(
     <Provider store={store} ref={ref => (root = ref)}>
       <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
-        <MantineProvider theme={theme} withNormalizeCSS>
+        <ThemeProvider>
           <GlobalStyles />
           <Router history={history}>{routes}</Router>
-        </MantineProvider>
+        </ThemeProvider>
       </DragDropContextProvider>
     </Provider>,
     document.getElementById("root"),
