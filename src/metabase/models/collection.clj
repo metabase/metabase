@@ -37,7 +37,7 @@
 (comment collection.root/keep-me)
 (comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
-(p/import-vars [collection.root root-collection])
+(p/import-vars [collection.root root-collection root-collection-with-ui-details])
 
 (def ^:private ^:const collection-slug-max-length
   "Maximum number of characters allowed in a Collection `slug`."
@@ -190,16 +190,6 @@
   (when (and owner-id collection-namespace)
     (let [msg (tru "Personal Collections must be in the default namespace")]
       (throw (ex-info msg {:status-code 400, :errors {:personal_owner_id msg}})))))
-
-(defn root-collection-with-ui-details
-  "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
-  [collection-namespace]
-  (m/assoc-some root-collection
-                :name (case (keyword collection-namespace)
-                        :snippets (tru "Top folder")
-                        (tru "Our analytics"))
-                :namespace collection-namespace
-                :id   "root"))
 
 (def ^:private CollectionWithLocationOrRoot
   (s/cond-pre
