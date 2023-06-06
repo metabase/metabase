@@ -11,7 +11,7 @@ enable_embedding: false
 collection_id: 7VAuoMzQY1AIjvRenwspL
 query_type: query
 name: Core Users
-creator_id: crowberto@metabase.com
+creator_id: null
 made_public_by_id: null
 embedding_params: null
 cache_ttl: null

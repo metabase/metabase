@@ -50,8 +50,7 @@
              (is (= 1
                     (count (files "collections" collection-filename "cards")))))
            (testing "collections"
-             (is (= 1
-                    (count (remove #{"cards" "dashboards" "timelines"} (files "collections"))))))
+             (is (= [::check] (remove #{"cards" "dashboards" "timelines"} (files "collections")))))
            (testing "dashboards"
              (is (= 1
                     (count (files "collections" collection-filename "dashboards")))))))))))
