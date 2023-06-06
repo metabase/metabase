@@ -110,7 +110,7 @@
                              ;; so there are cases when revision can comeback as `nil`.
                              ;; This is a safe guard for us to not display "Crowberto null" as
                              ;; description on UI
-                             (deferred-tru "made a revision"))
+                             (deferred-tru "made a revision."))
      ;; this is used on FE
      :has_multiple_changes (> (count changes) 1)}))
 

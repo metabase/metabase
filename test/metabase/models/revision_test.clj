@@ -191,7 +191,7 @@
                    mt/derecordize))))))
 
   (testing "test that we return a description even when there is nothing changes between revision"
-    (is (= (deferred-tru "made a revision")
+    (is (= (deferred-tru "made a revision.")
            (:description (revision/add-revision-details FakedCard nil nil))))))
 
 (deftest revisions+details-test
@@ -207,9 +207,10 @@
                 :diff                 {:o1 nil
                                        :o2 {:name "Tips Created by Day", :serialized true}}
                 :has_multiple_changes false
-                :description          nil})]
+                :description          "made a revision."})]
              (->> (revision/revisions+details FakedCard card-id)
-                  (map #(dissoc % :timestamp :id :model_id))))))))
+                  (map #(dissoc % :timestamp :id :model_id))
+                  (map #(update % :description str))))))))
 
 (deftest defer-to-describe-diff-test
   (testing "Check that revisions properly defer to describe-diff"
@@ -236,9 +237,10 @@
                 :diff                 {:o1 nil
                                        :o2 {:name "Tips Created by Day", :serialized true}}
                 :has_multiple_changes false
-                :description          nil})]
+                :description          "made a revision."})]
              (->> (revision/revisions+details FakedCard card-id)
-                  (map #(dissoc % :timestamp :id :model_id))))))))
+                  (map #(dissoc % :timestamp :id :model_id))
+                  (map #(update % :description str))))))))
 
 ;;; # REVERT
 

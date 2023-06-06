@@ -52,7 +52,7 @@
 (deftest no-revisions-test
   (testing "Loading revisions, where there are no revisions, should work"
     (t2.with-temp/with-temp [Card {:keys [id]}]
-      (is (= [{:user {}, :diff nil, :description nil, :has_multiple_changes false}]
+      (is (= [{:user {}, :diff nil, :description "made a revision.", :has_multiple_changes false}]
              (get-revisions :card id))))))
 
 ;; case with single creation revision
