@@ -10,7 +10,7 @@ export const GRID_BREAKPOINTS = {
 
 export const DEFAULT_CARD_SIZE = { width: 4, height: 4 };
 
-export const MIN_ROW_HEIGHT = 40;
+export const MIN_ROW_HEIGHT = 30;
 
 // returns the first available position from left to right, top to bottom,
 // based on the existing cards,  item size, and grid width

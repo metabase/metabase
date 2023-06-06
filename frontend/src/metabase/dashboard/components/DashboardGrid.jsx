@@ -253,13 +253,13 @@ class DashboardGrid extends Component {
 
     let x = dashcard.col || 0;
     let w = dashcard.size_x || initialSize.width;
-    let h = dashcard.size_y || initialSize.height;
+    const h = dashcard.size_y || initialSize.height;
 
     if (gridSize === 24) {
       const newDimensions = migrate18to24(x, w);
       x = newDimensions.x;
       w = newDimensions.w;
-      h = Math.round((h * 4) / 3);
+      // h = Math.round((h * 4) / 3);
     }
 
     return {
@@ -297,7 +297,9 @@ class DashboardGrid extends Component {
       contentViewportElement?.clientHeight <
       contentViewportElement?.scrollHeight;
 
-    const aspectHeight = width / gridSize / GRID_ASPECT_RATIO;
+    const ratio = gridSize === 24 ? 10 / 9 : GRID_ASPECT_RATIO;
+
+    const aspectHeight = width / gridSize / ratio;
     const actualHeight = Math.max(aspectHeight, MIN_ROW_HEIGHT);
 
     // prevent infinite re-rendering when the scroll bar appears/disappears
