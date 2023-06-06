@@ -20,6 +20,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.models.secret :as secret]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -30,8 +31,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [ring.util.codec :as codec]
-   [metabase.driver.util :as driver.u])
+   [ring.util.codec :as codec])
   (:import
    (java.io File)
    (java.nio.charset StandardCharsets)

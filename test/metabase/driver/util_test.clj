@@ -226,7 +226,8 @@
                       :keystore-options        "uploaded"
                       ;; because treat-before-posting is base64 in the config for this property, simulate that happening
                       :keystore-value          (->> (.getBytes ks-val StandardCharsets/UTF_8)
-                                                    (.encodeToString (Base64/getEncoder)))
+                                                    (.encodeToString (Base64/getEncoder))
+                                                    (str "data:application/octet-stream;base64,"))
                       :keystore-password-value "my-keystore-pw"}
           transformed (driver.u/db-details-client->server :secret-test-driver db-details)]
       ;; compare all fields except `:keystore-value` as a single map
