@@ -1,6 +1,7 @@
 (ns metabase.lib.temporal-bucket-test
   (:require
    [clojure.test :refer [are deftest is testing]]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -153,3 +154,11 @@
                 first
                 (lib/available-temporal-buckets query)
                 (mapv #(select-keys % [:unit :default])))))))
+
+(deftest ^:parallel temporal-bucketing-options-expressions-test
+  (testing "There should be no bucketing options for expressions as they are not supported (#31367)"
+    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                    (lib/expression "myadd" (lib/+ 1 (lib/field "VENUES" "CATEGORY_ID"))))]
+      (is (nil? (->> (lib.metadata.calculation/metadata query)
+                     (m/find-first (comp #{"myadd"} :name))
+                     (lib/available-temporal-buckets query)))))))
