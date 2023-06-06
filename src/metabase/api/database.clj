@@ -289,7 +289,7 @@
                                                       :include-saved-questions-tables? include-saved-questions-tables?
                                                       :include-editable-data-model?    include_editable_data_model
                                                       :exclude-uneditable-details?     exclude_uneditable_details
-                                                      :include-analytics?              true #_include_analytics)
+                                                      :include-analytics?              include_analytics)
                                             [])]
     {:data  db-list-res
      :total (count db-list-res)}))
