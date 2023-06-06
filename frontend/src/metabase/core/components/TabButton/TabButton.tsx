@@ -196,8 +196,7 @@ export const RenameableTabButtonStyled = styled(_TabButton)<{
 }>`
   ${TabButtonInputWrapper} {
     ${props => props.isRenaming && borderStyle}
-    &:hover,
-    :focus {
+    :hover {
       ${props => props.canRename && props.isSelected && borderStyle}
     }
   }
