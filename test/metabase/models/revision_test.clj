@@ -188,7 +188,11 @@
                (assert (= 2 (count revisions)))
                (-> (revision/add-revision-details FakedCard (first revisions) (last revisions))
                    (dissoc :timestamp :id :model_id)
-                   mt/derecordize)))))))
+                   mt/derecordize))))))
+
+  (testing "test that we return a description even when there is nothing changes between revision"
+    (is (= (deferred-tru "made a revision")
+           (:description (revision/add-revision-details FakedCard nil nil))))))
 
 (deftest revisions+details-test
   (testing "Check that revisions+details pulls in user info and adds description"

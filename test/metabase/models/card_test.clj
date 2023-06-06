@@ -640,71 +640,57 @@
 
 ;;; -------------------------------------------- Revision tests  --------------------------------------------
 
-(deftest diff-cards-str-test
-  (testing "update general info ---"
-    (is (= "added a description and renamed it from \"Diff Test\" to \"Diff Test Changed\"."
-           (build-sentence
-             (revision/diff-strings
-               :model/Card
-               {:name        "Diff Test"
-                :description nil}
-               {:name        "Diff Test Changed"
-                :description "foobar"}))))
+(deftest ^:parallel diff-cards-str-test
+  (are [x y expected] (= expected
+                       (build-sentence (revision/diff-strings :model/Card x y)))
+    {:name        "Diff Test"
+     :description nil}
+    {:name        "Diff Test Changed"
+     :description "foobar"}
+    "added a description and renamed it from \"Diff Test\" to \"Diff Test Changed\"."
 
-    (is (= "renamed this Card from \"Apple\" to \"Next\"."
-           (build-sentence
-             (revision/diff-strings
-               :model/Card
-               {:name "Apple"}
-               {:name "Next"}))))
+    {:name "Apple"}
+    {:name "Next"}
+    "renamed this Card from \"Apple\" to \"Next\"."
 
-    ;; multiple changes
-    (is (= "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."
-           (build-sentence
-             (revision/diff-strings
-               :model/Card
-               {:name        "Diff Test"
-                :description nil}
-               {:name        "Diff Test changed"
-                :description "New description"})))))
+    {}
+    {:display :table}
+    "changed the display to table."
 
- (testing "update collection ---"
-   (is (= "moved this Card to Our analytics."
-          (build-sentence
-            (revision/diff-strings
-              :model/Card
-              {:name "Apple"}
-              {:name          "Apple"
-               :collection_id nil}))))
-  (t2.with-temp/with-temp
-    [Collection {coll-id :id} {:name "New collection"}]
-    (is (= "moved this Card to New collection."
-           (build-sentence
-             (revision/diff-strings
-               :model/Card
-               {:name "Apple"}
-               {:name          "Apple"
-                :collection_id coll-id}))))
-    (is (= "moved this Card from New collection to Our analytics."
-           (build-sentence
-             (revision/diff-strings
-               :model/Card
-               {:name "Apple"
-                :collection_id coll-id}
-               {:name          "Apple"
-                :collection_id nil})))))
+    {:display :table}
+    {:display :pie}
+    "changed the display from table to pie."
 
-  (t2.with-temp/with-temp
-    [Collection {coll-id-1 :id} {:name "Old collection"}
-     Collection {coll-id-2 :id} {:name "New collection"}]
-    (is (= "moved this Card from Old collection to New collection."
-           (build-sentence
-             (revision/diff-strings
-               :model/Card
-               {:name          "Apple"
-                :collection_id coll-id-1}
-               {:name          "Apple"
-                :collection_id coll-id-2})))))))
+    {:name        "Diff Test"
+     :description nil}
+    {:name        "Diff Test changed"
+     :description "New description"}
+    "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."))
+
+
+(deftest diff-cards-str-update-collection--test
+ (t2.with-temp/with-temp
+     [Collection {coll-id-1 :id} {:name "Old collection"}
+      Collection {coll-id-2 :id} {:name "New collection"}]
+     (are [x y expected] (= expected
+                          (build-sentence (revision/diff-strings :model/Card x y)))
+
+       {:name "Apple"}
+       {:name          "Apple"
+        :collection_id coll-id-2}
+       "moved this Card to New collection."
+
+       {:name        "Diff Test"
+        :description nil}
+       {:name        "Diff Test changed"
+        :description "New description"}
+       "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."
+
+       {:name          "Apple"
+        :collection_id coll-id-1}
+       {:name          "Apple"
+        :collection_id coll-id-2}
+       "moved this Card from Old collection to New collection.")))
 
 (defn- create-card-revision!
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
