@@ -28,7 +28,7 @@ export interface EntitiesState {
   metrics?: Record<string, Metric>;
   tables?: Record<number | string, Table>;
   schemas?: Record<string, Table["schema"]>;
-  segments: Record<string, Segment>;
+  segments?: Record<string, Segment>;
   snippets?: Record<NativeQuerySnippetId, NativeQuerySnippet>;
   users?: Record<UserId, User>;
   questions?: Record<CardId, Card>;
