@@ -6,6 +6,7 @@ import {
   SkeletonCaptionTitle,
   SkeletonCaptionDescription,
   SkeletonPlaceholder,
+  SkeletonCaptionHeaderRight,
 } from "./SkeletonCaption.styled";
 import { SkeletonCaptionSize } from "./types";
 
@@ -28,14 +29,14 @@ const SkeletonCaption = ({
       ) : (
         <SkeletonPlaceholder />
       )}
-      <div style={{ display: "flex", alignItems: "center" }}>
+      <SkeletonCaptionHeaderRight>
         {description && (
           <Tooltip tooltip={description} maxWidth="22em">
             <SkeletonCaptionDescription name="info" />
           </Tooltip>
         )}
         {actionMenu}
-      </div>
+      </SkeletonCaptionHeaderRight>
     </SkeletonCaptionRoot>
   );
 };

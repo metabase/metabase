@@ -37,3 +37,8 @@ export const SkeletonCaptionDescription = styled(Icon)`
   margin-left: 0.5rem;
   visibility: hidden;
 `;
+
+export const SkeletonCaptionHeaderRight = styled.div`
+  display: flex;
+  align-items: center;
+`;
