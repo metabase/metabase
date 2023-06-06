@@ -7,7 +7,8 @@
     :refer [Activity Card Dashboard DashboardCard Metric Pulse Segment]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,7 +25,7 @@
 
 (deftest card-create-test
   (testing :card-create
-    (mt/with-temp Card [card {:name "My Cool Card"}]
+    (t2.with-temp/with-temp [Card card {:name "My Cool Card"}]
       (mt/with-model-cleanup [Activity]
         (events.activity-feed/process-activity-event! {:topic :card-create, :item card})
         (is (= {:topic       :card-create
@@ -60,7 +61,7 @@
   (testing :card-update
     (doseq [dataset? [false true]]
       (testing (if dataset? "Dataset" "Card")
-        (mt/with-temp Card [card {:name "My Cool Card" :dataset dataset?}]
+        (t2.with-temp/with-temp [Card card {:name "My Cool Card" :dataset dataset?}]
           (mt/with-model-cleanup [Activity]
             (events.activity-feed/process-activity-event! {:topic :card-update, :item card})
             (is (= {:topic       :card-update
@@ -77,7 +78,7 @@
   (testing :card-delete
     (doseq [dataset? [false true]]
       (testing (if dataset? "Dataset" "Card")
-        (mt/with-temp Card [card {:name "My Cool Card", :dataset dataset?}]
+        (t2.with-temp/with-temp [Card card {:name "My Cool Card", :dataset dataset?}]
           (mt/with-model-cleanup [Activity]
             (events.activity-feed/process-activity-event! {:topic :card-delete, :item card})
             (is (= {:topic       :card-delete
@@ -92,7 +93,7 @@
 
 (deftest dashboard-create-event-test
   (testing :dashboard-create
-    (mt/with-temp Dashboard [dashboard {:name "My Cool Dashboard"}]
+    (t2.with-temp/with-temp [Dashboard dashboard {:name "My Cool Dashboard"}]
       (mt/with-model-cleanup [Activity]
         (events.activity-feed/process-activity-event! {:topic :dashboard-create, :item dashboard})
         (is (= {:topic       :dashboard-create
@@ -106,7 +107,7 @@
 
 (deftest dashboard-delete-event-test
   (testing :dashboard-delete
-    (mt/with-temp Dashboard [dashboard {:name "My Cool Dashboard"}]
+    (t2.with-temp/with-temp [Dashboard dashboard {:name "My Cool Dashboard"}]
       (mt/with-model-cleanup [Activity]
         (events.activity-feed/process-activity-event! {:topic :dashboard-delete, :item dashboard})
         (is (= {:topic       :dashboard-delete
@@ -181,7 +182,7 @@
 
 (deftest metric-create-event-test
   (testing :metric-create
-    (mt/with-temp Metric [metric {:table_id (mt/id :venues)}]
+    (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
       (mt/with-model-cleanup [Activity]
         (events.activity-feed/process-activity-event! {:topic :metric-create, :item metric})
         (is (= {:topic       :metric-create
@@ -196,7 +197,7 @@
 
 (deftest metric-update-event-test
   (testing :metric-update
-    (mt/with-temp Metric [metric {:table_id (mt/id :venues)}]
+    (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
       (mt/with-model-cleanup [Activity]
         (events.activity-feed/process-activity-event! {:topic :metric-update, :item (-> (assoc metric
                                                                                                :actor_id         (mt/user->id :rasta)
@@ -216,7 +217,7 @@
 
 (deftest metric-delete-event-test
   (testing :metric-delete
-    (mt/with-temp Metric [metric {:table_id (mt/id :venues)}]
+    (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
       (mt/with-model-cleanup [Activity]
         (events.activity-feed/process-activity-event! {:topic :metric-delete, :item (assoc metric
                                                                                            :actor_id         (mt/user->id :rasta)
@@ -234,7 +235,7 @@
 
 (deftest pulse-create-event-test
   (testing :pulse-create
-    (mt/with-temp Pulse [pulse]
+    (t2.with-temp/with-temp [Pulse pulse]
       (mt/with-model-cleanup [Activity]
         (events.activity-feed/process-activity-event! {:topic :pulse-create, :item pulse})
         (is (= {:topic       :pulse-create
@@ -248,7 +249,7 @@
 
 (deftest pulse-delete-event-test
   (testing :pulse-delete
-    (mt/with-temp Pulse [pulse]
+    (t2.with-temp/with-temp [Pulse pulse]
       (mt/with-model-cleanup [Activity]
         (events.activity-feed/process-activity-event! {:topic :pulse-delete, :item pulse})
         (is (= {:topic       :pulse-delete
@@ -262,7 +263,7 @@
 
 (deftest segment-create-event-test
   (testing :segment-create
-    (mt/with-temp Segment [segment]
+    (t2.with-temp/with-temp [Segment segment]
       (mt/with-model-cleanup [Activity]
         (events.activity-feed/process-activity-event! {:topic :segment-create, :item segment})
         (is (= {:topic       :segment-create
@@ -277,7 +278,7 @@
 
 (deftest segment-update-event-test
   (testing :segment-update
-    (mt/with-temp Segment [segment]
+    (t2.with-temp/with-temp [Segment segment]
       (mt/with-model-cleanup [Activity]
         (events.activity-feed/process-activity-event! {:topic :segment-update, :item (-> segment
                                                                                          (assoc :actor_id         (mt/user->id :rasta)
@@ -297,7 +298,7 @@
 
 (deftest segment-delete-event-test
   (testing :segment-delete
-    (mt/with-temp Segment [segment]
+    (t2.with-temp/with-temp [Segment segment]
       (mt/with-model-cleanup [Activity]
         (events.activity-feed/process-activity-event! {:topic :segment-delete
                                                        :item (assoc segment

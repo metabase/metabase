@@ -4,7 +4,7 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/core/components/Tooltip";
 import { FieldDimension } from "metabase-lib/Dimension";
@@ -137,7 +137,6 @@ export default class DimensionList extends Component {
           <Tooltip tooltip={t`Add grouping`}>
             <Icon
               name="add"
-              size={14}
               className="mx1 cursor-pointer hover-child faded fade-in-hover"
               onClick={e => {
                 e.stopPropagation();

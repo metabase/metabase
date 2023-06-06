@@ -14,6 +14,7 @@ export * from "./group";
 export * from "./metabot";
 export * from "./metric";
 export * from "./model-indexes";
+export * from "./native-query-snippet";
 export * from "./search";
 export * from "./segment";
 export * from "./session";

@@ -471,6 +471,7 @@ class ExpressionEditorTextfield extends React.Component<
           isFocused={isFocused}
           hasError={Boolean(errorMessage)}
           ref={this.suggestionTarget}
+          data-testid="expression-editor-textfield"
         >
           <EditorEqualsSign>=</EditorEqualsSign>
           <AceEditor

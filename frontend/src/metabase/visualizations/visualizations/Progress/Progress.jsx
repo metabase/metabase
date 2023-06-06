@@ -6,7 +6,7 @@ import _ from "underscore";
 import Color from "color";
 import cx from "classnames";
 import { formatValue } from "metabase/lib/formatting";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import { color } from "metabase/lib/colors";
 
@@ -218,7 +218,7 @@ export default class Progress extends Component {
             {barMessage && (
               <div className="flex align-center absolute spread text-white text-bold px2">
                 <IconBorder borderWidth={2}>
-                  <Icon name="check" size={14} />
+                  <Icon name="check" />
                 </IconBorder>
                 <div className="pl2">{barMessage}</div>
               </div>

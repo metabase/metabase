@@ -1,30 +1,21 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Ellipsified from "metabase/core/components/Ellipsified";
 
 export const CardIcon = styled(Icon)`
   display: block;
   flex: 0 0 auto;
-  color: ${color("white")};
-  width: 1rem;
-  height: 1rem;
-`;
-
-export const CardIconContainer = styled.div`
-  display: flex;
-  flex: 0 0 auto;
-  justify-content: center;
-  align-items: center;
-  padding: 0.25rem;
-  border-radius: 0.5rem;
-  background-color: ${color("accent4")};
+  color: ${color("accent4")};
+  width: 1.25rem;
+  height: 1.25rem;
 `;
 
 export const CardTitle = styled(Ellipsified)`
   font-size: 1rem;
   font-weight: bold;
-  margin-left: 1rem;
+  margin-left: 0.5rem;
+  padding-right: 0.2rem;
 `;
 
 export const CardTitlePrimary = styled.span`

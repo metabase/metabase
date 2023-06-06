@@ -192,7 +192,6 @@
         join-display-name  (when (= style :long)
                              (or
                                (when fk-field-id
-
                                  ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
                                  ;; "ID" dropped instead.
                                  ;; This is very intentional: one table might have several FKs to one foreign table, each with different

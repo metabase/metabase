@@ -8,7 +8,7 @@ import _ from "underscore";
 import { Motion, spring } from "react-motion";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Button from "metabase/core/components/Button";
 
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";

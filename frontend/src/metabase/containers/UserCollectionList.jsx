@@ -5,7 +5,7 @@ import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { Grid } from "metabase/components/Grid";
 import Link from "metabase/core/components/Link";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
