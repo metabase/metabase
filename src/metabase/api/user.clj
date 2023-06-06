@@ -210,7 +210,7 @@
      :total  (t2/count User (user-clauses nil nil nil nil))
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}
-    (and (= :group (user-visibility)) (not (premium-features/segmented-user?)))
+    (and (= :group (user-visibility)) (not (premium-features/sandboxed-or-impersonated-user?)))
     (let [user_group_ids (map :id (:user_group_memberships
                                    (-> (fetch-user :id api/*current-user-id*)
                                        (t2/hydrate :user_group_memberships))))
