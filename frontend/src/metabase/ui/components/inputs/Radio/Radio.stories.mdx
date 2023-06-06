@@ -5,7 +5,11 @@ import { Radio } from "./";
 
 # Radio & Radio.Group
 
-Our themed wrapper around [Mantine Radio](https://mantine.dev/core/radio/)
+Our themed wrapper around [Mantine Radio](https://mantine.dev/core/radio/).
+
+## When to use Radio
+
+Radio buttons allow users to select a single option from a list of mutually exclusive options. All possible options are exposed up front for users to compare.
 
 ## Docs
 
@@ -17,16 +21,18 @@ Our themed wrapper around [Mantine Radio](https://mantine.dev/core/radio/)
 - As of right now, don't use the size prop.
 - Please don't use the `error` prop on Radio components (We'll standardize on this as other inputs get converted).
 
-## Usage
+## Usage guidelines
 
-In almost all circumstances you'll want to use `<Raio.Group>` to provide a set of options.
+- **Limit usage to 5 options max**. Radio buttons should be used when there are 2-3 options to choose from. If there are more than 5 options, consider using a [Select](../Select) or [Checkbox](../Checkbox) instead.
+- For option ordering, try to use your best judgement on a sensible order. For example, Yes should come before No. Alphabetical ordering is usually a good fallback if there's no inherent order in your set of choices.
+- In almost all circumstances you'll want to use `<Raio.Group>` to provide a set of options and help with defaultValues and state management between them.
 
 ## General
 
 <Canvas>
   <Story name="Default">
-    <Radio.Group>
-      <Radio label="Yes" value="yes" checked />
+    <Radio.Group defaultValue="yes">
+      <Radio label="Yes" value="yes" />
       <Radio label="No" value="no" />
     </Radio.Group>
   </Story>
@@ -36,9 +42,35 @@ In almost all circumstances you'll want to use `<Raio.Group>` to provide a set o
 
 <Canvas>
   <Story name="Disabled">
-    <Radio.Group>
+    <Radio.Group value="yes">
       <Radio label="Yes" value="yes" disabled />
-      <Radio label="No" value="no" disabled checked />
+      <Radio label="No" value="no" disabled />
+    </Radio.Group>
+  </Story>
+</Canvas>
+
+## Description
+
+If needed you can add a description value to a radio button to give more context about the choice.
+
+<Canvas>
+  <Story name="Descriptions">
+    <Radio.Group defaultValue="chocolate">
+      <Radio
+        label="Chocolate"
+        value="chocolate"
+        description="One of our most popular flavors"
+      />
+      <Radio
+        label="Vanilla"
+        value="vanilla"
+        description="A classic for all seasons"
+      />
+      <Radio
+        label="Swirl"
+        value="swirl"
+        description="Why not have it both ways?"
+      />
     </Radio.Group>
   </Story>
 </Canvas>
@@ -49,9 +81,18 @@ You can use `label` and `description` on the Radio.Group component to provide a 
 
 <Canvas>
   <Story name="Radio Group props">
-    <Radio.Group label="A set of options" description="Choose one please">
-      <Radio label="I cannot be selected" checked disabled />
-      <Radio label="Select another me" />
+    <Radio.Group
+      label="A set of options"
+      description="You could so something like this if there was a deprecated setting that a user needs to update."
+      defaultValue="one"
+    >
+      <Radio label="Old bad setting" value="one" disabled />
+      <Radio label="A better newer setting" value="two" />
     </Radio.Group>
   </Story>
 </Canvas>
+
+## Related components
+
+- Select
+- Checkbox
