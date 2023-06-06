@@ -95,7 +95,7 @@ class SettingsEmailForm extends Component {
             <Fragment>
               {valid && pristine && submitting === "default" ? (
                 <Button
-                  mr={1}
+                  className="mr1"
                   success={sendingEmail === "success"}
                   disabled={disabled}
                   onClick={this.sendTestEmail}
@@ -104,7 +104,7 @@ class SettingsEmailForm extends Component {
                 </Button>
               ) : null}
               <Button
-                mr={1}
+                className="mr1"
                 disabled={disabled}
                 onClick={() => this.clearEmailSettings()}
               >

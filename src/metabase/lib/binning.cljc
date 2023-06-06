@@ -130,7 +130,7 @@
 
 (defmethod lib.metadata.calculation/display-info-method ::binning-option
   [_query _stage-number binning-option]
-  (select-keys binning-option [:display-name :default]))
+  (select-keys binning-option [:display-name :default :selected]))
 
 (defmethod lib.metadata.calculation/display-info-method ::binning
   [query stage-number binning-value]
@@ -138,3 +138,11 @@
     (merge {:display-name (binning-display-name binning-value field-metadata)}
            (when (= :default (:strategy binning-value))
              {:default true}))))
+
+(mu/defn strategy= :- boolean?
+  "Given a binning option (as returned by [[available-binning-strategies]]) and the binning value (possibly nil) from
+  a column, check if they match."
+  [binning-option :- ::lib.schema.binning/binning-option
+   column-binning :- [:maybe ::lib.schema.binning/binning]]
+  (= (:mbql binning-option)
+     (select-keys column-binning [:strategy :num-bins :bin-width])))
