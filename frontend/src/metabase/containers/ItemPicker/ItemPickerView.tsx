@@ -33,7 +33,6 @@ interface SearchEntityListLoaderProps {
 
 interface Props {
   models: PickerModel[];
-  openCollection: Collection;
   collections: CollectionPickerItem[];
   searchString: string;
   searchQuery: SearchQuery;
