@@ -35,6 +35,7 @@
    :parameters             []
    :parameter_mappings     []
    :public_uuid            nil
+   :made_public_by_id      nil
    :cache_ttl              nil
    :query_type             :query
    :table_id               (mt/id :categories)
