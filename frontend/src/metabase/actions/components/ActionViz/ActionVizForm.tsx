@@ -55,7 +55,7 @@ function ActionVizForm({
 
   onActionEdit,
 }: ActionFormProps) {
-  const [showModal, setShowModal] = useState(false);
+  const [showFormModal, setShowFormModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const title = getFormTitle(action);
 
@@ -64,13 +64,13 @@ function ActionVizForm({
     shouldShowConfirmation(action) && missingParameters.length === 0;
 
   const onClick = () => {
-    setShowModal(true);
+    setShowFormModal(true);
   };
 
   const onModalSubmit = async (params: ParametersForActionExecution) => {
     const result = await onSubmit(params);
     if (result.success) {
-      setShowModal(false);
+      setShowFormModal(false);
     }
     return result;
   };
@@ -92,7 +92,7 @@ function ActionVizForm({
           focus={isEditingDashcard}
           onClick={onClick}
         />
-        {showModal && !showEditModal && (
+        {showFormModal && !showEditModal && (
           <ActionParametersInputModal
             action={action}
             dashboard={dashboard}
@@ -104,8 +104,8 @@ function ActionVizForm({
             confirmMessage={action.visualization_settings?.confirmMessage}
             onEdit={canEditAction ? handleActionEdit : undefined}
             onSubmit={onModalSubmit}
-            onClose={() => setShowModal(false)}
-            onCancel={() => setShowModal(false)}
+            onClose={() => setShowFormModal(false)}
+            onCancel={() => setShowFormModal(false)}
           />
         )}
         {showEditModal && (
