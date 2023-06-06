@@ -123,9 +123,9 @@
 
 (deftest dashboard-add-cards-test
   (testing ":dashboard-add-cards"
-    (mt/with-temp* [Dashboard     [{dashboard-id :id, :as dashboard}]
-                    Card          [{card-id :id}                     (card-properties)]
-                    DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
+    (t2.with-temp/with-temp [Dashboard     {dashboard-id :id, :as dashboard} {}
+                             Card          {card-id :id}                     (card-properties)
+                             DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
       (revision/process-revision-event! {:topic :dashboard-add-cards
                                          :item  {:id        dashboard-id
                                                  :actor_id  (mt/user->id :rasta)
@@ -144,9 +144,9 @@
 
 (deftest dashboard-remove-cards-test
   (testing ":dashboard-remove-cards"
-    (mt/with-temp* [Dashboard     [{dashboard-id :id, :as dashboard}]
-                    Card          [{card-id :id}                     (card-properties)]
-                    DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
+    (t2.with-temp/with-temp [Dashboard     {dashboard-id :id, :as dashboard} {}
+                             Card          {card-id :id}                     (card-properties)
+                             DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
       (t2/delete! (t2/table-name DashboardCard), :id (:id dashcard))
       (revision/process-revision-event! {:topic :dashboard-remove-cards
                                          :item  {:id        dashboard-id
@@ -165,9 +165,9 @@
 
 (deftest dashboard-reposition-cards-test
   (testing ":dashboard-reposition-cards"
-    (mt/with-temp* [Dashboard     [{dashboard-id :id, :as dashboard}]
-                    Card          [{card-id :id}                     (card-properties)]
-                    DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
+    (t2.with-temp/with-temp [Dashboard     {dashboard-id :id, :as dashboard} {}
+                             Card          {card-id :id}                     (card-properties)
+                             DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
       (t2/update! DashboardCard (:id dashcard) {:size_x 3})
       (revision/process-revision-event! {:topic :dashboard-reeposition-cards
                                          :item  {:id        dashboard-id
@@ -273,9 +273,9 @@
 
 (deftest metric-create-test
   (testing ":metric-create"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{:keys [id]} {:db_id database-id}]
-                    Metric   [metric       {:table_id id, :definition {:a "b"}}]]
+    (t2.with-temp/with-temp [Database {database-id :id} {}
+                             Table    {:keys [id]}      {:db_id database-id}
+                             Metric   metric            {:table_id id, :definition {:a "b"}}]
       (revision/process-revision-event! {:topic :metric-create
                                          :item  metric})
       (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
@@ -301,9 +301,9 @@
 
 (deftest metric-update-test
   (testing ":metric-update"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{:keys [id]} {:db_id database-id}]
-                    Metric   [metric       {:table_id id, :definition {:a "b"}}]]
+    (t2.with-temp/with-temp [Database {database-id :id} {}
+                             Table    {:keys [id]}      {:db_id database-id}
+                             Metric   metric            {:table_id id, :definition {:a "b"}}]
       (revision/process-revision-event! {:topic :metric-update
                                          :item  (assoc metric
                                                        :actor_id         (mt/user->id :crowberto)
@@ -331,9 +331,9 @@
 
 (deftest metric-delete-test
   (testing ":metric-delete"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{:keys [id]} {:db_id database-id}]
-                    Metric   [metric       {:table_id id, :definition {:a "b"}, :archived true}]]
+    (t2.with-temp/with-temp [Database {database-id :id} {}
+                             Table    {:keys [id]}      {:db_id database-id}
+                             Metric   metric            {:table_id id, :definition {:a "b"}, :archived true}]
       (revision/process-revision-event! {:topic :metric-delete
                                          :item  metric})
       (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
@@ -360,10 +360,10 @@
 
 (deftest segment-create-test
   (testing ":segment-create"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{:keys [id]} {:db_id database-id}]
-                    Segment  [segment      {:table_id   id
-                                            :definition {:a "b"}}]]
+    (t2.with-temp/with-temp [Database {database-id :id} {}
+                             Table    {:keys [id]}      {:db_id database-id}
+                             Segment  segment           {:table_id   id
+                                                         :definition {:a "b"}}]
       (revision/process-revision-event! {:topic :segment-create
                                          :item  segment})
       (let [revision (-> (t2/select-one Revision :model "Segment", :model_id (:id segment))
@@ -387,10 +387,10 @@
 
 (deftest segment-update-test
   (testing ":segment-update"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table [{:keys [id]} {:db_id database-id}]
-                    Segment [segment {:table_id   id
-                                      :definition {:a "b"}}]]
+    (t2.with-temp/with-temp [Database {database-id :id} {}
+                             Table    {:keys [id]}      {:db_id database-id}
+                             Segment  segment           {:table_id   id
+                                                         :definition {:a "b"}}]
       (revision/process-revision-event! {:topic :segment-update
                                          :item  (assoc segment
                                                        :actor_id         (mt/user->id :crowberto)
@@ -417,11 +417,11 @@
 
 (deftest segment-delete-test
   (testing ":segment-delete"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{:keys [id]} {:db_id database-id}]
-                    Segment  [segment      {:table_id   id
-                                            :definition {:a "b"}
-                                            :archived   true}]]
+    (t2.with-temp/with-temp [Database {database-id :id} {}
+                             Table    {:keys [id]}      {:db_id database-id}
+                             Segment  segment           {:table_id   id
+                                                         :definition {:a "b"}
+                                                         :archived   true}]
       (revision/process-revision-event! {:topic :segment-delete
                                          :item  segment})
       (is (= {:model        "Segment"
