@@ -98,7 +98,7 @@
                include_editable_data_model=true"
         (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
                                              :data-model {:schemas :none}}}
-            (is (= nil (get-test-db)))))
+          (is (= nil (get-test-db)))))
 
       (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
         (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
@@ -113,7 +113,23 @@
           (testing "if include=tables, only tables with data model perms are included"
             (is (= [id-1] (->> (get-test-db "database?include_editable_data_model=true&include=tables")
                                :tables
-                               (map :id))))))))))
+                               (map :id)))))))))
+  (doseq [query-param ["exclude_uneditable_details=true"
+                       "include_only_uploadable=true"]]
+    (testing (format "GET /api/database?%s" query-param)
+      (letfn [(get-test-db
+                ([] (get-test-db (str "database?" query-param)))
+                ([url] (->> (mt/user-http-request :rasta :get 200 url)
+                            :data
+                            (filter (fn [db] (= (mt/id) (:id db))))
+                            first)))]
+        (testing "Sanity check: a non-admin can fetch a DB when they have 'manage' access"
+          (with-all-users-data-perms {(mt/id) {:details :yes}}
+            (is (partial= {:id (mt/id)} (get-test-db)))))
+
+        (testing "A non-admin cannot fetch a DB for which they do not not have 'manage' access"
+          (with-all-users-data-perms {(mt/id) {:details :no}}
+            (is (= nil (get-test-db)))))))))
 
 (deftest fetch-database-test
   (testing "GET /api/database/:id?include_editable_data_model=true"

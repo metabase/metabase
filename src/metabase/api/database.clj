@@ -253,6 +253,7 @@
       exclude-uneditable-details?  (#(filter mi/can-write? %))
       filter-by-data-access?       (#(filter mi/can-read? %))
       include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
+      ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
       include-only-uploadable?     (#(filter uploadable-db? %)))))
 
 (api/defendpoint GET "/"
@@ -279,15 +280,14 @@
    exclude_uneditable_details    [:maybe :boolean]
    include_only_uploadable       [:maybe :boolean]}
   (let [include-tables?                 (= include "tables")
-        include-saved-questions-db?     saved
-        include-saved-questions-tables? (and include-saved-questions-db?
-                                             include-tables?)
+        include-saved-questions-tables? (and saved include-tables?)
+        only-editable?                  (or include_only_uploadable exclude_uneditable_details)
         db-list-res                     (or (dbs-list :include-tables?                 include-tables?
-                                                      :include-saved-questions-db?     include-saved-questions-db?
+                                                      :include-saved-questions-db?     saved
                                                       :include-saved-questions-tables? include-saved-questions-tables?
                                                       :include-editable-data-model?    include_editable_data_model
-                                                      :exclude-uneditable-details?     exclude_uneditable_details
-                                                      :include-analytics?              include_analytics
+                                                      :exclude-uneditable-details?     only-editable?
+                                                      :include-analytics?  include_analytics
                                                       :include-only-uploadable?        include_only_uploadable)
                                             [])]
     {:data  db-list-res
