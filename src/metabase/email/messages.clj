@@ -327,8 +327,10 @@
                                         "Unsubscribe")
            :notificationManagementUrl (if (nil? non-user-email)
                                         (urls/notification-management-url)
-                                       ;; TODO: change this to whatever FE URL we chooseg
-                                        (str (urls/notification-management-url) "?hashdata=" (generate-pulse-unsubscribe-hash (:id pulse) non-user-email)))}
+                                        (str (urls/unsubscribe-url)
+                                             "?hash=" (generate-pulse-unsubscribe-hash (:id pulse) non-user-email)
+                                             "&email=" non-user-email
+                                             "&pulse-id=" (:id pulse)))}
           (pulse-link-context pulse))))
 
 (defn- create-temp-file
