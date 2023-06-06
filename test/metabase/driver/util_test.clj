@@ -239,6 +239,11 @@
       ;; the keystore-value should have been base64 decoded because of treat-before-posting being base64 (see above)
       (is (mt/secret-value-equals? ks-val (:keystore-value transformed))))))
 
+(deftest decode-uploaded-test
+  (are [expected base64] (= expected (String. (driver.u/decode-uploaded base64) "UTF-8"))
+    "hi" "aGk="
+    "hi" "data:application/octet-stream;base64,aGk="))
+
 (deftest semantic-version-gte-test
   (testing "semantic-version-gte works as expected"
     (is (true? (driver.u/semantic-version-gte [5 0] [4 0])))

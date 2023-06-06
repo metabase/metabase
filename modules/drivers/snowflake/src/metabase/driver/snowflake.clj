@@ -96,11 +96,13 @@
         private-key-file (handle-conn-uri user account private-key-file)))
 
     private-key-value
-    (let [private-key-val  (driver.u/decode-uploaded
-                            (if (bytes? private-key-value)
-                              (String. ^bytes private-key-value StandardCharsets/UTF_8)
-                              private-key-value))
-          private-key-file (secret/value->file! {:connection-property-name "private-key-file" :value private-key-val} "pem")]
+    (let [private-key-str      (if (bytes? private-key-value)
+                                 (String. ^bytes private-key-value StandardCharsets/UTF_8)
+                                 private-key-value)
+          private-key-file-val (cond-> private-key-str
+                                 (re-find driver.u/data-url-pattern private-key-str) driver.u/decode-uploaded)
+          private-key-file     (secret/value->file! {:connection-property-name "private-key-file"
+                                                     :value                    private-key-file-val})]
       (handle-conn-uri details user account private-key-file))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
