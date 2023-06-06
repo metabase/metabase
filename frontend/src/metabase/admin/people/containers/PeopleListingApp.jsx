@@ -1,12 +1,11 @@
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
-import { Group } from "@mantine/core";
 
 import * as Urls from "metabase/lib/urls";
 
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
-import { Radio } from "metabase/ui";
+import { Group, Radio } from "metabase/ui";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import SearchInput from "../components/SearchInput";
