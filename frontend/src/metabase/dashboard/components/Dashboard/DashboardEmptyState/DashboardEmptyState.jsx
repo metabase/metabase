@@ -14,7 +14,11 @@ const propTypes = {
 
 const questionCircle = <span className="QuestionCircle">?</span>;
 
-const DashboardEmptyState = ({ isNightMode, addQuestion, closeNavbar }) => (
+export const DashboardEmptyState = ({
+  isNightMode,
+  addQuestion,
+  closeNavbar,
+}) => (
   <Container isNightMode={isNightMode}>
     <EmptyState
       illustrationElement={questionCircle}
@@ -41,4 +45,10 @@ const DashboardEmptyState = ({ isNightMode, addQuestion, closeNavbar }) => (
 
 DashboardEmptyState.propTypes = propTypes;
 
-export default DashboardEmptyState;
+export const TabEmptyState = ({ isNightMode }) => (
+  <Container isNightMode={isNightMode}>
+    <EmptyState title={t`There's nothing here, yet.`} />
+  </Container>
+);
+
+TabEmptyState.propTypes = propTypes;
