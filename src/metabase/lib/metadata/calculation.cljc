@@ -411,6 +411,10 @@
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
+(defmethod visible-columns-method :dispatch-type/nil
+  [_query _stage-number _x _options]
+  [])
+
 (mu/defn visible-columns :- ColumnsWithUniqueAliases
   "Return a sequence of columns that should be visible *within* a given stage of something, e.g. a query stage or a
   join query. This includes not just the columns that get returned (ones present in [[metadata]], but other columns
