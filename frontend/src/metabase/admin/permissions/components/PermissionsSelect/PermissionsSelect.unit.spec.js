@@ -1,4 +1,3 @@
-import React from "react";
 import { render, fireEvent, screen, getIcon } from "__support__/ui";
 
 import { PermissionsSelect } from "./PermissionsSelect";

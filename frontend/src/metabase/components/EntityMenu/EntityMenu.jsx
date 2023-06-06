@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import { Motion, spring } from "react-motion";
 import cx from "classnames";
 
@@ -24,7 +24,7 @@ class EntityMenu extends Component {
   constructor(props, context) {
     super(props, context);
 
-    this.rootRef = React.createRef();
+    this.rootRef = createRef();
   }
 
   toggleMenu = () => {

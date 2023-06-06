@@ -1,4 +1,3 @@
-import React from "react";
 import _ from "underscore";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
 import { XYChart } from "../XYChart";

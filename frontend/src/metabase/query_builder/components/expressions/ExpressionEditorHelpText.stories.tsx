@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import { useRef } from "react";
 import type { ComponentStory } from "@storybook/react";
 import { checkNotNull } from "metabase/core/utils/types";
 import { createMockDatabase } from "metabase-types/api/mocks";

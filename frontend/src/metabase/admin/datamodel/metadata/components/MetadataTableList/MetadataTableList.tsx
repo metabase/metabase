@@ -1,10 +1,4 @@
-import React, {
-  ChangeEvent,
-  MouseEvent,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { ChangeEvent, MouseEvent, useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { useAsyncFn } from "react-use";
@@ -14,7 +8,7 @@ import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import Tables from "metabase/entities/tables";
-import Icon from "metabase/components/Icon/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Tooltip from "metabase/core/components/Tooltip";
 import {

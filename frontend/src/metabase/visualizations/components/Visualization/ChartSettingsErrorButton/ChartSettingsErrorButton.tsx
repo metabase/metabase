@@ -1,5 +1,3 @@
-import React from "react";
-
 import Button from "metabase/core/components/Button";
 
 import type { VisualizationSettings } from "metabase-types/api";

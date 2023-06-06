@@ -1,6 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import EntityObjectLoader from "./EntityObjectLoader";
 
 const EntityName = ({ entityType, entityId, property = "name" }) => (

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import { Link } from "react-router";
 
 import _ from "underscore";
@@ -15,7 +15,7 @@ import {
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Input from "metabase/core/components/Input";
 import ModalContent from "metabase/components/ModalContent";
 import Alert from "metabase/components/Alert";

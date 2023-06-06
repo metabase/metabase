@@ -31,9 +31,7 @@ describe("issue 28874", () => {
     visitQuestionAdhoc(questionDetails, { mode: "notebook" });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Product ID")
-      .parent()
-      .within(() => cy.icon("close").click());
+    cy.findByText("Product ID").parent().icon("close").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID").should("not.exist");

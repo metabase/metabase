@@ -1,7 +1,8 @@
-import React, { HTMLAttributes } from "react";
+import { HTMLAttributes } from "react";
+import * as React from "react";
 import { t } from "ttag";
 
-import { IconProps } from "metabase/components/Icon";
+import type { IconName, IconProps } from "metabase/core/components/Icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 
 import type {
@@ -146,7 +147,7 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 export type RevisionOrModerationEvent = {
   title: string;
   timestamp: string;
-  icon: string | { name: string; color: string } | Record<string, never>;
+  icon: IconName | { name: IconName; color: string } | Record<string, never>;
   description?: string;
   revision?: Revision;
 };

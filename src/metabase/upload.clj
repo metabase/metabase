@@ -73,6 +73,11 @@
 
 (def ^:private currency-regex "Supported currency signs" #"[$€£¥₹₪₩₿¢\s]")
 
+(defn- with-parens
+  "Returns a regex that matches the argument, with or without surrounding parentheses."
+  [number-regex]
+  (re-pattern (str "(" number-regex ")|(\\(" number-regex "\\))")))
+
 (defn- with-currency
   "Returns a regex that matches a positive or negative number, including currency symbols"
   [number-regex]
@@ -86,20 +91,22 @@
   (get-in (public-settings/custom-formatting) [:type/Number :number_separators] ".,"))
 
 (defn- int-regex [number-separators]
-  (with-currency
-    (case number-separators
-      ("." ".,") #"\d[\d,]*"
-      ",." #"\d[\d.]*"
-      ", " #"\d[\d \u00A0]*"
-      ".’" #"\d[\d’]*")))
+  (with-parens
+    (with-currency
+      (case number-separators
+        ("." ".,") #"\d[\d,]*"
+        ",." #"\d[\d.]*"
+        ", " #"\d[\d \u00A0]*"
+        ".’" #"\d[\d’]*"))))
 
 (defn- float-regex [number-separators]
-  (with-currency
-    (case number-separators
-      ("." ".,") #"\d[\d,]*\.\d+"
-      ",." #"\d[\d.]*\,[\d]+"
-      ", " #"\d[\d \u00A0]*\,[\d.]+"
-      ".’" #"\d[\d’]*\.[\d.]+")))
+  (with-parens
+    (with-currency
+      (case number-separators
+        ("." ".,") #"\d[\d,]*\.\d+"
+        ",." #"\d[\d.]*\,[\d]+"
+        ", " #"\d[\d \u00A0]*\,[\d.]+"
+        ".’" #"\d[\d’]*\.[\d.]+"))))
 
 (defn value->type
   "The most-specific possible type for a given value. Possibilities are:
@@ -204,11 +211,16 @@
       fr (NumberFormat/getInstance (Locale. "fr" "FR"))
       ch (NumberFormat/getInstance (Locale. "de" "CH"))]
   (defn- parse-plain-number [number-separators s]
-    (case number-separators
-      ("." ".,") (. us parse s)
-      ",."       (. de parse s)
-      ", "       (. fr parse (str/replace s \space \u00A0)) ; \u00A0 is a non-breaking space
-      ".’"       (. ch parse s))))
+    (let [has-parens?       (re-matches #"\(.*\)" s)
+          deparenthesized-s (str/replace s #"[()]" "")
+          parsed-number     (case number-separators
+                              ("." ".,") (. us parse deparenthesized-s)
+                              ",."       (. de parse deparenthesized-s)
+                              ", "       (. fr parse (str/replace deparenthesized-s \space \u00A0)) ; \u00A0 is a non-breaking space
+                              ".’"       (. ch parse deparenthesized-s))]
+      (if has-parens?
+        (- parsed-number)
+        parsed-number))))
 
 (defn- parse-number
   [number-separators s]

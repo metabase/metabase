@@ -41,15 +41,15 @@
                                    0.8
                                    [:avg {} (lib.tu/field-clause :venues :price)]]]})]
         (is (=? [{:base-type                :type/Float
-                  :name                     "0_8_times_avg_PRICE"
+                  :name                     "expression"
                   :display-name             "0.8 × Average of Price"
-                  :lib/source-column-alias  "0_8_times_avg_PRICE"
-                  :lib/desired-column-alias "0_8_times_avg_PRICE"}
+                  :lib/source-column-alias  "expression"
+                  :lib/desired-column-alias "expression"}
                  {:base-type                :type/Float
-                  :name                     "0_8_times_avg_PRICE"
+                  :name                     "expression"
                   :display-name             "0.8 × Average of Price"
-                  :lib/source-column-alias  "0_8_times_avg_PRICE"
-                  :lib/desired-column-alias "0_8_times_avg_PRICE_2"}]
+                  :lib/source-column-alias  "expression"
+                  :lib/desired-column-alias "expression_2"}]
                 (lib.metadata.calculation/metadata query -1 query)))))))
 
 (deftest ^:parallel stage-display-name-card-source-query
@@ -75,8 +75,8 @@
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/expression "ID + 1" (lib/+ (lib/field "VENUES" "ID") 1))
                   (lib/expression "ID + 2" (lib/+ (lib/field "VENUES" "ID") 2)))]
-    (is (=? {:stages [{:expressions {"ID + 1" [:+ {} [:field {} (meta/id :venues :id)] 1]
-                                     "ID + 2" [:+ {} [:field {} (meta/id :venues :id)] 2]}}]}
+    (is (=? {:stages [{:expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} (meta/id :venues :id)] 1]
+                                     [:+ {:lib/expression-name "ID + 2"} [:field {} (meta/id :venues :id)] 2]]}]}
             query))
     query))
 
@@ -108,8 +108,8 @@
                                                       [:field {} (meta/id :venues :category-id)]
                                                       [:field {:join-alias "Cat"} (meta/id :categories :id)]]]
                                         :fields     :all}]
-                         :expressions {"ID + 1" [:+ {} [:field {} (meta/id :venues :id)] 1]
-                                       "ID + 2" [:+ {} [:field {} (meta/id :venues :id)] 2]}}]}
+                         :expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} (meta/id :venues :id)] 1]
+                                       [:+ {:lib/expression-name "ID + 2"} [:field {} (meta/id :venues :id)] 2]]}]}
               query))
       (let [metadata (lib.metadata.calculation/metadata query)]
         (is (=? [{:id (meta/id :venues :id), :name "ID", :lib/source :source/table-defaults}
@@ -160,8 +160,8 @@
               id-plus-1))
       (let [query' (-> query
                        (lib/with-fields [id-plus-1]))]
-        (is (=? {:stages [{:expressions {"ID + 1" [:+ {} [:field {} (meta/id :venues :id)] 1]
-                                         "ID + 2" [:+ {} [:field {} (meta/id :venues :id)] 2]}
+        (is (=? {:stages [{:expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} (meta/id :venues :id)] 1]
+                                         [:+ {:lib/expression-name "ID + 2"} [:field {} (meta/id :venues :id)] 2]]
                            :fields      [[:expression {} "ID + 1"]]}]}
                 query'))
         (testing "If `:fields` is specified, expressions should only come back if they are in `:fields`"

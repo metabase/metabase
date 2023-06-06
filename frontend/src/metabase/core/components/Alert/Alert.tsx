@@ -1,11 +1,12 @@
-import React, { ReactNode } from "react";
+import { ReactNode } from "react";
+import { IconName } from "../Icon";
 import { AlertIcon, AlertRoot } from "./Alert.styled";
 
 export type AlertVariant = "info" | "error";
 
 interface AlertProps {
   children: ReactNode;
-  icon?: string;
+  icon?: IconName;
   hasBorder?: boolean;
   className?: string;
   variant?: AlertVariant;

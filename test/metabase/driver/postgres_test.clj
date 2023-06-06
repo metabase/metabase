@@ -35,7 +35,8 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.sql DatabaseMetaData)))
 
@@ -199,7 +200,7 @@
         ;; create the postgres DB
         (drop-if-exists-and-create-db! "hyphen-names-test")
         ;; create the DB object
-        (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
           (let [sync! #(sync/sync-database! database)]
             ;; populate the DB and create a view
             (exec! spec ["CREATE SCHEMA \"x-mas\";"
@@ -208,9 +209,9 @@
             (sync!)
             (is (= [["Bird Hat"]]
                    (mt/rows (qp/process-query
-                              {:database (u/the-id database)
-                               :type     :query
-                               :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))))
+                             {:database (u/the-id database)
+                              :type     :query
+                              :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -245,7 +246,7 @@
                        ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
-        (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
           (is (= {:tables #{(default-table-result "test_mview")}}
                  (driver/describe-database :postgres database))))))))
 
@@ -277,7 +278,7 @@
                                 SERVER foreign_server
                                 OPTIONS (user '" (:user details) "');
                               GRANT ALL ON public.local_table to PUBLIC;")])
-        (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
           (is (= {:tables (set (map default-table-result ["foreign_table" "local_table"]))}
                  (driver/describe-database :postgres database))))))))
 
@@ -290,7 +291,7 @@
         ;; create the postgres DB
         (drop-if-exists-and-create-db! "dropped_views_test")
         ;; create the DB object
-        (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
           (let [sync! #(sync/sync-database! database)]
             ;; populate the DB and create a view
             (exec! spec ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
@@ -326,7 +327,7 @@
                          #(.getDatabaseMajorVersion ^DatabaseMetaData metadata)))]
           (if (>= major-v 10)
             ;; create the DB object
-            (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]
+            (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname db-name)}]
               (let [sync! #(sync/sync-database! database)]
                 ;; create a main partitioned table and two partitions for it
                 (exec! spec ["CREATE TABLE part_vals (val bigint NOT NULL) PARTITION BY RANGE (\"val\");"
@@ -556,7 +557,7 @@
           (jdbc/execute! spec [(str "CREATE SCHEMA bobdobbs;"
                                     "CREATE TABLE bobdobbs.describe_json_table (trivial_json JSONB NOT NULL);"
                                     "INSERT INTO bobdobbs.describe_json_table (trivial_json) VALUES ('{\"a\": 1}');")]))
-        (mt/with-temp Database [database {:engine :postgres, :details details}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
@@ -582,7 +583,7 @@
           (jdbc/execute! spec [(str "CREATE SCHEMA \"AAAH_#\";"
                                     "CREATE TABLE \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json JSONB NOT NULL);"
                                     "INSERT INTO \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json) VALUES ('{\"a\": 1}');")]))
-        (mt/with-temp Database [database {:engine :postgres, :details details}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
@@ -610,7 +611,7 @@
                           (format "INSERT INTO big_json_table (big_json) VALUES ('%s');" big-json))]
         (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [sql]))
-        (mt/with-temp Database [database {:engine :postgres, :details details}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= sql-jdbc.describe-table/max-nested-field-columns
@@ -721,7 +722,7 @@
                          "Lucky Pigeon"   6.0
                          "Katie Parakeet" 23.99]]]
         (jdbc/execute! conn sql+args)))
-    (mt/with-temp Database [db {:engine :postgres, :details (assoc details :dbname "money_columns_test")}]
+    (t2.with-temp/with-temp [Database db {:engine :postgres, :details (assoc details :dbname "money_columns_test")}]
       (sync/sync-database! db)
       (mt/with-db db
         (thunk)))))
@@ -796,7 +797,7 @@
 
 (defn- do-with-enums-db {:style/indent 0} [f]
   (create-enums-db!)
-  (mt/with-temp Database [database {:engine :postgres, :details (enums-test-db-details)}]
+  (t2.with-temp/with-temp [Database database {:engine :postgres, :details (enums-test-db-details)}]
     (sync-metadata/sync-db-metadata! database)
     (f database)
     (#'sql-jdbc.conn/set-pool! (u/id database) nil nil)))
@@ -933,7 +934,7 @@
                              ");"
                              "INSERT INTO toucan_sleep_schedule (start_time, end_time, reason) "
                              "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
-        (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
           (sync/sync-database! database)
           (is (= {"start_time" {:global {:distinct-count 1
                                          :nil%           0.0}
@@ -951,7 +952,7 @@
                                                      :percent-state  0.0
                                                      :average-length 12.0}}}}
                  (t2/select-fn->fn :name :fingerprint Field
-                   :table_id (t2/select-one-pk Table :db_id (u/the-id database))))))))))
+                                   :table_id (t2/select-one-pk Table :db_id (u/the-id database))))))))))
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 
@@ -1017,7 +1018,7 @@
       (let [test-user-details (assoc (mt/dbdef->connection-details :postgres :db {:database-name "no-select-test"})
                                      :user "no_select_test_user"
                                      :password "123456")]
-        (mt/with-temp Database [database {:engine :postgres, :details test-user-details}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details test-user-details}]
           (sync/sync-database! database)
           (is (= #{"table_with_perms"}
                  (t2/select-fn-set :name Table :db_id (:id database)))))))))
@@ -1037,13 +1038,13 @@
                                  "json_val::jsonb ?| array['c', 'd'],"
                                  "json_val::jsonb ?& array['a', 'b']"
                                  "FROM \"json_table\";")]
-        (mt/with-temp Database [database {:engine :postgres, :details json-db-details}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details json-db-details}]
           (mt/with-db database (sync/sync-database! database)
-                               (is (= [[true false true]]
-                                      (-> {:query query}
-                                          (mt/native-query)
-                                          (qp/process-query)
-                                          (mt/rows))))))))))
+            (is (= [[true false true]]
+                   (-> {:query query}
+                       (mt/native-query)
+                       (qp/process-query)
+                       (mt/rows))))))))))
 
 (defn- pretty-sql [s]
   (-> s
@@ -1172,7 +1173,7 @@
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
         (is (= #{"public"}
-               (driver/syncable-schemas driver/*driver* (mt/id))))))
+               (driver/syncable-schemas driver/*driver* (mt/db))))))
     (testing "metabase_cache schemas should be excluded"
       (mt/dataset test-data
         (mt/with-persistence-enabled [persist-models!]
@@ -1185,4 +1186,4 @@
               (is (some (partial re-matches #"metabase_cache(.*)")
                         (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
               (is (nil? (some (partial re-matches #"metabase_cache(.*)")
-                              (driver/syncable-schemas driver/*driver* (mt/id))))))))))))
+                              (driver/syncable-schemas driver/*driver* (mt/db))))))))))))

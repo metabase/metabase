@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useCallback, useMemo } from "react";
+import { ChangeEvent, useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";

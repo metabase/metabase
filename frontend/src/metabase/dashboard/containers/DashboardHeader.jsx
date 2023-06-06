@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component, Fragment } from "react";
+import { createRef, Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import PropTypes from "prop-types";
@@ -10,7 +10,7 @@ import { getIsNavbarOpen } from "metabase/redux/app";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
@@ -66,7 +66,7 @@ const mapDispatchToProps = {
 class DashboardHeader extends Component {
   constructor(props) {
     super(props);
-    this.addQuestionModal = React.createRef();
+    this.addQuestionModal = createRef();
     this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
   }
 

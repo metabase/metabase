@@ -1,4 +1,3 @@
-import React from "react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";

@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { Fragment, useCallback } from "react";
 import PropTypes from "prop-types";
 import { bindActionCreators } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
@@ -121,7 +121,7 @@ function GroupsPermissionsPage({
 
   const showEmptyState = !permissionEditor && !isEditorLoading && !editorError;
   return (
-    <React.Fragment>
+    <Fragment>
       <PermissionsSidebar
         {...sidebar}
         onSelect={handleSidebarItemSelect}
@@ -148,7 +148,7 @@ function GroupsPermissionsPage({
       )}
 
       {children}
-    </React.Fragment>
+    </Fragment>
   );
 }
 

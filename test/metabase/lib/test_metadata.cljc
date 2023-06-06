@@ -2232,7 +2232,7 @@
     :name           "CATEGORY_ID"
     :base-type      :type/Integer
     :effective-type :type/Integer
-    :semantic-type  nil
+    :semantic-type  :type/FK
     :fingerprint    {:global {:distinct-count 28, :nil% 0.0}
                      :type   {:type/Number
                               {:min 2.0
@@ -2298,10 +2298,16 @@
    :columns  card-results-metadata})
 
 (def saved-question
-  "An representative Saved Question, with [[results-metadata]]. For testing queries that use a Saved Question as their
-  source. If you added `:lib/type`, `:id`, and `:name`, you could also use this as
-  a [[metabase.lib.metadata/CardMetadata]]."
+  "An representative Saved Question, with [[results-metadata]], against `VENUES`. For testing queries that use a Saved
+  Question as their source. See also [[saved-question-CardMetadata]] below."
   {:dataset-query   {:database (id)
                      :type     :query
                      :query    {:source-table (id :venues)}}
    :result-metadata card-results-metadata})
+
+(def saved-question-CardMetadata
+  "Mock [[metabase.lib.metadata/CardMetadata]] with a query against `VENUES`."
+  (assoc saved-question
+         :lib/type :metadata/card
+         :id       1
+         :name     "Card 1"))

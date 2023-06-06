@@ -1,7 +1,7 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
@@ -37,14 +37,14 @@ const LINK_TARGETS = {
   question: {
     Entity: Questions,
     PickerComponent: QuestionPicker,
-    pickerIcon: "bar",
+    pickerIcon: "bar" as const,
     getModalTitle: () => t`Pick a question to link to`,
     getPickerButtonLabel: () => t`Pick a question…`,
   },
   dashboard: {
     Entity: Dashboards,
     PickerComponent: DashboardPicker,
-    pickerIcon: "dashboard",
+    pickerIcon: "dashboard" as const,
     getModalTitle: () => t`Pick a dashboard to link to`,
     getPickerButtonLabel: () => t`Pick a dashboard…`,
   },

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -13,7 +13,7 @@ import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import Card from "metabase/components/Card";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Filter from "metabase/query_builder/components/Filter";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -56,7 +56,7 @@ const mapDispatchToProps = {
   invalidateCollections: Collections.actions.invalidateLists,
 };
 
-class AutomaticDashboardAppInner extends React.Component {
+class AutomaticDashboardAppInner extends Component {
   state = {
     savedDashboardId: null,
   };
@@ -268,25 +268,22 @@ const SuggestionsList = ({ suggestions, section }) => (
         {suggestions[s].length > 0 &&
           suggestions[s].map((item, itemIndex) => (
             <Link
-              hover={{ color: color("brand") }}
               key={itemIndex}
               to={item.url}
-              className="block hover-parent hover--visibility"
+              className="mb1 block hover-parent hover--visibility text-brand-hover"
               data-metabase-event={`Auto Dashboard;Click Related;${s}`}
-              mb={1}
             >
               <Card p={2} hoverable>
                 <ItemContent>
                   <Icon
                     name={RELATED_CONTENT[s].icon}
                     color={color("accent4")}
-                    mr={1}
-                    size={22}
+                    className="mr1"
                   />
                   <h4 className="text-wrap">{item.title}</h4>
                   <ItemDescription className="hover-child">
                     <Tooltip tooltip={item.description}>
-                      <Icon name="question" color={color("bg-dark")} />
+                      <Icon name="info_outline" color={color("bg-dark")} />
                     </Tooltip>
                   </ItemDescription>
                 </ItemContent>

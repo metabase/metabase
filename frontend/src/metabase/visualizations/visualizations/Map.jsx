@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -7,7 +7,7 @@ import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 
 import Link from "metabase/core/components/Link";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import {
@@ -365,7 +365,7 @@ const CustomMapFooter = connect(mapStateToProps)(function CustomMapFooter({
   const content = (
     <CustomMapContent>
       {t`Custom map`}
-      <Icon name="share" size={14} />
+      <Icon name="share" />
     </CustomMapContent>
   );
 

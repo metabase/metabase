@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from "react";
+import { useRef, useMemo } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 

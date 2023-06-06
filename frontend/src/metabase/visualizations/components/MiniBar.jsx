@@ -1,6 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import { color, alpha } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 

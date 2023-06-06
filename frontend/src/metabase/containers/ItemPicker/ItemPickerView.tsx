@@ -1,8 +1,9 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
+import * as React from "react";
 import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import Icon, { IconProps } from "metabase/components/Icon";
+import { Icon, IconProps } from "metabase/core/components/Icon";
 
 import { color } from "metabase/lib/colors";
 
