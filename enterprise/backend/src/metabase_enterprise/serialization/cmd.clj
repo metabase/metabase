@@ -1,7 +1,6 @@
 (ns metabase-enterprise.serialization.cmd
   (:refer-clojure :exclude [load])
   (:require
-   [clojure.java.io :as io]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
