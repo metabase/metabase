@@ -43,16 +43,8 @@ function PeopleListingApp({ children, isAdmin }) {
       {isAdmin && (
         <Radio.Group value={status} onChange={updateStatus}>
           <Group>
-            <Radio
-              label={t`Active`}
-              value={USER_STATUS.active}
-              checked={status === USER_STATUS.active}
-            />
-            <Radio
-              label={t`Deactivated`}
-              value={USER_STATUS.deactivated}
-              checked={status === USER_STATUS.deactivated}
-            />
+            <Radio label={t`Active`} value={USER_STATUS.active} />
+            <Radio label={t`Deactivated`} value={USER_STATUS.deactivated} />
           </Group>
         </Radio.Group>
       )}
