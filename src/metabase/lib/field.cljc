@@ -325,7 +325,7 @@
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/field
   [_query _stage-number field-metadata]
-  (when (not= (:lib/source field-metadata) :source/expressions)
+  (if (not= (:lib/source field-metadata) :source/expressions)
     (let [effective-type ((some-fn :effective-type :base-type) field-metadata)
           fingerprint-default (some-> field-metadata :fingerprint fingerprint-based-default-unit)]
       (cond-> (cond
@@ -334,7 +334,8 @@
                 (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
                 :else                                [])
         fingerprint-default              (mark-unit :default fingerprint-default)
-        (::temporal-unit field-metadata) (mark-unit :selected (::temporal-unit field-metadata))))))
+        (::temporal-unit field-metadata) (mark-unit :selected (::temporal-unit field-metadata))))
+    []))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
 (defmethod lib.binning/binning-method :field
@@ -367,7 +368,7 @@
 
 (defmethod lib.binning/available-binning-strategies-method :metadata/field
   [query _stage-number {:keys [effective-type fingerprint semantic-type] :as field-metadata}]
-  (when (not= (:lib/source field-metadata) :source/expressions)
+  (if (not= (:lib/source field-metadata) :source/expressions)
     (let [binning?    (some-> query lib.metadata/database :features (contains? :binning))
           fingerprint (get-in fingerprint [:type :type/Number])
           existing    (lib.binning/binning field-metadata)
@@ -382,7 +383,8 @@
       ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
       (for [strat strategies]
         (cond-> strat
-          (lib.binning/strategy= strat existing) (assoc :selected true))))))
+          (lib.binning/strategy= strat existing) (assoc :selected true))))
+    []))
 
 ;;; -------------------------------------- Join Alias --------------------------------------------
 (defmethod lib.join/current-join-alias-method :field
