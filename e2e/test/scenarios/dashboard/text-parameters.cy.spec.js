@@ -25,7 +25,6 @@ describe("scenarios > dashboard > parameters in text cards", () => {
     addTextBox("Text card with no variables", {
       parseSpecialCharSequences: false,
     });
-    editDashboard();
     setFilter("Number", "Equal to");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
@@ -36,7 +35,6 @@ describe("scenarios > dashboard > parameters in text cards", () => {
 
   it("should allow dashboard filters to be connected to tags in text cards", () => {
     addTextBox("Variable: {{foo}}", { parseSpecialCharSequences: false });
-    editDashboard();
     setFilter("Number", "Equal to");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -77,7 +75,6 @@ describe("scenarios > dashboard > parameters in text cards", () => {
     cy.reload();
 
     addTextBox("Variable: {{foo}}", { parseSpecialCharSequences: false });
-    editDashboard();
     setFilter("Time", "Relative Date");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
