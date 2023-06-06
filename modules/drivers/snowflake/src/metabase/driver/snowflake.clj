@@ -30,7 +30,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [ring.util.codec :as codec])
+   [ring.util.codec :as codec]
+   [metabase.driver.util :as driver.u])
   (:import
    (java.io File)
    (java.nio.charset StandardCharsets)
@@ -95,10 +96,11 @@
         private-key-file (handle-conn-uri user account private-key-file)))
 
     private-key-value
-    (let [private-key-str  (if (bytes? private-key-value)
-                             (String. ^bytes private-key-value StandardCharsets/UTF_8)
-                             private-key-value)
-          private-key-file (secret/value->file! {:connection-property-name "private-key-file" :value private-key-str})]
+    (let [private-key-val  (driver.u/decode-uploaded
+                            (if (bytes? private-key-value)
+                              (String. ^bytes private-key-value StandardCharsets/UTF_8)
+                              private-key-value))
+          private-key-file (secret/value->file! {:connection-property-name "private-key-file" :value private-key-val} "pem")]
       (handle-conn-uri details user account private-key-file))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake

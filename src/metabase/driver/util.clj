@@ -384,11 +384,15 @@
                 (assoc :visible-if v-ifs*))))
          final-props)))
 
+(def ^:private data-url-pattern #"^data:[^;]+;base64,")
+
 (defn decode-uploaded
   "Decode `uploaded-data` as an uploaded field.
   Optionally strip the Base64 MIME prefix."
-  ^bytes [uploaded-data]
-  (u/decode-base64-to-bytes (str/replace uploaded-data #"^data:[^;]+;base64," "")))
+  ^bytes [^String uploaded-data]
+  (if (re-find data-url-pattern uploaded-data)
+    (u/decode-base64-to-bytes (str/replace uploaded-data data-url-pattern ""))
+    (.getBytes uploaded-data "UTF-8")))
 
 (defn db-details-client->server
   "Currently, this transforms client side values for the various back into :type :secret for storage on the server.
