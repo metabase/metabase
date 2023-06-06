@@ -5,7 +5,6 @@
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -22,8 +21,7 @@
   conflicting connection impersonation policies are found."
   [database]
   (when-not api/*is-superuser?*
-    (let [group-ids           (qp.store/cached api/*current-user-id*
-                                               (t2/select-fn-set :group_id PermissionsGroupMembership :user_id api/*current-user-id*))
+    (let [group-ids           (t2/select-fn-set :group_id PermissionsGroupMembership :user_id api/*current-user-id*)
           conn-impersonations (when (seq group-ids)
                                 (t2/select :model/ConnectionImpersonation
                                            :group_id [:in group-ids]
