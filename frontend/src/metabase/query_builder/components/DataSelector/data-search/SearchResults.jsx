@@ -40,7 +40,7 @@ export function SearchResults({
             return (
               <div className="flex flex-column align-center justify-center p4 text-medium text-centered">
                 <div className="my4">
-                  <Icon name="search" mb={1} size={32} />
+                  <Icon name="search" className="mb1" size={32} />
                   <h3 className="text-light">{t`No results found`}</h3>
                 </div>
               </div>

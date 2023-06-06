@@ -127,7 +127,7 @@
 (defmacro ^:private with-dashboards-in-writeable-collection [dashboards-or-ids & body]
   `(do-with-dashboards-in-a-collection perms/grant-collection-readwrite-permissions! ~dashboards-or-ids (fn [] ~@body)))
 
-(defn- do-with-simple-dashboard-with-tabs
+(defn do-with-simple-dashboard-with-tabs
   [f]
   (t2.with-temp/with-temp
     [Dashboard           {dashboard-id :id} {}
@@ -155,7 +155,7 @@
         :dashcard-id-1 dashcard-id-1
         :dashcard-id-2 dashcard-id-2})))
 
-(defmacro ^:private with-simple-dashboard-with-tabs
+(defmacro with-simple-dashboard-with-tabs
   "Create a simple dashboard with 2 tabs and 2 cards in each tab and run `body` with the dashboard and cards ids bound to"
   [[bindings] & body]
   `(do-with-simple-dashboard-with-tabs (fn [~bindings] ~@body)))
@@ -1389,6 +1389,7 @@
                                                              (format "dashboard/%d/cards" dashboard-id)
                                                              {:cards        [new-dashcard-info]
                                                               :ordered_tabs []}))}))))))
+
 (deftest e2e-update-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
        (t2.with-temp/with-temp
@@ -1800,13 +1801,15 @@
   (testing "database_enabled_actions should hydrate according to database-enable-actions setting"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (mt/with-actions-test-data
-        (doseq [enable? [true false]]
-          (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions enable?}}
-            (mt/with-actions [{:keys [action-id]} {:type :query :visualization_settings {:hello true}}]
-              (mt/with-temp* [Dashboard     [{dashboard-id :id}]
-                              DashboardCard [_ {:action_id action-id, :dashboard_id dashboard-id}]]
-                (is (partial= {:ordered_cards [{:action {:database_enabled_actions enable?}}]}
-                              (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))))))))
+        (doseq [enable-actions? [true false]
+                encrypt-db?     [true false]]
+          (mt/with-temp-env-var-value [mb-encryption-secret-key encrypt-db?]
+            (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions enable-actions?}}
+              (mt/with-actions [{:keys [action-id]} {:type :query :visualization_settings {:hello true}}]
+                (mt/with-temp* [Dashboard     [{dashboard-id :id}]
+                                DashboardCard [_ {:action_id action-id, :dashboard_id dashboard-id}]]
+                  (is (partial= {:ordered_cards [{:action {:database_enabled_actions enable-actions?}}]}
+                                (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))))
 
 (deftest add-card-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id/cards"
@@ -2115,7 +2118,7 @@
                                                 :description "something"
                                                 :cards       [{:series [8 9], :size_y 3, :size_x 5}]}}
                :has_multiple_changes true
-               :description          "added a description and renamed it from \"b\" to \"c\", rearranged the cards and added some series to card 123."}
+               :description          "added a description and renamed it from \"b\" to \"c\", modified the cards and added some series to card 123."}
               {:is_reversion         false
                :is_creation          true
                :message              nil
