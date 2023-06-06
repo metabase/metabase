@@ -54,11 +54,11 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByText("Uploading data to Collection..."),
+      await screen.findByText("Uploading data to Collection …"),
     ).toBeInTheDocument();
 
     expect(
-      await screen.findByText("Uploading data to Second Collection..."),
+      await screen.findByText("Uploading data to Second Collection …"),
     ).toBeInTheDocument();
 
     expect(await screen.findByText("test.csv")).toBeInTheDocument();
@@ -102,7 +102,7 @@ describe("FileUploadStatus", () => {
     );
 
     expect(
-      await screen.findByText("Uploading data to Collection..."),
+      await screen.findByText("Uploading data to Collection …"),
     ).toBeInTheDocument();
 
     expect(
@@ -154,7 +154,7 @@ describe("FileUploadStatus", () => {
     );
 
     expect(
-      await screen.findByText("Uploading data to Collection..."),
+      await screen.findByText("Uploading data to Collection …"),
     ).toBeInTheDocument();
 
     expect(
