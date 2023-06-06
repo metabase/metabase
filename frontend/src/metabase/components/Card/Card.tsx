@@ -10,7 +10,6 @@ type CardProps = {
 };
 
 const Card = styled.div<CardProps>`
-  padding: 1rem;
   background-color: ${props => (props.dark ? color("text-dark") : "white")};
   border: 1px solid
     ${props => (props.dark ? "transparent" : color("bg-medium"))};
