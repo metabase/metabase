@@ -1,6 +1,7 @@
 (ns metabase-enterprise.serialization.cmd
   (:refer-clojure :exclude [load])
   (:require
+   [clojure.java.io :as io]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
@@ -28,8 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2]
-   [clojure.java.io :as io]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -216,9 +216,5 @@
 
   ;; Use this to dump Internal Analytics:
   (v2-dump "resources/internal_analytics" {:collection-ids [(t2/select-one-fn :id 'Collection {:where [:= :type "internal_analytics"]})]})
-
-  ;; Use this to load it from within in the uber-jar (maybe)
-
-  (v2-load (io/resource "internal_analytics") {})
 
   )

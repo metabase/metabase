@@ -46,12 +46,12 @@
     (cond
       (nil? audit-db)
       (u/prog1 ::installed
-        (log/info "Audit DB does not exist, Installing...")
+        (log/info "Installing Audit DB...")
         (install-database! mdb.env/db-type))
 
       (not= mdb.env/db-type (:engine audit-db))
       (u/prog1 ::updated
-        (log/infof "Updating the Audit DB engine to %s." (name mdb.env/db-type))
+        (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name mdb.env/db-type))
         (t2/update! Database :is_audit true {:engine mdb.env/db-type})
         (ensure-db-installed!))
 
@@ -65,11 +65,10 @@
   (u/prog1 (ensure-db-installed!)
     ;; There's a sync scheduled, but we want to force a sync right away:
     (if-let [audit-db (t2/select-one :model/Database {:where [:= :is_audit true]})]
-      (do (log/info "Audit DB installed, beginning Audit DB Sync...")
+      (do (log/info "Beginning Audit DB Sync...")
           (sync-metadata/sync-db-metadata! audit-db))
       (when (not config/is-prod?)
         (log/warn "Audit DB was not installed correctly!!")))
-    ;; install the content
+    ;; Install internal analytics content when the resource exists:
     (when-let [analytics-root-dir (io/resource "internal_analytics")]
-      (log/fatal "LOADING ANALYTICS CONTENT!")
       (serialization.cmd/v2-load analytics-root-dir {}))))
