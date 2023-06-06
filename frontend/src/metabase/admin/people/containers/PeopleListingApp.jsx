@@ -6,8 +6,7 @@ import { Group } from "@mantine/core";
 import * as Urls from "metabase/lib/urls";
 
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
-// import Radio from "metabase/core/components/Radio";
-import { Radio } from "metabase/ui/components/inputs/Radio";
+import { Radio } from "metabase/ui";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import SearchInput from "../components/SearchInput";
