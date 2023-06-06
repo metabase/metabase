@@ -40,7 +40,7 @@
   (with-audit-db-restoration
     (t2/delete! Database :is_audit true)
     (is (str/ends-with? (str audit-db/analytics-root-dir-resource)
-                        "internal_analytics"))
+                        "internal_analytics_skip"))
     (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
     (is (= 13371337 (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
         "Audit DB is installed.")
