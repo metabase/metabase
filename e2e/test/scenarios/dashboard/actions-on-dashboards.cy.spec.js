@@ -1,3 +1,4 @@
+import { assocIn } from "icepick";
 import {
   restore,
   queryWritableDB,
@@ -15,11 +16,14 @@ import {
   filterWidget,
   createImplicitAction,
   dragField,
+  createAction,
+  actionEditorModal,
 } from "e2e/support/helpers";
 
 import { many_data_types_rows } from "e2e/support/test_tables_data";
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { createMockActionParameter } from "metabase-types/api/mocks";
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 const TEST_TABLE = "scoreboard_actions";
@@ -578,6 +582,118 @@ const MODEL_NAME = "Test Action Model";
             expect(row.timestamp).to.include(newTimeAdjusted);
             expect(row.datetimeTZ).to.include(newTimeAdjusted);
             expect(row.timestampTZ).to.include(newTimeAdjusted);
+          });
+        });
+      });
+
+      describe("editing action before executing it", () => {
+        const PG_DB_ID = 2;
+        const WRITABLE_TEST_TABLE = "scoreboard_actions";
+
+        const TEST_PARAMETER = createMockActionParameter({
+          id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
+          name: "Total",
+          slug: "total",
+          type: "number/=",
+          target: ["variable", ["template-tag", "total"]],
+        });
+
+        const TEST_TEMPLATE_TAG = {
+          id: TEST_PARAMETER.id,
+          type: "number",
+          name: TEST_PARAMETER.slug,
+          "display-name": TEST_PARAMETER.name,
+          slug: TEST_PARAMETER.slug,
+        };
+
+        const SAMPLE_QUERY_ACTION = {
+          name: "Demo Action",
+          type: "query",
+          parameters: [TEST_PARAMETER],
+          database_id: PG_DB_ID,
+          dataset_query: {
+            type: "native",
+            native: {
+              query: `UPDATE ORDERS SET TOTAL = TOTAL WHERE ID = {{ ${TEST_TEMPLATE_TAG.name} }}`,
+              "template-tags": {
+                [TEST_TEMPLATE_TAG.name]: TEST_TEMPLATE_TAG,
+              },
+            },
+            database: PG_DB_ID,
+          },
+          visualization_settings: {
+            fields: {
+              [TEST_PARAMETER.id]: {
+                id: TEST_PARAMETER.id,
+                required: true,
+                fieldType: "number",
+                inputType: "number",
+              },
+            },
+          },
+        };
+
+        const SAMPLE_WRITABLE_QUERY_ACTION = assocIn(
+          SAMPLE_QUERY_ACTION,
+          ["dataset_query", "native", "query"],
+          `UPDATE ${WRITABLE_TEST_TABLE} SET score = 22 WHERE id = {{ ${TEST_TEMPLATE_TAG.name} }}`,
+        );
+
+        beforeEach(() => {
+          resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
+          restore(`${dialect}-writable`);
+          cy.signInAsAdmin();
+          resyncDatabase({
+            dbId: WRITABLE_DB_ID,
+            tableName: TEST_COLUMNS_TABLE,
+          });
+          createModelFromTableName({
+            tableName: TEST_COLUMNS_TABLE,
+            modelName: MODEL_NAME,
+          });
+
+          cy.get("@modelId").then(modelId => {
+            createAction({
+              ...SAMPLE_WRITABLE_QUERY_ACTION,
+              model_id: modelId,
+            });
+          });
+
+          createDashboardWithActionButton({
+            actionName: SAMPLE_QUERY_ACTION.name,
+          });
+        });
+
+        it("allows to edit action in action execute modal", () => {
+          clickHelper(SAMPLE_QUERY_ACTION.name);
+
+          modal().within(() => {
+            cy.icon("pencil").click();
+          });
+
+          actionEditorModal().within(() => {
+            cy.findByText(SAMPLE_QUERY_ACTION.name)
+              .click()
+              .clear()
+              .type("New action name");
+
+            cy.findByTestId("action-form-editor").within(() => {
+              cy.icon("gear").click();
+            });
+          });
+
+          popover().within(() => {
+            cy.findByText("Placeholder text").click().type("Test placeholder");
+          });
+
+          actionEditorModal().within(() => {
+            cy.findByText("Update").click();
+          });
+
+          modal().within(() => {
+            cy.findByTestId("modal-header").findByText("New action name");
+
+            cy.findAllByPlaceholderText("Test placeholder");
           });
         });
       });
