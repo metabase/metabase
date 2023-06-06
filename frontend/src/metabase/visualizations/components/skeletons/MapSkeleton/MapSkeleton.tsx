@@ -1,20 +1,12 @@
-import { HTMLAttributes } from "react";
-import SkeletonCaption from "../SkeletonCaption";
-import { SkeletonImage, SkeletonRoot } from "./MapSkeleton.styled";
+import {
+  SkeletonRootProps,
+  Skeleton,
+} from "metabase/visualizations/components/skeletons/Skeleton";
+import { SkeletonImage } from "./MapSkeleton.styled";
 
-export interface MapSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string | null;
-  description?: string | null;
-}
-
-const MapSkeleton = ({
-  name,
-  description,
-  ...props
-}: MapSkeletonProps): JSX.Element => {
+const MapSkeleton = (props: SkeletonRootProps): JSX.Element => {
   return (
-    <SkeletonRoot {...props}>
-      <SkeletonCaption name={name} description={description} />
+    <Skeleton {...props}>
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 242 157"
@@ -22,7 +14,7 @@ const MapSkeleton = ({
       >
         <image href="/app/assets/img/map.svg" />
       </SkeletonImage>
-    </SkeletonRoot>
+    </Skeleton>
   );
 };
 

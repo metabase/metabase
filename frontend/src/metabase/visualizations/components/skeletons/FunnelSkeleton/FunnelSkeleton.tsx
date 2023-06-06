@@ -1,20 +1,12 @@
-import { HTMLAttributes } from "react";
-import SkeletonCaption from "../SkeletonCaption";
-import { SkeletonImage, SkeletonRoot } from "./FunnelSkeleton.styled";
+import {
+  SkeletonRootProps,
+  Skeleton,
+} from "metabase/visualizations/components/skeletons/Skeleton";
+import { SkeletonImage } from "./FunnelSkeleton.styled";
 
-export interface FunnelSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string | null;
-  description?: string | null;
-}
-
-const FunnelSkeleton = ({
-  name,
-  description,
-  ...props
-}: FunnelSkeletonProps): JSX.Element => {
+const FunnelSkeleton = (props: SkeletonRootProps): JSX.Element => {
   return (
-    <SkeletonRoot {...props}>
-      <SkeletonCaption name={name} description={description} />
+    <Skeleton {...props}>
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 370 104"
@@ -25,7 +17,7 @@ const FunnelSkeleton = ({
           fill="currentColor"
         />
       </SkeletonImage>
-    </SkeletonRoot>
+    </Skeleton>
   );
 };
 

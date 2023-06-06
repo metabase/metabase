@@ -5,15 +5,18 @@ import Ellipsified from "metabase/core/components/Ellipsified";
 import { animationStyles } from "../Skeleton";
 import { SkeletonCaptionSize } from "./types";
 
-export const SkeletonRoot = styled.div`
+export const SkeletonCaptionRoot = styled.div`
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
 `;
 
 export interface SkeletonTitleProps {
   size: SkeletonCaptionSize;
 }
 
-export const SkeletonTitle = styled(Ellipsified)<SkeletonTitleProps>`
+export const SkeletonCaptionTitle = styled(Ellipsified)<SkeletonTitleProps>`
   color: ${color("text-dark")};
   font-size: ${props => (props.size === "large" ? "1rem" : "")};
   line-height: ${props => (props.size === "large" ? "1.375rem" : "")};
@@ -29,7 +32,7 @@ export const SkeletonPlaceholder = styled.div`
   background-color: ${color("bg-medium")};
 `;
 
-export const SkeletonDescription = styled(Icon)`
+export const SkeletonCaptionDescription = styled(Icon)`
   color: ${color("text-medium")};
   margin-left: 0.5rem;
   visibility: hidden;

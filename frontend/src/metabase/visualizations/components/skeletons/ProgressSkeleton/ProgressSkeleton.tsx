@@ -1,23 +1,12 @@
-import { HTMLAttributes } from "react";
-import SkeletonCaption from "../SkeletonCaption";
 import {
-  SkeletonImage,
-  SkeletonRoot,
-} from "../FunnelSkeleton/FunnelSkeleton.styled";
+  SkeletonRootProps,
+  Skeleton,
+} from "metabase/visualizations/components/skeletons/Skeleton";
+import { SkeletonImage } from "../FunnelSkeleton/FunnelSkeleton.styled";
 
-export interface ProgressSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string | null;
-  description?: string | null;
-}
-
-const ProgressSkeleton = ({
-  name,
-  description,
-  ...props
-}: ProgressSkeletonProps): JSX.Element => {
+const ProgressSkeleton = (props: SkeletonRootProps): JSX.Element => {
   return (
-    <SkeletonRoot {...props}>
-      <SkeletonCaption name={name} description={description} />
+    <Skeleton {...props}>
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 404 57"
@@ -36,7 +25,7 @@ const ProgressSkeleton = ({
           fill="currentColor"
         />
       </SkeletonImage>
-    </SkeletonRoot>
+    </Skeleton>
   );
 };
 

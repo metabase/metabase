@@ -1,22 +1,10 @@
-import { HTMLAttributes } from "react";
-import SkeletonCaption from "../SkeletonCaption";
-import { SkeletonRoot } from "./EmptySkeleton.styled";
+import {
+  SkeletonRootProps,
+  Skeleton,
+} from "metabase/visualizations/components/skeletons/Skeleton";
 
-export interface EmptySkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string | null;
-  description?: string | null;
-}
-
-const EmptySkeleton = ({
-  name,
-  description,
-  ...props
-}: EmptySkeletonProps): JSX.Element => {
-  return (
-    <SkeletonRoot {...props}>
-      <SkeletonCaption name={name} description={description} />
-    </SkeletonRoot>
-  );
+const EmptySkeleton = (props: SkeletonRootProps): JSX.Element => {
+  return <Skeleton {...props} />;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

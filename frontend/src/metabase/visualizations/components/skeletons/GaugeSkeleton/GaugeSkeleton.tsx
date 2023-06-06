@@ -1,20 +1,12 @@
-import { HTMLAttributes } from "react";
-import SkeletonCaption from "../SkeletonCaption";
-import { SkeletonImage, SkeletonRoot } from "./GaugeSkeleton.styled";
+import {
+  SkeletonRootProps,
+  Skeleton,
+} from "metabase/visualizations/components/skeletons/Skeleton";
+import { SkeletonImage } from "./GaugeSkeleton.styled";
 
-export interface GaugeSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string | null;
-  description?: string | null;
-}
-
-const GaugeSkeleton = ({
-  name,
-  description,
-  ...props
-}: GaugeSkeletonProps): JSX.Element => {
+const GaugeSkeleton = (props: SkeletonRootProps): JSX.Element => {
   return (
-    <SkeletonRoot {...props}>
-      <SkeletonCaption name={name} description={description} />
+    <Skeleton {...props}>
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 169 143"
@@ -27,7 +19,7 @@ const GaugeSkeleton = ({
           fill="currentColor"
         />
       </SkeletonImage>
-    </SkeletonRoot>
+    </Skeleton>
   );
 };
 

@@ -1,20 +1,12 @@
-import { HTMLAttributes } from "react";
-import SkeletonCaption from "../SkeletonCaption";
-import { SkeletonRoot, SkeletonImage } from "./LineSkeleton.styled";
+import {
+  SkeletonRootProps,
+  Skeleton,
+} from "metabase/visualizations/components/skeletons/Skeleton";
+import { SkeletonImage } from "./LineSkeleton.styled";
 
-export interface LineSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string | null;
-  description?: string | null;
-}
-
-const LineSkeleton = ({
-  name,
-  description,
-  ...props
-}: LineSkeletonProps): JSX.Element => {
+const LineSkeleton = (props: SkeletonRootProps): JSX.Element => {
   return (
-    <SkeletonRoot {...props}>
-      <SkeletonCaption name={name} description={description} />
+    <Skeleton {...props}>
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 371 113"
@@ -27,7 +19,7 @@ const LineSkeleton = ({
           strokeWidth="2"
         />
       </SkeletonImage>
-    </SkeletonRoot>
+    </Skeleton>
   );
 };
 

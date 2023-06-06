@@ -1,20 +1,12 @@
-import { HTMLAttributes } from "react";
-import SkeletonCaption from "../SkeletonCaption";
-import { SkeletonRoot, SkeletonImage } from "./ScatterSkeleton.styled";
+import {
+  SkeletonRootProps,
+  Skeleton,
+} from "metabase/visualizations/components/skeletons/Skeleton";
+import { SkeletonImage } from "./ScatterSkeleton.styled";
 
-export interface ScatterSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string | null;
-  description?: string | null;
-}
-
-const ScatterSkeleton = ({
-  name,
-  description,
-  ...props
-}: ScatterSkeletonProps): JSX.Element => {
+const ScatterSkeleton = (props: SkeletonRootProps): JSX.Element => {
   return (
-    <SkeletonRoot {...props}>
-      <SkeletonCaption name={name} description={description} />
+    <Skeleton {...props}>
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 340 119"
@@ -30,7 +22,7 @@ const ScatterSkeleton = ({
         <circle cx="141" cy="15" r="11" fill="currentColor" />
         <circle cx="141" cy="87" r="16" fill="currentColor" />
       </SkeletonImage>
-    </SkeletonRoot>
+    </Skeleton>
   );
 };
 

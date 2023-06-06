@@ -1,4 +1,4 @@
-import { HTMLAttributes } from "react";
+import { SkeletonRootProps } from "metabase/visualizations/components/skeletons/Skeleton";
 import AreaSkeleton from "../AreaSkeleton";
 import BarSkeleton from "../BarSkeleton";
 import EmptySkeleton from "../EmptySkeleton";
@@ -16,11 +16,9 @@ import SmartScalarSkeleton from "../SmartScalarSkeleton";
 import TableSkeleton from "../TableSkeleton";
 import WaterfallSkeleton from "../WaterfallSkeleton";
 
-export interface ChartSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string | null;
+type ChartSkeletonProps = {
   display?: string | null;
-  description?: string | null;
-}
+} & SkeletonRootProps;
 
 const ChartSkeleton = ({
   display,

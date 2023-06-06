@@ -1,9 +1,5 @@
 import styled from "@emotion/styled";
-import { containerStyles, animationStyles } from "../Skeleton";
-
-export const SkeletonRoot = styled.div`
-  ${containerStyles};
-`;
+import { animationStyles } from "../Skeleton";
 
 export const SkeletonImage = styled.svg`
   ${animationStyles};

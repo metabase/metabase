@@ -1,20 +1,12 @@
-import { HTMLAttributes } from "react";
-import SkeletonCaption from "../SkeletonCaption";
-import { SkeletonImage, SkeletonRoot } from "./AreaSkeleton.styled";
+import {
+  SkeletonRootProps,
+  Skeleton,
+} from "metabase/visualizations/components/skeletons/Skeleton";
+import { SkeletonImage } from "./AreaSkeleton.styled";
 
-export interface AreaSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string | null;
-  description?: string | null;
-}
-
-const AreaSkeleton = ({
-  name,
-  description,
-  ...props
-}: AreaSkeletonProps): JSX.Element => {
+const AreaSkeleton = (props: SkeletonRootProps): JSX.Element => {
   return (
-    <SkeletonRoot {...props}>
-      <SkeletonCaption name={name} description={description} />
+    <Skeleton {...props}>
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 371 113"
@@ -25,7 +17,7 @@ const AreaSkeleton = ({
           fill="currentColor"
         />
       </SkeletonImage>
-    </SkeletonRoot>
+    </Skeleton>
   );
 };
 
