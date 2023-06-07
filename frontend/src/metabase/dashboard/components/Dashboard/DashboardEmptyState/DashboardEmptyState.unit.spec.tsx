@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 
-import DashboardEmptyState from "./DashboardEmptyState";
+import { DashboardEmptyState, TabEmptyState } from "./DashboardEmptyState";
 
 describe("DashboardEmptyState", () => {
   it("renders", () => {
@@ -18,5 +18,13 @@ describe("DashboardEmptyState", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Add a saved question")).toBeInTheDocument();
     expect(screen.getByText("ask a new one")).toBeInTheDocument();
+  });
+});
+
+describe("TabEmptyState", () => {
+  it("renders", () => {
+    render(<TabEmptyState isNightMode={false} />);
+
+    expect(screen.getByText("There's nothing here, yet.")).toBeInTheDocument();
   });
 });

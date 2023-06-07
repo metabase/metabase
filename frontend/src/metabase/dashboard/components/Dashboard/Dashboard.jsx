@@ -25,7 +25,10 @@ import {
   ParametersAndCardsContainer,
   ParametersWidgetContainer,
 } from "./Dashboard.styled";
-import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
+import {
+  DashboardEmptyState,
+  TabEmptyState,
+} from "./DashboardEmptyState/DashboardEmptyState";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
 
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
@@ -242,13 +245,18 @@ class Dashboard extends Component {
       isHeaderVisible,
       embedOptions,
       isAutoApplyFilters,
+      selectedTabId,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
-    const dashboardHasCards =
-      this.props.dashboard?.ordered_cards.length > 0 ?? false;
+    const dashboardHasCards = dashboard?.ordered_cards.length > 0 ?? false;
+    const tabHasCards =
+      dashboard?.ordered_cards.filter(
+        c =>
+          selectedTabId !== undefined && c.dashboard_tab_id === selectedTabId,
+      ).length > 0 ?? false;
     const visibleParameters = getVisibleParameters(parameters);
 
     const parametersWidget = (
@@ -335,13 +343,15 @@ class Dashboard extends Component {
                   addMarginTop={cardsContainerShouldHaveMarginTop}
                   id="Dashboard-Cards-Container"
                 >
-                  {dashboardHasCards ? (
+                  {dashboardHasCards && tabHasCards ? (
                     <DashboardGrid
                       {...this.props}
                       dashboard={this.props.dashboard}
                       isNightMode={shouldRenderAsNightMode}
                       onEditingChange={this.setEditing}
                     />
+                  ) : dashboardHasCards ? (
+                    <TabEmptyState isNightMode={shouldRenderAsNightMode} />
                   ) : (
                     <DashboardEmptyState
                       isNightMode={shouldRenderAsNightMode}
