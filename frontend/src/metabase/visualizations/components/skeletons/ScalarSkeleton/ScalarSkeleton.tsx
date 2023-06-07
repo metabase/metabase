@@ -1,28 +1,10 @@
-import styled from "@emotion/styled";
-import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption/SkeletonCaption";
-import { containerStyles, animationStyles } from "../Skeleton";
-
-export const SkeletonRoot = styled.div`
-  ${containerStyles};
-  justify-content: center;
-  align-items: center;
-`;
-
-export const SkeletonTopImage = styled.svg`
-  ${animationStyles};
-  height: 2rem;
-  margin-top: 0.625rem;
-`;
-
-export const SkeletonBottomImage = styled.svg`
-  ${animationStyles};
-  height: 0.5rem;
-`;
-
-export const SkeletonCenterCaption = styled(SkeletonCaption)`
-  margin-top: 0.25rem;
-  margin-bottom: 2.25rem;
-`;
+import {
+  PositionedActionMenu,
+  SkeletonBottomImage,
+  SkeletonCenterCaption,
+  SkeletonRoot,
+  SkeletonTopImage,
+} from "./ScalarSkeleton.styled";
 
 const ScalarSkeleton = ({
   scalarType = "scalar",
@@ -39,6 +21,7 @@ const ScalarSkeleton = ({
 }): JSX.Element => {
   return (
     <SkeletonRoot className={className}>
+      <PositionedActionMenu>{actionMenu}</PositionedActionMenu>
       <SkeletonTopImage xmlns="http://www.w3.org/2000/svg" viewBox="0 0 103 32">
         <rect width="103" height="32" rx="16" fill="currentColor" />
       </SkeletonTopImage>

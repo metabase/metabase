@@ -2,7 +2,7 @@ import { HTMLAttributes } from "react";
 import { VisualizationRoot } from "metabase/visualizations/components/Visualization/Visualization.styled";
 import { VisualizationSkeletonCaption } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton.styled";
 
-export type SkeletonRootProps = HTMLAttributes<HTMLDivElement> & {
+export type VisualizationSkeletonProps = HTMLAttributes<HTMLDivElement> & {
   name?: string | null;
   description?: string | null;
   actionMenu?: JSX.Element | null;
@@ -13,10 +13,10 @@ export const VisualizationSkeleton = ({
   description,
   actionMenu,
   children,
-  ...props
-}: SkeletonRootProps) => {
+  className,
+}: VisualizationSkeletonProps) => {
   return (
-    <VisualizationRoot {...props}>
+    <VisualizationRoot className={className}>
       <VisualizationSkeletonCaption
         name={name}
         description={description}

@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
 import Ellipsified from "metabase/core/components/Ellipsified";
-import { animationStyles } from "../Skeleton";
+import { animationStyles } from "../util/animation";
 import { SkeletonCaptionSize } from "./types";
 
 export const SkeletonCaptionRoot = styled.div`

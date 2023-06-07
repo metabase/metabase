@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { animationStyles } from "../Skeleton";
+import { animationStyles } from "../util/animation";
 
 export const SkeletonImage = styled.svg`
   ${animationStyles};

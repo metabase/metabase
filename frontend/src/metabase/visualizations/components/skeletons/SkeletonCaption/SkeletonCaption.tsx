@@ -1,7 +1,7 @@
 import { HTMLAttributes } from "react";
 import Tooltip from "metabase/core/components/Tooltip";
-import { SkeletonRootProps } from "metabase/visualizations/components/skeletons/Skeleton/Skeleton";
 import { VisualizationActionButtonsContainer } from "metabase/visualizations/components/Visualization/Visualization.styled";
+import { VisualizationSkeletonProps } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
 import {
   SkeletonCaptionRoot,
   SkeletonCaptionTitle,
@@ -11,7 +11,7 @@ import {
 import { SkeletonCaptionSize } from "./types";
 
 export type SkeletonCaptionProps = HTMLAttributes<HTMLDivElement> &
-  SkeletonRootProps & {
+  VisualizationSkeletonProps & {
     size?: SkeletonCaptionSize;
   };
 
@@ -19,11 +19,11 @@ const SkeletonCaption = ({
   name,
   description,
   actionMenu,
+  className,
   size = "medium",
-  ...props
 }: SkeletonCaptionProps): JSX.Element => {
   return (
-    <SkeletonCaptionRoot {...props}>
+    <SkeletonCaptionRoot className={className}>
       {name ? (
         <SkeletonCaptionTitle size={size}>{name}</SkeletonCaptionTitle>
       ) : (

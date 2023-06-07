@@ -58,11 +58,11 @@ export class QuestionResultLoader extends Component {
         this._cancelDeferred = defer();
 
         // begin the request, set cancel in state so the query can be canceled
-        this.setState(prev => ({
-          loading: true,
-          results: keepPreviousWhileLoading ? prev.results : null,
-          error: null,
-        }));
+        // this.setState(prev => ({
+        //   loading: true,
+        //   results: keepPreviousWhileLoading ? prev.results : null,
+        //   error: null,
+        // }));
 
         const results = await runQuestionQuery(question, {
           cancelDeferred: this._cancelDeferred,
@@ -70,19 +70,19 @@ export class QuestionResultLoader extends Component {
         });
 
         // setState with our result, remove our cancel since we've finished
-        this.setState({ loading: false, results });
+        // this.setState({ loading: false, results });
 
         // handle onLoad prop
         if (onLoad) {
           setTimeout(() => onLoad && onLoad(results));
         }
       } catch (error) {
-        this.setState({ loading: false, error });
+        // this.setState({ loading: false, error });
       }
     } else {
       // if there's not a question we can't do anything so go back to our initial
       // state
-      this.setState({ loading: false, results: null, error: null });
+      // this.setState({ loading: false, results: null, error: null });
     }
   }
 
@@ -103,7 +103,7 @@ export class QuestionResultLoader extends Component {
     // we only want to do things if cancel has been set
     if (this.state.loading) {
       // set loading false
-      this.setState({ loading: false });
+      // this.setState({ loading: false });
       // call our _cancelDeferred to cancel the query
       if (this._cancelDeferred) {
         this._cancelDeferred();
