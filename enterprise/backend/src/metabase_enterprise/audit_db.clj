@@ -60,7 +60,7 @@
 
 (def analytics-root-dir-resource
   "Where to look for analytics content created by Metabase to load into the app instance on startup."
-  (io/resource "internal_analytics"))
+  (io/resource "instance_analytics"))
 
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
