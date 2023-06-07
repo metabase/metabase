@@ -7,6 +7,7 @@
    [metabase.models.revision.diff :refer [build-sentence]]
    [metabase.test :as mt]
    [metabase.util.i18n :refer [deferred-tru]]
+   [methodical.core :as methodical]
    [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -14,7 +15,8 @@
 (def ^:private reverted-to
   (atom nil))
 
-(models/defmodel ^:private FakedCard :report_card)
+(methodical/defmethod t2/table-name :model/FakedCard [_model] :report_card)
+(derive :model/FakedCard :metabase/model)
 
 (use-fixtures :each (fn [thunk]
                       (with-redefs [metabase.models.revision.diff/model-str->i18n-str (fn [model-str]
@@ -27,26 +29,26 @@
                                                                                           "FakeCard"      "FakeCard"))]
                         (thunk))))
 
-(defmethod revision/serialize-instance FakedCard
+(defmethod revision/serialize-instance :model/FakedCard
   [_model _id obj]
   (into {} (assoc obj :serialized true)))
 
-(defmethod revision/revert-to-revision! FakedCard
+(defmethod revision/revert-to-revision! :model/FakedCard
   [_model _id _user-id serialized-instance]
   (reset! reverted-to (dissoc serialized-instance :serialized)))
 
-(defmethod revision/diff-map FakedCard
+(defmethod revision/diff-map :model/FakedCard
   [_model o1 o2]
   {:o1 (when o1 (into {} o1)), :o2 (when o2 (into {} o2))})
 
-(defmethod revision/diff-strings FakedCard
+(defmethod revision/diff-strings :model/FakedCard
   [_model o1 o2]
   (when o1
     [(str "BEFORE=" (into {} o1) ",AFTER=" (into {} o2))]))
 
 (defn- push-fake-revision! [card-id & {:keys [message] :as object}]
   (revision/push-revision!
-    :entity   FakedCard
+    :entity   :model/FakedCard
     :id       card-id
     :user-id  (mt/user->id :rasta)
     :object   (dissoc object :message)
@@ -102,7 +104,7 @@
   (testing "Test that a newly created Card doesn't have any revisions"
     (t2.with-temp/with-temp [Card {card-id :id}]
       (is (= []
-             (revision/revisions FakedCard card-id))))))
+             (revision/revisions :model/FakedCard card-id))))))
 
 (deftest add-revision-test
   (testing "Test that we can add a revision"
@@ -112,11 +114,11 @@
                Revision
                {:model        "FakedCard"
                 :user_id      (mt/user->id :rasta)
-                :object       (mi/instance FakedCard {:name "Tips Created by Day", :serialized true})
+                :object       (mi/instance :model/FakedCard {:name "Tips Created by Day", :serialized true})
                 :is_reversion false
                 :is_creation  false
                 :message      "yay!"})]
-             (for [revision (revision/revisions FakedCard card-id)]
+             (for [revision (revision/revisions :model/FakedCard card-id)]
                (dissoc revision :timestamp :id :model_id)))))))
 
 (deftest sorting-test
@@ -128,7 +130,7 @@
                Revision
                {:model        "FakedCard"
                 :user_id      (mt/user->id :rasta)
-                :object       (mi/instance FakedCard {:name "Spots Created by Day", :serialized true})
+                :object       (mi/instance :model/FakedCard {:name "Spots Created by Day", :serialized true})
                 :is_reversion false
                 :is_creation  false
                 :message      nil})
@@ -136,11 +138,11 @@
                Revision
                {:model        "FakedCard"
                 :user_id      (mt/user->id :rasta)
-                :object       (mi/instance FakedCard {:name "Tips Created by Day", :serialized true})
+                :object       (mi/instance :model/FakedCard {:name "Tips Created by Day", :serialized true})
                 :is_reversion false
                 :is_creation  false
                 :message      nil})]
-             (->> (revision/revisions FakedCard card-id)
+             (->> (revision/revisions :model/FakedCard card-id)
                   (map #(dissoc % :timestamp :id :model_id))))))))
 
 (deftest delete-old-revisions-test
@@ -150,7 +152,7 @@
       (dorun (doseq [i (range (inc revision/max-revisions))]
                (push-fake-revision! card-id, :name (format "Tips Created by Day %d" i))))
       (is (= revision/max-revisions
-             (count (revision/revisions FakedCard card-id)))))))
+             (count (revision/revisions :model/FakedCard card-id)))))))
 
 (deftest do-not-record-if-object-is-not-changed-test
   (testing "Check that we don't record a revision if the object hasn't changed"
@@ -159,15 +161,15 @@
                            (push-fake-revision! card-id, :name (format "Tips Created by Day %s" x)))]
         (testing "first revision should be recorded"
           (new-revision 1)
-          (is (= 1 (count (revision/revisions FakedCard card-id)))))
+          (is (= 1 (count (revision/revisions :model/FakedCard card-id)))))
 
         (testing "repeatedly push reivisions with thesame object shouldn't create new revision"
           (dorun (repeatedly 5 #(new-revision 1)))
-          (is (= 1 (count (revision/revisions FakedCard card-id)))))
+          (is (= 1 (count (revision/revisions :model/FakedCard card-id)))))
 
         (testing "push a revision with different object should create new revision"
           (new-revision 2)
-          (is (= 2 (count (revision/revisions FakedCard card-id)))))))))
+          (is (= 2 (count (revision/revisions :model/FakedCard card-id)))))))))
 
 ;;; # REVISIONS+DETAILS
 
@@ -184,9 +186,9 @@
                                      :o2 {:name "Modified Name", :serialized true}}
               :has_multiple_changes false
               :description          "BEFORE={:name \"Initial Name\", :serialized true},AFTER={:name \"Modified Name\", :serialized true}."}
-             (let [revisions (revision/revisions FakedCard card-id)]
+             (let [revisions (revision/revisions :model/FakedCard card-id)]
                (assert (= 2 (count revisions)))
-               (-> (revision/add-revision-details FakedCard (first revisions) (last revisions))
+               (-> (revision/add-revision-details :model/FakedCard (first revisions) (last revisions))
                    (dissoc :timestamp :id :model_id)
                    mt/derecordize)))))))
 
@@ -204,7 +206,7 @@
                                        :o2 {:name "Tips Created by Day", :serialized true}}
                 :has_multiple_changes false
                 :description          nil})]
-             (->> (revision/revisions+details FakedCard card-id)
+             (->> (revision/revisions+details :model/FakedCard card-id)
                   (map #(dissoc % :timestamp :id :model_id))))))))
 
 (deftest defer-to-describe-diff-test
@@ -233,7 +235,7 @@
                                        :o2 {:name "Tips Created by Day", :serialized true}}
                 :has_multiple_changes false
                 :description          nil})]
-             (->> (revision/revisions+details FakedCard card-id)
+             (->> (revision/revisions+details :model/FakedCard card-id)
                   (map #(dissoc % :timestamp :id :model_id))))))))
 
 ;;; # REVERT
@@ -242,8 +244,8 @@
   (testing "Check that revert defers to revert-to-revision!"
     (t2.with-temp/with-temp [Card {card-id :id}]
       (push-fake-revision! card-id, :name "Tips Created by Day")
-      (let [[{revision-id :id}] (revision/revisions FakedCard card-id)]
-        (revision/revert! :entity FakedCard, :id card-id, :user-id (mt/user->id :rasta), :revision-id revision-id)
+      (let [[{revision-id :id}] (revision/revisions :model/FakedCard card-id)]
+        (revision/revert! :entity :model/FakedCard, :id card-id, :user-id (mt/user->id :rasta), :revision-id revision-id)
         (is (= {:name "Tips Created by Day"}
                @reverted-to))))))
 
@@ -264,8 +266,8 @@
     (t2.with-temp/with-temp [Card {card-id :id}]
       (push-fake-revision! card-id, :name "Tips Created by Day")
       (push-fake-revision! card-id, :name "Spots Created by Day")
-      (let [[_ {old-revision-id :id}] (revision/revisions FakedCard card-id)]
-        (revision/revert! :entity FakedCard, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id)
+      (let [[_ {old-revision-id :id}] (revision/revisions :model/FakedCard card-id)]
+        (revision/revert! :entity :model/FakedCard, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id)
         (is (partial=
              [(mi/instance
                Revision
@@ -291,7 +293,7 @@
                 :is_reversion false
                 :is_creation  false
                 :message      nil})]
-             (->> (revision/revisions FakedCard card-id)
+             (->> (revision/revisions :model/FakedCard card-id)
                   (map #(dissoc % :timestamp :id :model_id)))))))))
 
 (deftest generic-models-revision-title+description-test
