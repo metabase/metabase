@@ -303,10 +303,8 @@
     (driver/create-table driver db-id table-name col->database-type)
     (try
       (let [rows (parsed-rows col->upload-type csv-file)]
-        (driver/insert-into driver db-id table-name column-names rows)
-        (.delete csv-file))
+        (driver/insert-into driver db-id table-name column-names rows))
       (catch Throwable e
         (driver/drop-table driver db-id table-name)
-        (.delete csv-file)
         (throw (ex-info (ex-message e) {}))))
     nil))

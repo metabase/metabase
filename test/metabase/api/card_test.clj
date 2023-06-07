@@ -11,6 +11,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time :as t]
    [medley.core :as m]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
    [metabase.driver :as driver]
@@ -49,6 +50,7 @@
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
+   [metabase.upload :as upload]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.schema :as su]
@@ -2960,3 +2962,33 @@
                           (-> (jdbc/query (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                                           ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public')"])
                               first :exists))))))))))
+
+(deftest csv-upload-snowplow-test
+  (mt/test-driver :h2
+    (mt/with-empty-db
+      (let [db-id (u/the-id (mt/db))]
+        (mt/with-temporary-setting-values [uploads-enabled      true
+                                           uploads-database-id  db-id
+                                           uploads-schema-name  "PUBLIC"
+                                           uploads-table-prefix nil]
+          (snowplow-test/with-fake-snowplow-collector
+            (upload-example-csv! nil)
+            (is (=? {:data {"model_id"     pos?
+                            "size_bytes"   41
+                            "num_columns"  2
+                            "num_rows"     2
+                            "upload_speed" pos-int?
+                            "event"        "csv_upload_successful"}
+                     :user-id (str (mt/user->id :rasta))}
+                    (last (snowplow-test/pop-event-data-and-user-id!))))
+            (with-redefs [upload/load-from-csv (fn [_ _ _ _]
+                                                 (throw (Exception.)))]
+              (try (upload-example-csv! nil)
+                   (catch Throwable _
+                     nil))
+              (is (= {:data {"size_bytes"  41
+                             "num_columns" 2
+                             "num_rows"    2
+                             "event"       "csv_upload_failed"}
+                      :user-id (str (mt/user->id :rasta))}
+                     (last (snowplow-test/pop-event-data-and-user-id!)))))))))))
