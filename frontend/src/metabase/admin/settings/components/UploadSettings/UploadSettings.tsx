@@ -220,7 +220,7 @@ export function UploadSettingsView({
         )}
         {!!showPrefix && (
           <div>
-            <SectionTitle>{t`Upload Table Prefix`}</SectionTitle>
+            <SectionTitle>{t`Upload Table Prefix (optional)`}</SectionTitle>
             <Input
               value={tablePrefix ?? ""}
               placeholder={t`upload_`}
