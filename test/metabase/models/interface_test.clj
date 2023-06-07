@@ -8,7 +8,6 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
-   [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
    [toucan.models :as models]
@@ -92,7 +91,7 @@
 
 (deftest timestamped-property-do-not-stomp-on-explicit-values-test
   (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"
-    (mt/with-temp Field [field]
+    (t2.with-temp/with-temp [Field field]
       (testing "Nothing specified: use now() for both"
         (is (schema= {:created_at java.time.temporal.Temporal
                       :updated_at java.time.temporal.Temporal
@@ -104,13 +103,13 @@
                            :postgres    (t/offset-date-time "2022-10-13T19:21:00Z")
                            (:h2 :mysql) (t/local-date-time "2022-10-13T19:21:00")))]
       (testing "Explicitly specify :created_at"
-        (mt/with-temp Field [field {:created_at t}]
+        (t2.with-temp/with-temp [Field field {:created_at t}]
           (is (schema= {:created_at t-schema
                         :updated_at java.time.temporal.Temporal
                         s/Keyword   s/Any}
                        field))))
       (testing "Explicitly specify :updated_at"
-        (mt/with-temp Field [field {:updated_at t}]
+        (t2.with-temp/with-temp [Field field {:updated_at t}]
           (is (schema= {:created_at java.time.temporal.Temporal
                         :updated_at t-schema
                         s/Keyword   s/Any}

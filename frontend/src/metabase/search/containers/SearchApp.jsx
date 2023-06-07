@@ -1,5 +1,6 @@
 import { Fragment, useState } from "react";
 import PropTypes from "prop-types";
+import cx from "classnames";
 
 import { jt, t } from "ttag";
 import Link from "metabase/core/components/Link";
@@ -11,8 +12,7 @@ import EmptyState from "metabase/components/EmptyState";
 import SearchResult from "metabase/search/components/SearchResult";
 import Subhead from "metabase/components/type/Subhead";
 
-import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import NoResults from "assets/img/no_results.svg";
 import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
@@ -150,16 +150,17 @@ export default function SearchApp({ location }) {
                 <SearchControls>
                   {filters.length > 0 ? (
                     <Link
-                      className="flex align-center"
-                      mb={3}
-                      color={filter == null ? color("brand") : "inherit"}
+                      className={cx("flex align-center mb3", {
+                        "text-brand": filter == null,
+                        "text-inherit": filter != null,
+                      })}
                       onClick={() => handleFilterChange(null)}
                       to={{
                         pathname: location.pathname,
                         query: { ...location.query, type: undefined },
                       }}
                     >
-                      <Icon name="search" mr={1} />
+                      <Icon name="search" className="mr1" />
                       <h4>{t`All results`}</h4>
                     </Link>
                   ) : null}
@@ -169,16 +170,17 @@ export default function SearchApp({ location }) {
                     return (
                       <Link
                         key={f.filter}
-                        className="flex align-center"
-                        mb={3}
+                        className={cx("mb3 flex align-center", {
+                          "text-brand": isActive,
+                          "text-medium": !isActive,
+                        })}
                         onClick={() => handleFilterChange(f)}
-                        color={color(isActive ? "brand" : "text-medium")}
                         to={{
                           pathname: location.pathname,
                           query: { ...location.query, type: f.filter },
                         }}
                       >
-                        <Icon mr={1} name={f.icon} size={16} />
+                        <Icon className="mr1" name={f.icon} size={16} />
                         <h4>{f.name}</h4>
                       </Link>
                     );
@@ -198,7 +200,7 @@ SearchApp.propTypes = {
 };
 
 const SearchResultSection = ({ items }) => (
-  <Card pt={2}>
+  <Card className="pt2">
     {items.map(item => {
       return <SearchResult key={`${item.id}__${item.model}`} result={item} />;
     })}

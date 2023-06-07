@@ -102,7 +102,7 @@ function FormFieldEditor({
   return (
     <FormFieldContainer>
       <EditorContainer>
-        <Column>{isEditable && <DragHandle name="grabber2" />}</Column>
+        <Column>{isEditable && <DragHandle name="grabber" />}</Column>
         <Column full>
           <Header>
             <Title>{field.title}</Title>

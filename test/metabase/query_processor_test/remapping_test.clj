@@ -10,7 +10,8 @@
    [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest basic-internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
@@ -310,13 +311,13 @@
                                                &Products.products.title]}]
                     :order-by [[:asc $id]]
                     :limit    3})]
-          (mt/with-temp Card [{card-1-id :id} {:dataset_query   q1
-                                               :result_metadata (get-in (qp/process-query q1)
-                                                                        [:data :results_metadata :columns])}]
+          (t2.with-temp/with-temp [Card {card-1-id :id} {:dataset_query   q1
+                                                         :result_metadata (get-in (qp/process-query q1)
+                                                                                  [:data :results_metadata :columns])}]
             (let [q2 (mt/mbql-query nil {:source-table (format "card__%d" card-1-id)})]
-              (mt/with-temp Card [{card-2-id :id} {:dataset_query   q2
-                                                   :result_metadata (get-in (qp/process-query q2)
-                                                                            [:data :results_metadata :columns])}]
+              (t2.with-temp/with-temp [Card {card-2-id :id} {:dataset_query   q2
+                                                             :result_metadata (get-in (qp/process-query q2)
+                                                                                      [:data :results_metadata :columns])}]
                 (let [q3 (mt/mbql-query nil {:source-table (format "card__%d" card-2-id)})]
                   (mt/with-native-query-testing-context q3
                     (is (= [[1  14 "Awesome Concrete Shoes" "Awesome Concrete Shoes"]

@@ -15,7 +15,8 @@
    [metabase.pulse.test-util :as pulse.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,7 +26,7 @@
               (met/with-gtaps {:gtaps      {:venues {:query      (mt/mbql-query venues)
                                                      :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
                                :attributes {"cat" 50}}
-                (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
                   ;; `with-gtaps` binds the current test user; we don't want that falsely affecting results
                   (mt/with-test-user nil
                     (pulse.tu/send-pulse-created-by-user! user-kw card)))))]
@@ -90,7 +91,7 @@
                      :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
-          (mt/with-temp Card [card {:dataset_query query}]
+          (t2.with-temp/with-temp [Card card {:dataset_query query}]
             (testing "Sanity check: make sure user is seeing sandboxed results outside of Pulses"
               (testing "ad-hoc query"
                 (is (= 22
@@ -110,7 +111,7 @@
                      :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
-          (mt/with-temp Card [card {:dataset_query query}]
+          (t2.with-temp/with-temp [Card card {:dataset_query query}]
             (testing "GET /api/pulse/preview_card/:id"
               (is (= 22
                      (html->row-count (mt/user-http-request :rasta :get 200 (format "pulse/preview_card/%d" (u/the-id card)))))))

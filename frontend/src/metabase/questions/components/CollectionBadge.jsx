@@ -12,7 +12,7 @@ const propTypes = {
   analyticsContext: PropTypes.string,
 };
 
-const IRREGULAR_ICON_WIDTH = 14;
+const IRREGULAR_ICON_WIDTH = 16;
 const IRREGULAR_ICON_PROPS = {
   width: IRREGULAR_ICON_WIDTH,
   height: 16,
@@ -34,7 +34,7 @@ function CollectionBadge({
   const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(collection);
   const icon = {
     ...collection.getIcon(),
-    ...(isRegular ? { size: 12 } : IRREGULAR_ICON_PROPS),
+    ...(isRegular ? { size: 16 } : IRREGULAR_ICON_PROPS),
   };
   return (
     <Badge

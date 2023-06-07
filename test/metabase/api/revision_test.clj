@@ -10,7 +10,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -24,7 +23,7 @@
   (for [revision (mt/user-http-request :rasta :get "revision" :entity entity, :id object-id)]
     (dissoc revision :timestamp :id)))
 
-(defn- create-card-revision [card-id is-creation? user]
+(defn- create-card-revision! [card-id is-creation? user]
   (revision/push-revision!
     :object       (t2/select-one Card :id card-id)
     :entity       Card
@@ -52,28 +51,39 @@
 ;; case with no revisions (maintains backwards compatibility with old installs before revisions)
 (deftest no-revisions-test
   (testing "Loading revisions, where there are no revisions, should work"
-    (is (= [{:user {}, :diff nil, :description nil, :has_multiple_changes false}]
-           (tt/with-temp Card [{:keys [id]}]
+    (t2.with-temp/with-temp [Card {:keys [id]}]
+      (is (= [{:user {}, :diff nil, :description nil, :has_multiple_changes false}]
              (get-revisions :card id))))))
 
 ;; case with single creation revision
 (deftest single-revision-test
   (testing "Loading a single revision works"
-    (is (= [{:is_reversion         false
-             :is_creation          true
-             :message              nil
-             :user                 @rasta-revision-info
-             :diff                 nil
-             :has_multiple_changes false
-             :description          "created this."}]
-           (tt/with-temp Card [{:keys [id] :as card}]
-             (create-card-revision (:id card) true :rasta)
+    (t2.with-temp/with-temp [Card {:keys [id] :as card}]
+      (create-card-revision! (:id card) true :rasta)
+      (is (= [{:is_reversion         false
+               :is_creation          true
+               :message              nil
+               :user                 @rasta-revision-info
+               :diff                 nil
+               :has_multiple_changes false
+               :description          "created this."}]
              (get-revisions :card id))))))
 
 ;; case with multiple revisions, including reversion
 (deftest multiple-revisions-with-reversion-test
   (testing "Creating multiple revisions, with a reversion, works"
-    (tt/with-temp Card [{:keys [id name], :as card}]
+    (t2.with-temp/with-temp [Card {:keys [id name], :as card}]
+      (create-card-revision! (:id card) true :rasta)
+      (t2/update! Card {:name "something else"})
+      (create-card-revision! (:id card) false :rasta)
+      (t2/insert! Revision
+                  :model        "Card"
+                  :model_id     id
+                  :user_id      (test.users/user->id :rasta)
+                  :object       (revision/serialize-instance Card (:id card) card)
+                  :message      "because i wanted to"
+                  :is_creation  false
+                  :is_reversion true)
       (is (= [{:is_reversion         true
                :is_creation          false
                :message              "because i wanted to"
@@ -97,19 +107,7 @@
                :diff                 nil
                :description          "created this."
                :has_multiple_changes false}]
-             (do
-               (create-card-revision (:id card) true :rasta)
-               (t2/update! Card {:name "something else"})
-               (create-card-revision (:id card) false :rasta)
-               (t2/insert! Revision
-                 :model        "Card"
-                 :model_id     id
-                 :user_id      (test.users/user->id :rasta)
-                 :object       (revision/serialize-instance Card (:id card) card)
-                 :message      "because i wanted to"
-                 :is_creation  false
-                 :is_reversion true)
-               (get-revisions :card id)))))))
+             (get-revisions :card id))))))
 
 ;;; # POST /revision/revert
 
@@ -117,10 +115,22 @@
   [objects]
   (mapv #(dissoc % :id) objects))
 
+(def ^:private default-revision-card
+ {:size_x                 4
+  :size_y                 4
+  :row                    0
+  :col                    0
+  :card_id                nil
+  :series                 []
+  :dashboard_tab_id       nil
+  :action_id              nil
+  :parameter_mappings     []
+  :visualization_settings {}})
+
 (deftest revert-test
   (testing "Reverting through API works"
-    (tt/with-temp* [Dashboard [{:keys [id] :as dash}]
-                    Card      [{card-id :id, :as card}]]
+    (t2.with-temp/with-temp [Dashboard {:keys [id] :as dash}   {}
+                             Card      {card-id :id, :as card} {}]
       (is (=? {:id id}
               (create-dashboard-revision! (:id dash) true :rasta)))
       (let [dashcard (first (t2/insert-returning-instances! DashboardCard
@@ -147,14 +157,14 @@
                :message              nil
                :user                 @rasta-revision-info
                :diff                 {:before {:cards nil}
-                                      :after  {:cards [{:size_x 4 :size_y 4 :row 0 :col 0 :card_id card-id :series [] :dashboard_tab_id nil}]}}
+                                      :after  {:cards [(merge default-revision-card {:card_id card-id :dashboard_id id})]}}
                :has_multiple_changes false
                :description          "reverted to an earlier version."}
               {:is_reversion         false
                :is_creation          false
                :message              nil
                :user                 @rasta-revision-info
-               :diff                 {:before {:cards [{:size_x 4 :size_y 4 :row 0 :col 0 :card_id card-id :series [] :dashboard_tab_id nil}]}
+               :diff                 {:before {:cards [(merge default-revision-card {:card_id card-id :dashboard_id id})]}
                                       :after  {:cards nil}}
                :has_multiple_changes false
                :description          "removed a card."}
@@ -163,7 +173,7 @@
                :message              nil
                :user                 @rasta-revision-info
                :diff                 {:before {:cards nil}
-                                      :after  {:cards [{:size_x 4 :size_y 4 :row 0 :col 0 :card_id card-id :series [] :dashboard_tab_id nil}]}}
+                                      :after  {:cards [(merge default-revision-card {:card_id card-id :dashboard_id id})]}}
                :has_multiple_changes false
                :description          "added a card."}
               {:is_reversion         false
@@ -268,7 +278,6 @@
              (map #(select-keys % [:description :has_multiple_changes])
                   (mt/user-http-request :crowberto :get 200 "revision" :entity "dashboard" :id dashboard-id)))))))
 
-
 (deftest card-revision-description-test
   (testing "revision description for card are generated correctly"
     (t2.with-temp/with-temp
@@ -278,29 +287,29 @@
                                  :dataset_query          (mt/mbql-query venues)
                                  :visualization_settings {}}]
       ;; 0. create the card
-      (create-card-revision card-id true :crowberto)
+      (create-card-revision! card-id true :crowberto)
 
       ;; 1. rename
       (t2/update! Card :id card-id {:name "New name"})
-      (create-card-revision card-id false :crowberto)
+      (create-card-revision! card-id false :crowberto)
 
       ;; 2. turn to a model
       (t2/update! Card :id card-id {:dataset true})
-      (create-card-revision card-id false :crowberto)
+      (create-card-revision! card-id false :crowberto)
 
       ;; 3. edit query and metadata
       (t2/update! Card :id card-id {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
                                     :display       "scalar"})
-      (create-card-revision card-id false :crowberto)
+      (create-card-revision! card-id false :crowberto)
 
       ;; 4. add description
       (t2/update! Card :id card-id {:description "meaningful number"})
-      (create-card-revision card-id false :crowberto)
+      (create-card-revision! card-id false :crowberto)
 
 
       ;; 5. change collection
       (t2/update! Card :id card-id {:collection_id coll-id})
-      (create-card-revision card-id false :crowberto)
+      (create-card-revision! card-id false :crowberto)
 
       ;; 6. revert to an earlier revision
       (let [earlier-revision-id (t2/select-one-pk Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
@@ -340,12 +349,12 @@
                                      :dataset_query          (mt/mbql-query venues)
                                      :visualization_settings {}}]
           ;; 0. create the card
-          (create-card-revision card-id true :crowberto)
+          (create-card-revision! card-id true :crowberto)
 
           ;; 1. rename
           (t2/update! Card :id card-id {:description "meaningful number"
                                         :name        "New name"})
-          (create-card-revision card-id false :crowberto)
+          (create-card-revision! card-id false :crowberto)
 
 
           ;; 2. revert to an earlier revision

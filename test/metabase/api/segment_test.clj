@@ -100,7 +100,7 @@
 (deftest update-permissions-test
   (testing "PUT /api/segment/:id"
     (testing "test security. requires superuser perms"
-      (mt/with-temp Segment [segment]
+      (t2.with-temp/with-temp [Segment segment]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (str "segment/" (:id segment))
                                      {:name             "abc"
@@ -157,7 +157,7 @@
 (deftest partial-update-test
   (testing "PUT /api/segment/:id"
     (testing "Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?"
-      (mt/with-temp Segment [segment]
+      (t2.with-temp/with-temp [Segment segment]
         ;; just make sure API call doesn't barf
         (is (some? (mt/user-http-request :crowberto :put 200 (str "segment/" (u/the-id segment))
                                          {:name             "Cool name"
@@ -167,7 +167,7 @@
 (deftest archive-test
   (testing "PUT /api/segment/:id"
     (testing "Can we archive a Segment with the PUT endpoint?"
-      (mt/with-temp Segment [{:keys [id]}]
+      (t2.with-temp/with-temp [Segment {:keys [id]}]
         (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
                                         {:archived true, :revision_message "Archive the Segment"})))
         (is (= true
@@ -176,7 +176,7 @@
 (deftest unarchive-test
   (testing "PUT /api/segment/:id"
     (testing "Can we unarchive a Segment with the PUT endpoint?"
-      (mt/with-temp Segment [{:keys [id]} {:archived true}]
+      (t2.with-temp/with-temp [Segment {:keys [id]} {:archived true}]
         (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
                                         {:archived false, :revision_message "Unarchive the Segment"})))
         (is (= false
@@ -188,7 +188,7 @@
 (deftest delete-permissions-test
   (testing "DELETE /api/segment/:id"
     (testing "test security. requires superuser perms"
-      (mt/with-temp Segment [{:keys [id]}]
+      (t2.with-temp/with-temp [Segment {:keys [id]}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :delete 403 (str "segment/" id)
                                      :revision_message "yeeeehaw!")))))))
@@ -317,7 +317,7 @@
 (deftest revert-permissions-test
   (testing "POST /api/segment/:id/revert"
     (testing "test security.  requires superuser perms"
-      (mt/with-temp Segment [{:keys [id]}]
+      (t2.with-temp/with-temp [Segment {:keys [id]}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 (format "segment/%d/revert" id) {:revision_id 56})))))))
 
@@ -433,7 +433,7 @@
 (deftest related-entities-test
   (testing "GET /api/segment/:id/related"
     (testing "related/recommended entities"
-      (mt/with-temp Segment [{segment-id :id}]
+      (t2.with-temp/with-temp [Segment {segment-id :id}]
         (is (= #{:table :metrics :segments :linked-from}
                (-> (mt/user-http-request :crowberto :get 200 (format "segment/%s/related" segment-id))
                    keys

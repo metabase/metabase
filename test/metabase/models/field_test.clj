@@ -8,7 +8,8 @@
    [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest unknown-types-test
   (doseq [{:keys [column unknown-type fallback-type]} [{:column        :base_type
@@ -24,7 +25,7 @@
                                                         :unknown-type  :Coercion/Amazing
                                                         :fallback-type nil}]]
     (testing (format "Field with unknown %s in DB should fall back to %s" column fallback-type)
-      (mt/with-temp Field [field]
+      (t2.with-temp/with-temp [Field field]
         (t2/query-one {:update :metabase_field
                        :set    {column (u/qualified-name unknown-type)}
                        :where  [:= :id (u/the-id field)]})
@@ -35,7 +36,7 @@
            clojure.lang.ExceptionInfo
            (re-pattern (format "Invalid value for Field column %s: %s is not a descendant of any of these types:"
                                column unknown-type))
-           (mt/with-temp Field [field {column unknown-type}]
+           (t2.with-temp/with-temp [Field field {column unknown-type}]
              field))))))
 
 (deftest identity-hash-test

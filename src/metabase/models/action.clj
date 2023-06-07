@@ -315,9 +315,11 @@
   "Adds a boolean field `:database-enabled-actions` to each action according to the `database-enable-actions` setting for
    the action's database."
   [actions]
-  (let [action-ids (map :id actions)
-        get-database-enable-actions (fn [db]
-                                      (boolean (some-> db :settings (#(json/parse-string % true)) :database-enable-actions)))
+  (let [action-ids                  (map :id actions)
+        get-database-enable-actions (fn [{:keys [settings]}]
+                                      (boolean (some-> settings
+                                                       ((get-in (t2/transforms :model/Database) [:settings :out]))
+                                                       :database-enable-actions)))
         id->database-enable-actions (into {}
                                           (map (juxt :id get-database-enable-actions))
                                           (t2/query {:select [:action.id :db.settings]

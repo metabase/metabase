@@ -65,7 +65,7 @@ function DatasetManagementSection({
           </MetadataIndicatorContainer>
         </Row>
         <Button
-          icon="model_framed"
+          icon="insight"
           onClick={turnDatasetIntoQuestion}
         >{t`Turn back into a saved question`}</Button>
         <PLUGIN_MODERATION.QuestionModerationSection

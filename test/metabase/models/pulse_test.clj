@@ -25,7 +25,8 @@
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
    [toucan.util.test :as tt]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time LocalDateTime)))
 
@@ -72,11 +73,11 @@
 
 (deftest retrieve-pulse-test
   (testing "this should cover all the basic Pulse attributes"
-    (tt/with-temp* [Pulse        [{pulse-id :id}   {:name "Lodi Dodi"}]
-                    PulseChannel [{channel-id :id} {:pulse_id pulse-id
-                                                    :details  {:other  "stuff"
-                                                               :emails ["foo@bar.com"]}}]
-                    Card         [{card-id :id}    {:name "Test Card"}]]
+    (t2.with-temp/with-temp [Pulse        {pulse-id :id}   {:name "Lodi Dodi"}
+                             PulseChannel {channel-id :id} {:pulse_id pulse-id
+                                                            :details  {:other  "stuff"
+                                                                       :emails ["foo@bar.com"]}}
+                             Card         {card-id :id}    {:name "Test Card"}]
       (t2/insert! PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
       (t2/insert! PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (mt/user->id :rasta))
       (is (= (merge
@@ -137,7 +138,7 @@
 
 ;; update-notification-channels!
 (deftest update-notification-channels-test
-  (mt/with-temp Pulse [{:keys [id]}]
+  (t2.with-temp/with-temp [Pulse {:keys [id]}]
     (pulse/update-notification-channels! {:id id} [{:enabled       true
                                                     :channel_type  :email
                                                     :schedule_type :daily
@@ -159,7 +160,7 @@
 ;; create-pulse!
 ;; simple example with a single card
 (deftest create-pulse-test
-  (mt/with-temp Card [card {:name "Test Card"}]
+  (t2.with-temp/with-temp [Card card {:name "Test Card"}]
     (mt/with-model-cleanup [Pulse]
       (is (= (merge
               pulse-defaults
@@ -341,9 +342,9 @@
       (testing "still sent to a Slack channel"
         (do-with-objects
          (fn [{:keys [archived? user-id pulse-id]}]
-           (mt/with-temp PulseChannel [_ {:channel_type "slack"
-                                          :details      {:channel "#general"}
-                                          :pulse_id     pulse-id}]
+           (t2.with-temp/with-temp [PulseChannel _ {:channel_type "slack"
+                                                    :details      {:channel "#general"}
+                                                    :pulse_id     pulse-id}]
              (testing "make the User inactive"
                (is (pos? (t2/update! User user-id {:is_active false}))))
              (testing "Pulse should not be archived"
@@ -360,9 +361,9 @@
         (testing "emails on a different channel\n"
           (do-with-objects
            (fn [{:keys [archived? user-id pulse-id]}]
-             (mt/with-temp PulseChannel [_ {:channel_type "email"
-                                            :details      {:emails ["foo@bar.com"]}
-                                            :pulse_id     pulse-id}]
+             (t2.with-temp/with-temp [PulseChannel _ {:channel_type "email"
+                                                      :details      {:emails ["foo@bar.com"]}
+                                                      :pulse_id     pulse-id}]
                (testing "make the User inactive"
                  (is (pos? (t2/update! User user-id {:is_active false}))))
                (testing "Pulse should not be archived"
@@ -393,7 +394,7 @@
       ~@body)))
 
 (deftest validate-collection-namespace-test
-  (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]
+  (t2.with-temp/with-temp [Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Pulse in a non-normal Collection"
       (let [pulse-name (mt/random-name)]
         (try
@@ -405,7 +406,7 @@
             (t2/delete! Pulse :name pulse-name)))))
 
     (testing "Shouldn't be able to move a Pulse to a non-normal Collection"
-      (mt/with-temp Pulse [{card-id :id}]
+      (t2.with-temp/with-temp [Pulse {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Pulse can only go in Collections in the \"default\" namespace"

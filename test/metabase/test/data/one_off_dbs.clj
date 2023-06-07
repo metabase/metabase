@@ -9,7 +9,7 @@
    [metabase.sync :as sync]
    [metabase.test.data :as data]
    [metabase.test.util.random :as tu.random]
-   [toucan.util.test :as tt]))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def ^:dynamic *conn*
   "Bound to a JDBC connection spec when using one of the `with-db` macros below."
@@ -21,7 +21,7 @@
   "Impl for `with-blank-db` macro; prefer that to using this directly."
   [f]
   (let [details {:db (str "mem:" (tu.random/random-name) ";DB_CLOSE_DELAY=10")}]
-    (tt/with-temp Database [db {:engine :h2, :details details}]
+    (t2.with-temp/with-temp [Database db {:engine :h2, :details details}]
       (data/with-db db
         (jdbc/with-db-connection [conn (mdb.spec/spec :h2 details)]
           (binding [*conn* conn]
