@@ -13,7 +13,6 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -222,7 +221,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Card can only go in Collections in the \"default\" namespace"
-               (t2/insert! :model/Card (assoc (tt/with-temp-defaults :model/Card) :collection_id collection-id, :name card-name))))
+               (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card) :collection_id collection-id, :name card-name))))
           (finally
             (t2/delete! :model/Card :name card-name)))))
 

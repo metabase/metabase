@@ -23,7 +23,6 @@
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -400,7 +399,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Pulse can only go in Collections in the \"default\" namespace"
-               (t2/insert! Pulse (assoc (tt/with-temp-defaults Pulse) :collection_id collection-id, :name pulse-name))))
+               (t2/insert! Pulse (assoc (t2.with-temp/with-temp-defaults Pulse) :collection_id collection-id, :name pulse-name))))
           (finally
             (t2/delete! Pulse :name pulse-name)))))
 
