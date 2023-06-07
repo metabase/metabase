@@ -38,6 +38,7 @@
   font-size: 12px;
   border-radius: 6px;
   box-shadow: 0 4px 10px var(--color-shadow);
+  overflow-wrap: break-word;
 }
 
 .tippy-box[data-theme~="tooltip"] .tippy-content {
