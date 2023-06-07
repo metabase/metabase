@@ -234,18 +234,12 @@
              include-saved-questions-db?
              include-saved-questions-tables?
              include-editable-data-model?
-<<<<<<< HEAD
              include-analytics?
-             exclude-uneditable-details?]}]
+             exclude-uneditable-details?
+             include-only-uploadable?]}]
   (let [dbs (t2/select Database (merge {:order-by [:%lower.name :%lower.engine]}
                                        (when-not include-analytics?
                                          {:where [:= :is_audit false]})))
-=======
-             exclude-uneditable-details?
-             include-only-uploadable?]}]
-  (let [dbs (t2/select Database {:where [:= :is_audit false]
-                                 :order-by [:%lower.name :%lower.engine]})
->>>>>>> d1be57f4dd (Add `include_only_uploadable?` flag to database endpoint)
         filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
@@ -1054,8 +1048,8 @@
   "Returns a list of all syncable schemas found for the database `id`."
   [id]
   {id ms/PositiveInt}
-  (api/check-superuser)
   (let [db (api/check-404 (t2/select-one Database id))]
+    (api/check-403 (mi/can-write? db))
     (driver/syncable-schemas (:engine db) db)))
 
 (api/defendpoint GET "/:id/schemas"

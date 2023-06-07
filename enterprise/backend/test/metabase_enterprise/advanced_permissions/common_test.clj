@@ -16,7 +16,8 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(defn- do-with-all-user-data-perms
+(defn do-with-all-user-data-perms
+  "Implementation for [[with-all-users-data-perms]]"
   [graph f]
   (let [all-users-group-id  (u/the-id (perms-group/all-users))
         current-graph       (get-in (perms/data-perms-graph) [:groups all-users-group-id])]
@@ -31,7 +32,7 @@
           (u/ignore-exceptions
            (@#'perms/update-group-permissions! all-users-group-id current-graph)))))))
 
-(defmacro ^:private with-all-users-data-perms
+(defmacro with-all-users-data-perms
   "Runs `body` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
   permissions feature flag, and clears the (5 second TTL) cache used for Field permissions, for convenience."
   [graph & body]

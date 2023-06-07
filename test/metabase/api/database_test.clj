@@ -563,13 +563,15 @@
 (defmethod driver/database-supports? [::no-nested-query-support :nested-queries] [_driver _feature _db] false)
 
 (defn- get-all
-  [endpoint existing-ids]
-  (let [new?        (complement (set existing-ids))
-        dbs         (->> (mt/user-http-request :rasta :get 200 endpoint)
-                         :data
-                         (filter (comp new? :id)))]
-    {:data  dbs
-     :total (count dbs)}))
+  ([endpoint existing-ids]
+   (get-all :rasta endpoint existing-ids))
+  ([user endpoint existing-ids]
+   (let [new?        (complement (set existing-ids))
+         dbs         (->> (mt/user-http-request user :get 200 endpoint)
+                          :data
+                          (filter (comp new? :id)))]
+     {:data  dbs
+      :total (count dbs)})))
 
 (deftest databases-list-test
   (testing "GET /api/database"
@@ -604,9 +606,14 @@
     (testing "`?include_only_uploadable=true` -- includes drivers that do support uploads"
       (let [old-ids (t2/select-pks-set Database)]
         (t2.with-temp/with-temp [Database _ {:engine :postgres :name "The Chosen One"}]
-          (let [result (get-all "database?include_only_uploadable=true" old-ids)]
-            (is (= 1 (:total result)))
-            (is (= "The Chosen One" (-> result :data first :name)))))))))
+          (testing "Must be an admin"
+            (let [result (get-all :crowberto "database?include_only_uploadable=true" old-ids)]
+              (is (= 1 (:total result)))
+              (is (= "The Chosen One" (-> result :data first :name)))))
+          (testing "No results for non-admins"
+            (is (= {:data []
+                    :total 0}
+                   (get-all :rasta "database?include_only_uploadable=true" old-ids)))))))))
 
 (deftest databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
