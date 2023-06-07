@@ -11,7 +11,6 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
-   
    [toucan2.core :as t2]))
 
 (comment api/keep-me)
