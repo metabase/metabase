@@ -150,7 +150,8 @@
   (when-let [old-revisions (seq (drop max-revisions (map :id (t2/select [Revision :id]
                                                                :model    (name model)
                                                                :model_id id
-                                                               {:order-by [[:timestamp :desc]]}))))]
+                                                               {:order-by [[:timestamp :desc]
+                                                                           [:id :desc]]}))))]
     (t2/delete! Revision :id [:in old-revisions])))
 
 (defn push-revision!

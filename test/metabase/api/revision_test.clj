@@ -70,12 +70,14 @@
              (get-revisions :card id))))))
 
 (deftest get-revision-for-entity-with-revision-exceeds-max-revision-test
-  (t2.with-temp/with-temp [Card {:keys [id] :as card}]
+  (t2.with-temp/with-temp [Card {:keys [id] :as card} {:name "A card"}]
     (create-card-revision! (:id card) true :rasta)
-    (doseq [i (range revision/max-revisions)]
+    (doseq [i (range (inc revision/max-revisions))]
       (t2/update! :model/Card (:id card) {:name (format "New name %d" i)})
       (create-card-revision! (:id card) false :rasta))
-    (is (= ["renamed this Card from \"New name 13\" to \"New name 14\"."
+
+    (is (= ["renamed this Card from \"New name 14\" to \"New name 15\"."
+            "renamed this Card from \"New name 13\" to \"New name 14\"."
             "renamed this Card from \"New name 12\" to \"New name 13\"."
             "renamed this Card from \"New name 11\" to \"New name 12\"."
             "renamed this Card from \"New name 10\" to \"New name 11\"."
@@ -88,7 +90,6 @@
             "renamed this Card from \"New name 3\" to \"New name 4\"."
             "renamed this Card from \"New name 2\" to \"New name 3\"."
             "renamed this Card from \"New name 1\" to \"New name 2\"."
-            "renamed this Card from \"New name 0\" to \"New name 1\"."
             "modified this."]
            (map :description (get-revisions :card id))))))
 
