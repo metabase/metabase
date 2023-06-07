@@ -167,8 +167,8 @@ export function UploadSettingsView({
       .catch(() => showError(disableErrorMessage));
   };
 
-  const showPrefix = dbId && !showSchema;
-  const hasValidSettings = dbId && (showPrefix || schemaName);
+  const showPrefix = !!dbId;
+  const hasValidSettings = dbId && !(showSchema && !schemaName);
   const settingsChanged =
     dbId !== settings.uploads_database_id ||
     schemaName !== settings.uploads_schema_name ||
@@ -188,7 +188,9 @@ export function UploadSettingsView({
               setDbId(e.target.value);
               if (e.target.value) {
                 resetButtons();
-                setTablePrefix(null);
+                dbHasSchema(databases, e.target.value)
+                  ? setTablePrefix(null)
+                  : setTablePrefix("upload_");
                 setSchemaName(null);
               }
             }}
@@ -221,7 +223,7 @@ export function UploadSettingsView({
             <SectionTitle>{t`Upload Table Prefix`}</SectionTitle>
             <Input
               value={tablePrefix ?? ""}
-              placeholder={t`uploaded_`}
+              placeholder={t`upload_`}
               onChange={e => {
                 resetButtons();
                 setTablePrefix(e.target.value);
