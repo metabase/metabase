@@ -73,6 +73,10 @@
           (sync-metadata/sync-db-metadata! audit-db))
       (when (not config/is-prod?)
         (log/warn "Audit DB was not installed correctly!!")))
-    ;; Install internal analytics content when the resource exists:
+    ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
     (when analytics-root-dir-resource
-      (serialization.cmd/v2-load analytics-root-dir-resource {}))))
+      (log/info (str "Loading Analytics Content from: " analytics-root-dir-resource))
+      (let [report (log/with-no-logs (serialization.cmd/v2-load analytics-root-dir-resource {}))]
+        (if (not-empty (:errors report))
+          (log/info (str "Error Loading Analytics Content: " (pr-str report)))
+          (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized.")))))))
