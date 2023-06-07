@@ -1,5 +1,6 @@
 (ns metabase-enterprise.serialization.api.serialize-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.models :refer [Card Collection Dashboard DashboardCard]]
    [metabase.public-settings.premium-features-test
