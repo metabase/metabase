@@ -12,9 +12,10 @@ import {
 } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
+import { hasUserDismissedToast } from "metabase/selectors/user";
 import { CollectionItem } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";
-import { hasUserDismissedToast } from "metabase/selectors/user";
+
 import {
   getCustomHomePageDashboardId,
   getIsMetabotEnabled,
@@ -66,7 +67,7 @@ export const HomePage = (): JSX.Element => {
         );
       }
     }
-  }, [dashboardId, showHomepageRedirectRoast, dispatch, addUndo]);
+  }, [dashboardId, showHomepageRedirectRoast, dispatch]);
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;

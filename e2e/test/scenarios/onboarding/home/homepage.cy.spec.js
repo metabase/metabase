@@ -6,6 +6,9 @@ import {
   dashboardHeader,
   navigationSidebar,
 } from "e2e/support/helpers";
+import { USERS } from "e2e/support/cypress_data";
+
+const { admin } = USERS;
 
 describe("scenarios > home > homepage", () => {
   beforeEach(() => {
@@ -239,6 +242,22 @@ describe("scenarios > home > custom homepage", () => {
       cy.findByTestId("undo-list")
         .contains(/Your admin has set this dashboard as your homepage/)
         .should("not.exist");
+    });
+
+    it("should only show one toast on login", () => {
+      cy.signOut();
+      cy.visit("/auth/login");
+      cy.findByLabelText("Email address")
+        .should("be.focused")
+        .type(admin.email);
+      cy.findByLabelText("Password").type(admin.password);
+      cy.findByRole("button", { name: /sign in/i }).click();
+
+      cy.findByRole("status").within(() => {
+        cy.contains(
+          /Your admin has set this dashboard as your homepage/,
+        ).should("have.length", 1);
+      });
     });
   });
 });

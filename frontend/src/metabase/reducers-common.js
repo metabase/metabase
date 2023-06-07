@@ -7,6 +7,7 @@ import requests from "metabase/redux/requests";
 import settings from "metabase/redux/settings";
 import undo from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
+import { reducer as auth } from "metabase/redux/auth";
 // eslint-disable-next-line import/no-named-as-default
 import entities, { enhanceRequestsReducer } from "metabase/redux/entities";
 
@@ -24,4 +25,5 @@ export default {
   undo,
   entities,
   upload,
+  auth,
 };
