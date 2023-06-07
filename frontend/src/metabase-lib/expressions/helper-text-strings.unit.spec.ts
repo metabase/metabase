@@ -1,4 +1,3 @@
-import { checkNotNull } from "metabase/core/utils/types";
 import { createMockDatabase } from "metabase-types/api/mocks/database";
 import { Database } from "metabase-types/api";
 import { createMockMetadata } from "__support__/metadata";
@@ -76,6 +75,10 @@ describe("getHelpText", () => {
 function setup(dbOpts?: Partial<Database>) {
   const database = createMockDatabase(dbOpts);
   const metadata = createMockMetadata({ databases: [database] });
+  const instance = metadata.database(database.id);
+  if (!instance) {
+    throw new TypeError();
+  }
 
-  return { database: checkNotNull(metadata.database(database.id)) };
+  return { database: instance };
 }
