@@ -245,6 +245,72 @@ const MODEL_NAME = "Test Action Model";
             expect(result.rows.length).to.equal(0);
           });
         });
+
+        it("add an implicit Update action with hidden fields and runs it", () => {
+          const actionName = "Update";
+          const IMPLICIT_ACTION_FIELD_TO_HIDE = "created_at";
+
+          cy.get("@modelId").then(id => {
+            createImplicitAction({
+              kind: "update",
+              model_id: id,
+            }).then(({ body }) => {
+              cy.wrap(body).as("implicitAction");
+            });
+
+            cy.get("@implicitAction").then(implicitAction => {
+              const actionPayload = {
+                visualization_settings: {
+                  ...implicitAction.visualization_settings,
+                  fields: {
+                    ...implicitAction.visualization_settings.fields,
+                    [IMPLICIT_ACTION_FIELD_TO_HIDE]: {
+                      ...implicitAction.visualization_settings.fields[
+                        IMPLICIT_ACTION_FIELD_TO_HIDE
+                      ],
+                      hidden: true,
+                    },
+                  },
+                },
+              };
+
+              cy.request(
+                "PUT",
+                `/api/action/${implicitAction.id}`,
+                actionPayload,
+              );
+            });
+          });
+
+          createDashboardWithActionButton({
+            actionName,
+            idFilter: true,
+          });
+
+          filterWidget().click();
+          addWidgetStringFilter("5");
+
+          clickHelper(actionName);
+
+          cy.wait("@executePrefetch");
+
+          // checking that hidden field "created_at" is actually hidden
+          modal().within(() => {
+            cy.findByPlaceholderText("Team Name").should(
+              "have.value",
+              "Energetic Elephants",
+            );
+
+            cy.findByPlaceholderText("Created At").should("not.exist");
+
+            cy.findByRole("button", { name: "Update" }).click();
+          });
+
+          cy.findByTestId("toast-undo").should(
+            "have.text",
+            "Successfully updated",
+          );
+        });
       });
 
       describe(`Actions Data Types`, () => {

@@ -229,7 +229,9 @@ const getFormField = (
       parameter.id,
     description: fieldSettings.description ?? "",
     placeholder: fieldSettings?.placeholder,
-    optional: !fieldSettings.required,
+    // fieldSettings for implicit actions contain only `hidden` and `id`
+    // in this case we rely on required settings of parameter
+    optional: fieldSettings.required === false || parameter.required === false,
     field: fieldSettings.field,
   };
 
@@ -330,4 +332,8 @@ export const getSubmitButtonLabel = (action: WritebackAction): string => {
   }
 
   return action.name;
+};
+
+export const isActionPublic = (action: Partial<WritebackAction>) => {
+  return action.public_uuid != null;
 };

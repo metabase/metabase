@@ -128,3 +128,12 @@ export const createMockFieldSettings = (
   width: "medium",
   ...opts,
 });
+
+export const createMockImplicitActionFieldSettings = (
+  opts?: Partial<FieldSettings>,
+) =>
+  ({
+    id: "",
+    hidden: false,
+    ...opts,
+  } as FieldSettings);

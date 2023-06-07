@@ -47,15 +47,17 @@ export const formatSubmitValues = (
 ) => {
   const values: ParametersForActionExecution = {};
 
-  Object.entries(rawValues).forEach(([fieldId, fieldValue]) => {
-    values[fieldId] = fieldValue;
+  Object.entries(rawValues)
+    .filter(([fieldId]) => !fieldSettings[fieldId].hidden)
+    .forEach(([fieldId, fieldValue]) => {
+      values[fieldId] = fieldValue;
 
-    const formField = fieldSettings[fieldId];
-    const isNumericField = formField?.fieldType === "number";
-    if (isNumericField && !isEmpty(fieldValue)) {
-      values[fieldId] = Number(fieldValue) ?? null;
-    }
-  });
+      const formField = fieldSettings[fieldId];
+      const isNumericField = formField?.fieldType === "number";
+      if (isNumericField && !isEmpty(fieldValue)) {
+        values[fieldId] = Number(fieldValue);
+      }
+    });
 
   return values;
 };
