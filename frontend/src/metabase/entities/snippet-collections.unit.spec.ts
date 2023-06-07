@@ -87,7 +87,7 @@ function getReduxState({
   };
 }
 
-describe("SnippetCollection selectors", () => {
+describe("SnippetCollections selectors", () => {
   describe("getExpandedCollectionsById", () => {
     const { getExpandedCollectionsById } = SnippetCollections.selectors;
 
