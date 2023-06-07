@@ -17,9 +17,9 @@ import {
   createMockParameter,
   createMockActionParameter,
   createMockCollectionItem,
+  createMockFieldSettings,
 } from "metabase-types/api/mocks";
 
-import { FieldSettingsMap } from "metabase-types/api";
 import { ConnectedActionDashcardSettings } from "./ActionDashcardSettings";
 
 const dashboardParameter = createMockParameter({
@@ -80,19 +80,19 @@ const actions2 = [
     parameters: [actionParameter1, actionParameter2, actionParameter3],
     visualization_settings: {
       fields: {
-        [actionParameter1.id]: {
+        [actionParameter1.id]: createMockFieldSettings({
           id: actionParameter1.id,
           hidden: false,
-        },
-        [actionParameter2.id]: {
+        }),
+        [actionParameter2.id]: createMockFieldSettings({
           id: actionParameter2.id,
           hidden: true,
-        },
-        [actionParameter3.id]: {
+        }),
+        [actionParameter3.id]: createMockFieldSettings({
           id: actionParameter3.id,
           hidden: true,
-        },
-      } as FieldSettingsMap,
+        }),
+      },
     },
   }),
 ];
@@ -204,11 +204,13 @@ describe("ActionViz > ActionDashcardSettings", () => {
     );
 
     expect(formSection).toBeInTheDocument();
-    expect(within(formSection).getByText(/is required/i)).toBeInTheDocument();
-    expect(within(formSection).getByText(/hidden/i)).toBeInTheDocument();
     expect(
-      within(formSection).getByRole("button", { name: /select a value/i }),
+      within(formSection).getByText("Action Parameter 3: is required"),
     ).toBeInTheDocument();
+    expect(within(formSection).getByText("Hidden")).toBeInTheDocument();
+    expect(within(formSection).getByRole("button")).toHaveTextContent(
+      "Select a value",
+    );
   });
 
   it("can close the modal with the done button", () => {
