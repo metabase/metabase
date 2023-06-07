@@ -11,7 +11,6 @@
    [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -185,7 +184,7 @@ Eg. if Dashboard B includes a Card A that is derived from a
                           (update-vals #(set (map second %))))
           extract-ids (fn [[model ids]]
                         (eduction (map #(serdes/extract-one model opts %))
-                                  (db/select-reducible (symbol model) :id [:in ids])))]
+                                  (t2/reducible-select (symbol model) :id [:in ids])))]
       (eduction cat
                 [(eduction (map extract-ids) cat by-model)
                  ;; extract all non-content entities like data model and settings if necessary

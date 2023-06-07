@@ -11,7 +11,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;; -------------------------------------------- Entity & Life Cycle ----------------------------------------------
@@ -327,7 +326,7 @@
 
 (defmethod serdes/extract-query "Action" [_model _opts]
   (eduction (map hydrate-subtype)
-            (db/select-reducible 'Action)))
+            (t2/reducible-select Action)))
 
 (defmethod serdes/hash-fields :model/Action [_action]
   [:name (serdes/hydrated-hash :model) :created_at])

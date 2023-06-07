@@ -4,6 +4,7 @@
    [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
+   [metabase.db.util :as mdb.u]
    [metabase.events.view-log :as view-log]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -12,7 +13,6 @@
    [metabase.models.table :refer [Table]]
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -33,7 +33,7 @@
                      :display_name :initial_sync_status
                      :visibility_type])
       (let [model-symb (symbol (str/capitalize model))
-            self-qualify #(db/qualify model-symb %)]
+            self-qualify #(mdb.u/qualify model-symb %)]
         (cond-> {:where [:in (self-qualify :id) ids]}
           (not= model "table")
           (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})))))
@@ -78,7 +78,7 @@
                                               [:%max.timestamp :max_ts]]
                                              {:group-by  [:model :model_id]
                                               :where     [:and
-                                                          (when-not all-users? [:= (db/qualify ViewLog :user_id) *current-user-id*])
+                                                          (when-not all-users? [:= (mdb.u/qualify ViewLog :user_id) *current-user-id*])
                                                           [:in :model #{"dashboard" "table"}]
                                                           [:= :bm.id nil]]
                                               :order-by  [[:max_ts :desc] [:model :desc]]
@@ -90,10 +90,10 @@
                                                            [:= :model_id :bm.dashboard_id]]]})
         card-runs                 (->> (t2/select [QueryExecution
                                                    [:%min.executor_id :user_id]
-                                                   [(db/qualify QueryExecution :card_id) :model_id]
+                                                   [(mdb.u/qualify QueryExecution :card_id) :model_id]
                                                    [:%count.* :cnt]
                                                    [:%max.started_at :max_ts]]
-                                                  {:group-by [(db/qualify QueryExecution :card_id) :context]
+                                                  {:group-by [(mdb.u/qualify QueryExecution :card_id) :context]
                                                    :where    [:and
                                                               (when-not all-users? [:= :executor_id *current-user-id*])
                                                               [:= :context (h2x/literal :question)]
@@ -103,7 +103,7 @@
                                                    :left-join [[:card_bookmark :bm]
                                                                [:and
                                                                 [:= :bm.user_id *current-user-id*]
-                                                                [:= (db/qualify QueryExecution :card_id) :bm.card_id]]]})
+                                                                [:= (mdb.u/qualify QueryExecution :card_id) :bm.card_id]]]})
                                        (map #(dissoc % :row_count))
                                        (map #(assoc % :model "card")))]
     (->> (concat card-runs dashboard-and-table-views)

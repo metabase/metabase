@@ -24,7 +24,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model])
@@ -179,15 +178,15 @@
   [model {:keys [collection-set]}]
   (if collection-set
     ;; If collection-set is defined, select everything in those collections, or with nil :collection_id.
-    (let [in-colls  (db/select-reducible model :collection_id [:in collection-set])]
+    (let [in-colls  (t2/reducible-select model :collection_id [:in collection-set])]
       (if (contains? collection-set nil)
-        (eduction cat [in-colls (db/select-reducible model :collection_id nil)])
+        (eduction cat [in-colls (t2/reducible-select model :collection_id nil)])
         in-colls))
     ;; If collection-set is nil, just select everything.
-    (db/select-reducible model)))
+    (t2/reducible-select model)))
 
 (defmethod extract-query :default [model-name _]
-  (db/select-reducible (symbol model-name)))
+  (t2/reducible-select (symbol model-name)))
 
 (defn extract-one-basics
   "A helper for writing [[extract-one]] implementations. It takes care of the basics:
@@ -265,7 +264,7 @@
 
 (defmulti load-xform
   "Given the incoming vanilla map as ingested, transform it so it's suitable for sending to the database (in eg.
-  [[db/insert!]]).
+  [[t2/insert!]]).
   For example, this should convert any foreign keys back from a portable entity ID or identity hash into a numeric
   database ID. This is the mirror of [[extract-one]], in spirit. (They're not strictly inverses - [[extract-one]] drops
   the primary key but this need not put one back, for example.)
@@ -368,7 +367,7 @@
   ;; TODO This should be able to use a cache of identity-hash values from the start of the deserialization process.
   ;; Note that it needs to include either updates (or worst-case, invalidation) at [[load-one!]] time.
   [model id-hash]
-  (->> (db/select-reducible model)
+  (->> (t2/reducible-select model)
        (into [] (comp (filter #(= id-hash (identity-hash %)))
                       (take 1)))
        first))
