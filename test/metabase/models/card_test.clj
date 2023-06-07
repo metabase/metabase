@@ -13,7 +13,6 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.hydrate :as hydrate]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -50,7 +49,7 @@
 
 (deftest dropdown-widget-values-usage-count-test
   (let [hydrated-count (fn [card] (-> card
-                                      (hydrate/hydrate :parameter_usage_count)
+                                      (t2/hydrate :parameter_usage_count)
                                       :parameter_usage_count))
         default-params {:name       "Category Name"
                         :slug       "category_name"

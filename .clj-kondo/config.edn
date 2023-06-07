@@ -162,6 +162,7 @@
    toucan.db/resolve-model       {:message "Use metabase.db.util/resolve-model instead of toucan.db/resolve-model"}
    toucan.models/primary-key     {:message "Use metabase.db.util/primary-key instead of toucan.models/primary-key"}
    toucan.models/model?          {:message "Use mdb.u/toucan-model? instead of toucan.models/model?"}
+   toucan.hydrate/hydrate        {:message "Use t2/hydrate instead of toucan.hydrate/hydrate"}
    toucan.util.test/with-temp    {:message "Use t2.with-temp/with-temp instead of toucan.util.test/with-temp"}
    toucan.util.test/with-temp*   {:message "Use t2.with-temp/with-temp instead of toucan.util.test/with-temp*"}}
 

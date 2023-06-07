@@ -23,7 +23,6 @@
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -151,7 +150,7 @@
                    :recipients    [{:email "foo@bar.com"}
                                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})
            (-> (t2/select-one PulseChannel :pulse_id id)
-               (hydrate :recipients)
+               (t2/hydrate :recipients)
                (dissoc :id :pulse_id :created_at :updated_at)
                (update :entity_id boolean)
                (m/dissoc-in [:details :emails])

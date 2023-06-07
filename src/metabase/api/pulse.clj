@@ -29,7 +29,6 @@
    [metabase.util.schema :as su]
    [metabase.util.urls :as urls]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
@@ -94,7 +93,7 @@
         pulses               (if creator-or-recipient
                                (map maybe-strip-sensitive-metadata pulses)
                                pulses)]
-    (hydrate pulses :can_write)))
+    (t2/hydrate pulses :can_write)))
 
 (defn check-card-read-permissions
   "Users can only create a pulse for `cards` they have access to."
@@ -151,7 +150,7 @@
    (-> pulse
        maybe-filter-pulse-recipients
        maybe-strip-sensitive-metadata
-       (hydrate :can_write))))
+       (t2/hydrate :can_write))))
 
 (defn- maybe-add-recipients-for-sandboxed-users
   "Sandboxed users can't read the full recipient list for a pulse, so we need to merge in existing recipients
