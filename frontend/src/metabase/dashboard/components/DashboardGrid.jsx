@@ -96,7 +96,7 @@ class DashboardGrid extends Component {
   }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
-    const { dashboard, dashcardData, isEditing } = nextProps;
+    const { dashboard, dashcardData, isEditing, selectedTabId } = nextProps;
 
     const visibleCardIds = !isEditing
       ? getVisibleCardIds(
@@ -110,6 +110,7 @@ class DashboardGrid extends Component {
       dashboard.ordered_cards,
       visibleCardIds,
       isEditing,
+      selectedTabId,
     );
 
     this.setState({
@@ -180,10 +181,18 @@ class DashboardGrid extends Component {
     cards = this.props.dashboard.ordered_cards,
     visibleCardIds = this.state.visibleCardIds,
     isEditing = this.props.isEditing,
+    selectedTabId = this.props.selectedTabId,
   ) => {
+    const tabCards = cards.filter(
+      card =>
+        !selectedTabId ||
+        card.dashboard_tab_id === selectedTabId ||
+        card.dashboard_tab_id === null,
+    );
+
     return isEditing
-      ? cards
-      : cards.filter(card => visibleCardIds.has(card.id));
+      ? tabCards
+      : tabCards.filter(card => visibleCardIds.has(card.id));
   };
 
   getLayouts(cards) {

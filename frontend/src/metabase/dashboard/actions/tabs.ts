@@ -128,7 +128,7 @@ export const tabsReducer = createReducer<DashboardState>(
           const newTab = getDefaultTab({
             tabId,
             dashId,
-            name: t`Tab ${prevTabs.length + 1}`,
+            name: t`Tab ${prevTabs.filter(t => !t.isRemoved).length + 1}`,
           });
           prevDash.ordered_tabs = [...prevTabs, newTab];
 

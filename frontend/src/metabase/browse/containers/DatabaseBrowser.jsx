@@ -28,13 +28,13 @@ function DatabaseBrowser({ databases }) {
               to={Urls.browseDatabase(database)}
               data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
               display="block"
-              hover={{ color: color("brand") }}
+              className="text-brand-hover"
             >
-              <Card p={3} hover={{ color: color("brand") }}>
+              <Card className="p3 text-brand-hover">
                 <Icon
                   name="database"
                   color={color("accent2")}
-                  mb={3}
+                  className="mb3"
                   size={32}
                 />
                 <h3 className="text-wrap">{database.name}</h3>

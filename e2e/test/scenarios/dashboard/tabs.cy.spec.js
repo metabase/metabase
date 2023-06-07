@@ -1,18 +1,13 @@
 import {
-  editDashboard,
   restore,
-  visitDashboard,
   saveDashboard,
   openQuestionsSidebar,
   undo,
   dashboardCards,
   sidebar,
   popover,
+  visitDashboardAndCreateTab,
 } from "e2e/support/helpers";
-
-function createNewTab() {
-  cy.findByLabelText("Create new tab").click();
-}
 
 describe("scenarios > dashboard tabs", () => {
   beforeEach(() => {
@@ -21,14 +16,13 @@ describe("scenarios > dashboard tabs", () => {
   });
 
   it("should only display cards on the selected tab", () => {
-    visitDashboard(1);
-
-    editDashboard();
-    createNewTab();
+    // Create new tab
+    visitDashboardAndCreateTab({ dashboardId: 1, save: false });
     dashboardCards().within(() => {
       cy.findByText("Orders").should("not.exist");
     });
 
+    // Add card to second tab
     cy.icon("pencil").click();
     openQuestionsSidebar();
     sidebar().within(() => {
@@ -36,6 +30,7 @@ describe("scenarios > dashboard tabs", () => {
     });
     saveDashboard();
 
+    // Go back to first tab
     cy.findByRole("tab", { name: "Tab 1" }).click();
     dashboardCards().within(() => {
       cy.findByText("Orders, count").should("not.exist");
@@ -46,22 +41,18 @@ describe("scenarios > dashboard tabs", () => {
   });
 
   it("should allow undoing a tab deletion", () => {
-    visitDashboard(1);
-    editDashboard();
-    createNewTab();
+    visitDashboardAndCreateTab({ dashboardId: 1, save: false });
 
+    // Delete first tab
     cy.findByRole("tab", { name: "Tab 1" }).findByRole("button").click();
     popover().within(() => {
       cy.findByText("Delete").click();
     });
     cy.findByRole("tab", { name: "Tab 1" }).should("not.exist");
 
+    // Undo then go back to first tab
     undo();
     cy.findByRole("tab", { name: "Tab 1" }).click();
-
-    dashboardCards().within(() => {
-      cy.findByText("Orders, count").should("not.exist");
-    });
     dashboardCards().within(() => {
       cy.findByText("Orders").should("be.visible");
     });

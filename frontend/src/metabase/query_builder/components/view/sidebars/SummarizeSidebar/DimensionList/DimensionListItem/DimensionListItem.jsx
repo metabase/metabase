@@ -71,6 +71,7 @@ export const DimensionListItem = ({
     <DimensionListItemRoot
       data-testid="dimension-list-item"
       isSelected={isSelected}
+      aria-label={name}
       aria-selected={isSelected}
     >
       <DimensionListItemContent>
@@ -107,8 +108,11 @@ export const DimensionListItem = ({
         )}
 
         {isSelected && (
-          <DimensionListItemRemoveButton aria-label="Remove dimension">
-            <Icon name="close" onClick={handleRemove} />
+          <DimensionListItemRemoveButton
+            onClick={handleRemove}
+            aria-label={t`Remove dimension`}
+          >
+            <Icon name="close" />
           </DimensionListItemRemoveButton>
         )}
       </DimensionListItemContent>
@@ -117,7 +121,7 @@ export const DimensionListItem = ({
         <Tooltip tooltip={t`Add grouping`}>
           <DimensionListItemAddButton
             onClick={handleAdd}
-            aria-label="Add dimension"
+            aria-label={t`Add dimension`}
           >
             <Icon name="add" />
           </DimensionListItemAddButton>

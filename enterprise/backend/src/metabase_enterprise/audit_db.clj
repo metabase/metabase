@@ -1,7 +1,9 @@
 (ns metabase-enterprise.audit-db
-  (:require [metabase.db.env :as mdb.env]
+  (:require [metabase.config :as config]
+            [metabase.db.env :as mdb.env]
             [metabase.models.database :refer [Database]]
             [metabase.public-settings.premium-features :refer [defenterprise]]
+            [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.util :as u]
             [metabase.util.log :as log]
             [toucan2.core :as t2]))
@@ -55,7 +57,13 @@
       ::no-op)))
 
 (defenterprise ensure-audit-db-installed!
-  "EE implementation of `ensure-db-installed!`."
+  "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
   :feature :none
   []
-  (ensure-db-installed!))
+  (u/prog1 (ensure-db-installed!)
+    ;; There's a sync scheduled, but we want to force a sync right away:
+    (if-let [audit-db (t2/select-one :model/Database {:where [:= :is_audit true]})]
+      (do (log/info "Audit DB installed, beginning Audit DB Sync...")
+          (sync-metadata/sync-db-metadata! audit-db))
+      (when (not config/is-prod?)
+        (log/warn "Audit DB was not installed correctly!!")))))
