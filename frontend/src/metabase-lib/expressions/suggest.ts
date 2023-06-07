@@ -23,7 +23,7 @@ import {
   MBQLClauseMap,
 } from "metabase-lib/expressions/types";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import { getHelpText } from "./helper-text-strings";
+import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
 
 const MBQL_CLAUSES = MBQL_CLAUSES_CONFIG as MBQLClauseMap;
 
