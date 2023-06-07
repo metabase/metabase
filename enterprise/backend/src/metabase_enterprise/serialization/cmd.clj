@@ -202,24 +202,3 @@
   Returns truthy if all entity IDs were added successfully, or falsey if any errors were encountered."
   []
   (v2.seed-entity-ids/seed-entity-ids!))
-
-
-(comment
-
-  ;; Steps to extract and prepare Internal Analytics Magic Dashboards ❇
-
-  ;; Delete the resources/internal_analytics that are there:
-
-  (require '[clojure.java.shell :as sh])
-  (:exit (sh/sh "rm" "-rf" "resourecs/internal_analytics"))
-
-  ;; Use this to dump Internal Analytics:
-  (v2-dump "resources/internal_analytics" {:collection-ids [(t2/select-one-fn :id 'Collection {:where [:= :type "internal_analytics"]})]})
-
-  ;; TODO ought to remove some unwanted stuff:
-
-  ;; Sample Database:
-
-  ;; Personal Collections:
-
-  )
