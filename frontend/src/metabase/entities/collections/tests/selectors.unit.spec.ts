@@ -1,4 +1,11 @@
+import { Collection, CollectionId } from "metabase-types/api";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
+
+interface MockCollection {
+  id: Collection["id"];
+  name: Collection["name"];
+  can_write?: Collection["can_write"];
+}
 
 describe("Collection selectors", () => {
   const CANONICAL_ROOT_COLLECTION_ID = null;
@@ -36,6 +43,9 @@ describe("Collection selectors", () => {
   function getReduxState({
     isAdmin = false,
     collections = DEFAULT_COLLECTIONS,
+  }: {
+    isAdmin?: boolean;
+    collections?: Partial<Record<CollectionId, MockCollection>>;
   } = {}) {
     return {
       currentUser: {
