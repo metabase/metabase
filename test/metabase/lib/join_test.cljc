@@ -115,7 +115,7 @@
               (lib.metadata.calculation/metadata query -1 query))))))
 
 (deftest ^:parallel col-info-explicit-join-test
-  (testing "Display name for a joined field should include a nice name for the join; include other info like :source_alias"
+  (testing "Display name for a joined field should include a nice name for the join; include other info like :source-alias"
     (let [query {:lib/type     :mbql/query
                  :stages       [{:lib/type     :mbql.stage/mbql
                                  :lib/options  {:lib/uuid "fdcfaa06-8e65-471d-be5a-f1e821022482"}
@@ -234,14 +234,14 @@
                       :long-display-name "Categories"
                       :is-source-table false}
               :effective-type :type/BigInteger
-              :long-display-name "Categories → ID"
+              :long-display-name "Cat → ID"
               :display-name "ID"}
              {:table {:name "CATEGORIES"
                       :display-name "Categories"
                       :long-display-name "Categories"
                       :is-source-table false}
               :effective-type :type/Text
-              :long-display-name "Categories → Name"
+              :long-display-name "Cat → Name"
               :display-name "Name"}]
             (map #(lib/display-info query %)
                  (lib.metadata.calculation/metadata query))))

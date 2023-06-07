@@ -103,16 +103,16 @@
                                :lib/options  {:lib/uuid "fdcfaa06-8e65-471d-be5a-f1e821022482"}
                                :source-table (meta/id :venues)
                                :fields       [[:field
-                                               {:join-alias "CATEGORIES__via__CATEGORY_ID"
+                                               {:join-alias "Categories"
                                                 :lib/uuid   "8704e09b-496e-4045-8148-1eef28e96b51"}
                                                (meta/id :categories :name)]]
                                :joins        [{:lib/type    :mbql/join
                                                :lib/options {:lib/uuid "490a5abb-54c2-4e62-9196-7e9e99e8d291"}
-                                               :alias       "CATEGORIES__via__CATEGORY_ID"
+                                               :alias       "Categories"
                                                :conditions  [[:=
                                                               {:lib/uuid "cc5f6c43-1acb-49c2-aeb5-e3ff9c70541f"}
                                                               (lib.tu/field-clause :venues :category-id)
-                                                              (lib.tu/field-clause :categories :id {:join-alias "CATEGORIES__via__CATEGORY_ID"})]]
+                                                              (lib.tu/field-clause :categories :id {:join-alias "Categories"})]]
                                                :strategy    :left-join
                                                :fk-field-id (meta/id :venues :category-id)
                                                :stages      [{:lib/type     :mbql.stage/mbql
@@ -121,7 +121,7 @@
                :database     (meta/id)
                :lib/metadata meta/metadata-provider}
         field [:field
-               {:join-alias "CATEGORIES__via__CATEGORY_ID"
+               {:join-alias "Categories"
                 :lib/uuid   "8704e09b-496e-4045-8148-1eef28e96b51"}
                (meta/id :categories :name)]]
     (are [style expected] (= expected
@@ -130,6 +130,66 @@
       :long    "Categories → Name")
     (is (=? {:display-name "Name"}
             (lib.metadata.calculation/metadata query -1 field)))))
+
+(deftest ^:parallel legacy-query-joined-field-display-name-test
+  (testing "Should calculate correct display names for joined fields when source query is a legacy MBQL query (#31368)"
+    (let [card-query      {:database (meta/id)
+                           :type     :query
+                           :query    {:source-table (meta/id :orders)
+                                      :joins        [{:fields       :all
+                                                      :source-table (meta/id :products)
+                                                      :alias        "Products"
+                                                      :condition    [:=
+                                                                     [:field (meta/id :orders :product-id) nil]
+                                                                     [:field (meta/id :products :id) {:join-alias "Products"}]]}]}}
+          card-def        {:id            1
+                           :name          "Card 1"
+                           :dataset-query card-query}
+          ;; legacy result metadata will already include the Join name in the `:display-name`, so simulate that. Make
+          ;; sure we're not including it twice.
+          result-metadata (for [col (lib.metadata.calculation/metadata
+                                     (lib/saved-question-query
+                                      meta/metadata-provider
+                                      {:dataset-query card-query}))]
+                            (cond-> col
+                              (:source-alias col)
+                              (update :display-name (fn [display-name]
+                                                      (str (:source-alias col) " → " display-name)))))]
+      (doseq [[message card-def] {"Card with no result metadata"
+                                  card-def
+
+                                  "Card with result metadata"
+                                  (assoc card-def :result-metadata result-metadata)}]
+        (testing message
+          (let [metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
+                                   (lib.tu/mock-metadata-provider
+                                    {:cards [card-def]})
+                                   meta/metadata-provider)
+                legacy-query      {:database (meta/id)
+                                   :type     :query
+                                   :query    {:source-table "card__1"}}
+                query             (lib/query metadata-provider legacy-query)
+                breakoutable-cols (lib/breakoutable-columns query)
+                breakout-col      (m/find-first (fn [col]
+                                                  (= (:id col) (meta/id :products :category)))
+                                                breakoutable-cols)]
+            (testing (str "\nbreakoutable-cols =\n" (u/pprint-to-str breakoutable-cols))
+              (is (some? breakout-col)))
+            (when breakout-col
+              (is (=? {:long-display-name "Products → Category"}
+                      (lib/display-info query breakout-col)))
+              (let [query' (lib/breakout query breakout-col)]
+                (is (=? {:stages
+                         [{:lib/type     :mbql.stage/mbql
+                           :source-table "card__1"
+                           :breakout     [[:field {:join-alias "Products"} "CATEGORY"]]}]}
+                        query'))
+                (is (=? [{:name              "CATEGORY"
+                          :display-name      "Category"
+                          :long-display-name "Products → Category"
+                          :effective-type    :type/Text}]
+                        (map (partial lib/display-info query')
+                             (lib/breakouts query'))))))))))))
 
 (deftest ^:parallel unresolved-lib-field-with-temporal-bucket-test
   (let [query (lib/query-for-table-name meta/metadata-provider "CHECKINS")
