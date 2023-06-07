@@ -23,6 +23,11 @@
 (set! *warn-on-reflection* true)
 
 ;;; # Migration Helpers
+(def DataMigrations
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all these symbols in our codebase."
+  :model/DataMigrations)
+
 (methodical/defmethod t2/table-name :model/DataMigrations [_model] :data_migrations)
 (derive :model/DataMigrations :metabase/model)
 

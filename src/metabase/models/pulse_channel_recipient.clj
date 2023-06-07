@@ -10,6 +10,8 @@
 
 (methodical/defmethod t2/table-name :model/PulseChannelRecipient [_model] :pulse_channel_recipient)
 
+(derive :model/PulseChannelRecipient :metabase/model)
+
 ;;; Deletes `PulseChannel` if the recipient being deleted is its last recipient. (This only applies
 ;;; to PulseChannels with User subscriptions; Slack PulseChannels and ones with email address subscriptions are not
 ;;; automatically deleted.

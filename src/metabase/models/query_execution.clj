@@ -17,6 +17,8 @@
 
 (methodical/defmethod t2/table-name :model/QueryExecution [_model] :query_execution)
 
+(derive :model/QueryExecution :metabase/model)
+
 (t2/deftransforms :model/QueryExecution
   {:json_query mi/transform-json
    :status     mi/transform-keyword

@@ -27,6 +27,7 @@
   We'll keep this till we replace all these symbols in our codebase."
   :model/Segment)
 
+(methodical/defmethod t2/table-name :model/Segment [_model] :segment)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
 
 (t2/deftransforms :model/Segment

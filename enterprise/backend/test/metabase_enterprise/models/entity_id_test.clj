@@ -33,7 +33,7 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:metabase.db.data-migrations/DataMigrations
+  #{:model/DataMigrations
     :model/HTTPAction
     :model/ImplicitAction
     :model/QueryAction
@@ -46,10 +46,9 @@
     :metabase.models.collection.root/RootCollection
     :metabase.models.collection-permission-graph-revision/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
-    :metabase.models.field-values/FieldValues
     :model/LoginHistory
     :model/FieldValues
-    :metabase.models.metric-important-field/MetricImportantField
+    :model/MetricImportantField
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
@@ -66,7 +65,7 @@
     :model/QueryCache
     :model/QueryExecution
     :model/Revision
-    :metabase.models.revision-test/FakedCard
+    :model/FakedCard
     :model/Secret
     :model/Session
     :model/TaskHistory
