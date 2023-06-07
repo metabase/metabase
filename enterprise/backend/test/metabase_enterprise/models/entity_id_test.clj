@@ -53,7 +53,7 @@
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
-    :metabase.models.parameter-card/ParameterCard
+    :model/ParameterCard
     :metabase.models.permissions/Permissions
     :metabase.models.permissions-group/PermissionsGroup
     :metabase.models.permissions-group-membership/PermissionsGroupMembership
