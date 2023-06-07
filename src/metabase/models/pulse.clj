@@ -32,23 +32,37 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(models/defmodel Pulse :pulse)
+(def Pulse
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all these symbols in our codebase."
+  :model/Pulse)
 
-(derive Pulse ::mi/read-policy.full-perms-for-perms-set)
+(methodical/defmethod t2/table-name :model/Pulse [_model] :pulse)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :pulse]  [_original-model _k] :model/Pulse)
+
+(doto :model/Pulse
+  (derive :metabase/model)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id)
+  (derive ::mi/read-policy.full-perms-for-perms-set))
+
+(t2/deftransforms :model/Pulse
+  {:parameters mi/transform-json})
 
 (defn- assert-valid-parameters [{:keys [parameters]}]
   (when (s/check (s/maybe [{:id su/NonBlankString, s/Keyword s/Any}]) parameters)
     (throw (ex-info (tru ":parameters must be a sequence of maps with String :id keys")
                     {:parameters parameters}))))
 
-(defn- pre-insert [notification]
+(t2/define-before-insert :model/Pulse
+  [notification]
   (let [defaults      {:parameters []}
         dashboard-id  (:dashboard_id notification)
         collection-id (if dashboard-id
@@ -67,8 +81,9 @@
   only be done when the associated dashboard is being moved to a new collection."
   false)
 
-(defn- pre-update [notification]
-  (let [{:keys [collection_id dashboard_id]} (t2/select-one [Pulse :collection_id :dashboard_id] :id (u/the-id notification))]
+(t2/define-before-update :model/Pulse
+  [notification]
+  (let [{:keys [collection_id dashboard_id]} (t2/original notification)]
     (when (and dashboard_id
                (contains? notification :collection_id)
                (not= (:collection_id notification) collection_id)
@@ -78,7 +93,7 @@
                (contains? notification :dashboard_id)
                (not= (:dashboard_id notification) dashboard_id))
       (throw (ex-info (tru "dashboard ID of a dashboard subscription cannot be modified") notification))))
-  (u/prog1 notification
+  (u/prog1 (t2/changes notification)
     (assert-valid-parameters notification)
     (collection/check-collection-namespace Pulse (:collection_id notification))))
 
@@ -143,15 +158,6 @@
     (or api/*is-superuser?*
         (and (mi/current-user-has-full-permissions? :read notification)
              (current-user-is-creator? notification)))))
-
-(mi/define-methods
- Pulse
- {:hydration-keys (constantly [:pulse])
-  :properties     (constantly {::mi/timestamped? true
-                               ::mi/entity-id    true})
-  :pre-insert     pre-insert
-  :pre-update     pre-update
-  :types          (constantly {:parameters :json})})
 
 (defmethod serdes/hash-fields Pulse
   [_pulse]

@@ -187,7 +187,7 @@
    PermissionsGroup
    (fn [_] {:name (tu.random/random-name)})
 
-   Pulse
+   :model/Pulse
    (fn [_] {:creator_id (rasta-id)
             :name       (tu.random/random-name)})
 
