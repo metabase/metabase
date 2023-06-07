@@ -160,7 +160,7 @@
             :name        "Toucans in the rainforest"
             :table_id    (data/id :checkins)})
 
-   NativeQuerySnippet
+   :model/NativeQuerySnippet
    (fn [_] {:creator_id (user-id :crowberto)
             :name       (tu.random/random-name)
             :content    "1 = 1"})
