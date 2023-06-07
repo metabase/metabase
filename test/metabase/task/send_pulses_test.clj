@@ -85,10 +85,7 @@
   (testing "Removes empty PulseChannel"
     (mt/with-temp* [Pulse        [{pulse-id :id} {}]
                     PulseChannel [_ {:pulse_id pulse-id}]]
-      (let [exceptions (atom [])
-            on-error   (fn [_ exception]
-                         (swap! exceptions conj exception))]
-        (#'send-pulses/send-pulses! 0 "fri" :first :first on-error))
+      (#'send-pulses/clear-pulse-channels!)
       (is (= 0
              (t2/count PulseChannel)))
       (is (:archived (t2/select-one Pulse :id pulse-id)))))
