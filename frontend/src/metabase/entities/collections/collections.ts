@@ -1,6 +1,5 @@
 import { t } from "ttag";
 import { createSelector } from "@reduxjs/toolkit";
-import { getIn } from "icepick";
 
 import { GET } from "metabase/lib/api";
 import { createEntity, undo } from "metabase/lib/entities";
@@ -11,7 +10,7 @@ import { getUserPersonalCollectionId } from "metabase/selectors/user";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 import type { GetState, ReduxAction } from "metabase-types/store";
 
 import getExpandedCollectionsById from "./getExpandedCollectionsById";
@@ -80,22 +79,9 @@ const Collections = createEntity({
   },
 
   selectors: {
-    getCollectionList: createSelector(
-      [
-        state => state,
-        state => getIn(state, [...Collections.getListStatePath(), "list"]),
-      ],
-      (state, collections) => {
-        return collections
-          .map((entityId: CollectionId) => {
-            return Collections.selectors.getObject(state, { entityId });
-          })
-          .filter(Boolean); // deleted entities might remain in lists
-      },
-    ),
     getExpandedCollectionsById: createSelector(
       [
-        state => Collections.selectors.getCollectionList(state),
+        state => Collections.selectors.getList(state),
         getUserPersonalCollectionId,
         (_state, props) => props?.collectionFilter,
       ],
