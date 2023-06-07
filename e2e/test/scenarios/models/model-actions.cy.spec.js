@@ -6,6 +6,7 @@ import {
   restore,
   fillActionQuery,
   createAction,
+  createImplicitAction,
   navigationSidebar,
   openNavigationSidebar,
   resetTestTable,
@@ -44,12 +45,28 @@ const TEST_PARAMETER = createMockActionParameter({
   target: ["variable", ["template-tag", "total"]],
 });
 
+const TEST_PARAMETER_2 = createMockActionParameter({
+  id: "f6c36b0e-e2a2-4ccb-8b97-ea148c60e99b",
+  name: "Score",
+  slug: "score",
+  type: "number/=",
+  target: ["variable", ["template-tag", "score"]],
+});
+
 const TEST_TEMPLATE_TAG = {
   id: TEST_PARAMETER.id,
   type: "number",
   name: TEST_PARAMETER.slug,
   "display-name": TEST_PARAMETER.name,
   slug: TEST_PARAMETER.slug,
+};
+
+const TEST_TEMPLATE_TAG_2 = {
+  id: TEST_PARAMETER_2.id,
+  type: "number",
+  name: TEST_PARAMETER_2.slug,
+  "display-name": TEST_PARAMETER_2.name,
+  slug: TEST_PARAMETER_2.slug,
 };
 
 const SAMPLE_QUERY_ACTION = {
@@ -84,6 +101,39 @@ const SAMPLE_WRITABLE_QUERY_ACTION = assocIn(
   ["dataset_query", "native", "query"],
   `UPDATE ${WRITABLE_TEST_TABLE} SET score = 22 WHERE id = {{ ${TEST_TEMPLATE_TAG.name} }}`,
 );
+
+const SAMPLE_WRITABLE_QUERY_ACTION_WITH_TWO_PARAMS = {
+  ...SAMPLE_QUERY_ACTION,
+  parameters: [TEST_PARAMETER, TEST_PARAMETER_2],
+  dataset_query: {
+    type: "native",
+    native: {
+      query: `UPDATE ${WRITABLE_TEST_TABLE} SET score = {{ ${TEST_TEMPLATE_TAG_2.name} }} WHERE ID = {{ ${TEST_TEMPLATE_TAG.name} }}`,
+      "template-tags": {
+        [TEST_TEMPLATE_TAG.name]: TEST_TEMPLATE_TAG,
+        [TEST_TEMPLATE_TAG_2.name]: TEST_TEMPLATE_TAG_2,
+      },
+    },
+  },
+  visualization_settings: {
+    fields: {
+      [TEST_PARAMETER.id]: {
+        id: TEST_PARAMETER.id,
+        required: true,
+        hidden: false,
+        fieldType: "number",
+        inputType: "number",
+      },
+      [TEST_PARAMETER_2.id]: {
+        id: TEST_PARAMETER_2.id,
+        required: false,
+        hidden: false,
+        fieldType: "number",
+        inputType: "number",
+      },
+    },
+  },
+};
 
 describe(
   "scenarios > models > actions",
@@ -308,6 +358,193 @@ describe(
       cy.findByLabelText("101").should("not.exist");
       cy.findByLabelText("ID").should("be.visible");
     });
+
+    it("should not show hidden fields during action execution", () => {
+      const IMPLICIT_ACTION_NAME = "Create";
+
+      cy.get("@modelId").then(id => {
+        createAction({
+          ...SAMPLE_WRITABLE_QUERY_ACTION_WITH_TWO_PARAMS,
+          model_id: id,
+        });
+
+        createImplicitAction({
+          kind: "create",
+          model_id: id,
+        });
+
+        cy.visit(`/model/${id}/detail/actions`);
+        cy.wait("@getModel");
+      });
+
+      openActionEditorFor(SAMPLE_WRITABLE_QUERY_ACTION_WITH_TWO_PARAMS.name);
+
+      const QUERY_ACTION_FIELD_TO_HIDE = TEST_PARAMETER_2.id;
+
+      getFieldContainer(QUERY_ACTION_FIELD_TO_HIDE).within(() => {
+        cy.findByText("Show field").click();
+        cy.get(`input[name=${QUERY_ACTION_FIELD_TO_HIDE}]`).should(
+          "be.disabled",
+        );
+      });
+
+      cy.findByRole("button", { name: "Update" }).click();
+
+      openActionEditorFor(SAMPLE_WRITABLE_QUERY_ACTION_WITH_TWO_PARAMS.name);
+
+      getFieldContainer(QUERY_ACTION_FIELD_TO_HIDE)
+        .findByLabelText("Show field")
+        .should("not.be.checked");
+
+      cy.findByRole("button", { name: "Cancel" }).click();
+
+      runActionFor(SAMPLE_WRITABLE_QUERY_ACTION_WITH_TWO_PARAMS.name);
+
+      cy.findByRole("form").within(() => {
+        cy.get(`input[name=${QUERY_ACTION_FIELD_TO_HIDE}]`).should("not.exist");
+      });
+
+      cy.findByRole("button", { name: "Cancel" }).click();
+
+      // Implicit
+      openActionEditorFor(IMPLICIT_ACTION_NAME);
+      const IMPLICIT_ACTION_FIELD_TO_HIDE = "user_id";
+
+      getFieldContainer(IMPLICIT_ACTION_FIELD_TO_HIDE).within(() => {
+        cy.findByText("Show field").click();
+        cy.get(`input[name=${IMPLICIT_ACTION_FIELD_TO_HIDE}]`).should(
+          "be.disabled",
+        );
+      });
+
+      cy.findByRole("button", { name: "Update" }).click();
+
+      openActionEditorFor(IMPLICIT_ACTION_NAME);
+
+      getFieldContainer(IMPLICIT_ACTION_FIELD_TO_HIDE)
+        .findByLabelText("Show field")
+        .should("not.be.checked");
+
+      cy.findByRole("button", { name: "Cancel" }).click();
+
+      runActionFor(IMPLICIT_ACTION_NAME);
+
+      cy.findByRole("form").within(() => {
+        cy.get(`input[name=${IMPLICIT_ACTION_FIELD_TO_HIDE}]`).should(
+          "not.exist",
+        );
+      });
+    });
+
+    it("should not show hidden fields during public action execution", () => {
+      const IMPLICIT_ACTION_NAME = "Update";
+      const SAMPLE_QUERY_WITH_HIDDEN_PARAMETER = {
+        ...SAMPLE_WRITABLE_QUERY_ACTION_WITH_TWO_PARAMS,
+        visualization_settings: {
+          fields: {
+            [TEST_PARAMETER.id]: {
+              id: TEST_PARAMETER.id,
+              required: true,
+              hidden: false,
+              fieldType: "number",
+              inputType: "number",
+            },
+            [TEST_PARAMETER_2.id]: {
+              id: TEST_PARAMETER_2.id,
+              required: false,
+              hidden: true,
+              fieldType: "number",
+              inputType: "number",
+            },
+          },
+        },
+      };
+      const IMPLICIT_ACTION_FIELD_TO_HIDE = "created_at";
+
+      cy.get("@modelId").then(id => {
+        // override model_id
+        SAMPLE_QUERY_WITH_HIDDEN_PARAMETER.model_id = id;
+
+        createAction(SAMPLE_QUERY_WITH_HIDDEN_PARAMETER).then(({ body }) => {
+          const actionId = body.id;
+          cy.wrap(actionId).as("actionId");
+        });
+
+        createImplicitAction({
+          kind: IMPLICIT_ACTION_NAME.toLowerCase(),
+          model_id: id,
+        }).then(({ body }) => {
+          cy.wrap(body).as("implicitAction");
+
+          const actionId = body.id;
+          cy.wrap(actionId).as("implicitActionId");
+        });
+
+        cy.get("@actionId")
+          .then(actionId => {
+            cy.request("POST", `/api/action/${actionId}/public_link`, {});
+          })
+          .then(({ body }) => {
+            cy.wrap(body.uuid).as("actionUUID");
+          });
+
+        cy.get("@implicitActionId")
+          .then(actionId => {
+            cy.request("POST", `/api/action/${actionId}/public_link`, {});
+          })
+          .then(({ body }) => {
+            cy.wrap(body.uuid).as("implicitActionUUID");
+          });
+
+        cy.get("@implicitAction").then(implicitAction => {
+          const actionPayload = {
+            visualization_settings: {
+              ...implicitAction.visualization_settings,
+              fields: {
+                ...implicitAction.visualization_settings.fields,
+                [IMPLICIT_ACTION_FIELD_TO_HIDE]: {
+                  ...implicitAction.visualization_settings.fields[
+                    IMPLICIT_ACTION_FIELD_TO_HIDE
+                  ],
+                  hidden: true,
+                },
+              },
+            },
+          };
+
+          cy.request("PUT", `/api/action/${implicitAction.id}`, actionPayload);
+
+          // TODO: @uladzimirdev for some reason this request is not intercepted, why?
+          // cy.wait("@updateAction");
+        });
+      });
+
+      cy.get("@actionUUID").then(actionUUID => {
+        cy.visit(`/public/action/${actionUUID}`);
+        cy.findByRole("form").within(() => {
+          cy.get(`input[name=${TEST_PARAMETER.id}]`).should("exist");
+          cy.get(`input[name=${TEST_PARAMETER_2.id}]`).should("not.exist");
+        });
+      });
+
+      cy.get("@implicitActionUUID").then(implicitActionUUID => {
+        cy.visit(`/public/action/${implicitActionUUID}`);
+        cy.findByRole("form").within(() => {
+          cy.get(`input[name=${IMPLICIT_ACTION_FIELD_TO_HIDE}]`).should(
+            "not.exist",
+          );
+
+          cy.get(`input[name=id]`).type("1");
+          cy.get(`input[name=quantity]`).type("22");
+
+          cy.findByRole("button", { name: "Update" }).click();
+        });
+      });
+
+      cy.findByRole("heading").contains(
+        `${IMPLICIT_ACTION_NAME} ran successfully`,
+      );
+    });
   },
 );
 
@@ -528,4 +765,8 @@ function disableSharingFor(actionName) {
 
 function getArchiveListItem(itemName) {
   return cy.findByTestId(`archive-item-${itemName}`);
+}
+
+function getFieldContainer(fieldName) {
+  return cy.findByTestId(`form-field-container-${fieldName}`);
 }

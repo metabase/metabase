@@ -100,7 +100,7 @@ function FormFieldEditor({
   };
 
   return (
-    <FormFieldContainer>
+    <FormFieldContainer data-testid={`form-field-container-${field.name}`}>
       <EditorContainer>
         <Column>{isEditable && <DragHandle name="grabber" />}</Column>
         <Column full>
