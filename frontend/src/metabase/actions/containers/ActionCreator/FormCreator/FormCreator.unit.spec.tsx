@@ -6,7 +6,10 @@ import type {
   FieldSettings,
   WritebackParameter,
 } from "metabase-types/api";
-import { createMockActionParameter } from "metabase-types/api/mocks";
+import {
+  createMockActionParameter,
+  createMockImplicitActionFieldSettings,
+} from "metabase-types/api/mocks";
 
 import FormCreator from "./FormCreator";
 
@@ -40,9 +43,10 @@ const makeParameter = ({
 type SetupOpts = {
   parameters: WritebackParameter[];
   formSettings: ActionFormSettings;
+  isPublic?: boolean;
 };
 
-const setup = ({ parameters, formSettings }: SetupOpts) => {
+const setup = ({ parameters, formSettings, isPublic = false }: SetupOpts) => {
   const onChange = jest.fn();
 
   render(
@@ -50,6 +54,7 @@ const setup = ({ parameters, formSettings }: SetupOpts) => {
       parameters={parameters}
       formSettings={formSettings}
       isEditable
+      isPublic={isPublic}
       onChange={onChange}
     />,
   );
@@ -236,5 +241,98 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
     expect(screen.getByLabelText(fieldSettings.title)).toHaveValue(
       defaultValue,
     );
+  });
+
+  describe("Warning banner", () => {
+    it("shows a warning banner", () => {
+      const defaultValue = "foo bar";
+      const parameter = makeParameter({ required: true });
+      const fieldSettings = makeFieldSettings({
+        inputType: "string",
+        required: true,
+        defaultValue,
+        hidden: true,
+      });
+
+      setup({
+        parameters: [parameter],
+        formSettings: {
+          type: "form",
+          fields: {
+            [parameter.id]: fieldSettings,
+          },
+        },
+        isPublic: true,
+      });
+
+      expect(screen.getByTestId("action-warning-banner")).toBeInTheDocument();
+    });
+
+    it("shows a banner for implicit action params", () => {
+      const parameter = makeParameter({ required: true });
+      const fieldSettings = createMockImplicitActionFieldSettings({
+        id: parameter.id,
+        hidden: true,
+      });
+
+      setup({
+        parameters: [parameter],
+        formSettings: {
+          type: "form",
+          fields: {
+            [parameter.id]: fieldSettings,
+          },
+        },
+        isPublic: true,
+      });
+
+      expect(screen.getByTestId("action-warning-banner")).toBeInTheDocument();
+    });
+
+    it("doesn't show a warning banner for nonpublic action", () => {
+      const parameter = makeParameter({ required: true });
+      const fieldSettings = createMockImplicitActionFieldSettings({
+        id: parameter.id,
+        hidden: true,
+      });
+
+      setup({
+        parameters: [parameter],
+        formSettings: {
+          type: "form",
+          fields: {
+            [parameter.id]: fieldSettings,
+          },
+        },
+        isPublic: false,
+      });
+
+      expect(
+        screen.queryByTestId("action-warning-banner"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("doesn't show a warning banner if no required params hidden", () => {
+      const parameter = makeParameter({ required: true });
+      const fieldSettings = createMockImplicitActionFieldSettings({
+        id: parameter.id,
+        hidden: false,
+      });
+
+      setup({
+        parameters: [parameter],
+        formSettings: {
+          type: "form",
+          fields: {
+            [parameter.id]: fieldSettings,
+          },
+        },
+        isPublic: true,
+      });
+
+      expect(
+        screen.queryByTestId("action-warning-banner"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

@@ -2,24 +2,24 @@ import styled from "@emotion/styled";
 import { Icon } from "metabase/core/components/Icon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
-import { color, lighten } from "metabase/lib/colors";
+import { color, lighten, alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const FormContainer = styled.div`
-  flex: 1 1 0;
-  margin: 1rem 1.5rem;
+  display: flex;
+  gap: ${space(2)};
+  padding: 0 1.5rem 1rem;
   transition: flex 500ms ease-in-out;
   background-color: ${color("white")};
+  flex-direction: column;
 `;
 
 export const FormFieldEditorDragContainer = styled.div`
   margin-bottom: ${space(1)};
 `;
 
-export const InfoText = styled.span`
-  display: block;
+export const InfoText = styled.div`
   color: ${color("text-medium")};
-  margin-bottom: 2rem;
 `;
 
 export const FieldSettingsButtonsContainer = styled.div`
@@ -82,4 +82,12 @@ export const TopRightIcon = styled(Icon)`
   position: absolute;
   top: 0;
   right: 0;
+`;
+
+export const WarningBanner = styled.div`
+  padding: ${space(2)};
+  border: 1px solid ${color("warning")};
+  border-radius: ${space(1)};
+  background: ${alpha("warning", 0.1)};
+  line-height: 1.25rem;
 `;
