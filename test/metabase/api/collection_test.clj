@@ -133,11 +133,13 @@
             (is (= (into (set (map :name (t2/select Collection))) public-collections)
                    crowbertos))
             (is (= (into public-collections #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
-                   crowbertos-with-excludes))
+                   ;; TODO: better IA test data
+                   (remove #{"Audit" "Instance Analytics"} crowbertos-with-excludes)))
             (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
             (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
             (is (= (conj public-collections (:name collection) "Lucky Pigeon's Personal Collection")
-                   luckys))
+                   ;; TODO: better IA test data
+                   (remove #{"Audit" "Instance Analytics"} luckys)))
             (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))))))
 
     (testing "Personal Collection's name and slug should be returned in user's locale"
