@@ -29,7 +29,7 @@ interface ActionParameterMapperProps {
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
   model?: Question;
-  action?: WritebackAction;
+  action: WritebackAction;
 }
 
 type ParameterMappingFn = (
@@ -53,11 +53,10 @@ const getTargetKey = (param: WritebackParameter | ActionParametersMapping) =>
 export const ActionParameterMappingForm = ({
   dashcard,
   dashboard,
-  action: passedAction,
+  action,
   setParameterMapping,
 }: ActionParameterMapperProps & DispatchProps) => {
-  const action = passedAction ?? dashcard?.action;
-  const actionParameters = action?.parameters ?? [];
+  const actionParameters = action.parameters ?? [];
   const dashboardParameters = dashboard.parameters ?? [];
 
   const currentMappings = Object.fromEntries(

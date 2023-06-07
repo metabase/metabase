@@ -106,24 +106,16 @@ export const shouldShowConfirmation = (action?: WritebackAction) => {
 };
 
 export const isParameterHidden = (
-  action: WritebackAction | undefined,
+  action: WritebackAction,
   parameter: WritebackParameter,
 ) => {
-  if (!action) {
-    return false;
-  }
-
   return !!action.visualization_settings?.fields?.[parameter.id]?.hidden;
 };
 
 export const isParameterRequired = (
-  action: WritebackAction | undefined,
+  action: WritebackAction,
   parameter: WritebackParameter,
 ) => {
-  if (!action) {
-    return false;
-  }
-
   return !!(
     parameter.required ||
     action.visualization_settings?.fields?.[parameter.id]?.required

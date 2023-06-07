@@ -83,7 +83,7 @@ export function ActionDashcardSettings({
               <ConnectedActionParameterMappingForm
                 dashcard={dashcard}
                 dashboard={dashboard}
-                action={dashcard.action}
+                action={action}
               />
             </ParameterMapperContainer>
           </>
