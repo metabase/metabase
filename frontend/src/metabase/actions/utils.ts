@@ -251,7 +251,7 @@ export const getForm = (
   );
   return {
     fields: sortedParams
-      ?.map(param => getFormField(param, fieldSettings[param.id] ?? {}))
+      .map(param => getFormField(param, fieldSettings[param.id] ?? {}))
       .filter(Boolean) as ActionFormFieldProps[],
   };
 };

@@ -15,6 +15,7 @@ import type {
 } from "metabase-types/api";
 import type { ActionFormFieldProps } from "metabase/actions/types";
 
+import CheckBox from "metabase/core/components/CheckBox";
 import { FieldSettingsButtons } from "../FieldSettingsButtons";
 
 import {
@@ -66,6 +67,7 @@ function FormFieldEditor({
 }: FormFieldEditorProps) {
   const fieldTypeOptions = useMemo(getFieldTypes, []);
   const inputTypeOptions = useMemo(getInputTypes, []);
+  const hidden = fieldSettings?.hidden ?? false;
 
   const handleChangeFieldType = (nextFieldType: FieldType) => {
     const { inputType, valueOptions } = fieldSettings;
@@ -130,7 +132,22 @@ function FormFieldEditor({
         <Column />
         <Column full>
           <InputContainer>
-            <ActionFormFieldWidget formField={field} />
+            <ActionFormFieldWidget
+              hidden={hidden}
+              actions={
+                <CheckBox
+                  onChange={() => {
+                    onChange({
+                      ...fieldSettings,
+                      hidden: !hidden,
+                    });
+                  }}
+                  checked={!hidden}
+                  label={t`Show field`}
+                />
+              }
+              formField={field}
+            />
           </InputContainer>
         </Column>
       </PreviewContainer>

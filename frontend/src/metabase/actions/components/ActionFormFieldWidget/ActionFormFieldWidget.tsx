@@ -1,5 +1,4 @@
-import { forwardRef } from "react";
-import * as React from "react";
+import { forwardRef, FunctionComponent, ReactNode, Ref } from "react";
 
 import FormInputWidget from "metabase/core/components/FormInput";
 import FormTextAreaWidget from "metabase/core/components/FormTextArea";
@@ -17,7 +16,7 @@ const VerticalRadio = (props: FormRadioProps) => (
   <FormRadioWidget {...props} vertical />
 );
 
-const WIDGETS: Record<InputComponentType, React.FunctionComponent<any>> = {
+const WIDGETS: Record<InputComponentType, FunctionComponent<any>> = {
   text: FormInputWidget,
   date: FormInputWidget,
   time: FormInputWidget,
@@ -31,15 +30,25 @@ const WIDGETS: Record<InputComponentType, React.FunctionComponent<any>> = {
 
 interface FormWidgetProps {
   formField: ActionFormFieldProps;
+  hidden?: boolean;
+  actions?: ReactNode;
 }
 
 export const ActionFormFieldWidget = forwardRef(function FormFieldWidget(
-  { formField }: FormWidgetProps,
-  ref: React.Ref<any>,
+  { formField, hidden, actions }: FormWidgetProps,
+  ref: Ref<any>,
 ) {
   const Widget =
     (formField.type ? WIDGETS[formField.type] : FormInputWidget) ??
     FormInputWidget;
 
-  return <Widget {...formField} nullable ref={ref} />;
+  return (
+    <Widget
+      {...formField}
+      disabled={hidden}
+      actions={actions}
+      nullable
+      ref={ref}
+    />
+  );
 });
