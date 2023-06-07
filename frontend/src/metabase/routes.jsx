@@ -89,7 +89,7 @@ export const getRoutes = store => (
     {/* PUBLICLY SHARED LINKS */}
     <Route path="public">
       <Route path="question/:uuid" component={PublicQuestion} />
-      <Route path="dashboard/:uuid" component={PublicDashboard} />
+      <Route path="dashboard/:uuid(/:tabSlug)" component={PublicDashboard} />
     </Route>
 
     {/* APP */}
