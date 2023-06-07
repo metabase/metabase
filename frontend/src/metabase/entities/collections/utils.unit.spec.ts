@@ -405,7 +405,7 @@ describe("entities > collections > utils", () => {
     const collection = createMockCollection({
       type: "instance-analytics",
     });
-    ["collection", "model", "question"].forEach(type => {
+    ["collection", "model", "question", "dashboard"].forEach(type => {
       it(`returns correct tooltip for instance analytics ${type}`, () => {
         expect(getCollectionTooltip(collection, type as any)).toContain(
           `Instance Analytics ${type}`,
