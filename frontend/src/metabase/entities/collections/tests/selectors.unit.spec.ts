@@ -56,6 +56,12 @@ describe("Collection selectors", () => {
     TEST_READ_ONLY_COLLECTION,
   ];
 
+  const NESTED_COLLECTIONS = [
+    TEST_NESTED_COLLECTION_A,
+    TEST_NESTED_COLLECTION_B,
+    TEST_NESTED_COLLECTION_C,
+  ];
+
   function getReduxState({
     isAdmin = false,
     collections = DEFAULT_COLLECTIONS,
@@ -73,7 +79,7 @@ describe("Collection selectors", () => {
       },
       entities: {
         collections: {
-          root: {
+          [ROOT_COLLECTION.id]: {
             ...ROOT_COLLECTION,
             can_write: isAdmin,
           },
@@ -281,13 +287,8 @@ describe("Collection selectors", () => {
     });
 
     it("preserves nested collections order", () => {
-      const nestedCollections = [
-        TEST_NESTED_COLLECTION_A,
-        TEST_NESTED_COLLECTION_B,
-        TEST_NESTED_COLLECTION_C,
-      ];
-      const nestedCollectionsIds = nestedCollections.map(({ id }) => id);
-      const state = getReduxState({ collections: nestedCollections });
+      const nestedCollectionsIds = NESTED_COLLECTIONS.map(({ id }) => id);
+      const state = getReduxState({ collections: NESTED_COLLECTIONS });
       const expandedCollectionsById = getExpandedCollectionsById(state);
       const expandedCollection = expandedCollectionsById[ROOT_COLLECTION.id];
       const children: Partial<Collection>[] = expandedCollection.children;
