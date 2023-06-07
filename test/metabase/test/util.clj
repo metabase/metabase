@@ -191,7 +191,7 @@
    (fn [_] {:creator_id (rasta-id)
             :name       (tu.random/random-name)})
 
-   PulseCard
+   :model/PulseCard
    (fn [_] {:position    0
             :include_csv false
             :include_xls false})

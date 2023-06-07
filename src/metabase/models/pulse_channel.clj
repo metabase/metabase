@@ -148,7 +148,7 @@
   (when *archive-parent-pulse-when-last-channel-is-deleted*
     (let [other-channels-count (t2/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
       (when (zero? other-channels-count)
-        (t2/update! :metabase.models.pulse/Pulse pulse-id {:archived true})))))
+        (t2/update! :model/Pulse pulse-id {:archived true})))))
 
 ;; we want to load this at the top level so the Setting the namespace defines gets loaded
 (def ^:private ^{:arglists '([email-addresses])} validate-email-domains*

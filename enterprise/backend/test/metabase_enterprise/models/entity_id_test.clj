@@ -59,7 +59,7 @@
     :metabase.models.permissions-group-membership/PermissionsGroupMembership
     :metabase.models.permissions-revision/PermissionsRevision
     :model/PersistedInfo
-    :metabase.models.pulse-card/PulseCard
+    :model/PulseCard
     :metabase.models.pulse-channel/PulseChannel
     :metabase.models.pulse-channel-recipient/PulseChannelRecipient
     :metabase.models.query/Query
