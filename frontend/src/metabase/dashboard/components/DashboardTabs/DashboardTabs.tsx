@@ -10,7 +10,7 @@ import {
   CreateTabButton,
   PlaceholderTab,
 } from "./DashboardTabs.styled";
-import { useDashboardTabs } from "./useDashboardTabs";
+import { useDashboardTabs } from "./use-dashboard-tabs";
 
 interface DashboardTabsProps {
   slug: string | undefined;

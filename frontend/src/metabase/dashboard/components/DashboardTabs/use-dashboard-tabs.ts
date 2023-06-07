@@ -16,7 +16,7 @@ import { SelectedTabId } from "metabase-types/store";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
 import { addUndo } from "metabase/redux/undo";
 
-import { useSyncURLSlug } from "./useSyncURLSlug";
+import { useSyncURLSlug } from "./use-sync-url-slug";
 
 let tabDeletionId = 1;
 
