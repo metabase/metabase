@@ -23,21 +23,21 @@ describe("Collection selectors", () => {
     can_write: true,
   });
 
-  const TEST_COLLECTION_A = createMockCollection({
+  const TEST_NESTED_COLLECTION_A = createMockCollection({
     id: 6,
     name: "Collection A",
     can_write: true,
     path: [ROOT_COLLECTION.id],
   });
 
-  const TEST_COLLECTION_B = createMockCollection({
+  const TEST_NESTED_COLLECTION_B = createMockCollection({
     id: 5,
     name: "Collection B",
     can_write: true,
     path: [ROOT_COLLECTION.id],
   });
 
-  const TEST_COLLECTION_C = createMockCollection({
+  const TEST_NESTED_COLLECTION_C = createMockCollection({
     id: 4,
     name: "Collection C",
     can_write: true,
@@ -282,9 +282,9 @@ describe("Collection selectors", () => {
 
     it("preserves nested collections order", () => {
       const nestedCollections = [
-        TEST_COLLECTION_A,
-        TEST_COLLECTION_B,
-        TEST_COLLECTION_C,
+        TEST_NESTED_COLLECTION_A,
+        TEST_NESTED_COLLECTION_B,
+        TEST_NESTED_COLLECTION_C,
       ];
       const nestedCollectionsIds = nestedCollections.map(({ id }) => id);
       const state = getReduxState({ collections: nestedCollections });
