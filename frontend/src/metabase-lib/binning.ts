@@ -1,29 +1,39 @@
 import * as ML from "cljs/metabase.lib.js";
+import { displayInfo } from "./metadata";
 import type { Bucket, ColumnMetadata, Clause, Query } from "./types";
 
 export function binning(clause: Clause | ColumnMetadata): Bucket | null {
   return ML.binning(clause);
 }
 
-declare function AvailableBinningStrategiesFn(
+export function availableBinningStrategies(
   query: Query,
+  stageIndex: number,
   column: ColumnMetadata,
-): Bucket[];
+): Bucket[] {
+  return ML.available_binning_strategies(query, stageIndex, column);
+}
 
-declare function AvailableBinningStrategiesFn(
+export function isBinnable(
   query: Query,
-  stageNumber: number,
+  stageIndex: number,
   column: ColumnMetadata,
-): Bucket[];
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-export const availableBinningStrategies: typeof AvailableBinningStrategiesFn = (
-  ...args
-) => {
-  return ML.available_binning_strategies(...args) || [];
-};
+) {
+  return availableBinningStrategies(query, stageIndex, column).length > 0;
+}
 
 export function withBinning(column: ColumnMetadata, binningStrategy: Bucket) {
   return ML.with_binning(column, binningStrategy);
+}
+
+export function withDefaultBinning(
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata,
+) {
+  const buckets = availableBinningStrategies(query, stageIndex, column);
+  const defaultBucket = buckets.find(
+    bucket => displayInfo(query, stageIndex, bucket).default,
+  );
+  return defaultBucket ? withBinning(column, defaultBucket) : column;
 }

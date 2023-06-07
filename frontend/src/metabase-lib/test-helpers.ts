@@ -71,7 +71,7 @@ export const findBinningStrategy = (
   column: ML.ColumnMetadata,
   bucketName: string,
 ) => {
-  const buckets = ML.availableBinningStrategies(query, column);
+  const buckets = ML.availableBinningStrategies(query, 0, column);
   const bucket = buckets.find(
     bucket => ML.displayInfo(query, 0, bucket).displayName === bucketName,
   );
@@ -86,7 +86,7 @@ export const findTemporalBucket = (
   column: ML.ColumnMetadata,
   bucketName: string,
 ) => {
-  const buckets = ML.availableTemporalBuckets(query, column);
+  const buckets = ML.availableTemporalBuckets(query, 0, column);
   const bucket = buckets.find(
     bucket => ML.displayInfo(query, 0, bucket).displayName === bucketName,
   );

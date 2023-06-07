@@ -73,6 +73,7 @@ export type BreakoutClauseDisplayInfo = ClauseDisplayInfo;
 export type BucketDisplayInfo = {
   displayName: string;
   default?: boolean;
+  selected?: boolean;
 };
 
 export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {

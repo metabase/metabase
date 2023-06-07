@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import * as Lib from "metabase-lib";
 import {
@@ -23,6 +23,8 @@ type ListItem = Lib.BucketDisplayInfo & {
   bucket: Lib.Bucket;
 };
 
+const checkBucketIsSelected = (item: ListItem) => item.selected;
+
 export function BucketPickerPopover({
   selectedBucket,
   query,
@@ -45,16 +47,6 @@ export function BucketPickerPopover({
   const defaultBucket = useMemo(
     () => displayableItems.find(item => item.default),
     [displayableItems],
-  );
-
-  const checkIsBucketSelected = useCallback(
-    (item: ListItem) => {
-      if (!selectedBucket && withDefaultBucket) {
-        return false;
-      }
-      return Lib.isSameBucket(query, stageIndex, item.bucket, selectedBucket);
-    },
-    [query, stageIndex, selectedBucket, withDefaultBucket],
   );
 
   const triggerContentBucket = useMemo(() => {
@@ -89,7 +81,7 @@ export function BucketPickerPopover({
               id={item.displayName}
               key={item.displayName}
               name={item.displayName}
-              isSelected={checkIsBucketSelected(item)}
+              isSelected={checkBucketIsSelected(item)}
               onSelect={() => onSelect(item.bucket)}
             />
           ))}
