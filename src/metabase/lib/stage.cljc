@@ -268,6 +268,7 @@
              (throw (ex-info "unknown type of :field ref in lib.stage/ref-to?"
                              {:clause clause
                               :column column})))
+    :expression (= pointer (:name column))
     (throw (ex-info "unknown clause in lib.stage/ref-to?"
                     {:clause clause
                      :column column}))))
@@ -275,7 +276,7 @@
 (defn- mark-selected-breakouts [query stage-number columns]
   (if-let [breakouts (:breakout (lib.util/query-stage query stage-number))]
     (for [column columns]
-      (if-let [match (first (filter #(ref-to? % column) breakouts))]
+      (if-let [match (m/find-first #(ref-to? % column) breakouts)]
         (let [binning        (lib.binning/binning match)
               {:keys [unit]} (lib.temporal-bucket/temporal-bucket match)]
           (cond-> column
