@@ -11,7 +11,7 @@ import { getUserPersonalCollectionId } from "metabase/selectors/user";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 import type { GetState, ReduxAction } from "metabase-types/store";
 
 import getExpandedCollectionsById from "./getExpandedCollectionsById";
@@ -94,7 +94,7 @@ const Collections = createEntity({
         collectionFilter,
       ) => {
         const collections = collectionsList
-          .map((entityId: any) => {
+          .map((entityId: CollectionId) => {
             return Collections.selectors.getObject(state, { entityId });
           })
           .filter(Boolean); // deleted entities might remain in lists
