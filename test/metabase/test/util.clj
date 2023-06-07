@@ -196,7 +196,7 @@
             :include_csv false
             :include_xls false})
 
-   PulseChannel
+   :model/PulseChannel
    (constantly {:channel_type  :email
                 :details       {}
                 :schedule_type :daily

@@ -60,8 +60,8 @@
     :metabase.models.permissions-revision/PermissionsRevision
     :model/PersistedInfo
     :model/PulseCard
-    :metabase.models.pulse-channel/PulseChannel
-    :metabase.models.pulse-channel-recipient/PulseChannelRecipient
+    :model/PulseChannel
+    :model/PulseChannelRecipient
     :metabase.models.query/Query
     :metabase.models.query-cache/QueryCache
     :metabase.models.query-execution/QueryExecution
