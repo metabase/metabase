@@ -1,5 +1,6 @@
 import { t } from "ttag";
 import { createSelector } from "@reduxjs/toolkit";
+import { getIn } from "icepick";
 
 import { GET } from "metabase/lib/api";
 import { createEntity, undo } from "metabase/lib/entities";
@@ -82,7 +83,7 @@ const Collections = createEntity({
     getExpandedCollectionsById: createSelector(
       [
         state => state,
-        state => state.entities.collections_list.null.list,
+        state => getIn(state, [...Collections.getListStatePath(), "list"]),
         getUserPersonalCollectionId,
         (_state, props) => props?.collectionFilter,
       ],
