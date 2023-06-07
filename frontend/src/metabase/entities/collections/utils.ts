@@ -52,11 +52,12 @@ const collectionIconTooltipNameMap = {
   collection: t`collection`,
   question: t`question`,
   model: t`model`,
+  dashboard: t`dashboard`,
 };
 
 export const getCollectionTooltip = (
   collection: Partial<Collection>,
-  entity: "collection" | "question" | "model" = "collection",
+  entity: "collection" | "question" | "model" | "dashboard" = "collection",
 ) => {
   const entityText = collectionIconTooltipNameMap[entity];
 
