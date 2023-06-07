@@ -1,4 +1,3 @@
-import { checkNotNull } from "metabase/core/utils/types";
 import {
   createOrdersTable,
   createPeopleTable,
@@ -293,5 +292,12 @@ export default [
   ["filter", filter, { startRule: "boolean", query }],
 ];
 
-export const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
-export const ordersTotalField = checkNotNull(metadata.field(ORDERS.TOTAL));
+/**
+ * @type {import("metabase-lib/metadata/Table").default}
+ */
+export const ordersTable = metadata.table(ORDERS_ID);
+
+/**
+ * @type {import("metabase-lib/metadata/Field").default}
+ */
+export const ordersTotalField = metadata.field(ORDERS.TOTAL);

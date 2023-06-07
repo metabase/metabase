@@ -614,7 +614,10 @@
   :getter     (fn []
                 (let [v (setting/get-value-of-type :boolean :show-database-syncing-modal)]
                   (if (nil? v)
-                    (not (t2/exists? 'Database :is_sample false, :initial_sync_status "complete"))
+                    (not (t2/exists? 'Database
+                                     :is_sample false
+                                     :is_audit false
+                                     :initial_sync_status "complete"))
                     ;; frontend should set this value to `true` after the modal has been shown once
                     v))))
 
