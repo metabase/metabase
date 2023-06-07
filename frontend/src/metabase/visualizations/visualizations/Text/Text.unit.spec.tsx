@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { color } from "metabase/lib/colors";
 
 import { Text } from "../Text";
@@ -113,14 +114,14 @@ describe("Text", () => {
     });
 
     describe("Edit/Focused", () => {
-      it("should focus input when clicked", () => {
+      it("should display and focus textarea when clicked", () => {
         const options = {
           settings: getSettingsWithText(""),
           isEditing: true,
         };
         setup(options);
 
-        screen.getByTestId("editing-dashboard-text-preview").click();
+        userEvent.click(screen.getByTestId("editing-dashboard-text-preview"));
         expect(
           screen.getByTestId("editing-dashboard-text-input"),
         ).toHaveFocus();
@@ -133,7 +134,7 @@ describe("Text", () => {
         };
         setup(options);
 
-        screen.getByTestId("editing-dashboard-text-preview").click();
+        userEvent.click(screen.getByTestId("editing-dashboard-text-preview"));
         expect(
           screen.getByPlaceholderText(
             "You can use Markdown here, and include variables {{like_this}}",
@@ -148,7 +149,7 @@ describe("Text", () => {
         };
         setup(options);
 
-        screen.getByTestId("editing-dashboard-text-preview").click();
+        userEvent.click(screen.getByTestId("editing-dashboard-text-preview"));
         expect(screen.getByDisplayValue("text text text")).toBeInTheDocument();
       });
     });

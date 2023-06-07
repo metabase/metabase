@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { color } from "metabase/lib/colors";
 
 import { createMockDashboardCardWithVirtualCard } from "metabase-types/api/mocks";
@@ -78,14 +79,16 @@ describe("Text", () => {
     });
 
     describe("Edit/Focused", () => {
-      it("should focus input when clicked", () => {
+      it("should display and focus input when clicked", () => {
         const options = {
           settings: getSettingsWithText(""),
           isEditing: true,
         };
         setup(options);
 
-        screen.getByTestId("editing-dashboard-heading-preview").click();
+        userEvent.click(
+          screen.getByTestId("editing-dashboard-heading-preview"),
+        );
         expect(
           screen.getByTestId("editing-dashboard-heading-input"),
         ).toHaveFocus();
@@ -98,7 +101,9 @@ describe("Text", () => {
         };
         setup(options);
 
-        screen.getByTestId("editing-dashboard-heading-preview").click();
+        userEvent.click(
+          screen.getByTestId("editing-dashboard-heading-preview"),
+        );
         expect(screen.getByPlaceholderText("Heading")).toBeInTheDocument();
       });
 
@@ -109,7 +114,9 @@ describe("Text", () => {
         };
         setup(options);
 
-        screen.getByTestId("editing-dashboard-heading-preview").click();
+        userEvent.click(
+          screen.getByTestId("editing-dashboard-heading-preview"),
+        );
         expect(screen.getByDisplayValue("Example Heading")).toBeInTheDocument();
       });
     });
