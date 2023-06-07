@@ -8,9 +8,9 @@ export function getSlug({
   name,
 }: {
   tabId: SelectedTabId;
-  name: string;
+  name: string | undefined;
 }) {
-  if (tabId === null || tabId < 0) {
+  if (tabId === null || tabId < 0 || !name) {
     return "";
   }
   return [tabId, ...name.toLowerCase().split(" ")].join("-");

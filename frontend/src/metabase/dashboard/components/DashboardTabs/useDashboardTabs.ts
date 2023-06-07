@@ -1,4 +1,5 @@
-import { useMount } from "react-use";
+import { useEffect } from "react";
+import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 
@@ -30,13 +31,25 @@ export function useDashboardTabs({ slug }: { slug: string | undefined }) {
       : [],
   );
   const selectedTabId = useSelector(getSelectedTabId);
+  const prevSelectedTabId = usePrevious(selectedTabId);
   const { updateURLSlug } = useUpdateURLSlug();
 
   useMount(() => dispatch(initTabs({ slug })));
 
+  useEffect(() => {
+    if (selectedTabId !== prevSelectedTabId) {
+      updateURLSlug(
+        getSlug({
+          tabId: selectedTabId,
+          name: tabs.find(t => t.id === selectedTabId)?.name,
+        }),
+      );
+    }
+  }, [selectedTabId, prevSelectedTabId, tabs, updateURLSlug]);
+
   const createNewTab = () => {
     dispatch(createNewTabAction());
-    updateURLSlug("");
+    // updateURLSlug("");
   };
 
   const deleteTab = (tabId: SelectedTabId) => {
@@ -68,10 +81,10 @@ export function useDashboardTabs({ slug }: { slug: string | undefined }) {
   const selectTab = (tabId: SelectedTabId) => {
     dispatch(selectTabAction({ tabId }));
 
-    const name = tabs.find(t => t.id === tabId)?.name;
-    if (name) {
-      updateURLSlug(getSlug({ tabId, name }));
-    }
+    // const name = tabs.find(t => t.id === tabId)?.name;
+    // if (name) {
+    //   updateURLSlug(getSlug({ tabId, name }));
+    // }
   };
 
   return {
