@@ -267,21 +267,33 @@ describe("Collection selectors", () => {
 
   describe("getExpandedCollectionsById", () => {
     const { getExpandedCollectionsById } = Collections.selectors;
-    const nestedCollections = [
-      TEST_COLLECTION_A,
-      TEST_COLLECTION_B,
-      TEST_COLLECTION_C,
-    ];
-    const nestedCollectionsIds = nestedCollections.map(({ id }) => id);
-    const state = getReduxState({ collections: nestedCollections });
 
-    it("preserves original collections order (does not re-order by ids)", () => {
-      // Only compare ids to avoid circular objects (parent / children)
+    it("preserves collections order", () => {
+      const state = getReduxState();
+      const expandedCollectionsById = getExpandedCollectionsById(state);
+      const expandedCollection = expandedCollectionsById[ROOT_COLLECTION.id];
+      const children: Partial<Collection>[] = expandedCollection.children;
+      const chilrenIds = children.map(child => child.id);
+      const defaultCollectionsIds = DEFAULT_COLLECTIONS.map(({ id }) => id);
+
+      // Only compare ids to avoid comparing circular objects with jest
+      expect(chilrenIds).toEqual(defaultCollectionsIds);
+    });
+
+    it("preserves nested collections order", () => {
+      const nestedCollections = [
+        TEST_COLLECTION_A,
+        TEST_COLLECTION_B,
+        TEST_COLLECTION_C,
+      ];
+      const nestedCollectionsIds = nestedCollections.map(({ id }) => id);
+      const state = getReduxState({ collections: nestedCollections });
       const expandedCollectionsById = getExpandedCollectionsById(state);
       const expandedCollection = expandedCollectionsById[ROOT_COLLECTION.id];
       const children: Partial<Collection>[] = expandedCollection.children;
       const chilrenIds = children.map(child => child.id);
 
+      // Only compare ids to avoid comparing circular objects with jest
       expect(chilrenIds).toEqual(nestedCollectionsIds);
     });
   });
