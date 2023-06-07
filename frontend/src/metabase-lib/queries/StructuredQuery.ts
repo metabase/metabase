@@ -1340,6 +1340,7 @@ class StructuredQueryInner extends AtomicQuery {
         // They won't be available in MLv2's field literals,
         // so we need to remove them.
         const mlv2Options = _.omit(options, "join-alias");
+        mlv2Options["base-type"] = field.base_type;
 
         if (isVirtualCardId(field.table_id)) {
           const mlv2Dimension = Dimension.parseMBQL([
