@@ -7,7 +7,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
-   [metabase.models :refer [PulseChannel PulseChannelRecipient]]
+   [metabase.models :refer [PulseChannel]]
    [metabase.models.pulse :as pulse]
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.task-history :as task-history]
