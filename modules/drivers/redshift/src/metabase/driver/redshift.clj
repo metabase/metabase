@@ -9,7 +9,6 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
@@ -28,7 +27,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :redshift, :parent #{:postgres})
 
 (doseq [[feature supported?] {:test/jvm-timezone-setting false
                               :nested-field-columns      false}]
@@ -278,27 +277,12 @@
      :OpenSourceSubProtocolOverride false}
     (dissoc opts :host :port :db))))
 
-(prefer-method
- sql-jdbc.execute/read-column-thunk
- [::sql-jdbc.legacy/use-legacy-classes-for-read-and-set Types/TIMESTAMP]
- [:postgres Types/TIMESTAMP])
-
 (defmethod sql-jdbc.execute/read-column-thunk
  [:redshift Types/OTHER]
  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
  (if (= "interval" (.getColumnTypeName rsmeta i))
    #(.getValue ^RedshiftInterval (.getObject rs i RedshiftInterval))
    ((get-method sql-jdbc.execute/read-column-thunk [:postgres (.getColumnType rsmeta i)]) driver rs rsmeta i)))
-
-(prefer-method
- sql-jdbc.execute/read-column-thunk
- [::sql-jdbc.legacy/use-legacy-classes-for-read-and-set Types/TIME]
- [:postgres Types/TIME])
-
-(prefer-method
- sql-jdbc.execute/set-parameter
- [::sql-jdbc.legacy/use-legacy-classes-for-read-and-set OffsetTime]
- [:postgres OffsetTime])
 
 (defn- field->parameter-value
   "Map fields used in parameters to parameter `:value`s."
