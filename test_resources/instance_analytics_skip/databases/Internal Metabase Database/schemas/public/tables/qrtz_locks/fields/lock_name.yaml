@@ -37,6 +37,6 @@ display_name: Lock Name
 database_position: 1
 database_required: true
 fingerprint: null
-created_at: '2023-06-07T21:18:35.235521Z'
+created_at: '2023-06-07T23:03:25.099627Z'
 base_type: type/Text
 points_of_interest: null

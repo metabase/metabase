@@ -37,6 +37,6 @@ display_name: Str Prop 2
 database_position: 4
 database_required: false
 fingerprint: null
-created_at: '2023-06-07T21:18:36.869232Z'
+created_at: '2023-06-07T23:03:25.243872Z'
 base_type: type/Text
 points_of_interest: null

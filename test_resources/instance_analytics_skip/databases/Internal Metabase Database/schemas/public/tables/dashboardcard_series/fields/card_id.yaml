@@ -41,6 +41,6 @@ display_name: Card ID
 database_position: 2
 database_required: true
 fingerprint: null
-created_at: '2023-06-07T21:18:32.63773Z'
+created_at: '2023-06-07T23:03:23.176983Z'
 base_type: type/Integer
 points_of_interest: null

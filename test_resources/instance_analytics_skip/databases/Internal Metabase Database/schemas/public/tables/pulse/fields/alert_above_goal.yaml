@@ -37,6 +37,6 @@ display_name: Alert Above Goal
 database_position: 8
 database_required: false
 fingerprint: null
-created_at: '2023-06-07T21:18:32.842715Z'
+created_at: '2023-06-07T23:03:24.620091Z'
 base_type: type/Boolean
 points_of_interest: null

@@ -37,6 +37,6 @@ display_name: Timestamp
 database_position: 4
 database_required: true
 fingerprint: null
-created_at: '2023-06-07T21:18:37.059717Z'
+created_at: '2023-06-07T23:03:26.278207Z'
 base_type: type/DateTimeWithLocalTZ
 points_of_interest: null

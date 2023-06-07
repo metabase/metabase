@@ -37,6 +37,6 @@ display_name: Device ID
 database_position: 4
 database_required: true
 fingerprint: null
-created_at: '2023-06-07T21:18:35.415285Z'
+created_at: '2023-06-07T23:03:23.533201Z'
 base_type: type/Text
 points_of_interest: null
