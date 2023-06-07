@@ -1,13 +1,7 @@
 import _ from "underscore";
 import { REVIEWS_ID } from "metabase-types/api/mocks/presets";
-import {
-  ordersTable,
-  ordersTotalField,
-} from "../../../../../../test/metabase/lib/expressions/__support__/shared";
-import {
-  aggregationOpts,
-  expressionOpts,
-} from "../../../../../../test/metabase/lib/expressions/__support__/expressions";
+import { ordersTable, ordersTotalField } from "./__support__/shared";
+import { aggregationOpts, expressionOpts } from "./__support__/expressions";
 import { suggest as suggest_, Suggestion } from "./suggest";
 
 type Config = { text: string; type: string };
