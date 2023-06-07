@@ -11,10 +11,17 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import { getScrollY } from "metabase/lib/dom";
-import { Dashboard } from "metabase-types/api";
+import { color } from "metabase/lib/colors";
+import { Collection, Dashboard } from "metabase-types/api";
 
+import Icon from "metabase/components/Icon";
 import EditBar from "metabase/components/EditBar";
 import HeaderModal from "metabase/components/HeaderModal";
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import {
+  getCollectionIcon,
+  getCollectionTooltip,
+} from "metabase/entities/collections";
 import {
   EditWarning,
   HeaderRow,
@@ -40,6 +47,7 @@ interface DashboardHeaderViewProps {
   isEditingInfo: boolean;
   isNavBarOpen: boolean;
   dashboard: Dashboard;
+  collection: Collection;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
   onHeaderModalDone: () => null;
@@ -60,6 +68,7 @@ function DashboardHeaderView({
   isEditing,
   isNavBarOpen,
   dashboard,
+  collection,
   isLastEditInfoVisible,
   onHeaderModalDone,
   onHeaderModalCancel,
@@ -150,6 +159,13 @@ function DashboardHeaderView({
                 data-testid="dashboard-name-heading"
                 onChange={handleUpdateCaption}
               />
+              {isInstanceAnalyticsCollection(collection) && (
+                <Icon
+                  {...getCollectionIcon(collection)}
+                  color={color("brand")}
+                  tooltip={getCollectionTooltip(collection, "dashboard")}
+                />
+              )}
             </HeaderCaptionContainer>
             <HeaderBadges>
               {isLastEditInfoVisible && (
