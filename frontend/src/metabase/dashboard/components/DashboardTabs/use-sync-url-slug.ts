@@ -55,13 +55,16 @@ export function useSyncURLSlug() {
     const tabRenamed =
       tabs.find(t => t.id === selectedTabId)?.name !==
       prevTabs?.find(t => t.id === selectedTabId)?.name;
+    const penultimateTabDeleted = tabs.length === 1 && prevTabs?.length === 2;
 
-    if (tabSelected || tabRenamed) {
+    if (tabSelected || tabRenamed || penultimateTabDeleted) {
       updateURLSlug(
-        getSlug({
-          tabId: selectedTabId,
-          name: tabs.find(t => t.id === selectedTabId)?.name,
-        }),
+        tabs.length === 1
+          ? ""
+          : getSlug({
+              tabId: selectedTabId,
+              name: tabs.find(t => t.id === selectedTabId)?.name,
+            }),
       );
     }
   }, [selectedTabId, tabs, prevSelectedTabId, prevTabs, updateURLSlug]);
