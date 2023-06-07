@@ -21,14 +21,12 @@
             Field
             FieldValues
             LoginHistory
-            Metric
             NativeQuerySnippet
             Permissions
             PermissionsGroup
             PermissionsGroupMembership
             PersistedInfo
             Revision
-            Segment
             Setting
             Table
             TaskHistory
@@ -155,7 +153,7 @@
             :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/89.0.4389.86 Safari/537.36"
             :ip_address         "0:0:0:0:0:0:0:1"})
 
-   Metric
+   :model/Metric
    (fn [_] {:creator_id  (rasta-id)
             :definition  {}
             :description "Lookin' for a blueberry"
@@ -204,7 +202,7 @@
             :is_creation  false
             :is_reversion false})
 
-   Segment
+   :model/Segment
    (fn [_] {:creator_id  (rasta-id)
             :definition  {}
             :description "Lookin' for a blueberry"
