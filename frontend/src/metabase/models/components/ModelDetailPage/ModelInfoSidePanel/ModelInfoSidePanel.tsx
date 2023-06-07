@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import type { Card } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
+import * as ML_Urls from "metabase-lib/urls";
 import type Table from "metabase-lib/metadata/Table";
 
 import ModelRelationships from "./ModelRelationships";
@@ -57,7 +58,7 @@ function ModelInfoSidePanel({ model, mainTable, onChangeDescription }: Props) {
         <ModelInfoSection>
           <ModelInfoTitle>{t`Backing table`}</ModelInfoTitle>
           <ModelInfoLink
-            to={mainTable.newQuestion().getUrl({ clean: false })}
+            to={ML_Urls.getUrl(mainTable.newQuestion(), { clean: false })}
             aria-label={t`Backing table`}
           >
             {mainTable.displayName()}
