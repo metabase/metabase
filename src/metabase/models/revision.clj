@@ -98,15 +98,16 @@
   (cond
     (:is_creation revision)  [(deferred-tru "created this")]
     (:is_reversion revision) [(deferred-tru "reverted to an earlier version")]
+    ;; We only keep [[revision/max-revisions]] number of revision per entity.
+    ;; prev-revision can be nil when we generate description for oldest revision
     (nil? prev-revision)     [(deferred-tru "modified this")]
     :else                    (diff-strings model (:object prev-revision) (:object revision))))
 
 (defn- revision-description-info
   [model prev-revision revision]
-  (let [changes     (revision-changes model prev-revision revision)
-        description (build-sentence changes)]
-    {:description          (if description
-                             description
+  (let [changes (revision-changes model prev-revision revision)]
+    {:description          (if (seq changes)
+                             (build-sentence changes)
                              ;; HACK: before #30285 we record revision even when there is nothing changed,
                              ;; so there are cases when revision can comeback as `nil`.
                              ;; This is a safe guard for us to not display "Crowberto null" as

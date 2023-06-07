@@ -50,7 +50,7 @@
 
 ;; case with no revisions (maintains backwards compatibility with old installs before revisions)
 (deftest no-revisions-test
-  (testing "Loading revisions, where there are no changes, should work"
+  (testing "Loading revisions, where there are no revisions, should work"
     (t2.with-temp/with-temp [Card {:keys [id]}]
       (is (= [{:user {}, :diff nil, :description "modified this.", :has_multiple_changes false}]
              (get-revisions :card id))))))
