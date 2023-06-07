@@ -27,9 +27,6 @@
             PermissionsGroup
             PermissionsGroupMembership
             PersistedInfo
-            Pulse
-            PulseCard
-            PulseChannel
             Revision
             Segment
             Setting

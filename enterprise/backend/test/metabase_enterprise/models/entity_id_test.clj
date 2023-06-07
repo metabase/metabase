@@ -62,9 +62,9 @@
     :model/PulseCard
     :model/PulseChannel
     :model/PulseChannelRecipient
-    :metabase.models.query/Query
-    :metabase.models.query-cache/QueryCache
-    :metabase.models.query-execution/QueryExecution
+    :model/Query
+    :model/QueryCache
+    :model/QueryExecution
     :model/Revision
     :metabase.models.revision-test/FakedCard
     :model/Secret
