@@ -70,7 +70,8 @@
     ;; There's a sync scheduled, but we want to force a sync right away:
     (if-let [audit-db (t2/select-one :model/Database {:where [:= :is_audit true]})]
       (do (log/info "Beginning Audit DB Sync...")
-          (sync-metadata/sync-db-metadata! audit-db))
+          (log/with-no-logs (sync-metadata/sync-db-metadata! audit-db))
+          (log/info "Audit DB Sync Complete."))
       (when (not config/is-prod?)
         (log/warn "Audit DB was not installed correctly!!")))
     ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
