@@ -83,9 +83,7 @@
     (deferred-tru "changed this from a model to a saved question")
 
     [:display _ _]
-    (if v1
-      (deferred-tru "changed the display from {0} to {1}" (name v1) (name v2))
-      (deferred-tru "changed the display to {0}" (name v2)))
+    (deferred-tru "changed the display from {0} to {1}" (name v1) (name v2))
 
     [:result_metadata _ _]
     (deferred-tru "edited the metadata")

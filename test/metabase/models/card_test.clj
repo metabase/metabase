@@ -653,10 +653,6 @@
     {:name "Next"}
     "renamed this Card from \"Apple\" to \"Next\"."
 
-    {}
-    {:display :table}
-    "changed the display to table."
-
     {:display :table}
     {:display :pie}
     "changed the display from table to pie."

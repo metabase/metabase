@@ -98,6 +98,7 @@
   (cond
     (:is_creation revision)  [(deferred-tru "created this")]
     (:is_reversion revision) [(deferred-tru "reverted to an earlier version")]
+    (nil? prev-revision)     [(deferred-tru "modified this")]
     :else                    (diff-strings model (:object prev-revision) (:object revision))))
 
 (defn- revision-description-info
@@ -110,7 +111,7 @@
                              ;; so there are cases when revision can comeback as `nil`.
                              ;; This is a safe guard for us to not display "Crowberto null" as
                              ;; description on UI
-                             (deferred-tru "made a revision."))
+                             (deferred-tru "created a revision with no change."))
      ;; this is used on FE
      :has_multiple_changes (> (count changes) 1)}))
 
