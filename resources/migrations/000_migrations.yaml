@@ -14819,49 +14819,37 @@ databaseChangeLog:
       changes:
           # new_size_x = size_x + ((col + size_x + 1) // 3) - ((col + 1) // 3)
           # new_col    = col + ((col + 1) // 3)
-          # new_size_y = size_y + (size_y + row) // 3 - (row // 3)
-          # new_row    = row + (row // 3)
           - sql:
               dbms: postgresql
               sql: >-
                   update report_dashboardcard set size_x = size_x + floor(cast(size_x + col + 1  as decimal) / 3) - floor(cast(col + 1 as decimal) / 3);
                   update report_dashboardcard set col    = col + floor(cast(col + 1 as decimal) / 3);
-                  update report_dashboardcard set size_y = size_y + floor(cast(size_y + row as decimal) / 3) - floor(cast(row as decimal) / 3);
-                  update report_dashboardcard set row    = row + floor(cast(row as decimal) / 3);
           - sql:
               dbms: mysql,mariadb,h2
               sql: >-
                   update report_dashboardcard set size_x = size_x + floor(cast(size_x + col + 1  as decimal) / 3) - floor(cast(col + 1 as decimal) / 3);
                   update report_dashboardcard set col    = col + floor(cast(col + 1 as decimal) / 3);
-                  update report_dashboardcard set size_y = size_y + floor(cast(size_y + `row` as decimal) / 3) - floor(cast(`row` as decimal) / 3);
-                  update report_dashboardcard set `row`  = `row` + floor(cast(`row` as decimal) / 3);
 
       rollback:
           # new_size_x = size_x - ((size_x + col + 1) // 4 - (col + 1) // 4) for size_x > 1
           # new_col    = col - (col + 1) // 4
-          # new_size_y = size_y - ((size_y + row) // 4 - y // 4)       for size_y > 1
-          # new_row    = row - row // 4
-          # for size_x, size_y = 1, we keep it as it is, because it can't be smaller right?
+          # for size_x, we keep it as it is, because it can't be smaller right?
           - sql:
               dbms: postgresql
               sql: >-
                   update report_dashboardcard set size_x = size_x - (floor(cast(size_x + col + 1 as decimal) / 4) - floor(cast(col + 1 as decimal) / 4)) where size_x <> 1;
                   update report_dashboardcard set col    = col - floor(cast(col + 1 as decimal) / 4);
-                  update report_dashboardcard set size_y = size_y - (floor(cast(size_y + row as decimal) / 4) - floor(cast(row as decimal) / 4)) where size_y <> 1;
-                  update report_dashboardcard set row    = row - floor(cast(row as decimal) / 4);
 
           - sql:
               dbms: mysql,mariadb,h2
               sql: >-
                   update report_dashboardcard set size_x = size_x - (floor(cast(size_x + col + 1 as decimal) / 4) - floor(cast(col + 1 as decimal) / 4)) where size_x <> 1;
                   update report_dashboardcard set col    = col - floor(cast(col + 1 as decimal) / 4);
-                  update report_dashboardcard set size_y = size_y - (floor(cast(size_y + `row` as decimal) / 4) - floor(cast(`row` as decimal) / 4)) where size_y <> 1;
-                  update report_dashboardcard set `row`  = `row` - floor(cast(`row` as decimal) / 4);
 
   - changeSet:
       id: v47.00-032
       author: qnkhuat
-      comment: Added 0.47.0 - migrate dashboard grid size from 18 to 24
+      comment: Added 0.47.0 - migrate dashboard grid size from 18 to 24 for revisions
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.RevisionDashboardMigrateGridFrom18To24"

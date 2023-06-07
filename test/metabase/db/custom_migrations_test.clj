@@ -378,19 +378,19 @@
 
       (migrate!)
       (testing "forward migration migrate correclty"
-        (is (= [{:col 0  :row 20 :size_x 16 :size_y 10}
-                {:col 16 :row 9  :size_x 8  :size_y 11}
-                {:col 7  :row 2  :size_x 6  :size_y 4}
-                {:col 0  :row 33 :size_x 9  :size_y 13}
-                {:col 0  :row 2  :size_x 7  :size_y 4}
-                {:col 8  :row 9  :size_x 8  :size_y 11}
-                {:col 9  :row 33 :size_x 15 :size_y 13}
-                {:col 0  :row 9  :size_x 8  :size_y 5}
-                {:col 0  :row 30 :size_x 24 :size_y 3}
-                {:col 0  :row 6  :size_x 24 :size_y 3}
-                {:col 0  :row 0  :size_x 24 :size_y 2}
-                {:row 48 :col 0  :size_x 23 :size_y 1}
-                {:row 48 :col 23 :size_x 1  :size_y 1}]
+        (is (= [{:row 15 :col 0  :size_x 16 :size_y 8}
+                {:row 7  :col 16 :size_x 8  :size_y 8}
+                {:row 2  :col 7  :size_x 6  :size_y 3}
+                {:row 25 :col 0  :size_x 9  :size_y 10}
+                {:row 2  :col 0  :size_x 7  :size_y 3}
+                {:row 7  :col 8  :size_x 8  :size_y 8}
+                {:row 25 :col 9  :size_x 15 :size_y 10}
+                {:row 7  :col 0  :size_x 8  :size_y 4}
+                {:row 23 :col 0  :size_x 24 :size_y 2}
+                {:row 5  :col 0  :size_x 24 :size_y 2}
+                {:row 0  :col 0  :size_x 24 :size_y 2}
+                {:row 36 :col 0  :size_x 23 :size_y 1}
+                {:row 36 :col 23 :size_x 1  :size_y 1}]
                (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))
      (migrate-down! 46)
      (testing "downgrade works correctly"
@@ -421,7 +421,8 @@
   (every? (fn [{:keys [col size_x size_y]}]
             (and (<= (+ col size_x) grid-size)
                  (pos? size_x)
-                 (pos? size_y))) boxes))
+                 (pos? size_y)))
+          boxes))
 
 (def ^:private big-random-dashboard-cards
   (let [num-rows 20]
