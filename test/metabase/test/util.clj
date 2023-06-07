@@ -21,7 +21,6 @@
             Field
             FieldValues
             LoginHistory
-            NativeQuerySnippet
             Permissions
             PermissionsGroup
             PermissionsGroupMembership
