@@ -281,7 +281,10 @@ export const tabsReducer = createReducer<DashboardState>(
     builder.addCase(
       saveCardsAndTabs,
       (state, { payload: { cards: newCards, ordered_tabs: newTabs } }) => {
-        const { prevDash, prevTabs } = getPrevDashAndTabs({ state });
+        const { prevDash, prevTabs } = getPrevDashAndTabs({
+          state,
+          filterRemovedTabs: true,
+        });
         if (!prevDash) {
           throw Error(
             `SAVE_CARDS_AND_TABS was dispatched but prevDash (${prevDash}) is null`,
