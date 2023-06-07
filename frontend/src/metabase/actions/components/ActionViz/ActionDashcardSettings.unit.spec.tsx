@@ -1,6 +1,6 @@
 import * as React from "react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 
 import {
   setupActionsEndpoints,
@@ -19,6 +19,7 @@ import {
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
+import { FieldSettingsMap } from "metabase-types/api";
 import { ConnectedActionDashcardSettings } from "./ActionDashcardSettings";
 
 const dashboardParameter = createMockParameter({
@@ -39,6 +40,13 @@ const actionParameter2 = createMockActionParameter({
   name: "Action Parameter 2",
   slug: "action-parameter-2",
   target: ["variable", ["template-tag", "action-parameter-2"]],
+});
+const actionParameter3 = createMockActionParameter({
+  id: "action-param-id-3",
+  name: "Action Parameter 3",
+  slug: "action-parameter-3",
+  target: ["variable", ["template-tag", "action-parameter-3"]],
+  required: true,
 });
 
 const models = [
@@ -65,6 +73,28 @@ const actions2 = [
     model_id: models[1].id,
     parameters: [actionParameter1, actionParameter2],
   }),
+  createMockQueryAction({
+    id: 14,
+    name: "Action Trois 14",
+    model_id: models[1].id,
+    parameters: [actionParameter1, actionParameter2, actionParameter3],
+    visualization_settings: {
+      fields: {
+        [actionParameter1.id]: {
+          id: actionParameter1.id,
+          hidden: false,
+        },
+        [actionParameter2.id]: {
+          id: actionParameter2.id,
+          hidden: true,
+        },
+        [actionParameter3.id]: {
+          id: actionParameter3.id,
+          hidden: true,
+        },
+      } as FieldSettingsMap,
+    },
+  }),
 ];
 
 const dashcard = createMockDashboardOrderedCard();
@@ -73,9 +103,18 @@ const actionDashcardWithAction = createMockActionDashboardCard({
   id: 3,
   action: actions2[2],
 });
+const actionDashcardWithActionWithHiddenFields = createMockActionDashboardCard({
+  id: 4,
+  action: actions2[3],
+});
 
 const dashboard = createMockDashboard({
-  ordered_cards: [dashcard, actionDashcard, actionDashcardWithAction],
+  ordered_cards: [
+    dashcard,
+    actionDashcard,
+    actionDashcardWithAction,
+    actionDashcardWithActionWithHiddenFields,
+  ],
   parameters: [dashboardParameter],
 });
 
@@ -153,6 +192,23 @@ describe("ActionViz > ActionDashcardSettings", () => {
     });
     expect(screen.getByText("Action Parameter 1")).toBeInTheDocument();
     expect(screen.getByText("Action Parameter 2")).toBeInTheDocument();
+  });
+
+  it("shows hidden badge for hidden and required field", () => {
+    setup({
+      dashcard: actionDashcardWithActionWithHiddenFields,
+    });
+
+    const formSection = screen.getByTestId(
+      `parameter-form-section-${actionParameter3.id}`,
+    );
+
+    expect(formSection).toBeInTheDocument();
+    expect(within(formSection).getByText(/is required/i)).toBeInTheDocument();
+    expect(within(formSection).getByText(/hidden/i)).toBeInTheDocument();
+    expect(
+      within(formSection).getByRole("button", { name: /select a value/i }),
+    ).toBeInTheDocument();
   });
 
   it("can close the modal with the done button", () => {

@@ -21,7 +21,9 @@ import type Question from "metabase-lib/Question";
 import {
   ParameterFormSection,
   ParameterFormLabel,
+  ParameterFormBadge,
 } from "./ActionParameterMapper.styled";
+import { isParameterHidden, isParameterRequired } from "./utils";
 
 interface ActionParameterMapperProps {
   dashcard: ActionDashboardCard;
@@ -79,27 +81,45 @@ export const ActionParameterMappingForm = ({
 
   return (
     <div>
-      {actionParameters.map((actionParam: WritebackParameter) => (
-        <ParameterFormSection key={actionParam.id}>
-          <ParameterFormLabel>
-            {actionParam.name ?? actionParam.id}
-          </ParameterFormLabel>
-          <Select
-            value={currentMappings[getTargetKey(actionParam)] ?? null}
-            onChange={(e: SelectChangeEvent<string>) =>
-              handleParameterChange(e?.target?.value, actionParam.target)
-            }
-            options={[
-              { name: t`Ask the user`, value: null },
-              ...dashboardParameters.map(dashboardParam => ({
-                key: dashboardParam.id,
-                name: dashboardParam.name,
-                value: dashboardParam.id,
-              })),
-            ]}
-          />
-        </ParameterFormSection>
-      ))}
+      {actionParameters.map((actionParam: WritebackParameter) => {
+        const isHidden = isParameterHidden(action, actionParam);
+        const isRequired = isParameterRequired(action, actionParam);
+        const mappedValue = currentMappings[getTargetKey(actionParam)];
+        const showError = !mappedValue && isHidden && isRequired;
+        const name = actionParam.name ?? actionParam.id;
+
+        return (
+          <ParameterFormSection
+            key={actionParam.id}
+            data-testid={`parameter-form-section-${actionParam.id}`}
+          >
+            <ParameterFormLabel error={showError}>
+              <span>{`${name}${showError ? t`: is required` : ""}`}</span>
+              {isHidden && <ParameterFormBadge>{t`Hidden`}</ParameterFormBadge>}
+            </ParameterFormLabel>
+            <Select
+              value={mappedValue ?? null}
+              onChange={(e: SelectChangeEvent<string>) =>
+                handleParameterChange(e.target.value, actionParam.target)
+              }
+              options={[
+                {
+                  name:
+                    isHidden && isRequired
+                      ? t`Select a value`
+                      : t`Ask the user`,
+                  value: null,
+                },
+                ...dashboardParameters.map(dashboardParam => ({
+                  key: dashboardParam.id,
+                  name: dashboardParam.name,
+                  value: dashboardParam.id,
+                })),
+              ]}
+            />
+          </ParameterFormSection>
+        );
+      })}
       {actionParameters.length === 0 && (
         <EmptyState message={t`This action has no parameters to map`} />
       )}

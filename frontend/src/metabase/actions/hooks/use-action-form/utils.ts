@@ -134,7 +134,7 @@ export const getOrGenerateFieldSettings = (
 
   const fieldValues = Object.values(fields);
   const isGeneratedImplicitActionField =
-    Object.keys(fieldValues[0] ?? {}).length === 2;
+    fieldValues.length > 0 && Object.keys(fieldValues[0]).length === 2;
 
   if (isGeneratedImplicitActionField) {
     const generatedFieldSettings = generateFieldSettingsFromParameters(params);

@@ -7,10 +7,23 @@ export const ParameterFormSection = styled.div`
   margin-top: ${space(2)};
 `;
 
-export const ParameterFormLabel = styled.label`
-  color: ${color("text-medium")};
+interface ParameterFormLabelProps {
+  error?: boolean;
+}
+
+export const ParameterFormLabel = styled.label<ParameterFormLabelProps>`
+  color: ${props => (props.error ? color("error") : color("text-medium"))};
   font-size: 0.75rem;
-  display: block;
+  display: flex;
+  gap: ${space(1)};
+  align-items: center;
   margin-bottom: ${space(1)};
   font-weight: bold;
+`;
+
+export const ParameterFormBadge = styled.span`
+  color: ${color("text-dark")};
+  background-color: ${color("bg-medium")};
+  padding: ${space(0)} ${space(1)};
+  border-radius: ${space(0)};
 `;

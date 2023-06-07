@@ -104,3 +104,28 @@ export const shouldShowConfirmation = (action?: WritebackAction) => {
     action.type === "implicit" && action.kind === "row/delete";
   return hasConfirmationMessage || isImplicitDelete;
 };
+
+export const isParameterHidden = (
+  action: WritebackAction | undefined,
+  parameter: WritebackParameter,
+) => {
+  if (!action) {
+    return false;
+  }
+
+  return !!action.visualization_settings?.fields?.[parameter.id]?.hidden;
+};
+
+export const isParameterRequired = (
+  action: WritebackAction | undefined,
+  parameter: WritebackParameter,
+) => {
+  if (!action) {
+    return false;
+  }
+
+  return !!(
+    parameter.required ||
+    action.visualization_settings?.fields?.[parameter.id]?.required
+  );
+};
