@@ -108,12 +108,12 @@
                    (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
                         (filter mt/test-user?)
                         (map :email)))))
-        (testing "Returns all users when admin"
-          (mt/with-temporary-setting-values [user-visibility "none"]
-            (is (= [crowberto lucky rasta]
-                   (->> ((mt/user-http-request :crowberto :get 200 "user/recipients") :data)
-                        (filter mt/test-user?)
-                        (map :email)))))))
+         (testing "Returns all users when admin"
+           (mt/with-temporary-setting-values [user-visibility "none"]
+             (is (= [crowberto lucky rasta]
+                    (->> ((mt/user-http-request :crowberto :get 200 "user/recipients") :data)
+                         (filter mt/test-user?)
+                         (map :email)))))))
         (testing "Returns users in the group when user-visibility is same group"
           (mt/with-temporary-setting-values [user-visibility :group]
             (mt/with-temp* [PermissionsGroup           [{group-id :id} {:name "Test delete group"}]
@@ -122,12 +122,12 @@
               (is (= [crowberto rasta]
                      (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
                           (map :email))))))
-        (testing "Returns only self when user-visibility is none"
-          (mt/with-temporary-setting-values [user-visibility :none]
-            (is (= [rasta]
-                   (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
-                        (filter mt/test-user?)
-                        (map :email)))))))))))
+         (testing "Returns only self when user-visibility is none"
+           (mt/with-temporary-setting-values [user-visibility :none]
+             (is (= [rasta]
+                    (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                         (filter mt/test-user?)
+                         (map :email)))))))))))
 
 (deftest admin-user-list-test
   (testing "GET /api/user"
@@ -617,9 +617,9 @@
   (testing "PUT /api/user/:id"
     (testing "Test that we can update login attributes after a user has been created"
       (t2.with-temp/with-temp [User {user-id :id} {:first_name   "Test"
-                                         :last_name    "User"
-                                         :email        "testuser@metabase.com"
-                                         :is_superuser true}]
+                                                   :last_name    "User"
+                                                   :email        "testuser@metabase.com"
+                                                   :is_superuser true}]
         (is (= (merge
                 @user-defaults
                 {:is_superuser           true
@@ -666,9 +666,9 @@
   (testing "PUT /api/user/:id"
     (testing "Test that we can update a user's first and last names"
       (t2.with-temp/with-temp [User {user-id :id} {:first_name   "Blue Ape"
-                                         :last_name    "Ron"
-                                         :email        "blueronny@metabase.com"
-                                         :is_superuser true}]
+                                                   :last_name    "Ron"
+                                                   :email        "blueronny@metabase.com"
+                                                   :is_superuser true}]
         (letfn [(change-user-via-api! [m]
                   (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id) m)
                       (hydrate :personal_collection_id ::personal-collection-name)
@@ -721,10 +721,10 @@
   (testing "PUT /api/user/:id"
     (testing "Test that we do not update a user's first and last names if they are an SSO user."
       (t2.with-temp/with-temp [User {user-id :id} {:first_name   "SSO"
-                                         :last_name    "User"
-                                         :email        "sso-user@metabase.com"
-                                         :sso_source   :jwt
-                                         :is_superuser true}]
+                                                   :last_name    "User"
+                                                   :email        "sso-user@metabase.com"
+                                                   :sso_source   :jwt
+                                                   :is_superuser true}]
         (letfn [(change-user-via-api! [expected-status m]
                   (mt/user-http-request :crowberto :put expected-status (str "user/" user-id) m))]
           (testing "`:first_name` changes are rejected"
@@ -781,8 +781,8 @@
 
     (testing "Google auth users shouldn't be able to change their own password as we get that from Google"
       (t2.with-temp/with-temp [User user {:email       "anemail@metabase.com"
-                                :password    "def123"
-                                :sso_source  "google"}]
+                                          :password    "def123"
+                                          :sso_source  "google"}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -792,8 +792,8 @@
     (testing (str "Similar to Google auth accounts, we should not allow LDAP users to change their own email address "
                   "as we get that from the LDAP server")
       (t2.with-temp/with-temp [User user {:email     "anemail@metabase.com"
-                                :password  "def123"
-                                :sso_source "ldap"}]
+                                          :password  "def123"
+                                          :sso_source "ldap"}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -1074,7 +1074,7 @@
     (testing "Check that the last non-archived superuser cannot deactivate themselves"
       (mt/with-single-admin-user [{id :id}]
         (t2.with-temp/with-temp [User _ {:is_active    false
-                               :is_superuser true}]
+                                         :is_superuser true}]
           (is (= "You cannot remove the last member of the 'Admin' group!"
                  (mt/user-http-request id :delete 400 (format "user/%d" id)))))))
 
@@ -1093,9 +1093,9 @@
     (testing (str "PUT /api/user/:id/modal/" endpoint)
       (testing "Test that we can set the QB newb status of ourselves"
         (t2.with-temp/with-temp [User {:keys [id]} {:first_name (mt/random-name)
-                                          :last_name  (mt/random-name)
-                                          :email      "def@metabase.com"
-                                          :password   "def123"}]
+                                                    :last_name  (mt/random-name)
+                                                    :email      "def@metabase.com"
+                                                    :password   "def123"}]
           (let [creds {:username "def@metabase.com"
                        :password "def123"}]
             (testing "defaults to true"

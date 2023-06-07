@@ -247,7 +247,7 @@
       :time_matters true
       :creator_id   (rasta-id)})
 
-   User
+   :model/User
    (fn [_] {:first_name (tu.random/random-name)
             :last_name  (tu.random/random-name)
             :email      (tu.random/random-email)

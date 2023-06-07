@@ -71,7 +71,7 @@
     :model/Session
     :model/TaskHistory
     :model/TimelineEvent
-    :metabase.models.user/User
+    :model/User
     :model/ViewLog
     :metabase-enterprise.sandbox.models.group-table-access-policy/GroupTableAccessPolicy})
 

@@ -415,7 +415,7 @@
                (t2/select-one-fn :reset_token User :id user-id)))))
 
     (testing "should clear out all existing Sessions"
-      (mt/with-temp* [User [{user-id :id}]]
+      (t2.with-temp/with-temp [User {user-id :id} {}]
         (dotimes [_ 2]
           (t2/insert! Session {:id (str (java.util.UUID/randomUUID)), :user_id user-id}))
         (letfn [(session-count [] (t2/count Session :user_id user-id))]
@@ -464,16 +464,16 @@
 
 (deftest delete-pulse-subscriptions-when-archived-test
   (testing "Delete a User's Pulse/Alert/Dashboard Subscription subscriptions when they get archived"
-    (mt/with-temp* [User                  [{user-id :id}]
-                    Pulse                 [{pulse-id :id}]
-                    PulseChannel          [{pulse-channel-id :id} {:pulse_id pulse-id}]
-                    PulseChannelRecipient [_ {:pulse_channel_id pulse-channel-id, :user_id user-id}]]
+    (t2.with-temp/with-temp [User                  {user-id :id}          {}
+                             Pulse                 {pulse-id :id}         {}
+                             PulseChannel          {pulse-channel-id :id} {:pulse_id pulse-id}
+                             PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id, :user_id user-id}]
       (letfn [(subscription-exists? []
                 (t2/exists? PulseChannelRecipient :pulse_channel_id pulse-channel-id, :user_id user-id))]
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"
-          (is (pos? (t2/update! User user-id {:is_active true})))
+          (is (pos? (t2/update! User user-id {:is_active true :first_name "New name"})))
           (is (subscription-exists?)))
         (testing "archive the user"
           (is (pos? (t2/update! User user-id {:is_active false}))))
