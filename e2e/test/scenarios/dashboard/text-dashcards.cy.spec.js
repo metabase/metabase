@@ -52,7 +52,7 @@ describe("scenarios > dashboard > text and headings", () => {
         // if no content has been entered, preview should have placeholder content
         cy.findByText(
           "You can use Markdown here, and include variables {{like_this}}",
-        ).should("exist");
+        ).should("be.visible");
       });
 
       // should focus textarea editor on click
@@ -69,7 +69,7 @@ describe("scenarios > dashboard > text and headings", () => {
       cy.findByTestId("edit-bar")
         .findByText("You're editing this dashboard.")
         .click(); // un-focus text
-      getDashboardCard(1).contains("Text text text").should("exist");
+      getDashboardCard(1).contains("Text text text").should("be.visible");
 
       // should render visualization options
       getDashboardCard(1)
@@ -80,9 +80,9 @@ describe("scenarios > dashboard > text and headings", () => {
 
       cy.findByRole("dialog").within(() => {
         cy.findByTestId("chartsettings-sidebar").within(() => {
-          cy.findByText("Vertical Alignment").should("exist");
-          cy.findByText("Horizontal Alignment").should("exist");
-          cy.findByText("Show background").should("exist");
+          cy.findByText("Vertical Alignment").should("be.visible");
+          cy.findByText("Horizontal Alignment").should("be.visible");
+          cy.findByText("Show background").should("be.visible");
         });
 
         cy.findByText("Cancel").click(); // dismiss modal
@@ -99,7 +99,7 @@ describe("scenarios > dashboard > text and headings", () => {
       // should allow saving and show up after refresh
       saveDashboard();
 
-      getDashboardCard(1).contains("Text text text").should("exist");
+      getDashboardCard(1).contains("Text text text").should("be.visible");
     });
 
     it("should have a scroll bar for long text (metabase#8333)", () => {
@@ -127,10 +127,10 @@ describe("scenarios > dashboard > text and headings", () => {
       cy.findByTestId("edit-bar").findByText("Save").click();
 
       // confirm text box and filter are still there
-      getDashboardCard(1).contains("text text text").should("exist");
+      getDashboardCard(1).contains("text text text").should("be.visible");
       cy.findByTestId("dashboard-parameters-widget-container")
         .findByText("Text")
-        .should("exist");
+        .should("be.visible");
     });
   });
 
@@ -165,7 +165,7 @@ describe("scenarios > dashboard > text and headings", () => {
         cy.get("input").should("not.exist");
 
         // if no content has been entered, preview should have placeholder "Heading"
-        cy.get("h2").findByText("Heading").should("exist");
+        cy.get("h2").findByText("Heading").should("be.visible");
       });
 
       // should focus input editor on click
@@ -185,7 +185,7 @@ describe("scenarios > dashboard > text and headings", () => {
       getDashboardCard(1)
         .get("h2")
         .findByText("Example Heading")
-        .should("exist");
+        .should("be.visible");
 
       // should have no visualization options
       getDashboardCard(1)
@@ -208,7 +208,7 @@ describe("scenarios > dashboard > text and headings", () => {
       getDashboardCard(1)
         .get("h2")
         .findByText("Example Heading")
-        .should("exist");
+        .should("be.visible");
     });
   });
 });
