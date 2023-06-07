@@ -2,11 +2,11 @@ description: null
 archived: false
 collection_position: null
 table_id:
-- Audit Database
+- Internal Metabase Database
 - public
 - view_log
 result_metadata: null
-database_id: Audit Database
+database_id: Internal Metabase Database
 enable_embedding: false
 collection_id: 1nmJGtd0JAfHg_bkSsmKu
 query_type: query
@@ -16,10 +16,10 @@ made_public_by_id: null
 embedding_params: null
 cache_ttl: null
 dataset_query:
-  database: Audit Database
+  database: Internal Metabase Database
   query:
     source-table:
-    - Audit Database
+    - Internal Metabase Database
     - public
     - view_log
   type: query
