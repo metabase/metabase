@@ -1,17 +1,17 @@
 (ns metabase.api.revision-test
   (:require
-    [clojure.test :refer :all]
-    [metabase.models.card :refer [Card]]
-    [metabase.models.collection :refer [Collection]]
-    [metabase.models.dashboard :refer [Dashboard]]
-    [metabase.models.dashboard-card :refer [DashboardCard]]
-    [metabase.models.revision :as revision :refer [Revision]]
-    [metabase.test :as mt]
-    [metabase.test.data.users :as test.users]
-    [metabase.test.fixtures :as fixtures]
-    [metabase.util :as u]
-    [toucan2.core :as t2]
-    [toucan2.tools.with-temp :as t2.with-temp]))
+   [clojure.test :refer :all]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
+   [metabase.models.revision :as revision :refer [Revision]]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server :events))
 
@@ -35,11 +35,11 @@
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [dash-id is-creation? user]
   (revision/push-revision!
-    :object       (t2/select-one Dashboard :id dash-id)
-    :entity       Dashboard
-    :id           dash-id
-    :user-id      (test.users/user->id user)
-    :is-creation? is-creation?))
+   :object       (t2/select-one Dashboard :id dash-id)
+   :entity       Dashboard
+   :id           dash-id
+   :user-id      (test.users/user->id user)
+   :is-creation? is-creation?))
 
 ;;; # GET /revision
 
