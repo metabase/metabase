@@ -5,12 +5,14 @@ import {
   createMockFieldSettings,
   createMockParameter,
 } from "metabase-types/api/mocks";
+import { FieldSettingsMap } from "metabase-types/api";
 import {
   formatInitialValue,
   getInputType,
   generateFieldSettingsFromParameters,
   stripTZInfo,
   getOrGenerateFieldSettings,
+  formatSubmitValues,
 } from "./utils";
 
 const getFirstEntry = (obj: any): any => {
@@ -406,6 +408,57 @@ describe("actions > containers > ActionParametersInputForm > utils", () => {
 
         expect(getOrGenerateFieldSettings(params, fields)).toBe(fields);
       });
+    });
+  });
+
+  describe("formatSubmitValues", () => {
+    it("should format numeric field values as numbers", () => {
+      const fieldSettings: FieldSettingsMap = {
+        field_1: createMockFieldSettings({ fieldType: "number" }),
+        field_2: createMockFieldSettings({ fieldType: "string" }),
+      };
+      const rawValues = {
+        field_1: "1",
+        field_2: "some string",
+      };
+      const expected = {
+        field_1: 1,
+        field_2: "some string",
+      };
+      expect(formatSubmitValues(rawValues, fieldSettings)).toEqual(expected);
+    });
+
+    it("should not format non-numeric field values", () => {
+      const fieldSettings: FieldSettingsMap = {
+        field_1: createMockFieldSettings({ fieldType: "string" }),
+      };
+      const rawValues = {
+        field_1: "some string",
+      };
+      const expected = {
+        field_1: "some string",
+      };
+
+      expect(formatSubmitValues(rawValues, fieldSettings)).toEqual(expected);
+    });
+
+    it("should not format hidden field values", () => {
+      const fieldSettings: FieldSettingsMap = {
+        field_1: createMockFieldSettings({ fieldType: "number", hidden: true }),
+        field_2: createMockFieldSettings({
+          fieldType: "string",
+          hidden: false,
+        }),
+      };
+      const rawValues = {
+        field_1: "1",
+        field_2: "2",
+      };
+      const expected = {
+        field_2: "2",
+      };
+
+      expect(formatSubmitValues(rawValues, fieldSettings)).toEqual(expected);
     });
   });
 });

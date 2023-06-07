@@ -47,15 +47,17 @@ export const formatSubmitValues = (
 ) => {
   const values: ParametersForActionExecution = {};
 
-  Object.entries(rawValues).forEach(([fieldId, fieldValue]) => {
-    values[fieldId] = fieldValue;
+  Object.entries(rawValues)
+    .filter(([fieldId]) => !fieldSettings[fieldId].hidden)
+    .forEach(([fieldId, fieldValue]) => {
+      values[fieldId] = fieldValue;
 
-    const formField = fieldSettings[fieldId];
-    const isNumericField = formField?.fieldType === "number";
-    if (isNumericField && !isEmpty(fieldValue)) {
-      values[fieldId] = Number(fieldValue) ?? null;
-    }
-  });
+      const formField = fieldSettings[fieldId];
+      const isNumericField = formField?.fieldType === "number";
+      if (isNumericField && !isEmpty(fieldValue)) {
+        values[fieldId] = Number(fieldValue);
+      }
+    });
 
   return values;
 };
@@ -134,7 +136,7 @@ export const getOrGenerateFieldSettings = (
 
   const fieldValues = Object.values(fields);
   const isGeneratedImplicitActionField =
-    Object.keys(fieldValues[0] ?? {}).length === 2;
+    fieldValues.length > 0 && Object.keys(fieldValues[0]).length === 2;
 
   if (isGeneratedImplicitActionField) {
     const generatedFieldSettings = generateFieldSettingsFromParameters(params);
