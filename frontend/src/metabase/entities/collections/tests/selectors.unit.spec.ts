@@ -1,4 +1,5 @@
-import { Collection, CollectionId } from "metabase-types/api";
+import { Collection } from "metabase-types/api";
+import { createMockCollection } from "metabase-types/api/mocks";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 
 interface MockCollection {
@@ -28,25 +29,50 @@ describe("Collection selectors", () => {
     can_write: true,
   };
 
-  const TEST_READ_ONLY_COLLECTION = {
+  const TEST_COLLECTION_A = createMockCollection({
+    id: 6,
+    name: "Collection A",
+    can_write: true,
+    path: [ROOT_COLLECTION.id],
+  });
+
+  const TEST_COLLECTION_B = createMockCollection({
+    id: 5,
+    name: "Collection B",
+    can_write: true,
+    path: [ROOT_COLLECTION.id],
+  });
+
+  const TEST_COLLECTION_C = createMockCollection({
     id: 4,
+    name: "Collection C",
+    can_write: true,
+    path: [ROOT_COLLECTION.id],
+  });
+
+  const TEST_READ_ONLY_COLLECTION = {
+    id: 7,
     name: "Read-only Collection",
     can_write: false,
   };
 
-  const DEFAULT_COLLECTIONS = {
-    [TEST_COLLECTION.id]: TEST_COLLECTION,
-    [TEST_COLLECTION_2.id]: TEST_COLLECTION_2,
-    [TEST_READ_ONLY_COLLECTION.id]: TEST_READ_ONLY_COLLECTION,
-  };
+  const DEFAULT_COLLECTIONS = [
+    TEST_COLLECTION,
+    TEST_COLLECTION_2,
+    TEST_READ_ONLY_COLLECTION,
+  ];
 
   function getReduxState({
     isAdmin = false,
     collections = DEFAULT_COLLECTIONS,
   }: {
     isAdmin?: boolean;
-    collections?: Partial<Record<CollectionId, MockCollection>>;
+    collections?: MockCollection[];
   } = {}) {
+    const collectionsById = Object.fromEntries(
+      collections.map(collection => [collection.id, collection]),
+    );
+
     return {
       currentUser: {
         personal_collection_id: PERSONAL_COLLECTION.id,
@@ -54,12 +80,16 @@ describe("Collection selectors", () => {
       entities: {
         collections: {
           root: {
-            id: "root",
-            name: "Our analytics",
+            ...ROOT_COLLECTION,
             can_write: isAdmin,
           },
           [PERSONAL_COLLECTION.id]: PERSONAL_COLLECTION,
-          ...collections,
+          ...collectionsById,
+        },
+        collections_list: {
+          null: {
+            list: [ROOT_COLLECTION.id, ...collections.map(({ id }) => id)],
+          },
         },
       },
     };
@@ -209,10 +239,7 @@ describe("Collection selectors", () => {
           PERSONAL_COLLECTION;
 
         const state = getReduxState({
-          collections: {
-            [PERSONAL_COLLECTION.id]:
-              personalCollectionWithoutPermissionsLoaded,
-          },
+          collections: [personalCollectionWithoutPermissionsLoaded],
         });
         const props = {
           collectionId: ROOT_COLLECTION.id,
@@ -241,6 +268,27 @@ describe("Collection selectors", () => {
         };
         expect(getInitialCollectionId(state, props)).toBe(TEST_COLLECTION.id);
       });
+    });
+  });
+
+  describe("getExpandedCollectionsById", () => {
+    const { getExpandedCollectionsById } = Collections.selectors;
+    const nestedCollections = [
+      TEST_COLLECTION_A,
+      TEST_COLLECTION_B,
+      TEST_COLLECTION_C,
+    ];
+    const nestedCollectionsIds = nestedCollections.map(({ id }) => id);
+    const state = getReduxState({ collections: nestedCollections });
+
+    it("preserves original collections order (does not re-order by ids)", () => {
+      // Only compare ids to avoid circular objects (parent / children)
+      const expandedCollectionsById = getExpandedCollectionsById(state);
+      const expandedCollection = expandedCollectionsById[ROOT_COLLECTION.id];
+      const children: MockCollection[] = expandedCollection.children;
+      const chilrenIds = children.map(child => child.id);
+
+      expect(chilrenIds).toEqual(nestedCollectionsIds);
     });
   });
 });
