@@ -2,32 +2,26 @@ import { Collection } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 
-interface MockCollection {
-  id: Collection["id"];
-  name: Collection["name"];
-  can_write?: Collection["can_write"];
-}
-
 describe("Collection selectors", () => {
   const CANONICAL_ROOT_COLLECTION_ID = null;
 
-  const PERSONAL_COLLECTION = {
+  const PERSONAL_COLLECTION = createMockCollection({
     id: 1,
     name: "My personal collection",
     can_write: true,
-  };
+  });
 
-  const TEST_COLLECTION = {
+  const TEST_COLLECTION = createMockCollection({
     id: 2,
     name: "Writable Collection",
     can_write: true,
-  };
+  });
 
-  const TEST_COLLECTION_2 = {
+  const TEST_COLLECTION_2 = createMockCollection({
     id: 3,
     name: "One More Writable Collection",
     can_write: true,
-  };
+  });
 
   const TEST_COLLECTION_A = createMockCollection({
     id: 6,
@@ -50,11 +44,11 @@ describe("Collection selectors", () => {
     path: [ROOT_COLLECTION.id],
   });
 
-  const TEST_READ_ONLY_COLLECTION = {
+  const TEST_READ_ONLY_COLLECTION = createMockCollection({
     id: 7,
     name: "Read-only Collection",
     can_write: false,
-  };
+  });
 
   const DEFAULT_COLLECTIONS = [
     TEST_COLLECTION,
@@ -67,7 +61,7 @@ describe("Collection selectors", () => {
     collections = DEFAULT_COLLECTIONS,
   }: {
     isAdmin?: boolean;
-    collections?: MockCollection[];
+    collections?: Partial<Collection>[];
   } = {}) {
     const collectionsById = Object.fromEntries(
       collections.map(collection => [collection.id, collection]),
@@ -285,7 +279,7 @@ describe("Collection selectors", () => {
       // Only compare ids to avoid circular objects (parent / children)
       const expandedCollectionsById = getExpandedCollectionsById(state);
       const expandedCollection = expandedCollectionsById[ROOT_COLLECTION.id];
-      const children: MockCollection[] = expandedCollection.children;
+      const children: Partial<Collection>[] = expandedCollection.children;
       const chilrenIds = children.map(child => child.id);
 
       expect(chilrenIds).toEqual(nestedCollectionsIds);
