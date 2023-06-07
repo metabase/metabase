@@ -1,5 +1,4 @@
 import { HTMLAttributes } from "react";
-import EmptySkeleton from "metabase/visualizations/components/skeletons/EmptySkeleton";
 import AreaSkeleton from "metabase/visualizations/components/skeletons/AreaSkeleton";
 import FunnelSkeleton from "metabase/visualizations/components/skeletons/FunnelSkeleton";
 import LineSkeleton from "metabase/visualizations/components/skeletons/LineSkeleton";
@@ -24,11 +23,11 @@ type ChartSkeletonProps = HTMLAttributes<HTMLDivElement> & {
   actionMenu?: JSX.Element | null;
 };
 
-const skeletonComponent: (display: ChartSkeletonDisplayType) => JSX.Element = (
-  display: ChartSkeletonDisplayType,
-) => {
+const skeletonComponent: (
+  display?: ChartSkeletonDisplayType,
+) => JSX.Element | null = (display?: ChartSkeletonDisplayType) => {
   if (!display) {
-    return <EmptySkeleton />;
+    return null;
   }
 
   switch (display) {
@@ -70,10 +69,6 @@ const ChartSkeleton = ({
   name,
   className,
 }: ChartSkeletonProps) => {
-  if (!display) {
-    return <EmptySkeleton />;
-  }
-
   if (display === "scalar" || display === "smartscalar") {
     return (
       <ScalarSkeleton
