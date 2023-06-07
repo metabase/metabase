@@ -39,6 +39,9 @@ import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getSetting } from "metabase/selectors/settings";
 
+import Link from "metabase/core/components/Link/Link";
+import Collections from "metabase/entities/collections/collections";
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { DashboardHeaderComponent } from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
 import {
@@ -125,6 +128,7 @@ class DashboardHeader extends Component {
     addActionToDashboard: PropTypes.func.isRequired,
 
     databases: PropTypes.object,
+    collection: PropTypes.object,
 
     dashboardId: PropTypes.number,
     selectedTabId: PropTypes.number,
@@ -267,9 +271,11 @@ class DashboardHeader extends Component {
       isShowingDashboardInfoSidebar,
       closeSidebar,
       databases,
+      collection,
     } = this.props;
 
     const canEdit = dashboard.can_write;
+    const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
     const hasModelActionsEnabled = Object.values(databases).some(
       hasDatabaseActionsEnabled,
@@ -387,6 +393,17 @@ class DashboardHeader extends Component {
       });
     }
 
+    if (isAnalyticsDashboard) {
+      buttons.push(
+        <Button
+          icon="clone"
+          data-metabase-event="Dashboard;Copy"
+          to={`${location.pathname}/copy`}
+          as={Link}
+        >{t`Make a copy`}</Button>,
+      );
+    }
+
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
         <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
@@ -402,7 +419,7 @@ class DashboardHeader extends Component {
       );
     }
 
-    if (!isFullscreen && !isEditing) {
+    if (!isFullscreen && !isEditing && !isAnalyticsDashboard) {
       extraButtons.push({
         title: t`Enter fullscreen`,
         icon: "expand",
@@ -448,7 +465,7 @@ class DashboardHeader extends Component {
 
     buttons.push(...getDashboardActions(this, this.props));
 
-    if (extraButtons.length > 0 && !isEditing) {
+    if (!isEditing) {
       buttons.push(
         ...[
           <DashboardHeaderActionDivider key="dashboard-button-divider" />,
@@ -470,6 +487,11 @@ class DashboardHeader extends Component {
               }
             />
           </Tooltip>,
+        ].filter(Boolean),
+      );
+
+      if (extraButtons.length > 0) {
+        buttons.push(
           <EntityMenu
             key="dashboard-action-menu-button"
             triggerAriaLabel="dashboard-menu-button"
@@ -477,7 +499,20 @@ class DashboardHeader extends Component {
             triggerIcon="ellipsis"
             tooltip={t`Move, archive, and more...`}
           />,
-        ].filter(Boolean),
+        );
+      }
+    }
+
+    if (isAnalyticsDashboard) {
+      buttons.push(
+        <DashboardHeaderButton
+          key="expand"
+          aria-label={t`Enter Fullscreen`}
+          data-metabase-event={`Dashboard;Fullscreen Mode;${!isFullscreen}`}
+          icon="expand"
+          className="text-brand-hover cursor-pointer"
+          onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
+        />,
       );
     }
 
@@ -495,6 +530,7 @@ class DashboardHeader extends Component {
   render() {
     const {
       dashboard,
+      collection,
       isEditing,
       isFullscreen,
       isAdditionalInfoVisible,
@@ -511,6 +547,7 @@ class DashboardHeader extends Component {
         analyticsContext="Dashboard"
         location={this.props.location}
         dashboard={dashboard}
+        collection={collection}
         isEditing={isEditing}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
         isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
@@ -533,5 +570,8 @@ class DashboardHeader extends Component {
 
 export default _.compose(
   Bookmark.loadList(),
+  Collections.load({
+    id: (state, props) => props.dashboard.collection_id || "root",
+  }),
   connect(mapStateToProps, mapDispatchToProps),
 )(DashboardHeader);
