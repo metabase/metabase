@@ -321,7 +321,7 @@
 
 (def BinningStrategyName
   "Schema for a valid value for the `strategy-name` param of a [[field]] clause with `:binning` information."
-  (s/enum :num-bins :bin-width :default))
+  (s/enum :num-bins :bin-width :default :dont-bin))
 
 (defn- validate-bin-width [schema]
   (s/constrained

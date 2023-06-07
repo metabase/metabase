@@ -193,34 +193,36 @@
                        fk-field-id        :fk-field-id
                        table-id           :table-id
                        :as                field-metadata} style]
-  (let [field-display-name (or field-display-name
-                               (u.humanization/name->human-readable-name :simple field-name))
-        join-display-name  (when (= style :long)
-                             (or
-                               (when fk-field-id
-                                 ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
-                                 ;; "ID" dropped instead.
-                                 ;; This is very intentional: one table might have several FKs to one foreign table, each with different
-                                 ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
-                                 ;; See #30109 for more details.
-                                 (if-let [field (lib.metadata/field query fk-field-id)]
-                                   (-> (lib.metadata.calculation/display-info query stage-number field)
-                                       :display-name
-                                       lib.util/strip-id)
-                                   (let [table (lib.metadata/table query table-id)]
-                                     (lib.metadata.calculation/display-name query stage-number table style))))
-                               (when-let [join-alias (or join-alias (::join-alias field-metadata))]
-                                 (let [join (lib.join/resolve-join query stage-number join-alias)]
-                                   (lib.metadata.calculation/display-name query stage-number join style)))))
-        display-name       (if join-display-name
-                             (str join-display-name " → " field-display-name)
-                             field-display-name)]
+  (let [field-display-name   (or field-display-name
+                                 (u.humanization/name->human-readable-name :simple field-name))
+        join-display-name    (when (= style :long)
+                               (or
+                                (when fk-field-id
+                                  ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
+                                  ;; "ID" dropped instead.
+                                  ;; This is very intentional: one table might have several FKs to one foreign table, each with different
+                                  ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
+                                  ;; See #30109 for more details.
+                                  (if-let [field (lib.metadata/field query fk-field-id)]
+                                    (-> (lib.metadata.calculation/display-info query stage-number field)
+                                        :display-name
+                                        lib.util/strip-id)
+                                    (let [table (lib.metadata/table query table-id)]
+                                      (lib.metadata.calculation/display-name query stage-number table style))))
+                                (when-let [join-alias (or join-alias (::join-alias field-metadata))]
+                                  (let [join (lib.join/resolve-join query stage-number join-alias)]
+                                    (lib.metadata.calculation/display-name query stage-number join style)))))
+        display-name         (if join-display-name
+                               (str join-display-name " → " field-display-name)
+                               field-display-name)
+        binning-display-name (when (and binning (not= (:strategy binning) :dont-bin))
+                               (lib.binning/binning-display-name binning field-metadata))]
     (cond
-      temporal-unit (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
-                                                               (str/replace \- \space)
-                                                               u/capitalize-en))
-      binning       (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata))
-      :else         display-name)))
+      temporal-unit        (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
+                                                                      (str/replace \- \space)
+                                                                      u/capitalize-en))
+      binning-display-name (lib.util/format "%s: %s" display-name binning-display-name)
+      :else                display-name)))
 
 (defmethod lib.metadata.calculation/display-name-method :field
   [query

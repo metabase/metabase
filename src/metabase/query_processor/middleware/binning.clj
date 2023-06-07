@@ -196,19 +196,21 @@
   [{:keys [source-metadata], :as _inner-query}
    field-id->filters                          :- FieldID->Filters
    [_ id-or-name {:keys [binning], :as opts}] :- mbql.s/field]
-  (let [metadata                                   (matching-metadata id-or-name source-metadata)
-        {:keys [min-value max-value], :as min-max} (extract-bounds (when (integer? id-or-name) id-or-name)
-                                                                   (:fingerprint metadata)
-                                                                   field-id->filters)
-        [new-strategy resolved-options]            (resolve-options (:strategy binning)
-                                                                    (get binning (:strategy binning))
-                                                                    metadata
-                                                                    min-value max-value)
-        resolved-options                           (merge min-max resolved-options)
-        ;; Bail out and use unmodifed version if we can't converge on a nice version.
-        new-options (or (nicer-breakout new-strategy resolved-options)
-                        resolved-options)]
-    [:field id-or-name (update opts :binning merge {:strategy new-strategy} new-options)]))
+  (if (= (:strategy binning) :dont-bin)
+    [:field id-or-name (dissoc opts :binning)]
+    (let [metadata                                   (matching-metadata id-or-name source-metadata)
+          {:keys [min-value max-value], :as min-max} (extract-bounds (when (integer? id-or-name) id-or-name)
+                                                                     (:fingerprint metadata)
+                                                                     field-id->filters)
+          [new-strategy resolved-options]            (resolve-options (:strategy binning)
+                                                                      (get binning (:strategy binning))
+                                                                      metadata
+                                                                      min-value max-value)
+          resolved-options                           (merge min-max resolved-options)
+          ;; Bail out and use unmodifed version if we can't converge on a nice version.
+          new-options (or (nicer-breakout new-strategy resolved-options)
+                          resolved-options)]
+      [:field id-or-name (update opts :binning merge {:strategy new-strategy} new-options)])))
 
 (defn update-binning-strategy-in-inner-query
   "Update `:field` clauses with `:binning` strategy options in an `inner` [MBQL] query."

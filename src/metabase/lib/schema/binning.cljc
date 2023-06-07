@@ -9,7 +9,7 @@
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::binning-strategies
-  [:enum :bin-width :default :num-bins])
+  [:enum :bin-width :default :num-bins :dont-bin])
 
 (mr/def ::binning
   [:and
@@ -17,9 +17,9 @@
     [:strategy  [:ref ::binning-strategies]]
     [:bin-width {:optional true} pos?]
     [:num-bins  {:optional true} ::lib.schema.common/int-greater-than-zero]]
-   [:fn {:error/message "if :strategy is not :default, the matching key :bin-width or :num-bins must also be set"}
+   [:fn {:error/message "if :strategy is not :default or :dont-bin, the matching key :bin-width or :num-bins must also be set"}
     #(when-let [strat (:strategy %)]
-       (or (= strat :default)
+       (or (contains? #{:default :dont-bin} strat)
            (contains? % strat)))]])
 
 (mr/def ::binning-option

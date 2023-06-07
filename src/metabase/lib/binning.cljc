@@ -82,7 +82,7 @@
 
 (defn- dont-bin []
   {:display-name (i18n/tru "Don''t bin")
-   :mbql         nil})
+   :mbql         {:strategy :dont-bin}})
 
 (defn- with-binning-option-type [m]
   (assoc m :lib/type ::binning-option))
@@ -126,6 +126,7 @@
       :bin-width (str (fmt.num/format-number bin-width {})
                       (when (isa? (:semantic-type field-metadata) :type/Coordinate)
                         "°"))
+      :dont-bin  (i18n/tru "Unbinned")
       :default   (i18n/tru "Auto binned"))))
 
 (defmethod lib.metadata.calculation/display-info-method ::binning-option
