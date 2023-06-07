@@ -23,24 +23,8 @@ jobs:
     steps:
       - id: testRunId
         run: echo testRunId=$(npx uuid) >> "$GITHUB_OUTPUT"
-  files-changed:
-    name: Check which files changed
-    runs-on: ubuntu-22.04
-    timeout-minutes: 3
-    outputs:
-      e2e_all: ${{ steps.changes.outputs.e2e_all }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Test which files changed
-        uses: dorny/paths-filter@v2.11.1
-        id: changes
-        with:
-          token: ${{ github.token }}
-          filters: .github/file-paths.yaml
 
   build:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.e2e_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     strategy:
@@ -65,10 +49,9 @@ jobs:
         uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    needs: [build, files-changed, test-run-id]
+    needs: [build, test-run-id]
     if: |
       always() &&
-      needs.files-changed.outputs.e2e_all == 'true' &&
       needs.build.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
@@ -118,36 +101,37 @@ jobs:
           - "1080:1080"
           - "1025:1025"
         credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: jasonlaster11
+          password: dckr_pat_kCPs_U_Z7Z6zOn9CguLFcckDH4Q
       openldap:
         image: osixia/openldap:1.5.0
         ports:
           - "389:389"
         credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: jasonlaster11
+          password: dckr_pat_kCPs_U_Z7Z6zOn9CguLFcckDH4Q
       postgres-sample:
         image: metabase/qa-databases:postgres-sample-12
         ports:
           - "5404:5432"
         credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: jasonlaster11
+          password: dckr_pat_kCPs_U_Z7Z6zOn9CguLFcckDH4Q
       mongo-sample:
         image: metabase/qa-databases:mongo-sample-4.4
         ports:
           - 27004:27017
         credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: jasonlaster11
+          password: dckr_pat_kCPs_U_Z7Z6zOn9CguLFcckDH4Q
       mysql-sample:
         image: metabase/qa-databases:mysql-sample-8
         ports:
           - 3304:3306
         credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: jasonlaster11
+          password: dckr_pat_kCPs_U_Z7Z6zOn9CguLFcckDH4Q
+
     steps:
       - uses: actions/checkout@v3
       - name: Record runs using Deploysentinel except for the release branch
@@ -241,91 +225,3 @@ jobs:
             ./logs/test.log
           if-no-files-found: ignore
 
-  e2e-tests-skipped-stub:
-    needs: [build, files-changed]
-    if: |
-      always() &&
-      needs.files-changed.outputs.e2e_all == 'false' &&
-      needs.build.result == 'skipped'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 5
-    name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
-    strategy:
-      fail-fast: false
-      matrix:
-        java-version: [11]
-        edition: [ee]
-        folder:
-          - "admin"
-          - "binning"
-          - "collections"
-          - "custom-column"
-          - "dashboard"
-          - "dashboard-filters"
-          - "downloads"
-          - "embedding"
-          - "filters"
-          - "joins"
-          - "models"
-          - "native"
-          - "native-filters"
-          - "onboarding"
-          - "organization"
-          - "permissions"
-          - "question"
-          - "sharing"
-          - "visualizations"
-        include:
-          - edition: oss
-            context: grep
-            java-version: 11
-    steps:
-      - run: |
-          echo "Didn't run due to conditional filtering"
-
-  visual-regression-tests:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 45
-    needs: build
-    if: ${{ github.event_name != 'schedule' }}
-    name: percy-visual-regression-tests
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-    services:
-      maildev:
-        image: maildev/maildev:2.0.5
-        ports:
-          - "1080:1080"
-          - "1025:1025"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Enable Percy recording on master only
-        if: github.ref == 'refs/heads/master'
-        run: |
-          echo "PERCY_TOKEN=${{ secrets.PERCY_TOKEN }}" >> $GITHUB_ENV
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare JDK 11
-        uses: actions/setup-java@v3
-        with:
-          java-version: 11
-          distribution: 'temurin'
-      - name: Prepare Cypress environment
-        uses: ./.github/actions/prepare-cypress
-
-      - uses: actions/download-artifact@v3
-        name: Retrieve uberjar artifact for ee
-        with:
-          name: metabase-ee-uberjar
-      - name: Get the version info
-        run: |
-          jar xf target/uberjar/metabase.jar version.properties
-          mv version.properties resources/
-      - name: Percy Test
-        run: yarn run test-visual-run
-        env:
-          PERCY_TOKEN: ${{ env.PERCY_TOKEN }}
