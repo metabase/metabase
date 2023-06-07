@@ -42,7 +42,6 @@
   (derive ::mi/create-policy.superuser))
 
 (t2/define-before-update :model/Segment  [{:keys [creator_id id], :as segment}]
-  (def segment segment)
   (u/prog1 (t2/changes segment)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? <> :creator_id)

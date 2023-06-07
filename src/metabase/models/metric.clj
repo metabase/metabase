@@ -43,7 +43,6 @@
 
 (t2/define-before-update :model/Metric
   [{:keys [creator_id id], :as metric}]
-  (def v metric)
   (u/prog1 (t2/changes metric)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? <> :creator_id)
