@@ -45,6 +45,8 @@ export const HeaderCaptionContainer = styled.div`
   display: flex;
   padding-right: 2rem;
   right: 0.25rem;
+  display: flex;
+  align-items: center;
 `;
 
 export const HeaderCaption = styled(EditableText)`
