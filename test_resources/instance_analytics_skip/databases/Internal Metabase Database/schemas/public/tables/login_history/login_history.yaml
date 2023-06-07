@@ -1,0 +1,21 @@
+description: Keeps track of various logins for different users and additional info such as location and device
+entity_type: null
+schema: public
+show_in_getting_started: false
+name: login_history
+caveats: null
+active: true
+db_id: Internal Metabase Database
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: login_history
+visibility_type: null
+field_order: database
+initial_sync_status: complete
+display_name: Login History
+created_at: '2023-06-07T21:18:31.810997Z'
+points_of_interest: null

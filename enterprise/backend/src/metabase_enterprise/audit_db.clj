@@ -30,7 +30,7 @@
        (t2/insert! Database {:is_audit         true
                              :id               default-audit-db-id
                              :name             "Internal Metabase Database"
-                             :description      "Internal DB used to power Metabase instance analytics."
+                             :description      "Internal Audit DB used to power metabase analytics."
                              :engine           engine
                              :is_full_sync     true
                              :is_on_demand     false

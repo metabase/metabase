@@ -1,0 +1,42 @@
+description: null
+database_type: text
+semantic_type: null
+table_id:
+- Internal Metabase Database
+- public
+- metabase_fieldvalues
+coercion_strategy: null
+name: human_readable_values
+fingerprint_version: 0
+has_field_values: null
+settings: null
+caveats: null
+fk_target_field_id: null
+dimensions: []
+custom_position: 0
+effective_type: type/Text
+active: true
+nfc_path: null
+parent_id: null
+last_analyzed: null
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: metabase_fieldvalues
+- model: Field
+  id: human_readable_values
+database_is_auto_increment: false
+json_unfolding: false
+position: 4
+visibility_type: normal
+preview_display: true
+display_name: Human Readable Values
+database_position: 4
+database_required: false
+fingerprint: null
+created_at: '2023-06-07T21:18:33.991082Z'
+base_type: type/Text
+points_of_interest: null

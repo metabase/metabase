@@ -1,0 +1,21 @@
+description: null
+entity_type: null
+schema: public
+show_in_getting_started: false
+name: databasechangeloglock
+caveats: null
+active: true
+db_id: Internal Metabase Database
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: databasechangeloglock
+visibility_type: cruft
+field_order: database
+initial_sync_status: complete
+display_name: Databasechangeloglock
+created_at: '2023-06-07T21:18:31.689219Z'
+points_of_interest: null

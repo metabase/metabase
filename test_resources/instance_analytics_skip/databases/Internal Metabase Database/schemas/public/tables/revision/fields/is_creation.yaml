@@ -1,0 +1,42 @@
+description: null
+database_type: bool
+semantic_type: null
+table_id:
+- Internal Metabase Database
+- public
+- revision
+coercion_strategy: null
+name: is_creation
+fingerprint_version: 0
+has_field_values: null
+settings: null
+caveats: null
+fk_target_field_id: null
+dimensions: []
+custom_position: 0
+effective_type: type/Boolean
+active: true
+nfc_path: null
+parent_id: null
+last_analyzed: null
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: revision
+- model: Field
+  id: is_creation
+database_is_auto_increment: false
+json_unfolding: false
+position: 7
+visibility_type: normal
+preview_display: true
+display_name: Is Creation
+database_position: 7
+database_required: false
+fingerprint: null
+created_at: '2023-06-07T21:18:32.30873Z'
+base_type: type/Boolean
+points_of_interest: null

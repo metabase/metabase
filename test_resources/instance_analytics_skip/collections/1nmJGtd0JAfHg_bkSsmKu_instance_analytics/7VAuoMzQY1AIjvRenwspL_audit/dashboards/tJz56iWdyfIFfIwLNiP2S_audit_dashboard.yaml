@@ -1,31 +1,7 @@
 description: A dashboard for Auditing Instance Analytics
 archived: false
 collection_position: null
-ordered_cards:
-- size_x: 9
-  dashboard_tab_id: null
-  action_id: null
-  col: 0
-  parameter_mappings: []
-  card_id: eyLHlP2-VYdJlebZvfXSK
-  entity_id: R1TFWwpp6DaI3vCp3sE79
-  visualization_settings:
-    column_settings: null
-  size_y: 8
-  created_at: '2023-06-02T21:38:59.634668Z'
-  row: 0
-- size_x: 6
-  dashboard_tab_id: null
-  action_id: null
-  col: 9
-  parameter_mappings: []
-  card_id: tUVSPRoJzK5qyfOecZdM8
-  entity_id: Fur4iHWpKe1lYSqcAki_L
-  visualization_settings:
-    column_settings: null
-  size_y: 3
-  created_at: '2023-06-05T18:09:50.624483Z'
-  row: 0
+ordered_cards: []
 enable_embedding: false
 collection_id: 7VAuoMzQY1AIjvRenwspL
 show_in_getting_started: false

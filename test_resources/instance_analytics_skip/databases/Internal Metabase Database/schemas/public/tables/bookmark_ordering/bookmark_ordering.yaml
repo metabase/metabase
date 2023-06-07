@@ -1,0 +1,21 @@
+description: Table holding ordering information for various bookmark tables
+entity_type: null
+schema: public
+show_in_getting_started: false
+name: bookmark_ordering
+caveats: null
+active: true
+db_id: Internal Metabase Database
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: bookmark_ordering
+visibility_type: null
+field_order: database
+initial_sync_status: complete
+display_name: Bookmark Ordering
+created_at: '2023-06-07T21:18:31.452738Z'
+points_of_interest: null

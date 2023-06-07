@@ -1,0 +1,21 @@
+description: Records that a given Card (Question) should automatically replace a given Table as query source for a given a Perms Group.
+entity_type: null
+schema: public
+show_in_getting_started: false
+name: sandboxes
+caveats: null
+active: true
+db_id: Internal Metabase Database
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: sandboxes
+visibility_type: null
+field_order: database
+initial_sync_status: complete
+display_name: Sandboxes
+created_at: '2023-06-07T21:18:31.82472Z'
+points_of_interest: null

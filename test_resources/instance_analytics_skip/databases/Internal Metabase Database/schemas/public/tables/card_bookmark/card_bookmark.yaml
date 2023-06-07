@@ -1,0 +1,21 @@
+description: Table holding bookmarks on cards
+entity_type: null
+schema: public
+show_in_getting_started: false
+name: card_bookmark
+caveats: null
+active: true
+db_id: Internal Metabase Database
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: card_bookmark
+visibility_type: null
+field_order: database
+initial_sync_status: complete
+display_name: Card Bookmark
+created_at: '2023-06-07T21:18:31.834988Z'
+points_of_interest: null
