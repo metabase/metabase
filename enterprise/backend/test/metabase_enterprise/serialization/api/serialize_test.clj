@@ -52,10 +52,10 @@
                     (count (files "collections" collection-filename "cards")))))
            (testing "collections"
              (is (= 1
-                    (-> #{"cards" "dashboards" "timelines"}
-                        (remove (files "collections"))
+                    (-> (files "collections")
+                        (remove #{"cards" "dashboards" "timelines"})
                         ;; TODO: use better IA test data
-                        (remove (str/ends-with? "instance_analytics"))
+                        (remove #(str/ends-with? % "instance_analytics"))
                         count))))
            (testing "dashboards"
              (is (= 1
