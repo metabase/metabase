@@ -188,7 +188,15 @@
                (assert (= 2 (count revisions)))
                (-> (revision/add-revision-details FakedCard (first revisions) (last revisions))
                    (dissoc :timestamp :id :model_id)
-                   mt/derecordize)))))))
+                   mt/derecordize))))))
+
+  (testing "test that we return a description even when there is no change between revision"
+    (is (= "created a revision with no change."
+           (str (:description (revision/add-revision-details FakedCard {:name "Apple"} {:name "Apple"}))))))
+
+  (testing "that we return a descrtiopn when there is no previous revision"
+    (is (= "modified this."
+           (str (:description (revision/add-revision-details FakedCard {:name "Apple"} nil)))))))
 
 (deftest revisions+details-test
   (testing "Check that revisions+details pulls in user info and adds description"
@@ -203,9 +211,10 @@
                 :diff                 {:o1 nil
                                        :o2 {:name "Tips Created by Day", :serialized true}}
                 :has_multiple_changes false
-                :description          nil})]
+                :description          "modified this."})]
              (->> (revision/revisions+details FakedCard card-id)
-                  (map #(dissoc % :timestamp :id :model_id))))))))
+                  (map #(dissoc % :timestamp :id :model_id))
+                  (map #(update % :description str))))))))
 
 (deftest defer-to-describe-diff-test
   (testing "Check that revisions properly defer to describe-diff"
@@ -232,9 +241,10 @@
                 :diff                 {:o1 nil
                                        :o2 {:name "Tips Created by Day", :serialized true}}
                 :has_multiple_changes false
-                :description          nil})]
+                :description          "modified this."})]
              (->> (revision/revisions+details FakedCard card-id)
-                  (map #(dissoc % :timestamp :id :model_id))))))))
+                  (map #(dissoc % :timestamp :id :model_id))
+                  (map #(update % :description str))))))))
 
 ;;; # REVERT
 

@@ -52,7 +52,7 @@
 (deftest no-revisions-test
   (testing "Loading revisions, where there are no revisions, should work"
     (t2.with-temp/with-temp [Card {:keys [id]}]
-      (is (= [{:user {}, :diff nil, :description nil, :has_multiple_changes false}]
+      (is (= [{:user {}, :diff nil, :description "modified this.", :has_multiple_changes false}]
              (get-revisions :card id))))))
 
 ;; case with single creation revision
@@ -68,6 +68,30 @@
                :has_multiple_changes false
                :description          "created this."}]
              (get-revisions :card id))))))
+
+(deftest get-revision-for-entity-with-revision-exceeds-max-revision-test
+  (t2.with-temp/with-temp [Card {:keys [id] :as card} {:name "A card"}]
+    (create-card-revision! (:id card) true :rasta)
+    (doseq [i (range (inc revision/max-revisions))]
+      (t2/update! :model/Card (:id card) {:name (format "New name %d" i)})
+      (create-card-revision! (:id card) false :rasta))
+
+    (is (= ["renamed this Card from \"New name 14\" to \"New name 15\"."
+            "renamed this Card from \"New name 13\" to \"New name 14\"."
+            "renamed this Card from \"New name 12\" to \"New name 13\"."
+            "renamed this Card from \"New name 11\" to \"New name 12\"."
+            "renamed this Card from \"New name 10\" to \"New name 11\"."
+            "renamed this Card from \"New name 9\" to \"New name 10\"."
+            "renamed this Card from \"New name 8\" to \"New name 9\"."
+            "renamed this Card from \"New name 7\" to \"New name 8\"."
+            "renamed this Card from \"New name 6\" to \"New name 7\"."
+            "renamed this Card from \"New name 5\" to \"New name 6\"."
+            "renamed this Card from \"New name 4\" to \"New name 5\"."
+            "renamed this Card from \"New name 3\" to \"New name 4\"."
+            "renamed this Card from \"New name 2\" to \"New name 3\"."
+            "renamed this Card from \"New name 1\" to \"New name 2\"."
+            "modified this."]
+           (map :description (get-revisions :card id))))))
 
 ;; case with multiple revisions, including reversion
 (deftest multiple-revisions-with-reversion-test
@@ -116,16 +140,16 @@
   (mapv #(dissoc % :id) objects))
 
 (def ^:private default-revision-card
- {:size_x                 4
-  :size_y                 4
-  :row                    0
-  :col                    0
-  :card_id                nil
-  :series                 []
-  :dashboard_tab_id       nil
-  :action_id              nil
-  :parameter_mappings     []
-  :visualization_settings {}})
+  {:size_x                 4
+   :size_y                 4
+   :row                    0
+   :col                    0
+   :card_id                nil
+   :series                 []
+   :dashboard_tab_id       nil
+   :action_id              nil
+   :parameter_mappings     []
+   :visualization_settings {}})
 
 (deftest revert-test
   (testing "Reverting through API works"
@@ -380,10 +404,10 @@
 
       ;; 1. add 2 cards
       (t2/insert-returning-pks! DashboardCard [{:dashboard_id dashboard-id
-                                                                   :size_x       4
-                                                                   :size_y       4
-                                                                   :col          1
-                                                                   :row          1}
+                                                :size_x       4
+                                                :size_y       4
+                                                :col          1
+                                                :row          1}
                                                {:dashboard_id dashboard-id
                                                 :size_x       4
                                                 :size_y       4

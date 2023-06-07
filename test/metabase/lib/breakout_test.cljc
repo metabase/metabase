@@ -154,37 +154,42 @@
                 (lib/breakoutable-columns query)))))))
 
 (deftest ^:parallel breakoutable-explicit-joins-test
-  (testing "orderable-columns should include columns from explicit joins"
+  (testing "breakoutable-columns should include columns from explicit joins"
     (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
                                    [(lib/=
-                                      (lib/field "VENUES" "CATEGORY_ID")
-                                      (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                                     (lib/field "VENUES" "CATEGORY_ID")
+                                     (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all))))]
-      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:id (meta/id :venues :id) :name "ID"}
-                 {:id (meta/id :venues :name) :name "NAME"}
-                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
-                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
-                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
-                 {:id (meta/id :venues :price) :name "PRICE"}
-                 {:lib/type     :metadata/field
-                  :name         "ID"
-                  :display-name "ID"
-                  :source-alias "Cat"
-                  :id           (meta/id :categories :id)
-                  :table-id     (meta/id :categories)
-                  :base-type    :type/BigInteger}
-                 {:lib/type     :metadata/field
-                  :name         "NAME"
-                  :display-name "Name"
-                  :source-alias "Cat"
-                  :id           (meta/id :categories :name)
-                  :table-id     (meta/id :categories)
-                  :base-type    :type/Text}]
-                (lib/breakoutable-columns query)))))))
+      (doseq [[message query] {""
+                               query
+
+                               "with an aggregation (#31256)"
+                               (lib/aggregate query (lib/avg (lib/with-join-alias (meta/field-metadata :categories :id) "Cat")))}]
+        (testing (str message (lib.util/format "Query =\n%s" (u/pprint-to-str query)))
+          (is (=? [{:id (meta/id :venues :id) :name "ID"}
+                   {:id (meta/id :venues :name) :name "NAME"}
+                   {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
+                   {:id (meta/id :venues :latitude) :name "LATITUDE"}
+                   {:id (meta/id :venues :longitude) :name "LONGITUDE"}
+                   {:id (meta/id :venues :price) :name "PRICE"}
+                   {:lib/type     :metadata/field
+                    :name         "ID"
+                    :display-name "ID"
+                    :source-alias "Cat"
+                    :id           (meta/id :categories :id)
+                    :table-id     (meta/id :categories)
+                    :base-type    :type/BigInteger}
+                   {:lib/type     :metadata/field
+                    :name         "NAME"
+                    :display-name "Name"
+                    :source-alias "Cat"
+                    :id           (meta/id :categories :name)
+                    :table-id     (meta/id :categories)
+                    :base-type    :type/Text}]
+                  (lib/breakoutable-columns query))))))))
 
 (deftest ^:parallel breakoutable-columns-source-card-test
   (doseq [varr [#'lib.tu/query-with-card-source-table
