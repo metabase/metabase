@@ -1,12 +1,12 @@
 import { HTMLAttributes } from "react";
 import Tooltip from "metabase/core/components/Tooltip";
 import { SkeletonRootProps } from "metabase/visualizations/components/skeletons/Skeleton/Skeleton";
+import { VisualizationActionButtonsContainer } from "metabase/visualizations/components/Visualization/Visualization.styled";
 import {
   SkeletonCaptionRoot,
   SkeletonCaptionTitle,
   SkeletonCaptionDescription,
   SkeletonPlaceholder,
-  SkeletonCaptionHeaderRight,
 } from "./SkeletonCaption.styled";
 import { SkeletonCaptionSize } from "./types";
 
@@ -29,14 +29,14 @@ const SkeletonCaption = ({
       ) : (
         <SkeletonPlaceholder />
       )}
-      <SkeletonCaptionHeaderRight>
+      <VisualizationActionButtonsContainer>
         {description && (
           <Tooltip tooltip={description} maxWidth="22em">
             <SkeletonCaptionDescription name="info" />
           </Tooltip>
         )}
         {actionMenu}
-      </SkeletonCaptionHeaderRight>
+      </VisualizationActionButtonsContainer>
     </SkeletonCaptionRoot>
   );
 };

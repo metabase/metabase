@@ -1,10 +1,7 @@
-import {
-  SkeletonRootProps,
-  Skeleton,
-} from "metabase/visualizations/components/skeletons/Skeleton";
+import { Fragment } from "react";
 
-const EmptySkeleton = (props: SkeletonRootProps): JSX.Element => {
-  return <Skeleton {...props} />;
+const EmptySkeleton = (): JSX.Element => {
+  return <Fragment />;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

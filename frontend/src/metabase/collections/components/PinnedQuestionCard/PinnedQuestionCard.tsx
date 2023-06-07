@@ -7,6 +7,7 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import { IconName } from "metabase/core/components/Icon";
+import { ChartSkeletonDisplayType } from "metabase/visualizations/components/skeletons/util/display-type";
 import Database from "metabase-lib/metadata/Database";
 import PinnedQuestionLoader from "./PinnedQuestionLoader";
 import {
@@ -69,7 +70,7 @@ const PinnedQuestionCard = ({
             loading ? (
               <CardPreviewSkeleton
                 name={question?.displayName()}
-                display={question?.display()}
+                display={question?.display() as ChartSkeletonDisplayType}
                 description={question?.description()}
                 actionMenu={actionMenu}
               />

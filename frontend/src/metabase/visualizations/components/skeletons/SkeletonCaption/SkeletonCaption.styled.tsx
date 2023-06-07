@@ -7,7 +7,7 @@ import { SkeletonCaptionSize } from "./types";
 
 export const SkeletonCaptionRoot = styled.div`
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   width: 100%;
 `;

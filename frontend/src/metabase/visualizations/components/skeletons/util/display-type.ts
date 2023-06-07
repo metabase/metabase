@@ -1,0 +1,18 @@
+export type ChartSkeletonDisplayType =
+  | "area"
+  | "bar"
+  | "funnel"
+  | "gauge"
+  | "line"
+  | "map"
+  | "object"
+  | "pivot"
+  | "table"
+  | "pie"
+  | "progress"
+  | "row"
+  | "scalar"
+  | "scatter"
+  | "smartscalar"
+  | "waterfall"
+  | null;
