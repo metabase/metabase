@@ -1,4 +1,5 @@
 import { assocIn } from "icepick";
+import _ from "underscore";
 import {
   restore,
   queryWritableDB,
@@ -664,7 +665,7 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it("allows to edit action in action execute modal", () => {
+        it("allows to edit action title and field placeholder in action execute modal", () => {
           clickHelper(SAMPLE_QUERY_ACTION.name);
 
           modal().within(() => {
@@ -687,13 +688,62 @@ const MODEL_NAME = "Test Action Model";
           });
 
           actionEditorModal().within(() => {
-            cy.findByText("Update").click();
+            cy.button("Update").click();
           });
 
           modal().within(() => {
             cy.findByTestId("modal-header").findByText("New action name");
 
             cy.findAllByPlaceholderText("Test placeholder");
+          });
+        });
+
+        it("allows to edit action query and parameters in action execute modal", () => {
+          clickHelper(SAMPLE_QUERY_ACTION.name);
+
+          modal().within(() => {
+            cy.icon("pencil").click();
+          });
+
+          actionEditorModal().within(() => {
+            cy.findByTestId("native-query-editor").click();
+
+            cy.get(".ace_content").type(
+              _.times(23, () => "{leftArrow}")
+                .join("")
+                .concat("{backspace}{backspace}"),
+            );
+            cy.get(".ace_text-input").type(`{{ score }}`, {
+              force: true,
+              parseSpecialCharSequences: false,
+            });
+
+            cy.findByTestId("action-form-editor").within(() => {
+              cy.findAllByText("Number").click({ multiple: true });
+            });
+          });
+
+          actionEditorModal().within(() => {
+            cy.button("Update").click();
+          });
+
+          modal().within(() => {
+            cy.findByLabelText("Total").type(`123`);
+            cy.findByLabelText("Score").type(`345`);
+
+            cy.button(SAMPLE_QUERY_ACTION.name).click();
+          });
+
+          cy.wait("@executeAPI").then(interception => {
+            expect(
+              Object.values(interception.request.body.parameters)
+                .sort()
+                .join(","),
+            ).to.equal("123,345");
+          });
+
+          cy.findByTestId("toast-undo").within(() => {
+            cy.findByText(`Success! The action returned: {"rows-affected":0}`);
           });
         });
       });
