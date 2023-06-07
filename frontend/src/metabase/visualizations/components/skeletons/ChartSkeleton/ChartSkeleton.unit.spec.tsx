@@ -2,6 +2,11 @@ import { render, screen } from "@testing-library/react";
 import ChartSkeleton from "./ChartSkeleton";
 
 describe("ChartSkeleton", () => {
+  it("should render empty", () => {
+    render(<ChartSkeleton name="Empty" />);
+    expect(screen.getByText("Empty")).toBeInTheDocument();
+  });
+
   it("should render area", () => {
     render(<ChartSkeleton display="area" name="Area" />);
     expect(screen.getByText("Area")).toBeInTheDocument();
