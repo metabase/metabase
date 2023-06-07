@@ -105,9 +105,9 @@
    (cond
      (integer? id-or-name) (cond-> (resolve-field-id query id-or-name)
                              join-alias (assoc ::join-alias join-alias))
-     join-alias            (or {:lib/type    :metadata/field
-                                :name        id-or-name
-                                ::join-alias join-alias})
+     join-alias            {:lib/type    :metadata/field
+                            :name        id-or-name
+                            ::join-alias join-alias}
      :else                 (or (resolve-column-name query stage-number id-or-name)
                                {:lib/type :metadata/field
                                 :name     id-or-name}))))
