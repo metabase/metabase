@@ -4,11 +4,18 @@ import { t } from "ttag";
 import cx from "classnames";
 import type { Location } from "history";
 
-import type { Dashboard } from "metabase-types/api";
+import { color } from "metabase/lib/colors";
+import type { Collection, Dashboard } from "metabase-types/api";
 
+import { Icon } from "metabase/core/components/Icon";
 import EditBar from "metabase/components/EditBar";
 import { useDispatch } from "metabase/lib/redux";
 import { updateDashboard } from "metabase/dashboard/actions";
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import {
+  getCollectionIcon,
+  getCollectionTooltip,
+} from "metabase/entities/collections";
 import {
   EditWarning,
   HeaderRow,
@@ -34,6 +41,7 @@ interface DashboardHeaderViewProps {
   isEditingInfo: boolean;
   isNavBarOpen: boolean;
   dashboard: Dashboard;
+  collection: Collection;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
   onLastEditInfoClick: () => null;
@@ -51,6 +59,7 @@ export function DashboardHeaderComponent({
   isEditing,
   isNavBarOpen,
   dashboard,
+  collection,
   isLastEditInfoVisible,
   onLastEditInfoClick,
   setDashboardAttribute,
@@ -119,6 +128,13 @@ export function DashboardHeaderComponent({
                 data-testid="dashboard-name-heading"
                 onChange={handleUpdateCaption}
               />
+              {isInstanceAnalyticsCollection(collection) && (
+                <Icon
+                  {...getCollectionIcon(collection)}
+                  color={color("brand")}
+                  tooltip={getCollectionTooltip(collection, "dashboard")}
+                />
+              )}
             </HeaderCaptionContainer>
             <HeaderBadges>
               {isLastEditInfoVisible && (
