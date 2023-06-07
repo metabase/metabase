@@ -47,7 +47,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]))
@@ -891,34 +890,36 @@
         ;; TODO - is there really a reason to let someone change the engine on an existing database?
         ;;       that seems like the kind of thing that will almost never work in any practical way
         ;; TODO - this means one cannot unset the description. Does that matter?
-        (db/update-non-nil-keys! Database id
-                                 (merge
-                                  {:name               name
-                                   :engine             engine
-                                   :details            details
-                                   :refingerprint      refingerprint
-                                   :is_full_sync       full-sync?
-                                   :is_on_demand       (boolean is_on_demand)
-                                   :description        description
-                                   :caveats            caveats
-                                   :points_of_interest points_of_interest
-                                   :auto_run_queries   auto_run_queries}
-                                  ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
-                                  (when (seq settings)
-                                    {:settings (into {}
-                                                     (remove (fn [[_k v]] (nil? v)))
-                                                     (merge (:settings existing-database) settings))})
-                                  (cond
-                                    ;; transition back to metabase managed schedules. the schedule
-                                    ;; details, even if provided, are ignored. database is the
-                                    ;; current stored value and check against the incoming details
-                                    (and (get-in existing-database [:details :let-user-control-scheduling])
-                                         (not (:let-user-control-scheduling details)))
-                                    (sync.schedules/schedule-map->cron-strings (sync.schedules/default-randomized-schedule))
+        (t2/update! Database id
+                    (m/remove-vals
+                      nil?
+                      (merge
+                        {:name               name
+                         :engine             engine
+                         :details            details
+                         :refingerprint      refingerprint
+                         :is_full_sync       full-sync?
+                         :is_on_demand       (boolean is_on_demand)
+                         :description        description
+                         :caveats            caveats
+                         :points_of_interest points_of_interest
+                         :auto_run_queries   auto_run_queries}
+                        ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
+                        (when (seq settings)
+                          {:settings (into {}
+                                           (remove (fn [[_k v]] (nil? v)))
+                                           (merge (:settings existing-database) settings))})
+                        (cond
+                          ;; transition back to metabase managed schedules. the schedule
+                          ;; details, even if provided, are ignored. database is the
+                          ;; current stored value and check against the incoming details
+                          (and (get-in existing-database [:details :let-user-control-scheduling])
+                               (not (:let-user-control-scheduling details)))
+                          (sync.schedules/schedule-map->cron-strings (sync.schedules/default-randomized-schedule))
 
-                                    ;; if user is controlling schedules
-                                    (:let-user-control-scheduling details)
-                                    (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules)))))
+                          ;; if user is controlling schedules
+                          (:let-user-control-scheduling details)
+                          (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))))))
         ;; do nothing in the case that user is not in control of
         ;; scheduling. leave them as they are in the db
 

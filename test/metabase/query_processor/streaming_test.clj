@@ -16,7 +16,7 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
@@ -71,7 +71,7 @@
                                             :order-by [[:asc $id]]
                                             :limit    5})))
         (testing "A query with emoji and other fancy unicode"
-          (let [[sql & args] (db/honeysql->sql {:select [["Cam 𝌆 Saul 💩" :cam]]})]
+          (let [[sql & args] (t2.pipeline/compile* {:select [["Cam 𝌆 Saul 💩" :cam]]})]
             (compare-results export-format (mt/native-query {:query  sql
                                                              :params args}))))))))
 
