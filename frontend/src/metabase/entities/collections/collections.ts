@@ -80,31 +80,31 @@ const Collections = createEntity({
   },
 
   selectors: {
-    getExpandedCollectionsById: createSelector(
+    getCollectionList: createSelector(
       [
         state => state,
         state => getIn(state, [...Collections.getListStatePath(), "list"]),
-        getUserPersonalCollectionId,
-        (_state, props) => props?.collectionFilter,
       ],
-      (
-        state,
-        collectionsList,
-        currentUserPersonalCollectionId,
-        collectionFilter,
-      ) => {
-        const collections = collectionsList
+      (state, collections) => {
+        return collections
           .map((entityId: CollectionId) => {
             return Collections.selectors.getObject(state, { entityId });
           })
           .filter(Boolean); // deleted entities might remain in lists
-
-        return getExpandedCollectionsById(
+      },
+    ),
+    getExpandedCollectionsById: createSelector(
+      [
+        state => Collections.selectors.getCollectionList(state),
+        getUserPersonalCollectionId,
+        (_state, props) => props?.collectionFilter,
+      ],
+      (collections, currentUserPersonalCollectionId, collectionFilter) =>
+        getExpandedCollectionsById(
           collections,
           currentUserPersonalCollectionId,
           collectionFilter,
-        );
-      },
+        ),
     ),
     getInitialCollectionId,
   },
