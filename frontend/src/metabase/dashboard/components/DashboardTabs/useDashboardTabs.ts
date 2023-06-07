@@ -4,21 +4,22 @@ import type { UniqueIdentifier } from "@dnd-kit/core";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
-  createNewTab,
+  createNewTab as createNewTabAction,
   renameTab,
   deleteTab as deleteTabAction,
   initTabs,
-  selectTab,
+  selectTab as selectTabAction,
   undoDeleteTab,
   moveTab as moveTabAction,
 } from "metabase/dashboard/actions";
 import { SelectedTabId } from "metabase-types/store";
 import { getDashboardId, getSelectedTabId } from "metabase/dashboard/selectors";
 import { addUndo } from "metabase/redux/undo";
+import { getSlug, useUpdateURLSlug } from "./utils";
 
 let tabDeletionId = 1;
 
-export function useDashboardTabs() {
+export function useDashboardTabs({ slug }: { slug: string | undefined }) {
   const dispatch = useDispatch();
   const dashboardId = useSelector(getDashboardId);
   const tabs = useSelector(state =>
@@ -29,8 +30,14 @@ export function useDashboardTabs() {
       : [],
   );
   const selectedTabId = useSelector(getSelectedTabId);
+  const { updateURLSlug } = useUpdateURLSlug();
 
-  useMount(() => dispatch(initTabs()));
+  useMount(() => dispatch(initTabs({ slug })));
+
+  const createNewTab = () => {
+    dispatch(createNewTabAction());
+    updateURLSlug("");
+  };
 
   const deleteTab = (tabId: SelectedTabId) => {
     const tabName = tabs.find(({ id }) => id === tabId)?.name;
@@ -58,14 +65,23 @@ export function useDashboardTabs() {
       }),
     );
 
+  const selectTab = (tabId: SelectedTabId) => {
+    dispatch(selectTabAction({ tabId }));
+
+    const name = tabs.find(t => t.id === tabId)?.name;
+    if (name) {
+      updateURLSlug(getSlug({ tabId, name }));
+    }
+  };
+
   return {
     tabs,
     selectedTabId,
-    createNewTab: () => dispatch(createNewTab()),
+    createNewTab,
     deleteTab,
     renameTab: (tabId: SelectedTabId, name: string) =>
       dispatch(renameTab({ tabId, name })),
-    selectTab: (tabId: SelectedTabId) => dispatch(selectTab({ tabId })),
+    selectTab,
     moveTab,
   };
 }

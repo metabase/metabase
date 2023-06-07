@@ -144,7 +144,7 @@ export const getRoutes = store => (
         </Route>
 
         <Route
-          path="dashboard/:slug"
+          path="dashboard/:slug(/:tabSlug)"
           title={t`Dashboard`}
           component={DashboardApp}
         >

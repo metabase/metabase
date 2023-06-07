@@ -32,6 +32,7 @@ type SaveCardsAndTabsPayload = {
   cards: DashboardOrderedCard[];
   ordered_tabs: DashboardOrderedTab[];
 };
+type InitTabsPayload = { slug: string | undefined };
 
 const CREATE_NEW_TAB = "metabase/dashboard/CREATE_NEW_TAB";
 const DELETE_TAB = "metabase/dashboard/DELETE_TAB";
@@ -72,7 +73,7 @@ export const selectTab = createAction<SelectTabPayload>(SELECT_TAB);
 export const saveCardsAndTabs =
   createAction<SaveCardsAndTabsPayload>(SAVE_CARDS_AND_TABS);
 
-export const initTabs = createAction(INIT_TABS);
+export const initTabs = createAction<InitTabsPayload>(INIT_TABS);
 
 function getPrevDashAndTabs({
   state,
@@ -107,6 +108,15 @@ export function getDefaultTab({
     created_at: "",
     updated_at: "",
   };
+}
+
+function getIdFromSlug(slug: string | undefined) {
+  if (!slug) {
+    return undefined;
+  }
+
+  const id = parseInt(slug.split("-")[0]);
+  return Number.isNaN(id) ? undefined : id;
 }
 
 export const tabsReducer = createReducer<DashboardState>(
@@ -294,9 +304,16 @@ export const tabsReducer = createReducer<DashboardState>(
       },
     );
 
-    builder.addCase(initTabs, state => {
+    builder.addCase(initTabs, (state, { payload: { slug } }) => {
       const { prevTabs } = getPrevDashAndTabs({ state });
-      state.selectedTabId = prevTabs[0]?.id ?? null;
+
+      const idFromSlug = getIdFromSlug(slug);
+      const tabId =
+        idFromSlug && prevTabs.map(t => t.id).includes(idFromSlug)
+          ? idFromSlug
+          : prevTabs[0]?.id ?? null;
+
+      state.selectedTabId = tabId;
     });
   },
 );

@@ -36,6 +36,7 @@ interface DashboardHeaderViewProps {
   headerButtons: React.ReactNode[];
   headerClassName: string;
   headerModalMessage: string;
+  tabSlug: string | undefined;
   isEditing: boolean;
   isEditingInfo: boolean;
   isNavBarOpen: boolean;
@@ -57,6 +58,7 @@ function DashboardHeaderView({
   headerButtons = [],
   headerClassName = "py1 lg-py2 xl-py3 wrapper",
   headerModalMessage,
+  tabSlug,
   isEditing,
   isNavBarOpen,
   dashboard,
@@ -167,7 +169,7 @@ function DashboardHeaderView({
           </HeaderButtonsContainer>
         </HeaderRow>
         <HeaderRow isNavBarOpen={isNavBarOpen}>
-          <DashboardTabs isEditing={isEditing} />
+          <DashboardTabs slug={tabSlug} isEditing={isEditing} />
         </HeaderRow>
       </div>
     </div>
