@@ -62,13 +62,13 @@ describe("Collection selectors", () => {
     TEST_NESTED_COLLECTION_C,
   ];
 
-  function getReduxState({
+  const getState = ({
     isAdmin = false,
     collections = DEFAULT_COLLECTIONS,
   }: {
     isAdmin?: boolean;
     collections?: Partial<Collection>[];
-  } = {}) {
+  } = {}) => {
     const collectionsById = Object.fromEntries(
       collections.map(collection => [collection.id, collection]),
     );
@@ -93,11 +93,11 @@ describe("Collection selectors", () => {
         },
       },
     };
-  }
+  };
 
   describe("getInitialCollectionId", () => {
     const { getInitialCollectionId } = Collections.selectors;
-    const state = getReduxState();
+    const state = getState();
 
     it("suggests direct collectionId prop", () => {
       const props = { collectionId: TEST_COLLECTION.id };
@@ -138,7 +138,7 @@ describe("Collection selectors", () => {
     });
 
     it("fallbacks to root collection for admin users if can't suggest an id from props", () => {
-      const adminState = getReduxState({ isAdmin: true });
+      const adminState = getState({ isAdmin: true });
       const props = {};
       expect(getInitialCollectionId(adminState, props)).toBe(
         CANONICAL_ROOT_COLLECTION_ID,
@@ -238,7 +238,7 @@ describe("Collection selectors", () => {
         const { can_write, ...personalCollectionWithoutPermissionsLoaded } =
           PERSONAL_COLLECTION;
 
-        const state = getReduxState({
+        const state = getState({
           collections: [personalCollectionWithoutPermissionsLoaded],
         });
         const props = {
@@ -275,7 +275,7 @@ describe("Collection selectors", () => {
     const { getExpandedCollectionsById } = Collections.selectors;
 
     it("preserves collections order", () => {
-      const state = getReduxState();
+      const state = getState();
       const expandedCollectionsById = getExpandedCollectionsById(state);
       const expandedCollection = expandedCollectionsById[ROOT_COLLECTION.id];
       const children: Partial<Collection>[] = expandedCollection.children;
@@ -288,7 +288,7 @@ describe("Collection selectors", () => {
 
     it("preserves nested collections order", () => {
       const nestedCollectionsIds = NESTED_COLLECTIONS.map(({ id }) => id);
-      const state = getReduxState({ collections: NESTED_COLLECTIONS });
+      const state = getState({ collections: NESTED_COLLECTIONS });
       const expandedCollectionsById = getExpandedCollectionsById(state);
       const expandedCollection = expandedCollectionsById[ROOT_COLLECTION.id];
       const children: Partial<Collection>[] = expandedCollection.children;
