@@ -4,12 +4,7 @@ import { useSelector } from "metabase/lib/redux";
 import { AuthProvider } from "metabase/plugins/types";
 import { AuthLayout } from "../AuthLayout";
 import { getAuthProviders } from "../../selectors";
-import {
-  ActionList,
-  ActionListItem,
-  LoginPanel,
-  LoginTitle,
-} from "./Login.styled";
+import { useStyles } from "./Login.styles";
 
 interface LoginQueryString {
   redirect?: string;
@@ -25,26 +20,27 @@ interface LoginProps {
 }
 
 export const Login = ({ params, location }: LoginProps): JSX.Element => {
+  const { classes } = useStyles();
   const providers = useSelector(getAuthProviders);
   const selection = getSelectedProvider(providers, params?.provider);
   const redirectUrl = location?.query?.redirect;
 
   return (
     <AuthLayout>
-      <LoginTitle>{t`Sign in to Metabase`}</LoginTitle>
+      <div className={classes.title}>{t`Sign in to Metabase`}</div>
       {selection && selection.Panel && (
-        <LoginPanel>
+        <div className={classes.panel}>
           <selection.Panel redirectUrl={redirectUrl} />
-        </LoginPanel>
+        </div>
       )}
       {!selection && (
-        <ActionList>
+        <div className={classes.actionList}>
           {providers.map(provider => (
-            <ActionListItem key={provider.name}>
+            <div key={provider.name} className={classes.actionListItem}>
               <provider.Button isCard={true} redirectUrl={redirectUrl} />
-            </ActionListItem>
+            </div>
           ))}
-        </ActionList>
+        </div>
       )}
     </AuthLayout>
   );
