@@ -1,5 +1,6 @@
 (ns metabase-enterprise.audit-db
   (:require [clojure.java.io :as io]
+            [metabase-enterprise.internal-user :as ee.internal-user]
             [metabase-enterprise.serialization.cmd :as serialization.cmd]
             [metabase.config :as config]
             [metabase.db.env :as mdb.env]
@@ -76,6 +77,7 @@
         (log/warn "Audit DB was not installed correctly!!")))
     ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
     (when analytics-root-dir-resource
+      (ee.internal-user/ensure-internal-user-exists!)
       (log/info (str "Loading Analytics Content from: " analytics-root-dir-resource))
       (let [report (log/with-no-logs (serialization.cmd/v2-load analytics-root-dir-resource {}))]
         (if (not-empty (:errors report))
