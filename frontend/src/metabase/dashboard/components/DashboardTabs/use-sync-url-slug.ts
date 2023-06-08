@@ -20,7 +20,7 @@ export function getSlug({
   return [tabId, ...name.toLowerCase().split(" ")].join("-");
 }
 
-function getPathnameBeforeSlug(pathname: string) {
+export function getPathnameBeforeSlug(pathname: string) {
   const match = pathname.match(/(.*\/dashboard\/[^\/]*)\/?/);
   if (match === null) {
     throw Error("No match with pathname before dashboard tab slug.");

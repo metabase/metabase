@@ -52,7 +52,7 @@ function setup({
     <Route path="dashboard/:slug(/:tabSlug)" component={TestComponent} />,
     {
       storeInitialState: { dashboard },
-      initialRoute: "/dashboard/1",
+      initialRoute: `/dashboard/1/${slug}`,
       withRouter: true,
     },
   );
@@ -135,7 +135,7 @@ describe("DashboardTabs", () => {
     });
 
     describe("when selecting tabs", () => {
-      it("should automatically select the first tab on render", async () => {
+      it("should automatically select the first tab if no slug is provided", async () => {
         setup({ isEditing: false });
 
         expect(queryTab(1)).toHaveAttribute("aria-selected", "true");
@@ -143,6 +143,36 @@ describe("DashboardTabs", () => {
         expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
 
         expect(await findSlug({ tabId: 1, name: "Tab 1" })).toBeInTheDocument();
+      });
+
+      it("should automatically select the tab in the slug if valid", async () => {
+        setup({
+          isEditing: false,
+          slug: getSlug({ tabId: 2, name: "Page 2" }),
+        });
+
+        expect(selectTab(2)).toHaveAttribute("aria-selected", "true");
+        expect(queryTab(1)).toHaveAttribute("aria-selected", "false");
+        expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
+
+        expect(
+          await findSlug({ tabId: 2, name: "Page 2" }),
+        ).toBeInTheDocument();
+      });
+
+      it("should automatically select the first tab if slug is invalid", async () => {
+        setup({
+          isEditing: false,
+          slug: getSlug({ tabId: 99, name: "A bad slug" }),
+        });
+
+        expect(queryTab(1)).toHaveAttribute("aria-selected", "true");
+        expect(queryTab(2)).toHaveAttribute("aria-selected", "false");
+        expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
+
+        expect(
+          await findSlug({ tabId: 1, name: "Page 1" }),
+        ).toBeInTheDocument();
       });
 
       it("should allow you to click to select tabs", async () => {
