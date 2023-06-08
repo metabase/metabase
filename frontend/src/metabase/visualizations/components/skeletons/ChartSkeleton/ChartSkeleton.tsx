@@ -16,7 +16,7 @@ import { VisualizationSkeleton } from "metabase/visualizations/components/skelet
 import ScalarSkeleton from "metabase/visualizations/components/skeletons/ScalarSkeleton/ScalarSkeleton";
 import { ChartSkeletonDisplayType } from "metabase/visualizations/components/skeletons/util/display-type";
 
-type ChartSkeletonProps = HTMLAttributes<HTMLDivElement> & {
+export type ChartSkeletonProps = HTMLAttributes<HTMLDivElement> & {
   display?: ChartSkeletonDisplayType;
   name?: string | null;
   description?: string | null;
