@@ -78,7 +78,7 @@
                 :id (mt/id :orders :product_id)
                 :lib/desired-column-alias "Orders__PRODUCT_ID"
                 :display-name "Product ID"
-                :source_alias "Orders"}
+                :source-alias "Orders"}
                {:metabase.lib.field/join-alias "Orders"
                 :lib/type :metadata/field
                 :base-type :type/Integer
@@ -88,5 +88,5 @@
                 :effective-type :type/Integer
                 :lib/desired-column-alias "Orders__sum"
                 :display-name "Sum"
-                :source_alias "Orders"}]
+                :source-alias "Orders"}]
               (lib.metadata.calculation/metadata mlv2-query))))))
