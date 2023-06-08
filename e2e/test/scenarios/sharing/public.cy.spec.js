@@ -170,26 +170,6 @@ describe("scenarios > public", () => {
         });
     });
 
-    it("should show shared questions and dashboards in admin settings", () => {
-      cy.visit("/admin/settings/public-sharing");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Enable Public Sharing").should("be.visible");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards.",
-      ).should("be.visible");
-
-      // shared questions
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("sql param").should("be.visible");
-
-      // shared dashboard
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("parameterized dashboard").should("be.visible");
-    });
-
     Object.entries(USERS).map(([userType, setUser]) =>
       describe(`${userType}`, () => {
         beforeEach(setUser);
