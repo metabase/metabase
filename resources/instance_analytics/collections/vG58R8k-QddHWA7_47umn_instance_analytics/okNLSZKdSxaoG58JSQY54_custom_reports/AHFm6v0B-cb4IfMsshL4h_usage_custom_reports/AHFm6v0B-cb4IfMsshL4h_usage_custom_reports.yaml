@@ -1,0 +1,16 @@
+authority_level: null
+description: null
+archived: false
+slug: usage_custom_reports
+color: '#509EE3'
+name: Usage custom reports
+personal_owner_id: null
+type: null
+parent_id: okNLSZKdSxaoG58JSQY54
+serdes/meta:
+- model: Collection
+  id: AHFm6v0B-cb4IfMsshL4h
+  label: usage_custom_reports
+entity_id: AHFm6v0B-cb4IfMsshL4h
+namespace: null
+created_at: '2023-06-08T14:15:59.361199Z'
