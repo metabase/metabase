@@ -7,8 +7,10 @@ import { singularize } from "metabase/lib/formatting";
 
 import * as Lib from "metabase-lib";
 
-import { BinningStrategyPickerPopover } from "./BinningStrategyPickerPopover";
-import { TemporalBucketPickerPopover } from "./TemporalBucketPickerPopover";
+import {
+  BinningStrategyPickerPopover,
+  TemporalBucketPickerPopover,
+} from "./BucketPickerPopover";
 
 const DEFAULT_MAX_HEIGHT = 610;
 

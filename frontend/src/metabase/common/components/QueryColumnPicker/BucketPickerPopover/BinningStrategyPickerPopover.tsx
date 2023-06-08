@@ -6,19 +6,21 @@ import {
 } from "./BucketPickerPopover";
 
 function renderTriggerContent(bucket?: Lib.BucketDisplayInfo) {
-  return bucket ? t`by ${bucket.displayName.toLowerCase()}` : null;
+  return bucket ? bucket.displayName : t`Unbinned`;
 }
 
-export function TemporalBucketPickerPopover(
-  props: Omit<
-    BucketPickerPopoverProps,
-    "triggerLabel" | "renderTriggerContent"
-  >,
+type BinningStrategyPickerPopoverProps = Omit<
+  BucketPickerPopoverProps,
+  "triggerLabel" | "renderTriggerContent"
+>;
+
+export function BinningStrategyPickerPopover(
+  props: BinningStrategyPickerPopoverProps,
 ) {
   return (
     <BucketPickerPopover
       {...props}
-      triggerLabel={t`Temporal bucket`}
+      triggerLabel={t`Binning strategy`}
       renderTriggerContent={renderTriggerContent}
     />
   );
