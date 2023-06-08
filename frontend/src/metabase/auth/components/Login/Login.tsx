@@ -5,7 +5,6 @@ import { useSelector } from "metabase/lib/redux";
 import { AuthProvider } from "metabase/plugins/types";
 import { AuthLayout } from "../AuthLayout";
 import { getAuthProviders } from "../../selectors";
-import { useStyles } from "./Login.styles";
 
 interface LoginQueryString {
   redirect?: string;
@@ -21,14 +20,15 @@ interface LoginProps {
 }
 
 export const Login = ({ params, location }: LoginProps): JSX.Element => {
-  const { classes } = useStyles();
   const providers = useSelector(getAuthProviders);
   const selection = getSelectedProvider(providers, params?.provider);
   const redirectUrl = location?.query?.redirect;
 
   return (
     <AuthLayout>
-      <div className={classes.title}>{t`Sign in to Metabase`}</div>
+      <Box c="text.2" fz="1.25rem" fw="bold" lh="1.5rem" ta="center">
+        {t`Sign in to Metabase`}
+      </Box>
       {selection && selection.Panel && (
         <Box mt="2.5rem">
           <selection.Panel redirectUrl={redirectUrl} />
