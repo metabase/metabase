@@ -1,0 +1,16 @@
+authority_level: null
+description: What content is being viewed most. This collection isn’t editable, but you can duplicate things to create your own explorations and reports.
+archived: false
+slug: usage
+color: '#509EE3'
+name: Usage
+personal_owner_id: null
+type: instance-analytics
+parent_id: vG58R8k-QddHWA7_47umn
+serdes/meta:
+- model: Collection
+  id: C0bd1kiOY1oCdmaORjNy6
+  label: usage
+entity_id: C0bd1kiOY1oCdmaORjNy6
+namespace: null
+created_at: '2023-06-08T14:14:40.190757Z'
