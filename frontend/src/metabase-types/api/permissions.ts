@@ -39,7 +39,7 @@ export type DownloadTablePermission =
 export type DatabasePermissions = {
   data: DatabaseAccessPermissions;
   "data-model"?: DataModelPermissions;
-  download: DownloadAccessPermission;
+  download?: DownloadAccessPermission;
   details?: DetailsPermissions;
 };
 
@@ -48,15 +48,17 @@ export type DataModelPermissions = {
 };
 
 export type DatabaseAccessPermissions = {
-  native: NativePermissions;
+  native?: NativePermissions;
   schemas: SchemasPermissions;
 };
 
-export type NativePermissions = "read" | "write" | "none";
+export type NativePermissions = "write" | undefined;
 
 export type SchemasPermissions =
   | "all"
   | "none"
+  | "block"
+  | "impersonated"
   | {
       [key: SchemaName]: TablesPermissions;
     };
@@ -68,7 +70,13 @@ export type TablesPermissions =
       [key: TableId]: FieldsPermissions;
     };
 
-export type FieldsPermissions = "all" | "none";
+export type FieldsPermissions =
+  | "all"
+  | "none"
+  | {
+      read: "all";
+      query: "segmented";
+    };
 
 // FIXME: is there a more suitable type for this?
 export type DimensionRef = ["dimension", any[]];
@@ -84,7 +92,8 @@ export type GroupTableAccessPolicy = {
   permission_id: number | null;
 };
 
-export type RoleAttributeMapping = {
+export type Impersonation = {
+  db_id: DatabaseId;
+  group_id: GroupId;
   attribute: UserAttribute;
-  default_role: string;
 };

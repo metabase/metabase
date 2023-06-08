@@ -16,7 +16,7 @@ const { COLLECTION_GROUP } = USER_GROUPS;
 
 Cypress.Commands.add(
   "updatePermissionsGraph",
-  (groupsPermissionsObject = {}) => {
+  (groupsPermissionsObject = {}, impersonations = []) => {
     if (typeof groupsPermissionsObject !== "object") {
       throw new Error("`groupsPermissionsObject` must be an object!");
     }
@@ -29,6 +29,7 @@ Cypress.Commands.add(
         cy.log("Update/save permissions");
         cy.request("PUT", "/api/permissions/graph", {
           groups: UPDATED_GROUPS,
+          impersonations,
           revision,
         });
       },
