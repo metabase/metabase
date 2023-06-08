@@ -35,30 +35,22 @@ const USERS = {
 };
 
 describe("scenarios > public", () => {
-  let questionId;
-  before(() => {
+  beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
+    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+
     // setup parameterized question
-    cy.createNativeQuestion(questionDetails).then(({ body }) => {
-      questionId = body.id;
+    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+      cy.wrap(id).as("questionId");
+      visitQuestion(id);
     });
   });
-
-  beforeEach(() => {
-    cy.signInAsAdmin();
-  });
-
-  let questionPublicLink;
 
   describe("questions", () => {
     // Note: Test suite is sequential, so individual test cases can't be run individually
     it("should allow users to create public questions", () => {
-      cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
-
-      visitQuestion(questionId);
-
       cy.icon("share").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -72,17 +64,24 @@ describe("scenarios > public", () => {
         .parent()
         .find("input")
         .should($input => {
-          expect($input[0].value).to.match(PUBLIC_URL_REGEX);
-          questionPublicLink = $input[0].value.match(PUBLIC_URL_REGEX)[0];
+          expect($input.val()).to.match(PUBLIC_URL_REGEX);
         });
     });
 
     Object.entries(USERS).map(([userType, setUser]) =>
       describe(`${userType}`, () => {
-        beforeEach(setUser);
-
         it(`should be able to view public questions`, () => {
-          cy.visit(questionPublicLink);
+          cy.get("@questionId").then(id => {
+            cy.request("POST", `/api/card/${id}/public_link`).then(
+              ({ body: { uuid } }) => {
+                setUser();
+                cy.visit({
+                  url: `/public/question/${uuid}`,
+                });
+              },
+            );
+          });
+
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.contains(COUNT_ALL);
 
