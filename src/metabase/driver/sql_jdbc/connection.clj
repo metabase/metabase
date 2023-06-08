@@ -212,7 +212,6 @@
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB."
   [db-or-id-or-spec]
-
   (cond
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
@@ -226,12 +225,17 @@
                                            :type        qp.error-type/invalid-query
                                            :database-id database-id})))
           get-fn      (fn [db-id log-invalidation?]
-                        (when-let [details (get @database-id->connection-pool db-id)]
+                        (let [details (get @database-id->connection-pool db-id ::not-found)]
                           (cond
-                            ;; For the audit db, we pass the datasource for the app-db. This lets us use fewer db
-                            ;; connections with the *application-db*, and 1 less connection pool.
+                            ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
+                            ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
+                            ;; not in [[database-id->connection-pool]].
                             (:is_audit db)
                             {:datasource (mdb.connection/data-source)}
+
+                            (= ::not-found details)
+                            nil
+
                             ;; details hash changed from what is cached; invalid
                             (let [curr-hash (get @database-id->jdbc-spec-hash db-id)
                                   new-hash  (jdbc-spec-hash db)]
@@ -241,9 +245,8 @@
                                 ;; our app DB, and see if it STILL doesn't match
                                 (not= curr-hash (-> (t2/select-one [Database :id :engine :details] :id database-id)
                                                     jdbc-spec-hash))))
-                            (if log-invalidation?
-                              (log-jdbc-spec-hash-change-msg! db-id)
-                              nil)
+                            (when log-invalidation?
+                              (log-jdbc-spec-hash-change-msg! db-id))
 
                             (nil? (:tunnel-session details)) ; no tunnel in use; valid
                             details
@@ -252,9 +255,8 @@
                             details
 
                             :else ; tunnel in use, and not open; invalid
-                            (if log-invalidation?
-                              (log-ssh-tunnel-reconnect-msg! db-id)
-                              nil))))]
+                            (when log-invalidation?
+                              (log-ssh-tunnel-reconnect-msg! db-id)))))]
       (or
        ;; we have an existing pool for this database, so use it
        (get-fn database-id true)

@@ -50,7 +50,8 @@
    [potemkin :as p]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]
-   [toucan2.model :as t2.model]))
+   [toucan2.model :as t2.model]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -82,6 +83,7 @@
   test-runner.assert-exprs/keep-me
   test.users/keep-me
   tt/keep-me
+  t2.with-temp/keepme
   tu/keep-me
   tu.async/keep-me
   tu.log/keep-me
@@ -208,7 +210,9 @@
   with-test-user]
 
  [tt
-  with-temp*
+  with-temp*]
+
+ [t2.with-temp
   with-temp-defaults]
 
  [tu

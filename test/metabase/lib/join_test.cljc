@@ -305,6 +305,22 @@
   (is (= [:left-join :right-join :inner-join]
          (lib/available-join-strategies (lib.tu/query-with-join)))))
 
+(deftest ^:parallel with-join-fields-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/join (-> (lib/join-clause
+                                 (meta/table-metadata :categories)
+                                 [(lib/=
+                                   (lib/field "VENUES" "CATEGORY_ID")
+                                   (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                                (lib/with-join-alias "Cat")
+                                (lib/with-join-fields :all))))]
+    (is (=? {:stages [{:joins [{:alias      "Cat"
+                                :fields     :all
+                                :conditions [[:= {}
+                                              [:field {} (meta/id :venues :category-id)]
+                                              [:field {:join-alias "Cat"} (meta/id :categories :id)]]]}]}]}
+            query))))
+
 (defn- query-with-join-with-fields
   "A query against `VENUES` joining `CATEGORIES` with `:fields` set to return only `NAME`."
   []

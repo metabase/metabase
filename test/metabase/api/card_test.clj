@@ -53,7 +53,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -2084,7 +2083,7 @@
                                           :text                "lookin good"}]]))
             ~@body))]
       (letfn [(verified? [card]
-                (-> card (hydrate [:moderation_reviews :moderator_details])
+                (-> card (t2/hydrate [:moderation_reviews :moderator_details])
                     :moderation_reviews first :status #{"verified"} boolean))
               (reviews [card]
                 (t2/select ModerationReview
@@ -2469,11 +2468,11 @@
           (mt/with-model-cleanup [:model/Card]
             (let [{metadata :result_metadata
                    card-id  :id :as card} (mt/user-http-request
-                   :rasta :post 200
-                   "card"
-                   (assoc (card-with-name-and-query "card-name"
-                                                    query)
-                          :dataset true))]
+                                           :rasta :post 200
+                                           "card"
+                                           (assoc (card-with-name-and-query "card-name"
+                                                                            query)
+                                                  :dataset true))]
               (is (= ["ID" "NAME"] (map norm metadata)))
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
                      (->> (update-card!
@@ -2820,9 +2819,9 @@
               ["id, name"
                "1, Luke Skywalker"
                "2, Darth Vader"]
-              "example")]
+              "example_csv_file")]
     (mt/with-current-user (mt/user->id :rasta)
-      (api.card/upload-csv! collection-id "example.csv" file))))
+      (api.card/upload-csv! collection-id "example_csv_file.csv" file))))
 
 (deftest upload-csv!-schema-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
@@ -2845,7 +2844,7 @@
                                           :query    {:source-table (:id new-table)}
                                           :type     :query}
                        :creator_id       (mt/user->id :rasta)
-                       :name             "example"
+                       :name             "Example Csv File"
                        :collection_id    nil} new-model))
               (is (=? {:name #"(?i)example(.*)"
                        :schema #"(?i)not_public"}
@@ -2866,7 +2865,7 @@
                                              uploads-table-prefix "uploaded_magic_"]
             (let [new-model (upload-example-csv! nil)
                   new-table (t2/select-one Table :db_id db-id)]
-              (is (= "example" (:name new-model)))
+              (is (= "Example Csv File" (:name new-model)))
               (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
                       new-table))
               (if (= driver/*driver* :mysql)
@@ -2933,7 +2932,7 @@
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
-(deftest upload-csv!-schema-doesnt-sync-test
+(deftest upload-csv!-schema-does-not-sync-test
   ;; Just test with postgres because failure should be independent of the driver
   (mt/test-driver :postgres
     (mt/with-empty-db
@@ -2953,7 +2952,7 @@
                  (catch Exception e
                    (is (= {:status-code 422}
                           (ex-data e)))
-                   (is (re-matches #"^The CSV file was uploaded to public\.example(.*) but the table could not be found on sync\.$"
+                   (is (re-matches #"^The schema public is not syncable\.$"
                                    (.getMessage e))))))
           (testing "\nThe table should be deleted"
             (is (false? (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]

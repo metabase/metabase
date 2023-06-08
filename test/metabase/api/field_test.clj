@@ -15,7 +15,6 @@
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [ring.util.codec :as codec]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -371,7 +370,7 @@
 
 (defn- dimension-for-field [field-id]
   (-> (t2/select-one Field :id field-id)
-      (hydrate :dimensions)
+      (t2/hydrate :dimensions)
       :dimensions
       first))
 
