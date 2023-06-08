@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { MantineProvider } from "@mantine/core";
-import { theme } from "../../theme";
+import { theme } from "../../../theme";
 
 interface ThemeProviderProps {
   children: ReactNode;
