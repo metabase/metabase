@@ -1152,6 +1152,7 @@ saved later when it is ready."
   (let [db-id             (public-settings/uploads-database-id)
         database          (or (t2/select-one Database :id db-id)
                               (throw (Exception. (tru "The uploads database does not exist."))))
+        _check_perms      (api/check-403 (mi/can-write? database))
         driver            (driver.u/database->driver database)
         schema-name       (public-settings/uploads-schema-name)
         _check-schema     (when-not (or (nil? schema-name)

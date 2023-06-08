@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
+   [metabase.api.card-test :as api.card-test]
    [metabase.api.database :as api.database]
    [metabase.models :refer [Dashboard DashboardCard Database Field FieldValues Permissions Table]]
    [metabase.models.database :as database]
@@ -682,3 +683,18 @@
     (with-all-users-data-perms {(mt/id) {:details :no}}
       (mt/user-http-request :rasta :put 403 "setting/" {:uploads-database-id (mt/id)})))
   (perms/revoke-application-permissions! (perms-group/all-users) :setting))
+
+(deftest upload-csv-test
+  (let [db-id (u/the-id (mt/db))]
+    (testing "Should be blocked without data access"
+      (perms/grant-application-permissions! (perms-group/all-users) :setting)
+      (mt/with-temporary-setting-values [uploads-enabled      true
+                                         uploads-database-id  db-id
+                                         uploads-schema-name  nil
+                                         uploads-table-prefix "uploaded_magic_"]
+        (with-all-users-data-perms {db-id {:details :no}}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"You don't have permissions to do that\."
+               (api.card-test/upload-example-csv! nil false)))))
+      (perms/revoke-application-permissions! (perms-group/all-users) :setting))))

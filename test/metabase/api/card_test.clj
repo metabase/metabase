@@ -39,6 +39,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision :refer [Revision]]
    [metabase.models.user :refer [User]]
+   [metabase.plugins.classloader :as classloader]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
@@ -2814,14 +2815,27 @@
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
 
-(defn- upload-example-csv! [collection-id]
-  (let [file (upload-test/csv-file-with
-              ["id, name"
-               "1, Luke Skywalker"
-               "2, Darth Vader"]
-              "example_csv_file")]
-    (mt/with-current-user (mt/user->id :rasta)
-      (api.card/upload-csv! collection-id "example_csv_file.csv" file))))
+(defn upload-example-csv!
+  "Upload a small CSV file to the given collection ID"
+  ([collection-id]
+   (upload-example-csv! collection-id true))
+  ([collection-id grant-permission?]
+   (let [file        (upload-test/csv-file-with
+                      ["id, name"
+                       "1, Luke Skywalker"
+                       "2, Darth Vader"]
+                      "example_csv_file")
+         group-id    (u/the-id (perms-group/all-users))
+         grant-perms (or (and grant-permission?
+                              (u/ignore-exceptions
+                                (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+                                (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-details-permissions!)))
+                         (fn [_ _ _]))]
+     (grant-perms group-id (mt/id) :yes)
+     (u/prog1
+       (mt/with-current-user (mt/user->id :rasta)
+         (api.card/upload-csv! collection-id "example_csv_file.csv" file))
+       (grant-perms group-id (mt/id) :no)))))
 
 (deftest upload-csv!-schema-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
@@ -2851,7 +2865,7 @@
                       new-table))
               (is (= #{"id" "name"}
                      (->> (t2/select Field :table_id (:id new-table))
-                          (map (comp #_{:clj-kondo/ignore [:discouraged-var]} str/lower-case :name))
+                          (map (comp u/lower-case-en :name))
                           set))))))))))
 
 (deftest upload-csv!-table-prefix-test
