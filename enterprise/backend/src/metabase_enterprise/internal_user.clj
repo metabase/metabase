@@ -1,13 +1,5 @@
 (ns metabase-enterprise.internal-user
-  #_:clj-kondo/ignore
-  (:require [clojure.java.io :as io]
-            [metabase-enterprise.serialization.cmd :as serialization.cmd]
-            [metabase.config :as config]
-            [metabase.db.env :as mdb.env]
-            [metabase.models :refer [User]]
-            [metabase.public-settings.premium-features :refer [defenterprise]]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.util :as u]
+  (:require [metabase.models :refer [User]]
             [metabase.util.log :as log]
             [toucan2.core :as t2]))
 

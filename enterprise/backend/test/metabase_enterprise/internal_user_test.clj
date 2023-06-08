@@ -1,9 +1,9 @@
 (ns metabase-enterprise.internal-user-test
   (:require
-   [toucan2.core :as t2]
+   [clojure.test :refer [deftest is]]
+   [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase.models :refer [User]]
-               [clojure.test :refer [deftest is]]
-   [metabase-enterprise.internal-user :as ee.internal-user]))
+   [toucan2.core :as t2]))
 
 (defmacro with-internal-user-restoration [& body]
   `(let [original-audit-db# (t2/select-one User :id @#'ee.internal-user/internal-user-id)]
