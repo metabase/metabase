@@ -1,103 +1,63 @@
-import { Collection } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 
 describe("Collection selectors", () => {
   const CANONICAL_ROOT_COLLECTION_ID = null;
 
-  const PERSONAL_COLLECTION = createMockCollection({
+  const PERSONAL_COLLECTION = {
     id: 1,
     name: "My personal collection",
     can_write: true,
-  });
+  };
 
-  const TEST_COLLECTION = createMockCollection({
+  const TEST_COLLECTION = {
     id: 2,
     name: "Writable Collection",
     can_write: true,
-  });
+  };
 
-  const TEST_COLLECTION_2 = createMockCollection({
+  const TEST_COLLECTION_2 = {
     id: 3,
     name: "One More Writable Collection",
     can_write: true,
-  });
+  };
 
-  const TEST_NESTED_COLLECTION_A = createMockCollection({
-    id: 6,
-    name: "Collection A",
-    can_write: true,
-    path: [ROOT_COLLECTION.id],
-  });
-
-  const TEST_NESTED_COLLECTION_B = createMockCollection({
-    id: 5,
-    name: "Collection B",
-    can_write: true,
-    path: [ROOT_COLLECTION.id],
-  });
-
-  const TEST_NESTED_COLLECTION_C = createMockCollection({
+  const TEST_READ_ONLY_COLLECTION = {
     id: 4,
-    name: "Collection C",
-    can_write: true,
-    path: [ROOT_COLLECTION.id],
-  });
-
-  const TEST_READ_ONLY_COLLECTION = createMockCollection({
-    id: 7,
     name: "Read-only Collection",
     can_write: false,
-  });
+  };
 
-  const DEFAULT_COLLECTIONS = [
-    TEST_COLLECTION,
-    TEST_COLLECTION_2,
-    TEST_READ_ONLY_COLLECTION,
-  ];
+  const DEFAULT_COLLECTIONS = {
+    [TEST_COLLECTION.id]: TEST_COLLECTION,
+    [TEST_COLLECTION_2.id]: TEST_COLLECTION_2,
+    [TEST_READ_ONLY_COLLECTION.id]: TEST_READ_ONLY_COLLECTION,
+  };
 
-  const NESTED_COLLECTIONS = [
-    TEST_NESTED_COLLECTION_A,
-    TEST_NESTED_COLLECTION_B,
-    TEST_NESTED_COLLECTION_C,
-  ];
-
-  const getState = ({
+  function getReduxState({
     isAdmin = false,
     collections = DEFAULT_COLLECTIONS,
-  }: {
-    isAdmin?: boolean;
-    collections?: Partial<Collection>[];
-  } = {}) => {
-    const collectionsById = Object.fromEntries(
-      collections.map(collection => [collection.id, collection]),
-    );
-
+  } = {}) {
     return {
       currentUser: {
         personal_collection_id: PERSONAL_COLLECTION.id,
       },
       entities: {
         collections: {
-          [ROOT_COLLECTION.id]: {
-            ...ROOT_COLLECTION,
+          root: {
+            id: "root",
+            name: "Our analytics",
             can_write: isAdmin,
           },
           [PERSONAL_COLLECTION.id]: PERSONAL_COLLECTION,
-          ...collectionsById,
-        },
-        collections_list: {
-          null: {
-            list: [ROOT_COLLECTION.id, ...collections.map(({ id }) => id)],
-          },
+          ...collections,
         },
       },
     };
-  };
+  }
 
   describe("getInitialCollectionId", () => {
     const { getInitialCollectionId } = Collections.selectors;
-    const state = getState();
+    const state = getReduxState();
 
     it("suggests direct collectionId prop", () => {
       const props = { collectionId: TEST_COLLECTION.id };
@@ -138,7 +98,7 @@ describe("Collection selectors", () => {
     });
 
     it("fallbacks to root collection for admin users if can't suggest an id from props", () => {
-      const adminState = getState({ isAdmin: true });
+      const adminState = getReduxState({ isAdmin: true });
       const props = {};
       expect(getInitialCollectionId(adminState, props)).toBe(
         CANONICAL_ROOT_COLLECTION_ID,
@@ -238,8 +198,11 @@ describe("Collection selectors", () => {
         const { can_write, ...personalCollectionWithoutPermissionsLoaded } =
           PERSONAL_COLLECTION;
 
-        const state = getState({
-          collections: [personalCollectionWithoutPermissionsLoaded],
+        const state = getReduxState({
+          collections: {
+            [PERSONAL_COLLECTION.id]:
+              personalCollectionWithoutPermissionsLoaded,
+          },
         });
         const props = {
           collectionId: ROOT_COLLECTION.id,
@@ -268,34 +231,6 @@ describe("Collection selectors", () => {
         };
         expect(getInitialCollectionId(state, props)).toBe(TEST_COLLECTION.id);
       });
-    });
-  });
-
-  describe("getExpandedCollectionsById", () => {
-    const { getExpandedCollectionsById } = Collections.selectors;
-
-    it("preserves collections order", () => {
-      const state = getState();
-      const expandedCollectionsById = getExpandedCollectionsById(state);
-      const expandedCollection = expandedCollectionsById[ROOT_COLLECTION.id];
-      const children: Partial<Collection>[] = expandedCollection.children;
-      const chilrenIds = children.map(child => child.id);
-      const defaultCollectionsIds = DEFAULT_COLLECTIONS.map(({ id }) => id);
-
-      // Only compare ids to avoid comparing circular objects with jest
-      expect(chilrenIds).toEqual(defaultCollectionsIds);
-    });
-
-    it("preserves nested collections order", () => {
-      const nestedCollectionsIds = NESTED_COLLECTIONS.map(({ id }) => id);
-      const state = getState({ collections: NESTED_COLLECTIONS });
-      const expandedCollectionsById = getExpandedCollectionsById(state);
-      const expandedCollection = expandedCollectionsById[ROOT_COLLECTION.id];
-      const children: Partial<Collection>[] = expandedCollection.children;
-      const chilrenIds = children.map(child => child.id);
-
-      // Only compare ids to avoid comparing circular objects with jest
-      expect(chilrenIds).toEqual(nestedCollectionsIds);
     });
   });
 });
