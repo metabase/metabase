@@ -231,9 +231,11 @@
              include-saved-questions-db?
              include-saved-questions-tables?
              include-editable-data-model?
+             include-analytics?
              exclude-uneditable-details?]}]
-  (let [dbs (t2/select Database {:where [:= :is_audit false]
-                                 :order-by [:%lower.name :%lower.engine]})
+  (let [dbs (t2/select Database (merge {:order-by [:%lower.name :%lower.engine]}
+                                       (when-not include-analytics?
+                                         {:where [:= :is_audit false]})))
         filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
@@ -262,12 +264,14 @@
 
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled."
-  [include_tables include_cards include saved include_editable_data_model exclude_uneditable_details]
+  [include_tables include_cards include saved include_editable_data_model exclude_uneditable_details
+   include_analytics]
   {include_tables                [:maybe :boolean]
    include_cards                 [:maybe :boolean]
    include                       (mu/with-api-error-message
                                    [:maybe [:= "tables"]]
                                    (deferred-tru "include must be either empty or the value 'tables'"))
+   include_analytics             [:maybe :boolean]
    saved                         [:maybe :boolean]
    include_editable_data_model   [:maybe :boolean]
    exclude_uneditable_details    [:maybe :boolean]}
@@ -284,7 +288,8 @@
                                                       :include-saved-questions-db?     include-saved-questions-db?
                                                       :include-saved-questions-tables? include-saved-questions-tables?
                                                       :include-editable-data-model?    include_editable_data_model
-                                                      :exclude-uneditable-details?     exclude_uneditable_details)
+                                                      :exclude-uneditable-details?     exclude_uneditable_details
+                                                      :include-analytics?              include_analytics)
                                             [])]
     {:data  db-list-res
      :total (count db-list-res)}))
