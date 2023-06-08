@@ -110,12 +110,12 @@ export function getDefaultTab({
   };
 }
 
-function getIdFromSlug(slug: string | undefined) {
+export function getIdFromSlug(slug: string | undefined) {
   if (!slug) {
     return undefined;
   }
 
-  const id = parseInt(slug.split("-")[0]);
+  const id = Number(slug.split("-")[0]);
   return Number.isNaN(id) ? undefined : id;
 }
 
