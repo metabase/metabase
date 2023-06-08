@@ -1,0 +1,16 @@
+authority_level: null
+description: Find opportunities to fine-tune things. This collection isn’t editable, but you can duplicate things to create your own explorations and reports.
+archived: false
+slug: performance
+color: '#509EE3'
+name: Performance
+personal_owner_id: null
+type: instance-analytics
+parent_id: vG58R8k-QddHWA7_47umn
+serdes/meta:
+- model: Collection
+  id: jlpssXoda_EbXFIKNA-lF
+  label: performance
+entity_id: jlpssXoda_EbXFIKNA-lF
+namespace: null
+created_at: '2023-06-08T14:15:19.606952Z'
