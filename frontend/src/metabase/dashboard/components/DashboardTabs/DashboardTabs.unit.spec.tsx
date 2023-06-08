@@ -1,13 +1,12 @@
+import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 
-import { Route } from "react-router";
 import { renderWithProviders, screen, fireEvent } from "__support__/ui";
 import { DashboardState, State } from "metabase-types/store";
 import { DashboardOrderedTab } from "metabase-types/api";
-
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
-
 import { INPUT_WRAPPER_TEST_ID } from "metabase/core/components/TabButton";
+
 import { DashboardTabs } from "./DashboardTabs";
 import { TEST_DASHBOARD_STATE } from "./test-utils";
 import { useDashboardTabs } from "./use-dashboard-tabs";
@@ -98,6 +97,10 @@ async function renameTab(num: number, name: string) {
   fireEvent.keyPress(inputEl, { key: "Enter", charCode: 13 });
 }
 
+async function findSlug({ tabId, name }: { tabId: number; name: string }) {
+  return screen.findByText(new RegExp(getSlug({ tabId, name })));
+}
+
 describe("DashboardTabs", () => {
   beforeEach(() => {
     resetTempTabId();
@@ -139,11 +142,7 @@ describe("DashboardTabs", () => {
         expect(queryTab(2)).toHaveAttribute("aria-selected", "false");
         expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
 
-        expect(
-          await screen.findByText(
-            new RegExp(getSlug({ tabId: 1, name: "Tab 1" })),
-          ),
-        ).toBeInTheDocument();
+        expect(await findSlug({ tabId: 1, name: "Tab 1" })).toBeInTheDocument();
       });
 
       it("should allow you to click to select tabs", async () => {
@@ -153,11 +152,7 @@ describe("DashboardTabs", () => {
         expect(queryTab(1)).toHaveAttribute("aria-selected", "false");
         expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
 
-        expect(
-          await screen.findByText(
-            new RegExp(getSlug({ tabId: 2, name: "Tab 2" })),
-          ),
-        ).toBeInTheDocument();
+        expect(await findSlug({ tabId: 2, name: "Tab 2" })).toBeInTheDocument();
       });
     });
   });
@@ -188,11 +183,7 @@ describe("DashboardTabs", () => {
       expect(queryTab(1)).toHaveAttribute("aria-selected", "false");
       expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
 
-      expect(
-        await screen.findByText(
-          new RegExp(getSlug({ tabId: 2, name: "Tab 2" })),
-        ),
-      ).toBeInTheDocument();
+      expect(await findSlug({ tabId: 2, name: "Tab 2" })).toBeInTheDocument();
     });
 
     describe("when adding tabs", () => {
@@ -249,11 +240,7 @@ describe("DashboardTabs", () => {
         await deleteTab(2);
 
         expect(queryTab(1)).toHaveAttribute("aria-selected", "true");
-        expect(
-          await screen.findByText(
-            new RegExp(getSlug({ tabId: 1, name: "Tab 1" })),
-          ),
-        ).toBeInTheDocument();
+        expect(await findSlug({ tabId: 1, name: "Tab 1" })).toBeInTheDocument();
       });
 
       it("should select the tab to the right if the selected tab was deleted and was the first tab", async () => {
@@ -262,22 +249,14 @@ describe("DashboardTabs", () => {
         await deleteTab(1);
 
         expect(queryTab(2)).toHaveAttribute("aria-selected", "true");
-        expect(
-          await screen.findByText(
-            new RegExp(getSlug({ tabId: 2, name: "Tab 2" })),
-          ),
-        ).toBeInTheDocument();
+        expect(await findSlug({ tabId: 2, name: "Tab 2" })).toBeInTheDocument();
       });
 
       it("should disable the last tab and remove slug if the penultimate tab was deleted", async () => {
         setup();
         await deleteTab(3);
 
-        expect(
-          await screen.findByText(
-            new RegExp(getSlug({ tabId: 1, name: "Tab 1" })),
-          ),
-        ).toBeInTheDocument();
+        expect(await findSlug({ tabId: 1, name: "Tab 1" })).toBeInTheDocument();
 
         await deleteTab(2);
 
@@ -306,9 +285,7 @@ describe("DashboardTabs", () => {
         await renameTab(1, name);
 
         expect(queryTab(name)).toBeInTheDocument();
-        expect(
-          await screen.findByText(new RegExp(getSlug({ tabId: 1, name }))),
-        ).toBeInTheDocument();
+        expect(await findSlug({ tabId: 1, name })).toBeInTheDocument();
       });
 
       it("should allow renaming via double click", async () => {
@@ -322,9 +299,7 @@ describe("DashboardTabs", () => {
         fireEvent.keyPress(inputEl, { key: "Enter", charCode: 13 });
 
         expect(queryTab(name)).toBeInTheDocument();
-        expect(
-          await screen.findByText(new RegExp(getSlug({ tabId: 1, name }))),
-        ).toBeInTheDocument();
+        expect(await findSlug({ tabId: 1, name })).toBeInTheDocument();
       });
     });
   });
