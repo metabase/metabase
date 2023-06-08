@@ -153,6 +153,27 @@
                  {:id (meta/id :categories :name) :name "NAME"}]
                 (lib/breakoutable-columns query)))))))
 
+(deftest ^:parallel binned-breakouts-test
+  (testing "binned breakout columns should have a position (#31437)"
+    (let [base-query (lib/query-for-table-name meta/metadata-provider "VENUES")
+          breakoutables (lib/breakoutable-columns base-query)
+          price-col (m/find-first #(= (:name %) "PRICE") breakoutables)
+          latitude-col (m/find-first #(= (:name %) "LATITUDE") breakoutables)
+          binning-opts (lib/available-binning-strategies base-query price-col)
+          query (-> base-query
+                    (lib/breakout (lib/with-binning price-col (first binning-opts)))
+                    (lib/breakout latitude-col))]
+      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
+        (is (=? [{:display-name "ID"}
+                 {:display-name "Name"}
+                 {:display-name "Category ID"}
+                 {:display-name "Latitude", :breakout-position 1}
+                 {:display-name "Longitude"}
+                 {:display-name "Price", :breakout-position 0}
+                 {:display-name "ID"}
+                 {:display-name "Name"}]
+                (lib/breakoutable-columns query)))))))
+
 (deftest ^:parallel breakoutable-explicit-joins-test
   (testing "breakoutable-columns should include columns from explicit joins"
     (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
