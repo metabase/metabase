@@ -1,4 +1,4 @@
-import { useMount } from "react-use";
+import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 
@@ -31,8 +31,9 @@ export function useDashboardTabs({
   const tabs = useSelector(getTabs);
   const selectedTabId = useSelector(getSelectedTabId);
 
-  useSyncURLSlug({ pathname });
+  useSyncURLSlug({ slug, pathname });
   useMount(() => dispatch(initTabs({ slug })));
+  useUnmount(() => dispatch(selectTab({ tabId: null })));
 
   const deleteTab = (tabId: SelectedTabId) => {
     const tabName = tabs.find(({ id }) => id === tabId)?.name;
