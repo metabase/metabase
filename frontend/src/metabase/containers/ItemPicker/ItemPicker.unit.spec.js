@@ -10,6 +10,9 @@ import {
   within,
 } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
+import { useCollectionQuery, useCollectionsQuery } from "metabase/common/hooks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
 import ItemPicker from "./ItemPicker";
 
 function collection({
@@ -87,6 +90,22 @@ const DASHBOARD = {
   }),
 };
 
+const TestComponent = props => {
+  const collectionsQuery = useCollectionsQuery();
+  const rootCollectionQuery = useCollectionQuery({ id: "root" });
+
+  if (!collectionsQuery.data || !rootCollectionQuery.data) {
+    return (
+      <LoadingAndErrorWrapper
+        error={collectionsQuery.error || rootCollectionQuery.error}
+        loading={collectionsQuery.isLoading || rootCollectionQuery.isLoading}
+      />
+    );
+  }
+
+  return <ItemPicker {...props} />;
+};
+
 async function setup({
   models = ["dashboard"],
   extraCollections = [],
@@ -100,7 +119,7 @@ async function setup({
   const onChange = jest.fn();
 
   renderWithProviders(
-    <ItemPicker models={models} onChange={onChange} {...props} />,
+    <TestComponent models={models} onChange={onChange} {...props} />,
     {
       storeInitialState: {
         currentUser: CURRENT_USER,
