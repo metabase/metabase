@@ -234,14 +234,14 @@
                       :long-display-name "Categories"
                       :is-source-table false}
               :effective-type :type/BigInteger
-              :long-display-name "Categories → ID"
+              :long-display-name "Cat → ID"
               :display-name "ID"}
              {:table {:name "CATEGORIES"
                       :display-name "Categories"
                       :long-display-name "Categories"
                       :is-source-table false}
               :effective-type :type/Text
-              :long-display-name "Categories → Name"
+              :long-display-name "Cat → Name"
               :display-name "Name"}]
             (map #(lib/display-info query %)
                  (lib.metadata.calculation/metadata query))))
