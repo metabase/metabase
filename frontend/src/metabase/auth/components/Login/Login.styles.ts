@@ -1,21 +1,21 @@
-import { createStyles, rem } from "@mantine/core";
+import { createStyles } from "@mantine/core";
 
 export const useStyles = createStyles(theme => ({
   title: {
     color: theme.colors.text[2],
-    fontSize: rem(20),
+    fontSize: "1.25rem",
     fontWeight: "bold",
-    lineHeight: rem(24),
+    lineHeight: "1.5rem",
     textAlign: "center",
   },
   panel: {
-    marginTop: rem(40),
+    marginTop: "2.5rem",
   },
   actionList: {
-    marginTop: rem(56),
+    marginTop: "3.5rem",
   },
   actionListItem: {
-    marginTop: rem(32),
+    marginTop: "2rem",
     textAlign: "center",
   },
 }));
