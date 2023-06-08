@@ -121,3 +121,7 @@ export const undoToast = () => {
 export function dashboardCards() {
   return cy.get("#Dashboard-Cards-Container");
 }
+
+export function actionEditorModal() {
+  return cy.get(`.Modal[role="dialog"]`);
+}
