@@ -1,18 +1,15 @@
 (ns metabase-enterprise.audit-db
-  (:require
-   [clojure.core :as c]
-   [clojure.java.io :as io]
-   [metabase-enterprise.internal-user :as ee.internal-user]
-   [metabase-enterprise.serialization.cmd :as serialization.cmd]
-   [metabase.db.env :as mdb.env]
-   [metabase.models.database :refer [Database]]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.sync.sync-metadata :as sync-metadata]
-   [metabase.sync.util :as sync-util]
-   [metabase.util :as u]
-   [metabase.util.files :as u.files]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+  (:require [clojure.java.io :as io]
+            [metabase-enterprise.internal-user :as ee.internal-user]
+            [metabase-enterprise.serialization.cmd :as serialization.cmd]
+            [metabase.config :as config]
+            [metabase.db.env :as mdb.env]
+            [metabase.models.database :refer [Database]]
+            [metabase.public-settings.premium-features :refer [defenterprise]]
+            [metabase.sync.sync-metadata :as sync-metadata]
+            [metabase.util :as u]
+            [metabase.util.log :as log]
+            [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -119,32 +116,18 @@
   :feature :none
   []
   (u/prog1 (ensure-db-installed!)
-    (let [audit-db (t2/select-one :model/Database :is_audit true)]
-      (assert audit-db "Audit DB was not installed correctly!!")
-      ;; There's a sync scheduled, but we want to force a sync right away:
-      (log/info "Beginning Audit DB Sync...")
-      (sync-metadata/sync-db-metadata! audit-db)
-      (log/info "Audit DB Sync Complete.")
-
-      ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
-      (when analytics-root-dir-resource
-        ;; prevent sync while loading
-        ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
-           (fn []
-             (ee.internal-user/ensure-internal-user-exists!)
-             (adjust-audit-db-to-source! audit-db)
-             (log/info "Loading Analytics Content...")
-             (log/info "Unzipping instance_analytics to plugins...")
-             (u.files/unzip-file analytics-root-dir-resource "plugins")
-             (log/info "Unzipping done.")
-             (log/info (str "Loading Analytics Content from: " "plugins/instance_analytics"))
-             ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
-             (let [report (log/with-no-logs
-                            (serialization.cmd/v2-load-internal (.toURL (.toURI (io/file "plugins/instance_analytics")))
-                                                                {}
-                                                                :token-check? false))]
-               (if (not-empty (:errors report))
-                 (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-                 (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized."))))
-             (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-               (adjust-audit-db-to-host! audit-db)))))))))
+    ;; There's a sync scheduled, but we want to force a sync right away:
+    (if-let [audit-db (t2/select-one :model/Database {:where [:= :is_audit true]})]
+      (do (log/info "Beginning Audit DB Sync...")
+          (log/with-no-logs (sync-metadata/sync-db-metadata! audit-db))
+          (log/info "Audit DB Sync Complete."))
+      (when (not config/is-prod?)
+        (log/warn "Audit DB was not installed correctly!!")))
+    ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
+    (when analytics-root-dir-resource
+      (ee.internal-user/ensure-internal-user-exists!)
+      (log/info (str "Loading Analytics Content from: " analytics-root-dir-resource))
+      (let [report (log/with-no-logs (serialization.cmd/v2-load analytics-root-dir-resource {}))]
+        (if (not-empty (:errors report))
+          (log/info (str "Error Loading Analytics Content: " (pr-str report)))
+          (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized.")))))))
