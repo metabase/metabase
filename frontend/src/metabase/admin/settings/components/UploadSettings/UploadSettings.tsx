@@ -168,7 +168,7 @@ export function UploadSettingsView({
   };
 
   const showPrefix = !!dbId;
-  const hasValidSettings = dbId && !(showSchema && !schemaName);
+  const hasValidSettings = Boolean(dbId && (!showSchema || schemaName));
   const settingsChanged =
     dbId !== settings.uploads_database_id ||
     schemaName !== settings.uploads_schema_name ||
