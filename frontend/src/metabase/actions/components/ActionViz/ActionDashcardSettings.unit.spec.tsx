@@ -34,7 +34,6 @@ const actionParameter1 = createMockActionParameter({
   slug: "action-parameter-1",
   target: ["variable", ["template-tag", "action-parameter-1"]],
 });
-
 const actionParameter2 = createMockActionParameter({
   id: "action-param-id-2",
   name: "Action Parameter 2",
@@ -73,29 +72,30 @@ const actions2 = [
     model_id: models[1].id,
     parameters: [actionParameter1, actionParameter2],
   }),
-  createMockQueryAction({
-    id: 14,
-    name: "Action Trois 14",
-    model_id: models[1].id,
-    parameters: [actionParameter1, actionParameter2, actionParameter3],
-    visualization_settings: {
-      fields: {
-        [actionParameter1.id]: createMockFieldSettings({
-          id: actionParameter1.id,
-          hidden: false,
-        }),
-        [actionParameter2.id]: createMockFieldSettings({
-          id: actionParameter2.id,
-          hidden: true,
-        }),
-        [actionParameter3.id]: createMockFieldSettings({
-          id: actionParameter3.id,
-          hidden: true,
-        }),
-      },
-    },
-  }),
 ];
+
+const actionWithHiddenFields = createMockQueryAction({
+  id: 14,
+  name: "Action Trois 14",
+  model_id: models[1].id,
+  parameters: [actionParameter1, actionParameter2, actionParameter3],
+  visualization_settings: {
+    fields: {
+      [actionParameter1.id]: createMockFieldSettings({
+        id: actionParameter1.id,
+        hidden: false,
+      }),
+      [actionParameter2.id]: createMockFieldSettings({
+        id: actionParameter2.id,
+        hidden: true,
+      }),
+      [actionParameter3.id]: createMockFieldSettings({
+        id: actionParameter3.id,
+        hidden: true,
+      }),
+    },
+  },
+});
 
 const dashcard = createMockDashboardOrderedCard();
 const actionDashcard = createMockActionDashboardCard({ id: 2 });
@@ -105,7 +105,7 @@ const actionDashcardWithAction = createMockActionDashboardCard({
 });
 const actionDashcardWithActionWithHiddenFields = createMockActionDashboardCard({
   id: 4,
-  action: actions2[3],
+  action: actionWithHiddenFields,
 });
 
 const dashboard = createMockDashboard({
