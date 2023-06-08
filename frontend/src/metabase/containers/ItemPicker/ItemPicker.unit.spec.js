@@ -1,4 +1,6 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
 import {
   setupCollectionsEndpoints,
   setupDashboardCollectionItemsEndpoint,
@@ -56,6 +58,7 @@ const COLLECTION = {
     personal_owner_id: CURRENT_USER.id,
   }),
   REGULAR: collection({ id: 1, name: "Regular collection" }),
+  REGULAR_2: collection({ id: 6, name: "Regular collection 2" }),
   READ_ONLY: collection({
     id: 2,
     name: "Read only collection",
@@ -164,8 +167,9 @@ describe("ItemPicker", () => {
     // Content
     expect(screen.getByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
     expect(screen.getByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
+    expect(screen.getByText(COLLECTION.REGULAR_2.name)).toBeInTheDocument();
     expect(screen.getByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
-    expect(screen.queryAllByTestId("item-picker-item")).toHaveLength(3);
+    expect(screen.queryAllByTestId("item-picker-item")).toHaveLength(4);
   });
 
   it("does not display read-only collections", async () => {
@@ -212,8 +216,9 @@ describe("ItemPicker", () => {
 
     expect(list.getByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
     expect(list.getByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
+    expect(list.getByText(COLLECTION.REGULAR_2.name)).toBeInTheDocument();
     expect(list.getByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
-    expect(list.getAllByTestId("item-picker-item")).toHaveLength(3);
+    expect(list.getAllByTestId("item-picker-item")).toHaveLength(4);
   });
 
   it("calls onChange when selecting an item", async () => {
@@ -261,5 +266,83 @@ describe("ItemPicker", () => {
 
     const list = within(getItemPickerList());
     expect(list.getByText(DASHBOARD.REGULAR_CHILD.name)).toBeInTheDocument();
+  });
+
+  describe("preserves order of non-personal collections coming from API endpoint", () => {
+    it("[personal, regular, regular 2]", async () => {
+      const collections = [
+        COLLECTION.PERSONAL,
+        COLLECTION.REGULAR,
+        COLLECTION.REGULAR_2,
+      ];
+
+      fetchMock.get("path:/api/collection", collections);
+
+      await setup();
+
+      const items = screen.getAllByTestId("item-picker-item");
+
+      expect(items.length).toBe(3);
+      expect(items.length).toBe(collections.length);
+      expect(
+        within(items[0]).getByText(collections[0].name),
+      ).toBeInTheDocument();
+      expect(
+        within(items[1]).getByText(collections[1].name),
+      ).toBeInTheDocument();
+      expect(
+        within(items[2]).getByText(collections[2].name),
+      ).toBeInTheDocument();
+    });
+
+    it("[personal, regular 2, regular]", async () => {
+      const collections = [
+        COLLECTION.PERSONAL,
+        COLLECTION.REGULAR_2,
+        COLLECTION.REGULAR,
+      ];
+
+      fetchMock.get("path:/api/collection", collections);
+
+      await setup();
+
+      const items = screen.getAllByTestId("item-picker-item");
+
+      expect(items.length).toBe(collections.length);
+      expect(
+        within(items[0]).getByText(collections[0].name),
+      ).toBeInTheDocument();
+      expect(
+        within(items[1]).getByText(collections[1].name),
+      ).toBeInTheDocument();
+      expect(
+        within(items[2]).getByText(collections[2].name),
+      ).toBeInTheDocument();
+    });
+
+    it("personal collection is always shown first", async () => {
+      const collections = [
+        COLLECTION.REGULAR_2,
+        COLLECTION.REGULAR,
+        COLLECTION.PERSONAL,
+      ];
+
+      fetchMock.get("path:/api/collection", collections);
+
+      await setup();
+
+      const items = screen.getAllByTestId("item-picker-item");
+
+      expect(items.length).toBe(collections.length);
+      expect(
+        within(items[0]).getByText(COLLECTION.PERSONAL.name),
+      ).toBeInTheDocument();
+      expect(
+        within(items[1]).getByText(COLLECTION.REGULAR_2.name),
+      ).toBeInTheDocument();
+      expect(
+        within(items[2]).getByText(COLLECTION.REGULAR.name),
+      ).toBeInTheDocument();
+    });
   });
 });
