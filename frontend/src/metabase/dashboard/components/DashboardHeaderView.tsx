@@ -37,6 +37,7 @@ interface DashboardHeaderViewProps {
   headerClassName: string;
   headerModalMessage: string;
   tabSlug: string | undefined;
+  pathname: string;
   isEditing: boolean;
   isEditingInfo: boolean;
   isNavBarOpen: boolean;
@@ -59,6 +60,7 @@ function DashboardHeaderView({
   headerClassName = "py1 lg-py2 xl-py3 wrapper",
   headerModalMessage,
   tabSlug,
+  pathname,
   isEditing,
   isNavBarOpen,
   dashboard,
@@ -169,7 +171,11 @@ function DashboardHeaderView({
           </HeaderButtonsContainer>
         </HeaderRow>
         <HeaderRow isNavBarOpen={isNavBarOpen}>
-          <DashboardTabs slug={tabSlug} isEditing={isEditing} />
+          <DashboardTabs
+            slug={tabSlug}
+            pathname={pathname}
+            isEditing={isEditing}
+          />
         </HeaderRow>
       </div>
     </div>

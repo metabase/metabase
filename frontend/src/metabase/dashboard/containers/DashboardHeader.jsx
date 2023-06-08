@@ -485,6 +485,7 @@ class DashboardHeader extends Component {
         objectType="dashboard"
         analyticsContext="Dashboard"
         tabSlug={params.tabSlug}
+        pathname={this.props.location.pathname}
         dashboard={dashboard}
         isEditing={isEditing}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}

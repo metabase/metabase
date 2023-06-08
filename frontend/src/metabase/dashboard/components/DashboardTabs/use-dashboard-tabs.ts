@@ -20,12 +20,18 @@ import { useSyncURLSlug } from "./use-sync-url-slug";
 
 let tabDeletionId = 1;
 
-export function useDashboardTabs({ slug }: { slug: string | undefined }) {
+export function useDashboardTabs({
+  slug,
+  pathname,
+}: {
+  slug: string | undefined;
+  pathname: string;
+}) {
   const dispatch = useDispatch();
   const tabs = useSelector(getTabs);
   const selectedTabId = useSelector(getSelectedTabId);
 
-  useSyncURLSlug();
+  useSyncURLSlug({ pathname });
   useMount(() => dispatch(initTabs({ slug })));
 
   const deleteTab = (tabId: SelectedTabId) => {

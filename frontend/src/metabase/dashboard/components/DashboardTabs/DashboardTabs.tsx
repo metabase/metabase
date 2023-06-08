@@ -14,10 +14,15 @@ import { useDashboardTabs } from "./use-dashboard-tabs";
 
 interface DashboardTabsProps {
   slug: string | undefined;
+  pathname: string;
   isEditing?: boolean;
 }
 
-export function DashboardTabs({ slug, isEditing = false }: DashboardTabsProps) {
+export function DashboardTabs({
+  slug,
+  pathname,
+  isEditing = false,
+}: DashboardTabsProps) {
   const {
     tabs,
     createNewTab,
@@ -26,7 +31,7 @@ export function DashboardTabs({ slug, isEditing = false }: DashboardTabsProps) {
     selectTab,
     selectedTabId,
     moveTab,
-  } = useDashboardTabs({ slug });
+  } = useDashboardTabs({ slug, pathname });
   const showTabs = tabs.length > 1 || isEditing;
   const showPlaceholder = tabs.length <= 1 && isEditing;
 

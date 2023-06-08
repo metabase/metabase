@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { SelectedTabId } from "metabase-types/store";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
 
-function getSlug({
+export function getSlug({
   tabId,
   name,
 }: {
@@ -19,36 +19,36 @@ function getSlug({
   return [tabId, ...name.toLowerCase().split(" ")].join("-");
 }
 
-function getPathnameBeforeSlug() {
-  const match = window.location.pathname.match(/(.*\/dashboard\/[^\/]*)\/?/);
+function getPathnameBeforeSlug(pathname: string) {
+  const match = pathname.match(/(.*\/dashboard\/[^\/]*)\/?/);
   if (match === null) {
     throw Error("No match with pathname before dashboard tab slug.");
   }
   return match[1];
 }
 
-function useUpdateURLSlug() {
+function useUpdateURLSlug({ pathname: oldPathname }: { pathname: string }) {
   const dispatch = useDispatch();
 
   return {
     updateURLSlug: (slug: string) => {
       const pathname = slug
-        ? `${getPathnameBeforeSlug()}/${slug}`
-        : getPathnameBeforeSlug();
+        ? `${getPathnameBeforeSlug(oldPathname)}/${slug}`
+        : getPathnameBeforeSlug(oldPathname);
 
       dispatch(replace({ pathname }));
     },
   };
 }
 
-export function useSyncURLSlug() {
+export function useSyncURLSlug({ pathname }: { pathname: string }) {
   const tabs = useSelector(getTabs);
   const selectedTabId = useSelector(getSelectedTabId);
 
   const prevTabs = usePrevious(tabs);
   const prevSelectedTabId = usePrevious(selectedTabId);
 
-  const { updateURLSlug } = useUpdateURLSlug();
+  const { updateURLSlug } = useUpdateURLSlug({ pathname });
 
   useEffect(() => {
     const tabSelected = selectedTabId !== prevSelectedTabId;

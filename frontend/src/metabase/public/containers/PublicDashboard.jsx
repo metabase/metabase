@@ -147,7 +147,10 @@ class PublicDashboard extends Component {
         >
           {() => (
             <DashboardContainer>
-              <DashboardTabs slug={this.props.params.tabSlug} />
+              <DashboardTabs
+                slug={this.props.params.tabSlug}
+                pathname={this.props.location.pathname}
+              />
               <Separator />
               <DashboardGridContainer>
                 <DashboardGrid
