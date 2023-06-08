@@ -24,7 +24,7 @@ const PERMISSIONS = {
   no: ["nocollection", "nosql", "none"],
 };
 
-describe.skip("managing question from the question's details sidebar", () => {
+describe("managing question from the question's details sidebar", () => {
   beforeEach(() => {
     restore();
   });
