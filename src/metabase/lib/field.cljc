@@ -84,14 +84,6 @@
     (when (seq stage-columns)
       (resolve-column-name-in-metadata column-name stage-columns))))
 
-(mu/defn ^:private resolve-column-name-in-join :- [:maybe lib.metadata/ColumnMetadata]
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   column-name  :- ::lib.schema.common/non-blank-string
-   join-alias   :- [:maybe ::lib.schema.common/non-blank-string]]
-  (let [join-metadata (lib.metadata.calculation/metadata query stage-number (lib.join/resolve-join query stage-number join-alias))]
-    (resolve-column-name-in-metadata column-name join-metadata)))
-
 (mu/defn ^:private resolve-field-metadata :- lib.metadata/ColumnMetadata
   "Resolve metadata for a `:field` ref. This is part of the implementation
   for [[lib.metadata.calculation/metadata-method]] a `:field` clause."
@@ -113,10 +105,9 @@
    (cond
      (integer? id-or-name) (cond-> (resolve-field-id query id-or-name)
                              join-alias (assoc ::join-alias join-alias))
-     join-alias            (or (resolve-column-name-in-join query stage-number id-or-name join-alias)
-                               {:lib/type    :metadata/field
-                                :name        id-or-name
-                                ::join-alias join-alias})
+     join-alias            {:lib/type    :metadata/field
+                            :name        id-or-name
+                            ::join-alias join-alias}
      :else                 (or (resolve-column-name query stage-number id-or-name)
                                {:lib/type :metadata/field
                                 :name     id-or-name}))))
@@ -189,13 +180,19 @@
                        field-name         :name
                        temporal-unit      :unit
                        binning            ::binning
-                       join-alias         :source_alias
+                       join-alias         :source-alias
                        fk-field-id        :fk-field-id
                        table-id           :table-id
                        :as                field-metadata} style]
   (let [field-display-name (or field-display-name
                                (u.humanization/name->human-readable-name :simple field-name))
-        join-display-name  (when (= style :long)
+        join-display-name  (when (and (= style :long)
+                                      ;; don't prepend a join display name if `:display-name` already contains one!
+                                      ;; Legacy result metadata might include it for joined Fields, don't want to add
+                                      ;; it twice. Otherwise we'll end up with display names like
+                                      ;;
+                                      ;;    Products → Products → Category
+                                      (not (str/includes? field-display-name " → ")))
                              (or
                                (when fk-field-id
                                  ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
@@ -209,9 +206,7 @@
                                        lib.util/strip-id)
                                    (let [table (lib.metadata/table query table-id)]
                                      (lib.metadata.calculation/display-name query stage-number table style))))
-                               (when-let [join-alias (or join-alias (::join-alias field-metadata))]
-                                 (let [join (lib.join/resolve-join query stage-number join-alias)]
-                                   (lib.metadata.calculation/display-name query stage-number join style)))))
+                               (or join-alias (::join-alias field-metadata))))
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)]
@@ -228,7 +223,7 @@
    [_tag {:keys [binning join-alias temporal-unit source-field], :as _opts} _id-or-name, :as field-clause]
    style]
   (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
-                            join-alias    (assoc :source_alias join-alias)
+                            join-alias    (assoc :source-alias join-alias)
                             temporal-unit (assoc :unit temporal-unit)
                             binning       (assoc ::binning binning)
                             source-field  (assoc :fk-field-id source-field))]
