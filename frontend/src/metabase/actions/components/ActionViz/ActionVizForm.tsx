@@ -82,9 +82,7 @@ function ActionVizForm({
     setShowEditModal(true);
   };
 
-  const closeEditModal = () => {
-    setShowEditModal(false);
-  };
+  const closeEditModal = () => setShowEditModal(false);
 
   if (shouldDisplayButton) {
     return (
@@ -104,6 +102,7 @@ function ActionVizForm({
             mappedParameters={mappedParameters}
             dashcardParamValues={dashcardParamValues}
             initialValues={formRef.current?.values}
+            hasPreservedInitialValues={!!formRef.current?.values}
             title={title}
             showConfirmMessage={showConfirmMessage}
             confirmMessage={action.visualization_settings?.confirmMessage}
@@ -118,7 +117,6 @@ function ActionVizForm({
             wide
             data-testid="action-creator-modal"
             onClose={closeEditModal}
-            closeOnClickOutside
           >
             <ActionCreator
               initialAction={action}

@@ -29,6 +29,7 @@ import { ActionFormButtonContainer } from "./ActionForm.styled";
 interface ActionFormProps {
   action: WritebackAction;
   initialValues?: ActionFormInitialValues;
+  hasPreservedInitialValues?: boolean;
 
   // Parameters that shouldn't be displayed in the form
   // Can be used to "lock" certain parameter values.
@@ -50,6 +51,7 @@ const ActionForm = forwardRef(function ActionForm(
   {
     action,
     initialValues: rawInitialValues = {},
+    hasPreservedInitialValues = false,
     hiddenFields = [],
     onSubmit,
     onClose,
@@ -60,6 +62,7 @@ const ActionForm = forwardRef(function ActionForm(
     useActionForm({
       action,
       initialValues: rawInitialValues,
+      hasPreservedInitialValues,
     });
 
   const editableFields = useMemo(

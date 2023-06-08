@@ -346,18 +346,20 @@ describe("Actions > ActionViz > Action", () => {
 
       userEvent.click(editActionEl);
 
-      await screen.findByText("Action parameters");
+      const actionCreatorModal = await screen.findByTestId(
+        "action-creator-modal",
+      );
 
-      expect(screen.getByText("My Awesome Action")).toBeInTheDocument();
-
-      const cancelEditButton = screen.getByText("Cancel");
+      const cancelEditButton = within(actionCreatorModal).getByText("Cancel");
       expect(cancelEditButton).toBeInTheDocument();
 
       expect(screen.getByText("Update")).toBeInTheDocument();
 
       userEvent.click(cancelEditButton);
 
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("action-execution-form-modal"),
+      ).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       expect(screen.getByLabelText("Parameter 1")).toBeInTheDocument();
     });
@@ -419,7 +421,7 @@ describe("Actions > ActionViz > Action", () => {
       expect(actionCreatorModal).not.toBeInTheDocument();
 
       expect(screen.getByLabelText("Parameter 1")).toHaveValue("Value 1");
-      expect(screen.getByLabelText("Parameter 2")).toHaveValue("123");
+      expect(screen.getByLabelText("Parameter 2")).toHaveValue(123);
     });
   });
 

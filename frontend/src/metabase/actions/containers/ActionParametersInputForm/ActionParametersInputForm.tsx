@@ -33,6 +33,7 @@ export interface ActionParametersInputFormProps {
   dashcard?: ActionDashboardCard;
   mappedParameters?: WritebackParameter[];
   initialValues?: ParametersForActionExecution;
+  hasPreservedInitialValues?: boolean;
   dashcardParamValues?: ParametersForActionExecution;
   onSubmit: OnSubmitActionForm;
   onSubmitSuccess?: () => void;
@@ -48,6 +49,7 @@ const ActionParametersInputForm = forwardRef(function ActionParametersInputForm(
     mappedParameters = [],
     dashcardParamValues = {},
     initialValues: initialValuesProp = {},
+    hasPreservedInitialValues,
     dashboard,
     dashcard,
     onCancel,
@@ -137,6 +139,7 @@ const ActionParametersInputForm = forwardRef(function ActionParametersInputForm(
       ref={ref}
       action={action}
       initialValues={initialValues}
+      hasPreservedInitialValues={hasPreservedInitialValues}
       hiddenFields={hiddenFields}
       onSubmit={handleSubmit}
       onClose={onCancel}

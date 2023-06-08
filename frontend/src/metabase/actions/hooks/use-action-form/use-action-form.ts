@@ -19,9 +19,14 @@ import {
 type Opts = {
   action: WritebackAction;
   initialValues?: ActionFormInitialValues;
+  hasPreservedInitialValues?: boolean;
 };
 
-function useActionForm({ action, initialValues = {} }: Opts) {
+function useActionForm({
+  action,
+  initialValues = {},
+  hasPreservedInitialValues = false,
+}: Opts) {
   const fieldSettings = useMemo(
     () =>
       action.visualization_settings?.fields ||
@@ -64,11 +69,17 @@ function useActionForm({ action, initialValues = {} }: Opts) {
       // For implicit update actions, we sometimes prefetch selected row values,
       // and pass them as initial values to prefill the form.
       // In that case, we want to return only changed values
-      return isImplicitUpdate
+      return isImplicitUpdate && !hasPreservedInitialValues
         ? getChangedValues(formatted, initialValues)
         : formatted;
     },
-    [action, initialValues, cleanedInitialValues, fieldSettings],
+    [
+      action,
+      initialValues,
+      cleanedInitialValues,
+      fieldSettings,
+      hasPreservedInitialValues,
+    ],
   );
 
   return {
