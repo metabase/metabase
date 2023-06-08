@@ -2213,13 +2213,20 @@
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (testing "Test that we can share a Dashboard"
       (t2.with-temp/with-temp [Dashboard dashboard]
-        (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200
-                                                 (format "dashboard/%d/public_link" (u/the-id dashboard)))]
-          (is (t2/exists? Dashboard :id (u/the-id dashboard), :public_uuid uuid))
-          (testing "Test that if a Dashboard has already been shared we reuse the existing UUID"
-            (is (= uuid
-                   (:uuid (mt/user-http-request :crowberto :post 200
-                                                (format "dashboard/%d/public_link" (u/the-id dashboard))))))))))
+        (mt/with-fake-events-collector [{:keys [events]}]
+         (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200
+                                                  (format "dashboard/%d/public_link" (u/the-id dashboard)))]
+           (is (t2/exists? Dashboard :id (u/the-id dashboard), :public_uuid uuid))
+           (testing "make sure we public an event for it"
+             (is (= [:dashboard-enable-public {:id                (:id dashboard)
+                                               :public_uuid       uuid
+                                               :made_public_by_id (mt/user->id :crowberto)
+                                               :actor_id          (mt/user->id :crowberto)}]
+                   (first @events))))
+           (testing "Test that if a Dashboard has already been shared we reuse the existing UUID"
+             (is (= uuid
+                    (:uuid (mt/user-http-request :crowberto :post 200
+                                                 (format "dashboard/%d/public_link" (u/the-id dashboard)))))))))))
 
     (t2.with-temp/with-temp [Dashboard dashboard]
       (testing "Test that we *cannot* share a Dashboard if we aren't admins"
@@ -2240,9 +2247,13 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (testing "Test that we can unshare a Dashboard"
         (t2.with-temp/with-temp [Dashboard dashboard (shared-dashboard)]
-          (mt/user-http-request :crowberto :delete 204 (format "dashboard/%d/public_link" (u/the-id dashboard)))
-          (is (= false
-                 (t2/exists? Dashboard :id (u/the-id dashboard), :public_uuid (:public_uuid dashboard))))))
+          (mt/with-fake-events-collector [{:keys [events]}]
+            (mt/user-http-request :crowberto :delete 204 (format "dashboard/%d/public_link" (u/the-id dashboard)))
+            (is (= false
+                   (t2/exists? Dashboard :id (u/the-id dashboard), :public_uuid (:public_uuid dashboard))))
+            (is (= [:dashboard-disable-public {:id       (:id dashboard)
+                                               :actor_id (mt/user->id :crowberto)}]
+                   (first @events))))))
 
       (testing "Test that we *cannot* unshare a Dashboard if we are not admins"
         (t2.with-temp/with-temp [Dashboard dashboard (shared-dashboard)]

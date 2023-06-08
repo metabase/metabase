@@ -921,7 +921,6 @@ saved later when it is ready."
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
-
 (api/defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :body}]
@@ -974,13 +973,14 @@ saved later when it is ready."
   (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Card card-id))
   (let [{existing-public-uuid :public_uuid} (t2/select-one [Card :public_uuid] :id card-id)]
-    {:uuid (or existing-public-uuid
-               (u/prog1 (str (UUID/randomUUID))
-                 (let [update-info {:public_uuid       <>
-                                    :made_public_by_id api/*current-user-id*}]
-                   (t2/update! Card card-id update-info)
-                   (events/publish-event! :card-enable-public (merge {:id card-id}
-                                                                     update-info)))))}))
+   {:uuid (or existing-public-uuid
+              (u/prog1 (str (UUID/randomUUID))
+                (let [update-info {:public_uuid       <>
+                                   :made_public_by_id api/*current-user-id*}]
+                  (t2/update! Card card-id update-info)
+                  (events/publish-event! :card-enable-public (merge {:id card-id
+                                                                     :actor_id api/*current-user-id*}
+                                                                    update-info)))))}))
 
 (api/defendpoint DELETE "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
@@ -992,7 +992,8 @@ saved later when it is ready."
   (t2/update! Card card-id
               {:public_uuid       nil
                :made_public_by_id nil})
-  (events/publish-event! :card-disable-public {:id card-id})
+  (events/publish-event! :card-disable-public {:id card-id
+                                               :actor_id api/*current-user-id*})
   {:status 204, :body nil})
 
 (api/defendpoint GET "/public"

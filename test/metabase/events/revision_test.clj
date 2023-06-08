@@ -7,7 +7,11 @@
    [metabase.models.dashboard :as dashboard]
    [metabase.test :as mt]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (defn- card-properties
   "Some default properties for `Cards` for use in tests in this namespace."
@@ -88,6 +92,43 @@
               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model       "Card"
                 :model_id    card-id)))))))
+
+(deftest card-enable-public-test
+  (testing ":card-enable-public"
+    (let [uuid (UUID/randomUUID)]
+      (t2.with-temp/with-temp [Card {card-id :id, :as card} (merge (card-properties)
+                                                                   {:public_uuid       uuid
+                                                                    :made_public_by_id (mt/user->id :crowberto)})]
+        (revision/process-revision-event! {:topic :card-enable-public
+                                           :item  card})
+        (is (= {:model        "Card"
+                :model_id     card-id
+                :user_id      (mt/user->id :crowberto)
+                :object       (merge (card->revision-object card)
+                                     {:public_uuid       (str uuid)
+                                      :made_public_by_id (mt/user->id :crowberto)})
+                :is_reversion false
+                :is_creation  false}
+               (mt/derecordize
+                 (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                                :model       "Card"
+                                :model_id    card-id))))))))
+
+(deftest card-disable-public-test
+  (testing ":card-disable-public"
+    (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
+      (revision/process-revision-event! {:topic :card-disable-public
+                                         :item  card})
+      (is (= {:model        "Card"
+              :model_id     card-id
+              :user_id      (mt/user->id :crowberto)
+              :object       (card->revision-object card)
+              :is_reversion false
+              :is_creation  false}
+             (mt/derecordize
+               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                              :model       "Card"
+                              :model_id    card-id)))))))
 
 (deftest dashboard-create-test
   (testing ":dashboard-create"
@@ -270,6 +311,49 @@
               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model    "Dashboard"
                 :model_id dashboard-id)))))))
+
+(deftest dashboard-enable-public-test
+  (testing ":dashboard-enable-public"
+    (let [uuid (UUID/randomUUID)]
+     (t2.with-temp/with-temp
+       [:model/Dashboard     {dashboard-id :id, :as dashboard} {:name              "A dashboard"
+                                                                :public_uuid       uuid
+                                                                :made_public_by_id (mt/user->id :crowberto)}]
+       (revision/process-revision-event! {:topic :dashboard-enable-public
+                                          :item  {:id        dashboard-id
+                                                  :actor_id  (mt/user->id :rasta)
+                                                  :public_uuid       uuid
+                                                  :made_public_by_id (mt/user->id :crowberto)}})
+       (is (= {:model        "Dashboard"
+               :model_id     dashboard-id
+               :user_id      (mt/user->id :rasta)
+               :object       (merge (dashboard->revision-object dashboard)
+                                    {:public_uuid       (str uuid)
+                                     :made_public_by_id (mt/user->id :crowberto)})
+               :is_reversion false
+               :is_creation  false}
+              (mt/derecordize
+               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                 :model    "Dashboard"
+                 :model_id dashboard-id))))))))
+
+(deftest dashboard-disable-public-test
+  (testing ":dashboard-disable-public"
+    (t2.with-temp/with-temp
+      [:model/Dashboard     {dashboard-id :id, :as dashboard} {:name "A dashboard"}]
+      (revision/process-revision-event! {:topic :dashboard-disable-public
+                                         :item  {:id        dashboard-id
+                                                 :actor_id  (mt/user->id :rasta)}})
+      (is (= {:model        "Dashboard"
+              :model_id     dashboard-id
+              :user_id      (mt/user->id :rasta)
+              :object       (dashboard->revision-object dashboard)
+              :is_reversion false
+              :is_creation  false}
+             (mt/derecordize
+               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                              :model    "Dashboard"
+                              :model_id dashboard-id)))))))
 
 (deftest metric-create-test
   (testing ":metric-create"

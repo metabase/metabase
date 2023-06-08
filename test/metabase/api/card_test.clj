@@ -2260,11 +2260,17 @@
 
 (deftest share-card-test
   (testing "POST /api/card/:id/public_link"
-    (mt/with-temporary-setting-values [enable-public-sharing true]
-      (t2.with-temp/with-temp [:model/Card card]
-        (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (u/the-id card)))]
-          (is (= true
-                 (boolean (t2/exists? :model/Card :id (u/the-id card), :public_uuid uuid)))))))))
+    (mt/with-fake-events-collector [{:keys [events]}]
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (t2.with-temp/with-temp [:model/Card card]
+          (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (u/the-id card)))]
+            (is (= true
+                   (boolean (t2/exists? :model/Card :id (u/the-id card), :public_uuid uuid))))
+            (is (= [:card-enable-public {:id                (:id card)
+                                         :public_uuid       uuid
+                                         :made_public_by_id (mt/user->id :crowberto)
+                                         :actor_id          (mt/user->id :crowberto)}]
+                   (first @events)))))))))
 
 (deftest share-card-preconditions-test
   (testing "POST /api/card/:id/public_link"
@@ -2294,12 +2300,16 @@
 (deftest share-already-shared-card-test
   (testing "POST /api/card/:id/public_link"
     (testing "Attempting to share a Card that's already shared should return the existing public UUID"
-      (mt/with-temporary-setting-values [enable-public-sharing true]
-        (t2.with-temp/with-temp [:model/Card card (shared-card)]
-          (is (= (:public_uuid card)
-                 (:uuid (mt/user-http-request :crowberto :post 200 (format
-                                                                    "card/%d/public_link"
-                                                                    (u/the-id card)))))))))))
+      (mt/with-fake-events-collector [{:keys [events]}]
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (t2.with-temp/with-temp [:model/Card card (shared-card)]
+            (is (= (:public_uuid card)
+                   (:uuid (mt/user-http-request :crowberto :post 200 (format
+                                                                       "card/%d/public_link"
+                                                                       (u/the-id card)))))))
+
+          (testing "do not publish any events"
+            (is (= 0 (count @events)))))))))
 
 (deftest unshare-card-test
   (testing "DELETE /api/card/:id/public_link"
@@ -2309,9 +2319,14 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :delete 403 (format "card/%d/public_link" (u/the-id card))))))
 
-        (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (u/the-id card)))
-        (is (= false
-               (t2/exists? :model/Card :id (u/the-id card), :public_uuid (:public_uuid card))))))))
+        (mt/with-fake-events-collector [{:keys [events]}]
+          (:uuid (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (u/the-id card))))
+          (is (= false
+                 (t2/exists? :model/Card :id (u/the-id card), :public_uuid (:public_uuid card))))
+          (is (= [:card-disable-public {:id       (:id card)
+                                        :actor_id (mt/user->id :crowberto)}]
+
+                 (first @events))))))))
 
 (deftest unshare-card-preconditions-test
   (testing "DELETE /api/card/:id/public_link\n"

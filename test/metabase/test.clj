@@ -20,6 +20,7 @@
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.email-test :as et]
+   [metabase.events :as events]
    [metabase.http-client :as client]
    [metabase.models :refer [PermissionsGroupMembership User]]
    [metabase.models.permissions-group :as perms-group]
@@ -425,6 +426,32 @@
      (mb.hawk.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
      (initialize/initialize-if-needed! :db)
      (t2.model/resolve-model toucan-model))))
+
+(defn do-with-fake-events-collector
+  "Impl for `with-fake-events-collector` macro."
+  [f]
+  (let [original-publish-event! events/publish-event!
+        collector               (atom [])]
+    (with-redefs [events/publish-event! (fn [topic event-item]
+                                          (swap! collector conj [topic event-item])
+                                          (original-publish-event! topic event-item))]
+      (assert @#'events/events-initialized?, "events was not initialized")
+      (f {:events collector
+          :topics #(map first @collector)}))))
+
+(defmacro with-fake-events-collector
+  "Creates a new fake events collector in a dynamic scope, and redefines the [[events/publish-event!]]
+  so that the events will be appened to an accessible collector before sending it to the real collector.
+
+  Fetch the contents of the collector by deref the events binding
+
+  (with-fake-events-collector [{:keys [events]}]
+   ;; call some API that publish events
+   (is (= 1 (count @events))))
+  "
+  [[collector-binding] & body]
+  {:style/indent 0}
+  `(do-with-fake-events-collector (fn [~collector-binding] ~@body)))
 
 ;;; these are deprecated at runtime so Kondo doesn't complain, also because we can't go around deprecating stuff from
 ;;; other libaries any other way. They're marked deprecated to encourage you to use the `t2.with-temp` versions.

@@ -222,12 +222,12 @@
                    :series
                    :dashcard/action
                    :dashcard/linkcard-info]
-               :ordered_tabs
-               :collection_authority_level
-               :can_write
-               :param_fields
-               :param_values
-               :collection)
+                  :ordered_tabs
+                  :collection_authority_level
+                  :can_write
+                  :param_fields
+                  :param_values
+                  :collection)
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
@@ -725,7 +725,8 @@
                (let [update-info {:public_uuid       <>
                                   :made_public_by_id api/*current-user-id*}]
                  (t2/update! :model/Dashboard dashboard-id update-info)
-                 (events/publish-event! :dashboard-enable-public (merge {:id dashboard-id}
+                 (events/publish-event! :dashboard-enable-public (merge {:id       dashboard-id
+                                                                         :actor_id api/*current-user-id*}
                                                                         update-info)))))})
 
 (api/defendpoint DELETE "/:dashboard-id/public_link"
@@ -738,7 +739,7 @@
   (t2/update! :model/Dashboard dashboard-id
               {:public_uuid       nil
                :made_public_by_id nil})
-  (events/publish-event! :dashboard-disable-public {:id dashboard-id})
+  (events/publish-event! :dashboard-disable-public {:id dashboard-id :actor_id api/*current-user-id*})
   {:status 204, :body nil})
 
 (api/defendpoint GET "/public"
