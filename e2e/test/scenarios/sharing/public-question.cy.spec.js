@@ -12,7 +12,7 @@ const { PEOPLE } = SAMPLE_DATABASE;
 const questionData = {
   name: "7210",
   native: {
-    query: "SELECT * FROM PEOPLE WHERE {{birthdate}} AND {{source}}",
+    query: "SELECT * FROM PEOPLE WHERE {{birthdate}} AND {{source}} limit 5",
     "template-tags": {
       birthdate: {
         id: "08c5ea9d-1579-3503-37f1-cbe4d29e6a28",
