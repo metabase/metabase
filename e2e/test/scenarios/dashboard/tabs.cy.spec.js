@@ -31,7 +31,7 @@ describe("scenarios > dashboard tabs", () => {
     saveDashboard();
 
     // Go back to first tab
-    cy.findByRole("tab", { name: "Page 1" }).click();
+    cy.findByRole("tab", { name: "Tab 1" }).click();
     dashboardCards().within(() => {
       cy.findByText("Orders, count").should("not.exist");
     });
@@ -44,15 +44,15 @@ describe("scenarios > dashboard tabs", () => {
     visitDashboardAndCreateTab({ dashboardId: 1, save: false });
 
     // Delete first tab
-    cy.findByRole("tab", { name: "Page 1" }).findByRole("button").click();
+    cy.findByRole("tab", { name: "Tab 1" }).findByRole("button").click();
     popover().within(() => {
       cy.findByText("Delete").click();
     });
-    cy.findByRole("tab", { name: "Page 1" }).should("not.exist");
+    cy.findByRole("tab", { name: "Tab 1" }).should("not.exist");
 
     // Undo then go back to first tab
     undo();
-    cy.findByRole("tab", { name: "Page 1" }).click();
+    cy.findByRole("tab", { name: "Tab 1" }).click();
     dashboardCards().within(() => {
       cy.findByText("Orders").should("be.visible");
     });

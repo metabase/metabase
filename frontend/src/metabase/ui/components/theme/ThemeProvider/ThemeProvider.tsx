@@ -7,7 +7,5 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider = ({ children }: ThemeProviderProps) => (
-  <MantineProvider theme={theme} withNormalizeCSS>
-    {children}
-  </MantineProvider>
+  <MantineProvider theme={theme}>{children}</MantineProvider>
 );
