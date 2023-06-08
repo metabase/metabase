@@ -1,7 +1,7 @@
-import { useCallback, useMemo } from "react";
+import { forwardRef, Ref, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import type { FormikHelpers } from "formik";
+import type { FormikHelpers, FormikProps } from "formik";
 
 import Button from "metabase/core/components/Button";
 import Form from "metabase/core/components/Form";
@@ -44,13 +44,18 @@ interface ActionFormProps {
   onClose?: () => void;
 }
 
-function ActionForm({
-  action,
-  initialValues: rawInitialValues = {},
-  hiddenFields = [],
-  onSubmit,
-  onClose,
-}: ActionFormProps): JSX.Element {
+export type ActionFormRefData = FormikProps<ParametersForActionExecution>;
+
+const ActionForm = forwardRef(function ActionForm(
+  {
+    action,
+    initialValues: rawInitialValues = {},
+    hiddenFields = [],
+    onSubmit,
+    onClose,
+  }: ActionFormProps,
+  ref: Ref<ActionFormRefData>,
+): JSX.Element {
   const { initialValues, form, validationSchema, getCleanValues } =
     useActionForm({
       action,
@@ -84,6 +89,7 @@ function ActionForm({
       validationSchema={validationSchema}
       onSubmit={handleSubmit}
       enableReinitialize
+      innerRef={ref}
     >
       <Form role="form" data-testid="action-form">
         {editableFields.map(field => (
@@ -101,7 +107,7 @@ function ActionForm({
       </Form>
     </FormProvider>
   );
-}
+});
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionForm;

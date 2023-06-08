@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { getFormTitle } from "metabase/actions/utils";
 
@@ -14,6 +14,7 @@ import type {
 
 import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreator";
 import Modal from "metabase/components/Modal";
+import { ActionFormRefData } from "metabase/actions/components/ActionForm/ActionForm";
 import ActionParametersInputForm, {
   ActionParametersInputModal,
 } from "../../containers/ActionParametersInputForm";
@@ -59,9 +60,16 @@ function ActionVizForm({
   const [showEditModal, setShowEditModal] = useState(false);
   const title = getFormTitle(action);
 
+  const formRef = useRef<ActionFormRefData>(null);
+
   // only show confirmation if there are no missing parameters
   const showConfirmMessage =
     shouldShowConfirmation(action) && missingParameters.length === 0;
+
+  const mixedDashcardParamValues = {
+    ...dashcardParamValues,
+    ...formRef.current?.values,
+  };
 
   const onClick = () => {
     setShowFormModal(true);
@@ -92,17 +100,18 @@ function ActionVizForm({
           focus={isEditingDashcard}
           onClick={onClick}
         />
-        {showFormModal && !showEditModal && (
+        {showFormModal && (
           <ActionParametersInputModal
+            ref={formRef}
             action={action}
             dashboard={dashboard}
             dashcard={dashcard}
             mappedParameters={mappedParameters}
-            dashcardParamValues={dashcardParamValues}
+            dashcardParamValues={mixedDashcardParamValues}
             title={title}
             showConfirmMessage={showConfirmMessage}
             confirmMessage={action.visualization_settings?.confirmMessage}
-            onEdit={canEditAction ? handleActionEdit : undefined}
+            onActionEdit={canEditAction ? handleActionEdit : undefined}
             onSubmit={onModalSubmit}
             onClose={() => setShowFormModal(false)}
             onCancel={() => setShowFormModal(false)}

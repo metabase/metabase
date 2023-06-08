@@ -1,4 +1,11 @@
-import { useCallback, useMemo, useState, useEffect } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+  forwardRef,
+  Ref,
+} from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -6,7 +13,9 @@ import EmptyState from "metabase/components/EmptyState";
 
 import { ActionsApi, PublicApi } from "metabase/services";
 
-import ActionForm from "metabase/actions/components/ActionForm";
+import ActionForm, {
+  ActionFormRefData,
+} from "metabase/actions/components/ActionForm";
 import { getDashboardType } from "metabase/dashboard/utils";
 
 import type {
@@ -32,16 +41,19 @@ export interface ActionParametersInputFormProps {
 const shouldPrefetchValues = (action: WritebackAction) =>
   action.type === "implicit" && action.kind === "row/update";
 
-function ActionParametersInputForm({
-  action,
-  mappedParameters = [],
-  dashcardParamValues = {},
-  dashboard,
-  dashcard,
-  onCancel,
-  onSubmit,
-  onSubmitSuccess,
-}: ActionParametersInputFormProps) {
+const ActionParametersInputForm = forwardRef(function ActionParametersInputForm(
+  {
+    action,
+    mappedParameters = [],
+    dashcardParamValues = {},
+    dashboard,
+    dashcard,
+    onCancel,
+    onSubmit,
+    onSubmitSuccess,
+  }: ActionParametersInputFormProps,
+  ref: Ref<ActionFormRefData>,
+) {
   const [prefetchedValues, setPrefetchedValues] =
     useState<ParametersForActionExecution>({});
 
@@ -119,6 +131,7 @@ function ActionParametersInputForm({
 
   return (
     <ActionForm
+      ref={ref}
       action={action}
       initialValues={initialValues}
       hiddenFields={hiddenFields}
@@ -126,7 +139,7 @@ function ActionParametersInputForm({
       onClose={onCancel}
     />
   );
-}
+});
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionParametersInputForm;

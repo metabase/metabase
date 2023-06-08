@@ -1,8 +1,10 @@
 import { t } from "ttag";
+import { forwardRef, Ref } from "react";
 import Modal from "metabase/components/Modal";
 import ModalContent, {
   ModalContentActionIcon,
 } from "metabase/components/ModalContent";
+import { ActionFormRefData } from "metabase/actions/components/ActionForm/ActionForm";
 import ActionParametersInputForm, {
   ActionParametersInputFormProps,
 } from "./ActionParametersInputForm";
@@ -11,40 +13,45 @@ interface ModalProps {
   title: string;
   showConfirmMessage?: boolean;
   confirmMessage?: string;
-  onEdit?: () => void;
+  onActionEdit?: () => void;
   onClose: () => void;
 }
 
 export type ActionParametersInputModalProps = ModalProps &
   ActionParametersInputFormProps;
 
-function ActionParametersInputModal({
-  title,
-  showConfirmMessage,
-  confirmMessage,
-  onEdit,
-  onClose,
-  ...formProps
-}: ActionParametersInputModalProps) {
-  return (
-    <Modal onClose={onClose}>
-      <ModalContent
-        title={title}
-        headerActions={
-          onEdit ? (
-            <ModalContentActionIcon name="pencil" onClick={onEdit} />
-          ) : undefined
-        }
-        onClose={onClose}
-      >
-        <>
-          {showConfirmMessage && <ConfirmMessage message={confirmMessage} />}
-          <ActionParametersInputForm {...formProps} />
-        </>
-      </ModalContent>
-    </Modal>
-  );
-}
+const ActionParametersInputModal = forwardRef(
+  function ActionParametersInputModal(
+    {
+      title,
+      showConfirmMessage,
+      confirmMessage,
+      onActionEdit,
+      onClose,
+      ...formProps
+    }: ActionParametersInputModalProps,
+    ref: Ref<ActionFormRefData>,
+  ) {
+    return (
+      <Modal onClose={onClose}>
+        <ModalContent
+          title={title}
+          headerActions={
+            onActionEdit ? (
+              <ModalContentActionIcon name="pencil" onClick={onActionEdit} />
+            ) : undefined
+          }
+          onClose={onClose}
+        >
+          <>
+            {showConfirmMessage && <ConfirmMessage message={confirmMessage} />}
+            <ActionParametersInputForm {...formProps} ref={ref} />
+          </>
+        </ModalContent>
+      </Modal>
+    );
+  },
+);
 
 const ConfirmMessage = ({ message }: { message?: string }) => (
   <div>{message ?? t`This action cannot be undone.`}</div>
