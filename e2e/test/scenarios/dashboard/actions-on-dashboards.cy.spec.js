@@ -668,12 +668,6 @@ const SAMPLE_ORDERS_MODEL = {
   );
 });
 
-// const TEST_TABLE = "scoreboard_actions";
-// const TEST_COLUMNS_TABLE = "many_data_types";
-// const MODEL_NAME = "Test Action Model";
-// const PG_DB_ID = 2;
-// const WRITABLE_TEST_TABLE = "scoreboard_actions";
-
 const TEST_PARAMETER = createMockActionParameter({
   id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
   name: "Total",
