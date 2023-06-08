@@ -8,7 +8,18 @@ import ChartSkeleton, { ChartSkeletonProps } from "./ChartSkeleton";
 
 jest.unmock("metabase/components/Popover");
 
-const ActionMenu = <div>Action Menu</div>;
+const MockActionMenu = <div>Action Menu</div>;
+
+const displayTestData = [
+  {
+    name: "Empty",
+    display: undefined,
+  },
+  ...chartSkeletonDisplayTypes.map((display: ChartSkeletonDisplayType) => ({
+    name: display,
+    display,
+  })),
+];
 
 const setup = ({
   display,
@@ -25,18 +36,6 @@ const setup = ({
     />,
   );
 };
-
-const displayTestData = [
-  {
-    name: "Empty",
-    display: undefined,
-  },
-  ...chartSkeletonDisplayTypes.map((display: ChartSkeletonDisplayType) => ({
-    name: display,
-    display,
-  })),
-];
-
 describe("ChartSkeleton", () => {
   displayTestData.forEach(({ name, display }) => {
     const displayDescription = `${name} description`;
@@ -58,7 +57,7 @@ describe("ChartSkeleton", () => {
       setup({
         name,
         description: displayDescription,
-        actionMenu: ActionMenu,
+        actionMenu: MockActionMenu,
         display,
       });
       userEvent.hover(screen.getByLabelText("info icon"));
