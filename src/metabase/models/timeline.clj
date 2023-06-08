@@ -8,7 +8,6 @@
    [metabase.util.date-2 :as u.date]
    [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (def Timeline
@@ -43,7 +42,7 @@
 (defn- root-collection
   []
   (-> (collection/root-collection-with-ui-details nil)
-      (hydrate :can_write)))
+      (t2/hydrate :can_write)))
 
 (defn hydrate-root-collection
   "Hydrate `:collection` on [[Timelines]] when the id is `nil`."
@@ -56,7 +55,7 @@
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
   [collection-id {:keys [:timeline/events? :timeline/archived?] :as options}]
-  (cond-> (hydrate (t2/select Timeline
+  (cond-> (t2/hydrate (t2/select Timeline
                               :collection_id collection-id
                               :archived (boolean archived?))
                    :creator

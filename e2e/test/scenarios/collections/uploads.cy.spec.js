@@ -13,11 +13,13 @@ const testFiles = [
   {
     fileName: "dog_breeds.csv",
     tableName: "dog_breeds",
+    humanName: "Dog Breeds",
     rowCount: 97,
   },
   {
     fileName: "star_wars_characters.csv",
     tableName: "star_wars_characters",
+    humanName: "Star Wars Characters",
     rowCount: 87,
   },
 ];
@@ -143,7 +145,7 @@ function uploadFile(testFile, dialect) {
   cy.get("main").within(() => cy.findByText("Uploads Collection"));
 
   cy.findByTestId("collection-table").within(() => {
-    cy.findByText(testFile.tableName); // TODO: we should humanize model names
+    cy.findByText(testFile.humanName);
   });
 
   cy.findByRole("status").within(() => {
