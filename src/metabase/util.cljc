@@ -706,7 +706,7 @@
       [;; strip out any current symbols
        [#"[^\d,.-]+"          ""]
        ;; now strip out any thousands separators
-       [#"(?<=\d)[,.](\d{3})" "$1"]
+       [#"[,.](\d{3})" "$1"]
        ;; now replace a comma decimal seperator with a period
        [#","                  "."]
        ;; move minus sign at end to front
