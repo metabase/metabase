@@ -12,6 +12,8 @@ import type {
   WritebackParameter,
 } from "metabase-types/api";
 
+import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreator";
+import Modal from "metabase/components/Modal";
 import ActionParametersInputForm, {
   ActionParametersInputModal,
 } from "../../containers/ActionParametersInputForm";
@@ -31,7 +33,10 @@ interface ActionFormProps {
   isSettings: boolean;
   shouldDisplayButton: boolean;
   isEditingDashcard: boolean;
+  canEditAction: boolean | undefined;
   onSubmit: OnSubmitActionForm;
+
+  onActionEdit?: (newAction: WritebackAction) => void;
 }
 
 function ActionVizForm({
@@ -45,9 +50,13 @@ function ActionVizForm({
   isSettings,
   shouldDisplayButton,
   isEditingDashcard,
+  canEditAction,
   onSubmit,
+
+  onActionEdit,
 }: ActionFormProps) {
-  const [showModal, setShowModal] = useState(false);
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const title = getFormTitle(action);
 
   // only show confirmation if there are no missing parameters
@@ -55,15 +64,23 @@ function ActionVizForm({
     shouldShowConfirmation(action) && missingParameters.length === 0;
 
   const onClick = () => {
-    setShowModal(true);
+    setShowFormModal(true);
   };
 
   const onModalSubmit = async (params: ParametersForActionExecution) => {
     const result = await onSubmit(params);
     if (result.success) {
-      setShowModal(false);
+      setShowFormModal(false);
     }
     return result;
+  };
+
+  const handleActionEdit = () => {
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
   };
 
   if (shouldDisplayButton) {
@@ -75,7 +92,7 @@ function ActionVizForm({
           focus={isEditingDashcard}
           onClick={onClick}
         />
-        {showModal && (
+        {showFormModal && !showEditModal && (
           <ActionParametersInputModal
             action={action}
             dashboard={dashboard}
@@ -85,10 +102,24 @@ function ActionVizForm({
             title={title}
             showConfirmMessage={showConfirmMessage}
             confirmMessage={action.visualization_settings?.confirmMessage}
+            onEdit={canEditAction ? handleActionEdit : undefined}
             onSubmit={onModalSubmit}
-            onClose={() => setShowModal(false)}
-            onCancel={() => setShowModal(false)}
+            onClose={() => setShowFormModal(false)}
+            onCancel={() => setShowFormModal(false)}
           />
+        )}
+        {showEditModal && (
+          <Modal wide onClose={closeEditModal} closeOnClickOutside>
+            <ActionCreator
+              initialAction={action}
+              action={action}
+              modelId={action.model_id}
+              databaseId={action.database_id}
+              actionId={action.id}
+              onSubmit={onActionEdit}
+              onClose={closeEditModal}
+            />
+          </Modal>
         )}
       </>
     );
