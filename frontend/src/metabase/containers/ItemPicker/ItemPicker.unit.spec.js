@@ -284,15 +284,9 @@ describe("ItemPicker", () => {
 
       expect(items.length).toBe(3);
       expect(items.length).toBe(collections.length);
-      expect(
-        within(items[0]).getByText(collections[0].name),
-      ).toBeInTheDocument();
-      expect(
-        within(items[1]).getByText(collections[1].name),
-      ).toBeInTheDocument();
-      expect(
-        within(items[2]).getByText(collections[2].name),
-      ).toBeInTheDocument();
+      expect(items[0]).toHaveTextContent(collections[0].name);
+      expect(items[1]).toHaveTextContent(collections[1].name);
+      expect(items[2]).toHaveTextContent(collections[2].name);
     });
 
     it("[personal, regular 2, regular]", async () => {
@@ -309,15 +303,9 @@ describe("ItemPicker", () => {
       const items = screen.getAllByTestId("item-picker-item");
 
       expect(items.length).toBe(collections.length);
-      expect(
-        within(items[0]).getByText(collections[0].name),
-      ).toBeInTheDocument();
-      expect(
-        within(items[1]).getByText(collections[1].name),
-      ).toBeInTheDocument();
-      expect(
-        within(items[2]).getByText(collections[2].name),
-      ).toBeInTheDocument();
+      expect(items[0]).toHaveTextContent(collections[0].name);
+      expect(items[1]).toHaveTextContent(collections[1].name);
+      expect(items[2]).toHaveTextContent(collections[2].name);
     });
 
     it("personal collection is always shown first", async () => {
@@ -334,15 +322,9 @@ describe("ItemPicker", () => {
       const items = screen.getAllByTestId("item-picker-item");
 
       expect(items.length).toBe(collections.length);
-      expect(
-        within(items[0]).getByText(COLLECTION.PERSONAL.name),
-      ).toBeInTheDocument();
-      expect(
-        within(items[1]).getByText(COLLECTION.REGULAR_2.name),
-      ).toBeInTheDocument();
-      expect(
-        within(items[2]).getByText(COLLECTION.REGULAR.name),
-      ).toBeInTheDocument();
+      expect(items[0]).toHaveTextContent(COLLECTION.PERSONAL.name);
+      expect(items[1]).toHaveTextContent(COLLECTION.REGULAR_2.name);
+      expect(items[2]).toHaveTextContent(COLLECTION.REGULAR.name);
     });
   });
 });
