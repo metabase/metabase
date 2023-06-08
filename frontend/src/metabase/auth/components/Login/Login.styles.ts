@@ -8,14 +8,4 @@ export const useStyles = createStyles(theme => ({
     lineHeight: "1.5rem",
     textAlign: "center",
   },
-  panel: {
-    marginTop: "2.5rem",
-  },
-  actionList: {
-    marginTop: "3.5rem",
-  },
-  actionListItem: {
-    marginTop: "2rem",
-    textAlign: "center",
-  },
 }));

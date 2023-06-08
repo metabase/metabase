@@ -1,5 +1,6 @@
 import { t } from "ttag";
 import { Location } from "history";
+import { Box } from "metabase/ui";
 import { useSelector } from "metabase/lib/redux";
 import { AuthProvider } from "metabase/plugins/types";
 import { AuthLayout } from "../AuthLayout";
@@ -29,18 +30,18 @@ export const Login = ({ params, location }: LoginProps): JSX.Element => {
     <AuthLayout>
       <div className={classes.title}>{t`Sign in to Metabase`}</div>
       {selection && selection.Panel && (
-        <div className={classes.panel}>
+        <Box mt="2.5rem">
           <selection.Panel redirectUrl={redirectUrl} />
-        </div>
+        </Box>
       )}
       {!selection && (
-        <div className={classes.actionList}>
+        <Box mt="3.5rem">
           {providers.map(provider => (
-            <div key={provider.name} className={classes.actionListItem}>
+            <Box key={provider.name} mt="2rem" ta="center">
               <provider.Button isCard={true} redirectUrl={redirectUrl} />
-            </div>
+            </Box>
           ))}
-        </div>
+        </Box>
       )}
     </AuthLayout>
   );
