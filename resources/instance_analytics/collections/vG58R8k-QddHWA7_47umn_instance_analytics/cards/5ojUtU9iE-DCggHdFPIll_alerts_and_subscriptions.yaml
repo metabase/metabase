@@ -1,0 +1,565 @@
+description: Data from alerts and subscriptions including recipients
+archived: false
+collection_position: 2
+table_id:
+- Internal Metabase Database
+- public
+- v_alerts_subscriptions
+result_metadata:
+- description: null
+  semantic_type: type/PK
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: id
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - id
+  - null
+  effective_type: type/Text
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - id
+  visibility_type: normal
+  display_name: ID
+  fingerprint: null
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: entity_type
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - entity_type
+  - null
+  effective_type: type/Text
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - entity_type
+  visibility_type: normal
+  display_name: Entity Type
+  fingerprint: null
+  base_type: type/Text
+- description: null
+  semantic_type: type/CreationTimestamp
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  unit: default
+  name: created_at
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - created_at
+  - temporal-unit: default
+  effective_type: type/DateTimeWithLocalTZ
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - created_at
+  visibility_type: normal
+  display_name: Created At
+  fingerprint: null
+  base_type: type/DateTimeWithLocalTZ
+- description: null
+  semantic_type: type/UpdatedTimestamp
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  unit: default
+  name: updated_at
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - updated_at
+  - temporal-unit: default
+  effective_type: type/DateTimeWithLocalTZ
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - updated_at
+  visibility_type: normal
+  display_name: Updated At
+  fingerprint: null
+  base_type: type/DateTimeWithLocalTZ
+- description: null
+  semantic_type: type/FK
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: creator_id
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - creator_id
+  - null
+  effective_type: type/Integer
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - creator_id
+  visibility_type: normal
+  display_name: Creator ID
+  fingerprint: null
+  base_type: type/Integer
+- description: null
+  semantic_type: type/Name
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: name
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - name
+  - null
+  effective_type: type/Text
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - name
+  visibility_type: normal
+  display_name: Name
+  fingerprint: null
+  base_type: type/Text
+- description: null
+  semantic_type: type/Description
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: description
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - description
+  - null
+  effective_type: type/Text
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - description
+  visibility_type: normal
+  display_name: Description
+  fingerprint: null
+  base_type: type/Text
+- description: null
+  semantic_type: type/FK
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: collection_id
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - collection_id
+  - null
+  effective_type: type/Text
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - collection_id
+  visibility_type: normal
+  display_name: Collection ID
+  fingerprint: null
+  base_type: type/Text
+- description: null
+  semantic_type: type/FK
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: made_public_by_user
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - made_public_by_user
+  - null
+  effective_type: type/Text
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - made_public_by_user
+  visibility_type: normal
+  display_name: Made Public By User
+  fingerprint: null
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: archived
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - archived
+  - null
+  effective_type: type/Boolean
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - archived
+  visibility_type: normal
+  display_name: Archived
+  fingerprint: null
+  base_type: type/Boolean
+- description: null
+  semantic_type: null
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: is_official
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - is_official
+  - null
+  effective_type: type/Text
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - is_official
+  visibility_type: normal
+  display_name: Is Official
+  fingerprint: null
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: action_type
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - action_type
+  - null
+  effective_type: type/Text
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - action_type
+  visibility_type: normal
+  display_name: Action Type
+  fingerprint: null
+  base_type: type/Text
+- description: null
+  semantic_type: null
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: action_model_id
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - action_model_id
+  - null
+  effective_type: type/Text
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - action_model_id
+  visibility_type: normal
+  display_name: Action Model ID
+  fingerprint: null
+  base_type: type/Text
+- description: null
+  semantic_type: null
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: collection_is_personal
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - collection_is_personal
+  - null
+  effective_type: type/Text
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - collection_is_personal
+  visibility_type: normal
+  display_name: Collection Is Personal
+  fingerprint: null
+  base_type: type/Text
+- description: null
+  semantic_type: type/FK
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: subscription_dashboard_id
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - subscription_dashboard_id
+  - null
+  effective_type: type/Text
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - subscription_dashboard_id
+  visibility_type: normal
+  display_name: Subscription Dashboard ID
+  fingerprint: null
+  base_type: type/Text
+- description: null
+  semantic_type: type/FK
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: alert_question_id
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - alert_question_id
+  - null
+  effective_type: type/Integer
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - alert_question_id
+  visibility_type: normal
+  display_name: Alert Question ID
+  fingerprint: null
+  base_type: type/Integer
+- description: null
+  semantic_type: type/Category
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: recipient_type
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - recipient_type
+  - null
+  effective_type: type/Text
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - recipient_type
+  visibility_type: normal
+  display_name: Recipient Type
+  fingerprint: null
+  base_type: type/Text
+- description: null
+  semantic_type: null
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  coercion_strategy: null
+  name: recipient_external
+  settings: null
+  source: fields
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - recipient_external
+  - null
+  effective_type: type/Text
+  nfc_path: null
+  parent_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_alerts_subscriptions
+  - recipient_external
+  visibility_type: normal
+  display_name: Recipient External
+  fingerprint: null
+  base_type: type/Text
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Alerts and Subscriptions
+creator_id: luiz.arakaki@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    source-table:
+    - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+  type: query
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: 5ojUtU9iE-DCggHdFPIll
+  label: alerts_and_subscriptions
+display: table
+entity_id: 5ojUtU9iE-DCggHdFPIll
+collection_preview: true
+visualization_settings:
+  table.pivot_column: name
+  table.cell_column: recipient_external
+  column_settings: null
+parameters: []
+dataset: true
+created_at: '2023-06-08T14:36:00.472585Z'
+public_uuid: null
