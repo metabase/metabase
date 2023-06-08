@@ -6,7 +6,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (def TimelineEvent
@@ -72,7 +71,7 @@
                               [:<= (h2x/->date start) (h2x/->date :timestamp)])
                             (when end
                               [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}]
-    (hydrate (t2/select TimelineEvent clause) :creator)))
+    (t2/hydrate (t2/select TimelineEvent clause) :creator)))
 
 (defn include-events
   "Include events on `timelines` passed in. Options are optional and include whether to return unarchived events or all

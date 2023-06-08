@@ -23,7 +23,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
    (java.text NumberFormat)))
@@ -58,10 +57,10 @@
   [id include_editable_data_model]
   (let [include_editable_data_model (Boolean/parseBoolean include_editable_data_model)
         field                       (-> (api/check-404 (t2/select-one Field :id id))
-                                        (hydrate [:table :db] :has_field_values :dimensions :name_field))
+                                        (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
         field                       (if include_editable_data_model
                                       (field/hydrate-target-with-write-perms field)
-                                      (hydrate field :target))]
+                                      (t2/hydrate field :target))]
     ;; Normal read perms = normal access.
     ;;
     ;; There's also a special case where we allow you to fetch a Field even if you don't have full read permissions for
@@ -145,7 +144,7 @@
    settings           (s/maybe su/Map)
    nfc_path           (s/maybe [su/NonBlankString])
    json_unfolding     (s/maybe s/Bool)}
-  (let [field             (hydrate (api/write-check Field id) :dimensions)
+  (let [field             (t2/hydrate (api/write-check Field id) :dimensions)
         new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
         (or (when-let [coercion_strategy (keyword coercion_strategy)]
@@ -185,7 +184,7 @@
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
     (u/prog1 (-> (t2/select-one Field :id id)
-                 (hydrate :dimensions :has_field_values)
+                 (t2/hydrate :dimensions :has_field_values)
                  (field/hydrate-target-with-write-perms))
       (when (not= effective-type (:effective_type field))
         (sync.concurrent/submit-task (fn [] (sync/refingerprint-field! <>)))))))

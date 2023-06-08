@@ -16,7 +16,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -37,11 +36,11 @@
                                                         :description description
                                                         :definition  definition)))]
     (-> (events/publish-event! :metric-create metric)
-        (hydrate :creator))))
+        (t2/hydrate :creator))))
 
 (s/defn ^:private hydrated-metric [id :- su/IntGreaterThanZero]
   (-> (api/read-check (t2/select-one Metric :id id))
-      (hydrate :creator)))
+      (t2/hydrate :creator)))
 
 (api/defendpoint GET "/:id"
   "Fetch `Metric` with ID."
@@ -61,7 +60,7 @@
   "Fetch *all* `Metrics`."
   []
   (as-> (t2/select Metric, :archived false, {:order-by [:%lower.name]}) metrics
-    (hydrate metrics :creator :definition_description)
+    (t2/hydrate metrics :creator :definition_description)
     (add-db-ids metrics)
     (filter mi/can-read? metrics)
     metrics))

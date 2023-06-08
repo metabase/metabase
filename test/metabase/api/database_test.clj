@@ -28,7 +28,6 @@
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.hydrate :as hydrate]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -143,7 +142,7 @@
 
       (testing "`?include=tables.fields` -- should be able to include Tables and Fields"
         (letfn [(field-details* [field]
-                  (assoc (into {} (hydrate/hydrate field [:target :has_field_values] :has_field_values))
+                  (assoc (into {} (t2/hydrate field [:target :has_field_values] :has_field_values))
                          :base_type        "type/Text"
                          :visibility_type  "normal"
                          :has_field_values "search"))]
