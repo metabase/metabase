@@ -33,7 +33,6 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -352,7 +351,7 @@
                                  :base_type :type/Integer}
                                 {:name      "t"
                                  :base_type :type/Text}]}]
-                     (->> (hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
+                     (->> (t2/hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
                           (map table-fingerprint)))))))))))
 
 (deftest group-on-time-column-test

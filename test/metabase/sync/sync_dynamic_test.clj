@@ -8,7 +8,6 @@
    [metabase.test :as mt]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -33,7 +32,7 @@
                                :json-unfolding]))))))))
 
 (defn- get-tables [database-or-id]
-  (->> (hydrate (t2/select Table, :db_id (u/the-id database-or-id), {:order-by [:id]}) :fields)
+  (->> (t2/hydrate (t2/select Table, :db_id (u/the-id database-or-id), {:order-by [:id]}) :fields)
        (mapv mt/boolean-ids-and-timestamps)))
 
 (deftest sync-nested-fields-test

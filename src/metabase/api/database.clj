@@ -48,7 +48,6 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -149,7 +148,7 @@
      (comp (map (partial models/do-post-select Card))
            (filter card-can-be-used-as-source-query?)
            xform)
-     (completing conj #(hydrate % :collection))
+     (completing conj #(t2/hydrate % :collection))
      []
      (mdb.query/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
                                             [{:select   [:status]
@@ -316,7 +315,7 @@
   [db include]
   (if-not include
     db
-    (-> (hydrate db (case include
+    (-> (t2/hydrate db (case include
                       "tables"        :tables
                       "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
         (update :tables (fn [tables]
@@ -434,7 +433,7 @@
   (let [db (-> (if include-editable-data-model?
                  (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
-               (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
+               (t2/hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -636,7 +635,7 @@
   (let [fields (filter mi/can-read? (-> (t2/select [Field :id :name :display_name :table_id :base_type :semantic_type]
                                           :table_id        [:in (t2/select-fn-set :id Table, :db_id id)]
                                           :visibility_type [:not-in ["sensitive" "retired"]])
-                                        (hydrate :table)))]
+                                        (t2/hydrate :table)))]
     (for [{:keys [id name display_name table base_type semantic_type]} fields]
       {:id            id
        :name          name
@@ -659,7 +658,7 @@
     (db-perm-check (t2/select-one Database :id id))
     (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
-                                          (hydrate :table))))))
+                                          (t2/hydrate :table))))))
 
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
