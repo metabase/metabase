@@ -14,7 +14,20 @@ import {
 } from "metabase-lib/metadata/utils/saved-questions";
 import { PERMISSION_ERROR } from "./constants";
 
-export function setupCollectionsEndpoints(collections: Collection[]) {
+export function setupCollectionsEndpoints({
+  collections,
+  error,
+  status,
+}: {
+  collections: Collection[];
+  error?: string;
+  status?: number;
+}) {
+  if (error) {
+    setupCollectionsWithError({ error, status });
+    return;
+  }
+
   fetchMock.get("path:/api/collection/root", ROOT_COLLECTION);
   fetchMock.get(
     {
@@ -36,6 +49,19 @@ export function setupCollectionsEndpoints(collections: Collection[]) {
     { url: "path:/api/collection", overwriteRoutes: false },
     collections,
   );
+}
+
+function setupCollectionsWithError({
+  error,
+  status = 500,
+}: {
+  error: string;
+  status?: number;
+}) {
+  fetchMock.get("path:/api/collection", {
+    body: error,
+    status,
+  });
 }
 
 function getCollectionVirtualSchemaURLs(collection: Collection) {

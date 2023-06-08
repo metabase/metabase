@@ -26,7 +26,7 @@ const TestComponent = () => {
 };
 
 const setup = ({ error }: { error?: string } = {}) => {
-  setupCollectionsEndpoints([TEST_COLLECTION]);
+  setupCollectionsEndpoints({ collections: [TEST_COLLECTION] });
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION], error });
   renderWithProviders(<TestComponent />);
 };

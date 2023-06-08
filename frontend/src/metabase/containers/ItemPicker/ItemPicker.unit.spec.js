@@ -93,7 +93,9 @@ async function setup({
   ...props
 } = {}) {
   setupDashboardCollectionItemsEndpoint(Object.values(DASHBOARD));
-  setupCollectionsEndpoints(Object.values(COLLECTION).concat(extraCollections));
+  setupCollectionsEndpoints({
+    collections: Object.values(COLLECTION).concat(extraCollections),
+  });
 
   const onChange = jest.fn();
 
