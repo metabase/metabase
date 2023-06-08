@@ -102,6 +102,8 @@
     "regenerator": "^0.14.1",
     "rehype-external-links": "^2.0.1",
     "remark-gfm": "1.0.0",
+    "remark-parse": "^10.0.0",
+    "remark-rehype": "^10.0.0",
     "screenfull": "^4.2.1",
     "server-text-width": "^1.0.2",
     "simple-statistics": "^3.0.0",
@@ -111,6 +113,7 @@
     "tippy.js": "^6.3.5",
     "ttag": "1.7.15",
     "underscore": "~1.13.3",
+    "unified": "^10.0.0",
     "yarn.lock": "^0.0.1-security",
     "yup": "^0.32.11",
     "z-index": "0.0.1"

@@ -33,8 +33,9 @@ const StaticSkeleton = ({
   tooltip,
   ...props
 }: StaticSkeletonProps): JSX.Element => {
-  const descriptionElements = parseMarkdown(description || "");
-  const hasMoreElementsToShow = descriptionElements.length > 1;
+  const defaultedDescription = description || "";
+  const descriptionMarkdownRoot = parseMarkdown(defaultedDescription);
+  const hasMoreDescriptionToShow = descriptionMarkdownRoot.children.length > 1;
 
   return (
     <SkeletonRoot {...props}>
@@ -53,7 +54,7 @@ const StaticSkeleton = ({
       <SkeletonTitle>{name}</SkeletonTitle>
       {description && (
         <SkeletonDescription
-          alwaysShowTooltip={hasMoreElementsToShow}
+          alwaysShowTooltip={hasMoreDescriptionToShow}
           placement="bottom"
           tooltip={
             <Markdown disallowHeading unstyleLinks>
@@ -61,7 +62,7 @@ const StaticSkeleton = ({
             </Markdown>
           }
         >
-          {getLeadingText(descriptionElements)}
+          {getLeadingText(defaultedDescription)}
         </SkeletonDescription>
       )}
     </SkeletonRoot>

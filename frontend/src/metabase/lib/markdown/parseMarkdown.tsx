@@ -1,16 +1,20 @@
-import ReactDOMServer from "react-dom/server";
+import type { Options } from "react-markdown/lib/rehype-filter";
+import rehypeFilter from "react-markdown/lib/rehype-filter";
+import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import { unified } from "unified";
 
-import Markdown from "metabase/core/components/Markdown";
+const REMARK_PLUGINS = [remarkGfm];
 
-export const parseMarkdown = (content: string): Element[] => {
-  const div = document.createElement("div");
-  div.innerHTML = ReactDOMServer.renderToStaticMarkup(
-    <Markdown>{content}</Markdown>,
-  );
+export const parseMarkdown = (value: string, options: Options = {}) => {
+  const processor = unified()
+    .use(remarkParse)
+    .use(REMARK_PLUGINS)
+    .use(remarkRehype)
+    .use(rehypeFilter, options);
+  const file = { value };
+  const root = processor.runSync(processor.parse(file), file);
 
-  if (!div.children || !div.children[0]) {
-    return [];
-  }
-
-  return Array.from(div.children[0].children);
+  return root;
 };
