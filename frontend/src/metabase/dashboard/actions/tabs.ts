@@ -128,7 +128,7 @@ export const tabsReducer = createReducer<DashboardState>(
           const newTab = getDefaultTab({
             tabId,
             dashId,
-            name: t`Page ${prevTabs.filter(t => !t.isRemoved).length + 1}`,
+            name: t`Tab ${prevTabs.filter(t => !t.isRemoved).length + 1}`,
           });
           prevDash.ordered_tabs = [...prevTabs, newTab];
 
@@ -143,8 +143,8 @@ export const tabsReducer = createReducer<DashboardState>(
         const firstTabId = tabId + 1;
         const secondTabId = tabId;
         const newTabs = [
-          getDefaultTab({ tabId: firstTabId, dashId, name: t`Page 1` }),
-          getDefaultTab({ tabId: secondTabId, dashId, name: t`Page 2` }),
+          getDefaultTab({ tabId: firstTabId, dashId, name: t`Tab 1` }),
+          getDefaultTab({ tabId: secondTabId, dashId, name: t`Tab 2` }),
         ];
         prevDash.ordered_tabs = [...prevTabs, ...newTabs];
 

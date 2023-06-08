@@ -113,7 +113,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.findByRole("heading", { name: expectedDashboardName }).should(
         "be.visible",
       );
-      cy.findByRole("tab", { name: "Page 1" }).should("be.visible");
+      cy.findByRole("tab", { name: "Tab 1" }).should("be.visible");
       cy.visit("/admin/settings/public-sharing");
     });
 
