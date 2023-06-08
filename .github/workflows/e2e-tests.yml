@@ -191,7 +191,7 @@ jobs:
         # that might live elsewhere. We tag such tests with `@foo` (e.g. @actions)
         run: |
           yarn run test-cypress-run \
-          --env grepTags="@${{ matrix.folder }}+-@quarantine" \
+          --env grepTags="-@quarantine" \
           --folder ${{ matrix.folder }}
         env:
           TERM: xterm
@@ -218,7 +218,7 @@ jobs:
         if: matrix.edition == 'ee' && github.event_name == 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="@${{ matrix.folder }}+-@quarantine" \
+          --env grepTags="-@quarantine" \
           --folder ${{ matrix.folder }} \
           --browser "replay-chromium"
         env:
