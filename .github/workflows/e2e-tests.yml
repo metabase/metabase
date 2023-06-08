@@ -187,8 +187,6 @@ jobs:
 
       - name: Run EE Cypress tests on ${{ matrix.folder }}
         if: matrix.edition == 'ee' && github.event_name != 'schedule'
-        # Run tests inside the folder, but also search for and run related tests
-        # that might live elsewhere. We tag such tests with `@foo` (e.g. @actions)
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@quarantine" \
