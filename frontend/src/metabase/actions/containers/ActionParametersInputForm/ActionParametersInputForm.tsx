@@ -32,6 +32,7 @@ export interface ActionParametersInputFormProps {
   dashboard?: Dashboard;
   dashcard?: ActionDashboardCard;
   mappedParameters?: WritebackParameter[];
+  initialValues?: ParametersForActionExecution;
   dashcardParamValues?: ParametersForActionExecution;
   onSubmit: OnSubmitActionForm;
   onSubmitSuccess?: () => void;
@@ -46,6 +47,7 @@ const ActionParametersInputForm = forwardRef(function ActionParametersInputForm(
     action,
     mappedParameters = [],
     dashcardParamValues = {},
+    initialValues: initialValuesProp = {},
     dashboard,
     dashcard,
     onCancel,
@@ -67,8 +69,9 @@ const ActionParametersInputForm = forwardRef(function ActionParametersInputForm(
     () => ({
       ...prefetchedValues,
       ...dashcardParamValues,
+      ...initialValuesProp,
     }),
-    [prefetchedValues, dashcardParamValues],
+    [initialValuesProp, prefetchedValues, dashcardParamValues],
   );
 
   const hiddenFields = useMemo(

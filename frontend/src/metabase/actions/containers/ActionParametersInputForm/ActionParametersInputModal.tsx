@@ -33,7 +33,7 @@ const ActionParametersInputModal = forwardRef(
     ref: Ref<ActionFormRefData>,
   ) {
     return (
-      <Modal onClose={onClose}>
+      <Modal data-testid="action-execution-form-modal" onClose={onClose}>
         <ModalContent
           title={title}
           headerActions={

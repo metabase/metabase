@@ -40,12 +40,18 @@ function useActionForm({ action, initialValues = {} }: Opts) {
   );
 
   const cleanedInitialValues = useMemo(() => {
-    const values = validationSchema.cast(initialValues);
+    const fieldKeys = action.parameters.map(({ id }) => id);
+    const matchedValues = _.pick(initialValues, (value, key) =>
+      fieldKeys.includes(key),
+    );
+
+    const values = validationSchema.cast(matchedValues);
+
     return _.mapObject(values, (value, fieldId) => {
       const formField = fieldSettings[fieldId];
       return formatInitialValue(value, formField?.inputType);
     });
-  }, [initialValues, fieldSettings, validationSchema]);
+  }, [action.parameters, initialValues, fieldSettings, validationSchema]);
 
   const getCleanValues = useCallback(
     (values: ParametersForActionExecution = {}) => {

@@ -136,7 +136,7 @@ async function setup({
     setupActionEndpoints(ACTION);
   }
 
-  renderWithProviders(
+  const view = renderWithProviders(
     <Action
       dashboard={dashboard}
       dashcard={dashcard}
@@ -158,6 +158,8 @@ async function setup({
 
   // Wait until UI is ready
   await screen.findByRole("button");
+
+  return { view };
 }
 
 describe("Actions > ActionViz > Action", () => {
@@ -380,7 +382,7 @@ describe("Actions > ActionViz > Action", () => {
       userEvent.click(getIcon("pencil"));
 
       // wait for action edit form to be loaded
-      await screen.findByText("My Awesome Action");
+      await screen.findByTestId("action-form-editor");
 
       // edit action title
       const actionTitleField = screen.getByTestId("editable-text");
@@ -394,6 +396,30 @@ describe("Actions > ActionViz > Action", () => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       expect(screen.getByLabelText("Parameter 1")).toBeInTheDocument();
+    });
+
+    it("should preserve typed form values after action edit modal opening without editing", async () => {
+      await setup();
+
+      userEvent.click(screen.getByText("Click me"));
+
+      userEvent.type(screen.getByLabelText("Parameter 1"), "Value 1");
+      userEvent.type(screen.getByLabelText("Parameter 2"), "123");
+      userEvent.tab(); // blur field
+
+      userEvent.click(getIcon("pencil"));
+
+      // wait for action edit form to be loaded
+      const actionCreatorModal = await screen.findByTestId(
+        "action-creator-modal",
+      );
+
+      userEvent.click(within(actionCreatorModal).getByText("Cancel"));
+
+      expect(actionCreatorModal).not.toBeInTheDocument();
+
+      expect(screen.getByLabelText("Parameter 1")).toHaveValue("Value 1");
+      expect(screen.getByLabelText("Parameter 2")).toHaveValue("123");
     });
   });
 

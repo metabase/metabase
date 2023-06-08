@@ -66,11 +66,6 @@ function ActionVizForm({
   const showConfirmMessage =
     shouldShowConfirmation(action) && missingParameters.length === 0;
 
-  const mixedDashcardParamValues = {
-    ...dashcardParamValues,
-    ...formRef.current?.values,
-  };
-
   const onClick = () => {
     setShowFormModal(true);
   };
@@ -107,7 +102,8 @@ function ActionVizForm({
             dashboard={dashboard}
             dashcard={dashcard}
             mappedParameters={mappedParameters}
-            dashcardParamValues={mixedDashcardParamValues}
+            dashcardParamValues={dashcardParamValues}
+            initialValues={formRef.current?.values}
             title={title}
             showConfirmMessage={showConfirmMessage}
             confirmMessage={action.visualization_settings?.confirmMessage}
@@ -118,7 +114,12 @@ function ActionVizForm({
           />
         )}
         {showEditModal && (
-          <Modal wide onClose={closeEditModal} closeOnClickOutside>
+          <Modal
+            wide
+            data-testid="action-creator-modal"
+            onClose={closeEditModal}
+            closeOnClickOutside
+          >
             <ActionCreator
               initialAction={action}
               action={action}
@@ -143,6 +144,7 @@ function ActionVizForm({
         dashcard={dashcard}
         mappedParameters={mappedParameters}
         dashcardParamValues={dashcardParamValues}
+        initialValues={formRef.current?.values}
         onSubmit={onSubmit}
       />
     </FormWrapper>

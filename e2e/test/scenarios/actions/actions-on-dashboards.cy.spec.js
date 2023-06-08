@@ -18,7 +18,6 @@ import {
   createImplicitAction,
   dragField,
   createAction,
-  actionEditorModal,
 } from "e2e/support/helpers";
 
 import { many_data_types_rows } from "e2e/support/test_tables_data";
@@ -668,11 +667,11 @@ const MODEL_NAME = "Test Action Model";
         it("allows to edit action title and field placeholder in action execute modal", () => {
           clickHelper(SAMPLE_QUERY_ACTION.name);
 
-          modal().within(() => {
+          getActionExecutionModal().within(() => {
             cy.icon("pencil").click();
           });
 
-          actionEditorModal().within(() => {
+          getActionEditorModal().within(() => {
             cy.findByText(SAMPLE_QUERY_ACTION.name)
               .click()
               .clear()
@@ -687,11 +686,11 @@ const MODEL_NAME = "Test Action Model";
             cy.findByText("Placeholder text").click().type("Test placeholder");
           });
 
-          actionEditorModal().within(() => {
+          getActionEditorModal().within(() => {
             cy.button("Update").click();
           });
 
-          modal().within(() => {
+          getActionExecutionModal().within(() => {
             cy.findByTestId("modal-header").findByText("New action name");
 
             cy.findAllByPlaceholderText("Test placeholder");
@@ -701,11 +700,11 @@ const MODEL_NAME = "Test Action Model";
         it("allows to edit action query and parameters in action execute modal", () => {
           clickHelper(SAMPLE_QUERY_ACTION.name);
 
-          modal().within(() => {
+          getActionExecutionModal().within(() => {
             cy.icon("pencil").click();
           });
 
-          actionEditorModal().within(() => {
+          getActionEditorModal().within(() => {
             cy.findByTestId("native-query-editor").click();
 
             cy.get(".ace_content").type(
@@ -723,11 +722,11 @@ const MODEL_NAME = "Test Action Model";
             });
           });
 
-          actionEditorModal().within(() => {
+          getActionEditorModal().within(() => {
             cy.button("Update").click();
           });
 
-          modal().within(() => {
+          getActionExecutionModal().within(() => {
             cy.findByLabelText("Total").type(`123`);
             cy.findByLabelText("Score").type(`345`);
 
@@ -740,6 +739,126 @@ const MODEL_NAME = "Test Action Model";
                 .sort()
                 .join(","),
             ).to.equal("123,345");
+          });
+
+          cy.findByTestId("toast-undo").within(() => {
+            cy.findByText(`Success! The action returned: {"rows-affected":0}`);
+          });
+        });
+
+        it("preserves typed form values after adding a new field", () => {
+          clickHelper(SAMPLE_QUERY_ACTION.name);
+
+          getActionExecutionModal().within(() => {
+            cy.findByLabelText("Total").type("123");
+
+            cy.icon("pencil").click();
+          });
+
+          getActionEditorModal().within(() => {
+            cy.findByTestId("native-query-editor").click();
+
+            cy.get(".ace_content").type(
+              _.times(23, () => "{leftArrow}")
+                .join("")
+                .concat("{backspace}{backspace}"),
+            );
+            cy.get(".ace_text-input").type(`{{ score }}`, {
+              force: true,
+              parseSpecialCharSequences: false,
+            });
+
+            cy.findByTestId("action-form-editor").within(() => {
+              cy.findAllByText("Number").click({ multiple: true });
+            });
+          });
+
+          getActionEditorModal().within(() => {
+            cy.button("Update").click();
+          });
+
+          getActionExecutionModal().within(() => {
+            cy.findByLabelText("Total").should("have.value", "123");
+
+            cy.findByLabelText("Score").type(`345`);
+
+            cy.button(SAMPLE_QUERY_ACTION.name).click();
+          });
+
+          cy.wait("@executeAPI").then(interception => {
+            expect(
+              Object.values(interception.request.body.parameters)
+                .sort()
+                .join(","),
+            ).to.equal("123,345");
+          });
+
+          cy.findByTestId("toast-undo").within(() => {
+            cy.findByText(`Success! The action returned: {"rows-affected":0}`);
+          });
+        });
+
+        it("preserves typed form values after removing a field", () => {
+          clickHelper(SAMPLE_QUERY_ACTION.name);
+
+          getActionExecutionModal().within(() => {
+            cy.icon("pencil").click();
+          });
+
+          getActionEditorModal().within(() => {
+            cy.findByTestId("native-query-editor").click();
+
+            cy.get(".ace_content").type(
+              _.times(23, () => "{leftArrow}")
+                .join("")
+                .concat("{backspace}{backspace}"),
+            );
+            cy.get(".ace_text-input").type(`{{ score }}`, {
+              force: true,
+              parseSpecialCharSequences: false,
+            });
+
+            cy.button("Update").click();
+          });
+
+          getActionExecutionModal().within(() => {
+            cy.button("Cancel").click();
+          });
+
+          clickHelper(SAMPLE_QUERY_ACTION.name);
+
+          getActionExecutionModal().within(() => {
+            cy.findByLabelText("Total").type("123");
+            cy.findByLabelText("Score").type("test score");
+
+            cy.icon("pencil").click();
+          });
+
+          getActionEditorModal().within(() => {
+            cy.findByTestId("native-query-editor").click();
+
+            cy.get(".ace_content").type(
+              _.times(23, () => "{leftArrow}")
+                .join("")
+                .concat(_.times(11, () => "{backspace}").join(""))
+                .concat("22"),
+            );
+
+            cy.button("Update").click();
+          });
+
+          getActionExecutionModal().within(() => {
+            cy.findByLabelText("Total").should("have.value", "123");
+
+            cy.button(SAMPLE_QUERY_ACTION.name).click();
+          });
+
+          cy.wait("@executeAPI").then(interception => {
+            expect(
+              Object.values(interception.request.body.parameters)
+                .sort()
+                .join(","),
+            ).to.equal("123");
           });
 
           cy.findByTestId("toast-undo").within(() => {
@@ -818,3 +937,11 @@ const clickHelper = buttonName => {
   cy.wait(100);
   cy.button(buttonName).click();
 };
+
+function getActionEditorModal() {
+  return cy.findByTestId("action-creator-modal");
+}
+
+function getActionExecutionModal() {
+  return cy.findByTestId("action-execution-form-modal");
+}
