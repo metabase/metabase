@@ -15,9 +15,12 @@ import {
   filterWidget,
   createImplicitAction,
   dragField,
+  setActionsEnabledForDB,
+  createAction,
 } from "e2e/support/helpers";
 
 import { many_data_types_rows } from "e2e/support/test_tables_data";
+import { createMockActionParameter } from "metabase-types/api/mocks";
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
@@ -25,6 +28,20 @@ import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filte
 const TEST_TABLE = "scoreboard_actions";
 const TEST_COLUMNS_TABLE = "many_data_types";
 const MODEL_NAME = "Test Action Model";
+
+const PG_DB_ID = 2;
+const PG_ORDERS_TABLE_ID = 9;
+const WRITABLE_TEST_TABLE = "scoreboard_actions";
+
+const SAMPLE_ORDERS_MODEL = {
+  name: "Order",
+  dataset: true,
+  display: "table",
+  database: PG_DB_ID,
+  query: {
+    "source-table": PG_ORDERS_TABLE_ID,
+  },
+};
 
 ["mysql", "postgres"].forEach(dialect => {
   describe(
@@ -102,7 +119,7 @@ const MODEL_NAME = "Test Action Model";
           cy.findByPlaceholderText("My new fantastic action").type(ACTION_NAME);
           cy.findByTestId("create-action-form").button("Create").click();
 
-          createDashboardWithActionButton({
+          createAndSaveDashboardWithActionButton({
             actionName: ACTION_NAME,
             idFilter: true,
           });
@@ -136,7 +153,7 @@ const MODEL_NAME = "Test Action Model";
             });
           });
 
-          createDashboardWithActionButton({
+          createAndSaveDashboardWithActionButton({
             actionName: "Create",
           });
 
@@ -171,7 +188,7 @@ const MODEL_NAME = "Test Action Model";
             });
           });
 
-          createDashboardWithActionButton({
+          createAndSaveDashboardWithActionButton({
             actionName,
             idFilter: true,
           });
@@ -225,7 +242,7 @@ const MODEL_NAME = "Test Action Model";
             });
           });
 
-          createDashboardWithActionButton({
+          createAndSaveDashboardWithActionButton({
             actionName: "Delete",
           });
 
@@ -282,7 +299,7 @@ const MODEL_NAME = "Test Action Model";
             });
           });
 
-          createDashboardWithActionButton({
+          createAndSaveDashboardWithActionButton({
             actionName,
             idFilter: true,
           });
@@ -336,7 +353,7 @@ const MODEL_NAME = "Test Action Model";
             });
           });
 
-          createDashboardWithActionButton({
+          createAndSaveDashboardWithActionButton({
             actionName: "Update",
             idFilter: true,
           });
@@ -432,7 +449,7 @@ const MODEL_NAME = "Test Action Model";
             });
           });
 
-          createDashboardWithActionButton({
+          createAndSaveDashboardWithActionButton({
             actionName: "Create",
           });
 
@@ -517,7 +534,7 @@ const MODEL_NAME = "Test Action Model";
             });
           });
 
-          createDashboardWithActionButton({
+          createAndSaveDashboardWithActionButton({
             actionName: "Create",
             idFilter: true,
           });
@@ -545,7 +562,7 @@ const MODEL_NAME = "Test Action Model";
             });
           });
 
-          createDashboardWithActionButton({
+          createAndSaveDashboardWithActionButton({
             actionName: "Update",
             idFilter: true,
           });
@@ -651,6 +668,215 @@ const MODEL_NAME = "Test Action Model";
   );
 });
 
+// const TEST_TABLE = "scoreboard_actions";
+// const TEST_COLUMNS_TABLE = "many_data_types";
+// const MODEL_NAME = "Test Action Model";
+// const PG_DB_ID = 2;
+// const WRITABLE_TEST_TABLE = "scoreboard_actions";
+
+const TEST_PARAMETER = createMockActionParameter({
+  id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
+  name: "Total",
+  slug: "total",
+  type: "number/=",
+  target: ["variable", ["template-tag", "total"]],
+});
+
+const TEST_PARAMETER_2 = createMockActionParameter({
+  id: "f6c36b0e-e2a2-4ccb-8b97-ea148c60e99b",
+  name: "Score",
+  slug: "score",
+  type: "number/=",
+  target: ["variable", ["template-tag", "score"]],
+});
+
+const TEST_TEMPLATE_TAG = {
+  id: TEST_PARAMETER.id,
+  type: "number",
+  name: TEST_PARAMETER.slug,
+  "display-name": TEST_PARAMETER.name,
+  slug: TEST_PARAMETER.slug,
+};
+const TEST_TEMPLATE_TAG_2 = {
+  id: TEST_PARAMETER_2.id,
+  type: "number",
+  name: TEST_PARAMETER_2.slug,
+  "display-name": TEST_PARAMETER_2.name,
+  slug: TEST_PARAMETER_2.slug,
+};
+
+const SAMPLE_QUERY_ACTION = {
+  name: "Demo Action",
+  type: "query",
+  database_id: PG_DB_ID,
+  parameters: [TEST_PARAMETER, TEST_PARAMETER_2],
+  dataset_query: {
+    type: "native",
+    native: {
+      query: `UPDATE ${WRITABLE_TEST_TABLE} SET score = {{ ${TEST_TEMPLATE_TAG_2.name} }} WHERE ID = {{ ${TEST_TEMPLATE_TAG.name} }}`,
+      "template-tags": {
+        [TEST_TEMPLATE_TAG.name]: TEST_TEMPLATE_TAG,
+        [TEST_TEMPLATE_TAG_2.name]: TEST_TEMPLATE_TAG_2,
+      },
+    },
+  },
+  visualization_settings: {
+    fields: {
+      [TEST_PARAMETER.id]: {
+        id: TEST_PARAMETER.id,
+        required: true,
+        hidden: false,
+        fieldType: "number",
+        inputType: "number",
+      },
+      [TEST_PARAMETER_2.id]: {
+        id: TEST_PARAMETER_2.id,
+        required: true,
+        hidden: true,
+        fieldType: "number",
+        inputType: "number",
+      },
+    },
+  },
+};
+
+describe(
+  "Validate Actions Parameters on Dashboards",
+  { tags: ["@external", "@actions"] },
+  () => {
+    beforeEach(() => {
+      restore("postgres-12");
+      cy.signInAsAdmin();
+      setActionsEnabledForDB(PG_DB_ID);
+
+      cy.createQuestion(SAMPLE_ORDERS_MODEL, {
+        wrapId: true,
+        idAlias: "modelId",
+      });
+
+      cy.intercept("GET", "/api/card/*").as("getModel");
+      cy.intercept("PUT", "/api/action/*").as("updateAction");
+
+      cy.intercept("GET", "/api/action").as("getActions");
+    });
+
+    it("validates mapping for hidden required parameters for query action", () => {
+      cy.get("@modelId").then(modelId => {
+        createAction({
+          ...SAMPLE_QUERY_ACTION,
+          model_id: modelId,
+        });
+      });
+
+      createDashboardWithActionButton({
+        actionName: SAMPLE_QUERY_ACTION.name,
+        idFilter: true,
+        modelName: SAMPLE_ORDERS_MODEL.name,
+      });
+
+      cy.findByRole("dialog").within(() => {
+        cy.button("Done").should("be.disabled");
+        cy.findByText("Score: required");
+        cy.findByText("Hidden");
+        cy.findByText("Select a value").click();
+      });
+
+      popover().within(() => {
+        cy.findByText("ID").click();
+      });
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("Hidden");
+        cy.findByText("Score: required").should("not.exist");
+        cy.button("Done").should("be.enabled");
+      });
+    });
+
+    it("validates mapping for hidden required parameters for implicit action", () => {
+      const ACTION_NAME = "Update";
+      const IMPLICIT_ACTION_FIELD_TO_HIDE = "id";
+
+      cy.get("@modelId").then(modelId => {
+        createImplicitAction({
+          kind: "update",
+          model_id: modelId,
+        }).then(({ body }) => {
+          const implicitAction = body;
+
+          const actionPayload = {
+            visualization_settings: {
+              ...implicitAction.visualization_settings,
+              fields: {
+                ...implicitAction.visualization_settings.fields,
+                [IMPLICIT_ACTION_FIELD_TO_HIDE]: {
+                  ...implicitAction.visualization_settings.fields[
+                    IMPLICIT_ACTION_FIELD_TO_HIDE
+                  ],
+                  hidden: true,
+                },
+              },
+            },
+          };
+
+          cy.request("PUT", `/api/action/${implicitAction.id}`, actionPayload);
+        });
+      });
+
+      createDashboardWithActionButton({
+        actionName: ACTION_NAME,
+        idFilter: true,
+        modelName: SAMPLE_ORDERS_MODEL.name,
+      });
+
+      cy.findByRole("dialog").within(() => {
+        cy.button("Done").should("be.disabled");
+        cy.findByText(`${IMPLICIT_ACTION_FIELD_TO_HIDE}: required`);
+        cy.findByText("Hidden");
+        cy.findByText("Select a value").click();
+      });
+
+      popover().within(() => {
+        cy.findByText("ID").click();
+      });
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("Hidden");
+        cy.findByText(`${IMPLICIT_ACTION_FIELD_TO_HIDE}: required`).should(
+          "not.exist",
+        );
+        cy.button("Done").should("be.enabled");
+      });
+    });
+  },
+);
+
+function createAndSaveDashboardWithActionButton({
+  actionName,
+  modelName = MODEL_NAME,
+  idFilter = false,
+}) {
+  createDashboardWithActionButton({ actionName, modelName, idFilter });
+
+  if (idFilter) {
+    cy.findByRole("dialog").within(() => {
+      cy.findByText(/has no parameters to map/i).should("not.exist");
+      cy.findByText(/Where should the values/i);
+      cy.findAllByText(/ask the user/i)
+        .first()
+        .click();
+    });
+    popover().within(() => {
+      cy.findByText("ID").click();
+    });
+  }
+
+  cy.findByRole("dialog").within(() => {
+    cy.button("Done").click();
+  });
+
+  saveDashboard();
+}
+
 function createDashboardWithActionButton({
   actionName,
   modelName = MODEL_NAME,
@@ -683,25 +909,6 @@ function createDashboardWithActionButton({
     cy.findByText(modelName).click();
     cy.findByText(actionName).click();
   });
-
-  if (idFilter) {
-    cy.findByRole("dialog").within(() => {
-      cy.findByText(/has no parameters to map/i).should("not.exist");
-      cy.findByText(/Where should the values/i);
-      cy.findAllByText(/ask the user/i)
-        .first()
-        .click();
-    });
-    popover().within(() => {
-      cy.findByText("ID").click();
-    });
-  }
-
-  cy.findByRole("dialog").within(() => {
-    cy.button("Done").click();
-  });
-
-  saveDashboard();
 }
 
 const changeValue = ({ fieldName, fieldType, oldValue, newValue }) => {
