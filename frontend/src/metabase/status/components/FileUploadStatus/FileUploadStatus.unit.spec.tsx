@@ -166,4 +166,69 @@ describe("FileUploadStatus", () => {
     ).toBeInTheDocument();
     expect(await screen.findByText("It's dead Jim")).toBeInTheDocument();
   });
+
+  describe("loading state", () => {
+    it("should rotate loading messages after 30 seconds", async () => {
+      jest.useFakeTimers();
+      fetchMock.post("path:/api/card/from-csv", "3", { delay: 90 * 1000 });
+
+      renderWithProviders(
+        <Route
+          path="/"
+          component={() => {
+            return (
+              <>
+                <CollectionHeader
+                  collection={firstCollection}
+                  isAdmin={true}
+                  isBookmarked={false}
+                  isPersonalCollectionChild={false}
+                  onCreateBookmark={jest.fn()}
+                  onDeleteBookmark={jest.fn()}
+                  canUpload
+                />
+                <FileUploadStatus />
+              </>
+            );
+          }}
+        />,
+        {
+          withRouter: true,
+        },
+      );
+
+      userEvent.upload(
+        screen.getByTestId("upload-input"),
+        new File(["foo, bar"], "test.csv", { type: "text/csv" }),
+      );
+
+      jest.advanceTimersByTime(1 * 1000);
+
+      expect(
+        await screen.findByText("Uploading data to Collection …"),
+      ).toBeInTheDocument();
+
+      jest.advanceTimersByTime(30 * 1000);
+
+      expect(await screen.findByText("Still working …")).toBeInTheDocument();
+
+      jest.advanceTimersByTime(30 * 1000);
+
+      expect(
+        await screen.findByText("Arranging bits and bytes …"),
+      ).toBeInTheDocument();
+
+      jest.advanceTimersByTime(30 * 1000);
+
+      expect(
+        await screen.findByRole(
+          "link",
+          { name: "Start exploring" },
+          { timeout: 5000 },
+        ),
+      ).toHaveAttribute("href", "/model/3");
+
+      jest.useRealTimers();
+    });
+  });
 });
