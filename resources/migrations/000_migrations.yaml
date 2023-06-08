@@ -14858,7 +14858,15 @@ databaseChangeLog:
       comment: Added 0.47.0 - Add view for audit v2 group_members
       changes:
         - sql:
-            sql: create view v_group_members as select user_id, permissions_group.id as group_id, permissions_group.name as group_name from permissions_group_membership left join permissions_group on permissions_group_membership.group_id = permissions_group.id;
+            sql: >-
+              create view v_group_members AS
+              select
+                user_id,
+                permissions_group.id AS group_id,
+                permissions_group.name AS group_name
+              from
+                permissions_group_membership
+                left join permissions_group on permissions_group_membership.group_id = permissions_group.id;
       rollback:
         - sql:
             sql: drop view v_group_members;
@@ -14870,7 +14878,7 @@ databaseChangeLog:
       changes:
         - sql:
             sql: >-
-              create or replace view v_alerts_subscriptions as
+              create view v_alerts_subscriptions as
               select
                   concat(
                       case when dashboard_id is not null
@@ -14910,7 +14918,7 @@ databaseChangeLog:
         - sql:
             dbms: postgresql
             sql: >-
-              create or replace view v_content as
+              create view v_content as
               select
                   concat('action_', id) as id,
                   'action' as entity_type,
@@ -15024,11 +15032,11 @@ databaseChangeLog:
                   null as question_is_native,
                   timestamp as event_timestamp
                   from timeline_event event
-                      left join timeline on event.timeline_id = timeline.id;
+                    left join timeline on event.timeline_id = timeline.id;
         - sql:
             dbms: mysql,mariadb
             sql: >-
-              create or replace view v_content as
+              create view v_content as
               select
                   concat('action_', id) as id,
                   'action' as entity_type,
@@ -15146,7 +15154,7 @@ databaseChangeLog:
         - sql:
             dbms: h2
             sql: >-
-              create or replace view v_content as
+              create view v_content as
               select
                   concat('action_', id) as id,
                   'action' as entity_type,
@@ -15272,7 +15280,7 @@ databaseChangeLog:
       changes:
         - sql:
             sql: >-
-              create or replace view v_users as
+              create view v_users as
               select
                   id as user_id,
                   email,
