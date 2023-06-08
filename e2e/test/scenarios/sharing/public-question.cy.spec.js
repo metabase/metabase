@@ -40,7 +40,6 @@ const EXPECTED_QUERY_PARAMS = "?birthdate=past30years&source=Affiliate";
 
 describe("scenarios > question > public", () => {
   beforeEach(() => {
-    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
     cy.intercept("GET", `/api/public/card/*/query?*`).as("publicQuery");
 
     restore();
@@ -55,7 +54,7 @@ describe("scenarios > question > public", () => {
 
       visitQuestion(id);
       // Make sure metadata fully loaded before we continue
-      cy.wait("@cardQuery");
+      cy.get(".cellData").contains("Winner");
     });
 
     cy.icon("share").click();
@@ -71,8 +70,7 @@ describe("scenarios > question > public", () => {
 
     cy.wait("@publicQuery");
     // Name of a city from the expected results
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Winner");
+    cy.get(".cellData").contains("Winner");
   });
 
   it("allows downloading publicly shared questions (metabase#21993)", () => {
