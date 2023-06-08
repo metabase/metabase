@@ -39,7 +39,6 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -90,7 +89,7 @@
                               :archived false, conditions))
         remove-card-non-public-columns
         combine-parameters-and-template-tags
-        (hydrate :param_values :param_fields))))
+        (t2/hydrate :param_values :param_fields))))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
@@ -208,7 +207,7 @@
   {:pre [(even? (count conditions))]}
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
     (-> (api/check-404 (apply t2/select-one [Dashboard :name :description :id :parameters :auto_apply_filters], :archived false, conditions))
-        (hydrate [:ordered_cards :card :series :dashcard/action] :ordered_tabs :param_values :param_fields)
+        (t2/hydrate [:ordered_cards :card :series :dashcard/action] :ordered_tabs :param_values :param_fields)
         api.dashboard/add-query-average-durations
         (update :ordered_cards (fn [dashcards]
                                  (for [dashcard dashcards]
@@ -405,7 +404,7 @@
   [field-id dashboard-id]
   (let [dashboard       (-> (t2/select-one Dashboard :id dashboard-id)
                             api/check-404
-                            (hydrate [:ordered_cards :card]))
+                            (t2/hydrate [:ordered_cards :card]))
         param-field-ids (params/dashcards->param-field-ids (:ordered_cards dashboard))]
     (api/check-404 (contains? param-field-ids field-id))))
 

@@ -103,6 +103,6 @@
                                   :rows [[0 0]
                                          [1 1]]}}
                   :type :card}
-            emails (messages/render-pulse-email "America/Pacific" {} {} [part])]
+            emails (messages/render-pulse-email "America/Pacific" {} {} [part] nil)]
         (is (vector? emails))
         (is (map? (first emails)))))))

@@ -22,7 +22,6 @@
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util :as u]
    [metabase.util.password :as u.password]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -301,14 +300,14 @@
                                            (assoc user :group_ids '(user/add-group-ids <users>))))]
         (testing "for a single User"
           (is (= '(user/add-group-ids <users>)
-                 (-> (hydrate (t2/select-one User :id (mt/user->id :lucky)) :group_ids)
+                 (-> (t2/hydrate (t2/select-one User :id (mt/user->id :lucky)) :group_ids)
                      :group_ids))))
 
         (testing "for multiple Users"
           (is (= '[(user/add-group-ids <users>)
                    (user/add-group-ids <users>)]
                  (as-> (map test.users/fetch-user [:rasta :lucky]) users
-                   (hydrate users :group_ids)
+                   (t2/hydrate users :group_ids)
                    (mapv :group_ids users)))))))
 
     (testing "should be done in a single DB call"

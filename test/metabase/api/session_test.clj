@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.api.session :as api.session]
    [metabase.driver.h2 :as h2]
+   [metabase.email.messages :as messages]
    [metabase.http-client :as client]
    [metabase.models
     :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Pulse
@@ -505,7 +506,7 @@
           (is (= "Email for pulse-id doesnt exist."
                  (mt/client :post 400 "session/pulse/unsubscribe" {:pulse-id pulse-id
                                                                    :email    email
-                                                                   :hash     (api.session/generate-hash pulse-id email)})))))
+                                                                   :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)})))))
 
       (testing "Valid hash and email"
         (mt/with-temp* [Pulse        [{pulse-id :id} {}]
@@ -515,7 +516,7 @@
           (is (= {:status "success"}
                  (mt/client :post 200 "session/pulse/unsubscribe" {:pulse-id pulse-id
                                                                    :email    email
-                                                                   :hash     (api.session/generate-hash pulse-id email)}))))))))
+                                                                   :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)}))))))))
 
 (deftest unsubscribe-undo-test
   (testing "POST /pulse/unsubscribe/undo"
@@ -532,7 +533,7 @@
           (is (= {:status "success"}
                  (mt/client :post 200 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
                                                                         :email    email
-                                                                        :hash     (api.session/generate-hash pulse-id email)})))))
+                                                                        :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)})))))
 
       (testing "Valid hash and email already exists"
         (mt/with-temp* [Pulse        [{pulse-id :id} {}]
@@ -542,4 +543,4 @@
           (is (= "Email for pulse-id already exists."
                  (mt/client :post 400 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
                                                                         :email    email
-                                                                        :hash     (api.session/generate-hash pulse-id email)}))))))))
+                                                                        :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)}))))))))

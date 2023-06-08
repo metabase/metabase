@@ -19,7 +19,6 @@
    [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (def DashboardCard
@@ -109,7 +108,7 @@
   "Fetch a single DashboardCard by its ID value."
   [id :- su/IntGreaterThanZero]
   (-> (t2/select-one :model/DashboardCard :id id)
-      (hydrate :series)))
+      (t2/hydrate :series)))
 
 (defn dashcard->multi-cards
   "Return the cards which are other cards with respect to this dashboard card
@@ -224,7 +223,7 @@
         (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
         ;; return the full DashboardCard
         (-> (t2/select DashboardCard :id [:in dashboard-card-ids])
-            (hydrate :series))))))
+            (t2/hydrate :series))))))
 
 (defn delete-dashboard-cards!
   "Delete DashboardCards of a Dasbhoard."
