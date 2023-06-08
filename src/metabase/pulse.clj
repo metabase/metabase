@@ -73,10 +73,12 @@
                                     (qp/process-query-and-save-with-max-results-constraints!
                                      (assoc query :async? false)
                                      info)))]
-      {:card     card
-       :dashcard dashcard
-       :result   result
-       :type     :card})
+      (if (and (get-in dashcard [:visualization_settings :card.hide_empty]) (empty? (get-in result [:data :rows])))
+        nil
+        {:card     card
+         :dashcard dashcard
+         :result   result
+         :type     :card}))
     (catch Throwable e
       (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
 
