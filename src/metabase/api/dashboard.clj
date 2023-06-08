@@ -218,10 +218,10 @@
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
       (t2/hydrate [:ordered_cards
-                [:card [:moderation_reviews :moderator_details]]
-                :series
-                :dashcard/action
-                :dashcard/linkcard-info]
+                   [:card [:moderation_reviews :moderator_details]]
+                   :series
+                   :dashcard/action
+                   :dashcard/linkcard-info]
                :ordered_tabs
                :collection_authority_level
                :can_write
@@ -722,9 +722,11 @@
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
   {:uuid (or (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
              (u/prog1 (str (UUID/randomUUID))
-               (t2/update! :model/Dashboard dashboard-id
-                           {:public_uuid       <>
-                            :made_public_by_id api/*current-user-id*})))})
+               (let [update-info {:public_uuid       <>
+                                  :made_public_by_id api/*current-user-id*}]
+                 (t2/update! :model/Dashboard dashboard-id update-info)
+                 (events/publish-event! :dashboard-enable-public (merge {:id dashboard-id}
+                                                                        update-info)))))})
 
 (api/defendpoint DELETE "/:dashboard-id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
@@ -736,6 +738,7 @@
   (t2/update! :model/Dashboard dashboard-id
               {:public_uuid       nil
                :made_public_by_id nil})
+  (events/publish-event! :dashboard-disable-public {:id dashboard-id})
   {:status 204, :body nil})
 
 (api/defendpoint GET "/public"

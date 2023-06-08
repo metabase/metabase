@@ -976,9 +976,11 @@ saved later when it is ready."
   (let [{existing-public-uuid :public_uuid} (t2/select-one [Card :public_uuid] :id card-id)]
     {:uuid (or existing-public-uuid
                (u/prog1 (str (UUID/randomUUID))
-                 (t2/update! Card card-id
-                             {:public_uuid       <>
-                              :made_public_by_id api/*current-user-id*})))}))
+                 (let [update-info {:public_uuid       <>
+                                    :made_public_by_id api/*current-user-id*}]
+                   (t2/update! Card card-id update-info)
+                   (events/publish-event! :card-enable-public (merge {:id card-id}
+                                                                     update-info)))))}))
 
 (api/defendpoint DELETE "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
@@ -990,6 +992,7 @@ saved later when it is ready."
   (t2/update! Card card-id
               {:public_uuid       nil
                :made_public_by_id nil})
+  (events/publish-event! :card-disable-public {:id card-id})
   {:status 204, :body nil})
 
 (api/defendpoint GET "/public"
