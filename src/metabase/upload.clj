@@ -141,7 +141,7 @@
 
 (defn- lowest-common-member [[x & xs :as all-xs] ys]
   (cond
-    (empty? all-xs)  (throw (IllegalArgumentException. (tru "Could not find a common type for {0} and {1}" xs ys)))
+    (empty? all-xs)  (throw (IllegalArgumentException. (tru "Could not find a common type for {0} and {1}" all-xs ys)))
     (contains? ys x) x
     :else            (recur xs ys)))
 
@@ -323,5 +323,5 @@
       (catch Throwable e
         (driver/drop-table driver db-id table-name)
         (.delete csv-file)
-        (throw (ex-info (ex-message e) {}))))
+        (throw (ex-info (ex-message e) {:status-code 400}))))
     nil))
