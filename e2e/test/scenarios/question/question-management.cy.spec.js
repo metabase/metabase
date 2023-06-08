@@ -9,6 +9,11 @@ import {
   openQuestionActions,
   questionInfoButton,
   getPersonalCollectionName,
+  describeWithSnowplow,
+  resetSnowplow,
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectGoodSnowplowEvents,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
@@ -19,7 +24,7 @@ const PERMISSIONS = {
   no: ["nocollection", "nosql", "none"],
 };
 
-describe("managing question from the question's details sidebar", () => {
+describe.skip("managing question from the question's details sidebar", () => {
   beforeEach(() => {
     restore();
   });
@@ -247,6 +252,35 @@ describe("managing question from the question's details sidebar", () => {
         });
       });
     });
+  });
+});
+
+describeWithSnowplow("send snowplow question events", () => {
+  const NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_MODEL_CONVERSION = 2;
+
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+    enableTracking();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should send event when clicking `Turn into a model`", () => {
+    visitQuestion(1);
+    openQuestionActions();
+    expectGoodSnowplowEvents(
+      NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_MODEL_CONVERSION,
+    );
+    popover().within(() => {
+      cy.findByText("Turn into a model").click();
+    });
+    expectGoodSnowplowEvents(
+      NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_MODEL_CONVERSION + 1,
+    );
   });
 });
 

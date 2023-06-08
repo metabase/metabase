@@ -14,3 +14,10 @@ export const trackNewQuestionSaved = (
     source: isBasedOnExistingQuestion ? "existing_question" : "from_scratch",
   });
 };
+
+export const trackTurnIntoModelClicked = question => {
+  trackSchemaEvent("questiontomodel", "1-0-0", {
+    event: "turn_into_model_clicked",
+    question_id: question.id(),
+  });
+};
