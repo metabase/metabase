@@ -11,7 +11,10 @@ import FileUploadStatus from "./FileUploadStatus";
 
 describe("FileUploadStatus", () => {
   const firstCollectionId = 1;
-  const firstCollection = createMockCollection({ id: firstCollectionId });
+  const firstCollection = createMockCollection({
+    id: firstCollectionId,
+    can_write: true,
+  });
 
   const secondCollectionId = 2;
 
@@ -85,6 +88,7 @@ describe("FileUploadStatus", () => {
                 onCreateBookmark={jest.fn()}
                 onDeleteBookmark={jest.fn()}
                 canUpload
+                uploadsEnabled
               />
               <FileUploadStatus />
             </>
@@ -137,6 +141,7 @@ describe("FileUploadStatus", () => {
                   onCreateBookmark={jest.fn()}
                   onDeleteBookmark={jest.fn()}
                   canUpload
+                  uploadsEnabled
                 />
                 <FileUploadStatus />
               </>
