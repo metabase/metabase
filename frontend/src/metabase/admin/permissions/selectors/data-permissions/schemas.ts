@@ -7,7 +7,6 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
-  PLUGIN_DATA_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
 import { Group, GroupsPermissions } from "metabase-types/api";
@@ -99,22 +98,14 @@ const getNativePermissionDisabledTooltip = (
   isAdmin: boolean,
   accessPermissionValue: string,
 ) => {
-  if (PLUGIN_DATA_PERMISSIONS.getNativePermissionDisabledTooltip) {
-    return PLUGIN_DATA_PERMISSIONS.getNativePermissionDisabledTooltip(
-      isAdmin,
-      accessPermissionValue,
-    );
-  }
-  const isNativePermissionDisabled =
-    isAdmin || isRestrictivePermission(accessPermissionValue);
-
-  if (isNativePermissionDisabled) {
-    return null;
+  if (isAdmin) {
+    return UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
   }
 
-  return isAdmin
-    ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
-    : NATIVE_PERMISSION_REQUIRES_DATA_ACCESS;
+  if (isRestrictivePermission(accessPermissionValue)) {
+    return NATIVE_PERMISSION_REQUIRES_DATA_ACCESS;
+  }
+  return null;
 };
 
 const buildNativePermission = (

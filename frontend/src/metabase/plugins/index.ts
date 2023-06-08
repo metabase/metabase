@@ -26,8 +26,8 @@ import type {
 import type { AdminPathKey, State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
 
-import { GetAuthProviders, PluginGroupManagersType } from "./types";
 import type Database from "metabase-lib/metadata/Database";
+import { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUCTIONS = [];
@@ -94,14 +94,10 @@ export const PLUGIN_DATA_PERMISSIONS: {
         permission: DataPermission,
       ) => GroupPermissions)
     | null;
-  getNativePermissionDisabledTooltip:
-    | ((isAdmin: boolean, accessPermissionValue: string) => string | null)
-    | null;
 } = {
   permissionsPayloadExtraSelectors: [],
   hasChanges: [],
   updateNativePermission: null,
-  getNativePermissionDisabledTooltip: null,
 };
 
 // user form fields, e.x. login attributes

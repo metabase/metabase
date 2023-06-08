@@ -16,7 +16,6 @@ import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
 } from "metabase/admin/permissions/utils/urls";
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import { ImpersonationModal } from "./components/ImpersonationModal";
 import { getImpersonatedPostAction, advancedPermissionsSlice } from "./reducer";
 import { getImpersonations } from "./selectors";
@@ -114,8 +113,6 @@ if (hasPremiumFeature("advanced_permissions")) {
   });
 
   PLUGIN_DATA_PERMISSIONS.updateNativePermission = updateNativePermission;
-  PLUGIN_DATA_PERMISSIONS.getNativePermissionDisabledTooltip = isAdmin =>
-    isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null;
 }
 
 const getDatabaseViewImpersonationModalUrl = (entityId, groupId) => {
