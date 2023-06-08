@@ -219,16 +219,16 @@
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
       (t2/hydrate [:ordered_cards
-                [:card [:moderation_reviews :moderator_details]]
-                :series
-                :dashcard/action
-                :dashcard/linkcard-info]
-               :ordered_tabs
-               :collection_authority_level
-               :can_write
-               :param_fields
-               :param_values
-               :collection)
+                   [:card [:moderation_reviews :moderator_details]]
+                   :series
+                   :dashcard/action
+                   :dashcard/linkcard-info]
+                  :ordered_tabs
+                  :collection_authority_level
+                  :can_write
+                  :param_fields
+                  :param_values
+                  :collection)
       collection.root/hydrate-root-collection
       api/read-check
       api/check-not-archived
@@ -1013,6 +1013,7 @@
               :dashcard-id   dashcard-id
               :export-format export-format
               :parameters    (json/parse-string parameters keyword)
+              :context       (api.dataset/export-format->context export-format)
               :constraints   nil
               ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to
               ;; specify this all over the codebase any time we want to do a query with an export format. Maybe this

@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.embed-test :as embed-test]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models :refer [Card Dashboard DashboardCard]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -243,11 +243,13 @@
       (mt/with-temporary-setting-values [enable-public-sharing true
                                          enable-embedding      true]
         (embed-test/with-new-secret-key
-          (t2.with-temp/with-temp [Card card (if viz-settings
-                                               (assoc card-defaults :visualization_settings viz-settings)
-                                               card-defaults)]
+          (t2.with-temp/with-temp [Card          card      (if viz-settings
+                                                             (assoc card-defaults :visualization_settings viz-settings)
+                                                             card-defaults)
+                                   Dashboard     dashboard {:name "Test Dashboard"}
+                                   DashboardCard dashcard  {:card_id (u/the-id card) :dashboard_id (u/the-id dashboard)}]
             (doseq [export-format (keys assertions)
-                    endpoint      (or endpoints [:dataset :card :public :embed])]
+                    endpoint      (or endpoints [:dataset :card :dashboard :public :embed])]
               (testing endpoint
                 (case endpoint
                   :dataset
@@ -260,7 +262,17 @@
 
                   :card
                   (let [results (mt/user-http-request user :post 200
-                                                      (format "card/%d/query/%s" (:id card) (name export-format))
+                                                      (format "card/%d/query/%s" (u/the-id dashboard) (name export-format))
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                    ((-> assertions export-format) results))
+
+                  :dashboard
+                  (let [results (mt/user-http-request user :post 200
+                                                      (format "dashboard/%d/dashcard/%d/card/%d/query/%s"
+                                                              (u/the-id dashboard)
+                                                              (u/the-id dashcard)
+                                                              (u/the-id card)
+                                                              (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
                     ((-> assertions export-format) results))
 
