@@ -273,10 +273,15 @@ class DashboardHeader extends Component {
 
       // Text/Headers
       buttons.push(
-        <TextOptionsButton
-          onAddMarkdown={() => this.onAddMarkdownBox()}
-          onAddHeading={() => this.onAddHeading()}
-        />,
+        <Tooltip
+          key="dashboard-add-heading-or-text-button"
+          tooltip={t`Add a heading or text`}
+        >
+          <TextOptionsButton
+            onAddMarkdown={() => this.onAddMarkdownBox()}
+            onAddHeading={() => this.onAddHeading()}
+          />
+        </Tooltip>,
       );
 
       // Add link card button

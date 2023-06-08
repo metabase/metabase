@@ -31,7 +31,6 @@ export function TextOptionsButton({
 
   return (
     <EntityMenu
-      key="dashboard-add-heading-or-text-button"
       items={TEXT_OPTIONS}
       trigger={
         <DashboardHeaderButton aria-label={t`Add a heading or text box`}>
@@ -42,7 +41,6 @@ export function TextOptionsButton({
         </DashboardHeaderButton>
       }
       minWidth={90}
-      tooltip={t`Add a heading or text`}
     />
   );
 }
