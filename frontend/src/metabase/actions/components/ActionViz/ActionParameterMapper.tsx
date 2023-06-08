@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { t } from "ttag";
-import { connect } from "react-redux";
 
 import Select, { SelectChangeEvent } from "metabase/core/components/Select";
 import EmptyState from "metabase/components/EmptyState";
@@ -11,11 +10,10 @@ import type {
   ActionDashboardCard,
   ActionParametersMapping,
   Dashboard,
-  ParameterId,
-  ParameterTarget,
   WritebackParameter,
   WritebackAction,
 } from "metabase-types/api";
+import { useDispatch } from "metabase/lib/redux";
 import type Question from "metabase-lib/Question";
 
 import {
@@ -30,52 +28,35 @@ interface ActionParameterMapperProps {
   dashboard: Dashboard;
   model?: Question;
   action: WritebackAction;
+  currentMappings: Record<string, string>;
 }
 
-type ParameterMappingFn = (
-  parameterId: ParameterId,
-  dashcardId: number,
-  cardId: number | undefined,
-  target: ParameterTarget,
-) => void;
-
-interface DispatchProps {
-  setParameterMapping: ParameterMappingFn;
-}
-
-const mapDispatchToProps = {
-  setParameterMapping,
-};
-
-const getTargetKey = (param: WritebackParameter | ActionParametersMapping) =>
-  JSON.stringify(param.target);
+export const getTargetKey = (
+  param: WritebackParameter | ActionParametersMapping,
+) => JSON.stringify(param.target);
 
 export const ActionParameterMappingForm = ({
   dashcard,
   dashboard,
   action,
-  setParameterMapping,
-}: ActionParameterMapperProps & DispatchProps) => {
-  const actionParameters = action.parameters ?? [];
+  currentMappings,
+}: ActionParameterMapperProps) => {
+  const dispatch = useDispatch();
+  const actionParameters = action.parameters;
   const dashboardParameters = dashboard.parameters ?? [];
-
-  const currentMappings = Object.fromEntries(
-    dashcard.parameter_mappings?.map(mapping => [
-      getTargetKey(mapping),
-      mapping.parameter_id,
-    ]) ?? [],
-  );
 
   const handleParameterChange = useCallback(
     (dashboardParameterId, target) => {
-      setParameterMapping(
-        dashboardParameterId,
-        dashcard.id,
-        undefined, // this is irrelevant for action parameters
-        target,
+      dispatch(
+        setParameterMapping(
+          dashboardParameterId,
+          dashcard.id,
+          undefined, // this is irrelevant for action parameters
+          target,
+        ),
       );
     },
-    [dashcard, setParameterMapping],
+    [dashcard, dispatch],
   );
 
   return (
@@ -93,7 +74,7 @@ export const ActionParameterMappingForm = ({
             data-testid={`parameter-form-section-${actionParam.id}`}
           >
             <ParameterFormLabel error={showError}>
-              <span>{`${name}${showError ? t`: is required` : ""}`}</span>
+              <span>{`${name}${showError ? t`: required` : ""}`}</span>
               {isHidden && <ParameterFormBadge>{t`Hidden`}</ParameterFormBadge>}
             </ParameterFormLabel>
             <Select
@@ -125,8 +106,3 @@ export const ActionParameterMappingForm = ({
     </div>
   );
 };
-
-export const ConnectedActionParameterMappingForm = connect(
-  null,
-  mapDispatchToProps,
-)(ActionParameterMappingForm);

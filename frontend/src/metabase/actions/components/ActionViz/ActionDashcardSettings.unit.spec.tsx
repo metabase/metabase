@@ -194,23 +194,33 @@ describe("ActionViz > ActionDashcardSettings", () => {
     expect(screen.getByText("Action Parameter 2")).toBeInTheDocument();
   });
 
-  it("shows hidden badge for hidden and required field", () => {
-    setup({
-      dashcard: actionDashcardWithActionWithHiddenFields,
+  describe("when parameter is hidden, required and not mapped", () => {
+    it("shows hidden badge for a hidden field", () => {
+      setup({
+        dashcard: actionDashcardWithActionWithHiddenFields,
+      });
+
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameter3.id}`,
+      );
+
+      expect(formSection).toBeInTheDocument();
+      expect(
+        within(formSection).getByText("Action Parameter 3: required"),
+      ).toBeInTheDocument();
+      expect(within(formSection).getByText("Hidden")).toBeInTheDocument();
+      expect(within(formSection).getByRole("button")).toHaveTextContent(
+        "Select a value",
+      );
     });
 
-    const formSection = screen.getByTestId(
-      `parameter-form-section-${actionParameter3.id}`,
-    );
+    it("doesn't allow to submit a form", () => {
+      setup({
+        dashcard: actionDashcardWithActionWithHiddenFields,
+      });
 
-    expect(formSection).toBeInTheDocument();
-    expect(
-      within(formSection).getByText("Action Parameter 3: is required"),
-    ).toBeInTheDocument();
-    expect(within(formSection).getByText("Hidden")).toBeInTheDocument();
-    expect(within(formSection).getByRole("button")).toHaveTextContent(
-      "Select a value",
-    );
+      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    });
   });
 
   it("can close the modal with the done button", () => {
