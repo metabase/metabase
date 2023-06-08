@@ -2,7 +2,7 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { connect } from "react-redux";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { color, alpha } from "metabase/lib/colors";
 import { getUser } from "metabase/selectors/user";

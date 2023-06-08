@@ -16,6 +16,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.login-history :refer [LoginHistory]]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
@@ -24,13 +25,18 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
+
+(defsetting user-visibility
+  (deferred-tru "Determines what other users non-admin users are able to see. Possible values are :all , :group, or :none.")
+  :visibility   :authenticated
+  :type         :keyword
+  :default      :all)
 
 (set! *warn-on-reflection* true)
 
@@ -132,14 +138,14 @@
   - with a query,
   - with a group_id,
   - with include_deactivatved"
-  [status query group_id include_deactivated]
+  [status query group_ids include_deactivated]
   (cond-> {}
     true                               (sql.helpers/where (status-clause status include_deactivated))
     (premium-features/segmented-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
     (some? query)                      (sql.helpers/where (query-clause query))
-    (some? group_id)                   (sql.helpers/right-join :permissions_group_membership
+    (some? group_ids)                   (sql.helpers/right-join :permissions_group_membership
                                              [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group_id)                   (sql.helpers/where [:= :permissions_group_membership.group_id group_id])))
+    (some? group_ids)                   (sql.helpers/where [:in :permissions_group_membership.group_id group_ids])))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
@@ -167,19 +173,57 @@
   (let [include_deactivated (Boolean/parseBoolean include_deactivated)]
     {:data   (cond-> (t2/select
                       (vec (cons User (user-visible-columns)))
-                      (cond-> (user-clauses status query group_id include_deactivated)
+                      (cond-> (user-clauses status query (if (some? group_id) [group_id] nil) include_deactivated)
                         (some? group_id) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
                         true (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
                         (some? mw.offset-paging/*limit*)  (sql.helpers/limit mw.offset-paging/*limit*)
                         (some? mw.offset-paging/*offset*) (sql.helpers/offset mw.offset-paging/*offset*)))
                ;; For admins also include the IDs of Users' Personal Collections
                api/*is-superuser?*
-               (hydrate :personal_collection_id)
+               (t2/hydrate :personal_collection_id)
 
                (or api/*is-superuser?*
                    api/*is-group-manager?*)
-               (hydrate :group_ids))
-     :total  (t2/count User (user-clauses status query group_id include_deactivated))
+               (t2/hydrate :group_ids))
+     :total  (t2/count User (user-clauses status query (if (some? group_id) [group_id] nil) include_deactivated))
+     :limit  mw.offset-paging/*limit*
+     :offset mw.offset-paging/*offset*}))
+
+(api/defendpoint GET "/recipients"
+  "Fetch a list of `Users`. Returns only active users. Meant for non-admins unlike GET /api/user.
+
+   - If user-visibility is :all or the user is an admin, include all users.
+   - If user-visibility is :group, include only users in the same group (excluding the all users group).
+   - If user-visibility is :none or the user is sandboxed, include only themselves."
+  []
+  (cond
+    (or (= :all (user-visibility)) api/*is-superuser?*)
+    {:data   (t2/select
+              (vec (cons User (user-visible-columns)))
+              (cond-> (user-clauses nil nil nil nil)
+                true (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                (some? mw.offset-paging/*limit*)  (sql.helpers/limit mw.offset-paging/*limit*)
+                (some? mw.offset-paging/*offset*) (sql.helpers/offset mw.offset-paging/*offset*)))
+     :total  (t2/count User (user-clauses nil nil nil nil))
+     :limit  mw.offset-paging/*limit*
+     :offset mw.offset-paging/*offset*}
+    (and (= :group (user-visibility)) (not (premium-features/segmented-user?)))
+    (let [user_group_ids (map :id (:user_group_memberships
+                                   (-> (fetch-user :id api/*current-user-id*)
+                                       (t2/hydrate :user_group_memberships))))
+          data           (t2/select
+                          (vec (cons User (user-visible-columns)))
+                          (cond-> (user-clauses nil nil (remove #{1} user_group_ids) nil)
+                            true (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                            (some? mw.offset-paging/*limit*)  (sql.helpers/limit mw.offset-paging/*limit*)
+                            (some? mw.offset-paging/*offset*) (sql.helpers/offset mw.offset-paging/*offset*)))]
+      {:data   data
+       :total  (count data)
+       :limit  mw.offset-paging/*limit*
+       :offset mw.offset-paging/*offset*})
+    :else
+    {:data   [(fetch-user :id api/*current-user-id*)]
+     :total  1
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
@@ -236,7 +280,7 @@
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
+      (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
       add-has-question-and-dashboard
       add-first-login
       maybe-add-advanced-permissions
@@ -252,7 +296,7 @@
    (catch clojure.lang.ExceptionInfo _e
      (validation/check-group-manager)))
   (-> (api/check-404 (fetch-user :id id, :is_active true))
-      (hydrate :user_group_memberships)))
+      (t2/hydrate :user_group_memberships)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -281,7 +325,7 @@
       (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id new-user-id
                                                                            :source          "admin"})
       (-> (fetch-user :id new-user-id)
-          (hydrate :user_group_memberships)))))
+          (t2/hydrate :user_group_memberships)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -358,7 +402,7 @@
         (maybe-update-user-personal-collection-name! user-before-update body))
       (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
-      (hydrate :user_group_memberships)))
+      (t2/hydrate :user_group_memberships)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Reactivating a User -- PUT /api/user/:id/reactivate                               |

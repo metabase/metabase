@@ -8,11 +8,18 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.test :as mt]))
 
 (deftest ^:parallel fetch-field-test
   (let [field (#'lib.metadata.jvm/fetch-instance :metadata/field (mt/id :categories :id))]
     (is (not (me/humanize (mc/validate lib.metadata/ColumnMetadata field))))))
+
+(deftest ^:parallel fetch-database-test
+  (is (=? {:lib/type :metadata/database}
+          (lib.metadata/database (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))
+  (testing "Should return nil correctly"
+    (is (nil? (lib.metadata.protocols/database (lib.metadata.jvm/application-database-metadata-provider Integer/MAX_VALUE))))))
 
 (deftest ^:parallel saved-question-metadata-test
   (let [card  {:dataset-query {:database (mt/id)
@@ -71,7 +78,7 @@
                 :id (mt/id :orders :product_id)
                 :lib/desired-column-alias "Orders__PRODUCT_ID"
                 :display-name "Product ID"
-                :source_alias "Orders"}
+                :source-alias "Orders"}
                {:metabase.lib.field/join-alias "Orders"
                 :lib/type :metadata/field
                 :base-type :type/Integer
@@ -81,5 +88,5 @@
                 :effective-type :type/Integer
                 :lib/desired-column-alias "Orders__sum"
                 :display-name "Sum"
-                :source_alias "Orders"}]
+                :source-alias "Orders"}]
               (lib.metadata.calculation/metadata mlv2-query))))))

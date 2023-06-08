@@ -159,7 +159,7 @@ export default class Aggregation extends MBQLClause {
     if (this.hasOptions()) {
       return this.aggregation().isValid();
     } else if (this.isStandard() && this.dimension()) {
-      const dimension = this.dimension();
+      const dimension = this.dimension()?.getMLv1CompatibleDimension();
       const aggregationOperator = this.query().aggregationOperator(this[0]);
       return (
         aggregationOperator &&

@@ -5,7 +5,7 @@ import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { Grid } from "metabase/components/Grid";
 import Link from "metabase/core/components/Link";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
@@ -55,11 +55,11 @@ const UserCollectionList = ({ collectionsById }) => (
                             collectionsById[user.personal_collection_id],
                           )}
                         >
-                          <Card p={2} hoverable>
+                          <Card className="p2" hoverable>
                             <CardContent>
                               <Icon
                                 name="person"
-                                mr={1}
+                                classname="mr1"
                                 color={color("text-medium")}
                                 size={18}
                               />

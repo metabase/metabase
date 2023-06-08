@@ -9,7 +9,8 @@
    [metabase.query-processor.middleware.binning :as binning]
    [metabase.sync :as sync]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest ^:parallel filter->field-map-test
   (is (= {}
@@ -107,7 +108,7 @@
     :effective_type :type/Float}))
 
 (deftest update-binning-strategy-test
-  (mt/with-temp Field [field (test-field)]
+  (t2.with-temp/with-temp [Field field (test-field)]
     (is (= {:query    {:source-table (mt/id :checkins)
                        :breakout     [[:field (u/the-id field)
                                        {:binning
@@ -144,18 +145,18 @@
                  :database (mt/id)})))))))
 
 (deftest binning-nested-questions-test
-  (mt/with-temp Card [{card-id :id} {:dataset_query {:database (mt/id)
-                                                     :type     :query
-                                                     :query    {:source-table (mt/id :venues)}}}]
+  (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                               :type     :query
+                                                               :query    {:source-table (mt/id :venues)}}}]
     (is (= [[1 22]
             [2 59]
             [3 13]
             [4 6]]
-         (->> (mt/run-mbql-query nil
-                {:source-table (str "card__" card-id)
-                 :breakout     [[:field "PRICE" {:base-type :type/Float, :binning {:strategy :default}}]]
-                 :aggregation  [[:count]]})
-              (mt/formatted-rows [int int]))))))
+           (->> (mt/run-mbql-query nil
+                  {:source-table (str "card__" card-id)
+                   :breakout     [[:field "PRICE" {:base-type :type/Float, :binning {:strategy :default}}]]
+                   :aggregation  [[:count]]})
+                (mt/formatted-rows [int int]))))))
 
 (mt/defdataset single-row
   [["t" [{:field-name    "lat"

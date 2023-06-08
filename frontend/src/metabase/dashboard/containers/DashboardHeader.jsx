@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { createRef, Component, Fragment } from "react";
+import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import PropTypes from "prop-types";
@@ -10,7 +10,7 @@ import { getIsNavbarOpen } from "metabase/redux/app";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
@@ -69,7 +69,6 @@ const mapDispatchToProps = {
 class DashboardHeader extends Component {
   constructor(props) {
     super(props);
-    this.addQuestionModal = createRef();
     this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
   }
 
@@ -116,6 +115,14 @@ class DashboardHeader extends Component {
     addActionToDashboard: PropTypes.func.isRequired,
 
     databases: PropTypes.object,
+
+    dashboardId: PropTypes.number,
+    selectedTabId: PropTypes.number,
+
+    location: PropTypes.shape({
+      query: PropTypes.object,
+      pathname: PropTypes.string,
+    }),
   };
 
   handleEdit(dashboard) {
@@ -395,8 +402,12 @@ class DashboardHeader extends Component {
       });
 
       extraButtons.push({
-        title: t`Export as PDF`,
+        title:
+          dashboard.ordered_tabs?.length > 1
+            ? t`Export tab as PDF`
+            : t`Export as PDF`,
         icon: "document",
+        testId: "dashboard-export-pdf-button",
         action: () => {
           this.saveAsImage();
         },

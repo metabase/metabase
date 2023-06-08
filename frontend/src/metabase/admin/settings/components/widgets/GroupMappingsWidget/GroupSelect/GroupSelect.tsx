@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/core/utils/types";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Select from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 

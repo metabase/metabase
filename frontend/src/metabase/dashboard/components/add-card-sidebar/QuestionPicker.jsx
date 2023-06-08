@@ -4,7 +4,7 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";

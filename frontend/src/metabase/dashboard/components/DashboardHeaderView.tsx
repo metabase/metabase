@@ -14,7 +14,7 @@ import { getScrollY } from "metabase/lib/dom";
 import { color } from "metabase/lib/colors";
 import { Collection, Dashboard } from "metabase-types/api";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import EditBar from "metabase/components/EditBar";
 import HeaderModal from "metabase/components/HeaderModal";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";

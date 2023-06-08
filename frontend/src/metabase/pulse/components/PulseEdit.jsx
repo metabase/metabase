@@ -8,7 +8,7 @@ import ActionButton from "metabase/components/ActionButton";
 
 import Button from "metabase/core/components/Button";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ModalContent from "metabase/components/ModalContent";
@@ -170,7 +170,12 @@ class PulseEdit extends Component {
         </div>
         <div className="PulseEdit-content pt2 pb4">
           <PulseHeader className="hover-parent hover--visibility">
-            <Icon name="warning" color={color("warning")} size={24} mr={1} />
+            <Icon
+              name="warning"
+              color={color("warning")}
+              size={24}
+              className="mr1"
+            />
             <PulseHeaderContent>
               <Subhead>{t`Pulses are being phased out`}</Subhead>
               <Text>{jt`You can now set up ${link} instead. We'll remove Pulses in a future release, and help you migrate any that you still have.`}</Text>
@@ -219,7 +224,7 @@ class PulseEdit extends Component {
               successText={t`Saved`}
             />
           )}
-          <Button onClick={() => this.props.goBack()} ml={2}>
+          <Button onClick={() => this.props.goBack()} className="ml2">
             {t`Cancel`}
           </Button>
           {pulse.id != null && !pulse.archived && (

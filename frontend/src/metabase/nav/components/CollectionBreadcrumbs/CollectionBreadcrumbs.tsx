@@ -38,7 +38,6 @@ export const CollectionBreadcrumbs = ({
         <ExpandButton
           small
           borderless
-          iconSize={10}
           icon="ellipsis"
           onlyIcon
           onClick={toggle}

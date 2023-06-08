@@ -11,7 +11,8 @@ import {
   getCollectionIcon,
   getCollectionTooltip,
 } from "metabase/entities/collections";
-import Icon from "metabase/components/Icon";
+
+import { Icon } from "metabase/core/components/Icon";
 
 import {
   CaptionDescription,

@@ -4,7 +4,7 @@ import { createRef, Component } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
 
 import AlertListPopoverContent from "../AlertListPopoverContent";
@@ -70,6 +70,7 @@ export default class QuestionAlertWidget extends Component {
         <Icon
           name="bell"
           tooltip={t`Get alerts`}
+          size={20}
           className={cx(className, "text-brand-hover cursor-pointer")}
           onClick={onCreateAlert}
         />

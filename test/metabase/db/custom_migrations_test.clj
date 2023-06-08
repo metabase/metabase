@@ -183,7 +183,8 @@
 (deftest add-join-alias-to-visualization-settings-field-refs-test
   (testing "Migrations v47.00-028: update visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-028"] [migrate!]
-      (let [result_metadata
+      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+            result_metadata
             [{:field_ref [:field 1 nil]}
              {:field_ref [:field 1 {:join-alias "Self-joined Table"}]}
              {:field_ref [:field 2 {:source-field 3}]}
@@ -230,8 +231,16 @@
                                                         :database_id            database-id
                                                         :collection_id          nil})]
         (migrate!)
-        (testing "column_settings field refs are updated"
+        (testing "After the migration, column_settings field refs are updated to include join-alias"
           (is (= expected
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_card]
+                                    :where  [:= :id card-id]})
+                     :visualization_settings
+                     json/parse-string))))
+        (db.setup/migrate! db-type data-source :down 46)
+        (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
+          (is (= visualization-settings
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_card]
                                     :where  [:= :id card-id]})

@@ -70,7 +70,6 @@ export const ResponsiveParametersList = ({
               borderless
               icon="close"
               onClick={handleFilterButtonClick}
-              iconSize={14}
             />
           </ParametersListHeader>
         )}

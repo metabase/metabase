@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { addUndo } from "metabase/redux/undo";
 import { AlertApi } from "metabase/services";
 import { RestfulRequest } from "metabase/lib/request";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 export const FETCH_ALL_ALERTS = "metabase/alerts/FETCH_ALL_ALERTS";
 const fetchAllAlertsRequest = new RestfulRequest({
