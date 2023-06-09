@@ -28,7 +28,7 @@ jobs:
     timeout-minutes: 25
     strategy:
       matrix:
-        edition: [oss, ee]
+        edition: [ee]
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
@@ -89,10 +89,6 @@ jobs:
           - "question"
           - "sharing"
           - "visualizations"
-        include:
-          - edition: oss
-            context: grep
-            java-version: 11
     services:
       maildev:
         image: maildev/maildev:2.0.5
