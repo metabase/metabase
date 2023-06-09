@@ -55,7 +55,7 @@ const CloseSidebarButtonWithDefault = ({
 }: {
   name?: IconName;
   [key: string]: unknown;
-}) => <CloseSidebarButton name={name} {...props} />;
+}) => <CloseSidebarButton aria-label={t`Close`} name={name} {...props} />;
 
 function PermissionsPageLayout({
   children,

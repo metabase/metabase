@@ -26,6 +26,20 @@ describeEE("scenarios > admin > permissions > application", () => {
     cy.signInAsAdmin();
   });
 
+  it("shows permissions help", () => {
+    cy.visit("/admin/permissions/application");
+    cy.get("main").within(() => {
+      cy.findByText("Permission help").as("permissionHelpButton").click();
+      cy.get("@permissionHelpButton").should("not.exist");
+      cy.findAllByText("Applications permissions");
+
+      cy.findByText(
+        "Application settings are useful for granting groups access to some, but not all, of Metabase’s administrative features.",
+      );
+      cy.findByLabelText("Close").click();
+    });
+  });
+
   describe("subscriptions permission", () => {
     describe("revoked", () => {
       beforeEach(() => {

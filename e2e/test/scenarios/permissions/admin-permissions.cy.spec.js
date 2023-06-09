@@ -734,3 +734,31 @@ describeEE("scenarios > admin > permissions", () => {
     cy.findByText("Sorry, you don't have permission to see this card.");
   });
 });
+
+describe("scenarios > admin > permissions", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("shows permissions help", () => {
+    cy.visit("/admin/permissions");
+    cy.get("main").within(() => {
+      // Data permissions
+      cy.findByText("Permission help").as("permissionHelpButton").click();
+      cy.get("@permissionHelpButton").should("not.exist");
+      cy.findByText("Data permissions");
+      cy.findByText("Database levels").click();
+      cy.findByText("Unrestricted");
+      cy.findByText("Impersonated (Pro)");
+      cy.findByLabelText("Close").click();
+
+      // Collection permissions
+      cy.findByText("Collections").click();
+      cy.get("@permissionHelpButton").click();
+      cy.findByText("Collection permissions");
+      cy.findByText("Collections Permission Levels");
+      cy.findByLabelText("Close").click();
+    });
+  });
+});
