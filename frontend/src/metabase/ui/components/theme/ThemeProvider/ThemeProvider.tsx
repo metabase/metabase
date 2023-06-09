@@ -1,13 +1,11 @@
 import { ReactNode } from "react";
 import { MantineProvider } from "@mantine/core";
-import { theme } from "metabase/ui";
+import { theme } from "../../../theme";
 
 interface ThemeProviderProps {
   children: ReactNode;
 }
 
 export const ThemeProvider = ({ children }: ThemeProviderProps) => (
-  <MantineProvider theme={theme} withNormalizeCSS>
-    {children}
-  </MantineProvider>
+  <MantineProvider theme={theme}>{children}</MantineProvider>
 );
