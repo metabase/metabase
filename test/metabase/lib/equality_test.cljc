@@ -4,6 +4,7 @@
    [clojure.test.check.generators :as gen]
    [malli.generator :as mg]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.test-metadata :as meta]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
@@ -183,3 +184,43 @@
           y (mg/generate schema {:seed seed})]
       (testing (str \newline (u/pprint-to-str (list `lib.equality/= (list 'quote x) (list 'quote y))))
         (is (lib.equality/= x y))))))
+
+(deftest ^:parallel find-closest-matching-ref-test
+  (are [a-ref refs expected] (= expected
+                                (lib.equality/find-closest-matching-ref a-ref refs))
+    ;; strict matching
+    [:field {} 1]
+    [[:field {} 1]
+     [:field {} 2]
+     [:field {} 3]]
+    [:field {} 1]
+
+    [:field {:base-type :type/Integer} 1]
+    [[:field {:base-type :type/Number} 1]
+     [:field {:base-type :type/Integer} 1]]
+    [:field {:base-type :type/Integer} 1]
+
+    [:field {:join-alias "J"} 1]
+    [[:field {:join-alias "J"} 1]
+     [:field {:join-alias "J"} 2]]
+    [:field {:join-alias "J"} 1]
+
+    ;; if no strict match, should ignore type info and return first match
+    [:field {:base-type :type/Float} 1]
+    [[:field {:base-type :type/Number} 1]
+     [:field {:base-type :type/Integer} 1]]
+    [:field {:base-type :type/Number} 1]
+
+    ;; if no exact match, ignore :join-alias
+    [:field {} 1]
+    [[:field {:join-alias "J"} 1]
+     [:field {:join-alias "J"} 2]]
+    [:field {:join-alias "J"} 1]))
+
+(deftest ^:parallel find-closest-matching-ref-3-arity-test
+  (is (= [:field {} "CATEGORY"]
+         (lib.equality/find-closest-matching-ref
+          meta/metadata-provider
+          [:field {} (meta/id :products :category)]
+          [[:field {} "ID"]
+           [:field {} "CATEGORY"]]))))

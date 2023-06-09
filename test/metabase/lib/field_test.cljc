@@ -201,7 +201,11 @@
                             :long-display-name "Products → Category"
                             :effective-type    :type/Text}]
                           (map (partial lib/display-info query')
-                               (lib/breakouts query')))))))))))))
+                               (lib/breakouts query'))))
+                  (is (=? {:display-name      "Products → Category"
+                           :breakout-position 0}
+                          (m/find-first #(= (:id %) (meta/id :products :category))
+                                        (lib/breakoutable-columns query')))))))))))))
 
 (deftest ^:parallel unresolved-lib-field-with-temporal-bucket-test
   (let [query (lib/query-for-table-name meta/metadata-provider "CHECKINS")

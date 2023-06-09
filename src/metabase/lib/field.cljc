@@ -506,6 +506,8 @@
                               (let [col-ref (lib.ref/ref column)]
                                 (boolean
                                  (some (fn [fields-ref]
+                                         ;; FIXME: This should use [[lib.equality/find-closest-matching-ref]] instead.
+                                         #_{:clj-kondo/ignore [:deprecated-var]}
                                          (lib.equality/ref= col-ref fields-ref))
                                        current-fields)))))]
      (mapv (fn [col]
