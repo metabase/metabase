@@ -1,6 +1,6 @@
 import React from "react";
 import "metabase/css/index.css";
-import { ThemeProvider } from "../frontend/src/metabase/ui";
+import { ThemeProvider } from "metabase/ui";
 
 export const parameters = {
   actions: { argTypesRegex: "^on[A-Z].*" },

@@ -7,7 +7,6 @@ import _ from "underscore";
 import { getIn, merge, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
-// eslint-disable-next-line no-unused-vars
 import {
   extractRemappings,
   getVisualizationTransformed,
