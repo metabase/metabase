@@ -50,7 +50,7 @@ const TEST_CARD = createMockCard({
   },
 });
 
-const TestComponent: typeof EditSandboxingModal = ({ ...props }) => {
+const TestComponent: typeof EditSandboxingModal = props => {
   const { data, error, isLoading } = useCollectionsQuery();
 
   if (!data) {

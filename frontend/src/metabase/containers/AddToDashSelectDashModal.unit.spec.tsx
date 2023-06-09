@@ -1,24 +1,26 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
 import {
-  setupMostRecentlyViewedDashboard,
-  setupCollectionsEndpoints,
-  setupSearchEndpoints,
   setupCollectionByIdEndpoint,
+  setupCollectionsEndpoints,
   setupDashboardCollectionItemsEndpoint,
+  setupMostRecentlyViewedDashboard,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import { Collection, Dashboard } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockDashboard,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { Collection, Dashboard } from "metabase-types/api";
+import { useCollectionsQuery } from "metabase/common/hooks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
@@ -87,6 +89,16 @@ interface SetupOpts {
   waitForContent?: boolean;
 }
 
+const TestComponent: typeof AddToDashSelectDashModal = props => {
+  const { data, error, isLoading } = useCollectionsQuery();
+
+  if (!data) {
+    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  }
+
+  return <AddToDashSelectDashModal {...props} />;
+};
+
 const setup = async ({
   collections = COLLECTIONS,
   dashboard = DASHBOARD,
@@ -95,7 +107,7 @@ const setup = async ({
   waitForContent = true,
 }: SetupOpts = {}) => {
   setupSearchEndpoints([]);
-  setupCollectionsEndpoints({ collections });
+  setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
   setupDashboardCollectionItemsEndpoint([dashboard]);
   setupCollectionByIdEndpoint({ collections, error });
   setupMostRecentlyViewedDashboard(noRecentDashboard ? undefined : dashboard);
@@ -104,7 +116,7 @@ const setup = async ({
     <Route
       path="/"
       component={() => (
-        <AddToDashSelectDashModal
+        <TestComponent
           card={CARD}
           onChangeLocation={() => undefined}
           onClose={() => undefined}
