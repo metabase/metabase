@@ -487,3 +487,31 @@
                                      (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Categories"))])
                                   (lib/with-join-fields [(lib/with-join-alias (lib/field "CATEGORIES" "NAME") "Categories")])))
                     lib/breakoutable-columns))))))
+
+(deftest ^:parallel breakoutable-columns-broken-ref-should-be-selected-test
+  (testing "Field refs that differ from what we return should still show up as selected if they refer to the same Field (#31482)"
+    (doseq [[message field-ref] {;; this ref is basically what we [[lib/breakout]] would have added but doesn't
+                                 ;; contain type info, shouldn't matter tho.
+                                 "correct ref but missing :base-type/:effective-type"
+                                 [:field {:lib/uuid (str (random-uuid)), :join-alias "Categories"} (meta/id :categories :name)]
+
+                                 ;; this is a busted Field ref, it's referring to a Field from a joined Table but
+                                 ;; does not include `:join-alias`. It should still work anyway.
+                                 "busted ref"
+                                 [:field {:lib/uuid (str (random-uuid))} (meta/id :categories :name)]}]
+      (testing (str \newline message " ref = " (pr-str field-ref))
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                        (lib/join (-> (lib/join-clause
+                                       (meta/table-metadata :categories)
+                                       [(lib/=
+                                         (lib/field "VENUES" "CATEGORY_ID")
+                                         (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Categories"))])
+                                      (lib/with-join-alias "Categories")
+                                      (lib/with-join-fields [(lib/with-join-alias (lib/field "CATEGORIES" "NAME") "Categories")])))
+                        (lib/breakout field-ref))]
+          (is (= [field-ref]
+                 (lib/breakouts query)))
+          (is (=? {:name              "NAME"
+                   :breakout-position 0}
+                  (m/find-first #(= (:id %) (meta/id :categories :name))
+                                (lib/breakoutable-columns query)))))))))
