@@ -201,8 +201,8 @@
     [:field {:base-type :type/Integer} 1]
 
     [:field {:join-alias "J"} 1]
-    [[:field {:join-alias "J"} 1]
-     [:field {:join-alias "J"} 2]]
+    [[:field {:join-alias "I"} 1]
+     [:field {:join-alias "J"} 1]]
     [:field {:join-alias "J"} 1]
 
     ;; if no strict match, should ignore type info and return first match
