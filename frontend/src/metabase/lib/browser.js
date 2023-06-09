@@ -41,3 +41,8 @@ export function isMac() {
   const { platform = "" } = navigator;
   return Boolean(platform.match(/^Mac/));
 }
+
+export function isDesktopSafari() {
+  // from: https://stackoverflow.com/a/42189492/142317
+  return "safari" in window;
+}

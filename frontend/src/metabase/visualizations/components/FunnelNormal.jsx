@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
+import { Component, useLayoutEffect, useRef } from "react";
 
 import cx from "classnames";
 
@@ -9,6 +9,8 @@ import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { findSeriesByKey } from "metabase/visualizations/lib/series";
 
 import { color } from "metabase/lib/colors";
+import { isDesktopSafari } from "metabase/lib/browser";
+import { forceRedraw } from "metabase/lib/dom";
 import styles from "./FunnelNormal.css";
 
 export default class FunnelNormal extends Component {
@@ -200,8 +202,16 @@ const GraphSection = ({
   onVisualizationClick,
   className,
 }) => {
+  const rootRef = useRef();
+  useLayoutEffect(() => {
+    // In Safari, the ChartTooltip leaves a trail of artifacts over the Funnel component,
+    // which we fix by redrawing this component when the tooltip moves (i.e. when `hovered` changes).
+    if (isDesktopSafari()) {
+      forceRedraw(rootRef.current);
+    }
+  });
   return (
-    <div className="relative full-height">
+    <div ref={rootRef} className="relative full-height">
       <svg
         height="100%"
         width="100%"
