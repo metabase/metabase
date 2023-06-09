@@ -5,6 +5,7 @@
    [flatland.ordered.map :as ordered-map]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
@@ -515,12 +516,16 @@
    table_db_id  (s/maybe su/IntGreaterThanZero)
    models       (s/maybe models-schema)}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
-  (search (search-context
-           q
-           archived
-           table_db_id
-           models
-           mw.offset-paging/*limit*
-           mw.offset-paging/*offset*)))
+  (let [start-time (System/currentTimeMillis)
+        results    (search (search-context
+                            q
+                            archived
+                            table_db_id
+                            models
+                            mw.offset-paging/*limit*
+                            mw.offset-paging/*offset*))
+        duration   (- (System/currentTimeMillis) start-time)]
+    (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id* {:runtime duration})
+    results))
 
 (api/define-routes)

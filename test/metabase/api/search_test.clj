@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.common :as api]
    [metabase.api.search :as api.search]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -724,3 +725,12 @@
         ;; we have this test here just to keep tracks this number to remind us to put effort
         ;; into keep this number as low as we can
         (is (= 7 (call-count)))))))
+
+(deftest snowplow-new-search-query-event-test
+  (testing "Send a snowplow event when a new search query is made"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/user-http-request :crowberto :get 200 "search?q=test")
+      (is (=? {:data {"event" "new_search_query"
+                      "runtime" pos?}
+               :user-id (str (mt/user->id :crowberto))}
+              (last (snowplow-test/pop-event-data-and-user-id!)))))))
