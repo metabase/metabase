@@ -251,21 +251,20 @@ describe("scenarios > question > saved", () => {
       });
   });
 
-  it("should always be possible to view the full text of the saved question", () => {
+  it("should always be possible to view the full title text of the saved question", () => {
     visitQuestion(1);
-    cy.findByTestId("saved-question-header-title").click();
-    cy.findByTestId("saved-question-header-title").clear();
-    cy.findByTestId("saved-question-header-title").type(
+    const savedQuestionTitle = cy.findByTestId("saved-question-header-title");
+    savedQuestionTitle.clear();
+    savedQuestionTitle.type(
       "Space, the final frontier. These are the voyages of the Starship Enterprise.",
     );
-    cy.findByTestId("saved-question-header-title").blur();
-    cy.findByTestId("saved-question-header-title").should("be.visible");
+    savedQuestionTitle.blur();
 
-    cy.findByTestId("saved-question-header-title")
-      .should("be.visible")
-      .should($el => {
-        const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
-        expect(heightDifference).to.eq(0);
-      });
+    savedQuestionTitle.should("be.visible").should($el => {
+      // clientHeight: height of the textarea
+      // scrollHeight: height of the text content, including content not visible on the screen
+      const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
+      expect(heightDifference).to.eq(0);
+    });
   });
 });
