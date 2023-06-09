@@ -1145,7 +1145,7 @@ saved later when it is ready."
 (defn csv-stats [csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
     (let [rows (csv/read-csv reader)]
-      {:size-bytes  (.length csv-file)
+      {:size-mb     (/ (.length csv-file) 1048576.0)
        :num-columns (count (first rows))
        :num-rows    (count (rest rows))})))
 

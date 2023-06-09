@@ -17,28 +17,33 @@
     },
     "model_id": {
       "description": "Unique identifier for the newly created model",
-      "type": ["string", "null"],
-      "maxLength": 128
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 2147483647
     },
     "upload_speed": {
       "description": "Number of milliseconds the csv took to upload",
       "type": ["integer", "null"],
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 2147483647
     },
     "size_mb": {
       "description": "File size of the CSV in megabytes",
       "type": "number",
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 2147483647
     },
     "num_columns": {
       "description": "Number of columns in the CSV",
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 2147483647
     },
     "num_rows": {
       "description": "Number of rows in the CSV",
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 2147483647
     }
   },
   "required": ["event", "size_mb", "num_columns", "num_rows"],

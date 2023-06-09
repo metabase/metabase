@@ -2974,7 +2974,7 @@
           (snowplow-test/with-fake-snowplow-collector
             (upload-example-csv! nil)
             (is (=? {:data {"model_id"     pos?
-                            "size_bytes"   41
+                            "size_mb"      3.910064697265625E-5
                             "num_columns"  2
                             "num_rows"     2
                             "upload_speed" pos-int?
@@ -2986,7 +2986,7 @@
               (try (upload-example-csv! nil)
                    (catch Throwable _
                      nil))
-              (is (= {:data {"size_bytes"  41
+              (is (= {:data {"size_mb"     3.910064697265625E-5
                              "num_columns" 2
                              "num_rows"    2
                              "event"       "csv_upload_failed"}
