@@ -6,8 +6,8 @@ import { Icon } from "metabase/core/components/Icon";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 
-import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
-import ExpressionWidgetHeader from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
+import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 
 import type {
   Aggregation as LegacyAggregationClause,
