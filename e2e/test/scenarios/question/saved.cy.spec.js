@@ -250,4 +250,22 @@ describe("scenarios > question > saved", () => {
         assertColumnResized();
       });
   });
+
+  it("should always be possible to view the full text of the saved question", () => {
+    visitQuestion(1);
+    cy.findByTestId("saved-question-header-title").click();
+    cy.findByTestId("saved-question-header-title").clear();
+    cy.findByTestId("saved-question-header-title").type(
+      "Space, the final frontier. These are the voyages of the Starship Enterprise.",
+    );
+    cy.findByTestId("saved-question-header-title").blur();
+    cy.findByTestId("saved-question-header-title").should("be.visible");
+
+    cy.findByTestId("saved-question-header-title")
+      .should("be.visible")
+      .should($el => {
+        const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
+        expect(heightDifference).to.eq(0);
+      });
+  });
 });
