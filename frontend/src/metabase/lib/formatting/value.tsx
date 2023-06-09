@@ -31,7 +31,6 @@ import { formatImage } from "./image";
 import { OptionsType } from "./types";
 
 const MARKDOWN_RENDERERS = {
-  // eslint-disable-next-line react/display-name
   a: ({ href, children }: any) => (
     <ExternalLink href={href}>{children}</ExternalLink>
   ),

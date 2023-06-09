@@ -115,7 +115,7 @@
               (lib.metadata.calculation/metadata query -1 query))))))
 
 (deftest ^:parallel col-info-explicit-join-test
-  (testing "Display name for a joined field should include a nice name for the join; include other info like :source_alias"
+  (testing "Display name for a joined field should include a nice name for the join; include other info like :source-alias"
     (let [query {:lib/type     :mbql/query
                  :stages       [{:lib/type     :mbql.stage/mbql
                                  :lib/options  {:lib/uuid "fdcfaa06-8e65-471d-be5a-f1e821022482"}
@@ -304,6 +304,22 @@
 (deftest ^:parallel available-join-strategies-test
   (is (= [:left-join :right-join :inner-join]
          (lib/available-join-strategies (lib.tu/query-with-join)))))
+
+(deftest ^:parallel with-join-fields-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/join (-> (lib/join-clause
+                                 (meta/table-metadata :categories)
+                                 [(lib/=
+                                   (lib/field "VENUES" "CATEGORY_ID")
+                                   (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                                (lib/with-join-alias "Cat")
+                                (lib/with-join-fields :all))))]
+    (is (=? {:stages [{:joins [{:alias      "Cat"
+                                :fields     :all
+                                :conditions [[:= {}
+                                              [:field {} (meta/id :venues :category-id)]
+                                              [:field {:join-alias "Cat"} (meta/id :categories :id)]]]}]}]}
+            query))))
 
 (defn- query-with-join-with-fields
   "A query against `VENUES` joining `CATEGORIES` with `:fields` set to return only `NAME`."

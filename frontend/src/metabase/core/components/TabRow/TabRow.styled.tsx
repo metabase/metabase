@@ -9,10 +9,10 @@ import { space } from "metabase/styled-components/theme";
 
 export const TabList = styled(BaseTabList)`
   width: 100%;
-  border-bottom: 1px solid ${color("border")};
 
   ${BaseTabList.Content} {
     display: flex;
+    align-items: end;
     overflow-x: scroll;
     /* Chrome */
     ::-webkit-scrollbar {
@@ -23,15 +23,15 @@ export const TabList = styled(BaseTabList)`
   }
 
   ${TabLink.Root}:not(:last-child) {
-    margin-right: 2rem;
+    margin-right: 0.75rem;
   }
 
   ${TabButton.Root}:not(:last-child) {
-    margin-right: 2rem;
+    margin-right: 0.75rem;
   }
 
   ${SortableDiv}:not(:last-child) {
-    margin-right: 2rem;
+    margin-right: 0.75rem;
   }
 `;
 

@@ -1,8 +1,6 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require
-   [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
    [compojure.core :refer [DELETE GET POST]]
    [java-time :as t]
    [metabase.analytics.snowplow :as snowplow]
@@ -22,7 +20,6 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -322,18 +319,9 @@
 
 (def ^:private unsubscribe-throttler (throttle/make-throttler :unsubscribe, :attempts-threshold 50))
 
-(defn generate-hash
-  "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions."
-  [pulse-id email]
-  (codecs/bytes->hex
-   (encryption/validate-and-hash-secret-key
-    (json/generate-string {:salt public-settings/site-uuid-for-unsubscribing-url
-                           :email email
-                           :pulse-id pulse-id}))))
-
 (defn- check-hash [pulse-id email hash ip-address]
   (throttle-check unsubscribe-throttler ip-address)
-  (when (not= hash (generate-hash pulse-id email))
+  (when (not= hash (messages/generate-pulse-unsubscribe-hash pulse-id email))
     (throw (ex-info (tru "Invalid hash.")
                     {:type        type
                      :status-code 400}))))

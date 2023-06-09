@@ -44,7 +44,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
    (java.util UUID)))
@@ -57,7 +56,7 @@
                                                       :mine [:= :creator_id api/*current-user-id*])
                                                 [:= :archived (= (keyword filter-option) :archived)]]
                                      :order-by [:%lower.name]}) <>
-    (hydrate <> :creator)
+    (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -219,7 +218,7 @@
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
-      (hydrate [:ordered_cards
+      (t2/hydrate [:ordered_cards
                 [:card [:moderation_reviews :moderator_details]]
                 :series
                 :dashcard/action
@@ -814,7 +813,7 @@
     ;; -> #{276}"
   [dashboard param-key]
   {:pre [(string? param-key)]}
-  (let [{:keys [resolved-params]} (hydrate dashboard :resolved-params)
+  (let [{:keys [resolved-params]} (t2/hydrate dashboard :resolved-params)
         param                     (get resolved-params param-key)]
     (mappings->field-ids (:mappings param))))
 
@@ -873,7 +872,7 @@
     param-key                   :- su/NonBlankString
     constraint-param-key->value :- su/Map
     query                       :- (s/maybe su/NonBlankString)]
-   (let [dashboard (hydrate dashboard :resolved-params)
+   (let [dashboard (t2/hydrate dashboard :resolved-params)
          param     (get (:resolved-params dashboard) param-key)]
      (when-not param
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))

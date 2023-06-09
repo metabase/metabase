@@ -20,7 +20,6 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -783,7 +782,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Dashboard can only go in Collections in the \"default\" namespace"
-               (t2/insert! Dashboard (assoc (tt/with-temp-defaults Dashboard) :collection_id collection-id, :name dashboard-name))))
+               (t2/insert! Dashboard (assoc (t2.with-temp/with-temp-defaults Dashboard) :collection_id collection-id, :name dashboard-name))))
           (finally
             (t2/delete! Dashboard :name dashboard-name)))))
 
