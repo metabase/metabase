@@ -1,3 +1,4 @@
+import { FunctionComponent } from "react";
 import { IndexRedirect, Redirect, Route } from "react-router";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
@@ -195,7 +196,7 @@ type SetupOpts = {
   usedBy?: Card[];
 };
 
-const TestModelDetailPage: typeof ModelDetailPage = props => {
+const TestModelDetailPage: FunctionComponent = props => {
   const { data, error, isLoading } = useCollectionListQuery();
 
   if (!data) {
@@ -205,7 +206,7 @@ const TestModelDetailPage: typeof ModelDetailPage = props => {
   return <ModelDetailPage {...props} />;
 };
 
-const TestActionCreator: typeof ActionCreator = props => {
+const TestActionCreator: FunctionComponent = props => {
   const { data, error, isLoading } = useCollectionListQuery();
 
   if (!data) {
