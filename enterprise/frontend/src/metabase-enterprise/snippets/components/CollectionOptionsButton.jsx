@@ -1,16 +1,16 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 const ICON_SIZE = 16;
 
-export default class CollectionOptionsButton extends React.Component {
+export default class CollectionOptionsButton extends Component {
   render() {
     if (!MetabaseSettings.enhancementsEnabled()) {
       return null;

@@ -1,4 +1,3 @@
-import React from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";

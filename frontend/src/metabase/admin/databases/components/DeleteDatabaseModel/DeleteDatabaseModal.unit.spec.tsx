@@ -1,5 +1,4 @@
 import { render, waitForElementToBeRemoved } from "@testing-library/react";
-import React from "react";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { screen } from "__support__/ui";

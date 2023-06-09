@@ -1,11 +1,18 @@
-import React from "react";
-import { IndexRedirect, Route } from "react-router";
-import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { within } from "@testing-library/react";
 import { Database } from "metabase-types/api";
 import {
+  createMockDatabase,
+  createMockField,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import {
+  createOrdersDiscountField,
+  createOrdersIdField,
+  createOrdersProductIdField,
   createOrdersTable,
+  createOrdersUserIdField,
   createPeopleTable,
   createProductsTable,
   createReviewsTable,
@@ -18,13 +25,25 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitFor,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import MetadataTableSettings from "../MetadataTableSettings";
-import MetadataEditor from "./MetadataEditor";
+import { getMetadataRoutes } from "../../routes";
+
+const ORDERS_ID_FIELD = createOrdersIdField();
+
+const ORDERS_PRODUCT_ID_FIELD = createOrdersProductIdField();
+
+const ORDERS_USER_ID_FIELD = createOrdersUserIdField();
+
+const ORDERS_DISCOUNT_FIELD = createOrdersDiscountField();
 
 const ORDERS_TABLE = createOrdersTable({
+  fields: [
+    ORDERS_ID_FIELD,
+    ORDERS_PRODUCT_ID_FIELD,
+    ORDERS_USER_ID_FIELD,
+    ORDERS_DISCOUNT_FIELD,
+  ],
   visibility_type: "technical",
 });
 
@@ -34,11 +53,11 @@ const SAMPLE_DB = createSampleDatabase({
   tables: [ORDERS_TABLE, PRODUCTS_TABLE],
 });
 
-const PEOPLE_TABLE = createPeopleTable({
+const PEOPLE_TABLE_MULTI_SCHEMA = createPeopleTable({
   db_id: 2,
 });
 
-const REVIEWS_TABLE = createReviewsTable({
+const REVIEWS_TABLE_MULTI_SCHEMA = createReviewsTable({
   db_id: 2,
   schema: "PRIVATE",
 });
@@ -46,46 +65,70 @@ const REVIEWS_TABLE = createReviewsTable({
 const SAMPLE_DB_MULTI_SCHEMA = createSampleDatabase({
   id: 2,
   name: "Multi schema",
-  tables: [PEOPLE_TABLE, REVIEWS_TABLE],
+  tables: [PEOPLE_TABLE_MULTI_SCHEMA, REVIEWS_TABLE_MULTI_SCHEMA],
+});
+
+const ORDERS_TABLE_NO_SCHEMA = createOrdersTable({
+  schema: "",
+});
+
+const SAMPLE_DB_NO_SCHEMA = createSampleDatabase({
+  name: "No schema",
+  tables: [ORDERS_TABLE_NO_SCHEMA],
+});
+
+const JSON_FIELD_ROOT = createMockField({
+  id: 1,
+  name: "JSON",
+  display_name: "Json",
+});
+
+const JSON_FIELD_NESTED = createMockField({
+  id: 2,
+  name: "version",
+  display_name: "Version",
+  nfc_path: ["JSON", "version"],
+});
+
+const JSON_TABLE = createMockTable({
+  fields: [JSON_FIELD_ROOT, JSON_FIELD_NESTED],
+});
+
+const JSON_DB = createMockDatabase({
+  tables: [JSON_TABLE],
 });
 
 interface SetupOpts {
   databases?: Database[];
-  initialRoute?: string;
 }
 
-const setup = async ({
-  databases = [SAMPLE_DB],
-  initialRoute = "admin/datamodel",
-}: SetupOpts = {}) => {
+const setup = async ({ databases = [SAMPLE_DB] }: SetupOpts = {}) => {
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints([]);
 
   renderWithProviders(
-    <Route path="admin/datamodel">
-      <IndexRedirect to="database" />
-      <Route path="database" component={MetadataEditor} />
-      <Route path="database/:databaseId" component={MetadataEditor} />
-      <Route
-        path="database/:databaseId/schema/:schemaId"
-        component={MetadataEditor}
-      />
-      <Route
-        path="database/:databaseId/schema/:schemaId/table/:tableId"
-        component={MetadataEditor}
-      />
-      <Route
-        path="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-        component={MetadataTableSettings}
-      />
-    </Route>,
-    { withRouter: true, initialRoute },
+    <Route path="admin/datamodel">{getMetadataRoutes()}</Route>,
+    { withRouter: true, initialRoute: "admin/datamodel" },
   );
 
   await waitForElementToBeRemoved(() => screen.queryByText(/Loading/));
 };
 
 describe("MetadataEditor", () => {
+  describe("no schema database", () => {
+    it("should select the first database and skip schema selection by default", async () => {
+      await setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
+
+      expect(screen.getByText(SAMPLE_DB_NO_SCHEMA.name)).toBeInTheDocument();
+      expect(
+        screen.getByText(ORDERS_TABLE_NO_SCHEMA.display_name),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText("Find a schema"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("single schema database", () => {
     it("should select the first database and the only schema by default", async () => {
       await setup();
@@ -122,28 +165,33 @@ describe("MetadataEditor", () => {
     });
 
     it("should not allow to enter an empty field name", async () => {
-      const [field] = ORDERS_TABLE.fields ?? [];
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.clear(await screen.findByDisplayValue(field.display_name));
+      userEvent.clear(
+        await screen.findByDisplayValue(ORDERS_ID_FIELD.display_name),
+      );
       userEvent.tab();
 
-      expect(screen.getByDisplayValue(field.display_name)).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue(ORDERS_ID_FIELD.display_name),
+      ).toBeInTheDocument();
     });
 
     it("should allow to switch between metadata and original schema", async () => {
-      const [field] = ORDERS_TABLE.fields ?? [];
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       expect(
         await screen.findByDisplayValue(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
-      expect(screen.getByDisplayValue(field.display_name)).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue(ORDERS_ID_FIELD.display_name),
+      ).toBeInTheDocument();
 
       userEvent.click(screen.getByRole("radio", { name: "Original schema" }));
       expect(screen.getByText(ORDERS_TABLE.name)).toBeInTheDocument();
+      expect(screen.getByText(ORDERS_ID_FIELD.name)).toBeInTheDocument();
     });
 
     it("should display visible tables", async () => {
@@ -201,14 +249,13 @@ describe("MetadataEditor", () => {
     });
 
     it("should display field visibility options", async () => {
-      const [field] = ORDERS_TABLE.fields ?? [];
       await setup();
-
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(await screen.findByLabelText(field.name));
-      userEvent.click(
-        within(screen.getByLabelText(field.name)).getByText("Everywhere"),
+
+      const section = within(
+        await screen.findByLabelText(ORDERS_ID_FIELD.name),
       );
+      userEvent.click(section.getByText("Everywhere"));
 
       expect(
         await screen.findByText("Only in detail views"),
@@ -217,14 +264,13 @@ describe("MetadataEditor", () => {
     });
 
     it("should allow to search for field semantic types", async () => {
-      const [field] = ORDERS_TABLE.fields ?? [];
       await setup();
-
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(await screen.findByLabelText(field.name));
-      userEvent.click(
-        within(screen.getByLabelText(field.name)).getByText("Entity Key"),
+
+      const section = within(
+        await screen.findByLabelText(ORDERS_ID_FIELD.name),
       );
+      userEvent.click(section.getByText("Entity Key"));
       expect(await screen.findByText("Entity Name")).toBeInTheDocument();
 
       userEvent.type(screen.getByPlaceholderText("Find..."), "Pri");
@@ -232,57 +278,71 @@ describe("MetadataEditor", () => {
       expect(screen.queryByText("Score")).not.toBeInTheDocument();
     });
 
-    it("should allow to navigate to and from table settings", async () => {
+    it("should show the foreign key target for foreign keys", async () => {
       await setup();
-
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
-      expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(SAMPLE_DB.name));
-      expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
-      expect(screen.getByText("1 Hidden Table")).toBeInTheDocument();
+      const section = within(
+        await screen.findByLabelText(ORDERS_PRODUCT_ID_FIELD.name),
+      );
+      userEvent.click(section.getByText("Products → ID"));
 
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
-      expect(await screen.findByText("Settings")).toBeInTheDocument();
+      const popover = within(await screen.findByTestId("popover"));
+      expect(popover.getByText("Products → ID")).toBeInTheDocument();
+      expect(popover.queryByText("Orders → ID")).not.toBeInTheDocument();
 
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      expect(
-        await screen.findByDisplayValue(ORDERS_TABLE.display_name),
-      ).toBeInTheDocument();
+      userEvent.type(popover.getByPlaceholderText("Find..."), "Products");
+      expect(popover.getByText("Products → ID")).toBeInTheDocument();
     });
 
-    it("should allow to rescan field values", async () => {
+    it("should show an access denied error if the foreign key field has an inaccessible target", async () => {
       await setup();
-
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
-      userEvent.click(
-        await screen.findByRole("button", { name: "Re-scan this table" }),
-      );
 
-      await waitFor(() => {
-        const path = `path:/api/table/${ORDERS_TABLE.id}/rescan_values`;
-        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
-      });
+      const section = within(
+        await screen.findByLabelText(ORDERS_USER_ID_FIELD.name),
+      );
+      expect(section.getByText("Field access denied")).toBeInTheDocument();
     });
 
-    it("should allow to discard field values", async () => {
+    it("should not show the foreign key target for non-foreign keys", async () => {
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
-      userEvent.click(
-        await screen.findByRole("button", {
-          name: "Discard cached field values",
-        }),
+      const section = within(
+        await screen.findByLabelText(ORDERS_ID_FIELD.name),
       );
 
-      await waitFor(() => {
-        const path = `path:/api/table/${ORDERS_TABLE.id}/discard_values`;
-        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
-      });
+      expect(section.queryByText("Products → ID")).not.toBeInTheDocument();
+    });
+
+    it("should show currency settings for currency fields", async () => {
+      await setup();
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+
+      const section = within(
+        await screen.findByLabelText(ORDERS_DISCOUNT_FIELD.name),
+      );
+      userEvent.click(section.getByText("US Dollar"));
+
+      const popover = within(await screen.findByTestId("popover"));
+      expect(popover.getByText("Canadian Dollar")).toBeInTheDocument();
+      expect(popover.getByText("Euro")).toBeInTheDocument();
+
+      userEvent.type(popover.getByPlaceholderText("Find..."), "Dollar");
+      expect(popover.getByText("US Dollar")).toBeInTheDocument();
+      expect(popover.getByText("Canadian Dollar")).toBeInTheDocument();
+      expect(popover.queryByText("Euro")).not.toBeInTheDocument();
+    });
+
+    it("should not show currency settings for non-currency fields", async () => {
+      await setup();
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+
+      const section = within(
+        await screen.findByLabelText(ORDERS_ID_FIELD.name),
+      );
+      expect(section.queryByText("US Dollar")).not.toBeInTheDocument();
     });
   });
 
@@ -291,65 +351,48 @@ describe("MetadataEditor", () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
       expect(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name)).toBeInTheDocument();
-      expect(screen.getByText(PEOPLE_TABLE.schema)).toBeInTheDocument();
-      expect(screen.getByText(REVIEWS_TABLE.schema)).toBeInTheDocument();
       expect(
-        screen.queryByText(PEOPLE_TABLE.display_name),
+        screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(REVIEWS_TABLE_MULTI_SCHEMA.schema),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       ).not.toBeInTheDocument();
     });
 
     it("should allow to search for a schema", async () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      const searchValue = PEOPLE_TABLE.schema.substring(0, 3);
+      const searchValue = PEOPLE_TABLE_MULTI_SCHEMA.schema.substring(0, 3);
       userEvent.type(screen.getByPlaceholderText("Find a schema"), searchValue);
 
-      expect(screen.getByText(PEOPLE_TABLE.schema)).toBeInTheDocument();
-      expect(screen.queryByText(REVIEWS_TABLE.schema)).not.toBeInTheDocument();
+      expect(
+        screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(REVIEWS_TABLE_MULTI_SCHEMA.schema),
+      ).not.toBeInTheDocument();
     });
 
     it("should allow to search for a table", async () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
+      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
       expect(
-        await screen.findByText(PEOPLE_TABLE.display_name),
+        await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       ).toBeInTheDocument();
       expect(
-        screen.queryByText(REVIEWS_TABLE.display_name),
+        screen.queryByText(REVIEWS_TABLE_MULTI_SCHEMA.display_name),
       ).not.toBeInTheDocument();
 
       userEvent.click(screen.getByText("Schemas"));
-      expect(screen.getByText(PEOPLE_TABLE.schema)).toBeInTheDocument();
-      expect(screen.getByText(REVIEWS_TABLE.schema)).toBeInTheDocument();
-    });
-
-    it("should allow to navigate to and from table settings", async () => {
-      await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
-
-      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
-      userEvent.click(await screen.findByText(PEOPLE_TABLE.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
-      expect(await screen.findByText("Settings")).toBeInTheDocument();
-
-      userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
-      expect(await screen.findByText("2 schemas")).toBeInTheDocument();
-
-      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
-      userEvent.click(screen.getByText(PEOPLE_TABLE.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
-      expect(await screen.findByText("Settings")).toBeInTheDocument();
-
-      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
-      expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
-
-      userEvent.click(await screen.findByText(PEOPLE_TABLE.display_name));
-      userEvent.click(screen.getByLabelText("Settings"));
-      expect(await screen.findByText("Settings")).toBeInTheDocument();
-
-      userEvent.click(screen.getByText(PEOPLE_TABLE.display_name));
       expect(
-        await screen.findByDisplayValue(PEOPLE_TABLE.display_name),
+        screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(REVIEWS_TABLE_MULTI_SCHEMA.schema),
       ).toBeInTheDocument();
     });
   });
@@ -363,9 +406,11 @@ describe("MetadataEditor", () => {
 
       userEvent.click(screen.getByText(SAMPLE_DB.name));
       userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
-      userEvent.click(await screen.findByText(PEOPLE_TABLE.schema));
+      userEvent.click(
+        await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+      );
       expect(
-        await screen.findByText(PEOPLE_TABLE.display_name),
+        await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       ).toBeInTheDocument();
     });
   });
@@ -377,6 +422,25 @@ describe("MetadataEditor", () => {
       expect(
         screen.getByText("The page you asked for couldn't be found."),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("databases with json fields", () => {
+    it("should display unfolded json fields", async () => {
+      await setup({ databases: [JSON_DB] });
+      userEvent.click(screen.getByText(JSON_TABLE.display_name));
+      expect(
+        await screen.findByDisplayValue(JSON_TABLE.display_name),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue(JSON_FIELD_ROOT.display_name),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue(JSON_FIELD_NESTED.display_name),
+      ).toBeInTheDocument();
+
+      const section = screen.getByLabelText(JSON_FIELD_NESTED.name);
+      expect(within(section).getByText("JSON.version")).toBeInTheDocument();
     });
   });
 });

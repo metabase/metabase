@@ -138,9 +138,13 @@
   (expression-schema orderable-types
                      "an expression that can be compared with :> or :<"))
 
+(def equality-comparable-types
+  "Set of base types that can be campared with equality."
+   #{:type/Boolean :type/Text :type/Number :type/Temporal})
+
 (mr/def ::equality-comparable
   [:maybe
-   (expression-schema #{:type/Boolean :type/Text :type/Number :type/Temporal}
+   (expression-schema equality-comparable-types
                       "an expression that can appear in := or :!=")])
 
 ;;; any type of expression.
@@ -149,7 +153,5 @@
 
 ;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
 (mr/def ::expressions
-  [:map-of
-   {:min 1, :error/message ":expressions definition map of expression name -> expression"}
-   ::common/non-blank-string
-   ::expression])
+  [:sequential {:min 1} [:and [:ref ::expression]
+                         [:cat :any [:map [:lib/expression-name :string]] [:* :any]]]])

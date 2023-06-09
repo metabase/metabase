@@ -1,10 +1,8 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
 
-import Icon from "../Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { TokenFieldItem, TokenFieldAddon } from "./TokenFieldItem.styled";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/TokenFieldItem",
   component: TokenFieldItem,

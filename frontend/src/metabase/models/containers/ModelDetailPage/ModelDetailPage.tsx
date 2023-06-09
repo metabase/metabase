@@ -1,4 +1,5 @@
-import React, { useEffect, useCallback, useMemo, useState } from "react";
+import { useEffect, useCallback, useMemo, useState } from "react";
+import * as React from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";

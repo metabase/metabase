@@ -48,7 +48,6 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -149,7 +148,7 @@
      (comp (map (partial models/do-post-select Card))
            (filter card-can-be-used-as-source-query?)
            xform)
-     (completing conj #(hydrate % :collection))
+     (completing conj #(t2/hydrate % :collection))
      []
      (mdb.query/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
                                             [{:select   [:status]
@@ -231,9 +230,11 @@
              include-saved-questions-db?
              include-saved-questions-tables?
              include-editable-data-model?
+             include-analytics?
              exclude-uneditable-details?]}]
-  (let [dbs (t2/select Database {:where [:= :is_audit false]
-                                 :order-by [:%lower.name :%lower.engine]})
+  (let [dbs (t2/select Database (merge {:order-by [:%lower.name :%lower.engine]}
+                                       (when-not include-analytics?
+                                         {:where [:= :is_audit false]})))
         filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
@@ -262,12 +263,14 @@
 
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled."
-  [include_tables include_cards include saved include_editable_data_model exclude_uneditable_details]
+  [include_tables include_cards include saved include_editable_data_model exclude_uneditable_details
+   include_analytics]
   {include_tables                [:maybe :boolean]
    include_cards                 [:maybe :boolean]
    include                       (mu/with-api-error-message
                                    [:maybe [:= "tables"]]
                                    (deferred-tru "include must be either empty or the value 'tables'"))
+   include_analytics             [:maybe :boolean]
    saved                         [:maybe :boolean]
    include_editable_data_model   [:maybe :boolean]
    exclude_uneditable_details    [:maybe :boolean]}
@@ -284,7 +287,8 @@
                                                       :include-saved-questions-db?     include-saved-questions-db?
                                                       :include-saved-questions-tables? include-saved-questions-tables?
                                                       :include-editable-data-model?    include_editable_data_model
-                                                      :exclude-uneditable-details?     exclude_uneditable_details)
+                                                      :exclude-uneditable-details?     exclude_uneditable_details
+                                                      :include-analytics?              include_analytics)
                                             [])]
     {:data  db-list-res
      :total (count db-list-res)}))
@@ -311,7 +315,7 @@
   [db include]
   (if-not include
     db
-    (-> (hydrate db (case include
+    (-> (t2/hydrate db (case include
                       "tables"        :tables
                       "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
         (update :tables (fn [tables]
@@ -429,7 +433,7 @@
   (let [db (-> (if include-editable-data-model?
                  (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
-               (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
+               (t2/hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -518,7 +522,8 @@
                              (and (empty? search-id) (not-empty search-name))
                              [:like [:lower :report_card.name] (str "%" search-name "%")])]
                 :left-join [[:collection :collection] [:= :collection.id :report_card.collection_id]]
-                :order-by [[:report_card.id :desc]]
+                :order-by [[:dataset :desc]         ; prioritize models
+                           [:report_card.id :desc]] ; then most recently created
                 :limit    50})))
 
 (defn- autocomplete-fields [db-id search-string limit]
@@ -630,7 +635,7 @@
   (let [fields (filter mi/can-read? (-> (t2/select [Field :id :name :display_name :table_id :base_type :semantic_type]
                                           :table_id        [:in (t2/select-fn-set :id Table, :db_id id)]
                                           :visibility_type [:not-in ["sensitive" "retired"]])
-                                        (hydrate :table)))]
+                                        (t2/hydrate :table)))]
     (for [{:keys [id name display_name table base_type semantic_type]} fields]
       {:id            id
        :name          name
@@ -653,7 +658,7 @@
     (db-perm-check (t2/select-one Database :id id))
     (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
-                                          (hydrate :table))))))
+                                          (t2/hydrate :table))))))
 
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
@@ -902,6 +907,11 @@
                                    :caveats            caveats
                                    :points_of_interest points_of_interest
                                    :auto_run_queries   auto_run_queries}
+                                  ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
+                                  (when (seq settings)
+                                    {:settings (into {}
+                                                     (remove (fn [[_k v]] (nil? v)))
+                                                     (merge (:settings existing-database) settings))})
                                   (cond
                                     ;; transition back to metabase managed schedules. the schedule
                                     ;; details, even if provided, are ignored. database is the
@@ -912,15 +922,7 @@
 
                                     ;; if user is controlling schedules
                                     (:let-user-control-scheduling details)
-                                    (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))
-
-                                    ;; upsert settings with a PATCH-style update. `nil` key means unset
-                                    ;; the Setting.
-                                    (seq settings)
-                                    {:settings (into {}
-                                                     (remove (fn [[_k v]] (nil? v)))
-                                                     (merge (:settings existing-database)
-                                                            settings))})))
+                                    (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules)))))
         ;; do nothing in the case that user is not in control of
         ;; scheduling. leave them as they are in the db
 
@@ -966,10 +968,10 @@
 ;; Currently these match the titles of the admin UI buttons that call these endpoints
 
 ;; Should somehow trigger sync-database/sync-database!
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/sync_schema"
+(api/defendpoint POST "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
   [id]
+  {id ms/PositiveInt}
   ;; just wrap this in a future so it happens async
   (let [db (api/write-check (t2/select-one Database :id id))]
     (future
@@ -998,10 +1000,10 @@
   true)
 
 ;; Should somehow trigger cached-values/cache-field-values-for-database!
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/rescan_values"
+(api/defendpoint POST "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [id]
+  {id ms/PositiveInt}
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (t2/select-one Database :id id))]
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms

@@ -285,10 +285,10 @@ export type ForeignFieldReference = [
 export type ExpressionReference = [
   "expression",
   ExpressionName,
-  ReferenceOptions | null,
+  (ReferenceOptions | null)?,
 ];
 
-type FieldLiteral = [
+export type FieldLiteral = [
   "field",
   string,
   ReferenceOptions & { "base-type": string },

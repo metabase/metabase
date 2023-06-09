@@ -13,6 +13,7 @@ export const useSegmentListQuery = (
     fetchList: Segments.actions.fetchList,
     getList: Segments.selectors.getList,
     getLoading: Segments.selectors.getLoading,
+    getLoaded: Segments.selectors.getLoaded,
     getError: Segments.selectors.getError,
   });
 };

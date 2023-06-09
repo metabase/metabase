@@ -25,7 +25,6 @@
    [potemkin :as p]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols])
@@ -486,7 +485,7 @@
        ;; it is visible.
        (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
        ;; it is NOT a descendant of a visible Collection other than A
-       (visible-collection-ids->direct-visible-descendant-clause (hydrate collection :effective_location) visible-collection-ids)
+       (visible-collection-ids->direct-visible-descendant-clause (t2/hydrate collection :effective_location) visible-collection-ids)
        ;; don't want personal collections in collection items. Only on the sidebar
        [:= :personal_owner_id nil]]
       ;; (any additional conditions)
@@ -916,7 +915,7 @@
 
 (defn- parent-identity-hash [coll]
   (let [parent-id (-> coll
-                      (hydrate :parent_id)
+                      (t2/hydrate :parent_id)
                       :parent_id)]
     (if parent-id
       (serdes/identity-hash (t2/select-one Collection :id parent-id))
@@ -952,7 +951,7 @@
         parent           (some-> coll
                                  :id
                                  fetch-collection
-                                 (hydrate :parent_id)
+                                 (t2/hydrate :parent_id)
                                  :parent_id
                                  fetch-collection)
         parent-id        (when parent
@@ -1181,7 +1180,7 @@
                                :allowed-namespaces   allowed-namespaces
                                :collection-namespace collection-namespace})))))))
 
-(defn annotate-collections
+(defn- annotate-collections
   "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are
   in the collection at that level."
   [{:keys [dataset card] :as _coll-type-ids} collections]

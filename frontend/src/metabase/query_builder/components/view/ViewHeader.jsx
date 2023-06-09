@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -18,6 +18,7 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
+import * as ML_Urls from "metabase-lib/urls";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 import QuestionActions from "../QuestionActions";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
@@ -449,6 +450,11 @@ function ViewTitleHeaderRightSide(props) {
     }
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
+  const getRunButtonLabel = useCallback(
+    () => (isRunning ? t`Cancel` : t`Refresh`),
+    [isRunning],
+  );
+
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
       {QuestionFilters.shouldRender(props) && (
@@ -510,6 +516,7 @@ function ViewTitleHeaderRightSide(props) {
             isDirty={isResultDirty}
             onRun={() => runQuestionQuery({ ignoreCache: true })}
             onCancel={cancelQuery}
+            getTooltip={getRunButtonLabel}
           />
         </ViewHeaderIconButtonContainer>
       )}
@@ -553,11 +560,9 @@ ExploreResultsLink.propTypes = {
 };
 
 function ExploreResultsLink({ question }) {
-  const url = question
-    .composeThisQuery()
-    .setDisplay("table")
-    .setSettings({})
-    .getUrl();
+  const url = ML_Urls.getUrl(
+    question.composeThisQuery().setDisplay("table").setSettings({}),
+  );
 
   return (
     <Link to={url}>

@@ -107,7 +107,7 @@
 (deftest update-test
   (testing "PUT /api/metric"
     (testing "test security. Requires superuser perms"
-      (mt/with-temp Metric [metric]
+      (t2.with-temp/with-temp [Metric metric]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request
                 :rasta :put 403 (str "metric/" (u/the-id metric))
@@ -161,7 +161,7 @@
 
 (deftest archive-test
   (testing "Can we archive a Metric with the PUT endpoint?"
-    (mt/with-temp Metric [{:keys [id]}]
+    (t2.with-temp/with-temp [Metric {:keys [id]}]
       (is (some? (mt/user-http-request
                   :crowberto :put 200 (str "metric/" id)
                   {:archived true, :revision_message "Archive the Metric"})))
@@ -170,7 +170,7 @@
 
 (deftest unarchive-test
   (testing "Can we unarchive a Metric with the PUT endpoint?"
-    (mt/with-temp Metric [{:keys [id]} {:archived true}]
+    (t2.with-temp/with-temp [Metric {:keys [id]} {:archived true}]
       (is (some? (mt/user-http-request
                   :crowberto :put 200 (str "metric/" id)
                   {:archived false, :revision_message "Unarchive the Metric"})))
@@ -179,7 +179,7 @@
 (deftest delete-test
   (testing "DELETE /api/metric/:id"
     (testing "test security. Requires superuser perms"
-      (mt/with-temp Metric [{:keys [id]}]
+      (t2.with-temp/with-temp [Metric {:keys [id]}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request
                 :rasta :delete 403 (str "metric/" id) :revision_message "yeeeehaw!")))))
@@ -269,28 +269,28 @@
                                               :object   {:name       "c"
                                                          :definition {:filter [:and [:> 1 25]]}}
                                               :message  "updated"}]]
-      (is (= [{:is_reversion false
-               :is_creation  false
-               :message      "updated"
-               :user         (-> (user-details (mt/fetch-user :crowberto))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         {:name {:before "b" :after "c"}}
-               :description  "renamed this Metric from \"b\" to \"c\"."}
-              {:is_reversion false
-               :is_creation  true
-               :message      nil
-               :user         (-> (user-details (mt/fetch-user :rasta))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         {:name       {:after "b"}
-                              :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
-               :description  nil}]
+      (is (=? [{:is_reversion false
+                :is_creation  false
+                :message      "updated"
+                :user         (-> (user-details (mt/fetch-user :crowberto))
+                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                :diff         {:name {:before "b" :after "c"}}
+                :description  "renamed this Metric from \"b\" to \"c\"."}
+               {:is_reversion false
+                :is_creation  true
+                :message      nil
+                :user         (-> (user-details (mt/fetch-user :rasta))
+                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                :diff         {:name       {:after "b"}
+                               :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
+                :description  "created this."}]
              (for [revision (mt/user-http-request :rasta :get 200 (format "metric/%d/revisions" id))]
                (dissoc revision :timestamp :id)))))))
 
 (deftest revert-metric-test
   (testing "POST /api/metric/:id/revert"
     (testing "test security. Requires superuser perms"
-      (mt/with-temp Metric [{:keys [id]}]
+      (t2.with-temp/with-temp [Metric {:keys [id]}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request
                 :rasta :post 403 (format "metric/%d/revert" id)
@@ -351,39 +351,39 @@
                                                                                     :query    {:filter [:= [:field 10 nil] 20]}}}
                                                :message  "updated"}]]
     (testing "API response"
-      (is (= {:is_reversion true
-              :is_creation  false
-              :message      nil
-              :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
-              :diff         {:name {:before "Changed Metric Name"
-                                    :after  "One Metric to rule them all, one metric to define them"}}
-              :description  "renamed this Metric from \"Changed Metric Name\" to \"One Metric to rule them all, one metric to define them\"."}
-             (dissoc (mt/user-http-request
-                      :crowberto :post 200 (format "metric/%d/revert" id) {:revision_id revision-id}) :id :timestamp))))
-    (testing "full list of final revisions, first one should be same as the revision returned by the endpoint"
-      (is (= [{:is_reversion true
+      (is (=? {:is_reversion true
                :is_creation  false
                :message      nil
                :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
                :diff         {:name {:before "Changed Metric Name"
                                      :after  "One Metric to rule them all, one metric to define them"}}
-               :description  "renamed this Metric from \"Changed Metric Name\" to \"One Metric to rule them all, one metric to define them\"."}
-              {:is_reversion false
-               :is_creation  false
-               :message      "updated"
-               :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
-               :diff         {:name {:after  "Changed Metric Name"
-                                     :before "One Metric to rule them all, one metric to define them"}}
-               :description  "renamed this Metric from \"One Metric to rule them all, one metric to define them\" to \"Changed Metric Name\"."}
-              {:is_reversion false
-               :is_creation  true
-               :message      nil
-               :user         (dissoc (user-details (mt/fetch-user :rasta)) :email :date_joined :last_login :is_superuser :is_qbnewb)
-               :diff         {:name        {:after "One Metric to rule them all, one metric to define them"}
-                              :description {:after "One metric to bring them all, and in the DataModel bind them"}
-                              :definition  {:after {:database 123
-                                                    :query    {:filter ["=" ["field" 10 nil] 20]}}}}
-               :description  nil}]
+               :description  "reverted to an earlier version."}
+             (dissoc (mt/user-http-request
+                      :crowberto :post 200 (format "metric/%d/revert" id) {:revision_id revision-id}) :id :timestamp))))
+    (testing "full list of final revisions, first one should be same as the revision returned by the endpoint"
+      (is (=? [{:is_reversion true
+                :is_creation  false
+                :message      nil
+                :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
+                :diff         {:name {:before "Changed Metric Name"
+                                      :after  "One Metric to rule them all, one metric to define them"}}
+                :description  "reverted to an earlier version."}
+               {:is_reversion false
+                :is_creation  false
+                :message      "updated"
+                :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
+                :diff         {:name {:after  "Changed Metric Name"
+                                      :before "One Metric to rule them all, one metric to define them"}}
+                :description  "renamed this Metric from \"One Metric to rule them all, one metric to define them\" to \"Changed Metric Name\"."}
+               {:is_reversion false
+                :is_creation  true
+                :message      nil
+                :user         (dissoc (user-details (mt/fetch-user :rasta)) :email :date_joined :last_login :is_superuser :is_qbnewb)
+                :diff         {:name        {:after "One Metric to rule them all, one metric to define them"}
+                               :description {:after "One metric to bring them all, and in the DataModel bind them"}
+                               :definition  {:after {:database 123
+                                                     :query    {:filter ["=" ["field" 10 nil] 20]}}}}
+                :description  "created this."}]
              (for [revision (mt/user-http-request
                              :crowberto :get 200 (format "metric/%d/revisions" id))]
                (dissoc revision :timestamp :id)))))))
@@ -419,6 +419,6 @@
 
 (deftest metric-related-entities-test
   (testing "Test related/recommended entities"
-    (mt/with-temp Metric [{metric-id :id}]
+    (t2.with-temp/with-temp [Metric {metric-id :id}]
       (is (= #{:table :metrics :segments}
              (-> (mt/user-http-request :crowberto :get 200 (format "metric/%s/related" metric-id)) keys set))))))

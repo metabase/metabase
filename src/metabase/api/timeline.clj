@@ -12,7 +12,6 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -53,7 +52,7 @@
                                       (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
                           :order-by [[:%lower.name :asc]]})
                        (map timeline/hydrate-root-collection))]
-    (cond->> (hydrate timelines :creator [:collection :can_write])
+    (cond->> (t2/hydrate timelines :creator [:collection :can_write])
       (= include "events")
       (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
 
@@ -68,7 +67,7 @@
    end      (s/maybe su/TemporalString)}
   (let [archived? (Boolean/parseBoolean archived)
         timeline  (api/read-check (t2/select-one Timeline :id id))]
-    (cond-> (hydrate timeline :creator [:collection :can_write])
+    (cond-> (t2/hydrate timeline :creator [:collection :can_write])
       ;; `collection_id` `nil` means we need to assoc 'root' collection
       ;; because hydrate `:collection` needs a proper `:id` to work.
       (nil? (:collection_id timeline))
@@ -99,7 +98,7 @@
         :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
       (t2/update! TimelineEvent {:timeline_id id} {:archived archived}))
-    (hydrate (t2/select-one Timeline :id id) :creator [:collection :can_write])))
+    (t2/hydrate (t2/select-one Timeline :id id) :creator [:collection :can_write])))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"

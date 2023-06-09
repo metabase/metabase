@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 
 import { checkNotNull } from "metabase/core/utils/types";
@@ -175,8 +174,9 @@ describe("Admin > Settings > UploadSetting", () => {
     const dbItem = await screen.findByText("Db Dos");
     userEvent.click(dbItem);
 
-    const prefixInput = await screen.findByPlaceholderText("uploaded_");
+    const prefixInput = await screen.findByPlaceholderText("upload_");
 
+    userEvent.clear(prefixInput);
     userEvent.type(prefixInput, "my_prefix_");
 
     userEvent.click(
@@ -191,6 +191,35 @@ describe("Admin > Settings > UploadSetting", () => {
     });
   });
 
+  it("should be able to submit a table prefix for databases with schema", async () => {
+    const { updateSpy } = setup();
+    userEvent.click(await screen.findByText("Select a database"));
+
+    const dbItem = await screen.findByText("Db Uno");
+    userEvent.click(dbItem);
+
+    const schemaDropdown = await screen.findByText("Select a schema");
+    userEvent.click(schemaDropdown);
+
+    const schemaItem = await screen.findByText("uploads");
+    userEvent.click(schemaItem);
+
+    const prefixInput = await screen.findByPlaceholderText("upload_");
+    userEvent.clear(prefixInput);
+    userEvent.type(prefixInput, "my_prefix_");
+
+    userEvent.click(
+      await screen.findByRole("button", { name: "Enable uploads" }),
+    );
+
+    expect(updateSpy).toHaveBeenCalledWith({
+      "uploads-enabled": true,
+      "uploads-database-id": 1,
+      "uploads-schema-name": "uploads",
+      "uploads-table-prefix": "my_prefix_",
+    });
+  });
+
   it("should call update methods on saveStatusRef", async () => {
     const { savingSpy, savedSpy } = setup();
     userEvent.click(await screen.findByText("Select a database"));
@@ -198,8 +227,9 @@ describe("Admin > Settings > UploadSetting", () => {
     const dbItem = await screen.findByText("Db Dos");
     userEvent.click(dbItem);
 
-    const prefixInput = await screen.findByPlaceholderText("uploaded_");
+    const prefixInput = await screen.findByPlaceholderText("upload_");
 
+    userEvent.clear(prefixInput);
     userEvent.type(prefixInput, "my_prefix_");
 
     userEvent.click(
@@ -226,7 +256,7 @@ describe("Admin > Settings > UploadSetting", () => {
       "uploads-enabled": true,
       "uploads-database-id": 2,
       "uploads-schema-name": null,
-      "uploads-table-prefix": null,
+      "uploads-table-prefix": "upload_",
     });
 
     expect(await screen.findByText(/There was a problem/i)).toBeInTheDocument();
@@ -458,7 +488,7 @@ describe("Admin > Settings > UploadSetting", () => {
         },
       });
 
-      const prefixInput = await screen.findByPlaceholderText("uploaded_");
+      const prefixInput = await screen.findByPlaceholderText("upload_");
       userEvent.clear(prefixInput);
       userEvent.type(prefixInput, "my_prefix_");
 
@@ -480,7 +510,7 @@ describe("Admin > Settings > UploadSetting", () => {
         () => new Promise(resolve => setTimeout(resolve, 500)),
       );
 
-      const prefixInput = await screen.findByPlaceholderText("uploaded_");
+      const prefixInput = await screen.findByPlaceholderText("upload_");
       userEvent.clear(prefixInput);
       userEvent.type(prefixInput, "my_prefix_");
 
@@ -507,7 +537,7 @@ describe("Admin > Settings > UploadSetting", () => {
         () => new Promise(resolve => setTimeout(resolve, 500)),
       );
 
-      const prefixInput = await screen.findByPlaceholderText("uploaded_");
+      const prefixInput = await screen.findByPlaceholderText("upload_");
       userEvent.clear(prefixInput);
       userEvent.type(prefixInput, "my_prefix_");
 
@@ -520,6 +550,7 @@ describe("Admin > Settings > UploadSetting", () => {
         screen.queryByRole("button", { name: "Update settings" }),
       ).not.toBeInTheDocument();
 
+      userEvent.clear(prefixInput);
       userEvent.type(prefixInput, "_2");
       expect(
         screen.getByRole("button", { name: "Update settings" }),

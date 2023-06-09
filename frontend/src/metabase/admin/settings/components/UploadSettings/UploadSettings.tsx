@@ -1,5 +1,6 @@
-/* eslint-disable react/prop-types */
-import React, { useState, useRef } from "react";
+import { useState, useRef } from "react";
+
+import * as React from "react";
 import { jt, t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -166,8 +167,8 @@ export function UploadSettingsView({
       .catch(() => showError(disableErrorMessage));
   };
 
-  const showPrefix = dbId && !showSchema;
-  const hasValidSettings = dbId && (showPrefix || schemaName);
+  const showPrefix = !!dbId;
+  const hasValidSettings = Boolean(dbId && (!showSchema || schemaName));
   const settingsChanged =
     dbId !== settings.uploads_database_id ||
     schemaName !== settings.uploads_schema_name ||
@@ -187,7 +188,9 @@ export function UploadSettingsView({
               setDbId(e.target.value);
               if (e.target.value) {
                 resetButtons();
-                setTablePrefix(null);
+                dbHasSchema(databases, e.target.value)
+                  ? setTablePrefix(null)
+                  : setTablePrefix("upload_");
                 setSchemaName(null);
               }
             }}
@@ -217,10 +220,10 @@ export function UploadSettingsView({
         )}
         {!!showPrefix && (
           <div>
-            <SectionTitle>{t`Upload Table Prefix`}</SectionTitle>
+            <SectionTitle>{t`Upload Table Prefix (optional)`}</SectionTitle>
             <Input
               value={tablePrefix ?? ""}
-              placeholder={t`uploaded_`}
+              placeholder={t`upload_`}
               onChange={e => {
                 resetButtons();
                 setTablePrefix(e.target.value);

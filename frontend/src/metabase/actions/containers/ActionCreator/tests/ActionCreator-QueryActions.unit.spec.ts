@@ -1,14 +1,16 @@
-import { screen, getIcon, queryIcon } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+import { screen, getIcon, queryIcon, within } from "__support__/ui";
 
 import {
   createMockActionParameter,
+  createMockCard,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
 
 import { setup } from "./common";
 
 describe("ActionCreator > Query Actions", () => {
-  describe("new action", () => {
+  describe("New Action", () => {
     it("renders correctly", async () => {
       await setup();
 
@@ -45,9 +47,59 @@ describe("ActionCreator > Query Actions", () => {
         screen.getByRole("button", { name: "Action settings" }),
       ).toBeInTheDocument();
     });
+
+    describe("Save Modal", () => {
+      it("should show default message in model picker", async () => {
+        await setup({ model: null });
+
+        // put query into textbox
+        const view = screen.getByTestId("mock-native-query-editor");
+        userEvent.paste(
+          within(view).getByRole("textbox"),
+          "select * from orders where {{paramNane}}",
+        );
+
+        userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        // form is rendered
+        expect(
+          screen.getByPlaceholderText("My new fantastic action"),
+        ).toBeInTheDocument();
+        expect(screen.getByTestId("select-button-content")).toHaveTextContent(
+          "Select a model",
+        );
+      });
+      it("should preselect model", async () => {
+        const MODEL_NAME = "Awesome Model";
+        const model = createMockCard({
+          dataset: true,
+          can_write: true,
+          name: MODEL_NAME,
+        });
+        await setup({ model });
+
+        // put query into textbox
+        const view = screen.getByTestId("mock-native-query-editor");
+        userEvent.paste(
+          within(view).getByRole("textbox"),
+          "select * from orders where {{paramNane}}",
+        );
+
+        userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        // form is rendered
+        expect(
+          screen.getByPlaceholderText("My new fantastic action"),
+        ).toBeInTheDocument();
+        // model is preselected
+        expect(screen.getByTestId("select-button-content")).toHaveTextContent(
+          MODEL_NAME,
+        );
+      });
+    });
   });
 
-  describe("editing action", () => {
+  describe("Editing Action", () => {
     it("renders correctly", async () => {
       const action = createMockQueryAction();
       await setup({ action });
@@ -85,7 +137,7 @@ describe("ActionCreator > Query Actions", () => {
       await setup({ action, canWrite: false });
 
       expect(screen.getByDisplayValue(action.name)).toBeDisabled();
-      expect(queryIcon("grabber2")).not.toBeInTheDocument();
+      expect(queryIcon("grabber")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Update" }),
@@ -103,7 +155,7 @@ describe("ActionCreator > Query Actions", () => {
       await setup({ action, hasActionsEnabled: false });
 
       expect(screen.getByDisplayValue(action.name)).toBeDisabled();
-      expect(queryIcon("grabber2")).not.toBeInTheDocument();
+      expect(queryIcon("grabber")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Update" }),

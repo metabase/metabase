@@ -1,29 +1,33 @@
 (ns metabase.driver.mongo-test
   "Tests for Mongo driver."
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.automagic-dashboards.core :as magic]
-            [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.driver :as driver]
-            [metabase.driver.mongo :as mongo]
-            [metabase.driver.mongo.util :as mongo.util]
-            [metabase.driver.util :as driver.u]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test :refer [rows]]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.mongo :as tdm]
-            [metabase.util.log :as log]
-            [monger.collection :as mcoll]
-            [monger.core :as mg]
-            [taoensso.nippy :as nippy]
-            [toucan2.core :as t2])
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.automagic-dashboards.core :as magic]
+   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver :as driver]
+   [metabase.driver.mongo :as mongo]
+   [metabase.driver.mongo.query-processor :as mongo.qp]
+   [metabase.driver.mongo.util :as mongo.util]
+   [metabase.driver.util :as driver.u]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test :refer [rows]]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.mongo :as tdm]
+   [metabase.util.log :as log]
+   [monger.collection :as mcoll]
+   [monger.core :as mg]
+   [taoensso.nippy :as nippy]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import org.bson.types.ObjectId))
 
 ;; ## Constants + Helper Fns/Macros
@@ -119,6 +123,55 @@
                                 :type     :native
                                 :database (mt/id)})
              (m/dissoc-in [:data :results_metadata] [:data :insights]))))))
+
+(deftest nested-native-query-test
+  (mt/test-driver :mongo
+    (testing "Mbql query with nested native source query _returns correct results_ (#30112)"
+      (t2.with-temp/with-temp [Card {:keys [id]} {:dataset_query {:type     :native
+                                                                  :native   {:collection    "venues"
+                                                                             :query         native-query}
+                                                                  :database (mt/id)}}]
+        (let [query (mt/mbql-query nil
+                      {:source-table (str "card__" id)
+                       :limit        1})]
+          (is (partial=
+               {:status :completed
+                :data   {:native_form {:collection "venues"
+                                       :query      (conj (mongo.qp/parse-query-string native-query)
+                                                         {"$limit" 1})}
+                         :rows        [[1]]}}
+               (qp/process-query query))))))
+    (testing "Mbql query with nested native source query _aggregates_ correctly (#30112)"
+      (let [query-str (str "[{\"$project\":\n"
+                           "   {\"_id\": \"$_id\",\n"
+                           "    \"name\": \"$name\",\n"
+                           "    \"category_id\": \"$category_id\",\n"
+                           "    \"latitude\": \"$latitude\",\n"
+                           "    \"longitude\": \"$longitude\",\n"
+                           "    \"price\": \"$price\"}\n"
+                           "}]")]
+        (t2.with-temp/with-temp [Card {:keys [id]} {:dataset_query {:type     :native
+                                                                    :native   {:collection    "venues"
+                                                                               :query         query-str}
+                                                                    :database (mt/id)}}]
+          (let [query (mt/mbql-query venues
+                        {:source-table (str "card__" id)
+                         :aggregation [:count]
+                         :breakout [*category_id/Integer]
+                         :order-by [[:desc [:aggregation 0]]]
+                         :limit 5})]
+            (is (partial=
+                 {:status :completed
+                  :data   {:native_form
+                           {:collection "venues"
+                            :query (conj (mongo.qp/parse-query-string query-str)
+                                         {"$group" {"_id" {"category_id" "$category_id"}, "count" {"$sum" 1}}}
+                                         {"$sort" {"_id" 1}}
+                                         {"$project" {"_id" false, "category_id" "$_id.category_id", "count" true}}
+                                         {"$sort" {"count" -1, "category_id" 1}}
+                                         {"$limit" 5})}
+                           :rows [[7 10] [50 10] [40 9] [2 8] [5 7]]}}
+                 (qp/process-query query)))))))))
 
 ;; ## Tests for individual syncing functions
 
@@ -391,7 +444,7 @@
     (testing (str "if we query a something an there are no values for the Field, the query should still return "
                   "successfully! (#8929 and #8894)")
       ;; add a temporary Field that doesn't actually exist to test data categories
-      (mt/with-temp Field [_ {:name "parent_id", :table_id (mt/id :categories)}]
+      (t2.with-temp/with-temp [Field _ {:name "parent_id", :table_id (mt/id :categories)}]
         ;; ok, now run a basic MBQL query against categories Table. When implicit Field IDs get added the `parent_id`
         ;; Field will be included
         (testing (str "if the column does not come back in the results for a given document we should fill in the "

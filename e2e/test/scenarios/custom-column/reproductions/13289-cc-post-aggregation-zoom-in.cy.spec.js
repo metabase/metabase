@@ -50,7 +50,7 @@ describe("issue 13289", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Zoom in").click();
+    cy.findByText("See this month by week").click();
     cy.wait("@dataset");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

@@ -5,7 +5,6 @@
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
-   [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.interface :as mi]
@@ -20,7 +19,6 @@
    [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (def DashboardCard
@@ -110,7 +108,7 @@
   "Fetch a single DashboardCard by its ID value."
   [id :- su/IntGreaterThanZero]
   (-> (t2/select-one :model/DashboardCard :id id)
-      (hydrate :series)))
+      (t2/hydrate :series)))
 
 (defn dashcard->multi-cards
   "Return the cards which are other cards with respect to this dashboard card
@@ -220,25 +218,20 @@
                                  (for [dashcard dashboard-cards]
                                    (merge {:parameter_mappings []
                                            :visualization_settings {}}
-                                          (select-keys dashcard
-                                                       [:dashboard_id :card_id :action_id :size_x :size_y :row :col
-                                                        :parameter_mappings :visualization_settings :dashboard_tab_id]))))]
+                                          (dissoc dashcard :id :created_at :updated_at :entity_id :series :card :collection_authority_level))))]
         ;; add series to the DashboardCard
         (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
         ;; return the full DashboardCard
         (-> (t2/select DashboardCard :id [:in dashboard-card-ids])
-            (hydrate :series))))))
+            (t2/hydrate :series))))))
 
 (defn delete-dashboard-cards!
   "Delete DashboardCards of a Dasbhoard."
-  [dashboard-cards dashboard-id actor-id]
-  {:pre [(coll? dashboard-cards)
-         (integer? actor-id)]}
-  (let [dashcard-ids (map :id dashboard-cards)]
-    (t2/with-transaction [_conn]
-      (t2/delete! PulseCard :dashboard_card_id [:in dashcard-ids])
-      (t2/delete! DashboardCard :id [:in dashcard-ids]))
-    (events/publish-event! :dashboard-remove-cards {:id dashboard-id :actor_id actor-id :dashcards dashboard-cards})))
+  [dashboard-card-ids]
+  {:pre [(coll? dashboard-card-ids)]}
+  (t2/with-transaction [_conn]
+    (t2/delete! PulseCard :dashboard_card_id [:in dashboard-card-ids])
+    (t2/delete! DashboardCard :id [:in dashboard-card-ids])))
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 

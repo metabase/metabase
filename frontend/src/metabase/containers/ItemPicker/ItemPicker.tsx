@@ -1,8 +1,9 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import * as React from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 
-import { IconProps } from "metabase/components/Icon";
+import { IconProps } from "metabase/core/components/Icon";
 
 import { getCrumbs } from "metabase/lib/collections";
 

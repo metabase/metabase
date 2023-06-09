@@ -1,4 +1,3 @@
-import React from "react";
 import { render, fireEvent, screen } from "@testing-library/react";
 
 import PaginationControls from "metabase/components/PaginationControls";
@@ -16,8 +15,8 @@ const setup = props => {
     <PaginationControls {...DEFAULT_PROPS} {...props} />,
   );
 
-  const previousPageButton = screen.queryByTestId("previous-page-btn");
-  const nextPageButton = screen.queryByTestId("next-page-btn");
+  const previousPageButton = screen.queryByLabelText("Previous page");
+  const nextPageButton = screen.queryByLabelText("Next page");
 
   return {
     container,

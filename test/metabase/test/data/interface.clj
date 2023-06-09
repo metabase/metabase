@@ -9,7 +9,7 @@
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
    [environ.core :as env]
-   [hawk.init]
+   [mb.hawk.init]
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -164,7 +164,7 @@
   "Like `driver/the-driver`, but guaranteed to return a driver with test extensions loaded, throwing an Exception
   otherwise. Loads driver and test extensions automatically if not already done."
   [driver]
-  (hawk.init/assert-tests-are-not-initializing (pr-str (list 'the-driver-with-test-extensions driver)))
+  (mb.hawk.init/assert-tests-are-not-initializing (pr-str (list 'the-driver-with-test-extensions driver)))
   (initialize/initialize-if-needed! :plugins)
   (let [driver (driver/the-initialized-driver driver)]
     (load-test-extensions-namespace-if-needed driver)
@@ -375,8 +375,7 @@
 
 (defmethod aggregate-column-info ::test-extensions
   ([_ aggregation-type]
-   ;; TODO - Can `:cum-count` be used without args as well ??
-   (assert (= aggregation-type :count))
+   (assert (#{:count :cum-count} aggregation-type))
    {:base_type     :type/BigInteger
     :semantic_type :type/Quantity
     :name          "count"
@@ -386,10 +385,14 @@
 
   ([_driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}
-   (first (qp/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
-                                    :type     :query
-                                    :query    {:source-table table-id
-                                               :aggregation  [[aggregation-type [:field-id field-id]]]}}))))
+   (merge
+    (first (qp/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
+                                     :type     :query
+                                     :query    {:source-table table-id
+                                                :aggregation  [[aggregation-type [:field-id field-id]]]}}))
+    (when (= aggregation-type :cum-count)
+      {:base_type     :type/BigInteger
+       :semantic_type :type/Quantity}))))
 
 
 (defmulti count-with-template-tag-query

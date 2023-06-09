@@ -1,4 +1,3 @@
-import React from "react";
 import _ from "underscore";
 
 import Filter from "metabase-lib/queries/structured/Filter";

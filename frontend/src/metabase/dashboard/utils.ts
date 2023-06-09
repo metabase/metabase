@@ -18,6 +18,7 @@ import {
   NativeDatasetQuery,
   Parameter,
   StructuredDatasetQuery,
+  ActionDashboardCard,
 } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import {
@@ -187,7 +188,7 @@ export function getDashcardResultsError(datasets: Dataset[]) {
   if (isAccessRestricted) {
     return {
       message: getPermissionErrorMessage(),
-      icon: "key",
+      icon: "key" as const,
     };
   }
 
@@ -195,11 +196,11 @@ export function getDashcardResultsError(datasets: Dataset[]) {
   if (errors.length > 0) {
     if (IS_EMBED_PREVIEW) {
       const message = errors[0]?.data || getGenericErrorMessage();
-      return { message, icon: "warning" };
+      return { message, icon: "warning" as const };
     }
     return {
       message: getGenericErrorMessage(),
-      icon: "warning",
+      icon: "warning" as const,
     };
   }
 
@@ -263,4 +264,10 @@ export const getVisibleCardIds = (
       )
       .map(c => c.id),
   );
+};
+
+export const getActionIsEnabledInDatabase = (
+  card: ActionDashboardCard,
+): boolean => {
+  return !!card.action?.database_enabled_actions;
 };

@@ -33,9 +33,8 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan.util.test :as tt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -68,7 +67,7 @@
                        "INSERT INTO `exciting-moments-in-history` (`id`, `moment`) VALUES (1, '0000-00-00');"]]
             (jdbc/execute! spec [sql]))
           ;; create & sync MB DB
-          (tt/with-temp Database [database {:engine "mysql", :details details}]
+          (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
             (sync/sync-database! database)
             (mt/with-db database
               ;; run the query
@@ -140,9 +139,9 @@
                (db->fields (mt/db)))))
 
       (testing "if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead"
-        (tt/with-temp Database [db {:engine  "mysql"
-                                    :details (assoc (:details (mt/db))
-                                                    :additional-options "tinyInt1isBit=false")}]
+        (t2.with-temp/with-temp [Database db {:engine  "mysql"
+                                              :details (assoc (:details (mt/db))
+                                                              :additional-options "tinyInt1isBit=false")}]
           (sync/sync-database! db)
           (is (= #{{:name "number-of-cans", :base_type :type/Integer, :semantic_type :type/Quantity}
                    {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
@@ -340,7 +339,7 @@
                             false
                             (throw se))))]
           (when compat
-            (tt/with-temp Database [database {:engine "mysql", :details details}]
+            (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
               (sync/sync-database! database)
               (is (= [{:name   "src1"
                        :fields [{:name      "id"
@@ -352,7 +351,7 @@
                                  :base_type :type/Integer}
                                 {:name      "t"
                                  :base_type :type/Text}]}]
-                     (->> (hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
+                     (->> (t2/hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
                           (map table-fingerprint)))))))))))
 
 (deftest group-on-time-column-test
@@ -613,28 +612,21 @@
                   (mt/db)
                   (t2/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
 
-(deftest ddl-execute-with-timeout-test1
-  (mt/test-driver :mysql
-    (mt/dataset json
-      (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-        (is (thrown-with-msg?
-             Exception
-             #"Killed mysql process id [\d,]+ due to timeout."
-             (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))))))
-
 (deftest ddl-execute-with-timeout-test
   (mt/test-driver :mysql
     (mt/dataset json
       (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-        (is (thrown-with-msg?
-              Exception
-              #"Killed mysql process id [\d,]+ due to timeout."
-              (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
-        (is (some? (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))
+        (testing "When the query takes longer that the timeout, it is killed."
+          (is (thrown-with-msg?
+                Exception
+                #"Killed mysql process id [\d,]+ due to timeout."
+                (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"]))))
+        (testing "When the query takes less time than the timeout, it is successful."
+          (is (some? (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"]))))))))
 
 (deftest syncable-schemas-test
   (mt/test-driver :mysql
     (testing "`syncable-schemas` should return an empty set because mysql doesn't support schemas"
       (mt/with-empty-db
         (is (= #{}
-               (driver/syncable-schemas driver/*driver* (mt/id))))))))
+               (driver/syncable-schemas driver/*driver* (mt/db))))))))

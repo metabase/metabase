@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
+
+import * as React from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 import d3 from "d3";

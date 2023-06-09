@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
 import { getIn, assocIn, dissocIn } from "icepick";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Select from "metabase/core/components/Select";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -17,7 +17,7 @@ import { getParameters } from "metabase/dashboard/selectors";
 import { getTargetsWithSourceFilters } from "metabase-lib/parameters/utils/click-behavior";
 import Question from "metabase-lib/Question";
 
-class ClickMappingsInner extends React.Component {
+class ClickMappingsInner extends Component {
   render() {
     const { setTargets, unsetTargets } = this.props;
     const sourceOptions = {
@@ -265,10 +265,14 @@ function TargetWithSource({
   );
 }
 
-// TODO: Extract this to a more general HOC. It can probably also take care of withTableMetadataLoaded.
+/**
+ * TODO: Extract this to a more general HOC. It can probably also take care of withTableMetadataLoaded.
+ *
+ * @deprecated HOCs are deprecated
+ */
 function loadQuestionMetadata(getQuestion) {
   return ComposedComponent => {
-    class MetadataLoader extends React.Component {
+    class MetadataLoader extends Component {
       componentDidMount() {
         if (this.props.question) {
           this.fetch();
@@ -290,7 +294,6 @@ function loadQuestionMetadata(getQuestion) {
       }
 
       render() {
-        // eslint-disable-next-line no-unused-vars
         const { question, metadata, ...rest } = this.props;
         return <ComposedComponent {...rest} />;
       }
@@ -306,7 +309,7 @@ function loadQuestionMetadata(getQuestion) {
 }
 
 export function withUserAttributes(ComposedComponent) {
-  return class WithUserAttributes extends React.Component {
+  return class WithUserAttributes extends Component {
     state = { userAttributes: [] };
 
     async componentDidMount() {

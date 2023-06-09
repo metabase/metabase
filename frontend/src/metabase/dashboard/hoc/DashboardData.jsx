@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
@@ -36,6 +36,9 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export default ComposedComponent =>
   connect(
     mapStateToProps,

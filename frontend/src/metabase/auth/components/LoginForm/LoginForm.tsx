@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import Form from "metabase/core/components/Form";
@@ -21,13 +21,13 @@ const LOGIN_SCHEMA = Yup.object().shape({
   remember: Yup.boolean(),
 });
 
-export interface LoginFormProps {
+interface LoginFormProps {
   isLdapEnabled: boolean;
   hasSessionCookies: boolean;
   onSubmit: (data: LoginData) => void;
 }
 
-const LoginForm = ({
+export const LoginForm = ({
   isLdapEnabled,
   hasSessionCookies,
   onSubmit,
@@ -80,6 +80,3 @@ const LoginForm = ({
     </FormProvider>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default LoginForm;

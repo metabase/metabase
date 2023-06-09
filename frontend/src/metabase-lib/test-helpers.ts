@@ -52,7 +52,7 @@ export const columnFinder =
   (query: ML.Query, columns: ML.ColumnMetadata[]) =>
   (tableName: string, columnName: string): ML.ColumnMetadata => {
     const column = columns.find(column => {
-      const displayInfo = ML.displayInfo(query, column);
+      const displayInfo = ML.displayInfo(query, 0, column);
       return (
         displayInfo?.table?.name === tableName &&
         displayInfo?.name === columnName

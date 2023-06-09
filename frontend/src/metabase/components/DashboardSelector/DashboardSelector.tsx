@@ -1,18 +1,17 @@
-import React from "react";
 import { t } from "ttag";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useDashboardQuery } from "metabase/common/hooks";
-import { Collection } from "metabase-types/api";
+import { Collection, DashboardId } from "metabase-types/api";
 import {
   DashboardPickerContainer,
   DashboardPickerButton,
 } from "./DashboardSelector.styled";
 
 interface DashboardSelectorProps {
-  onChange: (value?: number | null) => void;
-  value?: number;
+  onChange: (value?: number | null | string) => void;
+  value?: DashboardId;
   collectionFilter?: (collection: Collection) => boolean;
 }
 

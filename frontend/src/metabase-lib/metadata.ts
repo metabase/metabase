@@ -27,14 +27,17 @@ export function displayName(query: Query, clause: Clause): string {
 
 declare function DisplayInfoFn(
   query: Query,
+  stageIndex: number,
   columnMetadata: ColumnMetadata,
 ): ColumnDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
+  stageIndex: number,
   columnGroup: ColumnGroup,
 ): ColumnDisplayInfo | TableDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
+  stageIndex: number,
   orderByClause: OrderByClause,
 ): OrderByClauseDisplayInfo;
 

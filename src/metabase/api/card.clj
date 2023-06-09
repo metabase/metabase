@@ -13,6 +13,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
    [metabase.driver :as driver]
+   [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
@@ -24,6 +25,7 @@
             ViewLog]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
+   [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.params :as params]
@@ -43,6 +45,9 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.sync :as sync]
    [metabase.sync.analyze.query-results :as qr]
+   [metabase.sync.fetch-metadata :as fetch-metadata]
+   [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
@@ -53,7 +58,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
@@ -81,8 +85,8 @@
 ;; return all Cards bookmarked by the current user.
 (defmethod cards-for-filter-option* :bookmarked
   [_]
-  (let [cards (for [{{:keys [archived], :as card} :card} (hydrate (t2/select [CardBookmark :card_id]
-                                                                    :user_id api/*current-user-id*)
+  (let [cards (for [{{:keys [archived], :as card} :card} (t2/hydrate (t2/select [CardBookmark :card_id]
+                                                                      :user_id api/*current-user-id*)
                                                                   :card)
                     :when                                 (not archived)]
                 card)]
@@ -147,7 +151,7 @@
 
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* filter-option (when model-id-or-nil [model-id-or-nil]))
-      (hydrate :creator :collection)))
+      (t2/hydrate :creator :collection)))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
 (def ^:private card-filter-options
@@ -186,15 +190,16 @@
    ignore_view [:maybe :boolean]}
   (let [raw-card (t2/select-one Card :id id)
         card (-> raw-card
-                 (hydrate :creator
+                 (t2/hydrate :creator
                           :dashboard_count
                           :parameter_usage_count
                           :can_write
                           :average_query_time
                           :last_query_start
-                          :collection [:moderation_reviews :moderator_details])
+                          :collection
+                          [:moderation_reviews :moderator_details])
                  (cond-> ;; card
-                   (:dataset raw-card) (hydrate :persisted))
+                   (:dataset raw-card) (t2/hydrate :persisted))
                  api/read-check
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
@@ -531,7 +536,7 @@ saved later when it is ready."
      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
      ;; returned one -- See #4283
      (u/prog1 (-> card
-                  (hydrate :creator
+                  (t2/hydrate :creator
                            :dashboard_count
                            :can_write
                            :average_query_time
@@ -758,14 +763,14 @@ saved later when it is ready."
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
     ;; has with returned one -- See #4142
     (-> card
-        (hydrate :creator
+        (t2/hydrate :creator
                  :dashboard_count
                  :can_write
                  :average_query_time
                  :last_query_start
                  :collection [:moderation_reviews :moderator_details])
         (cond-> ;; card
-          (:dataset card) (hydrate :persisted))
+          (:dataset card) (t2/hydrate :persisted))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -790,7 +795,7 @@ saved later when it is ready."
    result_metadata        (s/maybe qr/ResultsMetadata)
    cache_ttl              (s/maybe su/IntGreaterThanZero)
    collection_preview     (s/maybe s/Bool)}
-  (let [card-before-update (hydrate (api/write-check Card id)
+  (let [card-before-update (t2/hydrate (api/write-check Card id)
                                     [:moderation_reviews :moderator_details])]
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection
@@ -1127,6 +1132,12 @@ saved later when it is ready."
    query     ms/NonBlankString}
   (param-values (api/read-check Card card-id) param-key query))
 
+(defn- scan-and-sync-table!
+  [{:keys [is_on_demand is_full_sync] :as database} table]
+  (sync-fields/sync-fields-for-table! database table)
+  (when (or is_on_demand is_full_sync)
+    (future (sync/sync-table! table))))
+
 (defn upload-csv!
   "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
   syncing and scanning the new data, and creating an appropriate model which is then returned. May throw validation or
@@ -1139,30 +1150,43 @@ saved later when it is ready."
   (let [db-id             (public-settings/uploads-database-id)
         database          (or (t2/select-one Database :id db-id)
                               (throw (Exception. (tru "The uploads database does not exist."))))
+        driver            (driver.u/database->driver database)
         schema-name       (public-settings/uploads-schema-name)
+        _check-schema     (when-not (or (nil? schema-name)
+                                        (driver.s/include-schema? database schema-name))
+                            (throw (ex-info (tru "The schema {0} is not syncable." schema-name)
+                                            {:status-code 422})))
         filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
                               filename)
-        driver            (driver.u/database->driver database)
-        _                 (or (driver/database-supports? driver :uploads nil)
-                              (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
+        _check-setting    (when-not (driver/database-supports? driver :uploads nil)
+                            (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
         table-name        (->> (str (public-settings/uploads-table-prefix) filename-prefix)
-                               (upload/unique-table-name driver))
+                               (upload/unique-table-name driver)
+                               (u/lower-case-en))
         schema+table-name (if (str/blank? schema-name)
                             table-name
                             (str schema-name "." table-name))
-        _                 (upload/load-from-csv driver db-id schema+table-name csv-file)
-        _                 (sync/sync-database! database)
-        table-id          (t2/select-one-fn :id Table :db_id db-id :%lower.name table-name)]
-    (create-card!
-     {:collection_id          collection-id,
-      :dataset                true
-      :database_id            db-id
-      :dataset_query          {:database db-id
-                               :query    {:source-table table-id}
-                               :type     :query}
-      :display                :table
-      :name                   filename-prefix
-      :visualization_settings {}})))
+        _load!            (upload/load-from-csv driver db-id schema+table-name csv-file)
+        ;; Syncs are needed immediately to create the Table and its Fields; the scan is settings-dependent and can be async
+        table-metadata    (first (filter (fn [{:keys [name]}] (= (u/lower-case-en name) table-name))
+                                         (:tables (fetch-metadata/db-metadata database))))
+        actual-schema     (:schema table-metadata)]
+    (when (nil? table-metadata)
+      (driver/drop-table driver db-id table-name)
+      (throw (ex-info (tru "The CSV file was uploaded to {0}, but the table could not be created or found." schema+table-name)
+                      {:status-code 422})))
+    (let [table (sync-tables/create-or-reactivate-table! database {:name table-name :schema actual-schema})]
+      (scan-and-sync-table! database table)
+      (create-card!
+       {:collection_id          collection-id,
+        :dataset                true
+        :database_id            db-id
+        :dataset_query          {:database db-id
+                                 :query    {:source-table (u/the-id table)}
+                                 :type     :query}
+        :display                :table
+        :name                   (humanization/name->human-readable-name filename-prefix)
+        :visualization_settings {}}))))
 
 (api/defendpoint ^:multipart POST "/from-csv"
   "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."

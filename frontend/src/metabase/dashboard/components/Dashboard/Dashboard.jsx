@@ -1,5 +1,5 @@
 // TODO: merge with metabase/dashboard/containers/Dashboard.jsx
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
@@ -25,7 +25,10 @@ import {
   ParametersAndCardsContainer,
   ParametersWidgetContainer,
 } from "./Dashboard.styled";
-import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
+import {
+  DashboardEmptyState,
+  TabEmptyState,
+} from "./DashboardEmptyState/DashboardEmptyState";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
 
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
@@ -107,8 +110,8 @@ class Dashboard extends Component {
 
   constructor(props) {
     super(props);
-    this.parametersWidgetRef = React.createRef();
-    this.parametersAndCardsContainerRef = React.createRef();
+    this.parametersWidgetRef = createRef();
+    this.parametersAndCardsContainerRef = createRef();
   }
 
   static getDerivedStateFromProps({ parameters }, { parametersListLength }) {
@@ -196,22 +199,6 @@ class Dashboard extends Component {
     }
   }
 
-  getDashboardWithFilteredCards = () => {
-    if (!this.props.dashboard) {
-      return;
-    }
-
-    return {
-      ...this.props.dashboard,
-      ordered_cards: this.props.dashboard.ordered_cards.filter(
-        dc =>
-          !this.props.selectedTabId ||
-          dc.dashboard_tab_id === this.props.selectedTabId ||
-          dc.dashboard_tab_id === null,
-      ),
-    };
-  };
-
   setEditing = isEditing => {
     this.props.onRefreshPeriodChange(null);
     this.props.setEditingDashboard(isEditing);
@@ -258,13 +245,18 @@ class Dashboard extends Component {
       isHeaderVisible,
       embedOptions,
       isAutoApplyFilters,
+      selectedTabId,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
-    const dashboardHasCards =
-      this.getDashboardWithFilteredCards()?.ordered_cards.length > 0 ?? false;
+    const dashboardHasCards = dashboard?.ordered_cards.length > 0 ?? false;
+    const tabHasCards =
+      dashboard?.ordered_cards.filter(
+        c =>
+          selectedTabId !== undefined && c.dashboard_tab_id === selectedTabId,
+      ).length > 0 ?? false;
     const visibleParameters = getVisibleParameters(parameters);
 
     const parametersWidget = (
@@ -351,13 +343,15 @@ class Dashboard extends Component {
                   addMarginTop={cardsContainerShouldHaveMarginTop}
                   id="Dashboard-Cards-Container"
                 >
-                  {dashboardHasCards ? (
+                  {dashboardHasCards && tabHasCards ? (
                     <DashboardGrid
                       {...this.props}
-                      dashboard={this.getDashboardWithFilteredCards()}
+                      dashboard={this.props.dashboard}
                       isNightMode={shouldRenderAsNightMode}
                       onEditingChange={this.setEditing}
                     />
+                  ) : dashboardHasCards ? (
+                    <TabEmptyState isNightMode={shouldRenderAsNightMode} />
                   ) : (
                     <DashboardEmptyState
                       isNightMode={shouldRenderAsNightMode}

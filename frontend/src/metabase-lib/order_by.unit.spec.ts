@@ -11,12 +11,15 @@ import * as ML from "./v2";
 describe("order by", () => {
   describe("orderableColumns", () => {
     const query = createQuery();
-    const findOrderableColumn = columnFinder(query, ML.orderableColumns(query));
+    const findOrderableColumn = columnFinder(
+      query,
+      ML.orderableColumns(query, 0),
+    );
 
     it("returns metadata for columns in the source table", () => {
       const ordersID = findOrderableColumn("ORDERS", "ID");
 
-      expect(ML.displayInfo(query, ordersID)).toEqual(
+      expect(ML.displayInfo(query, 0, ordersID)).toEqual(
         expect.objectContaining({
           name: "ID",
           displayName: "ID",
@@ -40,7 +43,7 @@ describe("order by", () => {
     it("returns metadata for columns in implicitly joinable tables", () => {
       const productsTitle = findOrderableColumn("PRODUCTS", "TITLE");
 
-      expect(ML.displayInfo(query, productsTitle)).toEqual(
+      expect(ML.displayInfo(query, 0, productsTitle)).toEqual(
         expect.objectContaining({
           name: "TITLE",
           displayName: "Title",
@@ -82,11 +85,11 @@ describe("order by", () => {
         },
       });
 
-      const columns = ML.orderableColumns(query);
+      const columns = ML.orderableColumns(query, 0);
 
       const productsTitle = columns.find(
         (columnMetadata: ML.ColumnMetadata) => {
-          const displayInfo = ML.displayInfo(query, columnMetadata);
+          const displayInfo = ML.displayInfo(query, 0, columnMetadata);
           return (
             displayInfo.displayName === "Title" &&
             displayInfo.table?.displayName === "Product Model"
@@ -94,7 +97,9 @@ describe("order by", () => {
         },
       );
 
-      expect(ML.displayInfo(query, productsTitle as ML.ColumnMetadata)).toEqual(
+      expect(
+        ML.displayInfo(query, 0, productsTitle as ML.ColumnMetadata),
+      ).toEqual(
         expect.objectContaining({
           name: field.name,
           displayName: field.display_name,
@@ -107,42 +112,47 @@ describe("order by", () => {
     it("should preserve order-by positions between v1-v2 roundtrip", () => {
       const query = createQuery();
       const taxColumn = findOrderableColumn("ORDERS", "TAX");
-      const nextQuery = ML.orderBy(query, taxColumn);
-      const nextQueryColumns = ML.orderableColumns(nextQuery);
+      const nextQuery = ML.orderBy(query, 0, taxColumn);
+      const nextQueryColumns = ML.orderableColumns(nextQuery, 0);
       const nextTaxColumn = columnFinder(nextQuery, nextQueryColumns)(
         "ORDERS",
         "TAX",
       );
 
-      expect(ML.displayInfo(nextQuery, nextTaxColumn).orderByPosition).toBe(0);
+      expect(ML.displayInfo(nextQuery, 0, nextTaxColumn).orderByPosition).toBe(
+        0,
+      );
 
       const roundtripQuery = createQuery({
         query: ML.toLegacyQuery(nextQuery),
       });
-      const roundtripQueryColumns = ML.orderableColumns(roundtripQuery);
+      const roundtripQueryColumns = ML.orderableColumns(roundtripQuery, 0);
       const roundtripTaxColumn = columnFinder(
         roundtripQuery,
         roundtripQueryColumns,
       )("ORDERS", "TAX");
 
       expect(
-        ML.displayInfo(roundtripQuery, roundtripTaxColumn).orderByPosition,
+        ML.displayInfo(roundtripQuery, 0, roundtripTaxColumn).orderByPosition,
       ).toBe(0);
     });
   });
 
   describe("add order by", () => {
     const query = createQuery();
-    const findOrderableColumn = columnFinder(query, ML.orderableColumns(query));
+    const findOrderableColumn = columnFinder(
+      query,
+      ML.orderableColumns(query, 0),
+    );
 
     it("should handle no order by clauses", () => {
-      expect(ML.orderBys(query)).toHaveLength(0);
+      expect(ML.orderBys(query, 0)).toHaveLength(0);
     });
 
     it("should update the query", () => {
       const productTitle = findOrderableColumn("PRODUCTS", "TITLE");
-      const nextQuery = ML.orderBy(query, productTitle);
-      const orderBys = ML.orderBys(nextQuery);
+      const nextQuery = ML.orderBy(query, 0, productTitle);
+      const orderBys = ML.orderBys(nextQuery, 0);
 
       expect(orderBys).toHaveLength(1);
       expect(ML.displayName(nextQuery, orderBys[0])).toBe("Title ascending");
@@ -151,22 +161,26 @@ describe("order by", () => {
 
   describe("replace order by", () => {
     const query = createQuery();
-    const findOrderableColumn = columnFinder(query, ML.orderableColumns(query));
+    const findOrderableColumn = columnFinder(
+      query,
+      ML.orderableColumns(query, 0),
+    );
 
     it("should update the query", () => {
       const productTitle = findOrderableColumn("PRODUCTS", "TITLE");
       const productCategory = findOrderableColumn("PRODUCTS", "CATEGORY");
 
-      const orderedQuery = ML.orderBy(query, productTitle);
-      const orderBys = ML.orderBys(orderedQuery);
+      const orderedQuery = ML.orderBy(query, 0, productTitle);
+      const orderBys = ML.orderBys(orderedQuery, 0);
 
       expect(orderBys).toHaveLength(1);
       const nextQuery = ML.replaceClause(
         orderedQuery,
+        0,
         orderBys[0],
-        ML.orderByClause(orderedQuery, -1, productCategory, "desc"),
+        ML.orderByClause(orderedQuery, 0, productCategory, "desc"),
       );
-      const nextOrderBys = ML.orderBys(nextQuery);
+      const nextOrderBys = ML.orderBys(nextQuery, 0);
       expect(ML.displayName(nextQuery, nextOrderBys[0])).toBe(
         "Category descending",
       );
@@ -176,17 +190,20 @@ describe("order by", () => {
 
   describe("remove order by", () => {
     const query = createQuery();
-    const findOrderableColumn = columnFinder(query, ML.orderableColumns(query));
+    const findOrderableColumn = columnFinder(
+      query,
+      ML.orderableColumns(query, 0),
+    );
 
     it("should update the query", () => {
       const productTitle = findOrderableColumn("PRODUCTS", "TITLE");
 
-      const orderedQuery = ML.orderBy(query, productTitle);
-      const orderBys = ML.orderBys(orderedQuery);
+      const orderedQuery = ML.orderBy(query, 0, productTitle);
+      const orderBys = ML.orderBys(orderedQuery, 0);
       expect(orderBys).toHaveLength(1);
 
-      const nextQuery = ML.removeClause(orderedQuery, orderBys[0]);
-      expect(ML.orderBys(nextQuery)).toHaveLength(0);
+      const nextQuery = ML.removeClause(orderedQuery, 0, orderBys[0]);
+      expect(ML.orderBys(nextQuery, 0)).toHaveLength(0);
     });
   });
 });

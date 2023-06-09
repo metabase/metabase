@@ -1,3 +1,5 @@
+import { DashboardId } from "./dashboard";
+
 export type UserId = number;
 
 export type UserAttribute = string;
@@ -27,8 +29,16 @@ export interface User extends BaseUser {
   has_question_and_dashboard: boolean;
   personal_collection_id: number;
   custom_homepage: {
-    dashboard_id: number;
+    dashboard_id: DashboardId;
   } | null;
+}
+
+export interface UserListResult {
+  id: UserId;
+  first_name: string | null;
+  last_name: string | null;
+  common_name: string;
+  email: string;
 }
 
 // Used when hydrating `creator` property

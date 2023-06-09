@@ -1,7 +1,5 @@
-import React from "react";
-
 import type Tether from "tether";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import {
   NotebookCell,
@@ -47,7 +45,7 @@ const ClauseStep = <T,>({
               {renderName(item, index)}
               {!readOnly && onRemove && (!canRemove || canRemove(item)) && (
                 <Icon
-                  ml={1}
+                  className="ml1"
                   name="close"
                   onClick={e => {
                     e.stopPropagation();

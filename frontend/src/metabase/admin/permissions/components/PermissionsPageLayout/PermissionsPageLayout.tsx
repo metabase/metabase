@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from "react";
+import { ReactNode, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { push } from "react-router-redux";
@@ -22,6 +22,7 @@ import {
   CloseSidebarButton,
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
+import { IconName } from "metabase/core/components/Icon";
 import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
 import { clearSaveError as clearPermissionsSaveError } from "../../permissions";
 import { ToolbarButton } from "../ToolbarButton";
@@ -52,7 +53,7 @@ const CloseSidebarButtonWithDefault = ({
   name = "close",
   ...props
 }: {
-  name?: string;
+  name?: IconName;
   [key: string]: unknown;
 }) => <CloseSidebarButton name={name} {...props} />;
 
@@ -135,7 +136,6 @@ function PermissionsPageLayout({
       {shouldShowHelp && (
         <PermissionPageSidebar>
           <CloseSidebarButtonWithDefault
-            size={20}
             onClick={() => setShouldShowHelp(prev => !prev)}
           />
           {helpContent}

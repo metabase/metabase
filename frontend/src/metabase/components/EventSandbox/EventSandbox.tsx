@@ -1,4 +1,5 @@
-import React, { useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
+import * as React from "react";
 
 type Options = {
   preventDefault?: boolean;

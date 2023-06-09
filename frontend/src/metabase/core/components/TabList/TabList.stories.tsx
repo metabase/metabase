@@ -1,11 +1,9 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
 import Tab from "../Tab";
 
 import TabList from "./TabList";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/TabList",
   component: TabList,

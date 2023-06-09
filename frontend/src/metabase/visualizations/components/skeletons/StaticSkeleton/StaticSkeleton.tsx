@@ -1,5 +1,6 @@
-import React, { HTMLAttributes } from "react";
+import { HTMLAttributes } from "react";
 import Tooltip from "metabase/core/components/Tooltip";
+import { IconName } from "metabase/core/components/Icon";
 import {
   SkeletonDescription,
   SkeletonIcon,
@@ -18,7 +19,7 @@ export interface StaticSkeletonProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export interface StaticSkeletonIconProps {
-  name: string;
+  name: IconName;
 }
 
 const StaticSkeleton = ({

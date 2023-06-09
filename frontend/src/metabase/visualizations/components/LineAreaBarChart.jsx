@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";
-import { iconPropTypes } from "metabase/components/Icon";
 
 import "./LineAreaBarChart.css";
 
@@ -140,7 +139,7 @@ export default class LineAreaBarChart extends Component {
     actionButtons: PropTypes.node,
     showTitle: PropTypes.bool,
     isDashboard: PropTypes.bool,
-    headerIcon: PropTypes.shape(iconPropTypes),
+    headerIcon: PropTypes.object,
   };
 
   static defaultProps = {};
