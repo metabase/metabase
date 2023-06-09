@@ -1,35 +1,26 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
   Card,
   Collection,
   CollectionItem,
   Dashboard,
 } from "metabase-types/api";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaName,
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 import { PERMISSION_ERROR } from "./constants";
 
 export function setupCollectionsEndpoints({
   collections,
-  error,
   rootCollection = ROOT_COLLECTION,
-  status,
 }: {
   collections: Collection[];
   rootCollection?: Collection;
-  error?: string;
-  status?: number;
 }) {
-  if (error) {
-    setupCollectionsWithError({ error, status });
-    return;
-  }
-
   fetchMock.get("path:/api/collection/root", rootCollection);
   fetchMock.get(
     {
@@ -51,19 +42,6 @@ export function setupCollectionsEndpoints({
     { url: "path:/api/collection", overwriteRoutes: false },
     collections,
   );
-}
-
-function setupCollectionsWithError({
-  error,
-  status = 500,
-}: {
-  error: string;
-  status?: number;
-}) {
-  fetchMock.get("path:/api/collection", {
-    body: error,
-    status,
-  });
 }
 
 function getCollectionVirtualSchemaURLs(collection: Collection) {
@@ -117,10 +95,16 @@ export function setupCollectionItemsEndpoint(
   });
 }
 
-export function setupUnauthorizedCollectionEndpoints(collection: Collection) {
-  fetchMock.get(`path:/api/collection/${collection.id}`, {
-    status: 403,
-    body: PERMISSION_ERROR,
+export function setupCollectionsWithError({
+  error,
+  status = 500,
+}: {
+  error: string;
+  status?: number;
+}) {
+  fetchMock.get("path:/api/collection", {
+    body: error,
+    status,
   });
 }
 
@@ -128,6 +112,13 @@ export function setupUnauthorizedCollectionsEndpoints(
   collections: Collection[],
 ) {
   collections.forEach(setupUnauthorizedCollectionEndpoints);
+}
+
+export function setupUnauthorizedCollectionEndpoints(collection: Collection) {
+  fetchMock.get(`path:/api/collection/${collection.id}`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
 }
 
 export function setupCollectionByIdEndpoint({

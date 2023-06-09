@@ -1,4 +1,7 @@
-import { setupCollectionsEndpoints } from "__support__/server-mocks";
+import {
+  setupCollectionsEndpoints,
+  setupCollectionsWithError,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -27,7 +30,11 @@ const TestComponent = () => {
 };
 
 const setup = ({ error }: { error?: string } = {}) => {
-  setupCollectionsEndpoints({ collections: [TEST_COLLECTION], error });
+  if (error) {
+    setupCollectionsWithError({ error });
+  } else {
+    setupCollectionsEndpoints({ collections: [TEST_COLLECTION] });
+  }
 
   renderWithProviders(<TestComponent />);
 };
