@@ -80,7 +80,6 @@ describe("scenarios > question > custom column", () => {
     cy.button("Summarize").click();
     popover().findByText("Count of rows").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     getNotebookStep("summarize")
       .findByText("Pick a column to group by")
       .click();
