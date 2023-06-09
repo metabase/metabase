@@ -209,16 +209,15 @@
                                          :visualization_settings (json/generate-string updated)}))))
                             (t2/reducible-query {:select [:id :visualization_settings]
                                                  :from   [:report_card]
-                                                 :where  [:and
-                                                          [:or
-                                                           ;; these match legacy field refs in column_settings
-                                                           [:like :visualization_settings "%ref\\\\\",[\\\\\"field-id%"]
-                                                           [:like :visualization_settings "%ref\\\\\",[\\\\\"field-literal%"]
-                                                           [:like :visualization_settings "%ref\\\\\",[\\\\\"fk->%"]
-                                                           ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
-                                                           [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field-id%"]
-                                                           [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field-literal%"]
-                                                           [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"fk->%"]]]})))))
+                                                 :where  [:or
+                                                          ;; these match legacy field refs in column_settings
+                                                          [:like :visualization_settings "%ref\\\\\",[\\\\\"field-id%"]
+                                                          [:like :visualization_settings "%ref\\\\\",[\\\\\"field-literal%"]
+                                                          [:like :visualization_settings "%ref\\\\\",[\\\\\"fk->%"]
+                                                          ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
+                                                          [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field-id%"]
+                                                          [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field-literal%"]
+                                                          [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"fk->%"]]})))))
 
 (defn- update-legacy-field-refs-in-result-metadata [result-metadata]
   (let [old-to-new (fn [ref]
