@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 import PropTypes from "prop-types";
 
 import {
@@ -306,9 +305,7 @@ describe("ItemPicker", () => {
         COLLECTION.REGULAR_2,
       ];
 
-      fetchMock.get("path:/api/collection", collections);
-
-      await setup();
+      await setup({ collections });
 
       const items = screen.getAllByTestId("item-picker-item");
 
@@ -325,9 +322,7 @@ describe("ItemPicker", () => {
         COLLECTION.REGULAR,
       ];
 
-      fetchMock.get("path:/api/collection", collections);
-
-      await setup();
+      await setup({ collections });
 
       const items = screen.getAllByTestId("item-picker-item");
 
