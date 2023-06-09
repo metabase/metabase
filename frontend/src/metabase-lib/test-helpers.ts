@@ -71,6 +71,9 @@ export const findBinningStrategy = (
   column: ML.ColumnMetadata,
   bucketName: string,
 ) => {
+  if (bucketName === "Don't bin") {
+    return null;
+  }
   const buckets = ML.availableBinningStrategies(query, 0, column);
   const bucket = buckets.find(
     bucket => ML.displayInfo(query, 0, bucket).displayName === bucketName,

@@ -11,7 +11,17 @@ export function availableBinningStrategies(
   stageIndex: number,
   column: ColumnMetadata,
 ): Bucket[] {
-  return ML.available_binning_strategies(query, stageIndex, column);
+  const buckets = ML.available_binning_strategies(
+    query,
+    stageIndex,
+    column,
+  ) as Bucket[];
+
+  // TODO Remove once BE removes "Don't bin"
+  return buckets.filter(
+    bucket =>
+      displayInfo(query, stageIndex, bucket).displayName !== "Don't bin",
+  );
 }
 
 export function isBinnable(
@@ -22,7 +32,10 @@ export function isBinnable(
   return availableBinningStrategies(query, stageIndex, column).length > 0;
 }
 
-export function withBinning(column: ColumnMetadata, binningStrategy: Bucket) {
+export function withBinning(
+  column: ColumnMetadata,
+  binningStrategy: Bucket | null,
+) {
   return ML.with_binning(column, binningStrategy);
 }
 

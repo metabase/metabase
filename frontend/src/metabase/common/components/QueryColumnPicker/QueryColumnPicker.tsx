@@ -132,22 +132,22 @@ function QueryColumnPicker({
   const renderItemExtra = useCallback(
     (item: ColumnListItem) => {
       if (hasBinning && Lib.isBinnable(query, stageIndex, item.column)) {
-        const selectedBucket = clause ? Lib.binning(clause) : null;
         const buckets = Lib.availableBinningStrategies(
           query,
           stageIndex,
           item.column,
         );
+        const isEditing = Boolean(
+          clause && Lib.isClauseColumn(query, stageIndex, clause, item.column),
+        );
         return (
           <BinningStrategyPickerPopover
             query={query}
             stageIndex={stageIndex}
-            selectedBucket={selectedBucket}
+            column={item.column}
             buckets={buckets}
-            withDefaultBucket={!clause}
-            onSelect={nextBucket => {
-              handleSelect(Lib.withBinning(item.column, nextBucket));
-            }}
+            isEditing={isEditing}
+            onSelect={handleSelect}
           />
         );
       }
@@ -156,22 +156,22 @@ function QueryColumnPicker({
         hasTemporalBucketing &&
         Lib.isTemporalBucketable(query, stageIndex, item.column)
       ) {
-        const selectedBucket = clause ? Lib.temporalBucket(clause) : null;
         const buckets = Lib.availableTemporalBuckets(
           query,
           stageIndex,
           item.column,
         );
+        const isEditing = Boolean(
+          clause && Lib.isClauseColumn(query, stageIndex, clause, item.column),
+        );
         return (
           <TemporalBucketPickerPopover
             query={query}
             stageIndex={stageIndex}
-            selectedBucket={selectedBucket}
+            column={item.column}
             buckets={buckets}
-            withDefaultBucket={!clause}
-            onSelect={nextBucket => {
-              handleSelect(Lib.withTemporalBucket(item.column, nextBucket));
-            }}
+            isEditing={isEditing}
+            onSelect={handleSelect}
           />
         );
       }
