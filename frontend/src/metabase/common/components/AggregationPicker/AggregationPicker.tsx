@@ -92,7 +92,7 @@ export function AggregationPicker({
       sections.push({
         name: t`Common Metrics`,
         items: metrics,
-        icon: "star_outline",
+        icon: "star",
       });
     }
 
