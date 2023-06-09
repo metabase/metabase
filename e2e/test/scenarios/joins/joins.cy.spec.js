@@ -118,15 +118,18 @@ describe("scenarios > question > joined questions", () => {
 
     // start a custom question with question a
     startNewQuestion();
+    cy.intercept("GET", "/api/database/*/schemas").as("loadSchemas");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Saved Questions").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("question a").click();
+    cy.wait("@loadSchemas");
 
     // join to question b
     cy.icon("join_left_outer").click();
 
     popover().within(() => {
+      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Saved Questions").click();
       cy.findByText("question b").click();
     });
