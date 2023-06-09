@@ -4,8 +4,11 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
-   [metabase.util.i18n :refer [deferred-tru tru]]
-   [toucan2.core :as t2]))
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [toucan2.core :as t2])
+  (:import
+   (java.util UUID)))
 
 (set! *warn-on-reflection* true)
 
@@ -36,6 +39,12 @@
       (setting/set-value-of-type! :string :setup-token (str (random-uuid)))))
 
 
+(defenterprise ignore-internal-user-clause
+  "Returns the where clause to ignore internal metabase user, or an empty where clause."
+  metabase-enterprise.internal-user
+  []
+  [])
+
 (defsetting has-user-setup
   (deferred-tru "A value that is true iff the metabase instance has one or more users registered.")
   :visibility :public
@@ -53,14 +62,8 @@
   ;; it out in the REPL
   :getter     (let [app-db-id->user-exists? (atom {})]
                 (fn []
-                  (let [possible-override (when (or config/is-dev? config/is-test?)
-                                            ;; allow for overriding in dev and test
-                                            (setting/get-value-of-type :boolean :has-user-setup))]
-                    ;; override could be false so have to check non-nil
-                    (if (some? possible-override)
-                      possible-override
-                      (or (get @app-db-id->user-exists? (mdb.connection/unique-identifier))
-                          (let [exists? (boolean (seq (t2/select :model/User {:where [:not= :id config/internal-mb-user-id]})))]
-                            (swap! app-db-id->user-exists? assoc (mdb.connection/unique-identifier) exists?)
-                            exists?))))))
+                  (or (get @app-db-id->user-exists? (mdb.connection/unique-identifier))
+                      (let [exists? (t2/exists? User {:where (ignore-internal-user-clause)})]
+                        (swap! app-db-id->user-exists? assoc (mdb.connection/unique-identifier) exists?)
+                        exists?))))
   :doc        false)
