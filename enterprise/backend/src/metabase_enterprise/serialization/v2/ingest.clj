@@ -8,7 +8,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.util.date-2 :as u.date]
    [metabase.util.yaml :as yaml]
-   [potemkin.types :as p])
+   [potemkin.types :as p]
+   [clojure.string :as str])
   (:import (java.io File)))
 
 (set! *warn-on-reflection* true)
@@ -61,6 +62,7 @@
   ;; This returns a map {unlabeled-hierarchy [original-hierarchy File]}.
   (into {} (for [^File file (file-seq root-dir)
                  :when      (and (.isFile file)
+                                 (str/ends-with? (.getName file) ".yaml")
                                  (let [rel (.relativize (.toPath root-dir) (.toPath file))]
                                    (-> rel (.subpath 0 1) (.toString) legal-top-level-paths)))
                  ;; TODO: only load YAML once.
