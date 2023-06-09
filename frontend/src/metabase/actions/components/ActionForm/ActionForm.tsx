@@ -1,7 +1,7 @@
-import { forwardRef, Ref, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import type { FormikHelpers, FormikProps } from "formik";
+import type { FormikHelpers } from "formik";
 
 import Button from "metabase/core/components/Button";
 import Form from "metabase/core/components/Form";
@@ -38,6 +38,8 @@ interface ActionFormProps {
   // and they will be submitted together in batch.
   hiddenFields?: ParameterId[];
 
+  onChange?: (values: ParametersForActionExecution) => void;
+
   onSubmit: (
     parameters: ParametersForActionExecution,
     actions: FormikHelpers<ParametersForActionExecution>,
@@ -45,19 +47,15 @@ interface ActionFormProps {
   onClose?: () => void;
 }
 
-export type ActionFormRefData = FormikProps<ParametersForActionExecution>;
-
-const ActionForm = forwardRef(function ActionForm(
-  {
-    action,
-    initialValues: rawInitialValues = {},
-    hasPreservedInitialValues = false,
-    hiddenFields = [],
-    onSubmit,
-    onClose,
-  }: ActionFormProps,
-  ref: Ref<ActionFormRefData>,
-): JSX.Element {
+function ActionForm({
+  action,
+  initialValues: rawInitialValues = {},
+  hasPreservedInitialValues = false,
+  hiddenFields = [],
+  onChange,
+  onSubmit,
+  onClose,
+}: ActionFormProps): JSX.Element {
   const { initialValues, form, validationSchema, getCleanValues } =
     useActionForm({
       action,
@@ -92,9 +90,8 @@ const ActionForm = forwardRef(function ActionForm(
       validationSchema={validationSchema}
       onSubmit={handleSubmit}
       enableReinitialize
-      innerRef={ref}
     >
-      <Form role="form" data-testid="action-form">
+      <Form role="form" data-testid="action-form" onChange={onChange}>
         {editableFields.map(field => (
           <ActionFormFieldWidget key={field.name} formField={field} />
         ))}
@@ -110,7 +107,7 @@ const ActionForm = forwardRef(function ActionForm(
       </Form>
     </FormProvider>
   );
-});
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionForm;

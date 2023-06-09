@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useMemo,
-  useState,
-  useEffect,
-  forwardRef,
-  Ref,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -13,18 +6,16 @@ import EmptyState from "metabase/components/EmptyState";
 
 import { ActionsApi, PublicApi } from "metabase/services";
 
-import ActionForm, {
-  ActionFormRefData,
-} from "metabase/actions/components/ActionForm";
+import ActionForm from "metabase/actions/components/ActionForm";
 import { getDashboardType } from "metabase/dashboard/utils";
 
 import type {
-  WritebackParameter,
-  OnSubmitActionForm,
-  Dashboard,
   ActionDashboardCard,
+  Dashboard,
+  OnSubmitActionForm,
   ParametersForActionExecution,
   WritebackAction,
+  WritebackParameter,
 } from "metabase-types/api";
 
 export interface ActionParametersInputFormProps {
@@ -35,6 +26,7 @@ export interface ActionParametersInputFormProps {
   initialValues?: ParametersForActionExecution;
   hasPreservedInitialValues?: boolean;
   dashcardParamValues?: ParametersForActionExecution;
+  onChange?: (values: ParametersForActionExecution) => void;
   onSubmit: OnSubmitActionForm;
   onSubmitSuccess?: () => void;
   onCancel?: () => void;
@@ -43,21 +35,19 @@ export interface ActionParametersInputFormProps {
 const shouldPrefetchValues = (action: WritebackAction) =>
   action.type === "implicit" && action.kind === "row/update";
 
-const ActionParametersInputForm = forwardRef(function ActionParametersInputForm(
-  {
-    action,
-    mappedParameters = [],
-    dashcardParamValues = {},
-    initialValues: initialValuesProp = {},
-    hasPreservedInitialValues,
-    dashboard,
-    dashcard,
-    onCancel,
-    onSubmit,
-    onSubmitSuccess,
-  }: ActionParametersInputFormProps,
-  ref: Ref<ActionFormRefData>,
-) {
+function ActionParametersInputForm({
+  action,
+  mappedParameters = [],
+  dashcardParamValues = {},
+  initialValues: initialValuesProp = {},
+  hasPreservedInitialValues,
+  dashboard,
+  dashcard,
+  onCancel,
+  onChange,
+  onSubmit,
+  onSubmitSuccess,
+}: ActionParametersInputFormProps) {
   const [prefetchedValues, setPrefetchedValues] =
     useState<ParametersForActionExecution>({});
 
@@ -136,16 +126,16 @@ const ActionParametersInputForm = forwardRef(function ActionParametersInputForm(
 
   return (
     <ActionForm
-      ref={ref}
       action={action}
       initialValues={initialValues}
       hasPreservedInitialValues={hasPreservedInitialValues}
       hiddenFields={hiddenFields}
+      onChange={onChange}
       onSubmit={handleSubmit}
       onClose={onCancel}
     />
   );
-});
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionParametersInputForm;

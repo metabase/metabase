@@ -14,7 +14,6 @@ import type {
 
 import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreator";
 import Modal from "metabase/components/Modal";
-import { ActionFormRefData } from "metabase/actions/components/ActionForm/ActionForm";
 import ActionParametersInputForm, {
   ActionParametersInputModal,
 } from "../../containers/ActionParametersInputForm";
@@ -60,7 +59,8 @@ function ActionVizForm({
   const [showEditModal, setShowEditModal] = useState(false);
   const title = getFormTitle(action);
 
-  const formRef = useRef<ActionFormRefData>(null);
+  // store values without rerender
+  const formValuesRef = useRef<ParametersForActionExecution | undefined>();
   const [formStoredValues, setFormStoredValues] = useState<
     ParametersForActionExecution | undefined
   >();
@@ -81,8 +81,12 @@ function ActionVizForm({
     return result;
   };
 
-  const handleActionEdit = () => {
-    setFormStoredValues(formRef.current?.values);
+  const handleFormChange = (values: ParametersForActionExecution) => {
+    formValuesRef.current = values;
+  };
+
+  const handleTriggerActionEdit = () => {
+    setFormStoredValues(formValuesRef.current);
 
     setShowEditModal(true);
   };
@@ -100,7 +104,6 @@ function ActionVizForm({
         />
         {showFormModal && (
           <ActionParametersInputModal
-            ref={formRef}
             action={action}
             dashboard={dashboard}
             dashcard={dashcard}
@@ -111,7 +114,10 @@ function ActionVizForm({
             title={title}
             showConfirmMessage={showConfirmMessage}
             confirmMessage={action.visualization_settings?.confirmMessage}
-            onActionEdit={canEditAction ? handleActionEdit : undefined}
+            onChange={handleFormChange}
+            onTriggerActionEdit={
+              canEditAction ? handleTriggerActionEdit : undefined
+            }
             onSubmit={onModalSubmit}
             onClose={() => setShowFormModal(false)}
             onCancel={() => setShowFormModal(false)}
@@ -147,7 +153,6 @@ function ActionVizForm({
         dashcard={dashcard}
         mappedParameters={mappedParameters}
         dashcardParamValues={dashcardParamValues}
-        initialValues={formRef.current?.values}
         onSubmit={onSubmit}
       />
     </FormWrapper>

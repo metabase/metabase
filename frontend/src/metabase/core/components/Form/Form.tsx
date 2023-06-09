@@ -1,16 +1,30 @@
-import { FormHTMLAttributes, forwardRef, Ref, SyntheticEvent } from "react";
+import {
+  FormHTMLAttributes,
+  forwardRef,
+  Ref,
+  SyntheticEvent,
+  useEffect,
+} from "react";
 import { useFormikContext } from "formik";
 
-export interface FormProps
-  extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit" | "onReset"> {
+export interface FormProps<Values>
+  extends Omit<
+    FormHTMLAttributes<HTMLFormElement>,
+    "onSubmit" | "onReset" | "onChange"
+  > {
+  onChange?: (values: Values) => void;
   disabled?: boolean;
 }
 
-const Form = forwardRef(function Form(
-  { disabled, ...props }: FormProps,
+const Form = forwardRef(function Form<Values>(
+  { disabled, onChange, ...props }: FormProps<Values>,
   ref: Ref<HTMLFormElement>,
 ) {
-  const { handleSubmit, handleReset } = useFormikContext();
+  const { handleSubmit, handleReset, values } = useFormikContext<Values>();
+
+  useEffect(() => {
+    onChange?.(values);
+  }, [onChange, values]);
 
   return (
     <form
