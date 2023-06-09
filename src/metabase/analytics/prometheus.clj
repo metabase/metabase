@@ -9,7 +9,6 @@
    [iapetos.collector :as collector]
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
-   [metabase.email :as email]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.server :as server]
    [metabase.troubleshooting :as troubleshooting]
@@ -193,7 +192,11 @@
     (apply prometheus/register registry
            (concat (jvm-collectors)
                    (jetty-collectors)
-                   [@c3p0-collector]))))
+                   [@c3p0-collector]
+                   [(prometheus/counter :metabase-email-messages
+                                        {:description (trs "Number of emails sent.")})
+                    (prometheus/counter :metabase-email-message-errors
+                                        {:description (trs "Number of errors when sending emails.")})]))))
 
 (defn- start-web-server!
   "Start the prometheus web-server. If [[prometheus-server-port]] is not set it will throw."
@@ -221,7 +224,6 @@
       (locking #'system
         (when-not system
           (let [sys (make-prometheus-system port "metabase-registry")]
-            (email/setup-metrics! (.-registry ^PrometheusSystem sys))
             (alter-var-root #'system (constantly sys))))))))
 
 (defn shutdown!
@@ -231,11 +233,17 @@
     (locking #'system
       (when system
         (try (stop-web-server system)
-             (email/shutdown-metrics!)
+             (prometheus/clear (.-registry system))
              (alter-var-root #'system (constantly nil))
              (log/info (trs "Prometheus web-server shut down"))
              (catch Exception e
                (log/warn e (trs "Error stopping prometheus web-server"))))))))
+
+(defn inc
+  "Call iapetos.core/inc on the metric in the global registry,
+   if it has already been initialized and the metric registered."
+  [metric]
+  (some-> system .-registry metric prometheus/inc))
 
 (comment
   (require 'iapetos.export)

@@ -3,16 +3,14 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [iapetos.core :as prometheus]
-   [iapetos.registry :as registry]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.email :as email]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :refer [prog1]]
    [postal.message :as message])
   (:import
-   (io.prometheus.client CollectorRegistry)
    (java.io File)
    (javax.activation MimeType)))
 
@@ -89,15 +87,6 @@
   [& body]
   {:style/indent 0}
   `(do-with-fake-inbox (fn [] ~@body)))
-
-(defmacro with-prometheus-registry
-  "Run tests with a new Prometheus collector registry bound as the `email/registry` global
-  and provides raw Prometheus `CollectorRegistry` as binding symbol in [registry]."
-  [[registry] & body]
-  `(do (email/setup-metrics! (prometheus/collector-registry (name (gensym "test-registry"))))
-       (let [~registry ^CollectorRegistry (registry/raw (deref #'email/registry))]
-         (try ~@body
-              (finally (email/shutdown-metrics!))))))
 
 (defn- create-email-body->regex-fn
   "Returns a function expecting the email body structure. It will apply the regexes in `regex-seq` over the body and
@@ -250,23 +239,27 @@
               :message      "101. Metabase will make you a better person")
              (@inbox "test@test.com")))))
     (testing "metrics collection"
-      (with-prometheus-registry [registry]
-        (with-fake-inbox
-          (email/send-message!
-           :subject      "101 Reasons to use Metabase"
-           :recipients   ["test@test.com"]
-           :message-type :html
-           :message      "101. Metabase will make you a better person"))
-        (is (< 0 (.getSampleValue registry "metabase_email_messages_total")))))
+      (let [calls (atom nil)]
+        (with-redefs [prometheus/inc #(swap! calls conj %)]
+          (with-fake-inbox
+            (email/send-message!
+             :subject      "101 Reasons to use Metabase"
+             :recipients   ["test@test.com"]
+             :message-type :html
+             :message      "101. Metabase will make you a better person")))
+        (is (< 0 (count (filter :metabase-email-messages @calls))))
+        (is (= 0 (count (filter :metabase-email-message-errors @calls))))))
     (testing "error metrics collection"
-      (with-prometheus-registry [registry]
-        (with-redefs [email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+      (let [calls (atom nil)]
+        (with-redefs [prometheus/inc #(swap! calls conj %)
+                      email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
           (email/send-message!
             :subject      "101 Reasons to use Metabase"
             :recipients   ["test@test.com"]
             :message-type :html
             :message      "101. Metabase will make you a better person"))
-        (is (< 0 (.getSampleValue registry "metabase_email_message_errors_total")))))
+        (is (= 0 (count (filter :metabase-email-messages @calls))))
+        (is (< 0 (count (filter :metabase-email-message-errors @calls))))))
     (testing "basic sending without email-from-name"
       (tu/with-temporary-setting-values [email-from-name nil]
         (is (=

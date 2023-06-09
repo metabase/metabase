@@ -152,3 +152,15 @@
                                    (metric-lines port))]
         (is (seq (set/intersection expected-lines actual-lines))
             "Registry does not have c3p0 metrics in it")))))
+
+(deftest inc-server-test
+  (testing "inc has no effect if system is not setup"
+    (is (not (thrown? (prometheus/inc :metabase-email-messages)))))
+  (testing "inc has no effect when called with unknown metric"
+    (with-prometheus-system [_ system]
+      (is (not (thrown? (prometheus/inc :unknown-metric))))
+      (is (== 0 (.getSampleValue (.-registry system) "unknown_metric_total")))))
+  (testing "inc is recorded for known metrics"
+    (with-prometheus-system [_ system]
+      (is (not (thrown? (prometheus/inc :metabase-email-messages))))
+      (is (< 0 (.getSampleValue (.-registry system) "metabase_email_messages_total"))))))
