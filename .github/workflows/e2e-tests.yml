@@ -154,20 +154,11 @@ jobs:
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
 
-      - name: Run OSS-specific Cypress tests
-        if: matrix.edition == 'oss' && github.event_name != 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags=@OSS \
-          --spec './e2e/test/scenarios/**/*.cy.spec.js'
-        env:
-          TERM: xterm
-
       - name: Run EE Cypress tests on ${{ matrix.folder }}
         if: matrix.edition == 'ee' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@quarantine" \
+          --env grepTags="-@OSS" \
           --folder ${{ matrix.folder }}
         env:
           TERM: xterm
@@ -177,23 +168,11 @@ jobs:
         if: ${{ github.event_name == 'schedule' }}
         run: npx @replayio/cypress install
 
-      # - name: Run OSS-specific Cypress tests using Replay.io browser
-      #   if: matrix.edition == 'oss' && github.event_name == 'schedule'
-      #   run: |
-      #     yarn run test-cypress-run \
-      #     --env grepTags=@OSS \
-      #     --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-      #     --browser "replay-chromium"
-      #   env:
-      #     TERM: xterm
-      #     RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
-      #     RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
-
       - name: Run EE Cypress tests on ${{ matrix.folder }} using Replay.io browser
         if: matrix.edition == 'ee' && github.event_name == 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@quarantine,-@OSS" \
+          --env grepTags="-@OSS" \
           --folder ${{ matrix.folder }} \
           --browser "replay-chromium"
         env:
