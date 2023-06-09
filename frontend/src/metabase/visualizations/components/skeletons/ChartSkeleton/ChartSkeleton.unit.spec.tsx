@@ -1,21 +1,41 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import {
-  ChartSkeletonDisplayType,
-  chartSkeletonDisplayTypes,
-} from "metabase/visualizations/components/skeletons/util/display-type";
+import { CardDisplayType } from "metabase-types/api";
 import ChartSkeleton, { ChartSkeletonProps } from "./ChartSkeleton";
 
 jest.unmock("metabase/components/Popover");
 
 const MockActionMenu = <div>Action Menu</div>;
 
+const chartSkeletonDisplayTypes: CardDisplayType[] = [
+  "area",
+  "bar",
+  "funnel",
+  "gauge",
+  "line",
+  "map",
+  "object",
+  "pivot",
+  "table",
+  "pie",
+  "progress",
+  "row",
+  "scalar",
+  "scatter",
+  "smartscalar",
+  "waterfall",
+];
+
 const displayTestData = [
   {
     name: "Empty",
     display: undefined,
   },
-  ...chartSkeletonDisplayTypes.map((display: ChartSkeletonDisplayType) => ({
+  {
+    name: "Random display type",
+    display: "a display type",
+  },
+  ...chartSkeletonDisplayTypes.map((display: CardDisplayType) => ({
     name: display,
     display,
   })),
@@ -53,7 +73,7 @@ describe("ChartSkeleton", () => {
       expect(screen.getByText(displayDescription)).toBeInTheDocument();
     });
 
-    it(`should render ${display} visualization with description and action menu`, () => {
+    it(`should render ${name} visualization with description and action menu`, () => {
       setup({
         name,
         description: displayDescription,

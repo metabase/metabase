@@ -14,18 +14,18 @@ import WaterfallSkeleton from "metabase/visualizations/components/skeletons/Wate
 import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";
 import { VisualizationSkeleton } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
 import ScalarSkeleton from "metabase/visualizations/components/skeletons/ScalarSkeleton/ScalarSkeleton";
-import { ChartSkeletonDisplayType } from "metabase/visualizations/components/skeletons/util/display-type";
+import { CardDisplayType } from "metabase-types/api";
 
 export type ChartSkeletonProps = HTMLAttributes<HTMLDivElement> & {
-  display?: ChartSkeletonDisplayType;
+  display?: CardDisplayType;
   name?: string | null;
   description?: string | null;
   actionMenu?: JSX.Element | null;
 };
 
-const skeletonComponent: (
-  display?: ChartSkeletonDisplayType,
-) => JSX.Element | null = (display?: ChartSkeletonDisplayType) => {
+const skeletonComponent: (display?: CardDisplayType) => JSX.Element | null = (
+  display?: CardDisplayType,
+) => {
   if (!display) {
     return null;
   }

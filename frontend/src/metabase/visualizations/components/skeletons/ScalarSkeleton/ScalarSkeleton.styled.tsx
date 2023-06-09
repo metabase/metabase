@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";
-import { animationStyles } from "metabase/visualizations/components/skeletons/util/animation";
 import { VisualizationRoot } from "metabase/visualizations/components/Visualization/Visualization.styled";
+import { animationStyles } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.styled";
 
 export const PositionedActionMenu = styled.div`
   position: absolute;
