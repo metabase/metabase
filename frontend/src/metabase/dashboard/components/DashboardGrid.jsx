@@ -204,6 +204,7 @@ class DashboardGrid extends Component {
         action: 1,
         link: 1,
         text: 2,
+        heading: 2,
         scalar: 4,
       },
     });
@@ -355,19 +356,30 @@ class DashboardGrid extends Component {
     breakpoint,
     gridItemWidth,
     totalNumGridCols,
-  }) => (
-    <DashboardCard
-      key={String(dc.id)}
-      className="DashCard"
-      isAnimationDisabled={this.state.isAnimationPaused}
-    >
-      {this.renderDashCard(dc, {
-        isMobile: breakpoint === "mobile",
-        gridItemWidth,
-        totalNumGridCols,
-      })}
-    </DashboardCard>
-  );
+  }) => {
+    const { isEditing } = this.props;
+
+    const shouldChangeResizeHandle = isEditingTextOrHeadingCard(
+      dc.card.display,
+      isEditing,
+    );
+
+    return (
+      <DashboardCard
+        key={String(dc.id)}
+        className={cx("DashCard", {
+          BrandColorResizeHandle: shouldChangeResizeHandle,
+        })}
+        isAnimationDisabled={this.state.isAnimationPaused}
+      >
+        {this.renderDashCard(dc, {
+          isMobile: breakpoint === "mobile",
+          gridItemWidth,
+          totalNumGridCols,
+        })}
+      </DashboardCard>
+    );
+  };
 
   renderGrid() {
     const { width } = this.props;
@@ -406,6 +418,12 @@ class DashboardGrid extends Component {
       </div>
     );
   }
+}
+
+function isEditingTextOrHeadingCard(display, isEditing) {
+  const isTextOrHeadingCard = display === "heading" || display === "text";
+
+  return isEditing && isTextOrHeadingCard;
 }
 
 export default _.compose(

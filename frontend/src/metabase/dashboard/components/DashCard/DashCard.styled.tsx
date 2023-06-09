@@ -6,6 +6,7 @@ export interface DashCardRootProps {
   isNightMode: boolean;
   isUsuallySlow: boolean;
   hasHiddenBackground: boolean;
+  shouldForceHiddenBackground: boolean;
 }
 
 const rootNightModeStyle = css`
@@ -23,6 +24,11 @@ const rootTransparentBackgroundStyle = css`
   box-shadow: none !important;
 `;
 
+const hiddenBackgroundStyle = css`
+  background: ${color("bg-light")};
+  box-shadow: none !important;
+`;
+
 export const DashCardRoot = styled.div<DashCardRootProps>`
   background-color: ${color("white")};
 
@@ -30,6 +36,9 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
   ${({ isUsuallySlow }) => isUsuallySlow && rootSlowCardStyle}
   ${({ hasHiddenBackground }) =>
     hasHiddenBackground && rootTransparentBackgroundStyle}
+
+  ${({ shouldForceHiddenBackground }) =>
+    shouldForceHiddenBackground && hiddenBackgroundStyle}
 `;
 
 export const DashboardCardActionsPanel = styled.div`
