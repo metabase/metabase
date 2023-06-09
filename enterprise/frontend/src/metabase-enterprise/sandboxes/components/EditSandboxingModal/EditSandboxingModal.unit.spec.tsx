@@ -14,7 +14,7 @@ import {
 } from "__support__/ui";
 
 import { GroupTableAccessPolicy } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
+import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   PEOPLE,
@@ -33,10 +33,10 @@ const params = {
   tableId: String(PEOPLE_ID),
 };
 
-const EDITABLE_ROOT_COLLECTION = {
+const EDITABLE_ROOT_COLLECTION = createMockCollection({
   ...ROOT_COLLECTION,
   can_write: true,
-};
+});
 
 const TEST_CARD = createMockCard({
   id: 1,

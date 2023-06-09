@@ -6,6 +6,7 @@ import {
   CollectionItem,
   Dashboard,
 } from "metabase-types/api";
+import { createMockCollection } from "metabase-types/api/mocks";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
@@ -16,7 +17,7 @@ import { PERMISSION_ERROR } from "./constants";
 
 export function setupCollectionsEndpoints({
   collections,
-  rootCollection = ROOT_COLLECTION,
+  rootCollection = createMockCollection(ROOT_COLLECTION),
 }: {
   collections: Collection[];
   rootCollection?: Collection;
