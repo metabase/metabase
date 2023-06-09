@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
+
 import {
   HeaderBackIcon,
   HeaderCloseButton,

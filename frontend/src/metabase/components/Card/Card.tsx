@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import { space, width } from "styled-system";
 import { color, alpha } from "metabase/lib/colors";
 
 type CardProps = {
@@ -11,8 +10,6 @@ type CardProps = {
 };
 
 const Card = styled.div<CardProps>`
-  ${width}
-  ${space}
   background-color: ${props => (props.dark ? color("text-dark") : "white")};
   border: 1px solid
     ${props => (props.dark ? "transparent" : color("bg-medium"))};

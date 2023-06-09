@@ -20,6 +20,7 @@ describe("scenarios > model indexes", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/model-index").as("modelIndexCreate");
     cy.intercept("DELETE", "/api/model-index/*").as("modelIndexDelete");
+    cy.intercept("PUT", "/api/card/*").as("cardUpdate");
 
     cy.createQuestion({
       name: "Products Model",
@@ -28,7 +29,7 @@ describe("scenarios > model indexes", () => {
     });
   });
 
-  it("should create and delete a model index on product titles", () => {
+  it("should create, delete, and re-create a model index on product titles", () => {
     cy.visit(`/model/${modelId}`);
     cy.wait("@dataset");
 
@@ -64,6 +65,60 @@ describe("scenarios > model indexes", () => {
       expect(request.url).to.include("/api/model-index/1");
       expect(response.statusCode).to.equal(200);
     });
+
+    cy.wait("@dataset");
+
+    editTitleMetadata();
+
+    sidebar()
+      .findByLabelText(/surface individual records/i)
+      .click();
+
+    cy.findByTestId("dataset-edit-bar").within(() => {
+      cy.button("Save changes").click();
+    });
+
+    // this tests redux cache invalidation (#31407)
+    cy.wait("@modelIndexCreate").then(({ request, response }) => {
+      expect(request.body.model_id).to.equal(modelId);
+
+      // this will likely change when this becomes an async process
+      expect(response.body.state).to.equal("indexed");
+      expect(response.body.id).to.equal(2);
+    });
+  });
+
+  it("should not allow indexing when a primary key has been unassigned", () => {
+    cy.visit(`/model/${modelId}`);
+    cy.wait("@dataset");
+
+    editTitleMetadata();
+
+    sidebar()
+      .findByLabelText(/surface individual records/i)
+      .click();
+
+    openColumnOptions("ID");
+
+    // change the entity key to a foreign key so no key exists
+    sidebar()
+      .findByText(/entity key/i)
+      .click();
+
+    popover()
+      .findByText(/foreign key/i)
+      .click();
+
+    cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+
+    cy.wait("@cardUpdate");
+
+    // search should fail
+    cy.findByTestId("app-bar")
+      .findByPlaceholderText("Search…")
+      .type("marble shoes");
+
+    cy.findByTestId("search-results-list").findByText(/didn't find anything/i);
   });
 
   it("should be able to search model index values and visit detail records", () => {

@@ -27,6 +27,10 @@
     name generation. For a joined column, this might look like \"Venues → Price\"."
   [:enum :default :long])
 
+(def ^:dynamic *display-name-style*
+  "Display name style to use when not explicitly passed in to [[display-name]]."
+  :default)
+
 (defmulti display-name-method
   "Calculate a nice human-friendly display name for something."
   {:arglists '([query stage-number x display-name-style])}
@@ -48,7 +52,7 @@
    (display-name query -1 x))
 
   ([query stage-number x]
-   (display-name query stage-number x :default))
+   (display-name query stage-number x *display-name-style*))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
@@ -185,6 +189,14 @@
 (defmethod type-of-method :lib.type-of/type-is-type-of-first-arg
   [query stage-number [_tag _opts expr]]
   (type-of query stage-number expr))
+
+(defmethod type-of-method :lib.type-of/type-is-temporal-type-of-first-arg
+  [query stage-number [_tag _opts expr :as clause]]
+  (if (string? expr)
+    ;; If a string, get the type filtered by this expression (eg. `:datetime-add`).
+    (lib.schema.expresssion/type-of clause)
+    ;; Otherwise, just get the type of this first arg.
+    (type-of query stage-number expr)))
 
 (defmulti metadata-method
   "Impl for [[metadata]]. Implementations that call [[display-name]] should use the `:default` display name style."

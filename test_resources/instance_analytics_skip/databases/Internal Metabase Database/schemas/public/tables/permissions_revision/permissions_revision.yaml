@@ -1,0 +1,21 @@
+description: Used to keep track of changes made to permissions.
+entity_type: null
+schema: public
+show_in_getting_started: false
+name: permissions_revision
+caveats: null
+active: true
+db_id: Internal Metabase Database
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: permissions_revision
+visibility_type: cruft
+field_order: database
+initial_sync_status: complete
+display_name: Permissions Revision
+created_at: '2023-06-07T23:03:21.897281Z'
+points_of_interest: null

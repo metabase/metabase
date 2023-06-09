@@ -14,7 +14,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time LocalDateTime)))
 
@@ -113,8 +114,7 @@
     (mt/with-temp* [Dashboard [{dashboard-id :id}]
                     Card      [{card-id :id} {:name "Test Card"}]]
       (let [dashboard-card (first (dashboard-card/create-dashboard-cards!
-                                    [{:creator_id             (mt/user->id :rasta)
-                                      :dashboard_id           dashboard-id
+                                    [{:dashboard_id           dashboard-id
                                       :card_id                card-id
                                       :size_x                 4
                                       :size_y                 3
@@ -267,9 +267,9 @@
                     Dashboard [dashboard]]
       (card-test/test-visualization-settings-normalization
        (fn [original expected]
-         (mt/with-temp DashboardCard [dashcard {:dashboard_id           (u/the-id dashboard)
-                                                :card_id                (u/the-id card)
-                                                :visualization_settings original}]
+         (t2.with-temp/with-temp [DashboardCard dashcard {:dashboard_id           (u/the-id dashboard)
+                                                          :card_id                (u/the-id card)
+                                                          :visualization_settings original}]
            (is (= expected
                   (t2/select-one-fn :visualization_settings DashboardCard :id (u/the-id dashcard))))))))))
 

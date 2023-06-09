@@ -887,7 +887,7 @@ class StructuredQueryInner extends AtomicQuery {
     return filterDimensionOptions.sections({
       extraItems: filterSegmentOptions.map(segment => ({
         name: segment.name,
-        icon: "star_outline",
+        icon: "star",
         filter: ["segment", segment.id],
         query: this,
       })),

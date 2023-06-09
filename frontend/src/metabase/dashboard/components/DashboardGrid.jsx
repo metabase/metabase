@@ -96,7 +96,7 @@ class DashboardGrid extends Component {
   }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
-    const { dashboard, dashcardData, isEditing } = nextProps;
+    const { dashboard, dashcardData, isEditing, selectedTabId } = nextProps;
 
     const visibleCardIds = !isEditing
       ? getVisibleCardIds(
@@ -110,6 +110,7 @@ class DashboardGrid extends Component {
       dashboard.ordered_cards,
       visibleCardIds,
       isEditing,
+      selectedTabId,
     );
 
     this.setState({
@@ -180,10 +181,18 @@ class DashboardGrid extends Component {
     cards = this.props.dashboard.ordered_cards,
     visibleCardIds = this.state.visibleCardIds,
     isEditing = this.props.isEditing,
+    selectedTabId = this.props.selectedTabId,
   ) => {
+    const tabCards = cards.filter(
+      card =>
+        !selectedTabId ||
+        card.dashboard_tab_id === selectedTabId ||
+        card.dashboard_tab_id === null,
+    );
+
     return isEditing
-      ? cards
-      : cards.filter(card => visibleCardIds.has(card.id));
+      ? tabCards
+      : tabCards.filter(card => visibleCardIds.has(card.id));
   };
 
   getLayouts(cards) {
@@ -195,6 +204,7 @@ class DashboardGrid extends Component {
         action: 1,
         link: 1,
         text: 2,
+        heading: 2,
         scalar: 4,
       },
     });
@@ -346,19 +356,30 @@ class DashboardGrid extends Component {
     breakpoint,
     gridItemWidth,
     totalNumGridCols,
-  }) => (
-    <DashboardCard
-      key={String(dc.id)}
-      className="DashCard"
-      isAnimationDisabled={this.state.isAnimationPaused}
-    >
-      {this.renderDashCard(dc, {
-        isMobile: breakpoint === "mobile",
-        gridItemWidth,
-        totalNumGridCols,
-      })}
-    </DashboardCard>
-  );
+  }) => {
+    const { isEditing } = this.props;
+
+    const shouldChangeResizeHandle = isEditingTextOrHeadingCard(
+      dc.card.display,
+      isEditing,
+    );
+
+    return (
+      <DashboardCard
+        key={String(dc.id)}
+        className={cx("DashCard", {
+          BrandColorResizeHandle: shouldChangeResizeHandle,
+        })}
+        isAnimationDisabled={this.state.isAnimationPaused}
+      >
+        {this.renderDashCard(dc, {
+          isMobile: breakpoint === "mobile",
+          gridItemWidth,
+          totalNumGridCols,
+        })}
+      </DashboardCard>
+    );
+  };
 
   renderGrid() {
     const { width } = this.props;
@@ -397,6 +418,12 @@ class DashboardGrid extends Component {
       </div>
     );
   }
+}
+
+function isEditingTextOrHeadingCard(display, isEditing) {
+  const isTextOrHeadingCard = display === "heading" || display === "text";
+
+  return isEditing && isTextOrHeadingCard;
 }
 
 export default _.compose(

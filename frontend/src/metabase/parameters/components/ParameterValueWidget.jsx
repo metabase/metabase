@@ -9,7 +9,7 @@ import {
 } from "metabase/parameters/utils/ui";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import DateSingleWidget from "metabase/components/DateSingleWidget";
 import DateRangeWidget from "metabase/components/DateRangeWidget";
 import DateRelativeWidget from "metabase/components/DateRelativeWidget";
@@ -118,7 +118,7 @@ class ParameterValueWidget extends Component {
             <Icon
               name={parameterTypeIcon}
               className="flex-align-left mr1 flex-no-shrink"
-              size={14}
+              size={16}
             />
           )}
           <Widget
@@ -161,7 +161,7 @@ class ParameterValueWidget extends Component {
                 <Icon
                   name={parameterTypeIcon}
                   className="flex-align-left mr1 flex-no-shrink"
-                  size={14}
+                  size={16}
                 />
               )}
               <div className="mr1 text-nowrap">

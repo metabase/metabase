@@ -48,7 +48,6 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -149,7 +148,7 @@
      (comp (map (partial models/do-post-select Card))
            (filter card-can-be-used-as-source-query?)
            xform)
-     (completing conj #(hydrate % :collection))
+     (completing conj #(t2/hydrate % :collection))
      []
      (mdb.query/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
                                             [{:select   [:status]
@@ -231,9 +230,11 @@
              include-saved-questions-db?
              include-saved-questions-tables?
              include-editable-data-model?
+             include-analytics?
              exclude-uneditable-details?]}]
-  (let [dbs (t2/select Database {:where [:= :is_audit false]
-                                 :order-by [:%lower.name :%lower.engine]})
+  (let [dbs (t2/select Database (merge {:order-by [:%lower.name :%lower.engine]}
+                                       (when-not include-analytics?
+                                         {:where [:= :is_audit false]})))
         filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
@@ -262,12 +263,14 @@
 
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled."
-  [include_tables include_cards include saved include_editable_data_model exclude_uneditable_details]
+  [include_tables include_cards include saved include_editable_data_model exclude_uneditable_details
+   include_analytics]
   {include_tables                [:maybe :boolean]
    include_cards                 [:maybe :boolean]
    include                       (mu/with-api-error-message
                                    [:maybe [:= "tables"]]
                                    (deferred-tru "include must be either empty or the value 'tables'"))
+   include_analytics             [:maybe :boolean]
    saved                         [:maybe :boolean]
    include_editable_data_model   [:maybe :boolean]
    exclude_uneditable_details    [:maybe :boolean]}
@@ -284,7 +287,8 @@
                                                       :include-saved-questions-db?     include-saved-questions-db?
                                                       :include-saved-questions-tables? include-saved-questions-tables?
                                                       :include-editable-data-model?    include_editable_data_model
-                                                      :exclude-uneditable-details?     exclude_uneditable_details)
+                                                      :exclude-uneditable-details?     exclude_uneditable_details
+                                                      :include-analytics?              include_analytics)
                                             [])]
     {:data  db-list-res
      :total (count db-list-res)}))
@@ -311,7 +315,7 @@
   [db include]
   (if-not include
     db
-    (-> (hydrate db (case include
+    (-> (t2/hydrate db (case include
                       "tables"        :tables
                       "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
         (update :tables (fn [tables]
@@ -429,7 +433,7 @@
   (let [db (-> (if include-editable-data-model?
                  (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
-               (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
+               (t2/hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -631,7 +635,7 @@
   (let [fields (filter mi/can-read? (-> (t2/select [Field :id :name :display_name :table_id :base_type :semantic_type]
                                           :table_id        [:in (t2/select-fn-set :id Table, :db_id id)]
                                           :visibility_type [:not-in ["sensitive" "retired"]])
-                                        (hydrate :table)))]
+                                        (t2/hydrate :table)))]
     (for [{:keys [id name display_name table base_type semantic_type]} fields]
       {:id            id
        :name          name
@@ -654,7 +658,7 @@
     (db-perm-check (t2/select-one Database :id id))
     (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
-                                          (hydrate :table))))))
+                                          (t2/hydrate :table))))))
 
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------

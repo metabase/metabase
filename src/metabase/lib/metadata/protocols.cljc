@@ -69,9 +69,11 @@
   (satisfies? MetadataProvider x))
 
 (#?(:clj p/defprotocol+ :cljs defprotocol) CachedMetadataProvider
-  "Optional. A protocol for a MetadataProvider that some sort of internal cache. This is mostly useful for MetadataProviders that
-  can hit some sort of relatively expensive external service,
-  e.g. [[metabase.lib.metadata.jvm/application-database-metadata-provider]].
+  "Optional. A protocol for a MetadataProvider that some sort of internal cache. This is mostly useful for
+  MetadataProviders that can hit some sort of relatively expensive external service,
+  e.g. [[metabase.lib.metadata.jvm/application-database-metadata-provider]]. The main purpose of this is to allow
+  pre-warming the cache with stuff that was already fetched elsewhere.
+  See [[metabase.models.metric/warmed-metadata-provider]] for example.
 
   See [[cached-metadata-provider]] below to wrap for a way to wrap an existing MetadataProvider to add caching on top
   of it."

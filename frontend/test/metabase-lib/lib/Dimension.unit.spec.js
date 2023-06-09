@@ -691,7 +691,7 @@ describe("Dimension", () => {
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
         it('returns an "expression" clause', () => {
-          expect(dimension.mbql()).toEqual(["expression", "Hello World", null]);
+          expect(dimension.mbql()).toEqual(["expression", "Hello World"]);
         });
       });
       describe("displayName()", () => {
@@ -703,12 +703,12 @@ describe("Dimension", () => {
       describe("column()", () => {
         it("returns the dimension column", () => {
           expect(dimension.column()).toEqual({
-            id: ["expression", "Hello World", null],
+            id: ["expression", "Hello World"],
             name: "Hello World",
             display_name: "Hello World",
             base_type: "type/Text",
             semantic_type: "type/Text",
-            field_ref: ["expression", "Hello World", null],
+            field_ref: ["expression", "Hello World"],
           });
         });
       });
@@ -773,7 +773,6 @@ describe("Dimension", () => {
           expect(dimension.getMLv1CompatibleDimension().mbql()).toEqual([
             "expression",
             "Hello World",
-            null,
           ]);
         });
       });

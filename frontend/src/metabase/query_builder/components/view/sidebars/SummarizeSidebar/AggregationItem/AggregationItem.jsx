@@ -3,13 +3,13 @@ import PropTypes from "prop-types";
 import { color } from "metabase/lib/colors";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { AggregationItemRoot } from "./AggregationItem.styled";
 
 const propTypes = {
   className: PropTypes.string,
-  aggregation: PropTypes.object,
+  aggregation: PropTypes.oneOfType([PropTypes.object, PropTypes.array]),
   index: PropTypes.number.isRequired,
   query: PropTypes.object,
   onRemove: PropTypes.func,
@@ -29,6 +29,7 @@ export const AggregationItem = ({
       triggerElement={
         <AggregationItemRoot
           color={color("summarize")}
+          aria-label={aggregation.displayName()}
           data-testid="aggregation-item"
         >
           <span className="mx1">{aggregation.displayName()}</span>

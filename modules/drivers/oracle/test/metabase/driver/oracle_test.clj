@@ -401,10 +401,10 @@
                                               (dissoc :ssl-truststore-path))
                                           "SSL with Truststore Upload"]]]
                 (testing (str " " variant)
-                  (mt/with-temp Database [database {:engine  :oracle,
-                                                    :name    (format (str variant " version of %d") (mt/id)),
-                                                    :details (->> details
-                                                                  (driver.u/db-details-client->server :oracle))}]
+                  (t2.with-temp/with-temp [Database database {:engine  :oracle,
+                                                              :name    (format (str variant " version of %d") (mt/id)),
+                                                              :details (->> details
+                                                                            (driver.u/db-details-client->server :oracle))}]
                     (mt/with-db database
                       (testing " can sync correctly"
                         (sync/sync-database! database {:scan :schema})

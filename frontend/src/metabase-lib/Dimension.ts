@@ -40,6 +40,7 @@ import {
   getBaseDimensionReference,
   BASE_DIMENSION_REFERENCE_OMIT_OPTIONS,
 } from "metabase-lib/references";
+import { normalize } from "metabase-lib/queries/utils/normalize";
 
 /**
  * A dimension option returned by the query_metadata API
@@ -644,6 +645,7 @@ export default class Dimension {
     return JSON.stringify(this.mbql());
   }
 }
+
 /**
  * `:field` clause e.g. `["field", fieldIdOrName, options]`
  */
@@ -1195,7 +1197,7 @@ export class ExpressionDimension extends Dimension {
   }
 
   mbql(): ExpressionReference {
-    return ["expression", this._expressionName, this._options];
+    return normalize(["expression", this._expressionName, this._options]);
   }
 
   name() {
@@ -1554,6 +1556,7 @@ export class AggregationDimension extends Dimension {
     return "int";
   }
 }
+
 export class TemplateTagDimension extends FieldDimension {
   constructor(tagName: string, metadata: Metadata, query: NativeQuery) {
     super(null, null, metadata, query, {
@@ -1660,6 +1663,7 @@ export class TemplateTagDimension extends FieldDimension {
     return "label";
   }
 }
+
 const DIMENSION_TYPES: typeof Dimension[] = [
   FieldDimension,
   ExpressionDimension,
