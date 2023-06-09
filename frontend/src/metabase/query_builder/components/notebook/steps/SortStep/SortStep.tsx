@@ -1,12 +1,13 @@
 import { t } from "ttag";
 
 import { Icon } from "metabase/core/components/Icon";
+import QueryColumnPicker from "metabase/common/components/QueryColumnPicker";
 
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepUiComponentProps } from "../../types";
 import ClauseStep from "../ClauseStep";
-import { SortDirectionButton, SortColumnPicker } from "./SortStep.styled";
+import { SortDirectionButton } from "./SortStep.styled";
 
 function SortStep({
   topLevelQuery,
@@ -20,15 +21,24 @@ function SortStep({
 
   const clauses = Lib.orderBys(topLevelQuery, stageIndex);
 
-  const getColumnGroups = (clause?: Lib.OrderByClause) => {
+  const checkColumnSelected = (
+    columnInfo: Lib.ColumnDisplayInfo,
+    orderByIndex?: number,
+  ) => {
+    return (
+      typeof orderByIndex === "number" &&
+      columnInfo.orderByPosition === orderByIndex
+    );
+  };
+
+  const getColumnGroups = (orderByIndex?: number) => {
     const columns = Lib.orderableColumns(topLevelQuery, stageIndex);
 
     const filteredColumns = columns.filter(column => {
-      const isSelected =
-        clause && Lib.isClauseColumn(topLevelQuery, 0, clause, column);
-
       const columnInfo = Lib.displayInfo(topLevelQuery, stageIndex, column);
+
       const isAlreadyUsed = columnInfo.orderByPosition != null;
+      const isSelected = checkColumnSelected(columnInfo, orderByIndex);
 
       return isSelected || !isAlreadyUsed;
     });
@@ -77,15 +87,18 @@ function SortStep({
           onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
         />
       )}
-      renderPopover={clause => (
-        <SortColumnPicker
+      renderPopover={(orderBy, orderByIndex) => (
+        <QueryColumnPicker
           query={topLevelQuery}
           stageIndex={stageIndex}
-          columnGroups={getColumnGroups(clause)}
+          columnGroups={getColumnGroups(orderByIndex)}
+          checkIsColumnSelected={item =>
+            checkColumnSelected(item, orderByIndex)
+          }
           onSelect={(column: Lib.ColumnMetadata) => {
-            const isUpdate = clause != null;
+            const isUpdate = orderBy != null;
             if (isUpdate) {
-              handleUpdateOrderByField(clause, column);
+              handleUpdateOrderByField(orderBy, column);
             } else {
               handleAddOrderBy(column);
             }

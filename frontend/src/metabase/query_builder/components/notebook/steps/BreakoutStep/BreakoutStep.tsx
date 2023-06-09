@@ -30,15 +30,24 @@ function BreakoutStep({
 
   const clauses = Lib.breakouts(topLevelQuery, stageIndex);
 
-  const getColumnGroups = (clause?: Lib.BreakoutClause) => {
+  const checkColumnSelected = (
+    columnInfo: Lib.ColumnDisplayInfo,
+    breakoutIndex?: number,
+  ) => {
+    return (
+      typeof breakoutIndex === "number" &&
+      columnInfo.breakoutPosition === breakoutIndex
+    );
+  };
+
+  const getColumnGroups = (breakoutIndex?: number) => {
     const columns = Lib.breakoutableColumns(topLevelQuery, stageIndex);
 
     const filteredColumns = columns.filter(column => {
-      const isSelected =
-        clause && Lib.isClauseColumn(topLevelQuery, stageIndex, clause, column);
-
       const columnInfo = Lib.displayInfo(topLevelQuery, stageIndex, column);
+
       const isAlreadyUsed = columnInfo.breakoutPosition != null;
+      const isSelected = checkColumnSelected(columnInfo, breakoutIndex);
 
       return isSelected || !isAlreadyUsed;
     });
@@ -81,26 +90,26 @@ function BreakoutStep({
       isLastOpened={isLastOpened}
       tetherOptions={breakoutTetherOptions}
       renderName={renderBreakoutName}
-      renderPopover={breakout => {
-        return (
-          <BreakoutColumnPicker
-            query={topLevelQuery}
-            clause={breakout}
-            stageIndex={stageIndex}
-            columnGroups={getColumnGroups(breakout)}
-            hasBinning
-            hasTemporalBucketing
-            onSelect={(column: Lib.ColumnMetadata) => {
-              const isUpdate = breakout != null;
-              if (isUpdate) {
-                handleUpdateBreakoutField(breakout, column);
-              } else {
-                handleAddBreakout(column);
-              }
-            }}
-          />
-        );
-      }}
+      renderPopover={(breakout, breakoutIndex) => (
+        <BreakoutColumnPicker
+          query={topLevelQuery}
+          stageIndex={stageIndex}
+          columnGroups={getColumnGroups(breakoutIndex)}
+          hasBinning
+          hasTemporalBucketing
+          checkIsColumnSelected={item =>
+            checkColumnSelected(item, breakoutIndex)
+          }
+          onSelect={(column: Lib.ColumnMetadata) => {
+            const isUpdate = breakout != null;
+            if (isUpdate) {
+              handleUpdateBreakoutField(breakout, column);
+            } else {
+              handleAddBreakout(column);
+            }
+          }}
+        />
+      )}
       onRemove={handleRemoveBreakout}
       data-testid="breakout-step"
     />

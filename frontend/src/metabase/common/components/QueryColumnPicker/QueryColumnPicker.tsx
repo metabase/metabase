@@ -14,22 +14,22 @@ import {
 
 const DEFAULT_MAX_HEIGHT = 610;
 
+type ColumnListItem = Lib.ColumnDisplayInfo & {
+  column: Lib.ColumnMetadata;
+};
+
 export interface QueryColumnPickerProps {
   className?: string;
   query: Lib.Query;
   stageIndex: number;
-  clause?: Lib.Clause;
   columnGroups: Lib.ColumnGroup[];
   hasBinning?: boolean;
   hasTemporalBucketing?: boolean;
   maxHeight?: number;
+  checkIsColumnSelected: (item: ColumnListItem) => boolean;
   onSelect: (column: Lib.ColumnMetadata) => void;
   onClose?: () => void;
 }
-
-type ColumnListItem = Lib.ColumnDisplayInfo & {
-  column: Lib.ColumnMetadata;
-};
 
 type Sections = {
   name: string;
@@ -41,11 +41,11 @@ function QueryColumnPicker({
   className,
   query,
   stageIndex,
-  clause,
   columnGroups,
   hasBinning = false,
   hasTemporalBucketing = false,
   maxHeight = DEFAULT_MAX_HEIGHT,
+  checkIsColumnSelected,
   onSelect,
   onClose,
 }: QueryColumnPickerProps) {
@@ -78,8 +78,7 @@ function QueryColumnPicker({
 
   const handleSelectColumn = useCallback(
     (item: ColumnListItem) => {
-      const isSameColumn =
-        clause && Lib.isClauseColumn(query, stageIndex, clause, item.column);
+      const isSameColumn = checkIsColumnSelected(item);
 
       if (isSameColumn) {
         onClose?.();
@@ -115,18 +114,12 @@ function QueryColumnPicker({
     [
       query,
       stageIndex,
-      clause,
       hasBinning,
       hasTemporalBucketing,
+      checkIsColumnSelected,
       handleSelect,
       onClose,
     ],
-  );
-
-  const checkIsItemSelected = useCallback(
-    (item: ColumnListItem) =>
-      clause && Lib.isClauseColumn(query, stageIndex, clause, item.column),
-    [query, stageIndex, clause],
   );
 
   const renderItemExtra = useCallback(
@@ -137,9 +130,7 @@ function QueryColumnPicker({
           stageIndex,
           item.column,
         );
-        const isEditing = Boolean(
-          clause && Lib.isClauseColumn(query, stageIndex, clause, item.column),
-        );
+        const isEditing = checkIsColumnSelected(item);
         return (
           <BinningStrategyPickerPopover
             query={query}
@@ -161,9 +152,7 @@ function QueryColumnPicker({
           stageIndex,
           item.column,
         );
-        const isEditing = Boolean(
-          clause && Lib.isClauseColumn(query, stageIndex, clause, item.column),
-        );
+        const isEditing = checkIsColumnSelected(item);
         return (
           <TemporalBucketPickerPopover
             query={query}
@@ -178,7 +167,14 @@ function QueryColumnPicker({
 
       return null;
     },
-    [query, stageIndex, clause, hasBinning, hasTemporalBucketing, handleSelect],
+    [
+      query,
+      stageIndex,
+      hasBinning,
+      hasTemporalBucketing,
+      checkIsColumnSelected,
+      handleSelect,
+    ],
   );
 
   return (
@@ -188,7 +184,7 @@ function QueryColumnPicker({
       maxHeight={maxHeight}
       alwaysExpanded={false}
       onChange={handleSelectColumn}
-      itemIsSelected={checkIsItemSelected}
+      itemIsSelected={checkIsColumnSelected}
       renderItemName={renderItemName}
       renderItemDescription={omitItemDescription}
       renderItemIcon={renderItemIcon}

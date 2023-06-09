@@ -11,17 +11,7 @@ export function availableBinningStrategies(
   stageIndex: number,
   column: ColumnMetadata,
 ): Bucket[] {
-  const buckets = ML.available_binning_strategies(
-    query,
-    stageIndex,
-    column,
-  ) as Bucket[];
-
-  // TODO Remove once BE removes "Don't bin"
-  return buckets.filter(
-    bucket =>
-      displayInfo(query, stageIndex, bucket).displayName !== "Don't bin",
-  );
+  return ML.available_binning_strategies(query, stageIndex, column);
 }
 
 export function isBinnable(
