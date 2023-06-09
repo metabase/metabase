@@ -17,9 +17,11 @@ import { PERMISSION_ERROR } from "./constants";
 export function setupCollectionsEndpoints({
   collections,
   error,
+  rootCollection = ROOT_COLLECTION,
   status,
 }: {
   collections: Collection[];
+  rootCollection?: Collection;
   error?: string;
   status?: number;
 }) {
@@ -28,7 +30,7 @@ export function setupCollectionsEndpoints({
     return;
   }
 
-  fetchMock.get("path:/api/collection/root", ROOT_COLLECTION);
+  fetchMock.get("path:/api/collection/root", rootCollection);
   fetchMock.get(
     {
       url: "path:/api/collection/tree",
