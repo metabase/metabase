@@ -7,7 +7,7 @@ import {
   useEntityListQuery,
 } from "../use-entity-list-query";
 
-export const useCollectionsQuery = (
+export const useCollectionListQuery = (
   props: UseEntityListQueryProps<CollectionListQuery> = {},
 ): UseEntityListQueryResult<Collection> => {
   return useEntityListQuery(props, {

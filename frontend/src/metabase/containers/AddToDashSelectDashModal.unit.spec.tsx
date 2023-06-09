@@ -19,7 +19,7 @@ import {
   createMockDashboard,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { useCollectionsQuery } from "metabase/common/hooks";
+import { useCollectionListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";
@@ -90,7 +90,7 @@ interface SetupOpts {
 }
 
 const TestComponent: typeof AddToDashSelectDashModal = props => {
-  const { data, error, isLoading } = useCollectionsQuery();
+  const { data, error, isLoading } = useCollectionListQuery();
 
   if (!data) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;

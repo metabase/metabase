@@ -6,12 +6,12 @@ import {
 } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { useCollectionsQuery } from "./use-collections-query";
+import { useCollectionListQuery } from "./use-collection-list-query";
 
 const TEST_COLLECTION = createMockCollection();
 
 const TestComponent = () => {
-  const { data = [], isLoading, error } = useCollectionsQuery();
+  const { data = [], isLoading, error } = useCollectionListQuery();
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -32,7 +32,7 @@ const setup = ({ error }: { error?: string } = {}) => {
   renderWithProviders(<TestComponent />);
 };
 
-describe("useCollectionsQuery", () => {
+describe("useCollectionListQuery", () => {
   it("should be initially loading", () => {
     setup();
 

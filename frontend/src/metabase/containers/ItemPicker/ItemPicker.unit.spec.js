@@ -13,7 +13,10 @@ import {
   within,
 } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
-import { useCollectionQuery, useCollectionsQuery } from "metabase/common/hooks";
+import {
+  useCollectionQuery,
+  useCollectionListQuery,
+} from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import SnippetCollections from "metabase/entities/snippet-collections";
 
@@ -102,7 +105,7 @@ const DASHBOARD = {
 };
 
 const TestComponent = ({ query, ...props }) => {
-  const collectionsQuery = useCollectionsQuery({ query });
+  const collectionsQuery = useCollectionListQuery({ query });
   const rootCollectionQuery = useCollectionQuery({ id: "root", query });
 
   if (!collectionsQuery.data || !rootCollectionQuery.data) {
