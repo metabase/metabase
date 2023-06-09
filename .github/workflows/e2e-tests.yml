@@ -41,7 +41,15 @@ jobs:
         with:
           m2-cache-key: e2e-tests
 
+      - name: Cache uberjar
+        id: cache-uberjar
+        uses: actions/cache@v3
+        with:
+          path: ./target/uberjar/metabase.jar
+          key: ${{ github.workflow }}-uberjar
+
       - name: Build uberjar with ./bin/build.sh
+        if: steps.cache-uberjar.outputs.cache-hit != 'true'
         run: ./bin/build.sh
 
       - name: Prepare uberjar artifact
