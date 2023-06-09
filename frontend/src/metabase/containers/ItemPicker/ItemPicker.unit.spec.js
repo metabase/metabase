@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import PropTypes from "prop-types";
 
 import {
   setupCollectionsEndpoints,
@@ -14,6 +15,7 @@ import {
 import { createMockUser } from "metabase-types/api/mocks";
 import { useCollectionQuery, useCollectionsQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import SnippetCollections from "metabase/entities/snippet-collections";
 
 import ItemPicker from "./ItemPicker";
 
@@ -49,6 +51,12 @@ const CURRENT_USER = createMockUser({
   personal_collection_id: 100,
   is_superuser: true,
 });
+
+const ROOT_SNIPPETS_COLLECTION = {
+  id: "root",
+  name: "Top folder",
+  can_write: true,
+};
 
 const COLLECTION = {
   ROOT: collection({ id: "root", name: "Our analytics", location: null }),
@@ -93,9 +101,9 @@ const DASHBOARD = {
   }),
 };
 
-const TestComponent = props => {
-  const collectionsQuery = useCollectionsQuery();
-  const rootCollectionQuery = useCollectionQuery({ id: "root" });
+const TestComponent = ({ query, ...props }) => {
+  const collectionsQuery = useCollectionsQuery({ query });
+  const rootCollectionQuery = useCollectionQuery({ id: "root", query });
 
   if (!collectionsQuery.data || !rootCollectionQuery.data) {
     return (
@@ -109,20 +117,32 @@ const TestComponent = props => {
   return <ItemPicker {...props} />;
 };
 
+TestComponent.propTypes = {
+  query: PropTypes.object,
+};
+
 async function setup({
   models = ["dashboard"],
-  extraCollections = [],
+  collections = Object.values(COLLECTION),
+  rootCollection,
+  query,
   ...props
 } = {}) {
-  setupDashboardCollectionItemsEndpoint(Object.values(DASHBOARD));
-  setupCollectionsEndpoints({
-    collections: Object.values(COLLECTION).concat(extraCollections),
-  });
+  if (models.includes("dashboard")) {
+    setupDashboardCollectionItemsEndpoint(Object.values(DASHBOARD));
+  }
+
+  setupCollectionsEndpoints({ collections, rootCollection });
 
   const onChange = jest.fn();
 
   renderWithProviders(
-    <TestComponent models={models} onChange={onChange} {...props} />,
+    <TestComponent
+      models={models}
+      query={query}
+      onChange={onChange}
+      {...props}
+    />,
     {
       storeInitialState: {
         currentUser: CURRENT_USER,
@@ -180,7 +200,12 @@ describe("ItemPicker", () => {
   });
 
   it("displays read-only collections if they have writable children", async () => {
-    await setup({ extraCollections: [COLLECTION_READ_ONLY_CHILD_WRITABLE] });
+    await setup({
+      collections: [
+        ...Object.values(COLLECTION),
+        COLLECTION_READ_ONLY_CHILD_WRITABLE,
+      ],
+    });
     expect(screen.getByText(COLLECTION.READ_ONLY.name)).toBeInTheDocument();
   });
 
@@ -239,7 +264,9 @@ describe("ItemPicker", () => {
   });
 
   it("groups personal collections into single folder if there are more than one", async () => {
-    await setup({ extraCollections: [COLLECTION_OTHER_USERS] });
+    await setup({
+      collections: [...Object.values(COLLECTION), COLLECTION_OTHER_USERS],
+    });
 
     userEvent.click(screen.getByText(/All personal collections/i));
 
@@ -268,7 +295,7 @@ describe("ItemPicker", () => {
     expect(list.getByText(DASHBOARD.REGULAR_CHILD.name)).toBeInTheDocument();
   });
 
-  describe("preserves order of non-personal collections coming from API endpoint", () => {
+  describe("preserves order of collections coming from API endpoint", () => {
     it("[personal, regular, regular 2]", async () => {
       const collections = [
         COLLECTION.PERSONAL,
@@ -282,7 +309,6 @@ describe("ItemPicker", () => {
 
       const items = screen.getAllByTestId("item-picker-item");
 
-      expect(items.length).toBe(3);
       expect(items.length).toBe(collections.length);
       expect(items[0]).toHaveTextContent(collections[0].name);
       expect(items[1]).toHaveTextContent(collections[1].name);
@@ -308,7 +334,7 @@ describe("ItemPicker", () => {
       expect(items[2]).toHaveTextContent(collections[2].name);
     });
 
-    it("personal collection is always shown first", async () => {
+    it("always shows personal collection first", async () => {
       const collections = [
         COLLECTION.REGULAR_2,
         COLLECTION.REGULAR,
@@ -323,6 +349,77 @@ describe("ItemPicker", () => {
 
       expect(items.length).toBe(collections.length);
       expect(items[0]).toHaveTextContent(COLLECTION.PERSONAL.name);
+      expect(items[1]).toHaveTextContent(COLLECTION.REGULAR_2.name);
+      expect(items[2]).toHaveTextContent(COLLECTION.REGULAR.name);
+    });
+  });
+
+  describe("preserves order of snippet collections coming from API endpoint", () => {
+    it("[top, regular, regular 2]", async () => {
+      const collections = [
+        ROOT_SNIPPETS_COLLECTION,
+        COLLECTION.REGULAR,
+        COLLECTION.REGULAR_2,
+      ];
+
+      await setup({
+        collections,
+        entity: SnippetCollections,
+        models: ["collection"],
+        query: { namespace: "snippets" },
+        rootCollection: ROOT_SNIPPETS_COLLECTION,
+      });
+
+      const items = screen.getAllByTestId("item-picker-item");
+
+      expect(items.length).toBe(collections.length);
+      expect(items[0]).toHaveTextContent(collections[0].name);
+      expect(items[1]).toHaveTextContent(collections[1].name);
+      expect(items[2]).toHaveTextContent(collections[2].name);
+    });
+
+    it("[top, regular 2, regular]", async () => {
+      const collections = [
+        ROOT_SNIPPETS_COLLECTION,
+        COLLECTION.REGULAR_2,
+        COLLECTION.REGULAR,
+      ];
+
+      await setup({
+        collections,
+        entity: SnippetCollections,
+        models: ["collection"],
+        query: { namespace: "snippets" },
+        rootCollection: ROOT_SNIPPETS_COLLECTION,
+      });
+
+      const items = screen.getAllByTestId("item-picker-item");
+
+      expect(items.length).toBe(collections.length);
+      expect(items[0]).toHaveTextContent(collections[0].name);
+      expect(items[1]).toHaveTextContent(collections[1].name);
+      expect(items[2]).toHaveTextContent(collections[2].name);
+    });
+
+    it("always shows root collection first", async () => {
+      const collections = [
+        COLLECTION.REGULAR_2,
+        COLLECTION.REGULAR,
+        ROOT_SNIPPETS_COLLECTION,
+      ];
+
+      await setup({
+        collections,
+        entity: SnippetCollections,
+        models: ["collection"],
+        query: { namespace: "snippets" },
+        rootCollection: ROOT_SNIPPETS_COLLECTION,
+      });
+
+      const items = screen.getAllByTestId("item-picker-item");
+
+      expect(items.length).toBe(collections.length);
+      expect(items[0]).toHaveTextContent(ROOT_SNIPPETS_COLLECTION.name);
       expect(items[1]).toHaveTextContent(COLLECTION.REGULAR_2.name);
       expect(items[2]).toHaveTextContent(COLLECTION.REGULAR.name);
     });
