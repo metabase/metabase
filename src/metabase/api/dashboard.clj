@@ -913,6 +913,7 @@
               :dashcard-id   dashcard-id
               :export-format export-format
               :parameters    (json/parse-string parameters keyword)
+              :context       (api.dataset/export-format->context export-format)
               :constraints   nil
               ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to
               ;; specify this all over the codebase any time we want to do a query with an export format. Maybe this
