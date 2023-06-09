@@ -57,6 +57,8 @@ import {
   createSavedStructuredCard,
   createStructuredModelCard as _createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
+import { useCollectionListQuery } from "metabase/common/hooks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import * as ML_Urls from "metabase-lib/urls";
 import { TYPE } from "metabase-lib/types/constants";
@@ -193,6 +195,26 @@ type SetupOpts = {
   usedBy?: Card[];
 };
 
+const TestModelDetailPage: typeof ModelDetailPage = props => {
+  const { data, error, isLoading } = useCollectionListQuery();
+
+  if (!data) {
+    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  }
+
+  return <ModelDetailPage {...props} />;
+};
+
+const TestActionCreator: typeof ActionCreator = props => {
+  const { data, error, isLoading } = useCollectionListQuery();
+
+  if (!data) {
+    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  }
+
+  return <ActionCreator {...props} />;
+};
+
 async function setup({
   model: card,
   tab = "usage",
@@ -238,17 +260,17 @@ async function setup({
     <>
       <Route path="/model/:slug/detail">
         <IndexRedirect to="usage" />
-        <Route path="usage" component={ModelDetailPage} />
-        <Route path="schema" component={ModelDetailPage} />
-        <Route path="actions" component={ModelDetailPage}>
+        <Route path="usage" component={TestModelDetailPage} />
+        <Route path="schema" component={TestModelDetailPage} />
+        <Route path="actions" component={TestModelDetailPage}>
           <ModalRoute
             path="new"
-            modal={ActionCreator}
+            modal={TestActionCreator}
             modalProps={{ enableTransition: false }}
           />
           <ModalRoute
             path=":actionId"
-            modal={ActionCreator}
+            modal={TestActionCreator}
             modalProps={{ enableTransition: false }}
           />
         </Route>
