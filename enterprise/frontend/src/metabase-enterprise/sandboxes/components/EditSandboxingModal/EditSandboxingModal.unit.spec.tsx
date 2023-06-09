@@ -21,7 +21,7 @@ import {
   PEOPLE_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { useCollectionsQuery } from "metabase/common/hooks";
+import { useCollectionListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 
@@ -51,7 +51,7 @@ const TEST_CARD = createMockCard({
 });
 
 const TestComponent: typeof EditSandboxingModal = props => {
-  const { data, error, isLoading } = useCollectionsQuery();
+  const { data, error, isLoading } = useCollectionListQuery();
 
   if (!data) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;

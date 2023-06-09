@@ -344,9 +344,7 @@ describe("ItemPicker", () => {
         COLLECTION.PERSONAL,
       ];
 
-      fetchMock.get("path:/api/collection", collections);
-
-      await setup();
+      await setup({ collections });
 
       const items = screen.getAllByTestId("item-picker-item");
 
