@@ -9,6 +9,7 @@ import {
   visitQuestionAdhoc,
   enterCustomColumnDetails,
   openProductsTable,
+  selectSavedQuestionsToJoin,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -483,23 +484,5 @@ function selectFromDropdown(option, clickOpts) {
 function assertDimensionName(type, name) {
   cy.findByTestId(`${type}-dimension`).within(() => {
     cy.findByText(name);
-  });
-}
-
-function selectSavedQuestionsToJoin(firstQuestionName, secondQuestionName) {
-  cy.intercept("GET", "/api/database/*/schemas").as("loadSchemas");
-  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-  cy.findByText("Saved Questions").click();
-  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-  cy.findByText(firstQuestionName).click();
-  cy.wait("@loadSchemas");
-
-  // join to question b
-  cy.icon("join_left_outer").click();
-
-  popover().within(() => {
-    cy.findByTextEnsureVisible("Sample Database").click();
-    cy.findByTextEnsureVisible("Saved Questions").click();
-    cy.findByText(secondQuestionName).click();
   });
 }
