@@ -7,7 +7,7 @@ import QueryColumnPicker, { QueryColumnPickerProps } from "./QueryColumnPicker";
 type SetupOpts = Partial<
   Pick<
     QueryColumnPickerProps,
-    "query" | "stageIndex" | "clause" | "hasBinning" | "hasTemporalBucketing"
+    "query" | "stageIndex" | "hasBinning" | "hasTemporalBucketing"
   >
 > & {
   columns?: Lib.ColumnMetadata[];
@@ -46,6 +46,7 @@ function setup({
       columnGroups={Lib.groupColumns(columns)}
       hasBinning={hasBinning}
       hasTemporalBucketing={hasTemporalBucketing}
+      checkIsColumnSelected={item => item.breakoutPosition === 0}
       onSelect={onSelect}
       onClose={onClose}
     />,
@@ -91,8 +92,8 @@ describe("QueryColumnPicker", () => {
   });
 
   it("should highlight column used in a given clause", () => {
-    const { query, clause, clauseInfo } = createQueryWithBreakout();
-    setup({ query, clause });
+    const { query, clauseInfo } = createQueryWithBreakout();
+    setup({ query });
 
     const option = screen.getByRole("option", { name: clauseInfo.displayName });
     expect(option).toBeInTheDocument();
