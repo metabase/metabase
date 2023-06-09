@@ -58,3 +58,26 @@ Note that these :+1:, :+0:, and :-1:’s should be explicitly stated in a commen
 * If there are no :+1:'s on a PR, it is the responsibility of the PR creator to follow up with others and get their code reviewed. To re-iterate, a PR needs to be :+1:’d to be merged, and if it has not been reviewed, it is on the opener of the PR to round up a reviewer.
 * If there's a :-1: + no clear resolution, both the creator of the PR and the :-1: voter should plan on spending an hour over the next day or two to discuss the issue, and plan on how to resolve it.
 * In the event of no movement on a PR with a :-1: after a week, @salsakran will chime in.
+
+## How to improve the quality of the code review
+
+This video by Alberto Bacchelli sums up the results of the empirical software engineering research on this topic. Please watch it first:
+https://www.youtube.com/watch?v=_SJL7vepQvU
+
+> In more than 50% of the reviews, the reviewer started with the file presented first
+
+> In almost 40% of the navigations, the reviewer went to the next file in order
+
+> Test files are almost twice less likely to be discussed during code review when together with production files
+
+What can we do to improve this?
+
+### As an author
+1. Guide reviewers by commenting on the important sections of the code and by starting a conversation. Tag someone specifically if you need their expertise/opinion.
+2. Feel free to enhance PR description by using [Notes and Warnings](https://github.com/github-community/community/discussions/16925) - these can be effective tools if you want a certain piece of information to stand out.
+
+### As a reviewer
+1. Be aware of our tendency to assign lower significance to the test files and put a conscious effort not to skip them.
+2. Before jumping to the first file presented in an alphabetical order, conceptually understand the changes you are reviewing and start with the file that is the most-impactful one.
+3. Ask the author for more details/better description if you feel like you're lacking the context.
+4. Unless the change is obviously trivial, checkout that branch and give Metabase a spin locally with the changes included. Make sure everything works as expected.
