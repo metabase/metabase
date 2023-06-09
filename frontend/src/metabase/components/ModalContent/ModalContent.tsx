@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { Component, ReactNode } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";

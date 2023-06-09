@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import MetabaseUtils from "metabase/lib/utils";
 import { Avatar as StyledAvatar, AvatarProps } from "./UserAvatar.styled";
 
