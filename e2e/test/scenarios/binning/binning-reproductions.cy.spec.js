@@ -171,7 +171,7 @@ describe("binning related reproductions", () => {
       cy.findByRole("option", { name: "CREATED_AT" }).click();
     });
 
-    getNotebookStep("summarize").findByText("Question 4 → CREATED_AT: Month");
+    getNotebookStep("summarize").findByText("Question 4 → Created At: Month");
 
     visualize();
     cy.get("circle");
