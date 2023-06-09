@@ -352,3 +352,66 @@
   (run! update-card-row-on-downgrade-for-dashboard-tab
         (eduction (map :dashboard_id) (t2/reducible-query {:select-distinct [:dashboard_id]
                                                            :from            [:dashboard_tab]}))))
+
+(define-migration MigrateLegacyDashboardCardColumnSettingsFieldRefs
+  (let [update-one! (fn [{:keys [id visualization_settings]}]
+                      (let [updated (update-legacy-field-refs-in-viz-settings visualization_settings)]
+                        (when (not= visualization_settings updated)
+                          (t2/query-one {:update :report_dashboardcard
+                                         :set    {:visualization_settings updated}
+                                         :where  [:= :id id]}))))]
+    (run! update-one! (t2/reducible-query
+                       {:select [:id :visualization_settings]
+                        :from   [:report_dashboardcard]
+                        :where  [:and
+                                 [:<> :card_id nil]
+                                 [:or
+                                  ;; these match legacy field refs in column_settings
+                                  [:like :visualization_settings "%ref\\\\\",[\\\\\"field-id%"]
+                                  [:like :visualization_settings "%ref\\\\\",[\\\\\"field-literal%"]
+                                  [:like :visualization_settings "%ref\\\\\",[\\\\\"fk->%"]
+                                  ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
+                                  [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field-id%"]
+                                  [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"field-literal%"]
+                                  [:like :visualization_settings "%ref\\\\\\\",[\\\\\\\"fk->%"]]]}))))
+
+(define-reversible-migration AddJoinAliasToDashboardCardColumnSettingsFieldRefs
+  (let [update-one! (fn [{:keys [id visualization_settings result_metadata]}]
+                      (let [updated (add-join-alias-to-column-settings-refs {:visualization_settings visualization_settings
+                                                                             :result_metadata        result_metadata})]
+                        (when (not= visualization_settings updated)
+                          (t2/query-one {:update :report_dashboardcard
+                                         :set    {:visualization_settings updated}
+                                         :where  [:= :id id]}))))]
+    (run! update-one! (t2/reducible-query {:select [:dc.id :dc.visualization_settings :c.result_metadata]
+                                           :from   [[:report_card :c]]
+                                           :join   [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]]
+                                           :where  [:and
+                                                    [:or
+                                                     [:= :c.query_type nil]
+                                                     [:= :c.query_type "query"]]
+                                                    [:or
+                                                     [:like :dc.visualization_settings "%ref\\\\\",[\\\\\"field%"]
+                                                     ; MySQL with NO_BACKSLASH_ESCAPES disabled
+                                                     [:like :dc.visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                    [:like :c.result_metadata "%join-alias%"]]})))
+  (let [update! (fn [{:keys [id visualization_settings]}]
+                  (let [updated (-> visualization_settings
+                                    json/parse-string
+                                    remove-join-alias-from-column-settings-field-refs
+                                    json/generate-string)]
+                    (when (not= visualization_settings updated)
+                      (t2/query-one {:update :report_dashboardcard
+                                     :set    {:visualization_settings updated}
+                                     :where  [:= :id id]}))))]
+    (run! update! (t2/reducible-query {:select [:dc.id :dc.visualization_settings]
+                                       :from   [[:report_card :c]]
+                                       :join   [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]]
+                                       :where  [:and
+                                                [:or
+                                                 [:= :c.query_type nil]
+                                                 [:= :c.query_type "query"]]
+                                                [:or
+                                                 [:like :dc.visualization_settings "%ref\\\\\",[\\\\\"field%"]
+                                                 [:like :dc.visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
+                                                [:like :dc.visualization_settings "%join-alias%"]]}))))

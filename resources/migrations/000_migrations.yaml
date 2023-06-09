@@ -15298,6 +15298,23 @@ databaseChangeLog:
       rollback:
         - sql:
             sql: drop view v_users;
+            
+  - changeSet:
+      id: v47.00-043
+      author: calherres
+      comment: Added 0.47.0 - Migrate the report_card.visualization_settings.column_settings field refs from legacy format
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyDashboardCardColumnSettingsFieldRefs"
+
+  - changeSet:
+      id: v47.00-044
+      author: calherries
+      comment: Added 0.47.0 - Add join-alias to the report_dashboard.visualization_settings.column_settings field refs
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.AddJoinAliasToDashboardCardColumnSettingsFieldRefs"
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
