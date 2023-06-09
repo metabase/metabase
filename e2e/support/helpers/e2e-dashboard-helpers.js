@@ -64,8 +64,16 @@ export function showDashboardCardActions(index = 0) {
   getDashboardCard(index).realHover();
 }
 
+export function showDashcardVisualizationSettings(index = 0) {
+  return getDashboardCard(index)
+    .realHover()
+    .within(() => {
+      cy.findByLabelText("Show visualization options").click();
+    });
+}
+
 export function editDashboard() {
-  cy.icon("pencil").click();
+  cy.findByLabelText("Edit dashboard").click();
   cy.findByText("You're editing this dashboard.");
 }
 
@@ -98,12 +106,32 @@ export function setFilter(type, subType) {
   });
 }
 
+export function createEmptyTextBox() {
+  cy.findByLabelText("Edit dashboard").click();
+  cy.findByLabelText("Add a heading or text box").click();
+  popover().findByText("Text").click();
+}
+
 export function addTextBox(string, options = {}) {
-  cy.icon("pencil").click();
-  cy.icon("string").click();
+  cy.findByLabelText("Edit dashboard").click();
+  cy.findByLabelText("Add a heading or text box").click();
+  popover().findByText("Text").click();
   cy.findByPlaceholderText(
     "You can use Markdown here, and include variables {{like_this}}",
   ).type(string, options);
+}
+
+export function createEmptyHeading() {
+  cy.findByLabelText("Edit dashboard").click();
+  cy.findByLabelText("Add a heading or text box").click();
+  popover().findByText("Heading").click();
+}
+
+export function addHeading(string, options = {}) {
+  cy.findByLabelText("Edit dashboard").click();
+  cy.findByLabelText("Add a heading or text box").click();
+  popover().findByText("Heading").click();
+  cy.findByPlaceholderText("Heading").type(string, options);
 }
 
 export function openQuestionsSidebar() {

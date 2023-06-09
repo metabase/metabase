@@ -50,7 +50,7 @@ function setup({
 }
 
 function queryTab(numOrName: number | string) {
-  const name = typeof numOrName === "string" ? numOrName : `Page ${numOrName}`;
+  const name = typeof numOrName === "string" ? numOrName : `Tab ${numOrName}`;
   return screen.queryByRole("tab", { name });
 }
 
@@ -79,7 +79,7 @@ async function deleteTab(num: number) {
 async function renameTab(num: number, name: string) {
   await selectTabMenuItem(num, "Rename");
 
-  const inputEl = screen.getByRole("textbox", { name: `Page ${num}` });
+  const inputEl = screen.getByRole("textbox", { name: `Tab ${num}` });
   userEvent.type(inputEl, name);
   fireEvent.keyPress(inputEl, { key: "Enter", charCode: 13 });
 }
@@ -100,7 +100,7 @@ describe("DashboardTabs", () => {
     it("should not display tabs when there is one", () => {
       setup({
         isEditing: false,
-        tabs: [getDefaultTab({ tabId: 1, dashId: 1, name: "Page 1" })],
+        tabs: [getDefaultTab({ tabId: 1, dashId: 1, name: "Tab 1" })],
       });
 
       expect(queryTab(1)).not.toBeInTheDocument();
@@ -138,7 +138,7 @@ describe("DashboardTabs", () => {
     it("should display a placeholder tab when there are none", () => {
       setup({ tabs: [] });
 
-      const placeholderTab = queryTab("Page 1");
+      const placeholderTab = queryTab("Tab 1");
       expect(placeholderTab).toHaveAttribute("aria-disabled", "true");
     });
 
@@ -250,7 +250,7 @@ describe("DashboardTabs", () => {
         const inputWrapperEl = screen.getAllByTestId(INPUT_WRAPPER_TEST_ID)[0];
         userEvent.dblClick(inputWrapperEl);
 
-        const inputEl = screen.getByRole("textbox", { name: "Page 1" });
+        const inputEl = screen.getByRole("textbox", { name: "Tab 1" });
         userEvent.type(inputEl, newName);
         fireEvent.keyPress(inputEl, { key: "Enter", charCode: 13 });
 

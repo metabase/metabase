@@ -58,7 +58,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
@@ -86,8 +85,8 @@
 ;; return all Cards bookmarked by the current user.
 (defmethod cards-for-filter-option* :bookmarked
   [_]
-  (let [cards (for [{{:keys [archived], :as card} :card} (hydrate (t2/select [CardBookmark :card_id]
-                                                                    :user_id api/*current-user-id*)
+  (let [cards (for [{{:keys [archived], :as card} :card} (t2/hydrate (t2/select [CardBookmark :card_id]
+                                                                      :user_id api/*current-user-id*)
                                                                   :card)
                     :when                                 (not archived)]
                 card)]
@@ -152,7 +151,7 @@
 
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* filter-option (when model-id-or-nil [model-id-or-nil]))
-      (hydrate :creator :collection)))
+      (t2/hydrate :creator :collection)))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
 (def ^:private card-filter-options
@@ -191,7 +190,7 @@
    ignore_view [:maybe :boolean]}
   (let [raw-card (t2/select-one Card :id id)
         card (-> raw-card
-                 (hydrate :creator
+                 (t2/hydrate :creator
                           :dashboard_count
                           :parameter_usage_count
                           :can_write
@@ -200,7 +199,7 @@
                           :collection
                           [:moderation_reviews :moderator_details])
                  (cond-> ;; card
-                   (:dataset raw-card) (hydrate :persisted))
+                   (:dataset raw-card) (t2/hydrate :persisted))
                  api/read-check
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
@@ -537,7 +536,7 @@ saved later when it is ready."
      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
      ;; returned one -- See #4283
      (u/prog1 (-> card
-                  (hydrate :creator
+                  (t2/hydrate :creator
                            :dashboard_count
                            :can_write
                            :average_query_time
@@ -764,14 +763,14 @@ saved later when it is ready."
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
     ;; has with returned one -- See #4142
     (-> card
-        (hydrate :creator
+        (t2/hydrate :creator
                  :dashboard_count
                  :can_write
                  :average_query_time
                  :last_query_start
                  :collection [:moderation_reviews :moderator_details])
         (cond-> ;; card
-          (:dataset card) (hydrate :persisted))
+          (:dataset card) (t2/hydrate :persisted))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -796,7 +795,7 @@ saved later when it is ready."
    result_metadata        (s/maybe qr/ResultsMetadata)
    cache_ttl              (s/maybe su/IntGreaterThanZero)
    collection_preview     (s/maybe s/Bool)}
-  (let [card-before-update (hydrate (api/write-check Card id)
+  (let [card-before-update (t2/hydrate (api/write-check Card id)
                                     [:moderation_reviews :moderator_details])]
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection

@@ -53,7 +53,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -2084,7 +2083,7 @@
                                           :text                "lookin good"}]]))
             ~@body))]
       (letfn [(verified? [card]
-                (-> card (hydrate [:moderation_reviews :moderator_details])
+                (-> card (t2/hydrate [:moderation_reviews :moderator_details])
                     :moderation_reviews first :status #{"verified"} boolean))
               (reviews [card]
                 (t2/select ModerationReview
@@ -2469,11 +2468,11 @@
           (mt/with-model-cleanup [:model/Card]
             (let [{metadata :result_metadata
                    card-id  :id :as card} (mt/user-http-request
-                   :rasta :post 200
-                   "card"
-                   (assoc (card-with-name-and-query "card-name"
-                                                    query)
-                          :dataset true))]
+                                           :rasta :post 200
+                                           "card"
+                                           (assoc (card-with-name-and-query "card-name"
+                                                                            query)
+                                                  :dataset true))]
               (is (= ["ID" "NAME"] (map norm metadata)))
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
                      (->> (update-card!
