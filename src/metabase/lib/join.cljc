@@ -113,7 +113,6 @@
           join-query (cond-> (assoc query :stages stages)
                        ensure-previous-stages-have-metadata
                        (ensure-previous-stages-have-metadata -1))
-          _ (tap> join-query)
           field-metadatas (if (= fields :all)
                             (lib.metadata.calculation/metadata join-query -1 (peek stages))
                             (for [field-ref fields
