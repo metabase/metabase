@@ -262,7 +262,7 @@
 
                   :card
                   (let [results (mt/user-http-request user :post 200
-                                                      (format "card/%d/query/%s" (u/the-id dashboard) (name export-format))
+                                                      (format "card/%d/query/%s" (u/the-id card) (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
                     ((-> assertions export-format) results))
 
