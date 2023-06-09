@@ -65,7 +65,9 @@ export const ActionParameterMappingForm = ({
         const isHidden = isParameterHidden(action, actionParam);
         const isRequired = isParameterRequired(action, actionParam);
         const mappedValue = currentMappings[getTargetKey(actionParam)];
-        const showError = !mappedValue && isHidden && isRequired;
+        const isParameterMapped = mappedValue != null;
+
+        const showError = isHidden && isRequired && !isParameterMapped;
         const name = actionParam.name ?? actionParam.id;
 
         return (

@@ -75,9 +75,10 @@ export function ActionDashcardSettings({
     action.parameters.some(actionParameter => {
       const isHidden = isParameterHidden(action, actionParameter);
       const isRequired = isParameterRequired(action, actionParameter);
-      const mappedValue = !!currentMappings[getTargetKey(actionParameter)];
+      const isParameterMapped =
+        currentMappings[getTargetKey(actionParameter)] != null;
 
-      return isHidden && isRequired && !mappedValue;
+      return isHidden && isRequired && !isParameterMapped;
     });
 
   return (
