@@ -16,6 +16,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
+   [metabase.models.collection.root :as collection.root]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
    [metabase.models.dashboard-tab :as dashboard-tab]
@@ -228,6 +229,7 @@
                :param_fields
                :param_values
                :collection)
+      collection.root/hydrate-root-collection
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
