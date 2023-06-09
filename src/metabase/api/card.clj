@@ -1142,7 +1142,7 @@ saved later when it is ready."
   (when (or is_on_demand is_full_sync)
     (future (sync/sync-table! table))))
 
-(defn csv-stats [csv-file]
+(defn- csv-stats [csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
     (let [rows (csv/read-csv reader)]
       {:size-mb     (/ (.length csv-file) 1048576.0)
@@ -1158,63 +1158,64 @@ saved later when it is ready."
   (when (not (public-settings/uploads-enabled))
     (throw (Exception. "Uploads are not enabled.")))
   (collection/check-write-perms-for-collection collection-id)
-  (try (let [start-time        (System/currentTimeMillis)
-             db-id             (public-settings/uploads-database-id)
-             database          (or (t2/select-one Database :id db-id)
-                                   (throw (Exception. (tru "The uploads database does not exist."))))
-             driver            (driver.u/database->driver database)
-             schema-name       (public-settings/uploads-schema-name)
-             _check-schema     (when-not (or (nil? schema-name)
-                                             (driver.s/include-schema? database schema-name))
-                                 (throw (ex-info (tru "The schema {0} is not syncable." schema-name)
-                                                 {:status-code 422})))
-             filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
-                                   filename)
-             _check-setting    (when-not (driver/database-supports? driver :uploads nil)
-                                 (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
-             table-name        (->> (str (public-settings/uploads-table-prefix) filename-prefix)
-                                    (upload/unique-table-name driver)
-                                    (u/lower-case-en))
-             schema+table-name (if (str/blank? schema-name)
-                                 table-name
-                                 (str schema-name "." table-name))
-             _load!            (upload/load-from-csv driver db-id schema+table-name csv-file)
-        ;; Syncs are needed immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-             table-metadata    (first (filter (fn [{:keys [name]}] (= (u/lower-case-en name) table-name))
-                                              (:tables (fetch-metadata/db-metadata database))))
-             actual-schema     (:schema table-metadata)
-             _                 (when (nil? table-metadata)
-                                 (driver/drop-table driver db-id table-name)
-                                 (throw (ex-info (tru "The CSV file was uploaded to {0}, but the table could not be created or found." schema+table-name)
-                                                 {:status-code 422})))
-             table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema actual-schema})
-             _sync             (scan-and-sync-table! database table)
-             card              (create-card!
-                                {:collection_id          collection-id,
-                                 :dataset                true
-                                 :database_id            db-id
-                                 :dataset_query          {:database db-id
-                                                          :query    {:source-table (u/the-id table)}
-                                                          :type     :query}
-                                 :display                :table
-                                 :name                   (humanization/name->human-readable-name filename-prefix)
-                                 :visualization_settings {}})
-             end-time          (System/currentTimeMillis)
-             upload-time       (- end-time start-time)]
-         (snowplow/track-event! ::snowplow/csv-upload-successful
-                                api/*current-user-id*
-                                (merge
-                                 {:model-id       (:id card)
-                                  :upload-speed   (int upload-time)}
-                                 (csv-stats csv-file)))
-         (.delete csv-file)
-         card)
-       (catch Throwable e
-         (snowplow/track-event! ::snowplow/csv-upload-failed
-                                api/*current-user-id*
-                                (csv-stats csv-file))
-         (.delete csv-file)
-         (throw e))))
+  (try
+    (let [start-time        (System/currentTimeMillis)
+          db-id             (public-settings/uploads-database-id)
+          database          (or (t2/select-one Database :id db-id)
+                                (throw (Exception. (tru "The uploads database does not exist."))))
+          driver            (driver.u/database->driver database)
+          schema-name       (public-settings/uploads-schema-name)
+          _check-schema     (when-not (or (nil? schema-name)
+                                          (driver.s/include-schema? database schema-name))
+                              (throw (ex-info (tru "The schema {0} is not syncable." schema-name)
+                                              {:status-code 422})))
+          filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
+                                filename)
+          _check-setting    (when-not (driver/database-supports? driver :uploads nil)
+                              (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
+          table-name        (->> (str (public-settings/uploads-table-prefix) filename-prefix)
+                                 (upload/unique-table-name driver)
+                                 (u/lower-case-en))
+          schema+table-name (if (str/blank? schema-name)
+                              table-name
+                              (str schema-name "." table-name))
+          stats             (upload/load-from-csv driver db-id schema+table-name csv-file)
+          ;; Syncs are needed immediately to create the Table and its Fields; the scan is settings-dependent and can be async
+          table-metadata    (first (filter (fn [{:keys [name]}] (= (u/lower-case-en name) table-name))
+                                           (:tables (fetch-metadata/db-metadata database))))
+          actual-schema     (:schema table-metadata)
+          _                 (when (nil? table-metadata)
+                              (driver/drop-table driver db-id table-name)
+                              (throw (ex-info (tru "The CSV file was uploaded to {0}, but the table could not be created or found." schema+table-name)
+                                              {:status-code 422})))
+          table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema actual-schema})
+          _sync             (scan-and-sync-table! database table)
+          card              (create-card!
+                             {:collection_id          collection-id,
+                              :dataset                true
+                              :database_id            db-id
+                              :dataset_query          {:database db-id
+                                                       :query    {:source-table (u/the-id table)}
+                                                       :type     :query}
+                              :display                :table
+                              :name                   (humanization/name->human-readable-name filename-prefix)
+                              :visualization_settings {}})
+          upload-seconds    (/ (- (System/currentTimeMillis) start-time)
+                               1000.0)]
+      (snowplow/track-event! ::snowplow/csv-upload-successful
+                             api/*current-user-id*
+                             (merge
+                              {:model-id (:id card)
+                               :upload-seconds upload-seconds}
+                              stats))
+      (.delete csv-file)
+      card)
+    (catch Throwable e
+      (snowplow/track-event! ::snowplow/csv-upload-failed
+                             api/*current-user-id*
+                             (csv-stats csv-file))
+      (.delete csv-file)
+      (throw e))))
 
 (api/defendpoint ^:multipart POST "/from-csv"
   "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."

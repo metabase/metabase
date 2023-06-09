@@ -21,9 +21,9 @@
       "minimum": 0,
       "maximum": 2147483647
     },
-    "upload_speed": {
-      "description": "Number of milliseconds the csv took to upload",
-      "type": ["integer", "null"],
+    "upload_seconds": {
+      "description": "Number of seconds the csv took to upload",
+      "type": ["number", "null"],
       "minimum": 0,
       "maximum": 2147483647
     },

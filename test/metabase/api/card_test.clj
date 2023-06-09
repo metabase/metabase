@@ -2973,12 +2973,12 @@
                                            uploads-table-prefix nil]
           (snowplow-test/with-fake-snowplow-collector
             (upload-example-csv! nil)
-            (is (=? {:data {"model_id"     pos?
-                            "size_mb"      3.910064697265625E-5
-                            "num_columns"  2
-                            "num_rows"     2
-                            "upload_speed" pos-int?
-                            "event"        "csv_upload_successful"}
+            (is (=? {:data {"model_id"        pos?
+                            "size_mb"         3.910064697265625E-5
+                            "num_columns"     2
+                            "num_rows"        2
+                            "upload_seconds"  pos?
+                            "event"           "csv_upload_successful"}
                      :user-id (str (mt/user->id :rasta))}
                     (last (snowplow-test/pop-event-data-and-user-id!))))
             (with-redefs [upload/load-from-csv (fn [_ _ _ _]
