@@ -160,7 +160,7 @@
 
                                   "Card with result metadata"
                                   (assoc card-def :result-metadata result-metadata)}]
-        (testing message
+        (testing (str \newline message)
           (let [metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
                                    (lib.tu/mock-metadata-provider
                                     {:cards [card-def]})
@@ -189,7 +189,19 @@
                           :long-display-name "Products → Category"
                           :effective-type    :type/Text}]
                         (map (partial lib/display-info query')
-                             (lib/breakouts query'))))))))))))
+                             (lib/breakouts query'))))))
+            (when (:result-metadata card-def)
+              (testing "\nwith broken breakout from broken drill-thru (#31482)"
+                ;; this is a bad field reference, it does not contain a `:join-alias`. For some reason the FE is
+                ;; generating these in drill thrus (in MLv1). We need to figure out how to make stuff work anyway even
+                ;; tho this is technically wrong.
+                (let [query' (lib/breakout query [:field {:lib/uuid (str (random-uuid))} (meta/id :products :category)])]
+                  (is (=? [{:name              "CATEGORY"
+                            :display-name      "Category"
+                            :long-display-name "Products → Category"
+                            :effective-type    :type/Text}]
+                          (map (partial lib/display-info query')
+                               (lib/breakouts query')))))))))))))
 
 (deftest ^:parallel unresolved-lib-field-with-temporal-bucket-test
   (let [query (lib/query-for-table-name meta/metadata-provider "CHECKINS")
@@ -610,4 +622,4 @@
             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                 (lib/with-fields [(meta/field-metadata :venues :id)
                                   (meta/field-metadata :venues :name)])
-                lib/fieldable-columns )))))
+                lib/fieldable-columns)))))

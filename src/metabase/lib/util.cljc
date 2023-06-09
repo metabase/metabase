@@ -244,6 +244,11 @@
     (when (pos? stage-number)
       (dec stage-number))))
 
+(defn first-stage?
+  "Whether a `stage-number` is referring to the first stage of a query or not."
+  [query stage-number]
+  (not (previous-stage-number query stage-number)))
+
 (defn next-stage-number
   "The index of the next stage, if there is one. `nil` if there is no next stage."
   [{:keys [stages], :as _query} stage-number]
