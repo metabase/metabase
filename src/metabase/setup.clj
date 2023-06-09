@@ -4,6 +4,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.user :refer [User]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [toucan2.core :as t2])
   (:import
    (java.util UUID)))
@@ -36,6 +37,12 @@
       (t2/select-one-fn :value Setting :key "setup-token")
       (setting/set-value-of-type! :string :setup-token (str (UUID/randomUUID)))))
 
+(defenterprise ignore-internal-user-clause
+  "Returns the where clause to ignore internal metabase user, or an empty where clause."
+  metabase-enterprise.internal-user
+  []
+  [])
+
 (defsetting has-user-setup
   "A value that is true iff the metabase instance has one or more users registered."
   :visibility :public
@@ -50,7 +57,7 @@
   :getter     (let [app-db-id->user-exists? (atom {})]
                 (fn []
                   (or (get @app-db-id->user-exists? (mdb.connection/unique-identifier))
-                      (let [exists? (t2/exists? User)]
+                      (let [exists? (t2/exists? User {:where (ignore-internal-user-clause)})]
                         (swap! app-db-id->user-exists? assoc (mdb.connection/unique-identifier) exists?)
                         exists?))))
   :doc        false)
