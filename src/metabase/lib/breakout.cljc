@@ -1,9 +1,11 @@
 (ns metabase.lib.breakout
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -74,7 +76,10 @@
          breakout-pos
          (fn [x]
            (some (fn [[pos existing-breakout]]
-                   (let [a-ref (lib.ref/ref x)]
+                   (let [a-ref (-> x
+                                   lib.ref/ref
+                                   (lib.options/update-options m/update-existing :binning
+                                                               dissoc :metadata-fn :lib/type))]
                      (when (or (lib.equality/= a-ref existing-breakout)
                                (lib.equality/= a-ref (lib.util/with-default-effective-type existing-breakout)))
                        pos)))
