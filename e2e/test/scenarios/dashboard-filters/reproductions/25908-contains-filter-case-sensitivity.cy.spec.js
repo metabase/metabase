@@ -46,7 +46,7 @@ describe("issue 25908", () => {
               row: 0,
               col: 0,
               size_x: 17,
-              size_y: 11,
+              size_y: 8,
               series: [],
               visualization_settings: {},
               parameter_mappings: [

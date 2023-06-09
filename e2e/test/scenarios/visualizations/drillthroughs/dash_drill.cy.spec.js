@@ -104,7 +104,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
           },
           cardDetails: {
             size_x: 21,
-            size_y: 16,
+            size_y: 12,
           },
         }).then(({ body: { dashboard_id, card_id } }) => {
           visitDashboard(dashboard_id);

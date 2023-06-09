@@ -91,7 +91,7 @@ export function mapParameters({ id, card_id, dashboard_id } = {}) {
         row: 0,
         col: 0,
         size_x: 24,
-        size_y: 8,
+        size_y: 6,
         series: [],
         visualization_settings: {},
         parameter_mappings: getParameterMappings(parameters, card_id),

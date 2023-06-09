@@ -80,7 +80,7 @@ function addQuestionToDashboardAndVisit() {
       addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
-        card: { size_x: 21, size_y: 13 },
+        card: { size_x: 21, size_y: 10 },
       });
     });
 

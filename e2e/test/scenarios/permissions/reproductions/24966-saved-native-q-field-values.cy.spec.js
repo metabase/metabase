@@ -88,7 +88,7 @@ describeEE("issue 24966", () => {
             col: 0,
             row: 0,
             size_x: 16,
-            size_y: 11,
+            size_y: 8,
             parameter_mappings: [
               {
                 parameter_id: dashboardFilter.id,

@@ -14,7 +14,7 @@ Cypress.Commands.add(
                   row: 0,
                   col: 0,
                   size_x: 11,
-                  size_y: 8,
+                  size_y: 6,
                 },
               ],
             }).then(response => ({

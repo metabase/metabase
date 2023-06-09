@@ -184,7 +184,7 @@ describe("scenarios > dashboard > chained filter", () => {
                 row: 0,
                 col: 0,
                 size_x: 11,
-                size_y: 8,
+                size_y: 6,
                 parameter_mappings: [
                   {
                     parameter_id: "50c9eac6",

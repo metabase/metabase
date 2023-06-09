@@ -24,7 +24,7 @@ const DEFAULT_CARD = {
   row: 0,
   col: 0,
   size_x: 11,
-  size_y: 11,
+  size_y: 8,
   visualization_settings: {},
   parameter_mappings: [],
 };
@@ -45,6 +45,7 @@ export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
       body: response.body.cards[0],
     }));
 }
+
 /**
  * Replaces all the cards on a dashboard with the array given in the `cards` parameter.
  * Can be used to remove cards (exclude from array), or add/update them.

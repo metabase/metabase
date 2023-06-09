@@ -52,7 +52,7 @@ defaultFilterValues.forEach(value => {
               row: 0,
               col: 0,
               size_x: 16,
-              size_y: 13,
+              size_y: 10,
               parameter_mappings: [
                 {
                   parameter_id: dashboardFilter.id,

@@ -27,7 +27,7 @@ describe("scenarios > visualizations > gauge chart", () => {
               row: 0,
               col: 0,
               size_x: 5,
-              size_y: 5,
+              size_y: 4,
               parameter_mappings: [],
             },
           ],

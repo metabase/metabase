@@ -49,7 +49,7 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
               row: 0,
               col: 0,
               size_x: 13,
-              size_y: 11,
+              size_y: 8,
               series: [],
               visualization_settings: {},
               // Connect filter to the card
@@ -109,7 +109,7 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
               row: 0,
               col: 0,
               size_x: 11,
-              size_y: 8,
+              size_y: 6,
               series: [],
               visualization_settings: {},
               // Connect filter to the card

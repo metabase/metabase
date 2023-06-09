@@ -54,7 +54,7 @@ describe("issues 15119 and 16112", () => {
               row: 0,
               col: 0,
               size_x: 16,
-              size_y: 12,
+              size_y: 9,
               visualization_settings: {},
               parameter_mappings: [
                 {

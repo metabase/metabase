@@ -124,7 +124,7 @@ describe("scenarios > dashboard > parameters in text cards", () => {
       });
       const updatedSize = {
         size_x: 11,
-        size_y: 8,
+        size_y: 6,
       };
       cy.editDashboardCard(card, updatedSize);
       visitDashboard(dashboard_id);

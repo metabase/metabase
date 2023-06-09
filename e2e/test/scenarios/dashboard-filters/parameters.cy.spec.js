@@ -34,14 +34,14 @@ describe("scenarios > dashboard > parameters", () => {
             row: 0,
             col: 0,
             size_x: 5,
-            size_y: 5,
+            size_y: 4,
           },
           {
             card_id: 2,
             row: 0,
             col: 4,
             size_x: 5,
-            size_y: 5,
+            size_y: 4,
           },
         ],
       });
@@ -136,7 +136,7 @@ describe("scenarios > dashboard > parameters", () => {
               row: 0,
               col: 0,
               size_x: 16,
-              size_y: 11,
+              size_y: 8,
               series: [],
               visualization_settings: {},
               parameter_mappings: [
@@ -286,7 +286,7 @@ describe("scenarios > dashboard > parameters", () => {
             row: 0,
             col: 0,
             size_x: 11,
-            size_y: 8,
+            size_y: 6,
             parameter_mappings: [
               {
                 parameter_id: matchingFilterType.id,
@@ -398,7 +398,7 @@ describe("scenarios > dashboard > parameters", () => {
               row: 0,
               col: 0,
               size_x: 19,
-              size_y: 16,
+              size_y: 12,
               parameter_mappings: [
                 {
                   parameter_id: titleFilter.id,

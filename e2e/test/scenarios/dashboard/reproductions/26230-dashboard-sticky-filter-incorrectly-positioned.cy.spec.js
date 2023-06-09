@@ -83,7 +83,7 @@ function createTextDashcard(id) {
     card_id: null,
     card: {
       size_x: 5,
-      size_y: 27,
+      size_y: 20,
       visualization_settings: {
         virtual_card: {
           name: null,

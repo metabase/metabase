@@ -83,7 +83,7 @@ function addMarkdownDashboard(name, alias) {
         col: 0,
         // Full width markdown title
         size_x: 24,
-        size_y: 3,
+        size_y: 2,
         visualization_settings: markdownCard,
       },
     });
@@ -133,7 +133,7 @@ function addMultiDashboard(name, alias) {
         col: 0,
         // Full width markdown title
         size_x: 24,
-        size_y: 3,
+        size_y: 2,
         visualization_settings: markdownCard,
       },
     });

@@ -82,7 +82,7 @@ const setFilterMapping = ({ dashboard_id, card1_id, card2_id }) => {
         row: 0,
         col: 0,
         size_x: 5,
-        size_y: 5,
+        size_y: 4,
         parameter_mappings: [
           {
             parameter_id: filterDetails.id,
@@ -96,7 +96,7 @@ const setFilterMapping = ({ dashboard_id, card1_id, card2_id }) => {
         row: 0,
         col: 4,
         size_x: 5,
-        size_y: 5,
+        size_y: 4,
         parameter_mappings: [
           {
             parameter_id: filterDetails.id,

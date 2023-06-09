@@ -392,7 +392,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
                 row: 0,
                 col: 0,
                 size_x: 11,
-                size_y: 8,
+                size_y: 6,
                 parameter_mappings: [
                   {
                     parameter_id: filter.id,
@@ -461,7 +461,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           row: 0,
           col: 0,
           size_x: 16,
-          size_y: 11,
+          size_y: 8,
           parameter_mappings: [
             {
               parameter_id: FILTER_ID,
@@ -522,7 +522,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           row: 0,
           col: 0,
           size_x: 16,
-          size_y: 11,
+          size_y: 8,
           parameter_mappings: [
             {
               parameter_id: FILTER_ID,
@@ -762,7 +762,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           dashboard_id: DASHBOARD_ID,
           card: {
             size_x: 19,
-            size_y: 13,
+            size_y: 10,
             // Connect dashboard filter to the question
             parameter_mappings: [
               {
@@ -886,7 +886,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
             row: 0,
             col: 0,
             size_x: 16,
-            size_y: 11,
+            size_y: 8,
             series: [],
             visualization_settings: {},
             parameter_mappings: [

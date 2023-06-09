@@ -60,7 +60,7 @@ describe("issue 20438", () => {
             row: 0,
             col: 0,
             size_x: 24,
-            size_y: 11,
+            size_y: 8,
             parameter_mappings: [
               {
                 parameter_id: filter.id,

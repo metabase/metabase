@@ -429,7 +429,7 @@ function setupDashboard(cardId, addedSeriesCardId) {
       card_id: cardId,
       card: {
         size_x: 24,
-        size_y: 16,
+        size_y: 12,
         series: addedSeriesCardId ? [{ id: addedSeriesCardId }] : [],
       },
     }).then(() => {

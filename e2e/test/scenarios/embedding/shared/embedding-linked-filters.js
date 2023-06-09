@@ -62,7 +62,7 @@ export function mapNativeDashboardParameters({
         row: 0,
         col: 0,
         size_x: 24,
-        size_y: 13,
+        size_y: 10,
         parameter_mappings: [
           {
             parameter_id: stateFilter.id,
@@ -129,7 +129,7 @@ export function mapGUIDashboardParameters(id, card_id, dashboard_id) {
         row: 0,
         col: 0,
         size_x: 13,
-        size_y: 11,
+        size_y: 8,
         series: [],
         visualization_settings: {},
         parameter_mappings,
