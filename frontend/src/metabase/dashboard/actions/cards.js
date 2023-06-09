@@ -47,6 +47,9 @@ export const addCardToDashboard =
       .getObject(getState(), { entityId: cardId })
       .card();
     const { visualization } = getVisualizationRaw([{ card }]);
+    console.log(visualization)
+    console.log(visualization.defaultSize)
+    console.log(Object.keys(visualization))
     const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
 
     const dashcard = {

@@ -37,7 +37,7 @@ export default class Scalar extends Component {
   static supportsSeries = true;
 
   static minSize = { width: 1, height: 1 };
-  static defaultSize = { width: 3, height: 3 };
+  static defaultSize = { width: 4, height: 3 };
 
   static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;

@@ -45,6 +45,7 @@ export default class Table extends Component {
   static canSavePng = false;
 
   static minSize = { width: 4, height: 3 };
+  static defaultSize = { width: 12, height: 9 };
 
   static isSensible({ cols, rows }) {
     return true;

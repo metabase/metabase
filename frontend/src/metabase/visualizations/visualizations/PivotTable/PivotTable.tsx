@@ -488,6 +488,8 @@ export default Object.assign(connect(mapStateToProps)(PivotTable), {
   canSavePng: false,
   databaseSupportsPivotTables,
   isSensible,
+  minSize: {width: 4, height: 3},
+  defaultSize: {width: 12, height: 9},
   checkRenderable,
   settings,
   columnSettings,

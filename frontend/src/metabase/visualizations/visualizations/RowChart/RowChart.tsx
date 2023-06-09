@@ -328,8 +328,8 @@ RowChartVisualization.iconName = "horizontal_bar";
 RowChartVisualization.noun = t`row chart`;
 
 RowChartVisualization.noHeader = true;
-RowChartVisualization.minSize = { width: 5, height: 4 };
-RowChartVisualization.defaultSize = { width: 5, height: 4 };
+RowChartVisualization.minSize = { width: 4, height: 3 };
+RowChartVisualization.defaultSize = { width: 12, height: 6 };
 
 RowChartVisualization.settings = {
   ...ROW_CHART_SETTINGS,

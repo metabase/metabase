@@ -15,7 +15,7 @@ const TextWrapper = Object.assign(Text, {
   supportPreviewing: false,
 
   minSize: { width: 1, height: 1 },
-  defaultSize: { width: 4, height: 4 },
+  defaultSize: { width: 6, height: 4 },
 
   checkRenderable: () => {
     // text can always be rendered, nothing needed here
