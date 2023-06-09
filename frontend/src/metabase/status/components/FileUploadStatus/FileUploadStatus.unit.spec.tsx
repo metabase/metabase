@@ -197,6 +197,7 @@ describe("FileUploadStatus", () => {
                   onCreateBookmark={jest.fn()}
                   onDeleteBookmark={jest.fn()}
                   canUpload
+                  uploadsEnabled
                 />
                 <FileUploadStatus />
               </>
