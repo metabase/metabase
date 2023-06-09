@@ -46,12 +46,20 @@
   [[tag opts id-or-name]]
   [(keyword tag) (normalize-field-options opts) id-or-name])
 
+
 (mu/defn ^:private resolve-field-id :- lib.metadata/ColumnMetadata
-  "Integer Field ID: get metadata from the metadata provider. This is probably not 100% the correct thing to do if
-  this isn't the first stage of the query, but we can fix that behavior in a follow-on"
-  [query     :- ::lib.schema/query
-   field-id  :- ::lib.schema.id/field]
-  (lib.metadata/field query field-id))
+  "Integer Field ID: get metadata from the metadata provider. If this is the first stage of the query, merge in
+  Saved Question metadata if available."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   field-id     :- ::lib.schema.id/field]
+  (merge
+   (when (lib.util/first-stage? query stage-number)
+     (when-let [card-id (lib.util/string-table-id->card-id (lib.util/source-table query))]
+       (when-let [card-metadata (lib.metadata/card query card-id)]
+         (m/find-first #(= (:id %) field-id)
+                       (:result-metadata card-metadata)))))
+   (lib.metadata/field query field-id)))
 
 (mu/defn ^:private resolve-column-name-in-metadata :- [:maybe lib.metadata/ColumnMetadata]
   [column-name      :- ::lib.schema.common/non-blank-string
@@ -102,7 +110,8 @@
    (when-let [unit (:temporal-unit opts)]
      {::temporal-unit unit})
    (cond
-     (integer? id-or-name) (resolve-field-id query id-or-name)
+     (integer? id-or-name) (cond-> (resolve-field-id query stage-number id-or-name)
+                             join-alias (assoc ::join-alias join-alias))
      join-alias            {:lib/type    :metadata/field
                             :name        id-or-name
                             ::join-alias join-alias}

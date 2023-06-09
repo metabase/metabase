@@ -160,7 +160,7 @@
 
                                   "Card with result metadata"
                                   (assoc card-def :result-metadata result-metadata)}]
-        (testing message
+        (testing (str \newline message)
           (let [metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
                                    (lib.tu/mock-metadata-provider
                                     {:cards [card-def]})
@@ -618,4 +618,4 @@
             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                 (lib/with-fields [(meta/field-metadata :venues :id)
                                   (meta/field-metadata :venues :name)])
-                lib/fieldable-columns )))))
+                lib/fieldable-columns)))))
