@@ -2,15 +2,16 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupCardsEndpoints,
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
+import {
   renderWithProviders,
   screen,
   waitFor,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import {
-  setupCardsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
 
 import { GroupTableAccessPolicy } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -20,12 +21,21 @@ import {
   PEOPLE_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import { useCollectionsQuery } from "metabase/common/hooks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+
 import EditSandboxingModal from "./EditSandboxingModal";
 
 const attributes = ["foo", "bar"];
 const params = {
   groupId: "1",
   tableId: String(PEOPLE_ID),
+};
+
+const EDITABLE_ROOT_COLLECTION = {
+  ...ROOT_COLLECTION,
+  can_write: true,
 };
 
 const TEST_CARD = createMockCard({
@@ -40,7 +50,17 @@ const TEST_CARD = createMockCard({
   },
 });
 
-const setup = ({
+const TestComponent: typeof EditSandboxingModal = ({ ...props }) => {
+  const { data, error, isLoading } = useCollectionsQuery();
+
+  if (!data) {
+    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  }
+
+  return <EditSandboxingModal {...props} />;
+};
+
+const setup = async ({
   shouldMockQuestions = false,
   policy = undefined,
 }: {
@@ -48,19 +68,12 @@ const setup = ({
   policy?: GroupTableAccessPolicy;
 } = {}) => {
   const database = createSampleDatabase();
-
   setupDatabasesEndpoints([database]);
+  setupCollectionsEndpoints({ collections: [EDITABLE_ROOT_COLLECTION] });
   fetchMock.post("path:/api/mt/gtap/validate", 204);
   fetchMock.get("path:/api/permissions/group/1", {});
 
   if (shouldMockQuestions) {
-    fetchMock.get("path:/api/collection", [
-      {
-        id: "root",
-        name: "Our analytics",
-        can_write: true,
-      },
-    ]);
     fetchMock.get("path:/api/collection/root/items", {
       data: [{ id: TEST_CARD.id, name: TEST_CARD.name, model: "card" }],
     });
@@ -70,7 +83,7 @@ const setup = ({
   const onSave = jest.fn();
 
   renderWithProviders(
-    <EditSandboxingModal
+    <TestComponent
       onCancel={jest.fn()}
       onSave={onSave}
       attributes={attributes}
@@ -78,6 +91,8 @@ const setup = ({
       policy={policy}
     />,
   );
+
+  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 
   return { onSave };
 };
@@ -90,7 +105,7 @@ describe("EditSandboxingModal", () => {
   describe("EditSandboxingModal", () => {
     describe("creating new policy", () => {
       it("should allow creating a new policy", async () => {
-        const { onSave } = setup();
+        const { onSave } = await setup();
 
         expect(
           screen.getByText("Grant sandboxed access to this table"),
@@ -119,7 +134,7 @@ describe("EditSandboxingModal", () => {
       });
 
       it("should allow creating a new policy based on a card", async () => {
-        const { onSave } = setup({ shouldMockQuestions: true });
+        const { onSave } = await setup({ shouldMockQuestions: true });
 
         expect(
           screen.getByText("Grant sandboxed access to this table"),
@@ -133,7 +148,7 @@ describe("EditSandboxingModal", () => {
           ),
         );
 
-        userEvent.click(await screen.findByText("sandbox question"));
+        userEvent.click(await screen.findByText(TEST_CARD.name));
 
         userEvent.click(screen.getByText("Save"));
 
@@ -151,7 +166,7 @@ describe("EditSandboxingModal", () => {
 
   describe("editing policies", () => {
     it("should allow editing an existing policy", async () => {
-      const { onSave } = setup({
+      const { onSave } = await setup({
         shouldMockQuestions: true,
         policy: {
           id: 1,
@@ -177,7 +192,7 @@ describe("EditSandboxingModal", () => {
         ),
       );
 
-      userEvent.click(await screen.findByText("sandbox question"));
+      userEvent.click(await screen.findByText(TEST_CARD.name));
 
       userEvent.click(screen.getByText("Save"));
 
