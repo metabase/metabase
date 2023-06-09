@@ -14,6 +14,7 @@ import type {
   Bookmark,
   Collection,
   CollectionAuthorityLevelConfig,
+  CollectionInstanceAnaltyicsConfig,
   Dataset,
   Group,
   GroupsPermissions,
@@ -121,8 +122,15 @@ export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
+  COLLECTION_TYPES: {
+    [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
+  },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   isRegularCollection: (_: Collection | Bookmark) => true,
+  getCollectionType: (
+    _: Partial<Collection>,
+  ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
+    AUTHORITY_LEVEL_REGULAR,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,

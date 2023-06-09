@@ -13,9 +13,10 @@ import {
   REGULAR_COLLECTION,
   OFFICIAL_COLLECTION,
 } from "./constants";
-import { isRegularCollection } from "./utils";
+import { isRegularCollection, getCollectionType } from "./utils";
 
 PLUGIN_COLLECTIONS.isRegularCollection = isRegularCollection;
+PLUGIN_COLLECTIONS.getCollectionType = getCollectionType;
 
 PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;
 
