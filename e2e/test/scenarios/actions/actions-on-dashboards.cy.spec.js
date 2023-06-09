@@ -1,4 +1,3 @@
-import { assocIn } from "icepick";
 import _ from "underscore";
 import {
   restore,
@@ -590,7 +589,7 @@ const MODEL_NAME = "Test Action Model";
         const PG_DB_ID = 2;
         const WRITABLE_TEST_TABLE = "scoreboard_actions";
 
-        const TEST_PARAMETER = createMockActionParameter({
+        const ID_PARAMETER = createMockActionParameter({
           id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
           name: "Total",
           slug: "total",
@@ -599,22 +598,22 @@ const MODEL_NAME = "Test Action Model";
         });
 
         const TEST_TEMPLATE_TAG = {
-          id: TEST_PARAMETER.id,
+          id: ID_PARAMETER.id,
           type: "number",
-          name: TEST_PARAMETER.slug,
-          "display-name": TEST_PARAMETER.name,
-          slug: TEST_PARAMETER.slug,
+          name: ID_PARAMETER.slug,
+          "display-name": ID_PARAMETER.name,
+          slug: ID_PARAMETER.slug,
         };
 
         const SAMPLE_QUERY_ACTION = {
           name: "Demo Action",
           type: "query",
-          parameters: [TEST_PARAMETER],
+          parameters: [ID_PARAMETER],
           database_id: PG_DB_ID,
           dataset_query: {
             type: "native",
             native: {
-              query: `UPDATE ORDERS SET TOTAL = TOTAL WHERE ID = {{ ${TEST_TEMPLATE_TAG.name} }}`,
+              query: `UPDATE ${WRITABLE_TEST_TABLE} SET score = 22 WHERE id = {{ ${TEST_TEMPLATE_TAG.name} }}`,
               "template-tags": {
                 [TEST_TEMPLATE_TAG.name]: TEST_TEMPLATE_TAG,
               },
@@ -623,8 +622,8 @@ const MODEL_NAME = "Test Action Model";
           },
           visualization_settings: {
             fields: {
-              [TEST_PARAMETER.id]: {
-                id: TEST_PARAMETER.id,
+              [ID_PARAMETER.id]: {
+                id: ID_PARAMETER.id,
                 required: true,
                 fieldType: "number",
                 inputType: "number",
@@ -632,12 +631,6 @@ const MODEL_NAME = "Test Action Model";
             },
           },
         };
-
-        const SAMPLE_WRITABLE_QUERY_ACTION = assocIn(
-          SAMPLE_QUERY_ACTION,
-          ["dataset_query", "native", "query"],
-          `UPDATE ${WRITABLE_TEST_TABLE} SET score = 22 WHERE id = {{ ${TEST_TEMPLATE_TAG.name} }}`,
-        );
 
         beforeEach(() => {
           resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
@@ -651,10 +644,12 @@ const MODEL_NAME = "Test Action Model";
             tableName: TEST_COLUMNS_TABLE,
             modelName: MODEL_NAME,
           });
+        });
 
+        it("allows to edit action title and field placeholder in action execute modal", () => {
           cy.get("@modelId").then(modelId => {
             createAction({
-              ...SAMPLE_WRITABLE_QUERY_ACTION,
+              ...SAMPLE_QUERY_ACTION,
               model_id: modelId,
             });
           });
@@ -662,9 +657,7 @@ const MODEL_NAME = "Test Action Model";
           createDashboardWithActionButton({
             actionName: SAMPLE_QUERY_ACTION.name,
           });
-        });
 
-        it("allows to edit action title and field placeholder in action execute modal", () => {
           clickHelper(SAMPLE_QUERY_ACTION.name);
 
           getActionExecutionModal().within(() => {
@@ -698,6 +691,17 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("allows to edit action query and parameters in action execute modal", () => {
+          cy.get("@modelId").then(modelId => {
+            createAction({
+              ...SAMPLE_QUERY_ACTION,
+              model_id: modelId,
+            });
+          });
+
+          createDashboardWithActionButton({
+            actionName: SAMPLE_QUERY_ACTION.name,
+          });
+
           clickHelper(SAMPLE_QUERY_ACTION.name);
 
           getActionExecutionModal().within(() => {
@@ -720,9 +724,7 @@ const MODEL_NAME = "Test Action Model";
             cy.findByTestId("action-form-editor").within(() => {
               cy.findAllByText("Number").click({ multiple: true });
             });
-          });
 
-          getActionEditorModal().within(() => {
             cy.button("Update").click();
           });
 
@@ -747,6 +749,17 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("preserves typed form values after adding a new field", () => {
+          cy.get("@modelId").then(modelId => {
+            createAction({
+              ...SAMPLE_QUERY_ACTION,
+              model_id: modelId,
+            });
+          });
+
+          createDashboardWithActionButton({
+            actionName: SAMPLE_QUERY_ACTION.name,
+          });
+
           clickHelper(SAMPLE_QUERY_ACTION.name);
 
           getActionExecutionModal().within(() => {
@@ -799,33 +812,65 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("preserves typed form values after removing a field", () => {
-          clickHelper(SAMPLE_QUERY_ACTION.name);
-
-          getActionExecutionModal().within(() => {
-            cy.icon("pencil").click();
+          const SCORE_PARAMETER = createMockActionParameter({
+            id: "4fffd534-06ce-11ee-be56-0242ac120002",
+            name: "Score",
+            slug: "score",
+            type: "string/=",
+            target: ["variable", ["template-tag", "score"]],
           });
 
-          getActionEditorModal().within(() => {
-            cy.findByTestId("native-query-editor").click();
+          const SCORE_TEMPLATE_TAG = {
+            id: SCORE_PARAMETER.id,
+            type: "text",
+            name: SCORE_PARAMETER.slug,
+            "display-name": SCORE_PARAMETER.name,
+          };
 
-            cy.get(".ace_content").type(
-              _.times(23, () => "{leftArrow}")
-                .join("")
-                .concat("{backspace}{backspace}"),
-            );
-            cy.get(".ace_text-input").type(`{{ score }}`, {
-              force: true,
-              parseSpecialCharSequences: false,
+          const QUERY_ACTION_WITH_SCORE = {
+            ...SAMPLE_QUERY_ACTION,
+            parameters: [ID_PARAMETER, SCORE_PARAMETER],
+            dataset_query: {
+              type: "native",
+              native: {
+                query: `UPDATE ${WRITABLE_TEST_TABLE} SET score = {{ ${SCORE_TEMPLATE_TAG.name} }} WHERE id = {{ ${TEST_TEMPLATE_TAG.name} }}`,
+                "template-tags": {
+                  [TEST_TEMPLATE_TAG.name]: TEST_TEMPLATE_TAG,
+                  [SCORE_TEMPLATE_TAG.name]: SCORE_TEMPLATE_TAG,
+                },
+              },
+              database: PG_DB_ID,
+            },
+            visualization_settings: {
+              fields: {
+                [ID_PARAMETER.id]: {
+                  id: ID_PARAMETER.id,
+                  required: true,
+                  fieldType: "number",
+                  inputType: "number",
+                },
+                [SCORE_PARAMETER.id]: {
+                  id: SCORE_PARAMETER.id,
+                  required: true,
+                  fieldType: "string",
+                  inputType: "string",
+                },
+              },
+            },
+          };
+
+          cy.get("@modelId").then(modelId => {
+            createAction({
+              ...QUERY_ACTION_WITH_SCORE,
+              model_id: modelId,
             });
-
-            cy.button("Update").click();
           });
 
-          getActionExecutionModal().within(() => {
-            cy.button("Cancel").click();
+          createDashboardWithActionButton({
+            actionName: QUERY_ACTION_WITH_SCORE.name,
           });
 
-          clickHelper(SAMPLE_QUERY_ACTION.name);
+          clickHelper(QUERY_ACTION_WITH_SCORE.name);
 
           getActionExecutionModal().within(() => {
             cy.findByLabelText("Total").type("123");
@@ -850,15 +895,120 @@ const MODEL_NAME = "Test Action Model";
           getActionExecutionModal().within(() => {
             cy.findByLabelText("Total").should("have.value", "123");
 
+            cy.button(QUERY_ACTION_WITH_SCORE.name).click();
+          });
+
+          cy.wait("@executeAPI").then(interception => {
+            expect(interception.request.body.parameters).to.deep.equal({
+              [ID_PARAMETER.id]: 123,
+            });
+          });
+
+          cy.findByTestId("toast-undo").within(() => {
+            cy.findByText(`Success! The action returned: {"rows-affected":0}`);
+          });
+        });
+
+        it("preserves typed form values for select control", () => {
+          const SCORE_PARAMETER = createMockActionParameter({
+            id: "079296d7-2fa4-4ab6-8281-a6fd9885fdca",
+            type: "number/=",
+            name: "Score",
+            slug: "score",
+            target: ["variable", ["template-tag", "score"]],
+          });
+
+          const SCORE_TEMPLATE_TAG = {
+            id: SCORE_PARAMETER.id,
+            type: "text",
+            name: SCORE_PARAMETER.slug,
+            "display-name": SCORE_PARAMETER.name,
+          };
+
+          const QUERY_ACTION_WITH_SELECT = {
+            ...SAMPLE_QUERY_ACTION,
+            parameters: [ID_PARAMETER, SCORE_PARAMETER],
+            dataset_query: {
+              type: "native",
+              native: {
+                query: `UPDATE ${WRITABLE_TEST_TABLE} SET score = {{ ${SCORE_TEMPLATE_TAG.name} }} WHERE 1 = 2 or id = {{ ${TEST_TEMPLATE_TAG.name} }}`,
+                "template-tags": {
+                  [TEST_TEMPLATE_TAG.name]: TEST_TEMPLATE_TAG,
+                  [SCORE_TEMPLATE_TAG.name]: SCORE_TEMPLATE_TAG,
+                },
+              },
+              database: PG_DB_ID,
+            },
+            visualization_settings: {
+              fields: {
+                [ID_PARAMETER.id]: {
+                  id: ID_PARAMETER.id,
+                  required: true,
+                  fieldType: "number",
+                  inputType: "number",
+                },
+                [SCORE_PARAMETER.id]: {
+                  id: SCORE_PARAMETER.id,
+                  required: true,
+                  fieldType: "number",
+                  inputType: "select",
+                  placeholder: "test",
+                },
+              },
+            },
+          };
+
+          cy.get("@modelId").then(modelId => {
+            createAction({
+              ...QUERY_ACTION_WITH_SELECT,
+              model_id: modelId,
+            });
+          });
+
+          createDashboardWithActionButton({
+            actionName: QUERY_ACTION_WITH_SELECT.name,
+          });
+
+          clickHelper(SAMPLE_QUERY_ACTION.name);
+
+          getActionExecutionModal().within(() => {
+            cy.findByLabelText("Total").type("123");
+
+            cy.findByText(
+              QUERY_ACTION_WITH_SELECT.visualization_settings.fields[
+                SCORE_PARAMETER.id
+              ].placeholder,
+            )
+              .parent()
+              .click();
+          });
+
+          popover().findByText("2").click();
+
+          getActionExecutionModal().within(() => {
+            cy.icon("pencil").click();
+          });
+
+          getActionEditorModal().within(() => {
+            cy.findByTestId("native-query-editor").click();
+
+            cy.get(".ace_content").type(
+              _.times(20, () => "{backspace}").join(""),
+            );
+
+            cy.button("Update").click();
+          });
+
+          getActionExecutionModal().within(() => {
+            cy.findByTestId("select-button").should("have.text", "2");
+
             cy.button(SAMPLE_QUERY_ACTION.name).click();
           });
 
           cy.wait("@executeAPI").then(interception => {
-            expect(
-              Object.values(interception.request.body.parameters)
-                .sort()
-                .join(","),
-            ).to.equal("123");
+            expect(interception.request.body.parameters).to.deep.equal({
+              [SCORE_PARAMETER.id]: 2,
+            });
           });
 
           cy.findByTestId("toast-undo").within(() => {

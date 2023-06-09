@@ -256,10 +256,11 @@ export const getForm = (
   };
 };
 
-const getFieldValidationType = ({
-  inputType,
-  defaultValue,
-}: FieldSettings): Yup.AnySchema => {
+const getFieldValidationType = (
+  fieldSettings: FieldSettings,
+): Yup.AnySchema => {
+  const { inputType, defaultValue, fieldType } = fieldSettings;
+
   switch (inputType) {
     case "number":
       return Yup.number()
@@ -275,6 +276,8 @@ const getFieldValidationType = ({
       return Yup.string()
         .nullable()
         .default(defaultValue != null ? String(defaultValue) : null);
+    case "select":
+      return getFieldValidationType({ ...fieldSettings, inputType: fieldType });
     default:
       return Yup.string()
         .nullable()

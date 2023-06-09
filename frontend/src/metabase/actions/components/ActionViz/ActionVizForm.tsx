@@ -61,6 +61,9 @@ function ActionVizForm({
   const title = getFormTitle(action);
 
   const formRef = useRef<ActionFormRefData>(null);
+  const [formStoredValues, setFormStoredValues] = useState<
+    ParametersForActionExecution | undefined
+  >();
 
   // only show confirmation if there are no missing parameters
   const showConfirmMessage =
@@ -79,6 +82,8 @@ function ActionVizForm({
   };
 
   const handleActionEdit = () => {
+    setFormStoredValues(formRef.current?.values);
+
     setShowEditModal(true);
   };
 
@@ -101,8 +106,8 @@ function ActionVizForm({
             dashcard={dashcard}
             mappedParameters={mappedParameters}
             dashcardParamValues={dashcardParamValues}
-            initialValues={formRef.current?.values}
-            hasPreservedInitialValues={!!formRef.current?.values}
+            initialValues={formStoredValues}
+            hasPreservedInitialValues={!!formStoredValues}
             title={title}
             showConfirmMessage={showConfirmMessage}
             confirmMessage={action.visualization_settings?.confirmMessage}
