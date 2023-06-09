@@ -11,7 +11,7 @@ enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 query_type: query
 name: New dashboards per month
-creator_id: luiz.arakaki@metabase.com
+creator_id: internal@metabase.com
 made_public_by_id: null
 embedding_params: null
 cache_ttl: null
