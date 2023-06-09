@@ -406,12 +406,14 @@
 (defn- do-with-n-temp-users-with-personal-collections! [num-users thunk]
   (mt/with-model-cleanup [User Collection]
     ;; insert all the users
-    (t2/query {:insert-into (t2/table-name User)
-               :values      (repeatedly num-users #(assoc (t2.with-temp/with-temp-defaults User) :date_joined :%now))})
-    (let [max-id   (:max-id (t2/select-one [User [:%max.id :max-id]]))
-          ;; determine the range of IDs we inserted -- MySQL doesn't support INSERT INTO ... RETURNING like Postgres
-          ;; so this is the fastest way to do this
-          user-ids (range (inc (- max-id num-users)) (inc max-id))]
+    (let [max-id (:max-id (t2/select-one [User [:%max.id :max-id]]))
+          user-ids (range (inc max-id) (inc (+ num-users max-id)))
+          values (map #(assoc (t2.with-temp/with-temp-defaults User)
+                              :date_joined :%now
+                              :id %)
+                      user-ids)]
+      (t2/query {:insert-into (t2/table-name User)
+                 :values      values})
       (assert (= (count user-ids) num-users))
       ;; insert the Collections
       (t2/query {:insert-into (t2/table-name Collection)
