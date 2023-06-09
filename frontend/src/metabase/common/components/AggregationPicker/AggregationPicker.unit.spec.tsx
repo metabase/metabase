@@ -120,7 +120,7 @@ describe("AggregationPicker", () => {
 
       expect(getRecentClause()).toEqual(
         expect.objectContaining({
-          name: "avg_QUANTITY",
+          name: "avg",
           displayName: "Average of Quantity",
         }),
       );
@@ -135,7 +135,7 @@ describe("AggregationPicker", () => {
 
       expect(getRecentClause()).toEqual(
         expect.objectContaining({
-          name: "avg_RATING",
+          name: "avg",
           displayName: "Average of Rating",
         }),
       );
@@ -159,9 +159,10 @@ describe("AggregationPicker", () => {
         "aria-selected",
         "true",
       );
-      expect(
-        screen.getByRole("option", { name: "Discount" }),
-      ).not.toHaveAttribute("aria-selected");
+      expect(screen.getByRole("option", { name: "Discount" })).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
     });
 
     it("shouldn't list columns for column-less operators", () => {
@@ -185,7 +186,7 @@ describe("AggregationPicker", () => {
 
       expect(getRecentClause()).toEqual(
         expect.objectContaining({
-          name: "avg_QUANTITY",
+          name: "avg",
           displayName: "Average of Quantity",
         }),
       );
@@ -196,12 +197,12 @@ describe("AggregationPicker", () => {
         query: createQueryWithMaxAggregation(),
       });
 
-      userEvent.click(screen.getByText("Quantity"));
+      userEvent.click(screen.getByText("Discount"));
 
       expect(getRecentClause()).toEqual(
         expect.objectContaining({
-          name: "max_QUANTITY",
-          displayName: "Max of Quantity",
+          name: "max",
+          displayName: "Max of Discount",
         }),
       );
     });
