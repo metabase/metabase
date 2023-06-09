@@ -1,7 +1,10 @@
 import { HTMLAttributes } from "react";
 import Tooltip from "metabase/core/components/Tooltip";
-import { VisualizationActionButtonsContainer } from "metabase/visualizations/components/Visualization/Visualization.styled";
 import { VisualizationSkeletonProps } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
+import {
+  LegendDescriptionIcon,
+  LegendRightContent,
+} from "metabase/visualizations/components/legend/LegendCaption.styled";
 import {
   SkeletonCaptionRoot,
   SkeletonCaptionTitle,
@@ -29,14 +32,14 @@ const SkeletonCaption = ({
       ) : (
         <SkeletonPlaceholder />
       )}
-      <VisualizationActionButtonsContainer>
+      <LegendRightContent>
         {description && (
           <Tooltip tooltip={description} maxWidth="22em">
-            <SkeletonCaptionDescription name="info" />
+            <LegendDescriptionIcon name="info" />
           </Tooltip>
         )}
         {actionMenu}
-      </VisualizationActionButtonsContainer>
+      </LegendRightContent>
     </SkeletonCaptionRoot>
   );
 };
