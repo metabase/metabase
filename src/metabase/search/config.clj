@@ -185,6 +185,7 @@
   (conj (remove #{:updated_at} default-columns)
         [:collection.id :collection_id]
         [:name :collection_name]
+        [:type :collection_type]
         [:authority_level :collection_authority_level]
         bookmark-col))
 

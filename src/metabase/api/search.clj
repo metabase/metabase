@@ -97,7 +97,9 @@
    :model_id            :integer
    :model_name          :text
    ;; returned for indexed-entity
-   :pk_ref              :text))
+   :pk_ref              :text
+   ;; returned for Collection only
+   :collection_type     :text))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
@@ -378,8 +380,7 @@
         columns-to-search (->> all-search-columns
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
-                               (remove #{:collection_authority_level :moderated_status
-                                         :initial_sync_status :pk_ref}))
+                               (remove columns-to-not-search))
         case-clauses      (as-> columns-to-search <>
                             (map (fn [col] [:like [:lower col] match]) <>)
                             (interleave <> (repeat [:inline 0]))
