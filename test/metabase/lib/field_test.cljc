@@ -189,7 +189,23 @@
                           :long-display-name "Products → Category"
                           :effective-type    :type/Text}]
                         (map (partial lib/display-info query')
-                             (lib/breakouts query'))))))))))))
+                             (lib/breakouts query'))))))
+            (when (:result-metadata card-def)
+              (testing "\nwith broken breakout from broken drill-thru (#31482)"
+                ;; this is a bad field reference, it does not contain a `:join-alias`. For some reason the FE is
+                ;; generating these in drill thrus (in MLv1). We need to figure out how to make stuff work anyway even
+                ;; tho this is technically wrong.
+                (let [query' (lib/breakout query [:field {:lib/uuid (str (random-uuid))} (meta/id :products :category)])]
+                  (is (=? [{:name              "CATEGORY"
+                            :display-name      "Category"
+                            :long-display-name "Products → Category"
+                            :effective-type    :type/Text}]
+                          (map (partial lib/display-info query')
+                               (lib/breakouts query'))))
+                  (is (=? {:display-name      "Products → Category"
+                           :breakout-position 0}
+                          (m/find-first #(= (:id %) (meta/id :products :category))
+                                        (lib/breakoutable-columns query')))))))))))))
 
 (deftest ^:parallel unresolved-lib-field-with-temporal-bucket-test
   (let [query (lib/query-for-table-name meta/metadata-provider "CHECKINS")
