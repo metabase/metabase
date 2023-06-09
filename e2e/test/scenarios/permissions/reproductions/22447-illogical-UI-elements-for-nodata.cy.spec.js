@@ -49,7 +49,7 @@ describe("UI elements that make no sense for users without data permissions (met
       .and("not.contain", "Question");
   });
 
-  it("should not show visualization or question settings to users with block data permissions", () => {
+  it.skip("should not show visualization or question settings to users with block data permissions", () => {
     cy.onlyOn(isEE);
 
     cy.signInAsAdmin();

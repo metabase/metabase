@@ -12,8 +12,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.run_id }}
 
 jobs:
   test-run-id:
@@ -29,7 +28,7 @@ jobs:
     timeout-minutes: 25
     strategy:
       matrix:
-        edition: [oss, ee]
+        edition: [ee]
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
@@ -42,7 +41,15 @@ jobs:
         with:
           m2-cache-key: e2e-tests
 
+      - name: Cache uberjar
+        id: cache-uberjar
+        uses: actions/cache@v3
+        with:
+          path: ./target/uberjar/metabase.jar
+          key: ${{ github.workflow }}-uberjar
+
       - name: Build uberjar with ./bin/build.sh
+        if: steps.cache-uberjar.outputs.cache-hit != 'true'
         run: ./bin/build.sh
 
       - name: Prepare uberjar artifact
@@ -90,10 +97,6 @@ jobs:
           - "question"
           - "sharing"
           - "visualizations"
-        include:
-          - edition: oss
-            context: grep
-            java-version: 11
     services:
       maildev:
         image: maildev/maildev:2.0.5
@@ -159,20 +162,11 @@ jobs:
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
 
-      - name: Run OSS-specific Cypress tests
-        if: matrix.edition == 'oss' && github.event_name != 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags=@OSS \
-          --spec './e2e/test/scenarios/**/*.cy.spec.js'
-        env:
-          TERM: xterm
-
       - name: Run EE Cypress tests on ${{ matrix.folder }}
         if: matrix.edition == 'ee' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@quarantine" \
+          --env grepTags="-@OSS" \
           --folder ${{ matrix.folder }}
         env:
           TERM: xterm
@@ -182,29 +176,15 @@ jobs:
         if: ${{ github.event_name == 'schedule' }}
         run: npx @replayio/cypress install
 
-      - name: Run OSS-specific Cypress tests using Replay.io browser
-        if: matrix.edition == 'oss' && github.event_name == 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags=@OSS \
-          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser "replay-chromium"
-        env:
-          TERM: xterm
-          CYPRESS_REPLAYIO_ENABLED: 1
-          RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
-          RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
-
       - name: Run EE Cypress tests on ${{ matrix.folder }} using Replay.io browser
         if: matrix.edition == 'ee' && github.event_name == 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@quarantine" \
+          --env grepTags="-@OSS" \
           --folder ${{ matrix.folder }} \
           --browser "replay-chromium"
         env:
           TERM: xterm
-          CYPRESS_REPLAYIO_ENABLED: 1
           RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
 

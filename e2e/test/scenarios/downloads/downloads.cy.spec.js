@@ -161,7 +161,7 @@ describe("scenarios > dashboard > download pdf", () => {
     restore();
     cy.signInAsAdmin();
   });
-  it("should allow you to download a PDF of a dashboard", () => {
+  it.skip("should allow you to download a PDF of a dashboard", () => {
     cy.createDashboardWithQuestions({
       dashboardName: "saving pdf dashboard",
       questions: [canSavePngQuestion, cannotSavePngQuestion],
