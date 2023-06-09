@@ -1,10 +1,8 @@
 import { Route } from "react-router";
 
-import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import fetchMock from "fetch-mock";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockState } from "metabase-types/store/mocks";
 import {
   createMockDatabase,
   createMockTokenFeatures,
@@ -13,10 +11,9 @@ import {
 import type { TokenFeatures } from "metabase-types/api";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import {
-  setupDatabaseEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import { setupEnterpriseTest } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 
 import { DatabasePromptBanner } from "./DatabasePromptBanner";
 
@@ -24,6 +21,7 @@ interface SetupOpts {
   isAdmin?: boolean;
   isPaidPlan?: boolean;
   onlyHaveSampleDatabase?: boolean;
+  isWhiteLabeling?: boolean;
   isOnAdminAddDatabasePage?: boolean;
 }
 const TEST_DB = createSampleDatabase();
@@ -34,9 +32,11 @@ function setup({
   isAdmin = false,
   isPaidPlan = false,
   onlyHaveSampleDatabase = false,
+  isWhiteLabeling = false,
   isOnAdminAddDatabasePage = false,
 }: SetupOpts = {}) {
-  setupDatabaseEndpoints;
+  setupEnterpriseTest();
+
   if (onlyHaveSampleDatabase) {
     setupDatabasesEndpoints([TEST_DB]);
   } else {
@@ -45,10 +45,11 @@ function setup({
 
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
-    settings: createMockSettingsState({
+    settings: mockSettings({
       "token-features": createMockTokenFeatures(
         isPaidPlan ? randomizePaidPlanFeatures() : {},
       ),
+      "application-name": isWhiteLabeling ? "Acme Corp." : "Metabase",
     }),
   });
 
@@ -152,6 +153,28 @@ describe("DatabasePromptBanner", () => {
       onlyHaveSampleDatabase: true,
     });
 
+    expect(
+      screen.queryByText(
+        "Connect to your database to get the most from Metabase.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should not render for admin users with paid plan without connected databases, but is white labeling", async () => {
+    setup({
+      isAdmin: true,
+      isPaidPlan: true,
+      onlyHaveSampleDatabase: true,
+      isWhiteLabeling: true,
+    });
+
+    // This ensures the conditions for database prompt banner are all available.
+    // Then we could safely assert that the banner is not rendered.
+    // If we don't wait for this API call to finish, the banner could have rendered,
+    // and the test would still pass.
+    await waitFor(() => {
+      expect(fetchMock.called("path:/api/database")).toBe(true);
+    });
     expect(
       screen.queryByText(
         "Connect to your database to get the most from Metabase.",

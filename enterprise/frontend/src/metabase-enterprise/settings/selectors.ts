@@ -26,3 +26,7 @@ export const getHasCustomColors = (state: EnterpriseState) =>
 
 export const getLoadingMessage = (state: EnterpriseState) =>
   LOADING_MESSAGE_BY_SETTING[getSetting(state, "loading-message")];
+
+const DEFAULT_APPLICATION_NAME = "Metabase";
+export const getIsWhiteLabeling = (states: EnterpriseState) =>
+  getSetting(states, "application-name") !== DEFAULT_APPLICATION_NAME;

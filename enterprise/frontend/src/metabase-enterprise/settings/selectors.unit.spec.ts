@@ -3,7 +3,12 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { getHasCustomColors, getLoadingMessage, getLogoUrl } from "./selectors";
+import {
+  getHasCustomColors,
+  getIsWhiteLabeling,
+  getLoadingMessage,
+  getLogoUrl,
+} from "./selectors";
 
 describe("getHasCustomColors", () => {
   it('should return `true` if "application-colors" has values', () => {
@@ -108,5 +113,27 @@ describe("getLoadingMessage", () => {
     const expectedLoadingMessage = "Running query...";
 
     expect(getLoadingMessage(states)).toBe(expectedLoadingMessage);
+  });
+});
+
+describe("getIsWhiteLabeling", () => {
+  it('should return `false` if "application-name" is not changed', () => {
+    const states = createMockState({
+      settings: createMockSettingsState({
+        "application-name": "Metabase",
+      }),
+    });
+
+    expect(getIsWhiteLabeling(states)).toBe(false);
+  });
+
+  it('should return `true` if "application-name" is changed', () => {
+    const states = createMockState({
+      settings: createMockSettingsState({
+        "application-name": "Acme Corp.",
+      }),
+    });
+
+    expect(getIsWhiteLabeling(states)).toBe(true);
   });
 });
