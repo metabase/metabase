@@ -5,11 +5,11 @@
   See the detailed description of the (de)serialization processes in [[metabase.models.serialization.base]]."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase.models.serialization :as serdes]
    [metabase.util.date-2 :as u.date]
    [metabase.util.yaml :as yaml]
-   [potemkin.types :as p]
-   [clojure.string :as str])
+   [potemkin.types :as p])
   (:import (java.io File)))
 
 (set! *warn-on-reflection* true)
