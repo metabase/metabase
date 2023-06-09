@@ -112,8 +112,8 @@
   that are already present as a breakout; sometimes the column in the breakout does not exactly match what MLv2 would
   have generated. So try to figure out which column it is referring to.
 
-  This first looks for a matching ref with a strict comparison, than in increasingly less-strict comparisons until it
-  finds something that matches. This is mostly to work around buts like #31482 where MLv1 generated queries with
+  This first looks for a matching ref with a strict comparison, then in increasingly less-strict comparisons until it
+  finds something that matches. This is mostly to work around bugs like #31482 where MLv1 generated queries with
   `:field` refs that did not include join aliases even tho the Fields came from joined Tables... we still know the
   Fields are the same if they have the same IDs.
 
