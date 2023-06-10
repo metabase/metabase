@@ -16,6 +16,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
+   [metabase.models.collection.root :as collection.root]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
    [metabase.models.dashboard-tab :as dashboard-tab]
@@ -43,7 +44,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
    (java.util UUID)))
@@ -56,7 +56,7 @@
                                                       :mine [:= :creator_id api/*current-user-id*])
                                                 [:= :archived (= (keyword filter-option) :archived)]]
                                      :order-by [:%lower.name]}) <>
-    (hydrate <> :creator)
+    (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -218,17 +218,18 @@
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
-      (hydrate [:ordered_cards
-                [:card [:moderation_reviews :moderator_details]]
-                :series
-                :dashcard/action
-                :dashcard/linkcard-info]
-               :ordered_tabs
-               :collection_authority_level
-               :can_write
-               :param_fields
-               :param_values
-               :collection)
+      (t2/hydrate [:ordered_cards
+                   [:card [:moderation_reviews :moderator_details]]
+                   :series
+                   :dashcard/action
+                   :dashcard/linkcard-info]
+                  :ordered_tabs
+                  :collection_authority_level
+                  :can_write
+                  :param_fields
+                  :param_values
+                  :collection)
+      collection.root/hydrate-root-collection
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
@@ -550,7 +551,7 @@
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                         (assoc mapping :card-id card_id)))
-  (api/check-500 (dashboard/add-dashcards! dashboard (map #(assoc % :creator_id @api/*current-user*) dashcards))))
+  (api/check-500 (dashboard/add-dashcards! dashboard dashcards)))
 
 (defn- update-dashcards! [dashboard dashcards]
   (check-updated-parameter-mapping-permissions (:id dashboard) dashcards)
@@ -812,7 +813,7 @@
     ;; -> #{276}"
   [dashboard param-key]
   {:pre [(string? param-key)]}
-  (let [{:keys [resolved-params]} (hydrate dashboard :resolved-params)
+  (let [{:keys [resolved-params]} (t2/hydrate dashboard :resolved-params)
         param                     (get resolved-params param-key)]
     (mappings->field-ids (:mappings param))))
 
@@ -871,7 +872,7 @@
     param-key                   :- su/NonBlankString
     constraint-param-key->value :- su/Map
     query                       :- (s/maybe su/NonBlankString)]
-   (let [dashboard (hydrate dashboard :resolved-params)
+   (let [dashboard (t2/hydrate dashboard :resolved-params)
          param     (get (:resolved-params dashboard) param-key)]
      (when-not param
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
@@ -1012,6 +1013,7 @@
               :dashcard-id   dashcard-id
               :export-format export-format
               :parameters    (json/parse-string parameters keyword)
+              :context       (api.dataset/export-format->context export-format)
               :constraints   nil
               ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to
               ;; specify this all over the codebase any time we want to do a query with an export format. Maybe this

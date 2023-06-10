@@ -26,7 +26,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -146,7 +145,7 @@
                                    [:= :user_id api/*current-user-id*]
                                    [:= :is_group_manager true]]}])]
     (-> (ordered-groups mw.offset-paging/*limit* mw.offset-paging/*offset* query)
-        (hydrate :member_count))))
+        (t2/hydrate :member_count))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/group/:id"
@@ -155,7 +154,7 @@
   (validation/check-group-manager id)
   (api/check-404
    (-> (t2/select-one PermissionsGroup :id id)
-       (hydrate :members))))
+       (t2/hydrate :members))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/group"

@@ -30,7 +30,6 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (defsetting user-visibility
@@ -181,11 +180,11 @@
                         (some? mw.offset-paging/*offset*) (sql.helpers/offset mw.offset-paging/*offset*)))
                ;; For admins also include the IDs of Users' Personal Collections
                api/*is-superuser?*
-               (hydrate :personal_collection_id)
+               (t2/hydrate :personal_collection_id)
 
                (or api/*is-superuser?*
                    api/*is-group-manager?*)
-               (hydrate :group_ids))
+               (t2/hydrate :group_ids))
      :total  (t2/count User (user-clauses status query (if (some? group_id) [group_id] nil) include_deactivated))
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
@@ -211,7 +210,7 @@
     (and (= :group (user-visibility)) (not (premium-features/segmented-user?)))
     (let [user_group_ids (map :id (:user_group_memberships
                                    (-> (fetch-user :id api/*current-user-id*)
-                                       (hydrate :user_group_memberships))))
+                                       (t2/hydrate :user_group_memberships))))
           data           (t2/select
                           (vec (cons User (user-visible-columns)))
                           (cond-> (user-clauses nil nil (remove #{1} user_group_ids) nil)
@@ -281,7 +280,7 @@
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
+      (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
       add-has-question-and-dashboard
       add-first-login
       maybe-add-advanced-permissions
@@ -297,7 +296,7 @@
    (catch clojure.lang.ExceptionInfo _e
      (validation/check-group-manager)))
   (-> (api/check-404 (fetch-user :id id, :is_active true))
-      (hydrate :user_group_memberships)))
+      (t2/hydrate :user_group_memberships)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -326,7 +325,7 @@
       (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id new-user-id
                                                                            :source          "admin"})
       (-> (fetch-user :id new-user-id)
-          (hydrate :user_group_memberships)))))
+          (t2/hydrate :user_group_memberships)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -403,7 +402,7 @@
         (maybe-update-user-personal-collection-name! user-before-update body))
       (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
-      (hydrate :user_group_memberships)))
+      (t2/hydrate :user_group_memberships)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Reactivating a User -- PUT /api/user/:id/reactivate                               |

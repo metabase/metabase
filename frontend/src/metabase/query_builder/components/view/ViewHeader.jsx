@@ -18,6 +18,7 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
+import * as ML_Urls from "metabase-lib/urls";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 import QuestionActions from "../QuestionActions";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
@@ -559,11 +560,9 @@ ExploreResultsLink.propTypes = {
 };
 
 function ExploreResultsLink({ question }) {
-  const url = question
-    .composeThisQuery()
-    .setDisplay("table")
-    .setSettings({})
-    .getUrl();
+  const url = ML_Urls.getUrl(
+    question.composeThisQuery().setDisplay("table").setSettings({}),
+  );
 
   return (
     <Link to={url}>

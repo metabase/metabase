@@ -120,7 +120,6 @@ const defaultConfig = {
 
 const mainConfig = {
   ...defaultConfig,
-  projectId: "KetpiS",
   viewportHeight: 800,
   viewportWidth: 1280,
   reporter: "mochawesome",

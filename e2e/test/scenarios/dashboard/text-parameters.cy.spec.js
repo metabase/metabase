@@ -25,7 +25,6 @@ describe("scenarios > dashboard > parameters in text cards", () => {
     addTextBox("Text card with no variables", {
       parseSpecialCharSequences: false,
     });
-    editDashboard();
     setFilter("Number", "Equal to");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
@@ -36,7 +35,6 @@ describe("scenarios > dashboard > parameters in text cards", () => {
 
   it("should allow dashboard filters to be connected to tags in text cards", () => {
     addTextBox("Variable: {{foo}}", { parseSpecialCharSequences: false });
-    editDashboard();
     setFilter("Number", "Equal to");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -77,7 +75,6 @@ describe("scenarios > dashboard > parameters in text cards", () => {
     cy.reload();
 
     addTextBox("Variable: {{foo}}", { parseSpecialCharSequences: false });
-    editDashboard();
     setFilter("Time", "Relative Date");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -123,7 +120,7 @@ describe("scenarios > dashboard > parameters in text cards", () => {
         ],
       });
       const updatedSize = {
-        size_x: 8,
+        size_x: 11,
         size_y: 6,
       };
       cy.editDashboardCard(card, updatedSize);
@@ -137,7 +134,13 @@ describe("scenarios > dashboard > parameters in text cards", () => {
       cy.findByText("Single Date").click();
 
       // Create text card and connect parameter
-      addTextBox("Variable: {{foo}}", { parseSpecialCharSequences: false });
+      cy.findByLabelText("Add a heading or text box").click();
+      popover().within(() => {
+        cy.findByText("Text").click();
+      });
+      cy.findByPlaceholderText(
+        "You can use Markdown here, and include variables {{like_this}}",
+      ).type("Variable: {{foo}}", { parseSpecialCharSequences: false });
       cy.findByText("Single Date").click();
       cy.findByText("Select…").click();
       cy.findByText("foo").click();

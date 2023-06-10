@@ -273,7 +273,7 @@ const SuggestionsList = ({ suggestions, section }) => (
               className="mb1 block hover-parent hover--visibility text-brand-hover"
               data-metabase-event={`Auto Dashboard;Click Related;${s}`}
             >
-              <Card p={2} hoverable>
+              <Card className="p2" hoverable>
                 <ItemContent>
                   <Icon
                     name={RELATED_CONTENT[s].icon}

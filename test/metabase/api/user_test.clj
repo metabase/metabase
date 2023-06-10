@@ -17,7 +17,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [schema.core :as s]
-   [toucan.hydrate :as hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -577,7 +576,7 @@
                                            :is_superuser true}]
                       Collection [_]]
         (letfn [(user [] (into {} (-> (t2/select-one [User :id :first_name :last_name :is_superuser :email], :id user-id)
-                                      (hydrate :personal_collection_id ::personal-collection-name)
+                                      (t2/hydrate :personal_collection_id ::personal-collection-name)
                                       (dissoc :id :personal_collection_id :common_name))))]
           (testing "before API call"
             (is (= {:first_name                "Cam"
@@ -671,7 +670,7 @@
                                                    :is_superuser true}]
         (letfn [(change-user-via-api! [m]
                   (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id) m)
-                      (hydrate :personal_collection_id ::personal-collection-name)
+                      (t2/hydrate :personal_collection_id ::personal-collection-name)
                       (dissoc :user_group_memberships :personal_collection_id :email :is_superuser)
                       (#(apply (partial dissoc %) (keys @user-defaults)))
                       mt/boolean-ids-and-timestamps))]

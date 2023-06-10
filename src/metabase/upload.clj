@@ -14,6 +14,7 @@
    [metabase.search.util :as search-util]
    [metabase.util :as u])
   (:import
+   (java.io File)
    (java.text NumberFormat)
    (java.util Locale)))
 
@@ -293,16 +294,19 @@
       (rows->schema header (sample-rows rows)))))
 
 (defn load-from-csv
-  "Loads a table from a CSV file. If the table already exists, it will throw an error. Returns nil."
-  [driver db-id table-name csv-file]
+  "Loads a table from a CSV file. If the table already exists, it will throw an error. Returns nil. Deletes the file
+  after loading."
+  [driver db-id table-name ^File csv-file]
   (let [col->upload-type   (detect-schema csv-file)
         col->database-type (update-vals col->upload-type (partial driver/upload-type->database-type driver))
         column-names       (keys col->upload-type)]
     (driver/create-table driver db-id table-name col->database-type)
     (try
       (let [rows (parsed-rows col->upload-type csv-file)]
-        (driver/insert-into driver db-id table-name column-names rows))
+        (driver/insert-into driver db-id table-name column-names rows)
+        (.delete csv-file))
       (catch Throwable e
         (driver/drop-table driver db-id table-name)
+        (.delete csv-file)
         (throw (ex-info (ex-message e) {}))))
     nil))

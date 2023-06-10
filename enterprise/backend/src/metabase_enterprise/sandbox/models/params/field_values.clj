@@ -11,7 +11,6 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (comment api/keep-me)
@@ -35,7 +34,7 @@
       (row-level-restrictions/assert-one-gtap-per-table gtaps)
       ;; there shold be only one gtap per table and we only need one table here
       ;; see docs in [[metabase.models.permissions]] for more info
-      (hydrate (first gtaps) :card))))
+      (t2/hydrate (first gtaps) :card))))
 
 (defn- field->gtap-attributes-for-current-user
   "Returns the gtap attributes for current user that applied to `field`.
@@ -83,7 +82,7 @@
   :feature :sandboxes
   [field-ids]
   (let [fields                   (when (seq field-ids)
-                                   (hydrate (t2/select Field :id [:in (set field-ids)]) :table))
+                                   (t2/hydrate (t2/select Field :id [:in (set field-ids)]) :table))
         {unsandboxed-fields false
          sandboxed-fields   true} (group-by (comp boolean field-is-sandboxed?) fields)]
     (merge
