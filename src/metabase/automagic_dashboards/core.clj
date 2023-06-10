@@ -34,7 +34,7 @@
    [metabase.sync.analyze.classify :as classify]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru deferred-trun]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
@@ -186,7 +186,7 @@
   (let [table (->> metric :table_id (t2/select-one Table :id))]
     {:entity       metric
      :full-name    (if (:id metric)
-                     (tru "{0} metric" (:name metric))
+                     (deferred-trun "{0} metric" "{0} metrics" (:name metric))
                      (:name metric))
      :short-name   (:name metric)
      :source       table
@@ -200,7 +200,7 @@
   [field]
   (let [table (field/table field)]
     {:entity       field
-     :full-name    (tru "{0} field" (:display_name field))
+     :full-name    (deferred-trun "{0} field" "{0} fields" (:display_name field))
      :short-name   (:display_name field)
      :source       table
      :database     (:db_id table)
