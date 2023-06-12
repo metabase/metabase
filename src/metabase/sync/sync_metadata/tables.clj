@@ -112,8 +112,6 @@
                                            ;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
                                            :initial_sync_status (if is-crufty? "complete" "incomplete")))))
 
-;; TODO - should we make this logic case-insensitive like it is for fields?
-
 (s/defn ^:private create-tables-as-inactive!
   "Create NEW-TABLES for database. Tables have active=false."
   [database :- i/DatabaseInstance, new-tables :- [i/DatabaseMetadataTable]]
@@ -186,6 +184,7 @@
          [new-tables old-tables] (data/diff
                                   (strip-desc db-tables)
                                   (strip-desc our-metadata))
+         ;; TODO - should we make this logic case-insensitive like it is for fields?
          to-create-tables        (remove (fn [new-table]
                                            (contains? inactive-tables (select-keys new-table [:name :schema])))
                                          new-tables)
