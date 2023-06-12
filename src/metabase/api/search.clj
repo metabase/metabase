@@ -525,6 +525,7 @@
                             mw.offset-paging/*limit*
                             mw.offset-paging/*offset*))
         duration   (- (System/currentTimeMillis) start-time)]
+    ;; Only track global searches
     (when (and (nil? models)
                (nil? table_db_id)
                (not archived))

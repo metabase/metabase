@@ -727,10 +727,20 @@
         (is (= 7 (call-count)))))))
 
 (deftest snowplow-new-search-query-event-test
-  (testing "Send a snowplow event when a new search query is made"
+  (testing "Send a snowplow event when a new global search query is made"
     (snowplow-test/with-fake-snowplow-collector
       (mt/user-http-request :crowberto :get 200 "search?q=test")
       (is (=? {:data {"event" "new_search_query"
                       "runtime" pos?}
                :user-id (str (mt/user->id :crowberto))}
-              (last (snowplow-test/pop-event-data-and-user-id!)))))))
+              (last (snowplow-test/pop-event-data-and-user-id!))))))
+  (testing "Don't send a snowplow event if the search isn't global"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/user-http-request :crowberto :get 200 "search" :q "test" :models "table")
+      (is (empty? (snowplow-test/pop-event-data-and-user-id!))))
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/user-http-request :crowberto :get 200 "search" :q "test" :table_db_id (mt/id))
+      (is (empty? (snowplow-test/pop-event-data-and-user-id!))))
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/user-http-request :crowberto :get 200 "search" :q "test" :archived true)
+      (is (empty? (snowplow-test/pop-event-data-and-user-id!))))))
