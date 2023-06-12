@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { t } from "ttag";
 
-import { useMount } from "react-use";
-
 import {
   SearchContainer,
   SearchInput,
@@ -19,7 +17,7 @@ export const FieldSearch = ({
   const [showSearch, setShowSearch] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  useMount(() => {
+  useEffect(() => {
     const searchToggleListener = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         setShowSearch(true);
@@ -27,7 +25,7 @@ export const FieldSearch = ({
     };
     window.addEventListener("keydown", searchToggleListener);
     return () => window.removeEventListener("keydown", searchToggleListener);
-  });
+  }, []);
 
   const shouldClose = () => {
     const input = inputRef.current;
