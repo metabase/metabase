@@ -1,4 +1,4 @@
-import { getFullName, popover, questionInfoButton } from "e2e/support/helpers";
+import { getFullName, popover } from "e2e/support/helpers";
 
 /**
  * Clicks the "+" icon on the collection page and selects one of the menu options
@@ -68,38 +68,5 @@ export const openPinnedItemMenu = name => {
 export const openUnpinnedItemMenu = name => {
   getUnpinnedSection().within(() => {
     cy.findByText(name).closest("tr").icon("ellipsis").click();
-  });
-};
-
-export const openRootCollection = () => {
-  cy.visit("/collection/root");
-  cy.wait("@getPinnedItems");
-};
-
-export const changePinnedCardDescription = (cardName, description) => {
-  openRootCollection();
-
-  getPinnedSection().within(() => {
-    cy.findByText(cardName).click();
-  });
-
-  questionInfoButton().click();
-
-  cy.findByTestId("sidebar-right").within(() => {
-    cy.findByRole("textbox").type(description).blur();
-  });
-};
-
-export const changePinnedDashboardDescription = (cardName, description) => {
-  openRootCollection();
-
-  getPinnedSection().within(() => {
-    cy.findByText(cardName).click();
-  });
-
-  cy.findByTestId("dashboard-header-info-button").click();
-
-  cy.findByTestId("sidebar-right").within(() => {
-    cy.findByRole("textbox").type(description).blur();
   });
 };

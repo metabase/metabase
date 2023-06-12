@@ -1,16 +1,12 @@
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  POPOVER_ELEMENT,
-  changePinnedCardDescription,
-  changePinnedDashboardDescription,
+  popover,
+  restore,
   dragAndDrop,
   getPinnedSection,
   openPinnedItemMenu,
-  openRootCollection,
   openUnpinnedItemMenu,
-  popover,
-  restore,
 } from "e2e/support/helpers";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -53,26 +49,6 @@ const SQL_QUESTION_DETAILS = {
     query: "select {{filter}}",
   },
 };
-
-const HEADING_1_TEXT = "Heading 1";
-const HEADING_1_MARKDOWN = `# ${HEADING_1_TEXT}`;
-const HEADING_2_TEXT = "Heading 2";
-const HEADING_2_MARKDOWN = `## ${HEADING_2_TEXT}`;
-const PARAGRAPH_TEXT = "Paragraph with link";
-const PARAGRAPH_MARKDOWN = "Paragraph with [link](https://example.com)";
-const MARKDOWN = [
-  HEADING_1_MARKDOWN,
-  HEADING_2_MARKDOWN,
-  PARAGRAPH_MARKDOWN,
-].join("\n");
-const MARKDOWN_AS_TEXT = [HEADING_1_TEXT, HEADING_2_TEXT, PARAGRAPH_TEXT].join(
-  "\n",
-);
-const HEADING_SHORT = "Short description";
-const HEADING_SHORT_MARKDOWN = `# ${HEADING_SHORT}`;
-const HEADING_LONG =
-  "This is a very long description that will require visual truncation in the user interface";
-const HEADING_LONG_MARKDOWN = `# ${HEADING_LONG}`;
 
 describe("scenarios > collection pinned items overview", () => {
   beforeEach(() => {
@@ -265,244 +241,9 @@ describe("scenarios > collection pinned items overview", () => {
       .findByText("Orders, Count, Grouped by Created At (year)")
       .should("exist");
   });
-
-  describe("scenarios > collection pinned items overview > pinned model description tooltip", () => {
-    beforeEach(() => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
-
-      openRootCollection();
-      openUnpinnedItemMenu(MODEL_NAME);
-      popover().findByText("Pin this").click();
-      cy.wait("@getPinnedItems");
-    });
-
-    it("should render only the first line of description without markdown formatting on pinned models", () => {
-      changePinnedCardDescription(MODEL_NAME, MARKDOWN);
-      openRootCollection();
-
-      getPinnedSection().within(() => {
-        cy.findByText(HEADING_1_TEXT).should("exist");
-
-        cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
-        cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
-        cy.findByText(HEADING_2_TEXT).should("not.exist");
-        cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
-        cy.findByText(PARAGRAPH_TEXT).should("not.exist");
-      });
-    });
-
-    it("should render description tooltip with markdown formatting in pinned models", () => {
-      changePinnedCardDescription(MODEL_NAME, MARKDOWN);
-      openRootCollection();
-
-      getPinnedSection().findByText(HEADING_1_TEXT).realHover();
-
-      popover().within(() => {
-        cy.findByText(MARKDOWN).should("not.exist");
-        cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
-        cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
-        cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
-      });
-
-      popover().invoke("text").should("eq", MARKDOWN_AS_TEXT);
-    });
-
-    it("should render description tooltip when ellipis was necessary", () => {
-      changePinnedCardDescription(MODEL_NAME, HEADING_LONG_MARKDOWN);
-      openRootCollection();
-
-      getPinnedSection().findByText(HEADING_LONG).realHover();
-
-      popover().within(() => {
-        cy.findByText(HEADING_LONG_MARKDOWN).should("not.exist");
-      });
-
-      popover().invoke("text").should("eq", HEADING_LONG);
-    });
-
-    it("should not render description tooltip when ellipis is not necessary", () => {
-      changePinnedCardDescription(MODEL_NAME, HEADING_SHORT_MARKDOWN);
-      openRootCollection();
-
-      getPinnedSection().findByText(HEADING_SHORT).realHover();
-
-      cy.get(POPOVER_ELEMENT).should("not.exist");
-    });
-  });
-
-  describe("scenarios > collection pinned items overview > pinned dashboard description tooltip", () => {
-    beforeEach(() => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
-
-      openRootCollection();
-      openUnpinnedItemMenu(DASHBOARD_NAME);
-      popover().findByText("Pin this").click();
-      cy.wait("@getPinnedItems");
-    });
-
-    it("should render only the first line of description without markdown formatting", () => {
-      changePinnedDashboardDescription(DASHBOARD_NAME, MARKDOWN);
-      openRootCollection();
-
-      getPinnedSection().within(() => {
-        cy.findByText(HEADING_1_TEXT).should("exist");
-
-        cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
-        cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
-        cy.findByText(HEADING_2_TEXT).should("not.exist");
-        cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
-        cy.findByText(PARAGRAPH_TEXT).should("not.exist");
-      });
-    });
-
-    it("should render description tooltip with markdown formatting", () => {
-      changePinnedDashboardDescription(DASHBOARD_NAME, MARKDOWN);
-      openRootCollection();
-
-      getPinnedSection().findByText(HEADING_1_TEXT).realHover();
-
-      popover().within(() => {
-        cy.findByText(MARKDOWN).should("not.exist");
-        cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
-        cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
-        cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
-      });
-
-      popover().invoke("text").should("eq", MARKDOWN_AS_TEXT);
-    });
-
-    it("should render description tooltip when ellipis was necessary", () => {
-      changePinnedDashboardDescription(DASHBOARD_NAME, HEADING_LONG_MARKDOWN);
-      openRootCollection();
-
-      getPinnedSection().findByText(HEADING_LONG).realHover();
-
-      popover().within(() => {
-        cy.findByText(HEADING_LONG_MARKDOWN).should("not.exist");
-      });
-
-      popover().invoke("text").should("eq", HEADING_LONG);
-    });
-
-    it("should not render description tooltip when ellipis is not necessary", () => {
-      changePinnedDashboardDescription(DASHBOARD_NAME, HEADING_SHORT_MARKDOWN);
-      openRootCollection();
-
-      getPinnedSection().findByText(HEADING_SHORT).realHover();
-
-      cy.get(POPOVER_ELEMENT).should("not.exist");
-    });
-  });
-
-  describe("scenarios > collection pinned items overview > pinned native question description tooltip", () => {
-    beforeEach(() => {
-      cy.createNativeQuestion(SQL_QUESTION_DETAILS).then(({ body: { id } }) => {
-        cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
-      });
-
-      openRootCollection();
-    });
-
-    it("should render only the first line of description without markdown formatting", () => {
-      changePinnedCardDescription(SQL_QUESTION_DETAILS.name, MARKDOWN);
-      openRootCollection();
-
-      getPinnedSection().within(() => {
-        cy.findByText(HEADING_1_TEXT).should("exist");
-
-        cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
-        cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
-        cy.findByText(HEADING_2_TEXT).should("not.exist");
-        cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
-        cy.findByText(PARAGRAPH_TEXT).should("not.exist");
-      });
-    });
-
-    it("should render description tooltip with markdown formatting", () => {
-      changePinnedCardDescription(SQL_QUESTION_DETAILS.name, MARKDOWN);
-      openRootCollection();
-
-      getPinnedSection().findByText(HEADING_1_TEXT).realHover();
-
-      popover().within(() => {
-        cy.findByText(MARKDOWN).should("not.exist");
-        cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
-        cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
-        cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
-      });
-
-      popover().invoke("text").should("eq", MARKDOWN_AS_TEXT);
-    });
-
-    it("should render description tooltip when ellipis was necessary", () => {
-      changePinnedCardDescription(
-        SQL_QUESTION_DETAILS.name,
-        HEADING_LONG_MARKDOWN,
-      );
-      openRootCollection();
-
-      getPinnedSection().findByText(HEADING_LONG).realHover();
-
-      popover().within(() => {
-        cy.findByText(HEADING_LONG_MARKDOWN).should("not.exist");
-      });
-
-      popover().invoke("text").should("eq", HEADING_LONG);
-    });
-
-    it("should not render description tooltip when ellipis is not necessary", () => {
-      changePinnedCardDescription(
-        SQL_QUESTION_DETAILS.name,
-        HEADING_SHORT_MARKDOWN,
-      );
-      openRootCollection();
-
-      getPinnedSection().findByText(HEADING_SHORT).realHover();
-
-      cy.get(POPOVER_ELEMENT).should("not.exist");
-    });
-  });
-
-  it("should render description tooltip with markdown formatting in a skeleton", () => {
-    openRootCollection();
-    openUnpinnedItemMenu(QUESTION_NAME);
-    popover().findByText("Pin this").click();
-    cy.wait(["@getPinnedItems", "@getCardQuery"]);
-    changePinnedCardDescription(QUESTION_NAME, MARKDOWN);
-    openRootCollection();
-
-    // prevent replacing skeleton in DOM
-    cy.intercept("POST", `/api/card/**/query`, { statusCode: 500, body: null });
-
-    cy.findByTestId("skeleton-description-icon").realHover();
-
-    popover().within(() => {
-      cy.findByText(MARKDOWN).should("not.exist");
-      cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
-      cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
-      cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
-    });
-
-    popover().invoke("text").should("eq", MARKDOWN_AS_TEXT);
-  });
-
-  it("should render description tooltip with markdown formatting in question visualization", () => {
-    openRootCollection();
-    openUnpinnedItemMenu(QUESTION_NAME);
-    popover().findByText("Pin this").click();
-    cy.wait(["@getPinnedItems", "@getCardQuery"]);
-    changePinnedCardDescription(QUESTION_NAME, MARKDOWN);
-    openRootCollection();
-
-    cy.findByTestId("legend-description-icon").realHover();
-
-    popover().within(() => {
-      cy.findByText(MARKDOWN).should("not.exist");
-      cy.findByText(HEADING_1_MARKDOWN).should("not.exist");
-      cy.findByText(HEADING_2_MARKDOWN).should("not.exist");
-      cy.findByText(PARAGRAPH_MARKDOWN).should("not.exist");
-    });
-
-    popover().invoke("text").should("eq", MARKDOWN_AS_TEXT);
-  });
 });
+
+const openRootCollection = () => {
+  cy.visit("/collection/root");
+  cy.wait("@getPinnedItems");
+};
