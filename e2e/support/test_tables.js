@@ -148,3 +148,53 @@ export const no_pk_table = async dbClient => {
 
   return null;
 };
+
+export const table_with_json_array = async dbClient => {
+  const tableName = "table_with_json_array";
+
+  await dbClient.schema.dropTableIfExists(tableName);
+
+  await dbClient.schema.createTable(tableName, table => {
+    table.increments("id").primary();
+    table.string("name");
+    table.json("abilities");
+  });
+
+  await dbClient(tableName).insert([
+    { id: 1, name: "Pikachu", abilities: JSON.stringify(["charge", "shock"]) },
+    {
+      id: 2,
+      name: "Quaxly",
+      abilities: JSON.stringify(["splash", "aqua jet"]),
+    },
+  ]);
+
+  return null;
+};
+
+export const table_with_json_map = async dbClient => {
+  const tableName = "table_with_json_map";
+
+  await dbClient.schema.dropTableIfExists(tableName);
+
+  await dbClient.schema.createTable(tableName, table => {
+    table.increments("id").primary();
+    table.string("name");
+    table.json("abilities");
+  });
+
+  await dbClient(tableName).insert([
+    {
+      id: 1,
+      name: "Pikachu",
+      abilities: JSON.stringify({ primary: "charge", secondary: "shock" }),
+    },
+    {
+      id: 2,
+      name: "Quaxly",
+      abilities: JSON.stringify({ primary: "splash", secondary: "aqua jet" }),
+    },
+  ]);
+
+  return null;
+};

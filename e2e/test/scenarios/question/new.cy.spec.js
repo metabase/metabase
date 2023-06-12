@@ -10,9 +10,13 @@ import {
   getPersonalCollectionName,
   visitCollection,
   modal,
+  resetTestTable,
+  resyncDatabase,
+  createModelFromTableName,
+  visitModel,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -279,6 +283,55 @@ describe("scenarios > question > new", () => {
     });
     modal().within(() => {
       cy.findByTestId("select-button").should("have.text", "Third collection");
+    });
+  });
+});
+
+const TEST_JSON_ARRAY_TABLE = "table_with_json_array";
+const TEST_JSON_MAP_TABLE = "table_with_json_map";
+
+["postgres", "mysql"].forEach(dialect => {
+  describe("New questions with JSON columns", { tags: "@external" }, () => {
+    it.skip("should be able to show results for JSON columns with array data (#31515)", () => {
+      resetTestTable({ type: dialect, table: TEST_JSON_ARRAY_TABLE });
+      restore(`${dialect}-writable`);
+      cy.signInAsAdmin();
+      resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: TEST_JSON_ARRAY_TABLE,
+      });
+
+      createModelFromTableName({
+        tableName: TEST_JSON_ARRAY_TABLE,
+        modelName: "Model With Json Array",
+      });
+
+      cy.get("@modelId").then(id => {
+        visitModel(id);
+      });
+
+      cy.findByTestId("TableInteractive-root").findByText(/splash/i);
+    });
+
+    it("should be able to show results for JSON columns with map data", () => {
+      resetTestTable({ type: dialect, table: TEST_JSON_MAP_TABLE });
+      restore(`${dialect}-writable`);
+      cy.signInAsAdmin();
+      resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: TEST_JSON_MAP_TABLE,
+      });
+
+      createModelFromTableName({
+        tableName: TEST_JSON_MAP_TABLE,
+        modelName: "Model With Json Map",
+      });
+
+      cy.get("@modelId").then(id => {
+        visitModel(id);
+      });
+
+      cy.findByTestId("TableInteractive-root").findByText(/splash/i);
     });
   });
 });
