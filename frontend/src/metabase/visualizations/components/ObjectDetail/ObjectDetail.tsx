@@ -188,6 +188,10 @@ export function ObjectDetailView({
   });
 
   useEffect(() => {
+    if (hasNotFoundError) {
+      return;
+    }
+
     const onKeyDown = (event: KeyboardEvent) => {
       const capturedKeys: Record<string, () => void> = {
         ArrowUp: viewPreviousObjectDetail,
@@ -206,7 +210,12 @@ export function ObjectDetailView({
 
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [viewPreviousObjectDetail, viewNextObjectDetail, closeObjectDetail]);
+  }, [
+    hasNotFoundError,
+    viewPreviousObjectDetail,
+    viewNextObjectDetail,
+    closeObjectDetail,
+  ]);
 
   useEffect(() => {
     if (maybeLoading && pkIndex !== undefined) {
