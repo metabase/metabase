@@ -32,10 +32,7 @@ const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
       return (
         <li key={field.getUniqueId()}>
           <NodeListItemLink onClick={() => onFieldClick(field)}>
-            <NodeListItemIcon
-              name={field.dimension().icon()}
-              tooltip={tooltip}
-            />
+            <NodeListItemIcon name={field.icon()} tooltip={tooltip} />
             <NodeListItemName>{field.name}</NodeListItemName>
           </NodeListItemLink>
         </li>
