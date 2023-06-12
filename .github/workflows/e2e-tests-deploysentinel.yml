@@ -1,4 +1,4 @@
-name: E2E Tests (baseline)
+name: E2E Tests (deploysentinel)
 
 on:
   # We'll record runs using Replay.io and their browser on a schedule as an experiment
