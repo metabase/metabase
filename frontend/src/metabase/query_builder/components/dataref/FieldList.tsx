@@ -28,11 +28,12 @@ const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
       </NodeListTitleText>
     </NodeListTitle>
     {fields.map(field => {
-      const tooltip = field.semantic_type ? null : t`Unknown type`;
+      const iconName = field.icon();
+      const tooltip = iconName === "unknown" ? t`Unknown type` : null;
       return (
         <li key={field.getUniqueId()}>
           <NodeListItemLink onClick={() => onFieldClick(field)}>
-            <NodeListItemIcon name={field.icon()} tooltip={tooltip} />
+            <NodeListItemIcon name={iconName} tooltip={tooltip} />
             <NodeListItemName>{field.name}</NodeListItemName>
           </NodeListItemLink>
         </li>
