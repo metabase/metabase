@@ -52,11 +52,11 @@ describe("getLeadingText", () => {
     const p = "";
     const img = "![alt](https://example.com)";
 
-    expect(getLeadingText(parseMarkdown([h1].join("\n\n")))).toBe("");
-    expect(getLeadingText(parseMarkdown([p].join("\n\n")))).toBe("");
-    expect(getLeadingText(parseMarkdown([img].join("\n\n")))).toBe("");
+    expect(getLeadingText(parseMarkdown(h1))).toBe("");
+    expect(getLeadingText(parseMarkdown(p))).toBe("");
+    expect(getLeadingText(parseMarkdown(img))).toBe("");
     expect(getLeadingText(parseMarkdown([p, img, h1].join("\n\n")))).toBe("");
-    expect(getLeadingText(parseMarkdown([].join("\n\n")))).toBe("");
+    expect(getLeadingText(parseMarkdown(""))).toBe("");
   });
 });
 
