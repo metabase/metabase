@@ -730,8 +730,8 @@
   (testing "Send a snowplow event when a new global search query is made"
     (snowplow-test/with-fake-snowplow-collector
       (mt/user-http-request :crowberto :get 200 "search?q=test")
-      (is (=? {:data {"event" "new_search_query"
-                      "runtime" pos?}
+      (is (=? {:data {"event"                "new_search_query"
+                      "runtime_milliseconds" pos?}
                :user-id (str (mt/user->id :crowberto))}
               (last (snowplow-test/pop-event-data-and-user-id!))))))
   (testing "Don't send a snowplow event if the search isn't global"
