@@ -185,7 +185,7 @@ jobs:
         if: always()
         uses: replayio/action-upload@v0.4.7
         with:
-          api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ
+          api-key: rwk_zSTaucZSrZDvYAyqX8PGbPQwBqGov2jU2lPNHxAuqLf
           public: true
 
       - name: Upload Cypress Artifacts upon failure
