@@ -194,11 +194,11 @@
 
   (testing "test that we return a description even when there is no change between revision"
     (is (= "created a revision with no change."
-           (str (:description (revision/add-revision-details FakedCard {:name "Apple"} {:name "Apple"}))))))
+           (str (:description (revision/add-revision-details :model/FakedCard {:name "Apple"} {:name "Apple"}))))))
 
   (testing "that we return a descrtiopn when there is no previous revision"
     (is (= "modified this."
-           (str (:description (revision/add-revision-details FakedCard {:name "Apple"} nil)))))))
+           (str (:description (revision/add-revision-details :model/FakedCard {:name "Apple"} nil)))))))
 
 (deftest revisions+details-test
   (testing "Check that revisions+details pulls in user info and adds description"
