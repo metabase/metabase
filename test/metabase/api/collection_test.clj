@@ -1,6 +1,7 @@
 (ns metabase.api.collection-test
   "Tests for /api/collection endpoints."
   (:require
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -34,6 +35,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.schema :as su]
+   [metabase.util.yaml :as yaml]
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -76,6 +78,17 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                GET /collection                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn instance-analytics-collection-names []
+  (set
+   (when config/ee-available?
+     (keep
+      (fn [path]
+        (let [data (yaml/from-file path)]
+          (when (= (-> data :serdes/meta first :model) "Collection")
+            (:name data))))
+      (filter (fn [f] (str/ends-with? (str f) "yaml"))
+              (file-seq (io/file (io/resource "instance_analytics/collections"))))))))
 
 (deftest list-collections-test
   (testing "GET /api/collection"
@@ -126,20 +139,22 @@
                                                                  :authority_level "official"}
                                  Collection _                   {:name     "Crowberto's Child Collection"
                                                                  :location (collection/location-path crowberto-root)}]
-          (let [public-collections       #{"Our analytics" (:name collection) "Collection with Items" "subcollection" }
+          (let [public-collection-names (apply conj #{"Our analytics"
+                                                      (:name collection)
+                                                      "Collection with Items"
+                                                      "subcollection"}
+                                               (instance-analytics-collection-names))
                 crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
                 crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
-                luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))
-                ;; TODO better IA test data
-                hide-ia-user #(set (remove #{"Instance Analytics" "Audit" "a@a.a a@a.a's Personal Collection" "a@a.a's Personal Collection"} %))]
-            (is (= (hide-ia-user (into (set (map :name (t2/select Collection))) public-collections))
-                   (hide-ia-user crowbertos)))
-            (is (= (into public-collections #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
-                   (hide-ia-user crowbertos-with-excludes)))
+                luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
+            (is (= (into (set (map :name (t2/select Collection))) public-collection-names)
+                   crowbertos))
+            (is (= (into public-collection-names #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
+                   crowbertos-with-excludes))
             (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
             (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
-            (is (= (conj public-collections (:name collection) "Lucky Pigeon's Personal Collection")
-                   (hide-ia-user luckys)))
+            (is (= (conj public-collection-names (:name collection) "Lucky Pigeon's Personal Collection")
+                   luckys))
             (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))))))
 
     (testing "Personal Collection's name and slug should be returned in user's locale"
