@@ -17,7 +17,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 ;;; ------------------------------------------------ "Crufty" Tables -------------------------------------------------
 
@@ -166,6 +167,9 @@
               :db_id  (u/the-id database)
               :active true))))
 
+(s/defn ^:private strip-desc [tables :- #{i/DatabaseMetadataTable}]
+  (map #(dissoc % :description) tables))
+
 (s/defn sync-tables-and-database!
   "Sync the Tables recorded in the Metabase application database with the ones obtained by calling `database`'s driver's
   implementation of `describe-database`.
@@ -177,13 +181,11 @@
          our-metadata            (our-metadata database)
          inactive-tables         (set (map (partial into {})
                                            (t2/select [Table :name :schema]
-                                                      :db_id  (u/the-id database)
+                                                      :db_id (u/the-id database)
                                                       :active false)))
-         strip-desc              (fn [metadata]
-                                   (set (map #(dissoc % :description) metadata)))
          [new-tables old-tables] (data/diff
-                                  (strip-desc db-tables)
-                                  (strip-desc our-metadata))
+                                  (set (strip-desc db-tables))
+                                  (set (strip-desc our-metadata)))
          ;; TODO - should we make this logic case-insensitive like it is for fields?
          to-create-tables        (remove (fn [new-table]
                                            (contains? inactive-tables (select-keys new-table [:name :schema])))
@@ -218,22 +220,22 @@
      {:updated-tables (+ (count to-create-tables) (count old-tables))
       :total-tables   (count our-metadata)})))
 
-(defn- activate-table! [database new-table]
-  (when-let [existing-id (t2/select-one-pk Table
-                                           :db_id (u/the-id database)
-                                           :schema (:schema new-table)
-                                           :name (:name new-table)
-                                           :active false)]
-    (t2/update! Table existing-id {:active true})))
-
 (defn activate-new-tables!
   "Activate any tables that are currently inactive but are present in the db-metadata."
   [database db-metadata]
-  (let [db-tables    (table-set db-metadata)
-        our-metadata (our-metadata database)
-        [new-tables] (data/diff db-tables our-metadata)]
-    (sync-util/with-error-handling (format "Error reactivating tables for %s"
-                                           (sync-util/name-for-logging database))
-      (doseq [table new-tables]
-        (activate-table! database table)))
+  (let [db-tables             (strip-desc (table-set db-metadata))
+        active-tables         (map (partial into {})
+                                   (t2/select [Table :name :schema]
+                                              :db_id  (u/the-id database)
+                                              :active true))
+        inactive-table->id    (t2/select-fn->pk #(dissoc (into {} (t2.realize/realize %)) :id)
+                                                [Table :id :name :schema]
+                                                :db_id (u/the-id database)
+                                                :active false)
+        [new-tables]          (data/diff (set db-tables) (set active-tables))
+        to-activate-ids       (keep inactive-table->id new-tables)]
+    (when (seq to-activate-ids)
+      (sync-util/with-error-handling (format "Error reactivating tables for %s"
+                                             (sync-util/name-for-logging database))
+        (t2/update! Table {:id [:in to-activate-ids]} {:active true})))
     {:updated-tables new-tables}))
