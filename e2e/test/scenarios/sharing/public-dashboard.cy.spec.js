@@ -2,7 +2,8 @@ import {
   restore,
   visitDashboard,
   visitPublicDashboard,
-  rightSidebar,
+  filterWidget,
+  popover,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -63,7 +64,6 @@ describe("scenarios > public > dashboard", () => {
       questionDetails,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
-      cy.wrap(card_id).as("questionId");
       cy.wrap(dashboard_id).as("dashboardId");
       // Connect filter to the card
       cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
@@ -95,16 +95,16 @@ describe("scenarios > public > dashboard", () => {
 
     cy.icon("share").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Enable sharing").siblings().click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Public link")
+    cy.findByRole("heading", { name: "Enable sharing" })
       .parent()
-      .find("input")
+      .findByRole("switch")
+      .check();
+
+    cy.findByRole("heading", { name: "Public link" })
+      .parent()
+      .findByDisplayValue(/^http/)
       .then($input => {
         expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX);
-        cy.wrap($input.val()).as("dashboardPublicLink");
       });
   });
 
@@ -115,69 +115,46 @@ describe("scenarios > public > dashboard", () => {
           cy.request("POST", `/api/dashboard/${id}/public_link`).then(
             ({ body: { uuid } }) => {
               setUser();
-              cy.visit({
-                url: `/public/dashboard/${uuid}`,
-              });
+              cy.visit(`/public/dashboard/${uuid}`);
             },
           );
         });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains(COUNT_ALL);
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("Text").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("Doohickey").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("Add filter").click();
+        cy.get(".ScalarValue").should("have.text", COUNT_ALL);
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains(COUNT_DOOHICKEY);
+        filterWidget().click();
+        popover().within(() => {
+          cy.findByText("Doohickey").click();
+          cy.button("Add filter").click();
+        });
 
-        // Enter full-screen button
-        cy.icon("expand");
+        cy.get(".ScalarValue").should("have.text", COUNT_DOOHICKEY);
       });
     }),
   );
 
-  describe("Disable auto-apply filters", () => {
-    it("should be able to view public dashboards by anonymous users", () => {
-      cy.get("@dashboardId").then(id => {
-        cy.intercept("PUT", `/api/dashboard/${id}`).as("editDashboard");
-        visitDashboard(id);
-
-        openDashboardSidebar();
-        rightSidebar().within(() => {
-          cy.findByLabelText("Auto-apply filters")
-            .click()
-            .should("not.be.checked");
-
-          cy.findByText("You set auto apply filters to false.");
-        });
-
-        visitPublicDashboard(id);
+  it("should respect 'disable auto-apply filters' in a public dashboard", () => {
+    cy.get("@dashboardId").then(id => {
+      cy.request("PUT", `/api/dashboard/${id}`, {
+        auto_apply_filters: false,
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(COUNT_ALL);
 
-      cy.button("Apply").should("not.exist");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Text").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Doohickey").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Add filter").click();
-
-      cy.button("Apply").should("be.visible").click();
-      cy.button("Apply").should("not.exist");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(COUNT_DOOHICKEY);
+      visitPublicDashboard(id);
     });
+
+    cy.get(".ScalarValue").should("have.text", COUNT_ALL);
+    cy.button("Apply").should("not.exist");
+
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByText("Doohickey").click();
+      cy.button("Add filter").click();
+    });
+
+    cy.get(".ScalarValue").should("have.text", COUNT_ALL);
+
+    cy.button("Apply").should("be.visible").click();
+    cy.button("Apply").should("not.exist");
+    cy.get(".ScalarValue").should("have.text", COUNT_DOOHICKEY);
   });
 });
-
-function openDashboardSidebar() {
-  cy.get("main header").icon("info").click();
-}
