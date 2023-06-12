@@ -29,6 +29,8 @@ const MARKDOWN = [
 const MARKDOWN_AS_TEXT = [HEADING_1_TEXT, HEADING_2_TEXT, PARAGRAPH_TEXT].join(
   " ",
 );
+const HEADING_SHORT_TEXT = "Short description";
+const HEADING_SHORT_MARKDOWN = `# ${HEADING_SHORT_TEXT}`;
 const HEADING_LONG_TEXT =
   "This is a very long description that will require visual truncation in the user interface";
 const HEADING_LONG_MARKDOWN = `# ${HEADING_LONG_TEXT}`;
@@ -155,22 +157,61 @@ describe("PinnedItemCard", () => {
       expect(tooltip).toHaveTextContent(MARKDOWN_AS_TEXT);
     });
 
-    it("should show description tooltip when ellipis is necessary", async () => {
+    it("should not show description tooltip when ellipis is not necessary", async () => {
       setup({
-        item: getCollectionItem({ description: HEADING_LONG_MARKDOWN }),
+        item: getCollectionItem({ description: HEADING_SHORT_MARKDOWN }),
       });
 
-      userEvent.hover(screen.getByText(HEADING_LONG_TEXT));
+      userEvent.hover(screen.getByText(HEADING_SHORT_TEXT));
 
-      await waitFor(() => {
-        expect(screen.getByRole("tooltip")).toBeInTheDocument();
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    });
+
+    describe("ellipsis", () => {
+      // mocking scrollWidth to simulate ellipsis
+      const originalScrollWidth = Object.getOwnPropertyDescriptor(
+        Element.prototype,
+        "scrollWidth",
+      );
+
+      beforeAll(() => {
+        Object.defineProperty(Element.prototype, "scrollWidth", {
+          configurable: true,
+          get() {
+            if (this.textContent === HEADING_LONG_TEXT) {
+              return 1;
+            }
+
+            return 0;
+          },
+        });
       });
 
-      const tooltip = screen.getByRole("tooltip");
+      afterAll(() => {
+        Object.defineProperty(
+          Element.prototype,
+          "scrollWidth",
+          originalScrollWidth,
+        );
+      });
 
-      expect(tooltip).toHaveAttribute("data-state", "visible");
-      expect(tooltip).not.toHaveTextContent(HEADING_LONG_MARKDOWN);
-      expect(tooltip).toHaveTextContent(HEADING_LONG_TEXT);
+      it("should show description tooltip when ellipis is necessary", async () => {
+        setup({
+          item: getCollectionItem({ description: HEADING_LONG_MARKDOWN }),
+        });
+
+        userEvent.hover(screen.getByText(HEADING_LONG_TEXT));
+
+        await waitFor(() => {
+          expect(screen.getByRole("tooltip")).toBeInTheDocument();
+        });
+
+        const tooltip = screen.getByRole("tooltip");
+
+        expect(tooltip).toHaveAttribute("data-state", "visible");
+        expect(tooltip).not.toHaveTextContent(HEADING_LONG_MARKDOWN);
+        expect(tooltip).toHaveTextContent(HEADING_LONG_TEXT);
+      });
     });
   });
 });
