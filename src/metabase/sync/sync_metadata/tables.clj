@@ -79,7 +79,7 @@
 
 (s/defn ^:private is-crufty-table? :- s/Bool
   "Should we give newly created TABLE a `visibility_type` of `:cruft`?"
-  [table :- i/DatabaseMetadataTable]
+  [table]
   (boolean (some #(re-find % (u/lower-case-en (:name table))) crufty-table-patterns)))
 
 
@@ -94,29 +94,34 @@
                (assoc (:details database) :version (:version db-metadata))}))
 
 (defn create-table!
-  "Create a single new table in the database. Mark it as active for activation later."
-  [database {schema :schema, table-name :name, :as table}]
+  "Create a single new table in the database with the given columns."
+  [database
+   {schema     :schema
+    table-name :name
+    active     :active
+    :as        table
+    :or        {active true}}]
   (let [is-crufty? (is-crufty-table? table)]
     (first (t2/insert-returning-instances! Table
                                            :db_id (u/the-id database)
                                            :schema schema
                                            :name table-name
                                            :display_name (humanization/name->human-readable-name table-name)
-                                           :active false
+                                           :active active
                                            :visibility_type (when is-crufty? :cruft)
-                                             ;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
+                                           ;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
                                            :initial_sync_status (if is-crufty? "complete" "incomplete")))))
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
 
-(s/defn ^:private create-tables!
-  "Create NEW-TABLES for database."
+(s/defn ^:private create-tables-as-inactive!
+  "Create NEW-TABLES for database. Tables have active=false."
   [database :- i/DatabaseInstance, new-tables :- #{i/DatabaseMetadataTable}]
   (log/info (trs "Found new tables:")
             (for [table new-tables]
               (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [table new-tables]
-    (create-table! database table)))
+    (create-table! database (assoc table :active false))))
 
 (s/defn ^:private retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
@@ -194,7 +199,7 @@
      (when (seq to-create-tables)
        (sync-util/with-error-handling (format "Error creating tables for %s"
                                               (sync-util/name-for-logging database))
-         (create-tables! database to-create-tables)))
+         (create-tables-as-inactive! database to-create-tables)))
      ;; mark old tables as inactive
      (when (seq old-tables)
        (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))

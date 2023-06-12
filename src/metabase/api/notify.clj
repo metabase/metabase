@@ -62,7 +62,7 @@
                                         {:schema schema_name :name table_name})
                                  table-in-db))
                              db-tables)]
-          (let [created (sync-tables/create-or-reactivate-table! database table)]
+          (let [created (sync-tables/create-table! database table)]
             (doto created
               sync/sync-table!
               sync-util/set-initial-table-sync-complete!))

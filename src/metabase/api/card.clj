@@ -1175,7 +1175,7 @@ saved later when it is ready."
       (driver/drop-table driver db-id table-name)
       (throw (ex-info (tru "The CSV file was uploaded to {0}, but the table could not be created or found." schema+table-name)
                       {:status-code 422})))
-    (let [table (sync-tables/create-or-reactivate-table! database {:name table-name :schema actual-schema})]
+    (let [table (sync-tables/create-table! database {:name table-name :schema actual-schema})]
       (scan-and-sync-table! database table)
       (create-card!
        {:collection_id          collection-id,
