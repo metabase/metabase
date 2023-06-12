@@ -14255,9 +14255,9 @@ databaseChangeLog:
               FROM permissions p
               WHERE
                 p.object LIKE CONCAT('/db/',
-                                     (SELECT t.db_id FROM metabase_tables t WHERE t.id = s.table_id),
+                                     (SELECT t.db_id FROM metabase_table t WHERE t.id = s.table_id),
                                      '/schema/',
-                                     (SELECT t.schema FROM metabase_tables t WHERE t.id = s.table_id),
+                                     (SELECT t.schema FROM metabase_table t WHERE t.id = s.table_id),
                                      '/table/',
                                      s.table_id,
                                      '/query/segmented/')
