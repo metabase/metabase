@@ -692,7 +692,7 @@
                                          uploads-database-id  db-id
                                          uploads-schema-name  nil
                                          uploads-table-prefix "uploaded_magic_"]
-        (with-all-users-data-perms {db-id {:details :no}}
+        (with-all-users-data-perms {db-id {:data {:native :none, :schemas :none}}}
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You don't have permissions to do that\."
