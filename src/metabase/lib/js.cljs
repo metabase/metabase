@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib.core]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.stage :as lib.stage]
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
@@ -118,7 +119,9 @@
   ([a-query x]
    (display-info a-query -1 x))
   ([a-query stage-number x]
-   (-> (lib.core/display-info a-query stage-number x)
+   (-> a-query
+       (lib.stage/ensure-previous-stages-have-metadata stage-number)
+       (lib.core/display-info stage-number x)
        (update-keys u/->camelCaseEn)
        (update :table update-keys u/->camelCaseEn)
        (clj->js :keyword-fn u/qualified-name))))

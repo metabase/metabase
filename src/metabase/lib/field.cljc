@@ -87,7 +87,8 @@
         ;; we should look in to fixing this if we can.
         stage-columns (or (:metabase.lib.stage/cached-metadata stage)
                           (get-in stage [:lib/stage-metadata :columns])
-                          (lib.metadata.calculation/visible-columns query stage-number stage)
+                          (when (string? (:source-table stage))
+                            (lib.metadata.calculation/visible-columns query stage-number stage))
                           (log/warn (i18n/tru "Cannot resolve column {0}: stage has no metadata" (pr-str column-name))))]
     (when (seq stage-columns)
       (resolve-column-name-in-metadata column-name stage-columns))))

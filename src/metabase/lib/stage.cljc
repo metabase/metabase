@@ -34,7 +34,7 @@
    {:aggregation (partial mapv lib.normalize/normalize)
     :filters     (partial mapv lib.normalize/normalize)}))
 
-(mu/defn ^:private ensure-previous-stages-have-metadata :- ::lib.schema/query
+(mu/defn ensure-previous-stages-have-metadata :- ::lib.schema/query
   "Recursively calculate the metadata for the previous stages and add it to them, we'll need it for metadata
   calculations for `stage-number` and we don't want to have to calculate it more than once..."
   [query        :- ::lib.schema/query
@@ -288,6 +288,7 @@
 (defmethod lib.metadata.calculation/visible-columns-method ::stage
   [query stage-number _stage {:keys [unique-name-fn include-implicitly-joinable?], :as options}]
   (let [;; query   (lib.util/update-query-stage query stage-number dissoc :fields :breakout :aggregation)
+        query            (ensure-previous-stages-have-metadata query stage-number)
         existing-columns (existing-visible-columns query stage-number options)]
     (->> (concat
            existing-columns
@@ -353,16 +354,17 @@
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/mbql
   [query stage-number _stage style]
-  (or
-   (not-empty
-    (let [descriptions (for [k display-name-parts]
-                         (lib.metadata.calculation/describe-top-level-key query stage-number k))]
-      (str/join ", " (remove str/blank? descriptions))))
-   (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-     (lib.metadata.calculation/display-name query
-                                            previous-stage-number
-                                            (lib.util/query-stage query previous-stage-number)
-                                            style))))
+  (let [query (ensure-previous-stages-have-metadata query stage-number)]
+    (or
+     (not-empty
+      (let [descriptions (for [k display-name-parts]
+                           (lib.metadata.calculation/describe-top-level-key query stage-number k))]
+        (str/join ", " (remove str/blank? descriptions))))
+     (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+       (lib.metadata.calculation/display-name query
+                                              previous-stage-number
+                                              (lib.util/query-stage query previous-stage-number)
+                                              style)))))
 
 (mu/defn append-stage :- ::lib.schema/query
   "Adds a new blank stage to the end of the pipeline"
