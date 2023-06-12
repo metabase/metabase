@@ -326,4 +326,3 @@
         (driver/drop-table driver db-id table-name)
         (throw (ex-info (ex-message e) {:status-code 400}))))
     nil))
-
