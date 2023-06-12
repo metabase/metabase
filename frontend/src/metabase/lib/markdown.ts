@@ -18,8 +18,16 @@ export type Node = ArrayElement<Content>;
 
 export const getLeadingText = (value: string): string => {
   const root = parseMarkdown(value);
-  const firstTextChild = root.children.find(child => renderText(child));
-  return firstTextChild ? renderText(firstTextChild) : "";
+
+  for (const child of root.children) {
+    const text = renderText(child);
+
+    if (text) {
+      return text;
+    }
+  }
+
+  return "";
 };
 
 const renderText = (node: Node): string => {
