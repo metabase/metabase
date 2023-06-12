@@ -83,14 +83,6 @@
     (when (seq stage-columns)
       (resolve-column-name-in-metadata column-name stage-columns))))
 
-(mu/defn ^:private resolve-column-name-in-join :- [:maybe lib.metadata/ColumnMetadata]
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   column-name  :- ::lib.schema.common/non-blank-string
-   join-alias   :- [:maybe ::lib.schema.common/non-blank-string]]
-  (let [join-metadata (lib.metadata.calculation/metadata query stage-number (lib.join/resolve-join query stage-number join-alias))]
-    (resolve-column-name-in-metadata column-name join-metadata)))
-
 (mu/defn ^:private resolve-field-metadata :- lib.metadata/ColumnMetadata
   "Resolve metadata for a `:field` ref. This is part of the implementation
   for [[lib.metadata.calculation/metadata-method]] a `:field` clause."
@@ -105,12 +97,15 @@
    ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if the Field is
    ;; temporally bucketed, the base-type/effective-type would probably be affected, right? We should probably be
    ;; taking that into consideration?
+   (when-let [binning (:binning opts)]
+     {::binning binning})
+   (when-let [unit (:temporal-unit opts)]
+     {::temporal-unit unit})
    (cond
      (integer? id-or-name) (resolve-field-id query id-or-name)
-     join-alias            (or (resolve-column-name-in-join query stage-number id-or-name join-alias)
-                               {:lib/type    :metadata/field
-                                :name        id-or-name
-                                ::join-alias join-alias})
+     join-alias            {:lib/type    :metadata/field
+                            :name        id-or-name
+                            ::join-alias join-alias}
      :else                 (or (resolve-column-name query stage-number id-or-name)
                                {:lib/type :metadata/field
                                 :name     id-or-name}))))
@@ -183,13 +178,19 @@
                        field-name         :name
                        temporal-unit      :unit
                        binning            ::binning
-                       join-alias         :source_alias
+                       join-alias         :source-alias
                        fk-field-id        :fk-field-id
                        table-id           :table-id
                        :as                field-metadata} style]
   (let [field-display-name (or field-display-name
                                (u.humanization/name->human-readable-name :simple field-name))
-        join-display-name  (when (= style :long)
+        join-display-name  (when (and (= style :long)
+                                      ;; don't prepend a join display name if `:display-name` already contains one!
+                                      ;; Legacy result metadata might include it for joined Fields, don't want to add
+                                      ;; it twice. Otherwise we'll end up with display names like
+                                      ;;
+                                      ;;    Products → Products → Category
+                                      (not (str/includes? field-display-name " → ")))
                              (or
                                (when fk-field-id
                                  ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
@@ -203,9 +204,7 @@
                                        lib.util/strip-id)
                                    (let [table (lib.metadata/table query table-id)]
                                      (lib.metadata.calculation/display-name query stage-number table style))))
-                               (when join-alias
-                                 (let [join (lib.join/resolve-join query stage-number join-alias)]
-                                   (lib.metadata.calculation/display-name query stage-number join style)))))
+                               (or join-alias (::join-alias field-metadata))))
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)]
@@ -222,7 +221,7 @@
    [_tag {:keys [binning join-alias temporal-unit source-field], :as _opts} _id-or-name, :as field-clause]
    style]
   (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
-                            join-alias    (assoc :source_alias join-alias)
+                            join-alias    (assoc :source-alias join-alias)
                             temporal-unit (assoc :unit temporal-unit)
                             binning       (assoc ::binning binning)
                             source-field  (assoc :fk-field-id source-field))]
@@ -310,12 +309,12 @@
             365 :week
             :month))))))
 
-(defn- mark-default-unit [options unit]
+(defn- mark-unit [options option-key unit]
   (cond->> options
     (some #(= (:unit %) unit) options)
     (mapv (fn [option]
-            (cond-> (dissoc option :default)
-              (= (:unit option) unit) (assoc :default true))))))
+            (cond-> (dissoc option option-key)
+              (= (:unit option) unit) (assoc option-key true))))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/field
   [_query _stage-number field-metadata]
@@ -326,7 +325,8 @@
               (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
               (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
               :else                                [])
-      fingerprint-default (mark-default-unit fingerprint-default))))
+      fingerprint-default              (mark-unit :default fingerprint-default)
+      (::temporal-unit field-metadata) (mark-unit :selected (::temporal-unit field-metadata)))))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
 (defmethod lib.binning/binning-method :field
@@ -358,19 +358,22 @@
   (lib.binning/available-binning-strategies query stage-number (resolve-field-metadata query stage-number field-ref)))
 
 (defmethod lib.binning/available-binning-strategies-method :metadata/field
-  [query _stage-number {:keys [effective-type fingerprint semantic-type] :as _field-metadata}]
-  (let [binning?        (some-> query lib.metadata/database :features (contains? :binning))
-        {min-value :min max-value :max} (get-in fingerprint [:type :type/Number])]
-    (cond
-      ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
-      (and binning? min-value max-value
-           (isa? semantic-type :type/Coordinate))
-      (lib.binning/coordinate-binning-strategies)
-
-      (and binning? min-value max-value
-           (isa? effective-type :type/Number)
-           (not (isa? semantic-type :Relation/*)))
-      (lib.binning/numeric-binning-strategies))))
+  [query _stage-number {:keys [effective-type fingerprint semantic-type] :as field-metadata}]
+  (let [binning?    (some-> query lib.metadata/database :features (contains? :binning))
+        fingerprint (get-in fingerprint [:type :type/Number])
+        existing    (lib.binning/binning field-metadata)
+        strategies  (cond
+                      ;; Abort if the database doesn't support binning, or this column does not have a defined range.
+                      (not (and binning?
+                                (:min fingerprint)
+                                (:max fingerprint)))               nil
+                      (isa? semantic-type :type/Coordinate)        (lib.binning/coordinate-binning-strategies)
+                      (and (isa? effective-type :type/Number)
+                           (not (isa? semantic-type :Relation/*))) (lib.binning/numeric-binning-strategies))]
+    ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
+    (for [strat strategies]
+      (cond-> strat
+        (lib.binning/strategy= strat existing) (assoc :selected true)))))
 
 ;;; -------------------------------------- Join Alias --------------------------------------------
 (defmethod lib.join/current-join-alias-method :field

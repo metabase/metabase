@@ -10,7 +10,6 @@
    [metabase.models.user :refer [User]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -140,7 +139,7 @@
   [channel]
   (when-let [new-channel-id (pulse-channel/create-pulse-channel! channel)]
     (-> (t2/select-one PulseChannel :id new-channel-id)
-        (hydrate :recipients)
+        (t2/hydrate :recipients)
         (update :recipients #(sort-by :email %))
         (dissoc :id :pulse_id :created_at :updated_at)
         (update :entity_id boolean)
@@ -150,7 +149,7 @@
   [{:keys [id] :as channel}]
   (pulse-channel/update-pulse-channel! channel)
   (-> (t2/select-one PulseChannel :id id)
-      (hydrate :recipients)
+      (t2/hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
       (update :entity_id boolean)
       (m/dissoc-in [:details :emails])))
@@ -441,7 +440,7 @@
                  :first_name  "Rasta"
                  :last_name   "Toucan"
                  :common_name "Rasta Toucan"}]))
-             (:recipients (hydrate channel :recipients)))))))
+             (:recipients (t2/hydrate channel :recipients)))))))
 
 (deftest validate-email-domains-check-user-ids-match-emails
   (testing `pulse-channel/validate-email-domains

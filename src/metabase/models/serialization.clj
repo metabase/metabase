@@ -25,7 +25,6 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model])
   (:refer-clojure :exclude [descendants]))
@@ -78,7 +77,7 @@
   [k]
   (fn [entity]
     (or
-     (some-> entity (hydrate k) (get k) identity-hash)
+     (some-> entity (t2/hydrate k) (get k) identity-hash)
      "<none>")))
 
 (defmulti generate-path

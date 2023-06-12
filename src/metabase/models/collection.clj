@@ -7,7 +7,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.api.common
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
@@ -26,7 +25,6 @@
    [potemkin :as p]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]
    [toucan2.realize :as t2.realize])
@@ -38,7 +36,7 @@
 (comment collection.root/keep-me)
 (comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
-(p/import-vars [collection.root root-collection])
+(p/import-vars [collection.root root-collection root-collection-with-ui-details])
 
 (def ^:private ^:const collection-slug-max-length
   "Maximum number of characters allowed in a Collection `slug`."
@@ -206,16 +204,6 @@
   (when (and owner-id collection-namespace)
     (let [msg (tru "Personal Collections must be in the default namespace")]
       (throw (ex-info msg {:status-code 400, :errors {:personal_owner_id msg}})))))
-
-(defn root-collection-with-ui-details
-  "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
-  [collection-namespace]
-  (m/assoc-some root-collection
-                :name (case (keyword collection-namespace)
-                        :snippets (tru "Top folder")
-                        (tru "Our analytics"))
-                :namespace collection-namespace
-                :id   "root"))
 
 (def ^:private CollectionWithLocationOrRoot
   (s/cond-pre
@@ -502,7 +490,7 @@
        ;; it is visible.
        (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
        ;; it is NOT a descendant of a visible Collection other than A
-       (visible-collection-ids->direct-visible-descendant-clause (hydrate collection :effective_location) visible-collection-ids)
+       (visible-collection-ids->direct-visible-descendant-clause (t2/hydrate collection :effective_location) visible-collection-ids)
        ;; don't want personal collections in collection items. Only on the sidebar
        [:= :personal_owner_id nil]]
       ;; (any additional conditions)
@@ -938,7 +926,7 @@
 
 (defn- parent-identity-hash [coll]
   (let [parent-id (-> coll
-                      (hydrate :parent_id)
+                      (t2/hydrate :parent_id)
                       :parent_id)]
     (if parent-id
       (serdes/identity-hash (t2/select-one Collection :id parent-id))
@@ -963,7 +951,7 @@
         parent           (some-> coll
                                  :id
                                  fetch-collection
-                                 (hydrate :parent_id)
+                                 (t2/hydrate :parent_id)
                                  :parent_id
                                  fetch-collection)
         parent-id        (when parent

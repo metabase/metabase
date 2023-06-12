@@ -95,6 +95,7 @@ export default class Popover extends Component {
     if (!this._popoverElement && isOpen) {
       this._popoverElement = document.createElement("span");
       this._popoverElement.className = `PopoverContainer ${this.props.containerClassName}`;
+      this._popoverElement.dataset.testid = "popover";
       document.body.appendChild(this._popoverElement);
       this._timer = setInterval(() => {
         const { width, height } = this._popoverElement.getBoundingClientRect();

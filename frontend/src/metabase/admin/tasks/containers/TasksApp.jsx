@@ -48,9 +48,8 @@ class TasksAppInner extends Component {
             >
               <Icon
                 name="info"
-                ml={1}
                 style={{ marginTop: 5 }}
-                className="text-brand-hover cursor-pointer text-medium"
+                className="ml1 text-brand-hover cursor-pointer text-medium"
               />
             </Tooltip>
           </SectionTitle>

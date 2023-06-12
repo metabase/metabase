@@ -26,7 +26,6 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [potemkin.types :as p]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
@@ -109,7 +108,7 @@
     (when (= task-type "persist-refresh")
       (when-let [error-details (seq (:error-details task-details))]
         (let [error-details-by-id (m/index-by :persisted-info-id error-details)
-              persisted-infos (->> (hydrate (t2/select PersistedInfo :id [:in (keys error-details-by-id)])
+              persisted-infos (->> (t2/hydrate (t2/select PersistedInfo :id [:in (keys error-details-by-id)])
                                             [:card :collection] :database)
                                    (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
           (messages/send-persistent-model-error-email!

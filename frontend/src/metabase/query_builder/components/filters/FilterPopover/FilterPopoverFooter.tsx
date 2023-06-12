@@ -38,7 +38,7 @@ export default function FilterPopoverFooter({
           data-ui-tag="add-filter"
           primary
           disabled={!filter.isValid()}
-          ml="auto"
+          className="ml-auto"
           onClick={() => onCommit()}
         >
           {isNew ? t`Add filter` : t`Update filter`}

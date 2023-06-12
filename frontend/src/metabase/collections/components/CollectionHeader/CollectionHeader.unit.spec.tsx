@@ -1,7 +1,11 @@
-import { render, screen } from "@testing-library/react";
 import userEvent, { specialChars } from "@testing-library/user-event";
+import { getIcon, render, screen } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 import CollectionHeader, { CollectionHeaderProps } from "./CollectionHeader";
+
+const setup = (options = {}) => {
+  render(<CollectionHeader {...getProps({})} {...options} />);
+};
 
 describe("CollectionHeader", () => {
   describe("collection name", () => {
@@ -300,6 +304,109 @@ describe("CollectionHeader", () => {
       expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
     });
   });
+
+  describe("uploads", () => {
+    it("should show the upload button if uploads are enabled and the user has write permissions", () => {
+      setup({
+        collection: createMockCollection({ can_write: true }),
+        uploadsEnabled: true,
+        canUpload: true,
+        isAdmin: false,
+      });
+
+      expect(screen.getByLabelText("Upload data")).toBeInTheDocument();
+    });
+
+    it("should show the upload button if uploads are disabled and the user has write permissions", () => {
+      setup({
+        collection: createMockCollection({ can_write: true }),
+        uploadsEnabled: false,
+        canUpload: true,
+        isAdmin: false,
+      });
+
+      expect(screen.getByLabelText("Upload data")).toBeInTheDocument();
+    });
+
+    it("should not show the upload button if the user lacks write permissions on the collection", () => {
+      setup({
+        collection: createMockCollection({ can_write: false }),
+        uploadsEnabled: true,
+        canUpload: true,
+        isAdmin: false,
+      });
+
+      expect(screen.queryByLabelText("Upload data")).not.toBeInTheDocument();
+    });
+
+    it("should show an informational modal when clicking the upload button when uploads are disabled", async () => {
+      setup({
+        collection: createMockCollection({ can_write: true }),
+        uploadsEnabled: false,
+        canUpload: true,
+        isAdmin: false,
+      });
+      userEvent.click(screen.getByLabelText("Upload data"));
+
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByText("Uploads CSVs to Metabase")).toBeInTheDocument();
+    });
+
+    it("should show an informational modal with a link to settings for admins", async () => {
+      setup({
+        collection: createMockCollection({ can_write: true }),
+        uploadsEnabled: false,
+        canUpload: true,
+        isAdmin: true,
+      });
+      userEvent.click(screen.getByLabelText("Upload data"));
+
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByText("Enable in settings")).toBeInTheDocument();
+      expect(screen.getByRole("link")).toBeInTheDocument();
+    });
+
+    it("should show an informational modal without a link for non-admins", async () => {
+      setup({
+        collection: createMockCollection({ can_write: true }),
+        uploadsEnabled: false,
+        canUpload: true,
+        isAdmin: false,
+      });
+      userEvent.click(screen.getByLabelText("Upload data"));
+
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByText(/ask your admin to enable/i)).toBeInTheDocument();
+    });
+
+    it("should be able to close the admin upload info modal", async () => {
+      setup({
+        collection: createMockCollection({ can_write: true }),
+        uploadsEnabled: false,
+        canUpload: true,
+        isAdmin: true,
+      });
+      userEvent.click(screen.getByLabelText("Upload data"));
+
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      userEvent.click(getIcon("close"));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("should be able to close the non-admin upload info modal", async () => {
+      setup({
+        collection: createMockCollection({ can_write: true }),
+        uploadsEnabled: false,
+        canUpload: true,
+        isAdmin: false,
+      });
+      userEvent.click(screen.getByLabelText("Upload data"));
+
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      userEvent.click(screen.getByText("Got it"));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
 });
 
 const getProps = (
@@ -309,6 +416,7 @@ const getProps = (
   isAdmin: false,
   isBookmarked: false,
   canUpload: false,
+  uploadsEnabled: true,
   isPersonalCollectionChild: false,
   onUpdateCollection: jest.fn(),
   onCreateBookmark: jest.fn(),

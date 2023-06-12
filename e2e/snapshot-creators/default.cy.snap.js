@@ -153,6 +153,7 @@ describe("snapshots", () => {
         parent_id,
       }).then(({ body }) => callback && callback(body));
     }
+
     postCollection("First collection", undefined, firstCollection =>
       postCollection(
         "Second collection",
@@ -176,7 +177,7 @@ describe("snapshots", () => {
     cy.createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
-      cardDetails: { size_x: 12, size_y: 8 },
+      cardDetails: { size_x: 16, size_y: 8 },
     });
 
     // question 2: Orders, Count
