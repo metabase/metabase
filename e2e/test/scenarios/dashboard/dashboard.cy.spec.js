@@ -405,7 +405,7 @@ describe("scenarios > dashboard", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          size_x: 12,
+          size_x: 16,
           size_y: 8,
           parameter_mappings: [
             {
@@ -466,7 +466,7 @@ describe("scenarios > dashboard", () => {
                 card_id: 1,
                 row: 0,
                 col: 0,
-                size_x: 12,
+                size_x: 16,
                 size_y: 8,
                 series: [],
                 visualization_settings: {
@@ -511,7 +511,7 @@ describe("scenarios > dashboard", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          size_x: 12,
+          size_x: 16,
           size_y: 20,
           series: [],
           visualization_settings: {},
@@ -626,7 +626,7 @@ describe("scenarios > dashboard", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          size_x: 12,
+          size_x: 16,
           size_y: 8,
           parameter_mappings: [
             {

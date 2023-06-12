@@ -37,7 +37,7 @@ export const CustomHomePageModal = ({
   };
 
   const handleChange = useCallback(
-    (value: DashboardId | null | undefined) => {
+    (value?: DashboardId) => {
       if (value) {
         setDashboardId(value);
       } else {

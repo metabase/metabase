@@ -102,7 +102,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
                 card_id,
                 row: 0,
                 col: 0,
-                size_x: 12,
+                size_x: 16,
                 size_y: 10,
                 visualization_settings: getVisualizationSettings(question1Id),
               },
@@ -207,7 +207,7 @@ const getDashcardDetails = ({ id, card_id, target_id }) => ({
   card_id,
   row: 0,
   col: 0,
-  size_x: 12,
+  size_x: 16,
   size_y: 10,
   visualization_settings: {
     click_behavior: {

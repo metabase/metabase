@@ -21,4 +21,6 @@ export const ColorText = styled.div<{ color: string }>`
 
 export const PaddedForm = styled.form`
   padding: 0 1rem;
+  max-width: 34rem;
+  color: ${color("text-medium")};
 `;
