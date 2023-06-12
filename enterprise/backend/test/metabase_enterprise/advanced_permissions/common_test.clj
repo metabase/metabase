@@ -16,7 +16,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(defn do-with-all-user-data-perms
+(defn- do-with-all-user-data-perms
   "Implementation for [[with-all-users-data-perms]]"
   [graph f]
   (let [all-users-group-id  (u/the-id (perms-group/all-users))
@@ -32,7 +32,7 @@
           (u/ignore-exceptions
            (@#'perms/update-group-permissions! all-users-group-id current-graph)))))))
 
-(defmacro with-all-users-data-perms
+(defmacro ^:private with-all-users-data-perms
   "Runs `body` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
   permissions feature flag, and clears the (5 second TTL) cache used for Field permissions, for convenience."
   [graph & body]
@@ -672,3 +672,13 @@
                   (is (= {:rows-affected 1}
                          (mt/user-http-request :rasta :post 200 execute-path
                                                {:parameters {"id" 1}}))))))))))))
+
+(deftest settings-managers-can-have-uploads-db-access-revoked
+  (perms/grant-application-permissions! (perms-group/all-users) :setting)
+  (testing "Upload DB can be set with the right permission"
+    (with-all-users-data-perms {(mt/id) {:details :yes}}
+      (mt/user-http-request :rasta :put 204 "setting/" {:uploads-database-id (mt/id)})))
+  (testing "Upload DB cannot be set without the right permission"
+    (with-all-users-data-perms {(mt/id) {:details :no}}
+      (mt/user-http-request :rasta :put 403 "setting/" {:uploads-database-id (mt/id)})))
+  (perms/revoke-application-permissions! (perms-group/all-users) :setting))
