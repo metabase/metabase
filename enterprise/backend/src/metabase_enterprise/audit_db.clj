@@ -1,6 +1,7 @@
 (ns metabase-enterprise.audit-db
   (:require [clojure.java.io :as io]
-            [metabase-enterprise.serialization.cmd :as serialization.cmd]
+            [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
+            [metabase-enterprise.serialization.v2.load :as v2.load]
             [metabase.config :as config]
             [metabase.db.env :as mdb.env]
             [metabase.models.database :refer [Database]]
@@ -9,6 +10,8 @@
             [metabase.util :as u]
             [metabase.util.log :as log]
             [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private default-audit-db-id 13371337)
 
@@ -58,9 +61,21 @@
       :else
       ::no-op)))
 
-(def analytics-root-dir-resource
-  "Where to look for analytics content created by Metabase to load into the app instance on startup."
-  (io/resource "instance_analytics"))
+(def analytics-ingestion-resource
+  (io/resource "ia_serialization.edn"))
+
+(defn- no-labels [path] (mapv #(dissoc % :label) path))
+
+(defn- resource->ingestable [resource-path]
+  (let [meta->entity (read-string (slurp resource-path))]
+    (reify
+      v2.ingest/Ingestable
+      (ingest-list [_]
+        (keys meta->entity))
+      (ingest-one [_ path]
+        (or (get meta->entity (no-labels path))
+            (throw (ex-info (format "Unknown ingestion target: %s" path)
+                            {:path path :world meta->entity})))))))
 
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
@@ -75,9 +90,12 @@
       (when (not config/is-prod?)
         (log/warn "Audit DB was not installed correctly!!")))
     ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
-    (when analytics-root-dir-resource
-      (log/info (str "Loading Analytics Content from: " analytics-root-dir-resource))
-      (let [report (log/with-no-logs (serialization.cmd/v2-load analytics-root-dir-resource {}))]
+    (when analytics-ingestion-resource
+      (log/info "Copying Analytics Content from resources...")
+      (log/info (str "Loading Analytics Content from: " analytics-ingestion-resource))
+      (let [report (log/with-no-logs
+                     (v2.load/load-metabase (resource->ingestable analytics-ingestion-resource) {:abort-on-error false}))]
+        (log/warn (-> report (update :seen count) (dissoc :ingestion) pr-str))
         (if (not-empty (:errors report))
           (log/info (str "Error Loading Analytics Content: " (pr-str report)))
           (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized.")))))))
