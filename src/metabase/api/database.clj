@@ -262,6 +262,7 @@
     Enterprise Edition code is available the advanced-permissions feature is enabled.
 
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
+    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.
 
   * `include_only_uploadable` will only include DBs into which Metabase can insert new data."
   [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics]
