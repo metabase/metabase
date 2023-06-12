@@ -59,6 +59,7 @@
                               :regex                   false
                               :percentile-aggregations false
                               :full-join               false
+                              :uploads                 true
                               :schemas                 false
                               ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
                               ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
@@ -76,7 +77,7 @@
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
 
-(doseq [feature [:actions :actions/custom :uploads]]
+(doseq [feature [:actions :actions/custom]]
   (defmethod driver/database-supports? [:mysql feature]
     [driver _feat _db]
     ;; Only supported for MySQL right now. Revise when a child driver is added.
