@@ -14846,13 +14846,13 @@ databaseChangeLog:
                   update report_dashboardcard set size_x = size_x - (floor(cast(size_x + col + 1 as decimal) / 4) - floor(cast(col + 1 as decimal) / 4)) where size_x <> 1;
                   update report_dashboardcard set col    = col - floor(cast(col + 1 as decimal) / 4);
 
-                  #- changeSet:
-                  #    id: v47.00-032
-                  #    author: qnkhuat
-                  #    comment: Added 0.47.0 - migrate dashboard grid size from 18 to 24 for revisions
-                  #    changes:
-                  #      - customChange:
-                  #          class: "metabase.db.custom_migrations.RevisionDashboardMigrateGridFrom18To24"
+  #- changeSet:
+  #    id: v47.00-032
+  #    author: qnkhuat
+  #    comment: Added 0.47.0 - migrate dashboard grid size from 18 to 24 for revisions
+  #    changes:
+  #      - customChange:
+  #          class: "metabase.db.custom_migrations.RevisionDashboardMigrateGridFrom18To24"
 
   - changeSet:
       id: v47.00-035
