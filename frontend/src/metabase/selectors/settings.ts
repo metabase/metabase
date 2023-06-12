@@ -18,7 +18,7 @@ interface UpgradeUrlOpts {
 }
 
 export const getUpgradeUrl = createSelector(
-  (state: State) => getUtmSource(getSetting(state, "token-features")),
+  (state: State) => getUtmSource(getTokenFeatures(state)),
   (state: State) => getSetting(state, "active-users-count"),
   (state: State, opts: UpgradeUrlOpts) => opts.utm_media,
   (source, count, media) => {
@@ -40,3 +40,12 @@ const getUtmSource = (features: TokenFeatures) => {
     return features.hosting ? "starter" : "oss";
   }
 };
+
+const getTokenFeatures = (state: State) => getSetting(state, "token-features");
+
+export const getIsPaidPlan = createSelector(
+  getTokenFeatures,
+  (features: TokenFeatures) => {
+    return features.sso || features.hosting;
+  },
+);
