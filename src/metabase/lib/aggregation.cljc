@@ -347,6 +347,8 @@
                      (fn [cols]
                        (mapv (fn [col]
                                (let [a-ref (lib.ref/ref col)]
+                                 ;; FIXME: This should use [[lib.equality/find-closest-matching-ref]] instead.
+                                 #_{:clj-kondo/ignore [:deprecated-var]}
                                  (cond-> col
                                    (lib.equality/ref= a-ref agg-col)
                                    (assoc :selected? true))))
