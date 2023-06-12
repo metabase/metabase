@@ -80,6 +80,7 @@
         (log/warn "Audit DB was not installed correctly!!")))
     ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
     (when analytics-root-dir-resource
+      (ee.internal-user/ensure-internal-user-exists!)
       (log/info "Loading Analytics Content...")
       (log/info "Unzipping analytics to plugins...")
       (u.files/unzip-file analytics-root-dir-resource "plugins")
