@@ -176,7 +176,7 @@
   ([database :- i/DatabaseInstance db-metadata]
    ;; determine what's changed between what info we have and what's in the DB
    (let [db-tables               (table-set db-metadata)
-         our-metadata            (our-metadata database) ;; now includes active=true
+         our-metadata            (our-metadata database)
          inactive-tables         (set (map (partial into {})
                                            (t2/select [Table :name :schema]
                                                       :db_id  (u/the-id database)
