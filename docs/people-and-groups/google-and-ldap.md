@@ -39,7 +39,7 @@ Once you've added your Google Client ID to your Metabase settings, go to the Goo
 
 Note that Metabase accounts created with Google Sign-In do not have passwords and must use Google to sign in to Metabase.
 
-### Required LDAP attributes
+## Required LDAP attributes
 
 Make sure to set up your LDAP directory with these attributes:
 
