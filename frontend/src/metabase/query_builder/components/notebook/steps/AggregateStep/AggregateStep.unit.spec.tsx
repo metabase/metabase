@@ -92,7 +92,7 @@ describe("AggregateStep", () => {
     const clause = getRecentAggregationClause();
     expect(clause).toEqual(
       expect.objectContaining({
-        name: "avg_QUANTITY",
+        name: "avg",
         displayName: "Average of Quantity",
       }),
     );
@@ -131,7 +131,7 @@ describe("AggregateStep", () => {
     expect(Lib.aggregations(nextQuery, 0)).toHaveLength(1);
     expect(clause).toEqual(
       expect.objectContaining({
-        name: "avg_TOTAL",
+        name: "avg",
         displayName: "Average of Total",
       }),
     );
