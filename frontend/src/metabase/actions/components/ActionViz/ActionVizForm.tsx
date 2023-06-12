@@ -92,7 +92,7 @@ function ActionVizForm({
           focus={isEditingDashcard}
           onClick={onClick}
         />
-        {showFormModal && !showEditModal && (
+        {showFormModal && (
           <ActionParametersInputModal
             action={action}
             dashboard={dashboard}
@@ -109,7 +109,7 @@ function ActionVizForm({
           />
         )}
         {showEditModal && (
-          <Modal wide onClose={closeEditModal} closeOnClickOutside>
+          <Modal wide onClose={closeEditModal}>
             <ActionCreator
               initialAction={action}
               action={action}
