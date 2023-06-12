@@ -5,22 +5,11 @@ redirect_from:
   - /docs/latest/questions/native-editor/data-model-reference
 ---
 
-# Data reference
+# Data reference in the native editor
 
-Sometimes when you're composing a question, you might forget the exact names of different tables or columns, or which table contains what. That’s where the **Data reference** comes in handy.
+Sometimes when you're writing a query, you might forget the exact names of different tables or columns, or which table contains what. That’s where the **Data reference** comes in handy.
 
-You can open the data reference from:
-
-- The Metabase sidebar > **Browse data** > **Learn about our data**.
-- The SQL editor > **book** icon.
-
-## Browse data reference
-
-The data reference is a collection of pages organized by database, then tables in that database (the same structure you use to [pick data](../questions/query-builder/introduction.md#picking-data)). The data reference section is the best place to find information about the [data types](https://www.metabase.com/learn/databases/data-types-overview) of columns in your data.
-
-![Data reference page](./images/data-reference-page.png)
-
-## SQL editor data reference
+To bring up the data reference panel in the native/SQL editor, click on the open book icon.
 
 This panel lists all the databases you have access to, and the [models](../data-modeling/models.md) and tables, and the fields inside of them.
 
