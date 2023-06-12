@@ -7,7 +7,7 @@ import EmptyState from "metabase/components/EmptyState";
 
 import MetabaseSettings from "metabase/lib/settings";
 
-import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker/ActionPicker";
+import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker";
 import { setActionForDashcard } from "metabase/dashboard/actions";
 
 import type {
