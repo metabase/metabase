@@ -190,6 +190,20 @@ function DashCard({
     [dashcard],
   );
 
+  const shouldForceHiddenBackground = useMemo(() => {
+    if (!isEditing) {
+      return false;
+    }
+
+    const isHeadingCard = mainCard.display === "heading";
+    const isTextCard = mainCard.display === "text";
+
+    return (
+      (isHeadingCard || isTextCard) &&
+      mainCard.visualization_settings["dashcard.background"] === false
+    );
+  }, [isEditing, mainCard]);
+
   const hasHiddenBackground = useMemo(() => {
     if (isEditing) {
       return false;
@@ -284,6 +298,7 @@ function DashCard({
         data-testid="dashcard"
         className="Card rounded flex flex-column hover-parent hover--visibility"
         hasHiddenBackground={hasHiddenBackground}
+        shouldForceHiddenBackground={shouldForceHiddenBackground}
         isNightMode={isNightMode}
         isUsuallySlow={isSlow === "usually-slow"}
         ref={cardRootRef}

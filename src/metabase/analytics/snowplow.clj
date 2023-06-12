@@ -143,6 +143,7 @@
    ::database     "1-0-0"
    ::instance     "1-1-0"
    ::metabot      "1-0-0"
+   ::search       "1-0-0"
    ::timeline     "1-0-0"
    ::task         "1-0-0"
    ::action       "1-0-0"})
@@ -204,6 +205,7 @@
    ::database-connection-failed     ::database
    ::new-event-created              ::timeline
    ::new-task-history               ::task
+   ::new-search-query               ::search
    ::action-created                 ::action
    ::action-updated                 ::action
    ::action-deleted                 ::action

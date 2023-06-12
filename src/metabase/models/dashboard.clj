@@ -35,7 +35,6 @@
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
@@ -320,7 +319,7 @@
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
   (let [dash (-> (t2/select-one Dashboard :id (u/the-id dashboard-or-id))
-                 (hydrate [:ordered_cards :card]))]
+                 (t2/hydrate [:ordered_cards :card]))]
     (params/dashcards->param-field-ids (:ordered_cards dash))))
 
 (defn- update-field-values-for-on-demand-dbs!
@@ -408,7 +407,7 @@
                                                                 result-metadata-for-query)))
                             (dissoc :id))))]
       (events/publish-event! :card-create card)
-      (hydrate card :creator :dashboard_count :can_write :collection))))
+      (t2/hydrate card :creator :dashboard_count :can_write :collection))))
 
 (defn- applied-filters-blurb
   [applied-filters]
@@ -475,7 +474,7 @@
                                                    {param-id ParamWithMapping})
   [dashboard :- {(s/optional-key :parameters) (s/maybe [su/Map])
                  s/Keyword                    s/Any}]
-  (let [dashboard           (hydrate dashboard [:ordered_cards :card])
+  (let [dashboard           (t2/hydrate dashboard [:ordered_cards :card])
         param-key->mappings (apply
                              merge-with set/union
                              (for [dashcard (:ordered_cards dashboard)
@@ -512,7 +511,7 @@
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 (defmethod serdes/extract-query "Dashboard" [_ opts]
-  (eduction (map #(hydrate % :ordered_cards))
+  (eduction (map #(t2/hydrate % :ordered_cards))
             (serdes/extract-query-collections Dashboard opts)))
 
 (defn- extract-dashcard
@@ -533,9 +532,9 @@
   [_model-name _opts dash]
   (let [dash (cond-> dash
                (nil? (:ordered_cards dash))
-               (hydrate :ordered_cards)
+               (t2/hydrate :ordered_cards)
                (nil? (:ordered_tabs dash))
-               (hydrate :ordered_tabs))]
+               (t2/hydrate :ordered_tabs))]
     (-> (serdes/extract-one-basics "Dashboard" dash)
         (update :ordered_cards     #(mapv extract-dashcard %))
         (update :ordered_tabs      #(mapv extract-dashtab %))

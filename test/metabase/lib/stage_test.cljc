@@ -123,14 +123,14 @@
                  {:id                       (meta/id :categories :id)
                   :name                     "ID"
                   :lib/source               :source/joins
-                  :source_alias             "Cat"
+                  :source-alias             "Cat"
                   :display-name             "ID"
                   :lib/source-column-alias  "ID"
                   :lib/desired-column-alias "Cat__ID"}
                  {:id                       (meta/id :categories :name)
                   :name                     "NAME"
                   :lib/source               :source/joins
-                  :source_alias             "Cat"
+                  :source-alias             "Cat"
                   :display-name             "Name"
                   :lib/source-column-alias  "NAME"
                   :lib/desired-column-alias "Cat__NAME"}]
@@ -144,8 +144,8 @@
                   "Price"
                   "ID + 1"
                   "ID + 2"
-                  "Categories → ID"
-                  "Categories → Name"]
+                  "Cat → ID"
+                  "Cat → Name"]
                  (mapv #(lib.metadata.calculation/display-name query -1 % :long) metadata))))))))
 
 (deftest ^:parallel metadata-with-fields-only-include-expressions-in-fields-test
