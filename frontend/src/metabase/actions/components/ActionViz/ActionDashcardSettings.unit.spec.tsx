@@ -99,7 +99,7 @@ const setup = (
 
 describe("ActionViz > ActionDashcardSettings", () => {
   describe("when there are required, hidden and mapped parameters", () => {
-    const actionWithHiddenFields = {
+    const action = {
       ...actions1[0],
       parameters: [actionParameter1, actionParameterRequired],
       visualization_settings: {
@@ -116,10 +116,10 @@ describe("ActionViz > ActionDashcardSettings", () => {
       },
     };
 
-    const actionDashcardWithActionWithHiddenFields = {
+    const dashcard = {
       ...actionDashcardWithAction,
-      action: actionWithHiddenFields,
-      parameter_mappings: actionWithHiddenFields.parameters.map(parameter => ({
+      action,
+      parameter_mappings: action.parameters.map(parameter => ({
         parameter_id: dashboardParameter.id,
         target: parameter.target,
       })),
@@ -127,18 +127,45 @@ describe("ActionViz > ActionDashcardSettings", () => {
 
     beforeEach(() => {
       setup({
-        dashcard: actionDashcardWithActionWithHiddenFields,
+        dashcard,
       });
     });
 
-    doesntShowHiddenBadge(actionParameter1);
-    showsHiddenBadge(actionParameterRequired);
-    doesntShowValidationError(actionParameterRequired);
-    allowsSubmit();
+    it("doesn't show a hidden badge for not hidden field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameter1.id}`,
+      );
+
+      expect(within(formSection).queryByText("Hidden")).not.toBeInTheDocument();
+    });
+
+    it("shows a hidden badge for hidden field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameterRequired.id}`,
+      );
+
+      expect(within(formSection).getByText("Hidden")).toBeInTheDocument();
+    });
+
+    it("doesn't show validation error for not required field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameterRequired.id}`,
+      );
+
+      expect(
+        within(formSection).queryByText(
+          `${actionParameterRequired.name}: required`,
+        ),
+      ).not.toBeInTheDocument();
+    });
+
+    it("allows to submit a form", () => {
+      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+    });
   });
 
   describe("when there are required, hidden, but not mapped parameters", () => {
-    const actionWithHiddenFields = createMockQueryAction({
+    const action = createMockQueryAction({
       ...actions1[0],
       parameters: [actionParameter1, actionParameterRequired],
       visualization_settings: {
@@ -155,21 +182,48 @@ describe("ActionViz > ActionDashcardSettings", () => {
       },
     });
 
-    const actionDashcardWithActionWithHiddenFields = {
+    const dashcard = {
       ...actionDashcardWithAction,
-      action: actionWithHiddenFields,
+      action: action,
     };
 
     beforeEach(() => {
       setup({
-        dashcard: actionDashcardWithActionWithHiddenFields,
+        dashcard: dashcard,
       });
     });
 
-    doesntShowHiddenBadge(actionParameter1);
-    showsHiddenBadge(actionParameterRequired);
-    showsValidationError(actionParameterRequired);
-    doesntAllowSubmit();
+    it("doesn't show a hidden badge for not hidden field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameter1.id}`,
+      );
+
+      expect(within(formSection).queryByText("Hidden")).not.toBeInTheDocument();
+    });
+
+    it("shows a hidden badge for hidden field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameterRequired.id}`,
+      );
+
+      expect(within(formSection).getByText("Hidden")).toBeInTheDocument();
+    });
+
+    it("shows validation error for not required field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameterRequired.id}`,
+      );
+
+      expect(
+        within(formSection).getByText(
+          `${actionParameterRequired.name}: required`,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("doesn't allow to submit a form", () => {
+      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    });
 
     it("shows a placeholder text to select a value", () => {
       const formSection = screen.getByTestId(
@@ -182,98 +236,47 @@ describe("ActionViz > ActionDashcardSettings", () => {
     });
   });
 
-  describe("when there are required, mapped, but not hidden parameters", () => {
-    const actionWithHiddenFields = {
-      ...actions1[0],
-      parameters: [actionParameter1],
-      visualization_settings: {
-        fields: {
-          [actionParameter1.id]: createMockFieldSettings({
-            id: actionParameter1.id,
-            hidden: false,
-          }),
-        },
-      },
-    };
-
-    const actionDashcardWithActionWithHiddenFields = {
-      ...actionDashcardWithAction,
-      action: actionWithHiddenFields,
-      parameter_mappings: actionWithHiddenFields.parameters.map(parameter => ({
-        parameter_id: dashboardParameter.id,
-        target: parameter.target,
-      })),
-    };
-
+  describe.each([
+    [
+      "not required, not hidden, mapped",
+      dashcardFactory({ hidden: false, required: false, mapped: true }),
+    ],
+    [
+      "required, not hidden, not mapped",
+      dashcardFactory({ hidden: false, required: true, mapped: false }),
+    ],
+    [
+      "not required, not hidden, not mapped",
+      dashcardFactory({ hidden: false, required: false, mapped: false }),
+    ],
+  ])("when parameter %s", (_, getDashcard) => {
     beforeEach(() => {
       setup({
-        dashcard: actionDashcardWithActionWithHiddenFields,
+        dashcard: getDashcard(),
       });
     });
 
-    doesntShowHiddenBadge(actionParameter1);
-    doesntShowValidationError(actionParameter1);
-    allowsSubmit();
-  });
+    it("doesn't show a hidden badge for not hidden field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameter1.id}`,
+      );
 
-  describe("when parameters are required, but not hidden and not mapped", () => {
-    const actionWithRequiredField = {
-      ...actions1[0],
-      parameters: [actionParameter1],
-      visualization_settings: {
-        fields: {
-          [actionParameter1.id]: createMockFieldSettings({
-            id: actionParameter1.id,
-            hidden: false,
-          }),
-        },
-      },
-    };
-
-    const actionDashcardWithActionWithRequiredField = {
-      ...actionDashcardWithAction,
-      action: actionWithRequiredField,
-    };
-
-    beforeEach(() => {
-      setup({
-        dashcard: actionDashcardWithActionWithRequiredField,
-      });
+      expect(within(formSection).queryByText("Hidden")).not.toBeInTheDocument();
     });
 
-    doesntShowHiddenBadge(actionParameter1);
-    doesntShowValidationError(actionParameter1);
-    allowsSubmit();
-  });
+    it("doesn't show validation error for not required field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameter1.id}`,
+      );
 
-  describe("when parameters are not required, not hidden and not mapped", () => {
-    const actionWithOptionalField = {
-      ...actions1[0],
-      parameters: [actionParameter1],
-      visualization_settings: {
-        fields: {
-          [actionParameter1.id]: createMockFieldSettings({
-            id: actionParameter1.id,
-            hidden: false,
-          }),
-        },
-      },
-    };
-
-    const actionDashcardWithActionWithOptionalField = {
-      ...actionDashcardWithAction,
-      action: actionWithOptionalField,
-    };
-
-    beforeEach(() => {
-      setup({
-        dashcard: actionDashcardWithActionWithOptionalField,
-      });
+      expect(
+        within(formSection).queryByText(`${actionParameter1.name}: required`),
+      ).not.toBeInTheDocument();
     });
 
-    doesntShowHiddenBadge(actionParameter1);
-    doesntShowValidationError(actionParameter1);
-    allowsSubmit();
+    it("allows to submit a form", () => {
+      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+    });
   });
 
   it("shows the action dashcard settings component", () => {
@@ -333,62 +336,6 @@ describe("ActionViz > ActionDashcardSettings", () => {
   });
 });
 
-function allowsSubmit() {
-  it("allows to submit a form", () => {
-    expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
-  });
-}
-
-function doesntAllowSubmit() {
-  it("doesn't allow to submit a form", () => {
-    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
-  });
-}
-
-function showsHiddenBadge(parameter: WritebackParameter) {
-  it(`shows a hidden badge for a hidden field ${parameter.name}`, () => {
-    const formSection = screen.getByTestId(
-      `parameter-form-section-${parameter.id}`,
-    );
-
-    expect(within(formSection).getByText("Hidden")).toBeInTheDocument();
-  });
-}
-
-function doesntShowHiddenBadge(parameter: WritebackParameter) {
-  it(`doesn't show a hidden badge for a hidden field ${parameter.name}`, () => {
-    const formSection = screen.getByTestId(
-      `parameter-form-section-${parameter.id}`,
-    );
-
-    expect(within(formSection).queryByText("Hidden")).not.toBeInTheDocument();
-  });
-}
-
-function showsValidationError(parameter: WritebackParameter) {
-  it(`shows a validation error for ${parameter.name}`, () => {
-    const formSection = screen.getByTestId(
-      `parameter-form-section-${parameter.id}`,
-    );
-
-    expect(
-      within(formSection).getByText(`${parameter.name}: required`),
-    ).toBeInTheDocument();
-  });
-}
-
-function doesntShowValidationError(parameter: WritebackParameter) {
-  it(`doesn't show a validation error for ${parameter.name}`, () => {
-    const formSection = screen.getByTestId(
-      `parameter-form-section-${parameter.id}`,
-    );
-
-    expect(
-      within(formSection).queryByText(`${parameter.name}: required`),
-    ).not.toBeInTheDocument();
-  });
-}
-
 function createActionParameter(
   id: number,
   options: Partial<WritebackParameter> = {},
@@ -400,4 +347,41 @@ function createActionParameter(
     target: ["variable", ["template-tag", `action-parameter-${id}`]],
     ...options,
   });
+}
+
+function dashcardFactory({
+  required,
+  hidden,
+  mapped,
+}: {
+  required: boolean;
+  hidden: boolean;
+  mapped: boolean;
+}) {
+  const action = {
+    ...actions1[0],
+    parameters: [actionParameter1],
+    visualization_settings: {
+      fields: {
+        [actionParameter1.id]: createMockFieldSettings({
+          id: actionParameter1.id,
+          hidden,
+          required,
+        }),
+      },
+    },
+  };
+
+  const dashcard = {
+    ...actionDashcardWithAction,
+    action: action,
+    parameter_mappings: mapped
+      ? action.parameters.map(parameter => ({
+          parameter_id: dashboardParameter.id,
+          target: parameter.target,
+        }))
+      : [],
+  };
+
+  return () => dashcard;
 }
