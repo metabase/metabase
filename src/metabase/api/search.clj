@@ -525,7 +525,10 @@
                             mw.offset-paging/*limit*
                             mw.offset-paging/*offset*))
         duration   (- (System/currentTimeMillis) start-time)]
-    (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id* {:runtime duration})
+    (when (and (nil? models)
+               (nil? table_db_id)
+               (not archived))
+      (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id* {:runtime duration}))
     results))
 
 (api/define-routes)
