@@ -1,4 +1,3 @@
-/* eslint-disable react/no-string-refs */
 import { t } from "ttag";
 import cx from "classnames";
 

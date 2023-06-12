@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";

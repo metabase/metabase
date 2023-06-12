@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import * as React from "react";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
