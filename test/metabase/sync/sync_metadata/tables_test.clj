@@ -42,6 +42,15 @@
       (is (= {"Table 1" true, "Table 2" false, "Table 3" false}
              (t2/select-fn->fn :name :active Table, :db_id (u/the-id db)))))))
 
+(deftest activate-tables!-test
+  (testing "`activate-new-tables!` should activate tables that are currently inactive but in the DB metadata"
+    (mt/with-temp* [Database [db]
+                    Table    [_table-1 {:name "Table 1", :db_id (u/the-id db), :schema "Schema 1", :active true}]
+                    Table    [_table-2 {:name "Table 2", :db_id (u/the-id db), :schema "Schema 2", :active false}]]
+      (#'sync-tables/activate-new-tables! db {:tables #{{:name "Table 1", :schema "Schema 1"}
+                                                        {:name "Table 2", :schema "Schema 2"}}})
+      (is (= {"Table 1" true, "Table 2" true}
+             (t2/select-fn->fn :name :active Table, :db_id (u/the-id db)))))))
 
 (deftest retire-tables-test
   (testing "`retire-tables!` should retire the Table(s) passed to it, not all Tables in the DB -- see #9593"

@@ -227,14 +227,13 @@
     (t2/update! Table existing-id {:active true})))
 
 (defn activate-new-tables!
-  "Activate any tables that were newly created or previously inactive but are now present in the db-metadata."
+  "Activate any tables that are currently inactive but are present in the db-metadata."
   [database db-metadata]
   (let [db-tables    (table-set db-metadata)
         our-metadata (our-metadata database)
         [new-tables] (data/diff db-tables our-metadata)]
-    (when (seq new-tables)
-      (sync-util/with-error-handling (format "Error reactivating tables for %s"
-                                             (sync-util/name-for-logging database))
-        (doseq [table new-tables]
-          (activate-table! database table))))
+    (sync-util/with-error-handling (format "Error reactivating tables for %s"
+                                           (sync-util/name-for-logging database))
+      (doseq [table new-tables]
+        (activate-table! database table)))
     {:updated-tables new-tables}))
