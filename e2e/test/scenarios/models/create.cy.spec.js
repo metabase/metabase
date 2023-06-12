@@ -1,4 +1,10 @@
-import { restore, visitCollection } from "e2e/support/helpers";
+import {
+  getCollectionIdFromSlug,
+  modal,
+  popover,
+  restore,
+  visitCollection,
+} from "e2e/support/helpers";
 
 const modelName = "A name";
 
@@ -12,14 +18,14 @@ describe("scenarios > models > create", () => {
   it("creates a native query model via the New button", () => {
     cy.visit("/");
 
-    goFromHomePageToNewNativeQueryModelPage();
+    navigateToNewModelPage();
 
     // Cancel creation with confirmation modal
     cy.findByText("Cancel").click();
     cy.findByText("Discard").click();
 
     // Now we will create a model
-    goFromHomePageToNewNativeQueryModelPage();
+    navigateToNewModelPage();
 
     // Clicking on metadata should not work until we run a query
     cy.findByTestId("editor-tabs-metadata").should("be.disabled");
@@ -39,12 +45,50 @@ describe("scenarios > models > create", () => {
 
     checkIfPinned();
   });
+
+  it("suggest the currently viewed collection when saving a new native query", () => {
+    getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
+      visitCollection(THIRD_COLLECTION_ID);
+    });
+
+    navigateToNewModelPage();
+    cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
+
+    cy.findByRole("button", { name: "Save" }).click();
+
+    modal().within(() => {
+      cy.findByTestId("select-button").should("have.text", "Third collection");
+    });
+  });
+
+  it("suggest the currently viewed collection when saving a new structured query", () => {
+    getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
+      visitCollection(THIRD_COLLECTION_ID);
+    });
+
+    navigateToNewModelPage("structured");
+
+    popover().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Orders").click();
+    });
+
+    cy.findByRole("button", { name: "Save" }).click();
+
+    modal().within(() => {
+      cy.findByTestId("select-button").should("have.text", "Third collection");
+    });
+  });
 });
 
-function goFromHomePageToNewNativeQueryModelPage() {
+function navigateToNewModelPage(queryType = "native") {
   cy.findByText("New").click();
   cy.findByText("Model").click();
-  cy.findByText("Use a native query").click();
+  if (queryType === "structured") {
+    cy.findByText("Use the notebook editor").click();
+  } else {
+    cy.findByText("Use a native query").click();
+  }
 }
 
 function checkIfPinned() {

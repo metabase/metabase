@@ -162,7 +162,7 @@
     (dump/dump path
                databases
                tables
-               (field/with-values fields)
+               (mapcat field/with-values (u/batches-of 32000 fields))
                metrics
                (select-segments-in-tables tables state)
                collections

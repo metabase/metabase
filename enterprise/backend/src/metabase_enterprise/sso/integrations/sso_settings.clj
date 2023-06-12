@@ -86,6 +86,7 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   ;; Should be in the form: {"groupName": [1, 2, 3]} where keys are SAML groups and values are lists of MB groups IDs
   (deferred-tru "JSON containing SAML to Metabase group mappings.")
   :type    :json
+  :cache?  false
   :default {}
   :setter (comp (partial setting/set-value-of-type! :json :saml-group-mappings) validate-group-mappings))
 
@@ -140,6 +141,7 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   ;; Should be in the form: {"groupName": [1, 2, 3]} where keys are JWT groups and values are lists of MB groups IDs
   (deferred-tru "JSON containing JWT to Metabase group mappings.")
   :type    :json
+  :cache?  false
   :default {}
   :setter  (comp (partial setting/set-value-of-type! :json :jwt-group-mappings) validate-group-mappings))
 
