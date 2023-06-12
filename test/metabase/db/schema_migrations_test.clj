@@ -836,38 +836,6 @@
                    "F2 D1"}
                  (t2/select-fn-set :name Dimension {:order-by [[:id :asc]]}))))))))
 
-(deftest clean-up-gtap-table-test
-  (testing "Migrations v46.00-064 to v46.00-067: rename `group_table_access_policy` table, add `permission_id` FK,
-           and clean up orphaned rows"
-    (impl/test-migrations ["v46.00-064" "v46.00-067"] [migrate!]
-      (let [db-id    (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "DB"
-                                                                                :engine     "h2"
-                                                                                :created_at :%now
-                                                                                :updated_at :%now
-                                                                                :details    "{}"}))
-            table-id (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                             :name       "Table"
-                                                                             :created_at :%now
-                                                                             :updated_at :%now
-                                                                             :active     true}))
-            _        (t2/query-one {:insert-into :group_table_access_policy
-                                    :values      [{:group_id             1
-                                                   :table_id             table-id
-                                                   :attribute_remappings "{\"foo\", 1}"}
-                                                  {:group_id             2
-                                                   :table_id             table-id
-                                                   :attribute_remappings "{\"foo\", 1}"}]})
-            perm-id  (first (t2/insert-returning-pks! (t2/table-name Permissions) {:group_id 1
-                                                                                   :object   "/db/1/schema/PUBLIC/table/1/query/segmented/"}))]
-        ;; Two rows are present in `group_table_access_policy`
-        (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}"}
-                {:id 2, :group_id 2, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}"}]
-               (mdb.query/query {:select [:*] :from [:group_table_access_policy]})))
-        (migrate!)
-        ;; Only the sandbox with a corresponding `Permissions` row is present, and the table is renamed to `sandboxes`
-        (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
-               (mdb.query/query {:select [:*] :from [:sandboxes]})))))))
-
 (deftest able-to-delete-db-with-actions-test
   (testing "Migrations v46.00-084 and v46.00-085 set delete CASCADE for action.model_id to
            fix the bug of unable to delete database with actions"
@@ -1115,8 +1083,8 @@
           (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-18 18))))))))
 
 (deftest backfill-permission-id-test
-  (testing "Migrations v47.00-043: backfill `permission_id` FK on sandbox table"
-    (impl/test-migrations ["v47.00-043" "v47.00-045"] [migrate!]
+  (testing "Migrations v46.00-088-v46.00-90: backfill `permission_id` FK on sandbox table"
+    (impl/test-migrations ["v46.00-088" "v46.00-090"] [migrate!]
       (let [db-id    (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "DB"
                                                                                 :engine     "h2"
                                                                                 :created_at :%now
