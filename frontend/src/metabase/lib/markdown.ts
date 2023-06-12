@@ -7,14 +7,26 @@ import { unified } from "unified";
 
 const REMARK_PLUGINS = [remarkGfm];
 
-export type Root = ReturnType<typeof parseMarkdown>;
+type Root = ReturnType<typeof parseMarkdown>;
 
-export type Content = Root["children"];
+type Content = Root["children"];
 
-export type ArrayElement<ArrayType extends readonly unknown[]> =
+type ArrayElement<ArrayType extends readonly unknown[]> =
   ArrayType extends readonly (infer ElementType)[] ? ElementType : never;
 
-export type Node = ArrayElement<Content>;
+type Node = ArrayElement<Content>;
+
+export const parseMarkdown = (value: string, options: Options = {}) => {
+  const processor = unified()
+    .use(remarkParse)
+    .use(REMARK_PLUGINS)
+    .use(remarkRehype)
+    .use(rehypeFilter, options);
+  const file = { value };
+  const root = processor.runSync(processor.parse(file), file);
+
+  return root;
+};
 
 export const getLeadingText = (root: Root): string => {
   for (const child of root.children) {
@@ -38,16 +50,4 @@ const renderText = (node: Node): string => {
   }
 
   return "";
-};
-
-export const parseMarkdown = (value: string, options: Options = {}) => {
-  const processor = unified()
-    .use(remarkParse)
-    .use(REMARK_PLUGINS)
-    .use(remarkRehype)
-    .use(rehypeFilter, options);
-  const file = { value };
-  const root = processor.runSync(processor.parse(file), file);
-
-  return root;
 };
