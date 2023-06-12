@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.collection :as api.collection]
+   [metabase.config :as config]
    [metabase.models
     :refer [Card
             Collection
