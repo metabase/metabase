@@ -1113,3 +1113,38 @@
           (is (= cases rollbacked-to-18))
           (is (true? (custom-migrations-test/no-cards-are-overlap? rollbacked-to-18)))
           (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-18 18))))))))
+
+(deftest backfill-permission-id-test
+  (testing "Migrations v47.00-043: backfill `permission_id` FK on sandbox table"
+    (impl/test-migrations ["v47.00-043" "v47.00-045"] [migrate!]
+      (let [db-id    (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "DB"
+                                                                                :engine     "h2"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :details    "{}"}))
+            table-id (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                             :schema     "SchemaName"
+                                                                             :name       "Table"
+                                                                             :created_at :%now
+                                                                             :updated_at :%now
+                                                                             :active     true}))
+            _        (t2/query-one {:insert-into :sandboxes
+                                    :values      [{:group_id             1
+                                                   :table_id             table-id
+                                                   :attribute_remappings "{\"foo\", 1}"}
+                                                  {:group_id             2
+                                                   :table_id             table-id
+                                                   :attribute_remappings "{\"foo\", 1}"}]})
+            perm-id  (first (t2/insert-returning-pks! (t2/table-name Permissions)
+                                                      [{:group_id 1
+                                                        :object   "/db/1/schema/SchemaName/table/1/query/segmented/"}
+                                                       {:group_id 1
+                                                        :object   "/db/1/schema//table/1/query/segmented/"}]))]
+        ;; Two rows are present in `sandboxes`
+        (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}" :permission_id nil}
+                {:id 2, :group_id 2, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}" :permission_id nil}]
+               (mdb.query/query {:select [:*] :from [:sandboxes]})))
+        (migrate!)
+        ;; Only the sandbox with a corresponding `Permissions` row is present
+        (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
+               (mdb.query/query {:select [:*] :from [:sandboxes]})))))))
