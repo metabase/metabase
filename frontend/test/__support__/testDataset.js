@@ -1,4 +1,4 @@
-export default {
+export const testDataset = {
   rows: [
     [
       "1",
@@ -355,6 +355,46 @@ export default {
         },
       },
       base_type: "type/DateTime",
+    },
+  ],
+};
+
+export const testDatasetWithImage = {
+  rows: [
+    [
+      "1",
+      "https://www.metabase.com/images/logo.svg",
+      "https://www.metabase.com/images/home/cloud.svg",
+    ],
+    [
+      "2",
+      "https://www.metabase.com/images/logo.svg",
+      "https://www.metabase.com/images/home/cloud.svg",
+    ],
+    [
+      "3",
+      "https://www.metabase.com/images/logo.svg",
+      "https://www.metabase.com/images/home/cloud.svg",
+    ],
+  ],
+  cols: [
+    {
+      name: "id",
+      display_name: "ID",
+      base_type: "type/Integer",
+      semantic_type: null,
+    },
+    {
+      name: "image",
+      display_name: "Image",
+      base_type: "type/Text",
+      semantic_type: "type/ImageURL",
+    },
+    {
+      name: "avatar image",
+      display_name: "Image",
+      base_type: "type/Text",
+      semantic_type: "type/AvatarURL",
     },
   ],
 };

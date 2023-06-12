@@ -4,12 +4,18 @@ import { t } from "ttag";
 
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
+import { Flex } from "metabase/ui";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import EmptyState from "metabase/components/EmptyState";
 
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import Ellipsified from "metabase/core/components/Ellipsified";
-import { isa, isID } from "metabase-lib/types/utils/isa";
+import {
+  isa,
+  isID,
+  isImageURL,
+  isAvatarURL,
+} from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 
@@ -18,6 +24,7 @@ import {
   ObjectDetailsTable,
   GridContainer,
   GridCell,
+  FitImage,
 } from "./ObjectDetail.styled";
 
 export interface DetailsTableCellProps {
@@ -158,32 +165,47 @@ export function DetailsTable({
   return (
     <ObjectDetailsTable>
       <GridContainer cols={3}>
-        {cols.map((column, columnIndex) => (
-          <Fragment key={columnIndex}>
-            <GridCell>
-              <DetailsTableCell
-                column={column}
-                value={row[columnIndex] ?? t`Empty`}
-                isColumnName
-                settings={settings}
-                className="text-bold text-medium"
-                onVisualizationClick={onVisualizationClick}
-                visualizationIsClickable={visualizationIsClickable}
-              />
-            </GridCell>
-            <GridCell colSpan={2}>
-              <DetailsTableCell
-                column={column}
-                value={row[columnIndex]}
-                isColumnName={false}
-                settings={settings}
-                className="text-bold text-dark text-spaced text-wrap"
-                onVisualizationClick={onVisualizationClick}
-                visualizationIsClickable={visualizationIsClickable}
-              />
-            </GridCell>
-          </Fragment>
-        ))}
+        {cols.map((column, columnIndex) => {
+          const columnValue = row[columnIndex];
+          const isImage =
+            (isImageURL(column) || isAvatarURL(column)) &&
+            typeof columnValue === "string" &&
+            columnValue.startsWith("http");
+
+          return (
+            <Fragment key={columnIndex}>
+              <GridCell>
+                <DetailsTableCell
+                  column={column}
+                  value={row[columnIndex] ?? t`Empty`}
+                  isColumnName
+                  settings={settings}
+                  className="text-bold text-medium"
+                  onVisualizationClick={onVisualizationClick}
+                  visualizationIsClickable={visualizationIsClickable}
+                />
+              </GridCell>
+              <GridCell colSpan={2}>
+                <DetailsTableCell
+                  column={column}
+                  value={columnValue}
+                  isColumnName={false}
+                  settings={settings}
+                  className="text-bold text-dark text-spaced text-wrap"
+                  onVisualizationClick={onVisualizationClick}
+                  visualizationIsClickable={visualizationIsClickable}
+                />
+              </GridCell>
+              {isImage && (
+                <GridCell colSpan={3}>
+                  <Flex>
+                    <FitImage src={columnValue} alt={columnValue} />
+                  </Flex>
+                </GridCell>
+              )}
+            </Fragment>
+          );
+        })}
       </GridContainer>
     </ObjectDetailsTable>
   );

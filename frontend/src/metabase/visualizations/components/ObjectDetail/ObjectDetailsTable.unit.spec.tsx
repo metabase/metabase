@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { DetailsTable } from "metabase/visualizations/components/ObjectDetail/ObjectDetailsTable";
-import testDataset from "__support__/testDataset";
+import { testDataset, testDatasetWithImage } from "__support__/testDataset";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -58,6 +58,44 @@ describe("ObjectDetailsTable", () => {
 
     expect(screen.getByText("Small Marble Shoes")).toBeInTheDocument();
     expect(screen.getByText("Doohickey")).toBeInTheDocument();
+  });
+
+  describe("image rendering", () => {
+    it("should render an image if the column is an image url", () => {
+      render(
+        <DetailsTable
+          data={testDatasetWithImage as any}
+          zoomedRow={testDatasetWithImage.rows[1]}
+          onVisualizationClick={() => null}
+          visualizationIsClickable={() => false}
+          settings={{
+            column: () => null,
+          }}
+        />,
+      );
+
+      expect(
+        screen.getByAltText(testDatasetWithImage.rows[1][1]),
+      ).toBeInTheDocument();
+    });
+
+    it("should render an image if the column is an avatar image url", () => {
+      render(
+        <DetailsTable
+          data={testDatasetWithImage as any}
+          zoomedRow={testDatasetWithImage.rows[1]}
+          onVisualizationClick={() => null}
+          visualizationIsClickable={() => false}
+          settings={{
+            column: () => null,
+          }}
+        />,
+      );
+
+      expect(
+        screen.getByAltText(testDatasetWithImage.rows[1][2]),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("json field rendering", () => {
