@@ -116,7 +116,7 @@
 
 (s/defn ^:private create-tables-as-inactive!
   "Create NEW-TABLES for database. Tables have active=false."
-  [database :- i/DatabaseInstance, new-tables :- #{i/DatabaseMetadataTable}]
+  [database :- i/DatabaseInstance, new-tables :- [i/DatabaseMetadataTable]]
   (log/info (trs "Found new tables:")
             (for [table new-tables]
               (sync-util/name-for-logging (mi/instance Table table))))
@@ -195,7 +195,7 @@
        (sync-util/with-error-handling (format "Error updating database metadata for %s"
                                               (sync-util/name-for-logging database))
          (update-database-metadata! database db-metadata)))
-     ;; create new tables as needed
+     ;; create new tables as needed. Set them to inactive until all their fields are synced
      (when (seq to-create-tables)
        (sync-util/with-error-handling (format "Error creating tables for %s"
                                               (sync-util/name-for-logging database))
