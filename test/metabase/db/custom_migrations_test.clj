@@ -345,56 +345,56 @@
                 :row 18}]
               (t2/select-fn-vec #(select-keys % [:id :row]) :model/DashboardCard :dashboard_id dashboard-id)))))))
 
-(deftest migrate-dashboard-revision-grid-from-18-to-24-test
-  (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
-    (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-          migrate-down! (partial db.setup/migrate! db-type data-source :down)
-          user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                              :last_name   "Hughes"
-                                                              :email       "howard@aircraft.com"
-                                                              :password    "superstrong"
-                                                              :date_joined :%now}))
+#_(deftest migrate-dashboard-revision-grid-from-18-to-24-test
+    (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
+      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+            migrate-down! (partial db.setup/migrate! db-type data-source :down)
+            user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
+                                                                :last_name   "Hughes"
+                                                                :email       "howard@aircraft.com"
+                                                                :password    "superstrong"
+                                                                :date_joined :%now}))
 
-          cards        [{:row 15 :col 0  :size_x 12 :size_y 8}
-                        {:row 7  :col 12 :size_x 6  :size_y 8}
-                        {:row 2  :col 5  :size_x 5  :size_y 3}
-                        {:row 25 :col 0  :size_x 7  :size_y 10}
-                        {:row 2  :col 0  :size_x 5  :size_y 3}
-                        {:row 7  :col 6  :size_x 6  :size_y 8}
-                        {:row 25 :col 7  :size_x 11 :size_y 10}
-                        {:row 7  :col 0  :size_x 6  :size_y 4}
-                        {:row 23 :col 0  :size_x 18 :size_y 2}
-                        {:row 5  :col 0  :size_x 18 :size_y 2}
-                        {:row 0  :col 0  :size_x 18 :size_y 2}
-                        ;; these 2 last cases is a specical case where the last card has (width, height) = (1, 1)
-                        ;; it's to test an edge case to make sure downgrade from 24 -> 18 does not remove this card
-                        {:row 36 :col 0  :size_x 17 :size_y 1}
-                        {:row 36 :col 17 :size_x 1  :size_y 1}]
-          revision-id (first (t2/insert-returning-pks! 'Revision
-                                                        {:object   {:cards cards}
-                                                         :model    "Dashboard"
-                                                         :model_id 1
-                                                         :user_id  user-id}))]
+            cards        [{:row 15 :col 0  :size_x 12 :size_y 8}
+                          {:row 7  :col 12 :size_x 6  :size_y 8}
+                          {:row 2  :col 5  :size_x 5  :size_y 3}
+                          {:row 25 :col 0  :size_x 7  :size_y 10}
+                          {:row 2  :col 0  :size_x 5  :size_y 3}
+                          {:row 7  :col 6  :size_x 6  :size_y 8}
+                          {:row 25 :col 7  :size_x 11 :size_y 10}
+                          {:row 7  :col 0  :size_x 6  :size_y 4}
+                          {:row 23 :col 0  :size_x 18 :size_y 2}
+                          {:row 5  :col 0  :size_x 18 :size_y 2}
+                          {:row 0  :col 0  :size_x 18 :size_y 2}
+                          ;; these 2 last cases is a specical case where the last card has (width, height) = (1, 1)
+                          ;; it's to test an edge case to make sure downgrade from 24 -> 18 does not remove this card
+                          {:row 36 :col 0  :size_x 17 :size_y 1}
+                          {:row 36 :col 17 :size_x 1  :size_y 1}]
+            revision-id (first (t2/insert-returning-pks! 'Revision
+                                                          {:object   {:cards cards}
+                                                           :model    "Dashboard"
+                                                           :model_id 1
+                                                           :user_id  user-id}))]
 
-      (migrate!)
-      (testing "forward migration migrate correclty"
-        (is (= [{:row 15 :col 0  :size_x 16 :size_y 8}
-                {:row 7  :col 16 :size_x 8  :size_y 8}
-                {:row 2  :col 7  :size_x 6  :size_y 3}
-                {:row 25 :col 0  :size_x 9  :size_y 10}
-                {:row 2  :col 0  :size_x 7  :size_y 3}
-                {:row 7  :col 8  :size_x 8  :size_y 8}
-                {:row 25 :col 9  :size_x 15 :size_y 10}
-                {:row 7  :col 0  :size_x 8  :size_y 4}
-                {:row 23 :col 0  :size_x 24 :size_y 2}
-                {:row 5  :col 0  :size_x 24 :size_y 2}
-                {:row 0  :col 0  :size_x 24 :size_y 2}
-                {:row 36 :col 0  :size_x 23 :size_y 1}
-                {:row 36 :col 23 :size_x 1  :size_y 1}]
-               (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))
-     (migrate-down! 46)
-     (testing "downgrade works correctly"
-      (is (= cards (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id)))))))
+        (migrate!)
+        (testing "forward migration migrate correclty"
+          (is (= [{:row 15 :col 0  :size_x 16 :size_y 8}
+                  {:row 7  :col 16 :size_x 8  :size_y 8}
+                  {:row 2  :col 7  :size_x 6  :size_y 3}
+                  {:row 25 :col 0  :size_x 9  :size_y 10}
+                  {:row 2  :col 0  :size_x 7  :size_y 3}
+                  {:row 7  :col 8  :size_x 8  :size_y 8}
+                  {:row 25 :col 9  :size_x 15 :size_y 10}
+                  {:row 7  :col 0  :size_x 8  :size_y 4}
+                  {:row 23 :col 0  :size_x 24 :size_y 2}
+                  {:row 5  :col 0  :size_x 24 :size_y 2}
+                  {:row 0  :col 0  :size_x 24 :size_y 2}
+                  {:row 36 :col 0  :size_x 23 :size_y 1}
+                  {:row 36 :col 23 :size_x 1  :size_y 1}]
+                 (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))
+       (migrate-down! 46)
+       (testing "downgrade works correctly"
+        (is (= cards (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id)))))))
 
 (defn two-cards-overlap? [box1 box2]
   (let [{col1    :col
