@@ -17,7 +17,7 @@ import { mockSettings } from "__support__/settings";
 
 import { DatabasePromptBanner } from "./DatabasePromptBanner";
 
-interface SetupOpts {
+interface setupOpts {
   isAdmin?: boolean;
   isPaidPlan?: boolean;
   onlyHaveSampleDatabase?: boolean;
@@ -28,19 +28,17 @@ const TEST_DB = createSampleDatabase();
 
 const DATA_WAREHOUSE_DB = createMockDatabase({ id: 2 });
 
-function setup({
+async function setup({
   isAdmin = false,
   isPaidPlan = false,
   onlyHaveSampleDatabase = false,
   isWhiteLabeling = false,
   isOnAdminAddDatabasePage = false,
-}: SetupOpts = {}) {
-  setupEnterpriseTest();
-
+}: setupOpts = {}) {
   if (onlyHaveSampleDatabase) {
-    setupDatabasesEndpoints([TEST_DB]);
+    await setupDatabasesEndpoints([TEST_DB]);
   } else {
-    setupDatabasesEndpoints([TEST_DB, DATA_WAREHOUSE_DB]);
+    await setupDatabasesEndpoints([TEST_DB, DATA_WAREHOUSE_DB]);
   }
 
   const state = createMockState({
@@ -65,116 +63,105 @@ function setup({
       withRouter: true,
     },
   );
-}
 
-describe("DatabasePromptBanner", () => {
-  it("should not render for non-admin users without paid plan without connected databases", () => {
-    setup({
-      isAdmin: false,
-      isPaidPlan: false,
-      onlyHaveSampleDatabase: false,
-    });
-
-    expect(
-      screen.queryByText(
-        "Connect to your database to get the most from Metabase.",
-      ),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should not render for admin users without paid plan or connected databases", () => {
-    setup({
-      isAdmin: true,
-    });
-
-    expect(
-      screen.queryByText(
-        "Connect to your database to get the most from Metabase.",
-      ),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should not render for paid-plan instance without being an admin or connected databases", () => {
-    setup({
-      isPaidPlan: true,
-    });
-
-    expect(
-      screen.queryByText(
-        "Connect to your database to get the most from Metabase.",
-      ),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should not render for instance with only sample database without being an admin or without paid plan", () => {
-    setup({
-      onlyHaveSampleDatabase: true,
-    });
-
-    expect(
-      screen.queryByText(
-        "Connect to your database to get the most from Metabase.",
-      ),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should not render for admin users with paid plan but with connected databases", () => {
-    setup({
-      isAdmin: true,
-      isPaidPlan: true,
-      onlyHaveSampleDatabase: false,
-    });
-
-    expect(
-      screen.queryByText(
-        "Connect to your database to get the most from Metabase.",
-      ),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should not render for admin users without connected databases but without paid plan", () => {
-    setup({
-      isAdmin: true,
-      isPaidPlan: false,
-      onlyHaveSampleDatabase: true,
-    });
-
-    expect(
-      screen.queryByText(
-        "Connect to your database to get the most from Metabase.",
-      ),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should not render for instance with paid plan and without connected databases but without being an admin user", () => {
-    setup({
-      isAdmin: false,
-      isPaidPlan: true,
-      onlyHaveSampleDatabase: true,
-    });
-
-    expect(
-      screen.queryByText(
-        "Connect to your database to get the most from Metabase.",
-      ),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should not render for admin users with paid plan without connected databases, but is white labeling", async () => {
-    setup({
-      isAdmin: true,
-      isPaidPlan: true,
-      onlyHaveSampleDatabase: true,
-      isWhiteLabeling: true,
-    });
-
-    // This ensures the conditions for database prompt banner are all available.
-    // Then we could safely assert that the banner is not rendered.
-    // If we don't wait for this API call to finish, the banner could have rendered,
-    // and the test would still pass.
+  // 1. We will only call this endpoint when `isAdmin` and `isPaidPlan` are both true.
+  // 2. This check ensures the conditions for database prompt banner are all available.
+  // Then we could safely assert that the banner is not rendered.
+  // If we don't wait for this API call to finish, the banner could have rendered,
+  // and the test would still pass.
+  if (isAdmin && isPaidPlan) {
     await waitFor(() => {
       expect(fetchMock.called("path:/api/database")).toBe(true);
     });
+  }
+}
+
+describe("DatabasePromptBanner", () => {
+  it("should not render for non-admin users without paid plan without connected databases", async () => {
+    await setup({
+      isAdmin: false,
+      isPaidPlan: false,
+      onlyHaveSampleDatabase: false,
+    });
+
+    expect(
+      screen.queryByText(
+        "Connect to your database to get the most from Metabase.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should not render for admin users without paid plan or connected databases", async () => {
+    await setup({
+      isAdmin: true,
+    });
+
+    expect(
+      screen.queryByText(
+        "Connect to your database to get the most from Metabase.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should not render for paid-plan instance without being an admin or connected databases", async () => {
+    await setup({
+      isPaidPlan: true,
+    });
+
+    expect(
+      screen.queryByText(
+        "Connect to your database to get the most from Metabase.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should not render for instance with only sample database without being an admin or without paid plan", async () => {
+    await setup({
+      onlyHaveSampleDatabase: true,
+    });
+
+    expect(
+      screen.queryByText(
+        "Connect to your database to get the most from Metabase.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should not render for admin users with paid plan but with connected databases", async () => {
+    await setup({
+      isAdmin: true,
+      isPaidPlan: true,
+      onlyHaveSampleDatabase: false,
+    });
+
+    expect(
+      screen.queryByText(
+        "Connect to your database to get the most from Metabase.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should not render for admin users without connected databases but without paid plan", async () => {
+    await setup({
+      isAdmin: true,
+      isPaidPlan: false,
+      onlyHaveSampleDatabase: true,
+    });
+
+    expect(
+      screen.queryByText(
+        "Connect to your database to get the most from Metabase.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should not render for instance with paid plan and without connected databases but without being an admin user", async () => {
+    await setup({
+      isAdmin: false,
+      isPaidPlan: true,
+      onlyHaveSampleDatabase: true,
+    });
+
     expect(
       screen.queryByText(
         "Connect to your database to get the most from Metabase.",
@@ -183,7 +170,7 @@ describe("DatabasePromptBanner", () => {
   });
 
   it("should render for admin users with paid plan without connected databases", async () => {
-    setup({
+    await setup({
       isAdmin: true,
       isPaidPlan: true,
       onlyHaveSampleDatabase: true,
@@ -215,7 +202,7 @@ describe("DatabasePromptBanner", () => {
   });
 
   it("should render for admin users with paid plan without connected databases, but without connect your database button if users is on admin add database page", async () => {
-    setup({
+    await setup({
       isAdmin: true,
       isPaidPlan: true,
       onlyHaveSampleDatabase: true,
@@ -242,6 +229,27 @@ describe("DatabasePromptBanner", () => {
         name: "Connect your database",
       }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("EE", () => {
+    beforeEach(() => {
+      setupEnterpriseTest();
+    });
+
+    it("should not render for admin users with paid plan without connected databases, but is white labeling", async () => {
+      await setup({
+        isAdmin: true,
+        isPaidPlan: true,
+        onlyHaveSampleDatabase: true,
+        isWhiteLabeling: true,
+      });
+
+      expect(
+        screen.queryByText(
+          "Connect to your database to get the most from Metabase.",
+        ),
+      ).not.toBeInTheDocument();
+    });
   });
 });
 
