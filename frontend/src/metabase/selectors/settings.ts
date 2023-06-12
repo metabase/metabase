@@ -1,6 +1,11 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import type { Settings, SettingKey, TokenFeatures } from "metabase-types/api";
+import type {
+  Settings,
+  SettingKey,
+  TokenFeatures,
+  ToastKeys,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 export const getSettings = createSelector(
@@ -40,3 +45,8 @@ const getUtmSource = (features: TokenFeatures) => {
     return features.hosting ? "starter" : "oss";
   }
 };
+
+export const hasUserDismissedToast = createSelector(
+  [getSettings, (state: State, toastKey: ToastKeys) => toastKey],
+  (settings, toastKey) => settings[toastKey],
+);

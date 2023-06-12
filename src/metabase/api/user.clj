@@ -275,8 +275,7 @@
         dash     (t2/select-one Dashboard :id id)
         valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
     (assoc user
-           :custom_homepage (when valid? {:dashboard_id id})
-           :dismissed_toasts {:dismissed_custom_dashboard_toast (view-log/dismissed-custom-dashboard-toast)})))
+           :custom_homepage (when valid? {:dashboard_id id}))))
 
 
 

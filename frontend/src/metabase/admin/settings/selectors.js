@@ -9,7 +9,8 @@ import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
-import { dismissToast, refreshCurrentUser } from "metabase/redux/user";
+import { refreshCurrentUser } from "metabase/redux/user";
+import { dismissToast } from "metabase/redux/settings";
 
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";

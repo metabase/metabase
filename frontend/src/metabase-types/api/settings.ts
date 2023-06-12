@@ -180,6 +180,7 @@ export interface Settings {
   "custom-homepage": boolean;
   "custom-homepage-dashboard": number | null;
   "deprecation-notice-version"?: string;
+  "dismissed-custom-dashboard-toast": boolean;
   "email-configured?": boolean;
   "embedding-secret-key"?: string;
   "enable-embedding": boolean;
@@ -249,3 +250,5 @@ export interface Settings {
 }
 
 export type SettingKey = keyof Settings;
+
+export type ToastKeys = "dismissed-custom-dashboard-toast";

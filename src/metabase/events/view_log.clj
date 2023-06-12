@@ -110,6 +110,7 @@
 (defsetting dismissed-custom-dashboard-toast
   (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
   :user-local :only
+  :visibility :authenticated
   :type :boolean
   :default false)
 
