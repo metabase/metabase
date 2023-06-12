@@ -14253,10 +14253,7 @@ databaseChangeLog:
             SET permission_id = (
               SELECT p.id
               FROM permissions p
-              JOIN (
-                SELECT id, db_id, schema
-                FROM metabase_table
-              ) t ON t.id = s.table_id
+              JOIN metabase_table t ON t.id = s.table_id
               WHERE
                 p.object LIKE CONCAT('/db/', t.db_id, '/schema/', t.schema, '/table/', s.table_id, '/query/segmented/')
                 AND p.group_id = s.group_id
