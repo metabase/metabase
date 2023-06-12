@@ -83,7 +83,7 @@
   Setting the Snowflake driver property privatekey would be easier, but that doesn't work
   because clojure.java.jdbc (properly) converts the property values into strings while the
   Snowflake driver expects a java.security.PrivateKey instance."
-  [{:keys [user password account private-key-value private-key-path] :as details}]
+  [{:keys [user password account private-key-value private-key-path private-key-id] :as details}]
   (cond
     password
     details
@@ -103,7 +103,17 @@
                                  (re-find driver.u/data-url-pattern private-key-str) driver.u/decode-uploaded)
           private-key-file     (secret/value->file! {:connection-property-name "private-key-file"
                                                      :value                    private-key-file-val})]
-      (handle-conn-uri details user account private-key-file))))
+      (handle-conn-uri details user account private-key-file))
+
+    ;; TODO: clean up all of this private key handling logic
+    private-key-id
+    (let [encoded (secret/value->string (secret/latest-for-id private-key-id))
+          decoded (cond-> encoded
+                    (re-find driver.u/data-url-pattern encoded) driver.u/decode-uploaded)
+          file    (secret/value->file! {:connection-property-name "private-key-file"
+                                        :value                    decoded})]
+      (assoc (handle-conn-uri details user account file)
+             :private_key_file file))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options], :as details}]
