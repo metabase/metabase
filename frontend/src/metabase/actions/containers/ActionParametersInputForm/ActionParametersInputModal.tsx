@@ -32,7 +32,11 @@ function ActionParametersInputModal({
         title={title}
         headerActions={
           onEdit ? (
-            <ModalContentActionIcon name="pencil" onClick={onEdit} />
+            <ModalContentActionIcon
+              name="pencil"
+              tooltip={t`Edit this action`}
+              onClick={onEdit}
+            />
           ) : undefined
         }
         onClose={onClose}
