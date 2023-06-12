@@ -65,6 +65,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
+   (java.io File)
    (java.util UUID)))
 
 (set! *warn-on-reflection* true)
@@ -1143,7 +1144,7 @@ saved later when it is ready."
   (when (or is_on_demand is_full_sync)
     (future (sync/sync-table! table))))
 
-(defn- csv-stats [csv-file]
+(defn- csv-stats [^File csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
     (let [rows (csv/read-csv reader)]
       {:size-mb     (/ (.length csv-file) 1048576.0)
