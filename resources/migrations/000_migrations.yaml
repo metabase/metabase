@@ -14245,21 +14245,21 @@ databaseChangeLog:
   - changeSet:
       id: v46.00-088
       author: noahmoss
-      comment: Added 0.46.5 -- backfill `permission_id` values in `sandboxes`. This is a fixed verison of v46.00-066
-               which has been removed, since it had a bug that blocked a customer from upgrading.
+      comment: Added 0.46.5 -- backfill `permission_id` values in `sandboxes`. This is a fixed version of v46.00-066
+               which has been removed since it had a bug that blocked a customer from upgrading.
       changes:
         - sql: >-
-            UPDATE sandboxes s
+            UPDATE sandboxes
             SET permission_id = (
-              SELECT p.id
-              FROM permissions p
-              JOIN metabase_table t ON t.id = s.table_id
+              SELECT permissions.id
+              FROM permissions
+              JOIN metabase_table ON metabase_table.id = sandboxes.table_id
               WHERE
-                p.object LIKE CONCAT('/db/', t.db_id, '/schema/', t.schema, '/table/', s.table_id, '/query/segmented/')
-                AND p.group_id = s.group_id
+                permissions.object LIKE CONCAT('/db/', metabase_table.db_id, '/schema/', metabase_table.schema, '/table/', sandboxes.table_id, '/query/segmented/')
+                AND permissions.group_id = sandboxes.group_id
               LIMIT 1
             )
-            WHERE permission_id is NULL;
+            WHERE permission_id IS NULL;
       rollback:
         # not required, new values added here do not need to be dropped
 
