@@ -14850,6 +14850,7 @@ databaseChangeLog:
       id: v47.00-032
       author: qnkhuat
       comment: Added 0.47.0 - migrate dashboard grid size from 18 to 24 for revisions
+      validCheckSum: ANY
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.RevisionDashboardMigrateGridFrom18To24"
