@@ -78,43 +78,39 @@ describe("PaymentBanner", () => {
       {
         isAdmin: true,
         tokenStatusStatus: "past-due",
-        shouldRenderPaymentBanner: true,
+        hasBanner: true,
       },
       {
         isAdmin: true,
         tokenStatusStatus: "unpaid",
-        shouldRenderPaymentBanner: true,
+        hasBanner: true,
       },
       {
         isAdmin: true,
         tokenStatusStatus: "something-else",
-        shouldRenderPaymentBanner: false,
+        hasBanner: false,
       },
       {
         isAdmin: false,
         tokenStatusStatus: "past-due",
-        shouldRenderPaymentBanner: false,
+        hasBanner: false,
       },
       {
         isAdmin: false,
         tokenStatusStatus: "unpaid",
-        shouldRenderPaymentBanner: false,
+        hasBanner: false,
       },
       {
         isAdmin: false,
         tokenStatusStatus: "something-else",
-        shouldRenderPaymentBanner: false,
+        hasBanner: false,
       },
     ])(
       "should return `${shouldRenderPaymentBanner} when isAdmin: $isAdmin, and tokenStatusStatus: $tokenStatusStatus`",
-      ({
-        isAdmin,
-        tokenStatusStatus,
-        shouldRenderPaymentBanner: expectedShouldRenderPaymentBanner,
-      }) => {
+      ({ isAdmin, tokenStatusStatus, hasBanner }) => {
         expect(
           shouldRenderPaymentBanner({ isAdmin, tokenStatusStatus }),
-        ).toEqual(expectedShouldRenderPaymentBanner);
+        ).toEqual(hasBanner);
       },
     );
   });
