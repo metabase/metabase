@@ -221,7 +221,8 @@
       :total-tables   (count our-metadata)})))
 
 (defn activate-new-tables!
-  "Activate any tables that are currently inactive but are present in the db-metadata."
+  "Activate any tables that are currently inactive but are present in the db-metadata. These are either tables that have
+   just been created or were already existing and inactive."
   [database db-metadata]
   (let [db-tables             (strip-desc (table-set db-metadata))
         active-tables         (map (partial into {})
