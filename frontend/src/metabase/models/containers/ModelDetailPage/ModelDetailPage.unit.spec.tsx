@@ -1,4 +1,3 @@
-import { FunctionComponent } from "react";
 import { IndexRedirect, Redirect, Route } from "react-router";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
@@ -58,8 +57,6 @@ import {
   createSavedStructuredCard,
   createStructuredModelCard as _createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
-import { useCollectionListQuery } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import * as ML_Urls from "metabase-lib/urls";
 import { TYPE } from "metabase-lib/types/constants";
@@ -196,26 +193,6 @@ type SetupOpts = {
   usedBy?: Card[];
 };
 
-const TestModelDetailPage: FunctionComponent = props => {
-  const { data, error, isLoading } = useCollectionListQuery();
-
-  if (!data) {
-    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
-  }
-
-  return <ModelDetailPage {...props} />;
-};
-
-const TestActionCreator: FunctionComponent = props => {
-  const { data, error, isLoading } = useCollectionListQuery();
-
-  if (!data) {
-    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
-  }
-
-  return <ActionCreator {...props} />;
-};
-
 async function setup({
   model: card,
   tab = "usage",
@@ -261,17 +238,17 @@ async function setup({
     <>
       <Route path="/model/:slug/detail">
         <IndexRedirect to="usage" />
-        <Route path="usage" component={TestModelDetailPage} />
-        <Route path="schema" component={TestModelDetailPage} />
-        <Route path="actions" component={TestModelDetailPage}>
+        <Route path="usage" component={ModelDetailPage} />
+        <Route path="schema" component={ModelDetailPage} />
+        <Route path="actions" component={ModelDetailPage}>
           <ModalRoute
             path="new"
-            modal={TestActionCreator}
+            modal={ActionCreator}
             modalProps={{ enableTransition: false }}
           />
           <ModalRoute
             path=":actionId"
-            modal={TestActionCreator}
+            modal={ActionCreator}
             modalProps={{ enableTransition: false }}
           />
         </Route>

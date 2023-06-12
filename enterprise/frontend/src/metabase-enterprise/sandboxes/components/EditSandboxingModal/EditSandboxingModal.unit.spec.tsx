@@ -2,16 +2,16 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
-  setupCardsEndpoints,
-  setupCollectionsEndpoints,
-  setupDatabasesEndpoints,
-} from "__support__/server-mocks";
-import {
   renderWithProviders,
   screen,
   waitFor,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import {
+  setupCardsEndpoints,
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 
 import { GroupTableAccessPolicy } from "metabase-types/api";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
@@ -21,10 +21,7 @@ import {
   PEOPLE_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { useCollectionListQuery } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-
 import EditSandboxingModal from "./EditSandboxingModal";
 
 const attributes = ["foo", "bar"];
@@ -50,17 +47,7 @@ const TEST_CARD = createMockCard({
   },
 });
 
-const TestComponent: typeof EditSandboxingModal = props => {
-  const { data, error, isLoading } = useCollectionListQuery();
-
-  if (!data) {
-    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
-  }
-
-  return <EditSandboxingModal {...props} />;
-};
-
-const setup = async ({
+const setup = ({
   shouldMockQuestions = false,
   policy = undefined,
 }: {
@@ -68,8 +55,12 @@ const setup = async ({
   policy?: GroupTableAccessPolicy;
 } = {}) => {
   const database = createSampleDatabase();
+
   setupDatabasesEndpoints([database]);
-  setupCollectionsEndpoints({ collections: [EDITABLE_ROOT_COLLECTION] });
+  setupCollectionsEndpoints({
+    collections: [EDITABLE_ROOT_COLLECTION],
+    rootCollection: EDITABLE_ROOT_COLLECTION,
+  });
   fetchMock.post("path:/api/mt/gtap/validate", 204);
   fetchMock.get("path:/api/permissions/group/1", {});
 
@@ -83,7 +74,7 @@ const setup = async ({
   const onSave = jest.fn();
 
   renderWithProviders(
-    <TestComponent
+    <EditSandboxingModal
       onCancel={jest.fn()}
       onSave={onSave}
       attributes={attributes}
@@ -91,8 +82,6 @@ const setup = async ({
       policy={policy}
     />,
   );
-
-  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 
   return { onSave };
 };
@@ -105,7 +94,7 @@ describe("EditSandboxingModal", () => {
   describe("EditSandboxingModal", () => {
     describe("creating new policy", () => {
       it("should allow creating a new policy", async () => {
-        const { onSave } = await setup();
+        const { onSave } = setup();
 
         expect(
           screen.getByText("Grant sandboxed access to this table"),
@@ -134,7 +123,7 @@ describe("EditSandboxingModal", () => {
       });
 
       it("should allow creating a new policy based on a card", async () => {
-        const { onSave } = await setup({ shouldMockQuestions: true });
+        const { onSave } = setup({ shouldMockQuestions: true });
 
         expect(
           screen.getByText("Grant sandboxed access to this table"),
@@ -148,7 +137,7 @@ describe("EditSandboxingModal", () => {
           ),
         );
 
-        userEvent.click(await screen.findByText(TEST_CARD.name));
+        userEvent.click(await screen.findByText("sandbox question"));
 
         userEvent.click(screen.getByText("Save"));
 
@@ -166,7 +155,7 @@ describe("EditSandboxingModal", () => {
 
   describe("editing policies", () => {
     it("should allow editing an existing policy", async () => {
-      const { onSave } = await setup({
+      const { onSave } = setup({
         shouldMockQuestions: true,
         policy: {
           id: 1,
@@ -192,7 +181,7 @@ describe("EditSandboxingModal", () => {
         ),
       );
 
-      userEvent.click(await screen.findByText(TEST_CARD.name));
+      userEvent.click(await screen.findByText("sandbox question"));
 
       userEvent.click(screen.getByText("Save"));
 

@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import PropTypes from "prop-types";
 
 import {
   setupCollectionsEndpoints,
@@ -12,11 +11,6 @@ import {
   within,
 } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
-import {
-  useCollectionQuery,
-  useCollectionListQuery,
-} from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import SnippetCollections from "metabase/entities/snippet-collections";
 
 import ItemPicker from "./ItemPicker";
@@ -53,12 +47,6 @@ const CURRENT_USER = createMockUser({
   personal_collection_id: 100,
   is_superuser: true,
 });
-
-const ROOT_SNIPPETS_COLLECTION = {
-  id: "root",
-  name: "Top folder",
-  can_write: true,
-};
 
 const COLLECTION = {
   ROOT: collection({ id: "root", name: "Our analytics", location: null }),
@@ -103,30 +91,10 @@ const DASHBOARD = {
   }),
 };
 
-const TestComponent = ({ query, ...props }) => {
-  const collectionsQuery = useCollectionListQuery({ query });
-  const rootCollectionQuery = useCollectionQuery({ id: "root", query });
-
-  if (!collectionsQuery.data || !rootCollectionQuery.data) {
-    return (
-      <LoadingAndErrorWrapper
-        error={collectionsQuery.error || rootCollectionQuery.error}
-        loading={collectionsQuery.isLoading || rootCollectionQuery.isLoading}
-      />
-    );
-  }
-
-  return <ItemPicker {...props} />;
-};
-
-TestComponent.propTypes = {
-  query: PropTypes.object,
-};
-
 async function setup({
   models = ["dashboard"],
   collections = Object.values(COLLECTION),
-  rootCollection,
+  rootCollection = COLLECTION.ROOT,
   query,
   ...props
 } = {}) {
@@ -139,12 +107,7 @@ async function setup({
   const onChange = jest.fn();
 
   renderWithProviders(
-    <TestComponent
-      models={models}
-      query={query}
-      onChange={onChange}
-      {...props}
-    />,
+    <ItemPicker models={models} query={query} onChange={onChange} {...props} />,
     {
       storeInitialState: {
         currentUser: CURRENT_USER,
@@ -351,19 +314,13 @@ describe("ItemPicker", () => {
   });
 
   describe("preserves order of snippet collections coming from API endpoint", () => {
-    it("[top, regular, regular 2]", async () => {
-      const collections = [
-        ROOT_SNIPPETS_COLLECTION,
-        COLLECTION.REGULAR,
-        COLLECTION.REGULAR_2,
-      ];
+    it("[regular, regular 2]", async () => {
+      const collections = [COLLECTION.REGULAR, COLLECTION.REGULAR_2];
 
       await setup({
         collections,
         entity: SnippetCollections,
-        models: ["collection"],
         query: { namespace: "snippets" },
-        rootCollection: ROOT_SNIPPETS_COLLECTION,
       });
 
       const items = screen.getAllByTestId("item-picker-item");
@@ -371,22 +328,15 @@ describe("ItemPicker", () => {
       expect(items.length).toBe(collections.length);
       expect(items[0]).toHaveTextContent(collections[0].name);
       expect(items[1]).toHaveTextContent(collections[1].name);
-      expect(items[2]).toHaveTextContent(collections[2].name);
     });
 
-    it("[top, regular 2, regular]", async () => {
-      const collections = [
-        ROOT_SNIPPETS_COLLECTION,
-        COLLECTION.REGULAR_2,
-        COLLECTION.REGULAR,
-      ];
+    it("[regular 2, regular]", async () => {
+      const collections = [COLLECTION.REGULAR_2, COLLECTION.REGULAR];
 
       await setup({
         collections,
         entity: SnippetCollections,
-        models: ["collection"],
         query: { namespace: "snippets" },
-        rootCollection: ROOT_SNIPPETS_COLLECTION,
       });
 
       const items = screen.getAllByTestId("item-picker-item");
@@ -394,30 +344,6 @@ describe("ItemPicker", () => {
       expect(items.length).toBe(collections.length);
       expect(items[0]).toHaveTextContent(collections[0].name);
       expect(items[1]).toHaveTextContent(collections[1].name);
-      expect(items[2]).toHaveTextContent(collections[2].name);
-    });
-
-    it("always shows root collection first", async () => {
-      const collections = [
-        COLLECTION.REGULAR_2,
-        COLLECTION.REGULAR,
-        ROOT_SNIPPETS_COLLECTION,
-      ];
-
-      await setup({
-        collections,
-        entity: SnippetCollections,
-        models: ["collection"],
-        query: { namespace: "snippets" },
-        rootCollection: ROOT_SNIPPETS_COLLECTION,
-      });
-
-      const items = screen.getAllByTestId("item-picker-item");
-
-      expect(items.length).toBe(collections.length);
-      expect(items[0]).toHaveTextContent(ROOT_SNIPPETS_COLLECTION.name);
-      expect(items[1]).toHaveTextContent(COLLECTION.REGULAR_2.name);
-      expect(items[2]).toHaveTextContent(COLLECTION.REGULAR.name);
     });
   });
 });
