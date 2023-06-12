@@ -683,6 +683,45 @@ describe("scenarios > dashboard", () => {
       cy.findByText("There was a problem displaying this chart.");
     });
   });
+
+  it("should now overflow markdown content in description (metabase#31326)", () => {
+    cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
+    cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
+    visitDashboard(1);
+    cy.wait("@getDashboard");
+
+    cy.get("main header").within(() => {
+      cy.icon("info").click();
+    });
+
+    const testMarkdownContent =
+      "{selectall}# Heading 1{enter}{enter}**bold** [link](https://metabase.com){enter}{enter}![alt](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg){enter}{enter}This is my description. ";
+
+    rightSidebar().within(() => {
+      cy.findByPlaceholderText("Add description")
+        .click()
+        .type(testMarkdownContent)
+        .blur();
+    });
+
+    cy.wait("@updateDashboard");
+
+    rightSidebar().within(() => {
+      cy.findByTestId("editable-text").then($markdown => {
+        expect($markdown[0].clientHeight).to.be.gte(
+          $markdown[0].firstElementChild.clientHeight,
+        );
+      });
+
+      cy.findByTestId("editable-text")
+        .click()
+        .then($el => {
+          expect($el[0].scrollHeight).to.be.gte(
+            testMarkdownContent.split("{enter}").length * 16, // num of lines * font size
+          );
+        });
+    });
+  });
 });
 
 function checkOptionsForFilter(filter) {
