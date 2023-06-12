@@ -10,6 +10,12 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
+      - name: Setting issue title and quote escaping
+        uses: actions/github-script@v6
+        id: vars
+        with:
+          script: |
+            core.setOutput('issue_title', ${{ toJson(github.event.issue.title) }}.replaceAll(/"/g, '\\"'));
       - name: Send escalated issue ${{ github.event.issue.number }} to Slack
         id: slack
         uses: slackapi/slack-github-action@v1.23.0
@@ -21,7 +27,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "🔥🔥🔥 ${{ github.event.issue.title }}\n${{ github.event.issue.html_url }}"
+                    "text": "🔥🔥🔥 ${{ steps.vars.outputs.issue_title }}\n${{ github.event.issue.html_url }}"
                   }
                 }
               ]
