@@ -29,7 +29,9 @@ export const parseMarkdown = (value: string, options: Options = {}) => {
 };
 
 export const getLeadingText = (root: Root): string => {
-  for (const child of root.children) {
+  const children = root.children.filter(child => child.type === "element");
+
+  for (const child of children) {
     const text = renderText(child);
 
     if (text) {
