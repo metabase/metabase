@@ -115,7 +115,7 @@ function PinnedItemCard({
             }
             tooltipMaxWidth={TOOLTIP_MAX_WIDTH}
           >
-            {getLeadingText(defaultedDescription)}
+            {getLeadingText(descriptionMarkdownRoot)}
           </Description>
         </Body>
       </ItemCard>

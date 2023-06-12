@@ -16,9 +16,7 @@ export type ArrayElement<ArrayType extends readonly unknown[]> =
 
 export type Node = ArrayElement<Content>;
 
-export const getLeadingText = (value: string): string => {
-  const root = parseMarkdown(value);
-
+export const getLeadingText = (root: Root): string => {
   for (const child of root.children) {
     const text = renderText(child);
 

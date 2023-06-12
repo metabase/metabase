@@ -62,7 +62,7 @@ const StaticSkeleton = ({
             </Markdown>
           }
         >
-          {getLeadingText(defaultedDescription)}
+          {getLeadingText(descriptionMarkdownRoot)}
         </SkeletonDescription>
       )}
     </SkeletonRoot>
