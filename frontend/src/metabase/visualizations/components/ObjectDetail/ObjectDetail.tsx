@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
 
-import { useMount, usePrevious } from "react-use";
+import { useMount, usePrevious, useUnmount } from "react-use";
 import { State } from "metabase-types/store";
 import type {
   ConcreteTableId,
@@ -186,10 +186,10 @@ export function ObjectDetailView({
       loadFKReferences();
     }
     window.addEventListener("keydown", onKeyDown, true);
+  });
 
-    return () => {
-      window.removeEventListener("keydown", onKeyDown, true);
-    };
+  useUnmount(() => {
+    window.removeEventListener("keydown", onKeyDown, true);
   });
 
   useEffect(() => {
