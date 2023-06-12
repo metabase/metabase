@@ -51,7 +51,7 @@ const ActionComponent = ({
   isEditingDashcard,
 }: ActionProps) => {
   const { data: model } = useQuestionQuery({
-    id: dashcard.card_id || dashcard.action?.model_id,
+    id: dashcard.action?.model_id,
   });
 
   const actionSettings = dashcard.action?.visualization_settings;
