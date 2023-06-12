@@ -170,5 +170,5 @@
             (when-not (.exists out-file) (.mkdirs out-file))
             (let [parent-dir (File. (.substring out-path 0 (.lastIndexOf out-path (int File/separatorChar))))]
               (when-not (.exists parent-dir) (.mkdirs parent-dir))
-              (io/copy stream out-file)))
+              (clojure.java.io/copy stream out-file)))
           (recur (.getNextEntry stream)))))))
