@@ -93,40 +93,30 @@
               {:details
                (assoc (:details database) :version (:version db-metadata))}))
 
-(defn create-or-reactivate-table!
-  "Create a single new table in the database, or mark it as active if it already exists."
+(defn create-table!
+  "Create a single new table in the database. Mark it as active for activation later."
   [database {schema :schema, table-name :name, :as table}]
-  (if-let [existing-id (t2/select-one-pk Table
-                         :db_id (u/the-id database)
-                         :schema schema
-                         :name table-name
-                         :active false)]
-    ;; if the table already exists but is marked *inactive*, mark it as *active*
-    (t2/update! Table existing-id
-      {:active true})
-    ;; otherwise create a new Table
-    (let [is-crufty? (is-crufty-table? table)]
-      (first (t2/insert-returning-instances! Table
-                                             :db_id (u/the-id database)
-                                             :schema schema
-                                             :name table-name
-                                             :display_name (humanization/name->human-readable-name table-name)
-                                             :active true
-                                             :visibility_type (when is-crufty? :cruft)
+  (let [is-crufty? (is-crufty-table? table)]
+    (first (t2/insert-returning-instances! Table
+                                           :db_id (u/the-id database)
+                                           :schema schema
+                                           :name table-name
+                                           :display_name (humanization/name->human-readable-name table-name)
+                                           :active false
+                                           :visibility_type (when is-crufty? :cruft)
                                              ;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
-                                             :initial_sync_status (if is-crufty? "complete" "incomplete"))))))
+                                           :initial_sync_status (if is-crufty? "complete" "incomplete")))))
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
 
-(s/defn ^:private create-or-reactivate-tables!
-  "Create NEW-TABLES for database, or if they already exist, mark them as active."
+(s/defn ^:private create-tables!
+  "Create NEW-TABLES for database."
   [database :- i/DatabaseInstance, new-tables :- #{i/DatabaseMetadataTable}]
   (log/info (trs "Found new tables:")
             (for [table new-tables]
               (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [table new-tables]
-    (create-or-reactivate-table! database table)))
-
+    (create-table! database table)))
 
 (s/defn ^:private retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
@@ -181,23 +171,30 @@
   ([database :- i/DatabaseInstance db-metadata]
    ;; determine what's changed between what info we have and what's in the DB
    (let [db-tables               (table-set db-metadata)
-         our-metadata            (our-metadata database)
+         our-metadata            (our-metadata database) ;; now includes active=true
+         inactive-tables         (set (map (partial into {})
+                                           (t2/select [Table :name :schema]
+                                                      :db_id  (u/the-id database)
+                                                      :active false)))
          strip-desc              (fn [metadata]
                                    (set (map #(dissoc % :description) metadata)))
          [new-tables old-tables] (data/diff
                                   (strip-desc db-tables)
                                   (strip-desc our-metadata))
+         to-create-tables        (remove (fn [new-table]
+                                           (contains? inactive-tables (select-keys new-table [:name :schema])))
+                                         new-tables)
          [changed-tables]        (data/diff db-tables our-metadata)]
      ;; update database metadata from database
      (when (some? (:version db-metadata))
-       (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
+       (sync-util/with-error-handling (format "Error updating database metadata for %s"
                                               (sync-util/name-for-logging database))
          (update-database-metadata! database db-metadata)))
-     ;; create new tables as needed or mark them as active again
-     (when (seq new-tables)
-       (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
+     ;; create new tables as needed
+     (when (seq to-create-tables)
+       (sync-util/with-error-handling (format "Error creating tables for %s"
                                               (sync-util/name-for-logging database))
-         (create-or-reactivate-tables! database new-tables)))
+         (create-tables! database to-create-tables)))
      ;; mark old tables as inactive
      (when (seq old-tables)
        (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))
@@ -214,5 +211,26 @@
          (doseq [{id :id} (perms-group/non-admin-groups)]
            (perms/update-native-download-permissions! id (u/the-id database)))))
 
-     {:updated-tables (+ (count new-tables) (count old-tables))
+     {:updated-tables (+ (count to-create-tables) (count old-tables))
       :total-tables   (count our-metadata)})))
+
+(defn- activate-table! [database new-table]
+  (when-let [existing-id (t2/select-one-pk Table
+                                           :db_id (u/the-id database)
+                                           :schema (:schema new-table)
+                                           :name (:name new-table)
+                                           :active false)]
+    (t2/update! Table existing-id {:active true})))
+
+(defn activate-new-tables!
+  "Activate any tables that were newly created or previously inactive but are now present in the db-metadata."
+  [database db-metadata]
+  (let [db-tables    (table-set db-metadata)
+        our-metadata (our-metadata database)
+        [new-tables] (data/diff db-tables our-metadata)]
+    (when (seq new-tables)
+      (sync-util/with-error-handling (format "Error reactivating tables for %s"
+                                             (sync-util/name-for-logging database))
+        (doseq [table new-tables]
+          (activate-table! database table))))
+    {:updated-tables new-tables}))
