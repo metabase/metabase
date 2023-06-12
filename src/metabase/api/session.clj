@@ -278,7 +278,8 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/properties"
-  "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
+  "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
+  public if no user is logged in."
   []
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 
@@ -340,7 +341,7 @@
         (throw (ex-info (tru "Email for pulse-id doesn't exist.")
                         {:type        type
                          :status-code 400}))))
-               {:status :success}))
+    {:status :success}))
 
 (api/defendpoint POST "/pulse/unsubscribe/undo"
   "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
@@ -356,7 +357,7 @@
         (throw (ex-info (tru "Email for pulse-id already exists.")
                         {:type        type
                          :status-code 400}))
-        (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email)))))
-  {:status :success})
+        (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
+    {:status :success}))
 
 (api/define-routes +log-all-request-failures)
