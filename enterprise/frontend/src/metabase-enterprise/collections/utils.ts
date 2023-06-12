@@ -16,5 +16,5 @@ export function getCollectionType({
   authority_level,
   type,
 }: Partial<Collection>) {
-  return COLLECTION_TYPES[String(authority_level || type)];
+  return COLLECTION_TYPES[String(type || authority_level)];
 }
