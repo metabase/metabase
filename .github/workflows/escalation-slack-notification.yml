@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
-      - name: Setting issue title and quote escaping
+      - name: Format issue title (escape quotes)
         uses: actions/github-script@v6
         id: vars
         with:
