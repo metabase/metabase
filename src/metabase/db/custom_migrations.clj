@@ -353,8 +353,9 @@
 
 (define-migration MigrateLegacyDashboardCardColumnSettingsFieldRefs
   (let [update-one! (fn [{:keys [id visualization_settings]}]
-                      (let [updated (update-legacy-field-refs-in-viz-settings visualization_settings)]
-                        (when (not= visualization_settings updated)
+                      (let [parsed  (json/parse-string visualization_settings)
+                            updated (update-legacy-field-refs-in-viz-settings visualization_settings)]
+                        (when (not= visualization_settings parsed)
                           (t2/query-one {:update :report_dashboardcard
                                          :set    {:visualization_settings updated}
                                          :where  [:= :id id]}))))]

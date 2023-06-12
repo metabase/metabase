@@ -421,7 +421,7 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
 
-(deftest add-join-alias-to-visualization-settings-field-refs-test
+(deftest add-join-alias-to-dashboard-card-visualization-settings-field-refs-test
   (testing "Migrations v47.00-044: update report_dashboardcard.visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-044"] [migrate!]
       (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
