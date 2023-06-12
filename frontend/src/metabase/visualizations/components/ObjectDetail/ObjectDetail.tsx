@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
 
-import { useMount, usePrevious, useUnmount } from "react-use";
+import { useMount, usePrevious } from "react-use";
 import { State } from "metabase-types/store";
 import type {
   ConcreteTableId,
@@ -185,12 +185,28 @@ export function ObjectDetailView({
     if (!_.isEmpty(tableForeignKeys)) {
       loadFKReferences();
     }
-    window.addEventListener("keydown", onKeyDown, true);
   });
 
-  useUnmount(() => {
-    window.removeEventListener("keydown", onKeyDown, true);
-  });
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const capturedKeys: Record<string, () => void> = {
+        ArrowUp: viewPreviousObjectDetail,
+        ArrowDown: viewNextObjectDetail,
+        Escape: closeObjectDetail,
+      };
+
+      if (capturedKeys[event.key]) {
+        event.preventDefault();
+        capturedKeys[event.key]();
+      }
+      if (event.key === "Escape") {
+        closeObjectDetail();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [viewPreviousObjectDetail, viewNextObjectDetail, closeObjectDetail]);
 
   useEffect(() => {
     if (maybeLoading && pkIndex !== undefined) {
@@ -254,22 +270,6 @@ export function ObjectDetailView({
     },
     [zoomedRowID, followForeignKey],
   );
-
-  const onKeyDown = (event: KeyboardEvent) => {
-    const capturedKeys: Record<string, () => void> = {
-      ArrowUp: viewPreviousObjectDetail,
-      ArrowDown: viewNextObjectDetail,
-      Escape: closeObjectDetail,
-    };
-
-    if (capturedKeys[event.key]) {
-      event.preventDefault();
-      capturedKeys[event.key]();
-    }
-    if (event.key === "Escape") {
-      closeObjectDetail();
-    }
-  };
 
   if (!data) {
     return null;
