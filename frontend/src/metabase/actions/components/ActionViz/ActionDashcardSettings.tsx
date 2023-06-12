@@ -1,6 +1,7 @@
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import { useMemo } from "react";
 import Button from "metabase/core/components/Button";
 import EmptyState from "metabase/components/EmptyState";
 
@@ -15,7 +16,10 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
-import { ConnectedActionParameterMappingForm } from "./ActionParameterMapper";
+import {
+  ActionParameterMappingForm,
+  getTargetKey,
+} from "./ActionParameterMapper";
 import {
   ActionSettingsWrapper,
   ParameterMapperContainer,
@@ -26,6 +30,7 @@ import {
   ExplainerText,
   BrandLinkWithLeftMargin,
 } from "./ActionDashcardSettings.styled";
+import { isParameterHidden, isParameterRequired } from "./utils";
 
 const mapDispatchToProps = {
   setActionForDashcard,
@@ -54,6 +59,27 @@ export function ActionDashcardSettings({
   };
 
   const hasParameters = !!action?.parameters?.length;
+  const currentMappings = useMemo(
+    () =>
+      Object.fromEntries(
+        dashcard.parameter_mappings?.map(mapping => [
+          getTargetKey(mapping),
+          mapping.parameter_id,
+        ]) ?? [],
+      ),
+    [dashcard.parameter_mappings],
+  );
+
+  const isFormInvalid =
+    !!action &&
+    action.parameters.some(actionParameter => {
+      const isHidden = isParameterHidden(action, actionParameter);
+      const isRequired = isParameterRequired(action, actionParameter);
+      const isParameterMapped =
+        currentMappings[getTargetKey(actionParameter)] != null;
+
+      return isHidden && isRequired && !isParameterMapped;
+    });
 
   return (
     <ActionSettingsWrapper>
@@ -80,10 +106,11 @@ export function ActionDashcardSettings({
               </>
             )}
             <ParameterMapperContainer>
-              <ConnectedActionParameterMappingForm
+              <ActionParameterMappingForm
                 dashcard={dashcard}
                 dashboard={dashboard}
-                action={dashcard.action}
+                action={action}
+                currentMappings={currentMappings}
               />
             </ParameterMapperContainer>
           </>
@@ -93,7 +120,7 @@ export function ActionDashcardSettings({
           </ParameterMapperContainer>
         )}
         <ModalActions>
-          <Button primary onClick={onClose}>
+          <Button primary onClick={onClose} disabled={isFormInvalid}>
             {t`Done`}
           </Button>
         </ModalActions>

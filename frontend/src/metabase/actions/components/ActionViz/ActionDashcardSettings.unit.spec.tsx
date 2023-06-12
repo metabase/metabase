@@ -1,6 +1,6 @@
 import * as React from "react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 
 import {
   setupActionsEndpoints,
@@ -17,8 +17,10 @@ import {
   createMockParameter,
   createMockActionParameter,
   createMockCollectionItem,
+  createMockFieldSettings,
 } from "metabase-types/api/mocks";
 
+import { WritebackParameter } from "metabase-types/api";
 import { ConnectedActionDashcardSettings } from "./ActionDashcardSettings";
 
 const dashboardParameter = createMockParameter({
@@ -27,19 +29,9 @@ const dashboardParameter = createMockParameter({
   slug: "dashboard-parameter",
 });
 
-const actionParameter1 = createMockActionParameter({
-  id: "action-param-id-1",
-  name: "Action Parameter 1",
-  slug: "action-parameter-1",
-  target: ["variable", ["template-tag", "action-parameter-1"]],
-});
-
-const actionParameter2 = createMockActionParameter({
-  id: "action-param-id-2",
-  name: "Action Parameter 2",
-  slug: "action-parameter-2",
-  target: ["variable", ["template-tag", "action-parameter-2"]],
-});
+const actionParameter1 = createActionParameter(1);
+const actionParameter2 = createActionParameter(2);
+const actionParameterRequired = createActionParameter(3, { required: true });
 
 const models = [
   createMockCard({ id: 1, name: "Model Uno", dataset: true }),
@@ -106,6 +98,187 @@ const setup = (
 };
 
 describe("ActionViz > ActionDashcardSettings", () => {
+  describe("when there are required, hidden and mapped parameters", () => {
+    const action = {
+      ...actions1[0],
+      parameters: [actionParameter1, actionParameterRequired],
+      visualization_settings: {
+        fields: {
+          [actionParameter1.id]: createMockFieldSettings({
+            id: actionParameter1.id,
+            hidden: false,
+          }),
+          [actionParameterRequired.id]: createMockFieldSettings({
+            id: actionParameterRequired.id,
+            hidden: true,
+          }),
+        },
+      },
+    };
+
+    const dashcard = {
+      ...actionDashcardWithAction,
+      action,
+      parameter_mappings: action.parameters.map(parameter => ({
+        parameter_id: dashboardParameter.id,
+        target: parameter.target,
+      })),
+    };
+
+    beforeEach(() => {
+      setup({
+        dashcard,
+      });
+    });
+
+    it("doesn't show a hidden badge for not hidden field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameter1.id}`,
+      );
+
+      expect(within(formSection).queryByText("Hidden")).not.toBeInTheDocument();
+    });
+
+    it("shows a hidden badge for hidden field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameterRequired.id}`,
+      );
+
+      expect(within(formSection).getByText("Hidden")).toBeInTheDocument();
+    });
+
+    it("doesn't show validation error for not required field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameterRequired.id}`,
+      );
+
+      expect(
+        within(formSection).queryByText(
+          `${actionParameterRequired.name}: required`,
+        ),
+      ).not.toBeInTheDocument();
+    });
+
+    it("allows to submit a form", () => {
+      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+    });
+  });
+
+  describe("when there are required, hidden, but not mapped parameters", () => {
+    const action = createMockQueryAction({
+      ...actions1[0],
+      parameters: [actionParameter1, actionParameterRequired],
+      visualization_settings: {
+        fields: {
+          [actionParameter1.id]: createMockFieldSettings({
+            id: actionParameter1.id,
+            hidden: false,
+          }),
+          [actionParameterRequired.id]: createMockFieldSettings({
+            id: actionParameterRequired.id,
+            hidden: true,
+          }),
+        },
+      },
+    });
+
+    const dashcard = {
+      ...actionDashcardWithAction,
+      action: action,
+    };
+
+    beforeEach(() => {
+      setup({
+        dashcard: dashcard,
+      });
+    });
+
+    it("doesn't show a hidden badge for not hidden field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameter1.id}`,
+      );
+
+      expect(within(formSection).queryByText("Hidden")).not.toBeInTheDocument();
+    });
+
+    it("shows a hidden badge for hidden field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameterRequired.id}`,
+      );
+
+      expect(within(formSection).getByText("Hidden")).toBeInTheDocument();
+    });
+
+    it("shows validation error for not required field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameterRequired.id}`,
+      );
+
+      expect(
+        within(formSection).getByText(
+          `${actionParameterRequired.name}: required`,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("doesn't allow to submit a form", () => {
+      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    });
+
+    it("shows a placeholder text to select a value", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameterRequired.id}`,
+      );
+
+      expect(within(formSection).getByRole("button")).toHaveTextContent(
+        "Select a value",
+      );
+    });
+  });
+
+  describe.each([
+    [
+      "not required, not hidden, mapped",
+      dashcardFactory({ hidden: false, required: false, mapped: true }),
+    ],
+    [
+      "required, not hidden, not mapped",
+      dashcardFactory({ hidden: false, required: true, mapped: false }),
+    ],
+    [
+      "not required, not hidden, not mapped",
+      dashcardFactory({ hidden: false, required: false, mapped: false }),
+    ],
+  ])("when parameter %s", (_, getDashcard) => {
+    beforeEach(() => {
+      setup({
+        dashcard: getDashcard(),
+      });
+    });
+
+    it("doesn't show a hidden badge for not hidden field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameter1.id}`,
+      );
+
+      expect(within(formSection).queryByText("Hidden")).not.toBeInTheDocument();
+    });
+
+    it("doesn't show validation error for not required field", () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameter1.id}`,
+      );
+
+      expect(
+        within(formSection).queryByText(`${actionParameter1.name}: required`),
+      ).not.toBeInTheDocument();
+    });
+
+    it("allows to submit a form", () => {
+      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+    });
+  });
+
   it("shows the action dashcard settings component", () => {
     setup();
 
@@ -162,3 +335,53 @@ describe("ActionViz > ActionDashcardSettings", () => {
     expect(closeSpy).toHaveBeenCalledTimes(1);
   });
 });
+
+function createActionParameter(
+  id: number,
+  options: Partial<WritebackParameter> = {},
+) {
+  return createMockActionParameter({
+    id: `action-param-id-${id}`,
+    name: `Action Parameter ${id}`,
+    slug: `action-parameter-${id}`,
+    target: ["variable", ["template-tag", `action-parameter-${id}`]],
+    ...options,
+  });
+}
+
+function dashcardFactory({
+  required,
+  hidden,
+  mapped,
+}: {
+  required: boolean;
+  hidden: boolean;
+  mapped: boolean;
+}) {
+  const action = {
+    ...actions1[0],
+    parameters: [actionParameter1],
+    visualization_settings: {
+      fields: {
+        [actionParameter1.id]: createMockFieldSettings({
+          id: actionParameter1.id,
+          hidden,
+          required,
+        }),
+      },
+    },
+  };
+
+  const dashcard = {
+    ...actionDashcardWithAction,
+    action: action,
+    parameter_mappings: mapped
+      ? action.parameters.map(parameter => ({
+          parameter_id: dashboardParameter.id,
+          target: parameter.target,
+        }))
+      : [],
+  };
+
+  return () => dashcard;
+}
