@@ -19,9 +19,7 @@ Click on the model or table you would like to explore further to see a descripti
 
 If you click on a column you’re interested in, you’ll see a description of its contents, as well as a list of sample values for columns that don't have a huge number of distinct values.
 
-### Connections
-
-![Connections](./images/connections.png)
+## Connections
 
 In the data reference sidebar, under **Connections**, you can find a list of table relationships (defined by [foreign keys](https://www.metabase.com/glossary/foreign_key)).
 
