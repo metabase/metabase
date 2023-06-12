@@ -9,6 +9,7 @@ import {
   visitQuestionAdhoc,
   enterCustomColumnDetails,
   openProductsTable,
+  selectSavedQuestionsToJoin,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -118,18 +119,7 @@ describe("scenarios > question > joined questions", () => {
 
     // start a custom question with question a
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("question a").click();
-
-    // join to question b
-    cy.icon("join_left_outer").click();
-
-    popover().within(() => {
-      cy.findByTextEnsureVisible("Saved Questions").click();
-      cy.findByText("question b").click();
-    });
+    selectSavedQuestionsToJoin("question a", "question b");
 
     // select the join columns
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -221,10 +211,6 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should join saved questions that themselves contain joins (metabase#12928)", () => {
-    cy.intercept("GET", "/api/table/card__*/query_metadata").as(
-      "cardQueryMetadata",
-    );
-
     // Save Question 1
     cy.createQuestion({
       name: "12928_Q1",
@@ -284,22 +270,7 @@ describe("scenarios > question > joined questions", () => {
 
     // Join two previously saved questions
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("12928_Q1").click();
-    cy.wait("@cardQueryMetadata");
-
-    cy.icon("join_left_outer").click();
-
-    popover().within(() => {
-      cy.findByTextEnsureVisible("Saved Questions").click();
-    });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("12928_Q2").click();
-    cy.wait("@cardQueryMetadata");
+    selectSavedQuestionsToJoin("12928_Q1", "12928_Q2");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(/Products? → Category/).click();
