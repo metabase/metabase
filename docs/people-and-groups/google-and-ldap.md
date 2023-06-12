@@ -63,7 +63,7 @@ In the **Admin** > **Authentication** tab, go to the LDAP section and click **Co
 - LDAP admin username
 - LDAP admin password
 
-Then save your changes.
+Then save your changes. Metabase will automatically pull the [required attributes](#required-ldap-attributes) from your LDAP directory.
 
 ### LDAP user schema
 
