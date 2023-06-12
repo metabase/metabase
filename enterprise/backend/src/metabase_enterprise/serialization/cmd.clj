@@ -202,3 +202,49 @@
   Returns truthy if all entity IDs were added successfully, or falsey if any errors were encountered."
   []
   (v2.seed-entity-ids/seed-entity-ids!))
+
+(comment ;; v7
+
+  ;; Steps to extract and prepare Instance Analytics Magic Dashboards ❇
+
+
+  (defn- no-labels [path] (mapv #(dissoc % :label) path))
+
+  (defn v2-extract-data
+    "Exports Metabase app data to directory at path"
+    [{:keys [user-email collection-ids] :as opts}]
+    (log/info (trs "Exporting Metabase to resources/ia_serialization.edn") (u/emoji "🏭 🚛💨"))
+    (mdb/setup-db!)
+    (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
+    (serdes/with-cache
+      (->> (cond-> opts
+             (seq collection-ids) (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids))
+             user-email        (assoc :user-id (t2/select-one-pk User :email user-email :is_superuser true)))
+           v2.extract/extract
+           (map (fn [entity] [(no-labels (serdes/path entity)) entity]))
+           (into {}))))
+
+  (def ia-root-coll-id (t2/select-one-fn :id 'Collection {:where [:= :type "instance-analytics"]}))
+
+  ;; extracted-data is a map with serdes/path -> entity where each value is a serialized entity.
+  (def extracted-data (v2-extract-data {:collection-ids [ia-root-coll-id]}))
+
+  ;; TODO filter out stuff:
+  ;; - [ ] Sample Database
+  ;; - [ ] Personal Collections
+  ;; - [ ] Settings
+
+  ;; Check some out:
+  (rand-nth (seq extracted-data))
+  ;; => [[{:model "Database", :id "Internal Metabase Database"}
+  ;;       {:model "Schema", :id "public"}
+  ;;       {:model "Table", :id "metabase_database"}
+  ;;       {:model "Field", :id "timezone"}]
+  ;;     {:description "Timezone identifier for the database, set by the sync process", :database_type "varchar", :semantic_type nil, :table_id ["Internal Metabase Database" "public" "metabase_database"], :coercion_strategy nil, :name "timezone", :fingerprint_version 0, :has_field_values nil, :settings nil, :caveats nil, :fk_target_field_id nil, :dimensions (), :custom_position 0, :effective_type :type/Text, :active true, :nfc_path nil, :parent_id nil, :last_analyzed nil, :serdes/meta [{:model "Database", :id "Internal Metabase Database"} {:model "Schema", :id "public"} {:model "Table", :id "metabase_database"} {:model "Field", :id "timezone"}], :database_is_auto_increment false, :json_unfolding false, :position 13, :visibility_type :normal, :preview_display true, :display_name "Timezone", :database_position 13, :database_required false, :fingerprint nil, :created_at #t "2023-06-12T14:53:46.141896Z", :base_type :type/Text, :points_of_interest nil}]
+
+  ;; write it to resources
+  (time (spit "resources/ia_serialization.edn" (pr-str extracted-data)))
+
+
+
+  )
