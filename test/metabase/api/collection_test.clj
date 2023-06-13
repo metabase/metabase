@@ -87,16 +87,15 @@
     #{}
     (let [colls (mapv #(select-keys % [:id :name :location :type]) (t2/select Collection))
           id->coll (m/index-by :id colls)
-          id->ia? (set (keep (fn [{:keys [type id]}] (when (= type "instance-analytics") id)) colls))
           collection-tree (collection/collections->tree {} colls)]
-      (->> (loop [[tree & coll-tree :as in] collection-tree
+      (->> (loop [[tree & coll-tree] collection-tree
                   ia-ids #{}]
              (cond (not tree) ia-ids
-                   (= "instance-analytics" (:type tree)) (let [ids (atom #{})]
+                   (= "instance-analytics" (:type tree)) (let [ids (transient #{})]
                                                            (walk/postwalk
-                                                            (fn [x] (when (and (map? x) (:id x)) (swap! ids conj (:id x))) x)
+                                                            (fn [x] (when (and (map? x) (:id x)) (conj! ids (:id x))) x)
                                                             tree)
-                                                           (recur coll-tree (into ia-ids @ids)))
+                                                           (recur coll-tree (into ia-ids (persistent! ids))))
                    ;; TODO: put my children onto the end of the coll-tree, then recur like normal
                    :else (recur (concat coll-tree (:children tree)) ia-ids)))
            (mapv (comp :name id->coll))))))
