@@ -134,12 +134,7 @@ type SumAgg = ["sum", ConcreteFieldReference];
 type MinAgg = ["min", ConcreteFieldReference];
 type MaxAgg = ["max", ConcreteFieldReference];
 
-type MetricAgg = ["metric", MetricId];
-
-/**
- * An aggregation MBQL clause
- */
-export type Aggregation =
+type CommonAggregation =
   | CountAgg
   | CountFieldAgg
   | AvgAgg
@@ -149,8 +144,20 @@ export type Aggregation =
   | StdDevAgg
   | SumAgg
   | MinAgg
-  | MaxAgg
-  | MetricAgg;
+  | MaxAgg;
+
+type MetricAgg = ["metric", MetricId];
+
+type InlineExpressionAgg = [
+  "aggregation-options",
+  CommonAggregation,
+  { name: string; "display-name": string },
+];
+
+/**
+ * An aggregation MBQL clause
+ */
+export type Aggregation = CommonAggregation | MetricAgg | InlineExpressionAgg;
 
 type BreakoutClause = Breakout[];
 export type Breakout = ConcreteFieldReference;
