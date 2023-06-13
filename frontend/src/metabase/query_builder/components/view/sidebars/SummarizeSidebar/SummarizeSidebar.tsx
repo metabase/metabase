@@ -3,8 +3,6 @@ import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-
 import * as Lib from "metabase-lib";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
@@ -13,7 +11,6 @@ import { AggregationItem } from "./AggregationItem";
 import { BreakoutColumnList } from "./BreakoutColumnList";
 import {
   AggregationsContainer,
-  AggregationPicker,
   ColumnListContainer,
   SectionTitle,
   SidebarView,
@@ -44,6 +41,9 @@ export function SummarizeSidebar({
   );
   const [legacyQuery, _setLegacyQuery] = useState(initialLegacyQuery);
 
+  const aggregations = Lib.aggregations(query, STAGE_INDEX);
+  const hasAggregations = aggregations.length > 0;
+
   const setQuery = useCallback(
     (nextQuery: Lib.Query, { run = true } = {}) => {
       const datasetQuery = Lib.toLegacyQuery(nextQuery);
@@ -68,10 +68,6 @@ export function SummarizeSidebar({
     const nextQuery = getQuery(initialQuery, isDefaultAggregationRemoved);
     setQuery(nextQuery, { run: false });
   }, [initialQuery, isDefaultAggregationRemoved, setQuery]);
-
-  const aggregations = Lib.aggregations(query, STAGE_INDEX);
-  const hasAggregations = aggregations.length > 0;
-  const operators = Lib.availableAggregationOperators(query, STAGE_INDEX);
 
   const handleDoneClick = useCallback(() => {
     onQueryChange(query);
@@ -175,59 +171,6 @@ export function SummarizeSidebar({
     [query, setQuery, maybeApplyDefaultBucket],
   );
 
-  const renderAggregationItem = useCallback(
-    (aggregation: Lib.AggregationClause, clauseIndex: number) => {
-      const { displayName, name } = Lib.displayInfo(
-        query,
-        STAGE_INDEX,
-        aggregation,
-      );
-      return (
-        <TippyPopoverWithTrigger
-          key={name}
-          renderTrigger={({ onClick }) => (
-            <AggregationItem
-              name={displayName}
-              onClick={onClick}
-              onRemove={() => handleRemoveAggregation(aggregation)}
-            />
-          )}
-          popoverContent={({ closePopover }) => (
-            <AggregationPicker
-              query={query}
-              stageIndex={STAGE_INDEX}
-              operators={Lib.selectedAggregationOperators(
-                operators,
-                aggregation,
-              )}
-              hasExpressionInput={false}
-              legacyQuery={legacyQuery}
-              legacyClause={legacyQuery.aggregations()[clauseIndex]}
-              onSelect={nextAggregation => {
-                handleUpdateAggregation(aggregation, nextAggregation);
-                closePopover();
-              }}
-              onSelectLegacy={legacyAggregation => {
-                setLegacyQuery(
-                  legacyQuery.updateAggregation(clauseIndex, legacyAggregation),
-                );
-                closePopover();
-              }}
-            />
-          )}
-        />
-      );
-    },
-    [
-      query,
-      legacyQuery,
-      operators,
-      handleUpdateAggregation,
-      handleRemoveAggregation,
-      setLegacyQuery,
-    ],
-  );
-
   return (
     <SidebarView
       className={className}
@@ -236,30 +179,27 @@ export function SummarizeSidebar({
       onDone={handleDoneClick}
     >
       <AggregationsContainer>
-        {aggregations.map(renderAggregationItem)}
-        <TippyPopoverWithTrigger
-          renderTrigger={({ onClick }) => (
-            <AddAggregationButton
-              hasLabel={!hasAggregations}
-              onClick={onClick}
-            />
-          )}
-          popoverContent={({ closePopover }) => (
-            <AggregationPicker
-              query={query}
-              legacyQuery={legacyQuery}
-              stageIndex={STAGE_INDEX}
-              operators={operators}
-              onSelect={aggregation => {
-                handleAddAggregation(aggregation);
-                closePopover();
-              }}
-              onSelectLegacy={legacyAggregation => {
-                setLegacyQuery(legacyQuery.aggregate(legacyAggregation));
-                closePopover();
-              }}
-            />
-          )}
+        {aggregations.map((aggregation, index) => (
+          <AggregationItem
+            key={
+              Lib.displayInfo(query, STAGE_INDEX, aggregation).longDisplayName
+            }
+            query={query}
+            aggregation={aggregation}
+            aggregationIndex={index}
+            legacyQuery={legacyQuery}
+            onUpdate={nextAggregation =>
+              handleUpdateAggregation(aggregation, nextAggregation)
+            }
+            onRemove={() => handleRemoveAggregation(aggregation)}
+            onLegacyQueryChange={setLegacyQuery}
+          />
+        ))}
+        <AddAggregationButton
+          query={query}
+          legacyQuery={legacyQuery}
+          onAddAggregation={handleAddAggregation}
+          onLegacyQueryChange={setLegacyQuery}
         />
       </AggregationsContainer>
       {hasAggregations && (
