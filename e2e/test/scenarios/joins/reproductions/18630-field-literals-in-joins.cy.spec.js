@@ -61,6 +61,6 @@ describe("issue 18630", () => {
     // which was caused by an infinite loop and a stack overflow.
     cy.findByDisplayValue(questionDetails.name);
     cy.get(".cellData").contains("29494 Anderson Drive");
-    cy.findByTestId("question-row-count").should("have.text", "Showing 3 rows");
+    cy.findByText("Showing 3 rows");
   });
 });
