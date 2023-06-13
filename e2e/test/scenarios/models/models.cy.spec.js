@@ -22,12 +22,7 @@ import {
   saveDashboard,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_BY_YEAR_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
-
+import { SAMPLE_DB_ID, ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { questionInfoButton } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
@@ -109,6 +104,34 @@ describe("scenarios > models", () => {
 
       cy.url().should("not.include", "/question/" + id);
     });
+
+    cy.findByTestId("apply-filters").click();
+    cy.wait("@dataset");
+
+    assertQuestionIsBasedOnModel({
+      model: "Orders Model",
+      collection: "Our analytics",
+      table: "Orders",
+    });
+
+    saveQuestionBasedOnModel({ modelId: 1, name: "Q1" });
+
+    assertQuestionIsBasedOnModel({
+      questionName: "Q1",
+      model: "Orders Model",
+      collection: "Our analytics",
+      table: "Orders",
+    });
+
+    cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
+    getCollectionItemCard("Orders Model").within(() => {
+      cy.icon("model");
+    });
+    getCollectionItemRow("Q1").within(() => {
+      cy.icon("table");
+    });
+
+    cy.url().should("not.include", "/question/" + ORDERS_QUESTION_ID);
   });
 
   it("allows to turn a native question into a model", () => {
@@ -221,8 +244,8 @@ describe("scenarios > models", () => {
   });
 
   it("redirects to /model URL when opening a model with /question URL", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
-    // Important - do not use visitQuestion(ORDERS_QUESTION_ID) here!
+    cy.request("PUT", "/api/card/1", { dataset: true });
+    // Important - do not use visitQuestion(1) here!
     cy.visit("/question/" + ORDERS_QUESTION_ID);
     cy.wait("@dataset");
     openQuestionActions();

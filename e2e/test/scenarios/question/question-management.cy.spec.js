@@ -18,11 +18,7 @@ import {
   modal,
 } from "e2e/support/helpers";
 
-import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { USERS, ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -289,6 +285,51 @@ describe(
                   });
                 });
               });
+            });
+
+            it("should be able to archive the question (metabase#11719-3, metabase#16512, metabase#20133)", () => {
+              cy.intercept("GET", "/api/collection/root/items**").as(
+                "getItems",
+              );
+              openQuestionActions();
+              cy.findByTestId("archive-button").click();
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+              cy.findByText(
+                "It will also be removed from the filter that uses it to populate values.",
+              ).should("not.exist");
+              clickButton("Archive");
+              assertOnRequest("updateQuestion");
+              cy.wait("@getItems"); // pinned items
+              cy.wait("@getItems"); // unpinned items
+              cy.location("pathname").should("eq", "/collection/root");
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+              cy.findByText("Orders").should("not.exist");
+
+              cy.findByPlaceholderText("Search…").click();
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+              cy.findByText("Recently viewed");
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+              cy.findByText("Nothing here");
+
+              // Check page for archived questions
+              cy.visit("/question/" + ORDERS_QUESTION_ID);
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+              cy.findByText("This question has been archived");
+            });
+
+            it("should be able to add question to dashboard", () => {
+              openQuestionActions();
+              cy.findByTestId("add-to-dashboard-button").click();
+
+              cy.get(".Modal")
+                .as("modal")
+                .findByText("Orders in a dashboard")
+                .click();
+
+              cy.get("@modal").should("not.exist");
+              // By default, the dashboard contains one question
+              // After we add a new one, we check there are two questions now
+              cy.get(".DashCard").should("have.length", 2);
             });
           });
 

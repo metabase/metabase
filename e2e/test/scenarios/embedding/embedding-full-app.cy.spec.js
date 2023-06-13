@@ -11,10 +11,7 @@ import {
   closeNavigationSidebar,
   updateDashboardCards,
 } from "e2e/support/helpers";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 
 describeEE("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -59,12 +56,11 @@ describeEE("scenarios > embedding > full app", () => {
     });
 
     it("should not hide the top nav when the logo is still visible", () => {
-      visitFullAppEmbeddingUrl({
+      visitUrl({
         url: "/question/" + ORDERS_QUESTION_ID,
         qs: { breadcrumbs: false },
       });
-      cy.wait("@getCardQuery");
-
+      cy.findByTestId("main-logo").should("be.visible");
       appBar().within(() => {
         cy.findByTestId("main-logo").should("be.visible");
         cy.findByText("Our analytics").should("not.exist");

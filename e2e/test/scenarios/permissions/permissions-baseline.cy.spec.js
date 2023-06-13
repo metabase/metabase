@@ -3,20 +3,15 @@ import {
   visitQuestion,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import {
-  ORDERS_QUESTION_ID,
-  ADMIN_PERSONAL_COLLECTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { SAMPLE_DB_ID, ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 
 describe("scenarios > permissions", () => {
   beforeEach(restore);
 
   const PATHS = [
-    `/dashboard/${ORDERS_DASHBOARD_ID}`,
-    `/question/${ORDERS_QUESTION_ID}`,
-    `/collection/${ADMIN_PERSONAL_COLLECTION_ID}`,
+    "/dashboard/1",
+    "/question/" + ORDERS_QUESTION_ID,
+    "/collection/1",
     "/admin",
   ];
 
