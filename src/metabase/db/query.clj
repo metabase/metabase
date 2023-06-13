@@ -22,6 +22,7 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
+   [metabase.db.connection :as mdb.connection]
    [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.log :as log]
@@ -60,10 +61,12 @@
 (defn format-sql
   "Return a nicely-formatted version of a `query` string.
   For mongo queries, return as is since it's already in a nice json-like format."
-  [query db-type]
+ ([sql]
+  (format-sql sql (mdb.connection/db-type)))
+ ([sql db-type]
   (if (isa? driver.impl/hierarchy db-type :sql)
-    (fix-sql-params (format-sql* query db-type))
-    query))
+    (fix-sql-params (format-sql* sql db-type))
+    sql)))
 
 (defmulti compile
   "Compile a `query` (e.g. a Honey SQL map) to `[sql & args]`."
