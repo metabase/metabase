@@ -436,8 +436,9 @@
                                           (swap! collector conj [topic event-item])
                                           (original-publish-event! topic event-item))]
       (assert @#'events/events-initialized?, "events was not initialized")
-      (f {:events collector
-          :topics #(map first @collector)}))))
+      (f {:events     (fn [] @collector)
+          :last-event #(last @collector)}))))
+
 
 (defmacro with-fake-events-collector
   "Creates a new fake events collector in a dynamic scope, and redefines the [[events/publish-event!]]
@@ -447,7 +448,7 @@
 
   (with-fake-events-collector [{:keys [events]}]
    ;; call some API that publish events
-   (is (= 1 (count @events))))
+   (is (= 1 (count (events)))))
   "
   [[collector-binding] & body]
   {:style/indent 0}

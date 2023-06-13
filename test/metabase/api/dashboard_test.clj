@@ -2213,7 +2213,7 @@
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (testing "Test that we can share a Dashboard"
       (t2.with-temp/with-temp [Dashboard dashboard]
-        (mt/with-fake-events-collector [{:keys [events]}]
+        (mt/with-fake-events-collector [{:keys [last-event]}]
           (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200
                                                    (format "dashboard/%d/public_link" (u/the-id dashboard)))]
             (is (t2/exists? Dashboard :id (u/the-id dashboard), :public_uuid uuid))
@@ -2222,7 +2222,7 @@
                                                 :public_uuid       uuid
                                                 :made_public_by_id (mt/user->id :crowberto)
                                                 :actor_id          (mt/user->id :crowberto)}]
-                     (first @events))))
+                     (last-event))))
             (testing "Test that if a Dashboard has already been shared we reuse the existing UUID"
               (is (= uuid
                      (:uuid (mt/user-http-request :crowberto :post 200
@@ -2247,13 +2247,13 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (testing "Test that we can unshare a Dashboard"
         (t2.with-temp/with-temp [Dashboard dashboard (shared-dashboard)]
-          (mt/with-fake-events-collector [{:keys [events]}]
+          (mt/with-fake-events-collector [{:keys [last-event]}]
             (mt/user-http-request :crowberto :delete 204 (format "dashboard/%d/public_link" (u/the-id dashboard)))
             (is (= false
                    (t2/exists? Dashboard :id (u/the-id dashboard), :public_uuid (:public_uuid dashboard))))
             (is (= [:dashboard-disable-public {:id       (:id dashboard)
                                                :actor_id (mt/user->id :crowberto)}]
-                   (first @events))))))
+                   (last-event))))))
 
       (testing "Test that we *cannot* unshare a Dashboard if we are not admins"
         (t2.with-temp/with-temp [Dashboard dashboard (shared-dashboard)]
