@@ -12,9 +12,7 @@
 
 (def ^:private sync-database-topics
   "The `Set` of event topics which are subscribed to for use in database syncing."
-  #{:database-create
-    ;; published by POST /api/database/:id/sync -- a message to start syncing the DB right away
-    :database-trigger-sync})
+  #{:database-create})
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for database sync events."}
   sync-database-channel
