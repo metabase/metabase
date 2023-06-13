@@ -50,8 +50,8 @@
 
   * `:only` means this Setting can *only* have a User- or Database-local value and cannot have a 'normal' site-wide
   value. It cannot be set via env var. Default values are still allowed for User- and Database-local-only Settings.
-  User- and Database-local-only Settings are never returned by [[writable-settings]] or
-  [[user-readable-values-map]] regardless of their [[Visibility]].
+  Database-local-only Settings are never returned by [[writable-settings]] or [[user-readable-values-map]] regardless of
+  their [[Visibility]].
 
   * `:allowed` means this Setting can be User- or Database-local and can also have a normal site-wide value; if both
   are specified, the User- or Database-specific value will be returned preferentially when we are in the context of a
@@ -359,10 +359,16 @@
   (setting-name [this]
     (name this)))
 
+(defn- database-local-only? [setting]
+  (= (:database-local (resolve-setting setting)) :only))
+
+(defn- user-local-only? [setting]
+  (= (:user-local (resolve-setting setting)) :only))
+
 (defn- allows-site-wide-values? [setting]
   (and
-   (not= (:database-local (resolve-setting setting)) :only)
-   (not= (:user-local (resolve-setting setting)) :only)))
+   (not (database-local-only? setting))
+   (not (user-local-only? setting))))
 
 (defn- allows-database-local-values? [setting]
   (#{:only :allowed} (:database-local (resolve-setting setting))))
@@ -409,10 +415,10 @@
         (u/ignore-exceptions
          (classloader/require 'metabase-enterprise.advanced-permissions.common
                               'metabase.public-settings.premium-features))
-        (if-let [current-user-has-application-permisisons?
+        (if-let [current-user-has-application-permissions?
                  (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
                       (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
-          (current-user-has-application-permisisons? :setting)
+          (current-user-has-application-permissions? :setting)
           false))))
 
 (defn- current-user-can-access-setting?
@@ -1222,7 +1228,7 @@
     (into
      {}
      (comp (filter (fn [[_setting-name setting]]
-                     (and (allows-site-wide-values? setting)
+                     (and (not (database-local-only? setting))
                           (can-read-setting? setting visibilities))))
            (map (fn [[setting-name]]
                   [setting-name (get setting-name)])))

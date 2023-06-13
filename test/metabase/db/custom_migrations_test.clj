@@ -2,6 +2,8 @@
   "Tests to make sure the custom migrations work as expected."
   (:require
    [cheshire.core :as json]
+   [clojure.math :as math]
+   [clojure.math.combinatorics :as math.combo]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
@@ -10,6 +12,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.db.setup :as db.setup]
    [metabase.models :refer [Card Database Revision User]]
@@ -250,10 +253,10 @@
 
 (deftest downgrade-dashboard-tabs-test
   (testing "Migrations v47.00-029: downgrade dashboard tab test"
-    (impl/test-migrations ["v47.00-029"] [_migrate!]
+    (impl/test-migrations "v47.00-029" [migrate!]
+      (migrate!)
       (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-            migrate!     (partial db.setup/migrate! db-type data-source)
-            _            (migrate! :up)
+            migrate-down! (partial db.setup/migrate! db-type data-source :down)
             user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
                                                                 :last_name   "Hughes"
                                                                 :email       "howard@aircraft.com"
@@ -323,7 +326,7 @@
                                                                                    :col              0
                                                                                    :size_x           4
                                                                                    :size_y           2})))]
-       (migrate! :down 46)
+       (migrate-down! 46)
        (is (= [;; tab 1
                {:id  tab1-card1-id
                 :row 0}
@@ -342,6 +345,170 @@
                {:id  tab4-card2-id
                 :row 18}]
               (t2/select-fn-vec #(select-keys % [:id :row]) :model/DashboardCard :dashboard_id dashboard-id)))))))
+
+(deftest migrate-dashboard-revision-grid-from-18-to-24-test
+  (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
+    (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+          migrate-down! (partial db.setup/migrate! db-type data-source :down)
+          user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
+                                                              :last_name   "Hughes"
+                                                              :email       "howard@aircraft.com"
+                                                              :password    "superstrong"
+                                                              :date_joined :%now}))
+
+          cards        [{:row 15 :col 0  :size_x 12 :size_y 8}
+                        {:row 7  :col 12 :size_x 6  :size_y 8}
+                        {:row 2  :col 5  :size_x 5  :size_y 3}
+                        {:row 25 :col 0  :size_x 7  :size_y 10}
+                        {:row 2  :col 0  :size_x 5  :size_y 3}
+                        {:row 7  :col 6  :size_x 6  :size_y 8}
+                        {:row 25 :col 7  :size_x 11 :size_y 10}
+                        {:row 7  :col 0  :size_x 6  :size_y 4}
+                        {:row 23 :col 0  :size_x 18 :size_y 2}
+                        {:row 5  :col 0  :size_x 18 :size_y 2}
+                        {:row 0  :col 0  :size_x 18 :size_y 2}
+                        ;; these 2 last cases is a specical case where the last card has (width, height) = (1, 1)
+                        ;; it's to test an edge case to make sure downgrade from 24 -> 18 does not remove this card
+                        {:row 36 :col 0  :size_x 17 :size_y 1}
+                        {:row 36 :col 17 :size_x 1  :size_y 1}]
+          revision-id (first (t2/insert-returning-pks! 'Revision
+                                                        {:object   {:cards cards}
+                                                         :model    "Dashboard"
+                                                         :model_id 1
+                                                         :user_id  user-id}))]
+
+      (migrate!)
+      (testing "forward migration migrate correclty"
+        (is (= [{:row 15 :col 0  :size_x 16 :size_y 8}
+                {:row 7  :col 16 :size_x 8  :size_y 8}
+                {:row 2  :col 7  :size_x 6  :size_y 3}
+                {:row 25 :col 0  :size_x 9  :size_y 10}
+                {:row 2  :col 0  :size_x 7  :size_y 3}
+                {:row 7  :col 8  :size_x 8  :size_y 8}
+                {:row 25 :col 9  :size_x 15 :size_y 10}
+                {:row 7  :col 0  :size_x 8  :size_y 4}
+                {:row 23 :col 0  :size_x 24 :size_y 2}
+                {:row 5  :col 0  :size_x 24 :size_y 2}
+                {:row 0  :col 0  :size_x 24 :size_y 2}
+                {:row 36 :col 0  :size_x 23 :size_y 1}
+                {:row 36 :col 23 :size_x 1  :size_y 1}]
+               (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))
+     (migrate-down! 46)
+     (testing "downgrade works correctly"
+      (is (= cards (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id)))))))
+
+(deftest migrate-dashboard-revision-grid-from-18-to-24-handle-faliure-test
+  (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
+    (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+          migrate-down! (partial db.setup/migrate! db-type data-source :down)
+          user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
+                                                              :last_name   "Hughes"
+                                                              :email       "howard@aircraft.com"
+                                                              :password    "superstrong"
+                                                              :date_joined :%now}))
+
+          cards        [{:row 0 :col 0 :size_x 4 :size_y 4}          ;; correct case
+                        {:row 0 :col 0 :sizeX 4 :sizeY 4}            ;; sizeX and sizeY are legacy names
+                        {:row nil :col nil :size_x nil :size_y nil}  ;; contains nil fields
+                        {:row "x" :col "x" :size_x "x" :size_y "x"}] ;; string values need to be skipped
+          revision-id (first (t2/insert-returning-pks! 'Revision
+                                                       {:object   {:cards cards}
+                                                        :model    "Dashboard"
+                                                        :model_id 1
+                                                        :user_id  user-id}))]
+
+      (migrate!)
+      (testing "forward migration migrate correclty and ignore failures"
+        (is (= [{:row 0, :col 0, :size_x 4, :size_y 4}
+                {:row 0, :col 0, :sizeX 4, :sizeY 4}
+                {:row nil, :col nil, :size_x nil, :size_y nil}
+                {:row "x", :col "x", :size_x "x", :size_y "x"}]
+               (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))
+      (migrate-down! 46)
+
+      (testing "downgrade works correctly and ignore failures"
+        (is (= [{:row 0, :col 0, :size_x 4, :size_y 4}
+                {:row 0, :col 0, :sizeX 4, :sizeY 4}
+                {:row nil, :col nil, :size_x nil, :size_y nil}
+                {:row "x", :col "x", :size_x "x", :size_y "x"}]
+               (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id)))))))
+
+(defn two-cards-overlap? [box1 box2]
+  (let [{col1    :col
+         row1    :row
+         size_x1 :size_x
+         size_y1 :size_y} box1
+        {col2    :col
+         row2    :row
+         size_x2 :size_x
+         size_y2 :size_y} box2]
+    (and (< col1 (+ col2 size_x2))
+         (> (+ col1 size_x1) col2)
+         (< row1 (+ row2 size_y2))
+         (> (+ row1 size_y1) row2))))
+
+(defn no-cards-are-overlap?
+  "Return false if the cards contains at least 1 pair of cards that overlap, else returns true"
+  [boxes]
+  (not (some #(apply two-cards-overlap? %) (math.combo/combinations boxes 2))))
+
+(defn no-cards-are-out-of-grid-and-has-size-0?
+  "Return true if all cards are inside the grid and has size >= 1."
+  [boxes grid-size]
+  (every? (fn [{:keys [col size_x size_y]}]
+            (and (<= (+ col size_x) grid-size)
+                 (pos? size_x)
+                 (pos? size_y)))
+          boxes))
+
+(def ^:private big-random-dashboard-cards
+  (let [num-rows 20]
+    (for [[col row size_x size_y]
+          (loop [i   0
+                 row 0
+                 acc []]
+            (let [size-y (inc (math/round (* 6 (math/random))))]
+              (if (> i num-rows)
+                acc
+                (recur
+                  (inc i)
+                  (+ row size-y)
+                  (concat acc
+                          (loop [col     0
+                                 acc-row []]
+                            (let [size-x  (inc (math/round (* 9 (math/random))))
+                                  new-col (+ col size-x)]
+                              ;; we want to ensure we have a card at the end of the row
+                              (if (>= new-col 18)
+                                (cons [col row (- 18 col) size-y] acc-row)
+                                ;; probability of skipping is 5%
+                                (if (> (math/random) 0.95)
+                                  (recur (+ col size-x) acc-row)
+                                  (recur (+ col size-x) (cons [col row size-x size-y] acc-row)))))))))))]
+      {:row    row
+       :col    col
+       :size_x size_x
+       :size_y size_y})))
+
+(deftest migrated-grid-18-to-24-stretch-test
+  (let [migrated-to-18   (map @#'custom-migrations/migrate-dashboard-grid-from-18-to-24 big-random-dashboard-cards)
+        rollbacked-to-24 (map @#'custom-migrations/migrate-dashboard-grid-from-24-to-18 migrated-to-18)]
+
+    (testing "make sure the initial arry is good to start with"
+      (is (true? (no-cards-are-out-of-grid-and-has-size-0? big-random-dashboard-cards 18)))
+      (is (true? (no-cards-are-overlap? big-random-dashboard-cards))))
+
+    (testing "migrates to 24"
+      (testing "shouldn't have any cards out of grid"
+        (is (true? (no-cards-are-out-of-grid-and-has-size-0? migrated-to-18 24))))
+      (testing "shouldn't have overlapping cards"
+        (is (true? (no-cards-are-overlap? migrated-to-18)))))
+
+    (testing "rollbacked to 18"
+      (testing "shouldn't have any cards out of grid"
+        (is (true? (no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-24 18))))
+      (testing "shouldn't have overlapping cards"
+        (is (true? (no-cards-are-overlap? rollbacked-to-24)))))))
 
 (deftest revision-migrate-legacy-column-settings-field-refs-test
   (testing "Migrations v47.00-033: update visualization_settings.column_settings legacy field refs"

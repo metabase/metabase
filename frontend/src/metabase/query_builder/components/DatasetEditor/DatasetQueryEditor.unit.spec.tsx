@@ -52,7 +52,7 @@ const setup = async ({
   readOnly = false,
 }: SetupOpts) => {
   setupDatabasesEndpoints([TEST_DB]);
-  setupCollectionsEndpoints([ROOT_COLLECTION]);
+  setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
 
   const storeInitialState = createMockState({

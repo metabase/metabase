@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
+   [metabase.api.card-test :as api.card-test]
    [metabase.api.database :as api.database]
    [metabase.models :refer [Dashboard DashboardCard Database Field FieldValues Permissions Table]]
    [metabase.models.database :as database]
@@ -17,6 +18,7 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- do-with-all-user-data-perms
+  "Implementation for [[with-all-users-data-perms]]"
   [graph f]
   (let [all-users-group-id  (u/the-id (perms-group/all-users))
         current-graph       (get-in (perms/data-perms-graph) [:groups all-users-group-id])]
@@ -98,7 +100,7 @@
                include_editable_data_model=true"
         (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
                                              :data-model {:schemas :none}}}
-            (is (= nil (get-test-db)))))
+          (is (= nil (get-test-db)))))
 
       (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
         (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
@@ -113,7 +115,23 @@
           (testing "if include=tables, only tables with data model perms are included"
             (is (= [id-1] (->> (get-test-db "database?include_editable_data_model=true&include=tables")
                                :tables
-                               (map :id))))))))))
+                               (map :id)))))))))
+  (doseq [query-param ["exclude_uneditable_details=true"
+                       "include_only_uploadable=true"]]
+    (testing (format "GET /api/database?%s" query-param)
+      (letfn [(get-test-db
+                ([] (get-test-db (str "database?" query-param)))
+                ([url] (->> (mt/user-http-request :rasta :get 200 url)
+                            :data
+                            (filter (fn [db] (= (mt/id) (:id db))))
+                            first)))]
+        (testing "Sanity check: a non-admin can fetch a DB when they have 'manage' access"
+          (with-all-users-data-perms {(mt/id) {:details :yes}}
+            (is (partial= {:id (mt/id)} (get-test-db)))))
+
+        (testing "A non-admin cannot fetch a DB for which they do not not have 'manage' access"
+          (with-all-users-data-perms {(mt/id) {:details :no}}
+            (is (= nil (get-test-db)))))))))
 
 (deftest fetch-database-test
   (testing "GET /api/database/:id?include_editable_data_model=true"
@@ -655,3 +673,28 @@
                   (is (= {:rows-affected 1}
                          (mt/user-http-request :rasta :post 200 execute-path
                                                {:parameters {"id" 1}}))))))))))))
+
+(deftest settings-managers-can-have-uploads-db-access-revoked
+  (perms/grant-application-permissions! (perms-group/all-users) :setting)
+  (testing "Upload DB can be set with the right permission"
+    (with-all-users-data-perms {(mt/id) {:details :yes}}
+      (mt/user-http-request :rasta :put 204 "setting/" {:uploads-database-id (mt/id)})))
+  (testing "Upload DB cannot be set without the right permission"
+    (with-all-users-data-perms {(mt/id) {:details :no}}
+      (mt/user-http-request :rasta :put 403 "setting/" {:uploads-database-id (mt/id)})))
+  (perms/revoke-application-permissions! (perms-group/all-users) :setting))
+
+(deftest upload-csv-test
+  (let [db-id (u/the-id (mt/db))]
+    (testing "Should be blocked without data access"
+      (perms/grant-application-permissions! (perms-group/all-users) :setting)
+      (mt/with-temporary-setting-values [uploads-enabled      true
+                                         uploads-database-id  db-id
+                                         uploads-schema-name  nil
+                                         uploads-table-prefix "uploaded_magic_"]
+        (with-all-users-data-perms {db-id {:data {:native :none, :schemas :none}}}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"You don't have permissions to do that\."
+               (api.card-test/upload-example-csv! nil false)))))
+      (perms/revoke-application-permissions! (perms-group/all-users) :setting))))
