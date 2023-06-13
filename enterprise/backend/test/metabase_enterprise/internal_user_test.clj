@@ -1,8 +1,8 @@
 (ns metabase-enterprise.internal-user-test
   (:require
    [clojure.test :refer [deftest is]]
+   [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase.config :as config]
-   [metabase.enterprise.internal-user :as ee.internal-user]
    [metabase.models :refer [User]]
    [metabase.setup :as setup]
    [toucan2.core :as t2]))
@@ -33,7 +33,6 @@
 
 (deftest has-user-setup-ignores-internal-user
   (with-internal-user-restoration
-    ;; TODO: write a test with metabase.setup/has-user-setup once the IA email has been updated to `internal@metabase.com`.
     (if config/ee-available?
       ;; ee:
       (let [user-ids-minus-internal (t2/select-fn-set :id User {:where [:not= :id config/internal-mb-user-id]})]
@@ -44,4 +43,8 @@
       (do
         (is (= (t2/select-fn-set :id User {:where [:not= :id config/internal-mb-user-id]})
                (t2/select-fn-set :id User))
-            "Ignore internal user where clause does nothing in ee mode.")))))
+            "Ignore internal user where clause does nothing in ee mode."))))
+  (is (= (setup/has-user-setup)
+         (with-internal-user-restoration
+           ;; there's no internal-user in this block
+           (setup/has-user-setup)))))
