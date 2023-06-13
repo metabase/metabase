@@ -49,16 +49,16 @@ describe("issue 18630", () => {
     limit: 3,
   };
 
+  const questionDetails = {
+    name: "18630",
+    query: QUERY_WITH_FIELD_CLAUSE,
+  };
+
   it("should normally open queries with field literals in joins (metabase#18630)", () => {
-    cy.createQuestion(
-      { query: QUERY_WITH_FIELD_CLAUSE },
-      { visitQuestion: true },
-    );
+    cy.createQuestion(questionDetails, { visitQuestion: true });
 
     // The query runs and we assert the page is not blank,
     // rather than an infinite loop and stack overflow.
-    // 'test question' is the name of the question.
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("test question");
+    cy.findByDisplayValue(questionDetails.name);
   });
 });
