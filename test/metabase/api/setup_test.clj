@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.setup :as api.setup]
+   [metabase.config :as config]
    [metabase.events :as events]
    [metabase.http-client :as client]
    [metabase.models :refer [Activity Database Table User]]
@@ -298,7 +299,7 @@
 
 (deftest has-user-setup-setting-test
   (testing "has-user-setup is true iff there are 1 or more users"
-    (let [user-count (t2/count User)]
+    (let [user-count (t2/count User {:where [:not= :id config/internal-mb-user-id]})]
       (if (zero? user-count)
         (is (not (setup/has-user-setup)))
         (is (setup/has-user-setup))))))
