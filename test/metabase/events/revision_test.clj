@@ -96,23 +96,25 @@
 (deftest card-enable-public-test
   (testing ":card-enable-public"
     (let [uuid (UUID/randomUUID)]
-      (t2.with-temp/with-temp [Card {card-id :id, :as card} (merge (card-properties)
-                                                                   {:public_uuid       uuid
-                                                                    :made_public_by_id (mt/user->id :crowberto)})]
-        (revision/process-revision-event! {:topic :card-enable-public
-                                           :item  card})
-        (is (= {:model        "Card"
-                :model_id     card-id
-                :user_id      (mt/user->id :crowberto)
-                :object       (merge (card->revision-object card)
-                                     {:public_uuid       (str uuid)
-                                      :made_public_by_id (mt/user->id :crowberto)})
-                :is_reversion false
-                :is_creation  false}
-               (mt/derecordize
-                 (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                                :model       "Card"
-                                :model_id    card-id))))))))
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (t2.with-temp/with-temp [Card {card-id :id, :as card} (merge (card-properties)
+                                                                     {:public_uuid       uuid
+                                                                      :made_public_by_id (mt/user->id :crowberto)})]
+
+          (revision/process-revision-event! {:topic :card-enable-public
+                                             :item  card})
+          (is (= {:model        "Card"
+                  :model_id     card-id
+                  :user_id      (mt/user->id :crowberto)
+                  :object       (merge (card->revision-object card)
+                                       {:public_uuid       (str uuid)
+                                        :made_public_by_id (mt/user->id :crowberto)})
+                  :is_reversion false
+                  :is_creation  false}
+                 (mt/derecordize
+                   (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                                  :model       "Card"
+                                  :model_id    card-id)))))))))
 
 (deftest card-disable-public-test
   (testing ":card-disable-public"
@@ -315,27 +317,28 @@
 (deftest dashboard-enable-public-test
   (testing ":dashboard-enable-public"
     (let [uuid (UUID/randomUUID)]
-     (t2.with-temp/with-temp
-       [:model/Dashboard     {dashboard-id :id, :as dashboard} {:name              "A dashboard"
-                                                                :public_uuid       uuid
-                                                                :made_public_by_id (mt/user->id :crowberto)}]
-       (revision/process-revision-event! {:topic :dashboard-enable-public
-                                          :item  {:id        dashboard-id
-                                                  :actor_id  (mt/user->id :rasta)
-                                                  :public_uuid       uuid
-                                                  :made_public_by_id (mt/user->id :crowberto)}})
-       (is (= {:model        "Dashboard"
-               :model_id     dashboard-id
-               :user_id      (mt/user->id :rasta)
-               :object       (merge (dashboard->revision-object dashboard)
-                                    {:public_uuid       (str uuid)
-                                     :made_public_by_id (mt/user->id :crowberto)})
-               :is_reversion false
-               :is_creation  false}
-              (mt/derecordize
-               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                 :model    "Dashboard"
-                 :model_id dashboard-id))))))))
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (t2.with-temp/with-temp
+          [:model/Dashboard     {dashboard-id :id, :as dashboard} {:name              "A dashboard"
+                                                                   :public_uuid       uuid
+                                                                   :made_public_by_id (mt/user->id :crowberto)}]
+          (revision/process-revision-event! {:topic :dashboard-enable-public
+                                             :item  {:id        dashboard-id
+                                                     :actor_id  (mt/user->id :rasta)
+                                                     :public_uuid       uuid
+                                                     :made_public_by_id (mt/user->id :crowberto)}})
+          (is (= {:model        "Dashboard"
+                  :model_id     dashboard-id
+                  :user_id      (mt/user->id :rasta)
+                  :object       (merge (dashboard->revision-object dashboard)
+                                       {:public_uuid       (str uuid)
+                                        :made_public_by_id (mt/user->id :crowberto)})
+                  :is_reversion false
+                  :is_creation  false}
+                 (mt/derecordize
+                  (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                    :model    "Dashboard"
+                    :model_id dashboard-id)))))))))
 
 (deftest dashboard-disable-public-test
   (testing ":dashboard-disable-public"
