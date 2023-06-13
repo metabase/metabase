@@ -128,7 +128,7 @@ function FormFieldEditor({
           <Subtitle>{t`Appearance`}</Subtitle>
         </Column>
       </EditorContainer>
-      <PreviewContainer>
+      <PreviewContainer data-testid="preview-container">
         <Column />
         <Column full>
           <InputContainer>
