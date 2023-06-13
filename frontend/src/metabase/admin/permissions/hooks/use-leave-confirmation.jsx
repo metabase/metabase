@@ -41,7 +41,7 @@ export const useLeaveConfirmation = ({
   };
 
   return (
-    <Modal isOpen={isConfirmationVisible}>
+    <Modal isOpen={isConfirmationVisible} zIndex={5}>
       <ConfirmContent
         title={t`Discard your unsaved changes?`}
         message={t`If you leave this page now, your changes won't be saved.`}

@@ -40,6 +40,7 @@ describeEE("impersonated permission", () => {
       );
 
       selectImpersonatedAttribute("role");
+      saveImpersonationSettings();
       savePermissions();
 
       assertPermissionTable([
@@ -121,6 +122,8 @@ describeEE("impersonated permission", () => {
       );
 
       selectImpersonatedAttribute("attr_uid");
+      cy.pause();
+      saveImpersonationSettings();
       savePermissions();
 
       assertPermissionTable([
@@ -167,6 +170,49 @@ describeEE("impersonated permission", () => {
           "No",
         ],
       ]);
+    });
+
+    it("impersonation modal should be positioned behind the page leave confirmation modal", () => {
+      // Try leaving the page
+      cy.visit("/admin/permissions/data/group/1");
+
+      modifyPermission(
+        "QA Postgres12",
+        DATA_ACCESS_PERMISSION_INDEX,
+        "Impersonated",
+      );
+
+      selectImpersonatedAttribute("role");
+      saveImpersonationSettings();
+
+      modifyPermission(
+        "QA Postgres12",
+        DATA_ACCESS_PERMISSION_INDEX,
+        "Edit Impersonated",
+      );
+
+      cy.findByRole("dialog").findByText("Edit settings").click();
+
+      // Page leave confirmation should be on top
+      cy.findAllByRole("dialog")
+        .eq(0)
+        .as("leaveConfirmation")
+        .findByText("Discard your unsaved changes?")
+        .should("be.visible");
+
+      // Cancel
+      cy.get("@leaveConfirmation").findByText("Cancel").click();
+
+      // Ensure the impersonation modal is still open
+      cy.findByRole("dialog")
+        .findByText("Map a user attribute to database roles")
+        .should("be.visible");
+
+      // Go to settings
+      cy.findByRole("dialog").findByText("Edit settings").click();
+      cy.get("@leaveConfirmation").findByText("Discard changes").click();
+
+      cy.focused().should("have.attr", "placeholder", "username");
     });
   });
 
@@ -254,5 +300,8 @@ function selectImpersonatedAttribute(attribute) {
   });
 
   popover().findByText(attribute).click();
+}
+
+function saveImpersonationSettings() {
   cy.findByRole("dialog").findByText("Save").click();
 }
