@@ -214,7 +214,9 @@ export async function setup({
     setupDatabasesEndpoints([], { hasSavedQuestions: false });
   }
 
-  setupCollectionsEndpoints([SAMPLE_COLLECTION, EMPTY_COLLECTION]);
+  setupCollectionsEndpoints({
+    collections: [SAMPLE_COLLECTION, EMPTY_COLLECTION],
+  });
 
   setupCollectionVirtualSchemaEndpoints(createMockCollection(ROOT_COLLECTION), [
     SAMPLE_QUESTION,

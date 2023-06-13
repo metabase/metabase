@@ -140,7 +140,7 @@ describe("AppBar", () => {
 });
 
 function setup(embedOptions: Partial<EmbedOptions>) {
-  setupCollectionsEndpoints([]);
+  setupCollectionsEndpoints({ collections: [] });
 
   renderWithProviders(<Route path="/question/:slug" component={AppBar} />, {
     withRouter: true,
