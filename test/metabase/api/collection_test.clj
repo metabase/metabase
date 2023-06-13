@@ -154,7 +154,7 @@
                                                 (:name collection)
                                                 "Collection with Items"
                                                 "subcollection"}
-                                              (set (instance-analytics-collection-names)))
+                                              (instance-analytics-collection-names))
                 crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
                 crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
                 luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
