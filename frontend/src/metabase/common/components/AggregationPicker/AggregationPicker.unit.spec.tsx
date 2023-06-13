@@ -20,6 +20,7 @@ import {
   ORDERS_ID,
   PRODUCTS_ID,
   PRODUCTS,
+  SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
@@ -49,6 +50,24 @@ function createQueryWithMaxAggregation() {
   const quantity = findColumn("ORDERS", "QUANTITY");
   const clause = Lib.aggregationClause(max, quantity);
   return Lib.aggregate(initialQuery, 0, clause);
+}
+
+function createQueryWithInlineExpression() {
+  return createQuery({
+    query: {
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: {
+        aggregation: [
+          [
+            "aggregation-options",
+            ["avg", ["field", ORDERS.QUANTITY, null]],
+            { name: "Avg Q", "display-name": "Avg Q" },
+          ],
+        ],
+      },
+    },
+  });
 }
 
 const TEST_METRIC = createMockMetric({
@@ -132,6 +151,7 @@ function setup({
     <AggregationPicker
       query={query}
       legacyQuery={legacyQuery}
+      legacyClause={legacyQuery.aggregations()[0]}
       stageIndex={0}
       operators={operators}
       onSelect={handleSelect}
@@ -384,6 +404,13 @@ describe("AggregationPicker", () => {
     it("shouldn't be available if database doesn't support custom expressions", () => {
       setup({ hasExpressionSupport: false });
       expect(screen.queryByText("Custom Expression")).not.toBeInTheDocument();
+    });
+
+    it("should open the editor when an expression is used", async () => {
+      setup({ query: createQueryWithInlineExpression() });
+
+      expect(screen.getByText("Custom Expression")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("Avg Q")).toBeInTheDocument();
     });
   });
 });
