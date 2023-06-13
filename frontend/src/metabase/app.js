@@ -9,7 +9,7 @@ import "number-to-locale-string";
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
 // Should be imported before any other metabase import
-import "ee-overrides";
+import "ee-overrides"; // eslint-disable-line import/no-duplicates
 
 // If enabled this monkeypatches `t` and `jt` to return blacked out
 // strings/elements to assist in finding untranslated strings.
@@ -26,7 +26,7 @@ import "metabase/plugins/builtin";
 
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
-import "ee-plugins";
+import "ee-plugins"; // eslint-disable-line import/no-duplicates
 
 import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
