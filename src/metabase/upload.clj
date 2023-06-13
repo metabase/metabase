@@ -310,7 +310,7 @@
 
 (defn load-from-csv
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
-   Returns the file size, number of rows, and number of columns. Deletes the file after loading."
+   Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
   (let [col->upload-type   (detect-schema csv-file)
         col->database-type (update-vals col->upload-type (partial driver/upload-type->database-type driver))
@@ -324,5 +324,4 @@
          :size-mb     (/ (.length csv-file) 1048576.0)})
       (catch Throwable e
         (driver/drop-table driver db-id table-name)
-        (throw (ex-info (ex-message e) {:status-code 400}))))
-    nil))
+        (throw (ex-info (ex-message e) {:status-code 400}))))))
