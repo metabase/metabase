@@ -270,7 +270,7 @@ describe("scenarios > question > new", () => {
     popover().findByText("Question").click();
 
     popover().within(() => {
-      cy.findByText("Sample Database").click();
+      cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
 

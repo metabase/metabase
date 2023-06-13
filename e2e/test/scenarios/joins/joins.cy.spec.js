@@ -399,7 +399,7 @@ describe("scenarios > question > joined questions", () => {
 
     cy.icon("join_left_outer").click();
 
-    popover().findByText("Sample Database").click();
+    popover().findByText("Raw Data").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Saved Questions").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
