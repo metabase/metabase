@@ -318,7 +318,7 @@
                                                {:join-alias (symbol "nil #_\"key is not present.\"")}
                                                (meta/id :venues :category-id)]
                                               [:field
-                                               {:join-alias "Cat"}
+                                               {:join-alias "Categories"}
                                                (meta/id :categories :id)]]],
                                 :strategy :right-join,
                                 :alias "Categories"}]}]}
@@ -424,3 +424,18 @@
                 (lib/join-condition-operators lib.tu/venues-query lhs rhs)))
         (is (= (lib/join-condition-operators lib.tu/venues-query lhs rhs)
                (lib/join-condition-operators lib.tu/venues-query -1 lhs rhs)))))))
+
+(deftest ^:parallel join-alias-single-table-multiple-times-test
+  (testing "joining the same table twice results in different join aliases"
+    (is (=? [{:alias "Checkins"}
+             {:alias "Checkins_2"}]
+            (-> (lib/query-for-table-name meta/metadata-provider "USERS")
+                (lib/join (-> (lib/join-clause (lib/table (meta/id :checkins))
+                                               [(lib/=
+                                                 (lib/field "USERS" "ID")
+                                                 (lib/field "CHECKINS" "USER_ID"))])))
+                (lib/join (-> (lib/join-clause (lib/table (meta/id :checkins))
+                                               [(lib/=
+                                                 (lib/field "USERS" "ID")
+                                                 (lib/field "CHECKINS" "USER_ID"))])))
+                :stages first :joins)))))
