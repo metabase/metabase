@@ -3,8 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { CardDisplayType } from "metabase-types/api";
 import ChartSkeleton, { ChartSkeletonProps } from "./ChartSkeleton";
 
-jest.unmock("metabase/components/Popover");
-
 const MockActionMenu = <div>Action Menu</div>;
 
 const chartSkeletonDisplayTypes: CardDisplayType[] = [
@@ -57,6 +55,10 @@ const setup = ({
   );
 };
 describe("ChartSkeleton", () => {
+  beforeAll(() => {
+    jest.unmock("metabase/components/Popover");
+  });
+
   displayTestData.forEach(({ name, display }) => {
     const displayDescription = `${name} description`;
 
