@@ -15299,7 +15299,7 @@ databaseChangeLog:
                       left join timeline on event.timeline_id = timeline.id
       rollback:
         - sql:
-            sql: drop view v_content;
+            sql: drop view if exists v_content;
 
   - changeSet:
       id: v47.00-041
@@ -15350,7 +15350,8 @@ databaseChangeLog:
                      metadata as details
               from view_log
       rollback:
-        - sql: drop view if exists v_audit_log;
+        - sql:
+            sql: drop view if exists v_audit_log;
 
   - changeSet:
       id: v47.00-048
