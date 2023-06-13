@@ -69,7 +69,7 @@ async function setup({
   // Then we could safely assert that the banner is not rendered.
   // If we don't wait for this API call to finish, the banner could have rendered,
   // and the test would still pass.
-  if (isAdmin && isPaidPlan) {
+  if (isAdmin && isPaidPlan && !isWhiteLabeling) {
     await waitFor(() => {
       expect(fetchMock.called("path:/api/database")).toBe(true);
     });
