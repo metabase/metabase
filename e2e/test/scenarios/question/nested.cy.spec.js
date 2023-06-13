@@ -441,7 +441,7 @@ describe("scenarios > question > nested", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("VAL").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sum of Val");
+      cy.findByText("Sum of VAL");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
