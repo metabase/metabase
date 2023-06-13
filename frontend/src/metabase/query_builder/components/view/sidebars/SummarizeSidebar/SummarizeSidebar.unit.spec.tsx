@@ -8,19 +8,18 @@ import {
   ORDERS,
   ORDERS_ID,
   PEOPLE_ID,
-  PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
   createAdHocCard,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import SummarizeSidebar from "./SummarizeSidebar";
+import { SummarizeSidebar } from "./SummarizeSidebar";
 
 type SetupOpts = {
   card?: Card | UnsavedCard;
-  isResultDirty?: boolean;
   withDefaultAggregation?: boolean;
 };
 
@@ -40,11 +39,9 @@ function createSummarizedCard() {
 
 function setup({
   card = createAdHocCard(),
-  isResultDirty = false,
   withDefaultAggregation = true,
 }: SetupOpts = {}) {
-  const updateQuestion = jest.fn();
-  const runQuestionQuery = jest.fn();
+  const onQueryChange = jest.fn();
   const onClose = jest.fn();
 
   const metadata = createMockMetadata({
@@ -58,16 +55,20 @@ function setup({
       : new Question(card, metadata);
 
   function Wrapper() {
-    const [_question, setQuestion] = useState(question);
+    const [query, setQuery] = useState(question._getMLv2Query());
+
+    const legacyQuery = question
+      .setDatasetQuery(Lib.toLegacyQuery(query))
+      .query() as StructuredQuery;
+
     return (
       <SummarizeSidebar
-        question={_question}
-        isResultDirty={isResultDirty}
-        updateQuestion={(nextQuestion, ...opts) => {
-          setQuestion(nextQuestion);
-          updateQuestion(nextQuestion, ...opts);
+        query={query}
+        legacyQuery={legacyQuery}
+        onQueryChange={nextQuery => {
+          setQuery(nextQuery);
+          onQueryChange(nextQuery);
         }}
-        runQuestionQuery={runQuestionQuery}
         onClose={onClose}
       />
     );
@@ -80,35 +81,30 @@ function setup({
     userEvent.click(within(countButton).getByLabelText("close icon"));
   }
 
-  function getUpdatedQuestion() {
-    const [lastCall] = updateQuestion.mock.calls.slice(-1);
-    return lastCall[0] as Question;
+  function getNextQuery() {
+    const [lastCall] = onQueryChange.mock.calls.slice(-1);
+    return lastCall[0];
   }
 
-  function getUpdatedQuery() {
-    const question = getUpdatedQuestion();
-    return question.query() as StructuredQuery;
+  function getNextAggregations() {
+    const query = getNextQuery();
+    return Lib.aggregations(query, -1).map(aggregation =>
+      Lib.displayInfo(query, -1, aggregation),
+    );
   }
 
-  function getUpdatedAggregations() {
-    return getUpdatedQuery()
-      .aggregations()
-      .map(clause => clause.raw());
-  }
-
-  function getUpdatedBreakouts() {
-    return getUpdatedQuery()
-      .breakouts()
-      .map(clause => clause.raw());
+  function getNextBreakouts() {
+    const query = getNextQuery();
+    return Lib.breakouts(query, -1).map(breakout =>
+      Lib.displayInfo(query, -1, breakout),
+    );
   }
 
   return {
     metadata,
-    getUpdatedQuestion,
-    getUpdatedAggregations,
-    getUpdatedBreakouts,
-    updateQuestion,
-    runQuestionQuery,
+    getNextAggregations,
+    getNextBreakouts,
+    onQueryChange,
     onClose,
   };
 }
@@ -116,28 +112,27 @@ function setup({
 describe("SummarizeSidebar", () => {
   describe("default aggregation", () => {
     it("should apply default aggregation for bare rows query", () => {
-      const { getUpdatedAggregations, updateQuestion } = setup();
+      const { getNextAggregations, onQueryChange } = setup();
 
       expect(screen.getByRole("button", { name: "Count" })).toBeInTheDocument();
       userEvent.click(screen.getByRole("button", { name: "Done" }));
 
-      expect(getUpdatedAggregations()).toEqual([["count"]]);
-      expect(updateQuestion).toHaveBeenCalledWith(expect.any(Question), {
-        run: true,
-      });
+      const aggregations = getNextAggregations();
+      const [aggregation] = aggregations;
+      expect(aggregations).toHaveLength(1);
+      expect(aggregation.displayName).toBe("Count");
+      expect(onQueryChange).toHaveBeenCalledTimes(1);
     });
 
     it("should allow to remove a default aggregation", () => {
-      const { getUpdatedAggregations, updateQuestion } = setup();
+      const { getNextAggregations, onQueryChange } = setup();
 
       const countButton = screen.getByRole("button", { name: "Count" });
       userEvent.click(within(countButton).getByLabelText("close icon"));
-      userEvent.click(screen.getByRole("button", { name: "Done" }));
 
-      expect(getUpdatedAggregations()).toHaveLength(0);
-      expect(updateQuestion).toHaveBeenCalledWith(expect.any(Question), {
-        run: true,
-      });
+      const aggregations = getNextAggregations();
+      expect(aggregations).toHaveLength(0);
+      expect(onQueryChange).toHaveBeenCalledTimes(1);
     });
 
     it("shouldn't apply default aggregation if a query is already aggregated", () => {
@@ -199,7 +194,7 @@ describe("SummarizeSidebar", () => {
   });
 
   it("should add an aggregation", async () => {
-    const { getUpdatedAggregations } = setup({ withDefaultAggregation: false });
+    const { getNextAggregations } = setup({ withDefaultAggregation: false });
 
     userEvent.click(screen.getByRole("button", { name: "Add aggregation" }));
 
@@ -209,60 +204,61 @@ describe("SummarizeSidebar", () => {
     popover = await screen.findByRole("grid");
     userEvent.click(within(popover).getByText("Total"));
 
-    await waitFor(() =>
-      expect(getUpdatedAggregations()).toEqual([
-        ["avg", ["field", ORDERS.TOTAL, null]],
-      ]),
-    );
+    await waitFor(() => {
+      const [aggregation] = getNextAggregations();
+      expect(aggregation.displayName).toBe("Average of Total");
+    });
+    expect(getNextAggregations()).toHaveLength(1);
   });
 
   it("should add a column-less aggregation", async () => {
-    const { getUpdatedAggregations } = setup({ withDefaultAggregation: false });
+    const { getNextAggregations } = setup({ withDefaultAggregation: false });
 
     userEvent.click(screen.getByRole("button", { name: "Add aggregation" }));
 
     const popover = await screen.findByRole("grid");
     userEvent.click(within(popover).getByText("Count of rows"));
 
-    await waitFor(() => expect(getUpdatedAggregations()).toEqual([["count"]]));
+    await waitFor(() => {
+      const [aggregation] = getNextAggregations();
+      expect(aggregation.displayName).toBe("Count");
+    });
+    expect(getNextAggregations()).toHaveLength(1);
   });
 
   it("should add a breakout", async () => {
-    const { getUpdatedBreakouts } = setup();
+    const { getNextBreakouts } = setup();
 
     userEvent.click(screen.getByText("Category"));
 
     await waitFor(() => {
-      expect(getUpdatedBreakouts()).toEqual([
-        ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-      ]);
+      const [breakout] = getNextBreakouts();
+      expect(breakout.displayName).toBe("Category");
     });
+    expect(getNextBreakouts()).toHaveLength(1);
   });
 
   it("should add multiple breakouts", async () => {
-    const { getUpdatedBreakouts } = setup();
+    const { getNextBreakouts } = setup();
 
     userEvent.click(screen.getByText("Category"));
     await waitFor(() => {
-      expect(getUpdatedBreakouts()).toEqual([
-        ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-      ]);
+      const [breakout] = getNextBreakouts();
+      expect(breakout.displayName).toBe("Category");
     });
 
     const breakoutOption = screen.getByRole("listitem", { name: "Quantity" });
     userEvent.hover(breakoutOption);
     userEvent.click(within(breakoutOption).getByLabelText("Add dimension"));
 
-    await waitFor(() =>
-      expect(getUpdatedBreakouts()).toEqual([
-        ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-        ["field", ORDERS.QUANTITY, { binning: { strategy: "default" } }],
-      ]),
-    );
+    await waitFor(() => expect(getNextBreakouts()).toHaveLength(2));
+    const [breakout1, breakout2] = getNextBreakouts();
+    expect(breakout1.displayName).toBe("Category");
+    expect(breakout2.displayName).toBe("Quantity: Auto binned");
   });
 
   it("should allow picking a temporal bucket for breakout columns", async () => {
-    const { getUpdatedBreakouts } = setup();
+    const { getNextBreakouts } = setup();
 
     const [createdAt] = screen.getAllByRole("listitem", { name: "Created At" });
     userEvent.hover(createdAt);
@@ -270,15 +266,15 @@ describe("SummarizeSidebar", () => {
     const [quarter] = await screen.findAllByText("Quarter");
     userEvent.click(quarter);
 
-    await waitFor(() =>
-      expect(getUpdatedBreakouts()).toEqual([
-        ["field", ORDERS.CREATED_AT, { "temporal-unit": "quarter" }],
-      ]),
-    );
+    await waitFor(() => {
+      const [breakout] = getNextBreakouts();
+      expect(breakout.displayName).toBe("Created At: Quarter");
+    });
+    expect(getNextBreakouts()).toHaveLength(1);
   });
 
   it("should allow picking a binning strategy for breakout columns", async () => {
-    const { getUpdatedBreakouts } = setup();
+    const { getNextBreakouts } = setup();
 
     const [total] = screen.getAllByRole("listitem", { name: "Total" });
     userEvent.hover(total);
@@ -286,56 +282,39 @@ describe("SummarizeSidebar", () => {
     const [strategy] = await screen.findAllByText("10 bins");
     userEvent.click(strategy);
 
-    await waitFor(() =>
-      expect(getUpdatedBreakouts()).toEqual([
-        [
-          "field",
-          ORDERS.TOTAL,
-          { binning: { strategy: "num-bins", "num-bins": 10 } },
-        ],
-      ]),
-    );
+    await waitFor(() => {
+      const [breakout] = getNextBreakouts();
+      expect(breakout.displayName).toBe("Total: 10 bins");
+    });
+    expect(getNextBreakouts()).toHaveLength(1);
   });
 
   it("should remove breakout", async () => {
-    const { getUpdatedBreakouts } = setup({ card: createSummarizedCard() });
+    const { getNextBreakouts } = setup({ card: createSummarizedCard() });
 
     const [breakout] = screen.getAllByRole("listitem", { name: "Created At" });
     userEvent.click(
       within(breakout).getByRole("button", { name: "Remove dimension" }),
     );
 
-    await waitFor(() => expect(getUpdatedBreakouts()).toEqual([]));
+    await waitFor(() => expect(getNextBreakouts()).toHaveLength(0));
   });
 
   it("should replace breakouts by clicking on a column", async () => {
-    const { getUpdatedBreakouts } = setup({ card: createSummarizedCard() });
+    const { getNextBreakouts } = setup({ card: createSummarizedCard() });
 
     userEvent.click(screen.getByText("Quantity"));
 
-    await waitFor(() =>
-      expect(getUpdatedBreakouts()).toEqual([
-        ["field", ORDERS.QUANTITY, { binning: { strategy: "default" } }],
-      ]),
-    );
+    await waitFor(() => {
+      const [breakout] = getNextBreakouts();
+      expect(breakout.displayName).toBe("Quantity: Auto binned");
+    });
+    expect(getNextBreakouts()).toHaveLength(1);
   });
 
-  it("should close on 'Done' button click", () => {
+  it("should close on 'Done' button", () => {
     const { onClose } = setup();
     userEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(onClose).toHaveBeenCalled();
-  });
-
-  it("should pick a suitable visualization", async () => {
-    const { getUpdatedQuestion } = setup({ card: createSummarizedCard() });
-
-    const category = screen.getByRole("listitem", { name: "Category" });
-    userEvent.hover(category);
-    userEvent.click(within(category).getByLabelText("Add dimension"));
-
-    userEvent.click(screen.getByRole("button", { name: "Done" }));
-
-    const nextQuestion = getUpdatedQuestion();
-    expect(nextQuestion.display()).toBe("line");
   });
 });
