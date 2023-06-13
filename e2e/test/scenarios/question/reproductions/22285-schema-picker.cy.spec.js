@@ -17,6 +17,8 @@ describe("issue 22285", () => {
     cy.wait("@fetchDatabases");
 
     popover().within(() => {
+      cy.findByText("Raw Data").click();
+      cy.wait(100);
       cy.findByText("Sample Database").click();
 
       cy.findByText(/Fake Schema/i);
@@ -25,6 +27,8 @@ describe("issue 22285", () => {
 
       // go back to database picker
       cy.icon("chevronleft").click();
+
+      cy.findByText("Sample Database").click();
 
       cy.findByText(/Fake Schema/i);
       cy.findByText(/Public/i);

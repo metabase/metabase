@@ -73,7 +73,7 @@ describe("scenarios > models > create", () => {
     navigateToNewModelPage("structured");
 
     popover().within(() => {
-      cy.findByText("Sample Database").click();
+      cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
 
