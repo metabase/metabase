@@ -39,6 +39,17 @@
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
+(defn- is-card-empty?
+  "Check if the card is empty"
+  [card]
+  (if-let [result (:result card)]
+    (or (zero? (-> result :row_count))
+        ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
+        (= [[nil]]
+           (-> result :data :rows)))
+    ;; Text cards have no result; treat as empty
+    true))
+
 (defn- merge-default-values
   "For the specific case of Dashboard Subscriptions we should use `:default` parameter values as the actual `:value` for
   the parameter if none is specified. Normally the FE client will take `:default` and pass it in as `:value` if it
@@ -73,10 +84,11 @@
                                     (qp/process-query-and-save-with-max-results-constraints!
                                      (assoc query :async? false)
                                      info)))]
-      {:card     card
-       :dashcard dashcard
-       :result   result
-       :type     :card})
+      (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty]) (is-card-empty? result))
+        {:card     card
+         :dashcard dashcard
+         :result   result
+         :type     :card}))
     (catch Throwable e
       (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
 
@@ -332,17 +344,6 @@
                                          (assoc :image_url image-url)))))))
              []
              attachments))))
-
-(defn- is-card-empty?
-  "Check if the card is empty"
-  [card]
-  (if-let [result (:result card)]
-    (or (zero? (-> result :row_count))
-        ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
-        (= [[nil]]
-           (-> result :data :rows)))
-    ;; Text cards have no result; treat as empty
-    true))
 
 (defn- are-all-parts-empty?
   "Do none of the cards have any results?"
