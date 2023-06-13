@@ -562,6 +562,17 @@
 
 (defmethod driver/database-supports? [::no-nested-query-support :nested-queries] [_driver _feature _db] false)
 
+(defn- get-all
+  ([endpoint existing-ids]
+   (get-all :rasta endpoint existing-ids))
+  ([user endpoint existing-ids]
+   (let [new?        (complement (set existing-ids))
+         dbs         (->> (mt/user-http-request user :get 200 endpoint)
+                          :data
+                          (filter (comp new? :id)))]
+     {:data  dbs
+      :total (count dbs)})))
+
 (deftest databases-list-test
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
@@ -579,15 +590,30 @@
           (is (< 1 (count (:data (mt/user-http-request :rasta :get 200 "database" :limit 1 :offset 0))))))))
 
 
-    ;; ?include=tables and ?include_tables=true mean the same thing so test them both the same way
-    (doseq [query-param ["?include_tables=true"
-                         "?include=tables"]]
-      (testing query-param
+    (testing "`?include=tables`"
+      (let [old-ids (t2/select-pks-set Database)]
         (t2.with-temp/with-temp [Database _ {:engine (u/qualified-name ::test-driver)}]
-          (doseq [db (:data (mt/user-http-request :rasta :get 200 (str "database" query-param)))]
+          (doseq [db (:data (get-all "database?include=tables" old-ids))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= (expected-tables db)
-                     (:tables db))))))))))
+                     (:tables db))))))))
+    (testing "`?include_only_uploadable=true` -- excludes drivers that don't support uploads"
+      (let [old-ids (t2/select-pks-set Database)]
+        (t2.with-temp/with-temp [Database _ {:engine ::test-driver}]
+          (is (= {:data  []
+                  :total 0}
+                 (get-all "database?include_only_uploadable=true" old-ids))))))
+    (testing "`?include_only_uploadable=true` -- includes drivers that do support uploads"
+      (let [old-ids (t2/select-pks-set Database)]
+        (t2.with-temp/with-temp [Database _ {:engine :postgres :name "The Chosen One"}]
+          (testing "Must be an admin"
+            (let [result (get-all :crowberto "database?include_only_uploadable=true" old-ids)]
+              (is (= 1 (:total result)))
+              (is (= "The Chosen One" (-> result :data first :name)))))
+          (testing "No results for non-admins"
+            (is (= {:data []
+                    :total 0}
+                   (get-all :rasta "database?include_only_uploadable=true" old-ids)))))))))
 
 (deftest databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
@@ -647,99 +673,96 @@
         (is (not (contains? response-tables table)))))))
 
 (deftest databases-list-include-saved-questions-tables-test
-  ;; `?saved=true&include=tables` and `?include_cards=true` mean the same thing, so test them both
-  (doseq [params ["?saved=true&include=tables"
-                  "?include_cards=true"]]
-    (testing (str "GET /api/database" params)
-      (letfn [(fetch-virtual-database []
-                (some #(when (= (:name %) "Saved Questions")
-                         %)
-                      (:data (mt/user-http-request :crowberto :get 200 (str "database" params)))))]
-        (testing "Check that we get back 'virtual' tables for Saved Questions"
-          (testing "The saved questions virtual DB should be the last DB in the list"
-            (t2.with-temp/with-temp [Card card (card-with-native-query "Maz Quote Views Per Month")]
+  (testing "GET /api/database?saved=true&include=tables"
+    (letfn [(fetch-virtual-database []
+              (some #(when (= (:name %) "Saved Questions")
+                       %)
+                    (:data (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables"))))]
+      (testing "Check that we get back 'virtual' tables for Saved Questions"
+        (testing "The saved questions virtual DB should be the last DB in the list"
+          (t2.with-temp/with-temp [Card card (card-with-native-query "Maz Quote Views Per Month")]
+            ;; run the Card which will populate its result_metadata column
+            (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
+            ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
+            (let [response (last (:data (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables")))]
+              (is (schema= SavedQuestionsDB
+                           response))
+              (check-tables-included response (virtual-table-for-card card)))))
+
+        (testing "Make sure saved questions are NOT included if the setting is disabled"
+          (t2.with-temp/with-temp [Card card (card-with-native-query "Maz Quote Views Per Month")]
+            (mt/with-temporary-setting-values [enable-nested-queries false]
               ;; run the Card which will populate its result_metadata column
               (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
-              ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
-              (let [response (last (:data (mt/user-http-request :crowberto :get 200 (str "database" params))))]
-                (is (schema= SavedQuestionsDB
-                             response))
-                (check-tables-included response (virtual-table-for-card card)))))
+              ;; Now fetch the database list. The 'Saved Questions' DB should NOT be in the list
+              (is (= nil
+                     (fetch-virtual-database)))))))
 
-          (testing "Make sure saved questions are NOT included if the setting is disabled"
-            (t2.with-temp/with-temp [Card card (card-with-native-query "Maz Quote Views Per Month")]
-              (mt/with-temporary-setting-values [enable-nested-queries false]
-                ;; run the Card which will populate its result_metadata column
-                (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
-                ;; Now fetch the database list. The 'Saved Questions' DB should NOT be in the list
-                (is (= nil
-                       (fetch-virtual-database)))))))
+      (testing "should pretend Collections are schemas"
+        (mt/with-temp* [Collection [stamp-collection {:name "Stamps"}]
+                        Collection [coin-collection  {:name "Coins"}]
+                        Card       [stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/the-id stamp-collection))]
+                        Card       [coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/the-id coin-collection))]]
+          ;; run the Cards which will populate their result_metadata columns
+          (doseq [card [stamp-card coin-card]]
+            (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
+          ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their
+          ;; Collection name as their Schema
+          (let [response (last (:data (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables")))]
+            (is (schema= SavedQuestionsDB
+                         response))
+            (check-tables-included
+             response
+             (virtual-table-for-card coin-card :schema "Coins")
+             (virtual-table-for-card stamp-card :schema "Stamps")))))
 
-        (testing "should pretend Collections are schemas"
-          (mt/with-temp* [Collection [stamp-collection {:name "Stamps"}]
-                          Collection [coin-collection  {:name "Coins"}]
-                          Card       [stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/the-id stamp-collection))]
-                          Card       [coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/the-id coin-collection))]]
-            ;; run the Cards which will populate their result_metadata columns
-            (doseq [card [stamp-card coin-card]]
-              (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
-            ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their
-            ;; Collection name as their Schema
-            (let [response (last (:data (mt/user-http-request :crowberto :get 200 (str "database" params))))]
-              (is (schema= SavedQuestionsDB
-                           response))
-              (check-tables-included
-               response
-               (virtual-table-for-card coin-card :schema "Coins")
-               (virtual-table-for-card stamp-card :schema "Stamps")))))
+      (testing "should remove Cards that have ambiguous columns"
+        (mt/with-temp* [Card [ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])]
+                        Card [cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]]
+          (let [response (fetch-virtual-database)]
+            (is (schema= SavedQuestionsDB
+                         response))
+            (check-tables-included response (virtual-table-for-card ok-card))
+            (check-tables-not-included response (virtual-table-for-card cambiguous-card)))))
 
-        (testing "should remove Cards that have ambiguous columns"
-          (mt/with-temp* [Card [ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])]
-                          Card [cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]]
-            (let [response (fetch-virtual-database)]
-              (is (schema= SavedQuestionsDB
-                           response))
-              (check-tables-included response (virtual-table-for-card ok-card))
-              (check-tables-not-included response (virtual-table-for-card cambiguous-card)))))
+      (testing "should remove Cards that belong to a driver that doesn't support nested queries"
+        (mt/with-temp* [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
+                        Card     [bad-card {:name            "Bad Card"
+                                            :dataset_query   {:database (u/the-id bad-db)
+                                                              :type     :native
+                                                              :native   {:query "[QUERY GOES HERE]"}}
+                                            :result_metadata [{:name "sparrows"}]
+                                            :database_id     (u/the-id bad-db)}]
+                        Card     [ok-card  (assoc (card-with-native-query "OK Card")
+                                                  :result_metadata [{:name "finches"}])]]
+          (let [response (fetch-virtual-database)]
+            (is (schema= SavedQuestionsDB
+                         response))
+            (check-tables-included response (virtual-table-for-card ok-card))
+            (check-tables-not-included response (virtual-table-for-card bad-card)))))
 
-        (testing "should remove Cards that belong to a driver that doesn't support nested queries"
-          (mt/with-temp* [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
-                          Card     [bad-card {:name            "Bad Card"
-                                              :dataset_query   {:database (u/the-id bad-db)
-                                                                :type     :native
-                                                                :native   {:query "[QUERY GOES HERE]"}}
-                                              :result_metadata [{:name "sparrows"}]
-                                              :database_id     (u/the-id bad-db)}]
-                          Card     [ok-card  (assoc (card-with-native-query "OK Card")
-                                                    :result_metadata [{:name "finches"}])]]
-            (let [response (fetch-virtual-database)]
-              (is (schema= SavedQuestionsDB
-                           response))
-              (check-tables-included response (virtual-table-for-card ok-card))
-              (check-tables-not-included response (virtual-table-for-card bad-card)))))
+      (testing "should work when there are no DBs that support nested queries"
+        (with-redefs [metabase.driver/database-supports? (constantly false)]
+          (is (nil? (fetch-virtual-database)))))
 
-        (testing "should work when there are no DBs that support nested queries"
-          (with-redefs [metabase.driver/database-supports? (constantly false)]
-            (is (nil? (fetch-virtual-database)))))
+      (testing "should work when there are no DBs that support nested queries"
+        (with-redefs [metabase.driver/database-supports? (constantly false)]
+          (is (nil? (fetch-virtual-database)))))
 
-        (testing "should work when there are no DBs that support nested queries"
-          (with-redefs [metabase.driver/database-supports? (constantly false)]
-            (is (nil? (fetch-virtual-database)))))
-
-        (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
-          (mt/with-temp* [Card [ok-card  (ok-mbql-card)]
-                          Card [bad-card (merge
-                                          (mt/$ids checkins
-                                                   (card-with-mbql-query "Cum Count Card"
-                                                                         :source-table $$checkins
-                                                                         :aggregation  [[:cum-count]]
-                                                                         :breakout     [!month.date]))
-                                          {:result_metadata [{:name "num_toucans"}]})]]
-            (let [response (fetch-virtual-database)]
-              (is (schema= SavedQuestionsDB
-                           response))
-              (check-tables-included response (virtual-table-for-card ok-card))
-              (check-tables-not-included response (virtual-table-for-card bad-card)))))))))
+      (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
+        (mt/with-temp* [Card [ok-card  (ok-mbql-card)]
+                        Card [bad-card (merge
+                                        (mt/$ids checkins
+                                          (card-with-mbql-query "Cum Count Card"
+                                            :source-table $$checkins
+                                            :aggregation  [[:cum-count]]
+                                            :breakout     [!month.date]))
+                                        {:result_metadata [{:name "num_toucans"}]})]]
+          (let [response (fetch-virtual-database)]
+            (is (schema= SavedQuestionsDB
+                         response))
+            (check-tables-included response (virtual-table-for-card ok-card))
+            (check-tables-not-included response (virtual-table-for-card bad-card))))))))
 
 (deftest db-metadata-saved-questions-db-test
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"

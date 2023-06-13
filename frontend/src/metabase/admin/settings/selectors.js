@@ -330,7 +330,7 @@ const SECTIONS = updateSectionsWithPlugins({
   uploads: {
     name: t`Uploads`,
     order: 85,
-    adminOnly: true,
+    adminOnly: false,
     component: UploadSettings,
     settings: [
       {

@@ -1137,7 +1137,6 @@ export default _.compose(
 
 const DetailShortcut = forwardRef((_props, ref) => (
   <div
-    id="detail-shortcut"
     className="TableInteractive-cellWrapper cursor-pointer"
     ref={ref}
     style={{
@@ -1148,6 +1147,7 @@ const DetailShortcut = forwardRef((_props, ref) => (
       width: SIDEBAR_WIDTH,
       zIndex: 3,
     }}
+    data-testid="detail-shortcut"
   >
     <Tooltip tooltip={t`View Details`}>
       <Button
