@@ -49,7 +49,6 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.sync :as sync]
    [metabase.sync.analyze.query-results :as qr]
-   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.task.persist-refresh :as task.persist-refresh]
@@ -1184,14 +1183,7 @@ saved later when it is ready."
                               (str schema-name "." table-name))
           stats             (upload/load-from-csv driver db-id schema+table-name csv-file)
           ;; Syncs are needed immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-          table-metadata    (first (filter (fn [{:keys [name]}] (= (u/lower-case-en name) table-name))
-                                           (:tables (fetch-metadata/db-metadata database))))
-          actual-schema     (:schema table-metadata)
-          _                 (when (nil? table-metadata)
-                              (driver/drop-table driver db-id table-name)
-                              (throw (ex-info (tru "The CSV file was uploaded to {0}, but the table could not be created or found." schema+table-name)
-                                              {:status-code 422})))
-          table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema actual-schema})
+          table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
           _sync             (scan-and-sync-table! database table)
           card              (create-card!
                              {:collection_id          collection-id,
