@@ -227,7 +227,7 @@ async function setup({
 
   setupCardsEndpoints([card]);
   setupModelActionsEndpoints(actions, model.id());
-  setupCollectionsEndpoints(collections);
+  setupCollectionsEndpoints({ collections });
 
   const name = model.displayName()?.toLowerCase();
   const slug = `${model.id()}-${name}`;
