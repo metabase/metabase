@@ -219,7 +219,6 @@ function ItemPicker<TId>({
       <ItemPickerView
         className={className}
         models={models}
-        openCollection={openCollection}
         collections={collections}
         searchString={searchString}
         searchQuery={searchQuery}

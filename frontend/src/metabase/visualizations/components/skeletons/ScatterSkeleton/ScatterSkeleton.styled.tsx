@@ -1,10 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import { containerStyles, animationStyles } from "../Skeleton";
 
-export const SkeletonRoot = styled.div`
-  ${containerStyles};
-`;
+import { animationStyles } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.styled";
 
 export const SkeletonImage = styled.svg`
   ${animationStyles};
