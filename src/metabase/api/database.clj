@@ -7,7 +7,6 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
-   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -225,13 +224,19 @@
   (let [filtered-dbs (filter-databases-by-data-model-perms [db])]
     (api/check-403 (first filtered-dbs))))
 
+(defn- uploadable-db?
+  "Are uploads supported for this database?"
+  [db]
+  (driver/database-supports? (driver.u/database->driver db) :uploads db))
+
 (defn- dbs-list
   [& {:keys [include-tables?
              include-saved-questions-db?
              include-saved-questions-tables?
              include-editable-data-model?
              include-analytics?
-             exclude-uneditable-details?]}]
+             exclude-uneditable-details?
+             include-only-uploadable?]}]
   (let [dbs (t2/select Database (merge {:order-by [:%lower.name :%lower.engine]}
                                        (when-not include-analytics?
                                          {:where [:= :is_audit false]})))
@@ -241,7 +246,9 @@
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter mi/can-write? %))
       filter-by-data-access?       (#(filter mi/can-read? %))
-      include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
+      include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
+      ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
+      include-only-uploadable?     (#(filter uploadable-db? %)))))
 
 (api/defendpoint GET "/"
   "Fetch all `Databases`.
@@ -250,45 +257,33 @@
 
   * `saved` means we should include the saved questions virtual database. Default: `false`.
 
-  * `include_tables` is a legacy alias for `include=tables`, but should be considered deprecated as of 0.35.0, and will
-    be removed in a future release.
-
-  * `include_cards` here means we should also include virtual Table entries for saved Questions, e.g. so we can easily
-    use them as source Tables in queries. This is a deprecated alias for `saved=true` + `include=tables` (for the saved
-    questions virtual DB). Prefer using `include` and `saved` instead.
-
   * `include_editable_data_model` will only include DBs for which the current user has data model editing
     permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if
     Enterprise Edition code is available the advanced-permissions feature is enabled.
 
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
-    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled."
-  [include_tables include_cards include saved include_editable_data_model exclude_uneditable_details
-   include_analytics]
-  {include_tables                [:maybe :boolean]
-   include_cards                 [:maybe :boolean]
-   include                       (mu/with-api-error-message
+    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.
+
+  * `include_only_uploadable` will only include DBs into which Metabase can insert new data."
+  [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics]
+  {include                       (mu/with-api-error-message
                                    [:maybe [:= "tables"]]
                                    (deferred-tru "include must be either empty or the value 'tables'"))
    include_analytics             [:maybe :boolean]
    saved                         [:maybe :boolean]
    include_editable_data_model   [:maybe :boolean]
-   exclude_uneditable_details    [:maybe :boolean]}
-  (when (and config/is-dev?
-             (or include_tables include_cards))
-    ;; don't need to i18n since this is dev-facing only
-    (log/warn "GET /api/database?include_tables and ?include_cards are deprecated."
-              "Prefer using ?include=tables and ?saved=true instead."))
-  (let [include-tables?                 (or (= include "tables") include_tables)
-        include-saved-questions-db?     (or saved include_cards)
-        include-saved-questions-tables? (when include-saved-questions-db?
-                                          (if include_cards true include-tables?))
+   exclude_uneditable_details    [:maybe :boolean]
+   include_only_uploadable       [:maybe :boolean]}
+  (let [include-tables?                 (= include "tables")
+        include-saved-questions-tables? (and saved include-tables?)
+        only-editable?                  (or include_only_uploadable exclude_uneditable_details)
         db-list-res                     (or (dbs-list :include-tables?                 include-tables?
-                                                      :include-saved-questions-db?     include-saved-questions-db?
+                                                      :include-saved-questions-db?     saved
                                                       :include-saved-questions-tables? include-saved-questions-tables?
                                                       :include-editable-data-model?    include_editable_data_model
-                                                      :exclude-uneditable-details?     exclude_uneditable_details
-                                                      :include-analytics?              include_analytics)
+                                                      :exclude-uneditable-details?     only-editable?
+                                                      :include-analytics?  include_analytics
+                                                      :include-only-uploadable?        include_only_uploadable)
                                             [])]
     {:data  db-list-res
      :total (count db-list-res)}))
@@ -1054,8 +1049,8 @@
   "Returns a list of all syncable schemas found for the database `id`."
   [id]
   {id ms/PositiveInt}
-  (api/check-superuser)
   (let [db (api/check-404 (t2/select-one Database id))]
+    (api/check-403 (mi/can-write? db))
     (driver/syncable-schemas (:engine db) db)))
 
 (api/defendpoint GET "/:id/schemas"

@@ -71,7 +71,7 @@ jobs:
       needs.files-changed.outputs.e2e_all == 'true' &&
       needs.build.result == 'success'
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
@@ -88,6 +88,7 @@ jobs:
         java-version: [11]
         edition: [ee]
         folder:
+          - "actions"
           - "admin"
           - "binning"
           - "collections"
@@ -285,7 +286,7 @@ jobs:
 
   visual-regression-tests:
     runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     needs: build
     if: ${{ github.event_name != 'schedule' }}
     name: percy-visual-regression-tests

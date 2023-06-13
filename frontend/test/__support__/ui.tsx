@@ -7,10 +7,10 @@ import { Router } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
 import type { Store, Reducer } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
-import { ThemeProvider } from "@emotion/react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import type { MatcherFunction } from "@testing-library/dom";
+import { ThemeProvider } from "metabase/ui";
 
 import type { State } from "metabase-types/store";
 
@@ -116,7 +116,7 @@ function Wrapper({
   return (
     <Provider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <ThemeProvider theme={{}}>
+        <ThemeProvider>
           <MaybeRouter hasRouter={withRouter} history={history}>
             {children}
           </MaybeRouter>

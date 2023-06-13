@@ -89,7 +89,7 @@
    stage-number    :- :int
    column-metadata :- lib.metadata/ColumnMetadata
    join-alias      :- ::lib.schema.common/non-blank-string]
-  (let [column-metadata (assoc column-metadata :source_alias join-alias)
+  (let [column-metadata (assoc column-metadata :source-alias join-alias)
         col             (-> (assoc column-metadata
                                    :display-name (lib.metadata.calculation/display-name query stage-number column-metadata)
                                    :lib/source   :source/joins)
