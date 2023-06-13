@@ -36,9 +36,9 @@ async function setup({
   isOnAdminAddDatabasePage = false,
 }: setupOpts = {}) {
   if (onlyHaveSampleDatabase) {
-    await setupDatabasesEndpoints([TEST_DB]);
+    setupDatabasesEndpoints([TEST_DB]);
   } else {
-    await setupDatabasesEndpoints([TEST_DB, DATA_WAREHOUSE_DB]);
+    setupDatabasesEndpoints([TEST_DB, DATA_WAREHOUSE_DB]);
   }
 
   const state = createMockState({
