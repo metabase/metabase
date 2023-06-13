@@ -183,7 +183,7 @@ describe("scenarios > dashboard > chained filter", () => {
                 card_id: QUESTION_ID,
                 row: 0,
                 col: 0,
-                size_x: 8,
+                size_x: 11,
                 size_y: 6,
                 parameter_mappings: [
                   {

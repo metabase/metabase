@@ -349,7 +349,7 @@ describe("scenarios > models metadata", () => {
           addOrUpdateDashboardCard({
             dashboard_id: dashboardId,
             card_id: modelId,
-            card: { size_x: 18, size_y: 9 },
+            card: { size_x: 24, size_y: 9 },
           });
 
           visitDashboard(dashboardId);

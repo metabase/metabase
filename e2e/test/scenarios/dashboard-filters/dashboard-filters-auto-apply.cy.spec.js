@@ -65,7 +65,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.wait("@cardQuery");
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.findByText("Rows 1-5 of 53").should("be.visible");
     });
 
     // parameter values should be preserved when disabling auto applying filters
@@ -81,7 +81,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.findByText("Gadget").should("be.visible");
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.findByText("Rows 1-4 of 53").should("be.visible");
     });
 
     // draft parameter values should be applied manually
@@ -93,14 +93,14 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.button("Update filter").click();
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.findByText("Rows 1-4 of 53").should("be.visible");
     });
     dashboardParametersContainer().within(() => {
       cy.button("Apply").click();
       cy.wait("@cardQuery");
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 107").should("be.visible");
+      cy.findByText("Rows 1-4 of 107").should("be.visible");
     });
 
     // draft parameter values should be discarded when enabling auto-applying filters
@@ -231,7 +231,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.findByText("Gadget").should("be.visible");
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.findByText("Rows 1-4 of 53").should("be.visible");
     });
   });
 
@@ -247,7 +247,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.findByText("Gadget").should("be.visible");
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.findByText("Rows 1-5 of 53").should("be.visible");
     });
   });
 

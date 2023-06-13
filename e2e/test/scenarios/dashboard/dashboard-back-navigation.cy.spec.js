@@ -420,15 +420,15 @@ const createDashboardWithPermissionError = () => {
   const dashcard1Details = {
     row: 0,
     col: 0,
-    size_x: 6,
-    size_y: 6,
+    size_x: 8,
+    size_y: 8,
   };
 
   const dashcard2Details = {
     row: 0,
-    col: 6,
-    size_x: 6,
-    size_y: 6,
+    col: 8,
+    size_x: 8,
+    size_y: 8,
   };
 
   cy.createQuestion(question1Details).then(({ body: { id: card_id_1 } }) => {
