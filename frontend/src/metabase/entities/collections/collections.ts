@@ -80,10 +80,13 @@ const Collections = createEntity({
 
   selectors: {
     getExpandedCollectionsById: createSelector(
-      [state => state.entities.collections || {}, getUserPersonalCollectionId],
+      [
+        state => Collections.selectors.getList(state),
+        getUserPersonalCollectionId,
+      ],
       (collections, currentUserPersonalCollectionId) =>
         getExpandedCollectionsById(
-          Object.values(collections),
+          collections || [],
           currentUserPersonalCollectionId,
         ),
     ),
