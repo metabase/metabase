@@ -64,6 +64,16 @@ Note that you have to have Curate permission for the collection that you're movi
 
 You can add events to collections, and organize those events into timelines. See [Events and timelines](events-and-timelines.md).
 
+## Uploading data
+
+You can upload CSV data by clicking on the **Upload** icon in the top right of the collection page.
+
+![Upload CSV data](../databases/images/upload-icon.png).
+
+Metabase will create a [model](../data-modeling/models.md) that contains that CSV data, as well as the model's underlying table.
+
+This option will only be available if your admin has enabled uploads for you Metabase. See [Uploading data](../databases/uploads.md).
+
 ## Further reading
 
 - [Keeping your analytics organized](https://www.metabase.com/learn/administration/same-page)
