@@ -96,6 +96,56 @@ describe("useShouldShowDatabasePromptBanner", () => {
     },
     {
       isPaidPlan: true,
+      onlyHaveSampleDatabase: false,
+      isWhiteLabeling: true,
+    },
+    {
+      isPaidPlan: true,
+      onlyHaveSampleDatabase: false,
+      isWhiteLabeling: false,
+    },
+    {
+      isPaidPlan: false,
+      onlyHaveSampleDatabase: true,
+      isWhiteLabeling: true,
+    },
+    {
+      isPaidPlan: false,
+      onlyHaveSampleDatabase: true,
+      isWhiteLabeling: false,
+    },
+    {
+      isPaidPlan: false,
+      onlyHaveSampleDatabase: false,
+      isWhiteLabeling: true,
+    },
+    {
+      isPaidPlan: false,
+      onlyHaveSampleDatabase: false,
+      isWhiteLabeling: false,
+    },
+  ] as const)(
+    "should not render for admin users when isPaidPlan: $isPaidPlan, onlyHaveSampleDatabase: $onlyHaveSampleDatabase, isWhiteLabeling: $isWhiteLabeling",
+    async ({ isPaidPlan, onlyHaveSampleDatabase, isWhiteLabeling }) => {
+      await setup({
+        isAdmin: true,
+        isPaidPlan,
+        onlyHaveSampleDatabase,
+        isWhiteLabeling,
+      });
+
+      expect(screen.getByText("hiding database prompt banner")).toBeVisible();
+    },
+  );
+
+  it.each([
+    {
+      isPaidPlan: true,
+      onlyHaveSampleDatabase: true,
+      isWhiteLabeling: true,
+    },
+    {
+      isPaidPlan: true,
       onlyHaveSampleDatabase: true,
       isWhiteLabeling: false,
     },
@@ -134,56 +184,6 @@ describe("useShouldShowDatabasePromptBanner", () => {
     async ({ isPaidPlan, onlyHaveSampleDatabase, isWhiteLabeling }) => {
       await setup({
         isAdmin: false,
-        isPaidPlan,
-        onlyHaveSampleDatabase,
-        isWhiteLabeling,
-      });
-
-      expect(screen.getByText("hiding database prompt banner")).toBeVisible();
-    },
-  );
-
-  it.each([
-    {
-      isPaidPlan: true,
-      onlyHaveSampleDatabase: true,
-      isWhiteLabeling: true,
-    },
-    {
-      isPaidPlan: true,
-      onlyHaveSampleDatabase: false,
-      isWhiteLabeling: true,
-    },
-    {
-      isPaidPlan: true,
-      onlyHaveSampleDatabase: false,
-      isWhiteLabeling: false,
-    },
-    {
-      isPaidPlan: false,
-      onlyHaveSampleDatabase: true,
-      isWhiteLabeling: true,
-    },
-    {
-      isPaidPlan: false,
-      onlyHaveSampleDatabase: true,
-      isWhiteLabeling: false,
-    },
-    {
-      isPaidPlan: false,
-      onlyHaveSampleDatabase: false,
-      isWhiteLabeling: true,
-    },
-    {
-      isPaidPlan: false,
-      onlyHaveSampleDatabase: false,
-      isWhiteLabeling: false,
-    },
-  ] as const)(
-    "should not render for admin users when isPaidPlan: $isPaidPlan, onlyHaveSampleDatabase: $onlyHaveSampleDatabase, isWhiteLabeling: $isWhiteLabeling",
-    async ({ isPaidPlan, onlyHaveSampleDatabase, isWhiteLabeling }) => {
-      await setup({
-        isAdmin: true,
         isPaidPlan,
         onlyHaveSampleDatabase,
         isWhiteLabeling,
