@@ -46,6 +46,7 @@ describe("issue 18630", () => {
         alias: "People",
       },
     ],
+    limit: 3,
   };
 
   it("should normally open queries with field literals in joins (metabase#18630)", () => {
