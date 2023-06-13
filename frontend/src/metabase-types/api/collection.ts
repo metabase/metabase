@@ -72,3 +72,9 @@ export interface CollectionItem {
   setCollection?: (collection: Collection) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
 }
+
+export interface CollectionListQuery {
+  archived?: boolean;
+  "exclude-other-user-collections"?: boolean;
+  namespace?: string;
+}
