@@ -95,7 +95,7 @@
 
 (deftest card-enable-public-test
   (testing ":card-enable-public"
-    (let [uuid (UUID/randomUUID)]
+    (let [uuid (str (UUID/randomUUID))]
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (t2.with-temp/with-temp [Card {card-id :id, :as card} (merge (card-properties)
                                                                      {:public_uuid       uuid
@@ -107,7 +107,7 @@
                   :model_id     card-id
                   :user_id      (mt/user->id :crowberto)
                   :object       (merge (card->revision-object card)
-                                       {:public_uuid       (str uuid)
+                                       {:public_uuid       uuid
                                         :made_public_by_id (mt/user->id :crowberto)})
                   :is_reversion false
                   :is_creation  false}
@@ -316,7 +316,7 @@
 
 (deftest dashboard-enable-public-test
   (testing ":dashboard-enable-public"
-    (let [uuid (UUID/randomUUID)]
+    (let [uuid (str (UUID/randomUUID))]
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (t2.with-temp/with-temp
           [:model/Dashboard     {dashboard-id :id, :as dashboard} {:name              "A dashboard"
@@ -331,7 +331,7 @@
                   :model_id     dashboard-id
                   :user_id      (mt/user->id :rasta)
                   :object       (merge (dashboard->revision-object dashboard)
-                                       {:public_uuid       (str uuid)
+                                       {:public_uuid       uuid
                                         :made_public_by_id (mt/user->id :crowberto)})
                   :is_reversion false
                   :is_creation  false}
