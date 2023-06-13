@@ -96,6 +96,7 @@ function createMockActionDashboardCard(
   return _createMockActionDashboardCard({
     id: DASHCARD_ID,
     card_id: CARD.id,
+    card: CARD,
     dashboard_id: DASHBOARD_ID,
     action: ACTION,
     parameter_mappings: [
@@ -108,7 +109,6 @@ function createMockActionDashboardCard(
         target: ["variable", ["template-tag", "2"]],
       },
     ],
-    card: CARD,
     ...opts,
   });
 }
@@ -217,6 +217,7 @@ describe("Actions > ActionViz > Action", () => {
         dashcard: createMockActionDashboardCard({
           action: createMockQueryAction({
             database_id: DATABASE_ID,
+            model_id: ACTION_MODEL_ID,
           }),
           parameter_mappings: [],
         }),
@@ -344,18 +345,22 @@ describe("Actions > ActionViz > Action", () => {
 
       userEvent.click(editActionEl);
 
-      await screen.findByText("Action parameters");
+      const editorModal = await screen.findByTestId("action-editor-modal");
 
-      expect(screen.getByText("My Awesome Action")).toBeInTheDocument();
+      expect(
+        within(editorModal).getByText("My Awesome Action"),
+      ).toBeInTheDocument();
 
-      const cancelEditButton = screen.getByText("Cancel");
+      const cancelEditButton = within(editorModal).getByText("Cancel");
       expect(cancelEditButton).toBeInTheDocument();
 
-      expect(screen.getByText("Update")).toBeInTheDocument();
+      expect(within(editorModal).getByText("Update")).toBeInTheDocument();
 
       userEvent.click(cancelEditButton);
 
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("action-parameters-input-modal"),
+      ).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       expect(screen.getByLabelText("Parameter 1")).toBeInTheDocument();
     });
@@ -380,18 +385,20 @@ describe("Actions > ActionViz > Action", () => {
       userEvent.click(getIcon("pencil"));
 
       // wait for action edit form to be loaded
-      await screen.findByText("My Awesome Action");
+      const editorModal = await screen.findByTestId("action-editor-modal");
 
       // edit action title
-      const actionTitleField = screen.getByTestId("editable-text");
+      const actionTitleField = within(editorModal).getByTestId("editable-text");
       userEvent.type(actionTitleField, updatedTitle);
       userEvent.tab(); // blur field
 
-      userEvent.click(await screen.findByText("Update"));
+      userEvent.click(within(editorModal).getByText("Update"));
 
       expect(fetchMock.called(`path:/api/action/${ACTION.id}`)).toBe(true);
 
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("action-parameters-input-modal"),
+      ).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       expect(screen.getByLabelText("Parameter 1")).toBeInTheDocument();
     });
@@ -500,6 +507,7 @@ describe("Actions > ActionViz > Action", () => {
           action: createMockImplicitQueryAction({
             name: "My Delete Action",
             kind: "row/delete",
+            model_id: ACTION_MODEL_ID,
             parameters: [
               createMockActionParameter({
                 id: "1",

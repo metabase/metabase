@@ -109,7 +109,11 @@ function ActionVizForm({
           />
         )}
         {showEditModal && (
-          <Modal wide onClose={closeEditModal}>
+          <Modal
+            wide
+            data-testid="action-editor-modal"
+            onClose={closeEditModal}
+          >
             <ActionCreator
               initialAction={action}
               action={action}

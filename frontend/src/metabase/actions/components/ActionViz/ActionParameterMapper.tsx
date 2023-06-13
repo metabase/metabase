@@ -66,7 +66,7 @@ export const ActionParameterMappingForm = ({
       ? [...actionParameters].sort(
           sortActionParams(action?.visualization_settings),
         )
-      : [];
+      : actionParameters || [];
   }, [action]);
 
   const currentMappings = Object.fromEntries(

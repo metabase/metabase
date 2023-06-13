@@ -27,7 +27,7 @@ function ActionParametersInputModal({
   ...formProps
 }: ActionParametersInputModalProps) {
   return (
-    <Modal onClose={onClose}>
+    <Modal data-testid="action-parameters-input-modal" onClose={onClose}>
       <ModalContent
         title={title}
         headerActions={

@@ -18,7 +18,6 @@ import {
   createImplicitAction,
   dragField,
   createAction,
-  actionEditorModal,
 } from "e2e/support/helpers";
 
 import { many_data_types_rows } from "e2e/support/test_tables_data";
@@ -668,7 +667,7 @@ const MODEL_NAME = "Test Action Model";
         it("allows to edit action title and field placeholder in action execute modal", () => {
           clickHelper(SAMPLE_QUERY_ACTION.name);
 
-          modal().within(() => {
+          getActionParametersInputModal().within(() => {
             cy.icon("pencil").click();
           });
 
@@ -691,7 +690,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Update").click();
           });
 
-          modal().within(() => {
+          getActionParametersInputModal().within(() => {
             cy.findByTestId("modal-header").findByText("New action name");
 
             cy.findAllByPlaceholderText("Test placeholder");
@@ -701,7 +700,7 @@ const MODEL_NAME = "Test Action Model";
         it("allows to edit action query and parameters in action execute modal", () => {
           clickHelper(SAMPLE_QUERY_ACTION.name);
 
-          modal().within(() => {
+          getActionParametersInputModal().within(() => {
             cy.icon("pencil").click();
           });
 
@@ -727,7 +726,7 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Update").click();
           });
 
-          modal().within(() => {
+          getActionParametersInputModal().within(() => {
             cy.findByLabelText("Total").type(`123`);
             cy.findByLabelText("Score").type(`345`);
 
@@ -818,3 +817,11 @@ const clickHelper = buttonName => {
   cy.wait(100);
   cy.button(buttonName).click();
 };
+
+function actionEditorModal() {
+  return cy.findByTestId("action-editor-modal");
+}
+
+function getActionParametersInputModal() {
+  return cy.findByTestId("action-parameters-input-modal");
+}
