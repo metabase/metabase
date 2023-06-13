@@ -545,8 +545,8 @@ const TITLE_LOCALES_BN = {
     'bn': 'শ্রেণি ভিত্তিক ছাত্রছাত্রীর পরিসংখ্যান'
   },
   'crvs.division.student.uid.count': {
-    'en': 'Division Wise Student UID Statistics',
-    'bn': 'বিভাগ ভিত্তিক ছাত্রছাত্রীর ইউআইডি পরিসংখ্যান'
+    'en': 'Division and Gender Wise Student UID Statistics',
+    'bn': 'বিভাগ এবং জেন্ডার ভিত্তিক ছাত্রছাত্রীর ইউআইডি পরিসংখ্যান'
   },
   'crvs.class.wise.uid.count.of.students': {
     'en': 'Class Wise Student UID Statistics',
