@@ -1,8 +1,7 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { Location } from "history";
 
-import { useMount } from "react-use";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import {
   Archived,
@@ -92,9 +91,9 @@ function App({
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
 
-  useMount(() => {
+  useEffect(() => {
     initializeIframeResizer();
-  });
+  }, []);
 
   return (
     <ErrorBoundary onError={onError}>
