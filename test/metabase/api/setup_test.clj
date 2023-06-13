@@ -7,7 +7,6 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.setup :as api.setup]
    [metabase.config :as config]
-   [metabase.driver.h2 :as h2]
    [metabase.events :as events]
    [metabase.http-client :as client]
    [metabase.models :refer [Activity Database Table User]]
