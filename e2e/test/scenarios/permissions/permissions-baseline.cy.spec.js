@@ -3,12 +3,17 @@ import {
   visitQuestion,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 
 describe("scenarios > permissions", () => {
   beforeEach(restore);
 
-  const PATHS = ["/dashboard/1", "/question/1", "/collection/1", "/admin"];
+  const PATHS = [
+    "/dashboard/1",
+    "/question/" + ORDERS_QUESTION_ID,
+    "/collection/1",
+    "/admin",
+  ];
 
   for (const path of PATHS) {
     it(`should display the permissions screen on ${path}`, () => {

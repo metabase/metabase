@@ -26,10 +26,12 @@ describe("scenarios > collection items listing", () => {
 
   describe("pagination", () => {
     const SUBCOLLECTIONS = 1;
+    const INSTANCE_ANALYTICS = 1;
     const ADDED_QUESTIONS = 15;
     const ADDED_DASHBOARDS = 14;
 
-    const TOTAL_ITEMS = SUBCOLLECTIONS + ADDED_DASHBOARDS + ADDED_QUESTIONS;
+    const TOTAL_ITEMS =
+      SUBCOLLECTIONS + ADDED_DASHBOARDS + ADDED_QUESTIONS + INSTANCE_ANALYTICS;
 
     beforeEach(() => {
       // Removes questions and dashboards included in the default database,
@@ -149,6 +151,7 @@ describe("scenarios > collection items listing", () => {
         const dashboardsFirst = _.chain(sortedNames)
           .sortBy(name => name.toLowerCase().includes("question"))
           .sortBy(name => name.toLowerCase().includes("collection"))
+          .sortBy(name => name.toLowerCase().includes("instance analytics"))
           .value();
         expect(actualNames, "sorted dashboards first").to.deep.equal(
           dashboardsFirst,
@@ -211,6 +214,7 @@ describe("scenarios > collection items listing", () => {
           .reverse()
           .sortBy(name => name.toLowerCase().includes("collection"))
           .sortBy(name => name.toLowerCase().includes("personal"))
+          .sortBy(name => name.toLowerCase().includes("instance analytics"))
           .value();
         expect(actualNames, "sorted newest first").to.deep.equal(newestFirst);
       });

@@ -11,7 +11,7 @@ import {
   getPersonalCollectionName,
 } from "e2e/support/helpers";
 
-import { USERS } from "e2e/support/cypress_data";
+import { USERS, ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -165,7 +165,7 @@ describe("managing question from the question's details sidebar", () => {
               cy.findByText("Nothing here");
 
               // Check page for archived questions
-              cy.visit("/question/1");
+              cy.visit("/question/" + ORDERS_QUESTION_ID);
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("This question has been archived");
             });

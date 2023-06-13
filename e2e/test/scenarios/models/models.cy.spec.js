@@ -19,7 +19,7 @@ import {
   openQuestionsSidebar,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { questionInfoButton } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
@@ -81,7 +81,7 @@ describe("scenarios > models", () => {
       cy.icon("table");
     });
 
-    cy.url().should("not.include", "/question/1");
+    cy.url().should("not.include", "/question/" + ORDERS_QUESTION_ID);
   });
 
   it("allows to turn a native question into a model", () => {
@@ -193,7 +193,7 @@ describe("scenarios > models", () => {
   it("redirects to /model URL when opening a model with /question URL", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
     // Important - do not use visitQuestion(1) here!
-    cy.visit("/question/1");
+    cy.visit("/question/" + ORDERS_QUESTION_ID);
     cy.wait("@dataset");
     openQuestionActions();
     assertIsModel();
@@ -355,7 +355,7 @@ describe("scenarios > models", () => {
         table: "Orders",
       });
 
-      cy.url().should("not.include", "/question/1");
+      cy.url().should("not.include", "/question/" + ORDERS_QUESTION_ID);
     });
 
     it("can create a question using table click actions", () => {
@@ -382,7 +382,7 @@ describe("scenarios > models", () => {
         table: "Orders",
       });
 
-      cy.url().should("not.include", "/question/1");
+      cy.url().should("not.include", "/question/" + ORDERS_QUESTION_ID);
     });
 
     it("can edit model info", () => {
