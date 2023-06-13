@@ -34,6 +34,7 @@
             Timeline
             TimelineEvent
             ViewLog]]
+   [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -2819,17 +2820,22 @@
   ([collection-id]
    (upload-example-csv! collection-id true))
   ([collection-id grant-permission?]
-   (let [file        (upload-test/csv-file-with
-                      ["id, name"
-                       "1, Luke Skywalker"
-                       "2, Darth Vader"]
-                      "example_csv_file")
-         group-id    (u/the-id (perms-group/all-users))]
-     (when grant-permission?
-       (perms/grant-permissions! group-id (perms/data-perms-path (mt/id))))
-     (u/prog1
-       (mt/with-current-user (mt/user->id :rasta)
-         (api.card/upload-csv! collection-id "example_csv_file.csv" file))))))
+   (mt/with-current-user (mt/user->id :rasta)
+     (let [file              (upload-test/csv-file-with
+                              ["id, name"
+                               "1, Luke Skywalker"
+                               "2, Darth Vader"]
+                              "example_csv_file")
+           group-id          (u/the-id (perms-group/all-users))
+           can-already-read? (mi/can-read? (mt/db))
+           grant?            (and (not can-already-read?)
+                                  grant-permission?)]
+       (when grant?
+         (perms/grant-permissions! group-id (perms/data-perms-path (mt/id))))
+       (u/prog1
+         (api.card/upload-csv! collection-id "example_csv_file.csv" file)
+         (when grant?
+           (perms/revoke-data-perms! group-id (mt/id))))))))
 
 (deftest upload-csv!-schema-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
