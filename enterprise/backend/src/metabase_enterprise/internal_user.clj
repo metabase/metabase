@@ -7,7 +7,7 @@
 (defn- install-internal-user! []
   (t2/insert-returning-instances!
    User
-   {:id config/internal-user-id
+   {:id config/internal-mb-user-id
     :first_name "Metabase"
     :last_name "Internal"
     :email "internal@metabase.com"
@@ -20,7 +20,7 @@
 (defn ensure-internal-user-exists!
   "Creates the internal user"
   []
-  (if-not (t2/exists? User :id config/internal-user-id)
+  (if-not (t2/exists? User :id config/internal-mb-user-id)
     (do (log/info "No internal user found, creating now...")
         (install-internal-user!)
         ::installed)
