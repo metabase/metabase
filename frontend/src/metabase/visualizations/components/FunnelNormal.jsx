@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Component, useLayoutEffect, useRef } from "react";
+import { Component } from "react";
 
 import cx from "classnames";
 
@@ -10,7 +10,6 @@ import { findSeriesByKey } from "metabase/visualizations/lib/series";
 
 import { color } from "metabase/lib/colors";
 import { isDesktopSafari } from "metabase/lib/browser";
-import { forceRedraw } from "metabase/lib/dom";
 import styles from "./FunnelNormal.css";
 
 export default class FunnelNormal extends Component {
@@ -202,20 +201,17 @@ const GraphSection = ({
   onVisualizationClick,
   className,
 }) => {
-  const rootRef = useRef();
-  useLayoutEffect(() => {
-    // In Safari, the ChartTooltip leaves a trail of artifacts over the Funnel component,
-    // which we fix by redrawing this component when the tooltip moves (i.e. when `hovered` changes).
-    if (isDesktopSafari()) {
-      forceRedraw(rootRef.current);
-    }
-  });
+  // Force SVG composite-layer until Safari bug is fixed: https://bugs.webkit.org/show_bug.cgi?id=257924
+  const compositeLayerStyles = isDesktopSafari()
+    ? { "will-change": "transform" } // See: https://dev.opera.com/articles/css-will-change-property/
+    : null;
   return (
-    <div ref={rootRef} className="relative full-height">
+    <div className="relative full-height">
       <svg
         height="100%"
         width="100%"
         className={cx(className, "absolute")}
+        style={{ ...compositeLayerStyles }}
         onMouseMove={e => {
           if (onHoverChange && info.hovered) {
             onHoverChange({
