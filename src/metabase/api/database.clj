@@ -945,7 +945,7 @@
   api/generic-204-no-content)
 
 
-;;; ------------------------------------------ POST /api/database/:id/sync -------------------------------------------
+;;; ------------------------------------------ POST /api/database/:id/sync_schema -------------------------------------------
 
 ;; Should somehow trigger sync-database/sync-database!
 (api/defendpoint POST "/:id/sync_schema"
@@ -971,6 +971,8 @@
     ;; avoid n+1
     (t2/update! Table {:id [:in (map :id tables)]} {:initial_sync_status "complete"}))
   {:status :ok})
+
+;;; ------------------------------------------ POST /api/database/:id/rescan_values -------------------------------------------
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
 
