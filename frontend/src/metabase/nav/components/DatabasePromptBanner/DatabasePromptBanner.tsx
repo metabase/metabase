@@ -6,6 +6,7 @@ import { useDatabaseListQuery } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getIsPaidPlan } from "metabase/selectors/settings";
+import { trackDatabasePromptBannerClicked } from "metabase/nav/analytics";
 
 import {
   ConnectDatabaseButton,
@@ -42,9 +43,19 @@ export function DatabasePromptBanner({ location }: DatabasePromptBannerProps) {
     <DatabasePromptBannerRoot role="banner">
       <Prompt>{t`Connect to your database to get the most from Metabase.`}</Prompt>
       <CallToActions>
-        <GetHelpButton href="https://metabase.com/help/connect">{t`Get help connecting`}</GetHelpButton>
+        <GetHelpButton
+          href="https://metabase.com/help/connect"
+          onClickCapture={e => {
+            trackDatabasePromptBannerClicked("help");
+          }}
+        >{t`Get help connecting`}</GetHelpButton>
         {!isOnAdminAddDatabasePage && (
-          <Link to="/admin/databases/create">
+          <Link
+            to="/admin/databases/create"
+            onClick={() => {
+              trackDatabasePromptBannerClicked("nav");
+            }}
+          >
             <ConnectDatabaseButton small>
               Connect your database
             </ConnectDatabaseButton>
