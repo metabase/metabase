@@ -1,12 +1,13 @@
 import {
-  restore,
-  setupSMTP,
   openEmailPage,
+  restore,
   sendSubscriptionsEmail,
+  setupSMTP,
   visitDashboard,
 } from "e2e/support/helpers";
 
-import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { USERS } from "e2e/support/cypress_data";
+import { createWaterfallQuestion } from "e2e/support/helpers/e2e-visualization-helpers";
 
 const { admin } = USERS;
 
@@ -37,25 +38,3 @@ describe("static visualizations", { tags: "@external" }, () => {
     });
   });
 });
-
-function createWaterfallQuestion({ showTotal } = {}) {
-  const query = {
-    name: `waterfall showTotal=${showTotal}`,
-    native: {
-      query:
-        "SELECT * FROM ( VALUES ('Stage 1', 10), ('Stage 2', 30), ('Stage 3', -50), ('Stage 4', -10), ('Stage 5', 80), ('Stage 6', 10), ('Stage 7', 15))",
-      "template-tags": {},
-    },
-    visualization_settings: {
-      "graph.show_values": true,
-    },
-    display: "waterfall",
-    database: SAMPLE_DB_ID,
-  };
-
-  if (typeof showTotal !== "undefined") {
-    query.visualization_settings["waterfall.show_total"] = showTotal;
-  }
-
-  return query;
-}

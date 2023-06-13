@@ -1,34 +1,32 @@
 import {
-  popover,
-  restore,
-  selectDashboardFilter,
-  editDashboard,
-  showDashboardCardActions,
-  filterWidget,
-  sidebar,
-  modal,
-  openNewCollectionItemFlowFor,
-  visitDashboard,
-  appBar,
-  rightSidebar,
-  getDashboardCardMenu,
   addOrUpdateDashboardCard,
-  openQuestionsSidebar,
+  restore,
+  visitDashboard,
 } from "e2e/support/helpers";
 
-import {SAMPLE_DB_ID} from "e2e/support/cypress_data";
-import {SAMPLE_DATABASE} from "e2e/support/cypress_sample_database";
-
-const {ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID} = SAMPLE_DATABASE;
+import { createFunnelBarQuestion } from "e2e/support/helpers/e2e-visualization-helpers";
 
 describe("scenarios > dashboard card resizing", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-
   });
 
   it("should allow cards to be resized", () => {
+    cy.createDashboard().then(({ body: { id: dashId } }) => {
+      cy.createNativeQuestion(createFunnelBarQuestion()).then(
+        ({ body: { id: card_id } }) => {
+          addOrUpdateDashboardCard({
+            card_id,
+            dashboard_id: dashId,
+            card: { row: 0, col: 0, size_x: 2, size_y: 2 },
+          });
 
+          visitDashboard(dashId);
+        },
+      );
+    });
+    cy.icon("pencil").click();
+    cy.get(".Dashcard .react-resizable-handle");
   });
 });

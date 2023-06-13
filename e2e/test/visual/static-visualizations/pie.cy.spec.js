@@ -1,12 +1,13 @@
 import {
-  restore,
-  setupSMTP,
   openEmailPage,
+  restore,
   sendSubscriptionsEmail,
+  setupSMTP,
   visitDashboard,
 } from "e2e/support/helpers";
 
-import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { USERS } from "e2e/support/cypress_data";
+import { createPieQuestion } from "e2e/support/helpers/e2e-visualization-helpers";
 
 const { admin } = USERS;
 
@@ -39,29 +40,3 @@ describe("static visualizations", () => {
     });
   });
 });
-
-function createPieQuestion({ percentVisibility, showTotal }) {
-  const query = {
-    name: `pie showDataLabels=${percentVisibility}, showTotal=${showTotal}`,
-    native: {
-      query:
-        "select 1 x, 1000 y\n" +
-        "union all select 2, 800\n" +
-        "union all select 3, 100\n" +
-        "union all select 4, 180\n" +
-        "union all select 5, 500\n" +
-        "union all select 6, 180\n" +
-        "union all select 7, 100\n" +
-        "union all select 8, 10\n",
-      "template-tags": {},
-    },
-    visualization_settings: {
-      "pie.percent_visibility": percentVisibility,
-      "pie.show_total": showTotal,
-    },
-    display: "pie",
-    database: SAMPLE_DB_ID,
-  };
-
-  return query;
-}
