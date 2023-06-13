@@ -15330,7 +15330,7 @@ databaseChangeLog:
   - changeSet:
       id: v47.00-047
       author: escherize
-      comment: Added 0.47.0 - Add view for audit v2 audit log
+      comment: Added 0.47.0 - Add view for v_audit_log
       changes:
         - sql:
             sql: >-
