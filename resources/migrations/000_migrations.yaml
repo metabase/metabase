@@ -14158,33 +14158,6 @@ databaseChangeLog:
               remarks: The ID of the corresponding permissions path for this sandbox
 
   - changeSet:
-      id: v46.00-066
-      author: noahmoss
-      comment: Added 0.46.0 -- backfill `permission_id` values in `sandboxes`
-      changes:
-        - sql: >-
-            UPDATE sandboxes s
-            SET permission_id = (
-              SELECT id
-              FROM permissions p
-              WHERE
-                p.object LIKE CONCAT('%/table/', s.table_id, '/query/segmented/')
-                AND p.group_id = s.group_id
-            );
-      rollback:
-        # not required, new values added here are dropped in the rollback of v46.00-065
-
-  - changeSet:
-      id: v46.00-067
-      author: noahmoss
-      comment: Added 0.46.0 -- remove orphaned entries in `sandboxes`
-      changes:
-        - sql: >-
-            DELETE FROM sandboxes
-            WHERE permission_id IS NULL;
-      rollback: # not required, orphaned sandboxes should not be re-added to the DB
-
-  - changeSet:
       id: v46.00-070
       author: calherries
       comment: Added 0.46.0 - add entity_id column to action
@@ -14214,45 +14187,6 @@ databaseChangeLog:
             tableName: report_card
             columnName: updated_at
             newDataType: DATETIME
-
-  - changeSet:
-      id: v46.00-075
-      author: noahmoss
-      comment: Add foreign key constraint on sandboxes.permission_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: sandboxes
-            baseColumnNames: permission_id
-            referencedTableName: permissions
-            referencedColumnNames: id
-            constraintName: fk_sandboxes_ref_permissions
-            nullable: true
-      rollback:
-      # Not required because a rollback would drop the `permission_id` column anyway
-
-  - changeSet:
-      id: v46.00-076
-      author: noahmoss
-      comment: Remove foreign key constraint on sandboxes.permission_id
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: sandboxes
-            constraintName: fk_sandboxes_ref_permissions
-      rollback:
-      # Not required because a rollback would drop the `permission_id` column anyway
-
-  - changeSet:
-      id: v46.00-077
-      author: noahmoss
-      comment: Add foreign key constraint on sandboxes.permission_id with the appropriate onDelete policy
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: sandboxes
-            baseColumnNames: permission_id
-            referencedTableName: permissions
-            referencedColumnNames: id
-            constraintName: fk_sandboxes_ref_permissions
-            onDelete: CASCADE
 
   - changeSet:
       id: v46.00-079
@@ -14307,6 +14241,138 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.DeleteAbandonmentEmailTask"
+
+  - changeSet:
+      id: v46.00-088
+      author: noahmoss
+      comment: Added 0.46.5 -- backfill `permission_id` values in `sandboxes`. This is a fixed verison of v46.00-066
+               which has been removed, since it had a bug that blocked a customer from upgrading.
+      changes:
+        - sql: >-
+            UPDATE sandboxes s
+            SET permission_id = (
+              SELECT p.id
+              FROM permissions p
+              WHERE
+                p.object = CONCAT('/db/',
+                                  (SELECT t.db_id FROM metabase_table t WHERE t.id = s.table_id),
+                                  '/schema/',
+                                  (SELECT t.schema FROM metabase_table t WHERE t.id = s.table_id),
+                                  '/table/',
+                                  s.table_id,
+                                  '/query/segmented/')
+                AND p.group_id = s.group_id
+              LIMIT 1
+            )
+            WHERE permission_id IS NULL;
+      rollback:
+        # not required, new values added here do not need to be dropped
+
+  - changeSet:
+      id: v46.00-089
+      author: noahmoss
+      comment: Added 0.46.5 -- remove orphaned entries in `sandboxes`
+      changes:
+        - sql: >-
+            DELETE FROM sandboxes
+            WHERE permission_id IS NULL;
+      rollback: # not required, orphaned sandboxes should not be re-added to the DB
+
+  - changeSet:
+      id: v46.00-090
+      author: noahmoss
+      comment: Add foreign key constraint on sandboxes.permission_id
+      # This is a revised version of a prior migration (v46.00-075) so it may fail due to the FK constriant already existing
+      failOnError: false
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: sandboxes
+            baseColumnNames: permission_id
+            referencedTableName: permissions
+            referencedColumnNames: id
+            constraintName: fk_sandboxes_ref_permissions
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v47.00-001
+      author: calherries
+      comment: Added 0.47.0 -- set base-type to type/JSON for JSON database-types for postgres and mysql
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field f
+              SET base_type = 'type/JSON'
+              WHERE EXISTS (
+                SELECT *
+                FROM metabase_database d
+                JOIN metabase_table t ON t.db_id = d.id
+                WHERE f.table_id = t.id
+                  AND lower(f.database_type) in ('json', 'jsonb')
+                  AND d.engine in ('postgres', 'mysql')
+              )
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_field f
+              SET base_type = case when d.engine = 'postgres' then 'type/Structured' else 'type/SerializedJSON' end
+              FROM metabase_database d
+              JOIN metabase_table t ON t.db_id = d.id
+              WHERE f.table_id = t.id
+                AND lower(f.database_type) in ('json', 'jsonb')
+                AND d.engine in ('postgres', 'mysql')
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field f
+              JOIN metabase_table t ON f.table_id = t.id
+              JOIN metabase_database d ON t.db_id = d.id
+              SET base_type = case when d.engine = 'postgres' then 'type/Structured' else 'type/SerializedJSON' end
+              WHERE lower(f.database_type) in ('json', 'jsonb')
+                AND d.engine in ('postgres', 'mysql')
+        - sql:
+            dbms: h2
+            sql: >-
+              MERGE INTO metabase_field f
+              USING (
+                SELECT f.id, case when d.engine = 'postgres' then 'type/Structured' else 'type/SerializedJSON' end as base_type
+                FROM metabase_field f
+                JOIN metabase_table t ON f.table_id = t.id
+                JOIN metabase_database d ON t.db_id = d.id
+                WHERE lower(f.database_type) in ('json', 'jsonb')
+                  AND d.engine in ('postgres', 'mysql')
+              ) as updates
+              ON f.id = updates.id
+              WHEN MATCHED THEN
+                UPDATE SET f.base_type = updates.base_type;
+
+  - changeSet:
+      id: v47.00-002
+      author: calherries
+      comment: Added 0.47.0 - Add json_unfolding column to metabase_field
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: 'Enable/disable JSON unfolding for a field'
+                name: json_unfolding
+                type: boolean
+                defaultValueBoolean: false
+                constraints:
+                  nullable: false
+            tableName: metabase_field
+
+  - changeSet:
+      id: v47.00-003
+      author: calherries
+      comment: Added 0.47.0 - Populate metabase_field.json_unfolding based on base_type
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET json_unfolding = true
+              WHERE base_type = 'type/JSON';
+      rollback: # nothing to do, since json_unfolding is new in 47
 
   - changeSet:
       id: v47.00-004
