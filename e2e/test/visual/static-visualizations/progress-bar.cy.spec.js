@@ -1,13 +1,12 @@
 import {
-  openEmailPage,
   restore,
-  sendSubscriptionsEmail,
   setupSMTP,
+  openEmailPage,
+  sendSubscriptionsEmail,
   visitDashboard,
 } from "e2e/support/helpers";
 
-import { USERS } from "e2e/support/cypress_data";
-import { createProgressBarQuestion } from "e2e/support/helpers/e2e-visualization-helpers";
+import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
 
@@ -39,3 +38,20 @@ describe("static visualizations", { tags: "@external" }, () => {
     });
   });
 });
+
+function createProgressBarQuestion({ value, goal }) {
+  const query = {
+    name: `progress bar value=${value} goal=${goal}`,
+    native: {
+      query: `SELECT ${value}`,
+      "template-tags": {},
+    },
+    visualization_settings: {
+      "progress.goal": goal,
+    },
+    display: "progress",
+    database: SAMPLE_DB_ID,
+  };
+
+  return query;
+}

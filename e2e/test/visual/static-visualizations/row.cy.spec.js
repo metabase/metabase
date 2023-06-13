@@ -1,13 +1,15 @@
 import {
-  openEmailPage,
   restore,
-  sendSubscriptionsEmail,
   setupSMTP,
+  openEmailPage,
+  sendSubscriptionsEmail,
   visitDashboard,
 } from "e2e/support/helpers";
 
-import { USERS } from "e2e/support/cypress_data";
-import { createSingleSeriesRowChart } from "e2e/support/helpers/e2e-visualization-helpers";
+import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
+const { ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
 const { admin } = USERS;
 
@@ -34,3 +36,22 @@ describe("static visualizations", { tags: "@external" }, () => {
     });
   });
 });
+
+function createSingleSeriesRowChart() {
+  return {
+    name: `Single series row chart`,
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+      ],
+    },
+    visualization_settings: {
+      "graph.dimensions": ["CATEGORY"],
+      "graph.metrics": ["count"],
+    },
+    display: "row",
+    database: SAMPLE_DB_ID,
+  };
+}
