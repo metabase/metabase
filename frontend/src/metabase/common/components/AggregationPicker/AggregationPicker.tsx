@@ -72,13 +72,19 @@ export function AggregationPicker({
   onSelectLegacy,
   onClose,
 }: AggregationPickerProps) {
-  const [operator, setOperator] = useState<Lib.AggregationOperator | null>(
-    getInitialOperator(query, stageIndex, operators),
-  );
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
   ] = useToggle(isExpressionEditorInitiallyOpen(legacyClause));
+
+  // For really simple inline expressions like Average([Price]),
+  // MLv2 can figure out that "Average" operator is used.
+  // We don't want that though, so we don't break navigation inside the picker
+  const [operator, setOperator] = useState<Lib.AggregationOperator | null>(
+    isEditingExpression
+      ? null
+      : getInitialOperator(query, stageIndex, operators),
+  );
 
   const operatorInfo = useMemo(
     () => (operator ? Lib.displayInfo(query, stageIndex, operator) : null),
@@ -206,6 +212,21 @@ export function AggregationPicker({
     [onSelectLegacy, onClose],
   );
 
+  if (isEditingExpression) {
+    return (
+      <ExpressionWidget
+        query={legacyQuery}
+        name={AGGREGATION.getName(legacyClause)}
+        expression={AGGREGATION.getContent(legacyClause)}
+        withName
+        startRule="aggregation"
+        header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
+        onChangeExpression={handleExpressionChange}
+        onClose={closeExpressionEditor}
+      />
+    );
+  }
+
   if (operator && operatorInfo?.requiresColumn) {
     const columns = Lib.aggregationOperatorColumns(operator);
     const columnGroups = Lib.groupColumns(columns);
@@ -225,21 +246,6 @@ export function AggregationPicker({
           onClose={onClose}
         />
       </ColumnPickerContainer>
-    );
-  }
-
-  if (isEditingExpression) {
-    return (
-      <ExpressionWidget
-        query={legacyQuery}
-        name={AGGREGATION.getName(legacyClause)}
-        expression={AGGREGATION.getContent(legacyClause)}
-        withName
-        startRule="aggregation"
-        header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
-        onChangeExpression={handleExpressionChange}
-        onClose={closeExpressionEditor}
-      />
     );
   }
 
