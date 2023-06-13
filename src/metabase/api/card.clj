@@ -1155,7 +1155,7 @@ saved later when it is ready."
   "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
   syncing and scanning the new data, and creating an appropriate model which is then returned. May throw validation or
   DB errors."
-  [collection-id filename csv-file]
+  [collection-id filename ^File csv-file]
   {collection-id ms/PositiveInt}
   (when (not (public-settings/uploads-enabled))
     (throw (Exception. "Uploads are not enabled.")))
