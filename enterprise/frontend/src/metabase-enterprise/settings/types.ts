@@ -16,8 +16,4 @@ export interface EnterpriseSettings extends Settings {
    * @deprecated
    */
   application_logo_url?: string;
-  /**
-   * @deprecated
-   */
-  application_colors?: string;
 }

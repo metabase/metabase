@@ -3,44 +3,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import {
-  getHasCustomColors,
-  getIsWhiteLabeling,
-  getLoadingMessage,
-  getLogoUrl,
-} from "./selectors";
-
-describe("getHasCustomColors", () => {
-  it('should return `true` if "application-colors" has values', () => {
-    const states = createMockState({
-      settings: createMockSettingsState({
-        "application-colors": {
-          brand: "#123456",
-        },
-      }),
-    });
-
-    expect(getHasCustomColors(states)).toBe(true);
-  });
-
-  it('should return `false` if "application-colors" has no values', () => {
-    const states = createMockState({
-      settings: createMockSettingsState({
-        "application-colors": {},
-      }),
-    });
-
-    expect(getHasCustomColors(states)).toBe(false);
-  });
-
-  it('should return `false` if "application-colors" is not set', () => {
-    const states = createMockState({
-      settings: createMockSettingsState(),
-    });
-
-    expect(getHasCustomColors(states)).toBe(false);
-  });
-});
+import { getIsWhiteLabeling, getLoadingMessage, getLogoUrl } from "./selectors";
 
 describe("getLogoUrl", () => {
   it('should return default logo url if "application-logo-url" is not set', () => {
