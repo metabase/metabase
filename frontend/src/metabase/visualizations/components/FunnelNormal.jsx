@@ -9,9 +9,15 @@ import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { findSeriesByKey } from "metabase/visualizations/lib/series";
 
 import { color } from "metabase/lib/colors";
-import { isDesktopSafari } from "metabase/lib/browser";
-import { FunnelRoot } from "./FunnelNormal.styled";
-import styles from "./FunnelNormal.css";
+import {
+  FunnelNormalRoot,
+  FunnelStart,
+  FunnelStep,
+  Head,
+  Info,
+  Subtitle,
+  Title,
+} from "metabase/visualizations/components/FunnelNormal.styled";
 
 export default class FunnelNormal extends Component {
   render() {
@@ -123,50 +129,38 @@ export default class FunnelNormal extends Component {
     const isClickable = visualizationIsClickable(infos[0].clicked);
 
     return (
-      <FunnelRoot
-        isNarrow={isNarrow}
+      <FunnelNormalRoot
+        className={className}
         isSmall={isSmall}
         data-testid="funnel-chart"
-        className={className}
       >
-        <div
-          className={cx(styles.FunnelStep, styles.Initial, "flex flex-column")}
-        >
-          <Ellipsified
-            className={styles.Head}
-            data-testid="funnel-chart-header"
-          >
-            {formatDimension(rows[0][dimensionIndex])}
-          </Ellipsified>
-          <div className={styles.Start}>
-            <div className={styles.Title}>
-              {formatMetric(rows[0][metricIndex])}
-            </div>
-            <div className={styles.Subtitle}>
-              {getFriendlyName(cols[metricIndex])}
-            </div>
-          </div>
+        <FunnelStep isFirst>
+          <Head isNarrow={isNarrow}>
+            <Ellipsified data-testid="funnel-chart-header">
+              {formatDimension(rows[0][dimensionIndex])}
+            </Ellipsified>
+          </Head>
+          <FunnelStart isNarrow={isNarrow}>
+            <Title>{formatMetric(rows[0][metricIndex])}</Title>
+            <Subtitle>{getFriendlyName(cols[metricIndex])}</Subtitle>
+          </FunnelStart>
           {/* This part of code in used only to share height between .Start and .Graph columns. */}
-          <div className={styles.Infos}>
-            <div className={styles.Title}>&nbsp;</div>
-            <div className={styles.Subtitle}>&nbsp;</div>
-          </div>
-        </div>
+          <Info isNarrow={isNarrow}>
+            <Title>&nbsp;</Title>
+            <Subtitle>&nbsp;</Subtitle>
+          </Info>
+        </FunnelStep>
         {infos.slice(1).map((info, index) => {
           const stepPercentage =
             initial.value > 0 ? info.value / initial.value : 0;
 
           return (
-            <div
-              key={index}
-              className={cx(styles.FunnelStep, "flex flex-column")}
-            >
-              <Ellipsified
-                className={styles.Head}
-                data-testid="funnel-chart-header"
-              >
-                {formatDimension(rows[index + 1][dimensionIndex])}
-              </Ellipsified>
+            <FunnelStep key={index}>
+              <Head isNarrow={isNarrow}>
+                <Ellipsified data-testid="funnel-chart-header">
+                  {formatDimension(rows[index + 1][dimensionIndex])}
+                </Ellipsified>
+              </Head>
               <GraphSection
                 className={cx({ "cursor-pointer": isClickable })}
                 index={index}
@@ -176,18 +170,20 @@ export default class FunnelNormal extends Component {
                 onHoverChange={onHoverChange}
                 onVisualizationClick={isClickable ? onVisualizationClick : null}
               />
-              <div className={styles.Infos}>
-                <Ellipsified className={styles.Title}>
-                  {formatPercent(stepPercentage)}
-                </Ellipsified>
-                <Ellipsified className={styles.Subtitle}>
-                  {formatMetric(rows[index + 1][metricIndex])}
-                </Ellipsified>
-              </div>
-            </div>
+              <Info isNarrow={isNarrow}>
+                <Title>
+                  <Ellipsified>{formatPercent(stepPercentage)}</Ellipsified>
+                </Title>
+                <Subtitle>
+                  <Ellipsified>
+                    {formatMetric(rows[index + 1][metricIndex])}
+                  </Ellipsified>
+                </Subtitle>
+              </Info>
+            </FunnelStep>
           );
         })}
-      </FunnelRoot>
+      </FunnelNormalRoot>
     );
   }
 }
@@ -200,17 +196,12 @@ const GraphSection = ({
   onVisualizationClick,
   className,
 }) => {
-  // Force SVG composite-layer until Safari bug is fixed: https://bugs.webkit.org/show_bug.cgi?id=257924
-  const compositeLayerStyles = isDesktopSafari()
-    ? { "will-change": "transform" } // See: https://dev.opera.com/articles/css-will-change-property/
-    : null;
   return (
     <div className="relative full-height">
       <svg
         height="100%"
         width="100%"
         className={cx(className, "absolute")}
-        style={{ ...compositeLayerStyles }}
         onMouseMove={e => {
           if (onHoverChange && info.hovered) {
             onHoverChange({

@@ -14,6 +14,11 @@ function parseQueryStringOptions(s) {
   return options;
 }
 
+export function isDesktopSafari() {
+  // from: https://stackoverflow.com/a/42189492/142317
+  return "safari" in window;
+}
+
 export function parseHashOptions(hash) {
   return parseQueryStringOptions(hash.replace(/^#/, ""));
 }
@@ -40,9 +45,4 @@ export function updateQueryString(location, optionsUpdater) {
 export function isMac() {
   const { platform = "" } = navigator;
   return Boolean(platform.match(/^Mac/));
-}
-
-export function isDesktopSafari() {
-  // from: https://stackoverflow.com/a/42189492/142317
-  return "safari" in window;
 }

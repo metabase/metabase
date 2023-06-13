@@ -1,37 +1,104 @@
-import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
+import { isDesktopSafari } from "metabase/lib/browser";
 
-interface FunnelRootProps {
-  isSmall: boolean;
+interface SharedProps {
   isNarrow: boolean;
 }
 
-const narrowFunnelStyles = css`
-  .Head {
-    font-size: 12px;
-  }
+export const Title = styled.div``;
+export const Subtitle = styled.div``;
 
-  .Infos {
-    font-size: 12px;
-  }
+interface FunnelStepProps {
+  isFirst?: boolean;
+}
+export const FunnelStep = styled.div<FunnelStepProps>`
+  width: 100%;
+  min-width: 20px;
+  border-right: 1px solid ${color("border")};
+  display: flex;
+  flex-direction: column;
 
-  .Infos .Subtitle {
-    font-size: 0.875em;
-  }
+  ${props =>
+    props.isFirst
+      ? css`
+          min-width: unset;
+          width: unset;
+        `
+      : null}
+`;
 
-  .Start .Title {
-    font-size: 0.75em;
-  }
+export const Head = styled.div<SharedProps>`
+  text-align: right;
+  padding: 0.5em;
+  min-width: 0;
 
-  .Start .Subtitle {
-    font-size: 0.5em;
+  ${props =>
+    props.isNarrow
+      ? css`
+          font-size: 12px;
+        `
+      : null}
+`;
+
+export const Info = styled.div<SharedProps>`
+  text-align: right;
+  padding: 0.5em 0.5em 0 0.5em;
+  font-size: ${props => (props.isNarrow ? "12px" : "16px")};
+
+  ${Subtitle} {
+    font-size: ${props => (props.isNarrow ? "0.875em" : "0.6875em")};
+    margin-top: 1em;
   }
 `;
 
-export const FunnelRoot = styled.div<FunnelRootProps>`
+export const FunnelStart = styled.div<SharedProps>`
   display: flex;
-  color: ${color("text-medium")};
+  justify-content: center;
+  flex-direction: column;
+  text-align: right;
+  flex-grow: 1;
+
+  padding-right: 0.5em;
+  font-size: 24px;
+
+  ${Title} {
+    font-weight: bold;
+    color: black;
+    ${props =>
+      props.isNarrow
+        ? css`
+            font-size: 0.75em;
+          `
+        : null}
+  }
+
+  ${Subtitle} {
+    font-size: 0.6875em;
+
+    ${props =>
+      props.isNarrow
+        ? css`
+            font-size: 0.5em;
+          `
+        : null}
+  }
+`;
+
+interface FunnelNormalRootProps {
+  isNarrow: boolean;
+  isSmall: boolean;
+}
+
+export const FunnelNormalRoot = styled.div<FunnelNormalRootProps>`
+  display: flex;
   padding: ${props => (props.isSmall ? "0.5rem" : "1rem")};
-  ${props => (props.isNarrow ? narrowFunnelStyles : null)}
+  color: ${color("text-medium")};
+
+  ${isDesktopSafari()
+    ? css`
+        will-change: transform;
+      `
+    : null}
 `;
