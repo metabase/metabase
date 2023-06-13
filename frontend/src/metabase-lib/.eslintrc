@@ -1,6 +1,6 @@
 {
   "rules": {
-    "@typescript-eslint/no-restricted-imports": [
+    "no-restricted-imports": [
       "error",
       {
         "patterns": [
@@ -10,9 +10,7 @@
               "!metabase/env",
               "!metabase/lib",
               "!metabase/services"
-            ],
-            "allowTypeImports": true,
-            "message": "Cannot import from metabase to metabase-lib"
+            ]
           },
           {
             "group": [

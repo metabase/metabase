@@ -29,6 +29,10 @@ const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
       </NodeListTitleText>
     </NodeListTitle>
     {fields.map(field => {
+      // field.icon() cannot be annotated to return IconName
+      // because metabase-lib cannot import from metabase.
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       const iconName: IconName = field.icon();
       const tooltip = iconName === "unknown" ? t`Unknown type` : null;
       return (

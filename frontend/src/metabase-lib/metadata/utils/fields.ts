@@ -1,4 +1,3 @@
-import type { IconName } from "metabase/core/components/Icon";
 import { FieldId, FieldReference, TableId } from "metabase-types/api";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import {
@@ -14,7 +13,7 @@ import {
 } from "metabase-lib/types/constants";
 import { getFieldType } from "metabase-lib/types/utils/isa";
 
-const ICON_MAPPING: Record<string, IconName> = {
+const ICON_MAPPING: Record<string, string> = {
   [TEMPORAL]: "calendar",
   [LOCATION]: "location",
   [COORDINATE]: "location",
