@@ -14293,6 +14293,21 @@ databaseChangeLog:
             constraintName: fk_sandboxes_ref_permissions
             onDelete: CASCADE
 
+  - changeSet:
+      id: v47.00-004
+      author: qnkhuat
+      comment: Added 0.47.0 - Add auto_incremented to metabase_field
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_auto_increment
+                  type: boolean
+                  remarks: Indicates this field is auto incremented
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
