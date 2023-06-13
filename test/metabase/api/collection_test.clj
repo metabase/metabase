@@ -1,10 +1,11 @@
 (ns metabase.api.collection-test
   "Tests for /api/collection endpoints."
   (:require
-   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [medley.core :as m]
    [metabase.api.collection :as api.collection]
    [metabase.config :as config]
    [metabase.models
@@ -36,7 +37,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.schema :as su]
-   [metabase.util.yaml :as yaml]
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -80,16 +80,26 @@
 ;;; |                                                GET /collection                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn instance-analytics-collection-names []
-  (set
-   (when config/ee-available?
-     (keep
-      (fn [path]
-        (let [data (yaml/from-file path)]
-          (when (= (-> data :serdes/meta first :model) "Collection")
-            (:name data))))
-      (filter (fn [f] (str/ends-with? (str f) "yaml"))
-              (file-seq (io/file (io/resource "instance_analytics/collections"))))))))
+(defn instance-analytics-collection-names
+  "Gather instance-analytic type collections and their children (who may or may-not have type=instance-analytics)."
+  []
+  (if-not config/ee-available?
+    #{}
+    (let [colls (mapv #(select-keys % [:id :name :location :type]) (t2/select Collection))
+          id->coll (m/index-by :id colls)
+          id->ia? (set (keep (fn [{:keys [type id]}] (when (= type "instance-analytics") id)) colls))
+          collection-tree (collection/collections->tree {} colls)]
+      (->> (loop [[tree & coll-tree :as in] collection-tree
+                  ia-ids #{}]
+             (cond (not tree) ia-ids
+                   (= "instance-analytics" (:type tree)) (let [ids (atom #{})]
+                                                           (walk/postwalk
+                                                            (fn [x] (when (and (map? x) (:id x)) (swap! ids conj (:id x))) x)
+                                                            tree)
+                                                           (recur coll-tree (into ia-ids @ids)))
+                   ;; TODO: put my children onto the end of the coll-tree, then recur like normal
+                   :else (recur (concat coll-tree (:children tree)) ia-ids)))
+           (mapv (comp :name id->coll))))))
 
 (deftest list-collections-test
   (testing "GET /api/collection"
@@ -140,15 +150,15 @@
                                                                  :authority_level "official"}
                                  Collection _                   {:name     "Crowberto's Child Collection"
                                                                  :location (collection/location-path crowberto-root)}]
-          (let [public-collection-names (apply conj #{"Our analytics"
-                                                      (:name collection)
-                                                      "Collection with Items"
-                                                      "subcollection"}
-                                               (instance-analytics-collection-names))
+          (let [public-collection-names (into #{"Our analytics"
+                                                (:name collection)
+                                                "Collection with Items"
+                                                "subcollection"}
+                                              (set (instance-analytics-collection-names)))
                 crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
                 crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
                 luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
-            (is (= (into (set (map :name (t2/select Collection))) public-collection-names)
+            (is (= (into (t2/select-fn-set :name Collection {:where [:= :type nil]}) public-collection-names)
                    crowbertos))
             (is (= (into public-collection-names #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
                    crowbertos-with-excludes))
