@@ -373,6 +373,10 @@
                       [:inline [:= 0 1]])}))
        table-db-id))))
 
+(def ^:private columns-to-not-search
+  #{:collection_authority_level :moderated_status
+    :initial_sync_status :pk_ref :collection_type})
+
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
   [query]
