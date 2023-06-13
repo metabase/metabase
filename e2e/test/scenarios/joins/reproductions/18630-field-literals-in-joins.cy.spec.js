@@ -1,12 +1,10 @@
 import { restore } from "e2e/support/helpers";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("issue 18630", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
     restore();
     cy.signInAsAdmin();
   });
