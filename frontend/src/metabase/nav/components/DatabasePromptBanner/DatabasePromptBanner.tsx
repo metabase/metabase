@@ -7,6 +7,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { trackDatabasePromptBannerClicked } from "metabase/nav/analytics";
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 import {
   ConnectDatabaseButton,
@@ -28,8 +29,9 @@ export function DatabasePromptBanner({ location }: DatabasePromptBannerProps) {
   });
   const onlyHaveSampleDatabase =
     databases.length === 1 && databases[0].is_sample;
+  const isWhiteLabeling = useSelector(PLUGIN_SELECTORS.getIsWhiteLabeling);
   const shouldShowDatabasePromptBanner =
-    isAdmin && isPaidPlan && onlyHaveSampleDatabase;
+    isAdmin && isPaidPlan && onlyHaveSampleDatabase && !isWhiteLabeling;
 
   if (!shouldShowDatabasePromptBanner) {
     return null;
