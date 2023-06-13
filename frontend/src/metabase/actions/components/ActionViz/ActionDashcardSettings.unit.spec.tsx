@@ -71,6 +71,8 @@ const dashboard = createMockDashboard({
   parameters: [dashboardParameter],
 });
 
+const DEFAULT_VALUE = "default value";
+
 const setup = (
   options?: Partial<
     React.ComponentProps<typeof ConnectedActionDashcardSettings>
@@ -239,6 +241,53 @@ describe("ActionViz > ActionDashcardSettings", () => {
   describe.each([
     [
       "not required, not hidden, mapped",
+      dashcardFactory({
+        hidden: false,
+        required: false,
+        mapped: true,
+        defaultValue: DEFAULT_VALUE,
+      }),
+    ],
+    [
+      "required, not hidden, not mapped",
+      dashcardFactory({
+        hidden: false,
+        required: true,
+        mapped: false,
+        defaultValue: DEFAULT_VALUE,
+      }),
+    ],
+    [
+      "not required, not hidden, not mapped",
+      dashcardFactory({
+        hidden: false,
+        required: false,
+        mapped: false,
+        defaultValue: DEFAULT_VALUE,
+      }),
+    ],
+  ])("when there is default value and %s", (_, getDashcard) => {
+    beforeEach(() => {
+      setup({
+        dashcard: getDashcard(),
+      });
+    });
+
+    it("puts default value to the select", async () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameter1.id}`,
+      );
+
+      userEvent.click(within(formSection).getByTestId("select-button"));
+
+      const popover = await screen.findByRole("grid");
+      expect(within(popover).getByText(DEFAULT_VALUE)).toBeInTheDocument();
+    });
+  });
+
+  describe.each([
+    [
+      "not required, not hidden, mapped",
       dashcardFactory({ hidden: false, required: false, mapped: true }),
     ],
     [
@@ -276,6 +325,19 @@ describe("ActionViz > ActionDashcardSettings", () => {
 
     it("allows to submit a form", () => {
       expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+    });
+
+    it("doesn't contain default", async () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameter1.id}`,
+      );
+
+      userEvent.click(within(formSection).getByTestId("select-button"));
+
+      const popover = await screen.findByRole("grid");
+      expect(
+        within(popover).queryByText(DEFAULT_VALUE),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -353,10 +415,12 @@ function dashcardFactory({
   required,
   hidden,
   mapped,
+  defaultValue,
 }: {
   required: boolean;
   hidden: boolean;
   mapped: boolean;
+  defaultValue?: string;
 }) {
   const action = {
     ...actions1[0],
@@ -367,6 +431,7 @@ function dashcardFactory({
           id: actionParameter1.id,
           hidden,
           required,
+          defaultValue,
         }),
       },
     },

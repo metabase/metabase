@@ -121,3 +121,10 @@ export const isParameterRequired = (
     action.visualization_settings?.fields?.[parameter.id]?.required
   );
 };
+
+export const getParameterDefaultValue = (
+  action: WritebackAction,
+  parameter: WritebackParameter,
+) => {
+  return action.visualization_settings?.fields?.[parameter.id]?.defaultValue;
+};

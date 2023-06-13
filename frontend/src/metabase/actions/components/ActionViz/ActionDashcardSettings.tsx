@@ -30,7 +30,11 @@ import {
   ExplainerText,
   BrandLinkWithLeftMargin,
 } from "./ActionDashcardSettings.styled";
-import { isParameterHidden, isParameterRequired } from "./utils";
+import {
+  getParameterDefaultValue,
+  isParameterHidden,
+  isParameterRequired,
+} from "./utils";
 
 const mapDispatchToProps = {
   setActionForDashcard,
@@ -77,8 +81,10 @@ export function ActionDashcardSettings({
       const isRequired = isParameterRequired(action, actionParameter);
       const isParameterMapped =
         currentMappings[getTargetKey(actionParameter)] != null;
+      const defaultValue = getParameterDefaultValue(action, actionParameter);
+      const hasDefaultValue = defaultValue != null;
 
-      return isHidden && isRequired && !isParameterMapped;
+      return isHidden && isRequired && !isParameterMapped && !hasDefaultValue;
     });
 
   return (

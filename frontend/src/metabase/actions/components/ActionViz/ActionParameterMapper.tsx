@@ -21,7 +21,11 @@ import {
   ParameterFormLabel,
   ParameterFormBadge,
 } from "./ActionParameterMapper.styled";
-import { isParameterHidden, isParameterRequired } from "./utils";
+import {
+  getParameterDefaultValue,
+  isParameterHidden,
+  isParameterRequired,
+} from "./utils";
 
 interface ActionParameterMapperProps {
   dashcard: ActionDashboardCard;
@@ -64,10 +68,13 @@ export const ActionParameterMappingForm = ({
       {actionParameters.map((actionParam: WritebackParameter) => {
         const isHidden = isParameterHidden(action, actionParam);
         const isRequired = isParameterRequired(action, actionParam);
+        const defaultValue = getParameterDefaultValue(action, actionParam);
         const mappedValue = currentMappings[getTargetKey(actionParam)];
         const isParameterMapped = mappedValue != null;
+        const hasDefaultValue = defaultValue != null;
 
-        const showError = isHidden && isRequired && !isParameterMapped;
+        const showError =
+          isHidden && isRequired && !isParameterMapped && !hasDefaultValue;
         const name = actionParam.name ?? actionParam.id;
 
         return (
@@ -85,11 +92,12 @@ export const ActionParameterMappingForm = ({
                 handleParameterChange(e.target.value, actionParam.target)
               }
               options={[
-                {
-                  name:
-                    isHidden && isRequired
-                      ? t`Select a value`
-                      : t`Ask the user`,
+                !hasDefaultValue && {
+                  name: isHidden ? t`Select a value` : t`Ask the user`,
+                  value: null,
+                },
+                hasDefaultValue && {
+                  name: defaultValue,
                   value: null,
                 },
                 ...dashboardParameters.map(dashboardParam => ({
@@ -97,7 +105,7 @@ export const ActionParameterMappingForm = ({
                   name: dashboardParam.name,
                   value: dashboardParam.id,
                 })),
-              ]}
+              ].filter(Boolean)}
             />
           </ParameterFormSection>
         );
