@@ -10,6 +10,7 @@ import { findSeriesByKey } from "metabase/visualizations/lib/series";
 
 import { color } from "metabase/lib/colors";
 import { isDesktopSafari } from "metabase/lib/browser";
+import { FunnelRoot } from "./FunnelNormal.styled";
 import styles from "./FunnelNormal.css";
 
 export default class FunnelNormal extends Component {
@@ -122,13 +123,11 @@ export default class FunnelNormal extends Component {
     const isClickable = visualizationIsClickable(infos[0].clicked);
 
     return (
-      <div
+      <FunnelRoot
+        isNarrow={isNarrow}
+        isSmall={isSmall}
         data-testid="funnel-chart"
-        className={cx(className, styles.Funnel, "flex", {
-          [styles["Funnel--narrow"]]: isNarrow,
-          p1: isSmall,
-          p2: !isSmall,
-        })}
+        className={className}
       >
         <div
           className={cx(styles.FunnelStep, styles.Initial, "flex flex-column")}
@@ -188,7 +187,7 @@ export default class FunnelNormal extends Component {
             </div>
           );
         })}
-      </div>
+      </FunnelRoot>
     );
   }
 }
