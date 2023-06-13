@@ -12,7 +12,7 @@ function checkBucketIsSelected(item: BucketListItem) {
   return !!item.selected;
 }
 
-export function TemporalBucketPickerPopover({
+function _TemporalBucketPickerPopover({
   query,
   stageIndex,
   column,
@@ -52,3 +52,11 @@ export function TemporalBucketPickerPopover({
 function renderTriggerContent(bucket?: Lib.BucketDisplayInfo) {
   return bucket ? t`by ${bucket.displayName.toLowerCase()}` : null;
 }
+
+export const TemporalBucketPickerPopover = Object.assign(
+  _TemporalBucketPickerPopover,
+  {
+    displayName: "TemporalBucketPickerPopover",
+    TriggerButton: BaseBucketPickerPopover.TriggerButton,
+  },
+);

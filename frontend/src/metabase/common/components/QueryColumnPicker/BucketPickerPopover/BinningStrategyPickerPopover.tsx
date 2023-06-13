@@ -8,7 +8,7 @@ import {
   getBucketListItem,
 } from "./BaseBucketPickerPopover";
 
-export function BinningStrategyPickerPopover({
+function _BinningStrategyPickerPopover({
   query,
   stageIndex,
   column,
@@ -65,3 +65,11 @@ export function BinningStrategyPickerPopover({
 function renderTriggerContent(bucket?: Lib.BucketDisplayInfo) {
   return bucket ? bucket.displayName : t`Unbinned`;
 }
+
+export const BinningStrategyPickerPopover = Object.assign(
+  _BinningStrategyPickerPopover,
+  {
+    displayName: "BinningStrategyPickerPopover",
+    TriggerButton: BaseBucketPickerPopover.TriggerButton,
+  },
+);
