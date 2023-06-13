@@ -651,6 +651,113 @@ const MODEL_NAME = "Test Action Model";
   );
 });
 
+describe(
+  "Action Parameters Mapping",
+  { tags: ["@external", "@actions"] },
+  () => {
+    beforeEach(() => {
+      cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
+      cy.intercept("GET", "/api/card?f=using_model&model_id=**").as(
+        "getCardAssociations",
+      );
+      cy.intercept("GET", "/api/action").as("getActions");
+      cy.intercept("PUT", "/api/action/*").as("updateAction");
+      cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
+    });
+
+    describe("Inline action edit", () => {
+      beforeEach(() => {
+        resetTestTable({ type: "postgres", table: TEST_TABLE });
+        restore("postgres-writable");
+        cy.signInAsAdmin();
+        resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
+        createModelFromTableName({
+          tableName: TEST_TABLE,
+          modelName: MODEL_NAME,
+        });
+      });
+
+      it("should reflect to updated action on mapping form", () => {
+        const ACTION_NAME = "Update Score";
+
+        cy.get("@modelId").then(id => {
+          cy.visit(`/model/${id}/detail`);
+          cy.wait(["@getModel", "@getModelActions", "@getCardAssociations"]);
+        });
+
+        cy.findByRole("tab", { name: "Actions" }).click();
+
+        cy.findByTestId("model-actions-header")
+          .findByText("New action")
+          .click();
+
+        cy.findByRole("dialog").within(() => {
+          fillActionQuery(
+            `UPDATE ${TEST_TABLE} SET score = {{ new_score }} WHERE id = {{ id }}`,
+          );
+        });
+
+        cy.findByRole("dialog").within(() => {
+          cy.findByText("Save").click();
+        });
+
+        cy.findByPlaceholderText("My new fantastic action").type(ACTION_NAME);
+        cy.findByTestId("create-action-form").button("Create").click();
+
+        cy.createDashboard({ name: "action packed dashboard" }).then(
+          ({ body: { id: dashboardId } }) => {
+            visitDashboard(dashboardId);
+          },
+        );
+
+        editDashboard();
+
+        setFilter("ID");
+        sidebar().within(() => {
+          cy.button("Done").click();
+        });
+
+        cy.button("Add action").click();
+        cy.get("aside").within(() => {
+          cy.findByPlaceholderText("Button text").clear().type(ACTION_NAME);
+          cy.button("Pick an action").click();
+        });
+
+        cy.wait("@getActions");
+
+        cy.findByRole("dialog").within(() => {
+          cy.findByText(MODEL_NAME).click();
+          cy.findByText(ACTION_NAME).click();
+
+          cy.findByText("New Score: required").should("not.exist");
+          cy.findByRole("button", { name: "Done" }).should("be.enabled");
+          cy.icon("pencil").click();
+        });
+
+        cy.wait("@getModel");
+
+        cy.findAllByRole("dialog")
+          .filter(":visible")
+          .within(() => {
+            cy.findByLabelText("New Score")
+              .closest("[data-testid=preview-container]")
+              .findByText("Show field")
+              .click();
+
+            cy.findByRole("button", { name: "Update" }).click();
+          });
+
+        cy.wait("@updateAction");
+
+        cy.findByRole("dialog").within(() => {
+          cy.findByText("New Score: required");
+          cy.findByRole("button", { name: "Done" }).should("be.disabled");
+        });
+      });
+    });
+  },
+);
+
 function createDashboardWithActionButton({
   actionName,
   modelName = MODEL_NAME,
