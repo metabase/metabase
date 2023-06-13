@@ -1,5 +1,9 @@
 import { t } from "ttag";
 import _ from "underscore";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 
 const visualizations = new Map();
 const aliases = new Map();
@@ -43,6 +47,8 @@ export function registerVisualization(visualization) {
         visualization.name,
     );
   }
+  visualization.defaultSize = getDefaultSize(identifier);
+  visualization.minSize = getMinSize(identifier);
   visualizations.set(identifier, visualization);
   for (const alias of visualization.aliases || []) {
     aliases.set(alias, visualization);

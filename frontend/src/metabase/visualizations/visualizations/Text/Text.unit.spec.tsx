@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { color } from "metabase/lib/colors";
 
+import { getDefaultSize } from "metabase/visualizations/shared/utils/sizes";
 import { Text } from "../Text";
 
 interface Settings {
@@ -13,7 +14,7 @@ const defaultProps = {
   className: null,
   dashboard: {},
   dashcard: {},
-  gridSize: Text.defaultSize,
+  gridSize: getDefaultSize("text"),
   settings: {},
   isEditing: false,
   parameterValues: {},

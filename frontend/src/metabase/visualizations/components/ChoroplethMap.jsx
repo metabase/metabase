@@ -51,6 +51,7 @@ export function getColorplethColorScale(
 }
 
 const geoJsonCache = new Map();
+
 function loadGeoJson(geoJsonPath, callback) {
   if (geoJsonCache.has(geoJsonPath)) {
     setTimeout(() => callback(geoJsonCache.get(geoJsonPath)), 0);
@@ -81,6 +82,7 @@ export function getLegendTitles(groups, columnSettings) {
 
 // if the average formatted length is greater than this, we switch to compact formatting
 const AVERAGE_LENGTH_CUTOFF = 5;
+
 function shouldUseCompactFormatting(groups, formatMetric) {
   const minValues = groups.map(([x]) => x);
   const maxValues = groups.slice(0, -1).map(group => group[group.length - 1]);
@@ -94,9 +96,6 @@ function shouldUseCompactFormatting(groups, formatMetric) {
 
 export default class ChoroplethMap extends Component {
   static propTypes = {};
-
-  static minSize = { width: 4, height: 4 };
-  static defaultSize = { width: 4, height: 4 };
 
   static isSensible({ cols }) {
     return cols.filter(isString).length > 0 && cols.filter(isMetric).length > 0;

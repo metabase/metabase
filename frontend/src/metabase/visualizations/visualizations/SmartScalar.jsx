@@ -33,9 +33,6 @@ export default class Smart extends Component {
   static iconName = "smartscalar";
   static canSavePng = false;
 
-  static minSize = { width: 2, height: 2 };
-  static defaultSize = { width: 4, height: 3 };
-
   static noHeader = true;
 
   static settings = {
