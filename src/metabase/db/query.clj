@@ -22,7 +22,6 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
-   [metabase.db.connection :as mdb.connection]
    [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.log :as log]
@@ -35,25 +34,20 @@
 (set! *warn-on-reflection* true)
 
 (defn- format-sql*
-  "Return a nicely-formatted version of a generic `sql` string.
+  "Given a sql statement, return a nicely-formatted version of a generic `sql` string.
   Note that it will not play well with Metabase parameters."
-  (^String [sql]
-   (format-sql* sql (mdb.connection/db-type)))
-
-  (^String [^String sql db-type]
-   (when sql
-     (if (isa? driver.impl/hierarchy db-type :sql)
-       (let [formatter (SqlFormatter/of (case db-type
-                                          :mysql Dialect/MySql
-                                          :postgres Dialect/PostgreSql
-                                          :redshift Dialect/Redshift
-                                          :sparksql Dialect/SparkSql
-                                          :sqlserver Dialect/TSql
-                                          :oracle Dialect/PlSql
-                                          :bigquery-cloud-sdk Dialect/MySql
-                                          Dialect/StandardSql))]
-         (.format formatter sql))
-       sql))))
+  [^String sql db-type]
+  (when sql
+    (let [formatter (SqlFormatter/of (case db-type
+                                       :mysql Dialect/MySql
+                                       :postgres Dialect/PostgreSql
+                                       :redshift Dialect/Redshift
+                                       :sparksql Dialect/SparkSql
+                                       :sqlserver Dialect/TSql
+                                       :oracle Dialect/PlSql
+                                       :bigquery-cloud-sdk Dialect/MySql
+                                       Dialect/StandardSql))]
+      (.format formatter sql))))
 
 (defn- fix-sql-params
   "format-sql* will expand parameterized values (e.g. {{#123}} -> { { # 123 } }).
@@ -63,9 +57,13 @@
     (let [rgx #"\{\s*\{\s*[^\}]+\s*\}\s*\}"]
       (str/replace sql rgx (fn [match] (str/replace match #"\s*" ""))))))
 
-(def ^{:arglists '([sql] [sql db-type])} format-sql
-  "Return a nicely-formatted version of a `sql` string."
-  (comp fix-sql-params format-sql*))
+(defn format-sql
+  "Return a nicely-formatted version of a `query` string.
+  For mongo queries, return as is since it's already in a nice json-like format."
+  [query db-type]
+  (if (isa? driver.impl/hierarchy db-type :sql)
+    (fix-sql-params (format-sql* query db-type))
+    query))
 
 (defmulti compile
   "Compile a `query` (e.g. a Honey SQL map) to `[sql & args]`."
