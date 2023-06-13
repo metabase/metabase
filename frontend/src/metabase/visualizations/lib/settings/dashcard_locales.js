@@ -536,6 +536,30 @@ const TITLE_LOCALES_BN = {
     'en': 'Statistics of Designation',
     'bn': 'পদবির পরিসংখ্যান'
   },
+  'crvs.division.wise.student.count': {
+    'en': 'Division Wise Student Statistics',
+    'bn': 'বিভাগ ভিত্তিক ছাত্রছাত্রীর পরিসংখ্যান'
+  },
+  'crvs.class.wise.student.count': {
+    'en': 'Class Wise Student Statistics',
+    'bn': 'শ্রেণি ভিত্তিক ছাত্রছাত্রীর পরিসংখ্যান'
+  },
+  'crvs.division.student.uid.count': {
+    'en': 'Division and Gender Wise Student UID Statistics',
+    'bn': 'বিভাগ এবং জেন্ডার ভিত্তিক ছাত্রছাত্রীর ইউআইডি পরিসংখ্যান'
+  },
+  'crvs.class.wise.uid.count.of.students': {
+    'en': 'Class Wise Student UID Statistics',
+    'bn': 'শ্রেণি ভিত্তিক ছাত্রছাত্রীর ইউআইডি পরিসংখ্যান'
+  },
+  'crvs.gender.wise.sudent.count': {
+    'en': 'Gender Wise Student Statistics',
+    'bn': 'জেন্ডার ভিত্তিক ছাত্রছাত্রীর পরিসংখ্যান'
+  },
+  'crvs.religion.wise.student.count': {
+    'en': 'Religion Wise Student Statistics',
+    'bn': 'ধর্ম ভিত্তিক ছাত্রছাত্রীর পরিসংখ্যান'
+  },
 }
 
 export function dashcard_locale_title (locale, title_key) {
