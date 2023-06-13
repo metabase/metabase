@@ -14,14 +14,9 @@ import { getScrollY } from "metabase/lib/dom";
 import { color } from "metabase/lib/colors";
 import { Collection, Dashboard } from "metabase-types/api";
 
-import { Icon } from "metabase/core/components/Icon";
 import EditBar from "metabase/components/EditBar";
 import HeaderModal from "metabase/components/HeaderModal";
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import {
-  getCollectionIcon,
-  getCollectionTooltip,
-} from "metabase/entities/collections";
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import {
   EditWarning,
   HeaderRow,
@@ -159,13 +154,11 @@ function DashboardHeaderView({
                 data-testid="dashboard-name-heading"
                 onChange={handleUpdateCaption}
               />
-              {isInstanceAnalyticsCollection(collection) && (
-                <Icon
-                  {...getCollectionIcon(collection)}
-                  color={color("brand")}
-                  tooltip={getCollectionTooltip(collection, "dashboard")}
-                />
-              )}
+              <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+                color={color("brand")}
+                collection={collection}
+                entity="dashboard"
+              />
             </HeaderCaptionContainer>
             <HeaderBadges>
               {isLastEditInfoVisible && (

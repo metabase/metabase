@@ -141,6 +141,13 @@ type CollectionAuthorityLevelIcon = React.ComponentType<
   Omit<IconProps, "name" | "tooltip"> & { collection: Collection }
 >;
 
+type CollectionInstanceAnalyticsIcon = React.ComponentType<
+  Omit<IconProps, "name"> & {
+    collection: Collection;
+    entity: "collection" | "question" | "model" | "dashboard";
+  }
+>;
+
 type FormCollectionAuthorityLevelPicker = React.ComponentType<
   HTMLAttributes<HTMLDivElement> & { name: string; title?: string }
 >;
@@ -150,6 +157,8 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
     PluginPlaceholder as CollectionAuthorityLevelIcon,
   FormCollectionAuthorityLevelPicker:
     PluginPlaceholder as FormCollectionAuthorityLevelPicker,
+  CollectionInstanceAnalyticsIcon:
+    PluginPlaceholder as CollectionInstanceAnalyticsIcon,
 };
 
 export type RevisionOrModerationEvent = {

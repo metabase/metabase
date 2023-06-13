@@ -1,4 +1,3 @@
-import { t } from "ttag";
 import { IconName, IconProps } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 
@@ -44,27 +43,6 @@ export function getCollectionIcon(
       }
     : { name: "folder" };
 }
-
-const collectionIconTooltipNameMap = {
-  collection: t`collection`,
-  question: t`question`,
-  model: t`model`,
-  dashboard: t`dashboard`,
-};
-
-export const getCollectionTooltip = (
-  collection: Partial<Collection>,
-  entity: "collection" | "question" | "model" | "dashboard" = "collection",
-) => {
-  const entityText = collectionIconTooltipNameMap[entity];
-
-  switch (collection.type) {
-    case "instance-analytics":
-      return t`This is a read-only Instance Analytics ${entityText}.`;
-    default:
-      return undefined;
-  }
-};
 
 export function getCollectionType(
   collectionId: Collection["id"] | undefined,

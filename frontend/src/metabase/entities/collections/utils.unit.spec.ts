@@ -4,7 +4,7 @@ import { PERSONAL_COLLECTIONS } from "./constants";
 import {
   buildCollectionTree,
   getCollectionIcon,
-  getCollectionTooltip,
+  // getCollectionTooltip,
 } from "./utils";
 
 describe("entities > collections > utils", () => {
@@ -398,23 +398,6 @@ describe("entities > collections > utils", () => {
           });
         });
       });
-    });
-  });
-
-  describe("getCollectionTooltip", () => {
-    const collection = createMockCollection({
-      type: "instance-analytics",
-    });
-    ["collection", "model", "question", "dashboard"].forEach(type => {
-      it(`returns correct tooltip for instance analytics ${type}`, () => {
-        expect(getCollectionTooltip(collection, type as any)).toContain(
-          `Instance Analytics ${type}`,
-        );
-      });
-    });
-
-    it(`returns empty tooltip for regular collections`, () => {
-      expect(getCollectionTooltip(createMockCollection())).toBe(undefined);
     });
   });
 });

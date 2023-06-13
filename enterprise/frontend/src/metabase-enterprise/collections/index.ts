@@ -8,6 +8,7 @@ import type { Collection } from "metabase-types/api";
 
 import { CollectionAuthorityLevelIcon } from "./components/CollectionAuthorityLevelIcon";
 import { FormCollectionAuthorityLevel } from "./components/FormCollectionAuthorityLevel";
+import { CollectionInstanceAnalyticsIcon } from "./components/CollectionInstanceAnalyticsIcon";
 import {
   AUTHORITY_LEVELS,
   REGULAR_COLLECTION,
@@ -56,3 +57,6 @@ PLUGIN_COLLECTION_COMPONENTS.FormCollectionAuthorityLevelPicker =
 
 PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon =
   CollectionAuthorityLevelIcon;
+
+PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon =
+  CollectionInstanceAnalyticsIcon;
