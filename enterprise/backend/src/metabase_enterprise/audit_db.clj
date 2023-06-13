@@ -1,6 +1,6 @@
 (ns metabase-enterprise.audit-db
   (:require [clojure.java.io :as io]
-            [internal-mb-user-id :as ee.internal-user]
+            [metabase-enterprise.internal-user :as ee.internal-user]
             [metabase-enterprise.serialization.cmd :as serialization.cmd]
             [metabase.config :as config]
             [metabase.db.env :as mdb.env]
