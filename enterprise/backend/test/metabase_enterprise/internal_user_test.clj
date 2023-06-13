@@ -1,8 +1,8 @@
 (ns metabase-enterprise.internal-user-test
   (:require
    [clojure.test :refer [deftest is]]
-   [metabase.enterprise.internal-user :as ee.internal-user]
    [metabase.config :as config]
+   [metabase.enterprise.internal-user :as ee.internal-user]
    [metabase.models :refer [User]]
    [metabase.setup :as setup]
    [toucan2.core :as t2]))
