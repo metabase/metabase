@@ -97,8 +97,6 @@ jobs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: pre-release-build
-    - name: Build
-      run: ./bin/build.sh
 
     - name: Determine the canonical version ## EE is always v1.x.y, OSS is always v0.x.y
       uses: actions/github-script@v6
@@ -118,13 +116,9 @@ jobs:
           }
           console.log("The canonical version of this", process.env.EDITION, "edition is", canonical_version);
           return canonical_version;
-    - name: Adjust the tag in the version.properties file
-      run: |
-        jar xf ./target/uberjar/metabase.jar version.properties
-        sed -i 's/tag=.*/tag=${{ steps.canonical_version.outputs.result }}/' version.properties
-        zip ./target/uberjar/metabase.jar version.properties
-    - name: Show the updated version.properties
-      run: echo "Updated version.properties:" && cat version.properties
+
+    - name: Build
+      run: ./bin/build.sh :edition :${{ matrix.edition }} :version ${{ steps.canonical_version.outputs.result }}
 
     - name: Prepare uberjar artifact
       uses: ./.github/actions/prepare-uberjar-artifact
@@ -155,9 +149,69 @@ jobs:
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
+  run-sanity-check:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    needs: check-uberjar-health
+    strategy:
+      matrix:
+        edition: [oss, ee]
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      DISPLAY: ""
+      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      MB_SNOWPLOW_AVAILABLE: true
+      MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
+    services:
+      maildev:
+        image: maildev/maildev:2.0.5
+        ports:
+          - "1080:1080"
+          - "1025:1025"
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+    - name: Check out the code
+      uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event.inputs.commit }}
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+    - name: Prepare JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: 11
+        distribution: "temurin"
+    - name: Prepare Cypress environment
+      uses: ./.github/actions/prepare-cypress
+    - name: Run Snowplow micro
+      uses: ./.github/actions/run-snowplow-micro
+    - uses: actions/download-artifact@v3
+      name: Retrieve uberjar artifact for ${{ matrix.edition }}
+      with:
+        name: metabase-${{ matrix.edition }}-uberjar
+    - name: Get the version info
+      run: |
+        jar xf target/uberjar/metabase.jar version.properties
+        mv version.properties resources/
+    - name: Run a few important Cypress tests as sanity check
+      run: yarn test-cypress-run --folder onboarding
+      env:
+        TERM: xterm
+    - name: Upload Cypress Artifacts upon failure
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: cypress-failed-tests-recording
+        path: |
+          ./cypress
+          ./logs/test.log
+        if-no-files-found: ignore
+
   containerize:
     runs-on: ubuntu-22.04
-    needs: check-uberjar-health
+    needs: run-sanity-check
     timeout-minutes: 15
     strategy:
       matrix:

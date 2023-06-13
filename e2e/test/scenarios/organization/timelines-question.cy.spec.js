@@ -99,7 +99,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       cy.icon("calendar").click();
       cy.findByText("Releases").should("be.visible");
-      rightSidebar().within(() => cy.icon("ellipsis").click());
+      rightSidebar().icon("ellipsis").click();
       cy.findByText("Edit event").click();
 
       cy.findByLabelText("Event name").clear().type("RC2");
@@ -125,7 +125,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       cy.icon("calendar").click();
       cy.findByText("Builds").should("be.visible");
-      rightSidebar().within(() => cy.icon("ellipsis").click());
+      rightSidebar().icon("ellipsis").click();
       cy.findByText("Move event").click();
       cy.findByText("Releases").click();
       cy.button("Move").click();
@@ -147,7 +147,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       cy.icon("calendar").click();
       cy.findByText("Releases").should("be.visible");
-      rightSidebar().within(() => cy.icon("ellipsis").click());
+      rightSidebar().icon("ellipsis").click();
       cy.findByText("Archive event").click();
       cy.wait("@updateEvent");
       cy.findByText("RC1").should("not.exist");
@@ -385,7 +385,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.icon("calendar").click();
       cy.findByText("Releases").should("be.visible");
       cy.findByText("Add an event").should("not.exist");
-      rightSidebar().within(() => cy.icon("ellipsis").should("not.exist"));
+      rightSidebar().icon("ellipsis").should("not.exist");
     });
   });
 });
