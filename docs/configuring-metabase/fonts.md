@@ -33,7 +33,7 @@ To change your Metabase font, click on the **gear** icon in the upper right of t
 - [Roboto Mono](https://fonts.google.com/specimen/Roboto+Mono)
 - [Roboto Slab](https://fonts.google.com/specimen/Roboto+Slab)
 - [Slabo 27px](https://fonts.google.com/specimen/Slabo+27px)
-- [Source Sans Pro](https://fonts.google.com/specimen/Source+Sans+Pro)
+- Source Sans Pro
 - [Ubuntu](https://fonts.google.com/specimen/Ubuntu)
 
 Comic Sans is currently not included.

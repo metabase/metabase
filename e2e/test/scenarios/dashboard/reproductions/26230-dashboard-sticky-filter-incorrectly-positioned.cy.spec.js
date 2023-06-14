@@ -82,7 +82,7 @@ function createTextDashcard(id) {
     dashboard_id: id,
     card_id: null,
     card: {
-      size_x: 4,
+      size_x: 5,
       size_y: 20,
       visualization_settings: {
         virtual_card: {

@@ -17,6 +17,7 @@ export type WindowModalProps = BaseModalProps & {
   fullPageModal?: boolean;
   formModal?: boolean;
   style?: CSSProperties;
+  "data-testid"?: string;
 } & {
   [size in ModalSize]?: boolean;
 };
@@ -86,6 +87,7 @@ export class WindowModal extends Component<WindowModalProps> {
       isOpen,
       style,
       enableTransition,
+      "data-testid": dataTestId,
     } = this.props;
     const backdropClassnames =
       "flex justify-center align-center fixed top left bottom right";
@@ -113,6 +115,7 @@ export class WindowModal extends Component<WindowModalProps> {
               <div
                 className={cx(backdropClassName, backdropClassnames)}
                 style={style}
+                data-testid={dataTestId}
               >
                 {this._modalComponent()}
               </div>
