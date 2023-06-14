@@ -86,37 +86,27 @@
   Setting the Snowflake driver property privatekey would be easier, but that doesn't work
   because clojure.java.jdbc (properly) converts the property values into strings while the
   Snowflake driver expects a java.security.PrivateKey instance."
-  [{:keys [user password account private-key-value private-key-path private-key-id] :as details}]
-  (cond
-    password
-    details
+  [{:keys [user password account private-key-path]
+    :as   details}]
+  (let [base-details (apply dissoc details (vals (secret/get-sub-props "private-key")))]
+    (cond
+      password
+      details
 
-    private-key-path
-    (let [secret-map       (secret/db-details-prop->secret-map details "private-key")
-          private-key-file (when (some? (:value secret-map))
-                             (secret/value->file! secret-map :snowflake))]
-      (cond-> (apply dissoc details (vals (secret/get-sub-props "private-key")))
-        private-key-file (handle-conn-uri user account private-key-file)))
+      private-key-path
+      (let [secret-map       (secret/db-details-prop->secret-map details "private-key")
+            private-key-file (when (some? (:value secret-map))
+                               (secret/value->file! secret-map :snowflake))]
+        (cond-> base-details
+          private-key-file (handle-conn-uri user account private-key-file)))
 
-    private-key-value
-    (let [private-key-str      (if (bytes? private-key-value)
-                                 (String. ^bytes private-key-value StandardCharsets/UTF_8)
-                                 private-key-value)
-          private-key-file-val (cond-> private-key-str
-                                 (re-find driver.u/data-url-pattern private-key-str) driver.u/decode-uploaded)
-          private-key-file     (secret/value->file! {:connection-property-name "private-key-file"
-                                                     :value                    private-key-file-val})]
-      (handle-conn-uri details user account private-key-file))
-
-    ;; TODO: clean up all of this private key handling logic
-    private-key-id
-    (let [encoded (secret/value->string (secret/latest-for-id private-key-id))
-          decoded (cond-> encoded
-                    (re-find driver.u/data-url-pattern encoded) driver.u/decode-uploaded)
-          file    (secret/value->file! {:connection-property-name "private-key-file"
-                                        :value                    decoded})]
-      (assoc (handle-conn-uri details user account file)
-             :private_key_file file))))
+      :else
+      ;; get-secret-string should get the right value (using private-key-value or private-key-id) and decode it automatically
+      (let [decoded (secret/get-secret-string details "private-key")
+            file    (secret/value->file! {:connection-property-name "private-key-file"
+                                          :value                    decoded})]
+        (assoc (handle-conn-uri base-details user account file)
+               :private_key_file file)))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options], :as details}]
