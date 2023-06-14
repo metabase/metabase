@@ -207,7 +207,6 @@ export function SummarizeSidebar({
           <SectionTitle>{t`Group by`}</SectionTitle>
           <BreakoutColumnList
             query={query}
-            stageIndex={STAGE_INDEX}
             onAddBreakout={handleAddBreakout}
             onUpdateBreakout={handleUpdateBreakout}
             onRemoveBreakout={handleRemoveBreakout}

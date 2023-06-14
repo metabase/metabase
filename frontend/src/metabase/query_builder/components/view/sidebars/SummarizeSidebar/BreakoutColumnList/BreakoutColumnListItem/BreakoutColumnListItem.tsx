@@ -14,11 +14,12 @@ import {
   Root,
 } from "./BreakoutColumnListItem.styled";
 
+const STAGE_INDEX = -1;
+
 interface BreakoutColumnListItemProps {
   query: Lib.Query;
-  stageIndex: number;
   item: Lib.ColumnDisplayInfo & { column: Lib.ColumnMetadata };
-  clause?: Lib.BreakoutClause;
+  breakout?: Lib.BreakoutClause;
   onAddColumn: (column: Lib.ColumnMetadata) => void;
   onUpdateColumn: (column: Lib.ColumnMetadata) => void;
   onRemoveColumn: (column: Lib.ColumnMetadata) => void;
@@ -27,9 +28,8 @@ interface BreakoutColumnListItemProps {
 
 export function BreakoutColumnListItem({
   query,
-  stageIndex,
   item,
-  clause,
+  breakout,
   onAddColumn,
   onUpdateColumn,
   onRemoveColumn,
@@ -49,21 +49,20 @@ export function BreakoutColumnListItem({
     () => (
       <BucketPickerPopover
         query={query}
-        stageIndex={stageIndex}
+        stageIndex={STAGE_INDEX}
         column={item.column}
         isEditing={isSelected}
         hasArrowIcon={false}
         hasBinning
         hasTemporalBucketing
         onSelect={column =>
-          clause ? onUpdateColumn(column) : onReplaceColumns?.(column)
+          breakout ? onUpdateColumn(column) : onReplaceColumns?.(column)
         }
       />
     ),
     [
       query,
-      stageIndex,
-      clause,
+      breakout,
       item.column,
       isSelected,
       onUpdateColumn,
