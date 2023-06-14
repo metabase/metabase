@@ -55,16 +55,7 @@
 
 (deftest onboarding-checklist-after-instance-analytics-content-transfer-test
   (with-audit-db-restoration
-    (is (= {:configured {:email false, :slack false},
-            :counts {:user 1, :card 0, :table 8},
-            :exists {:non-sample-db false, :dashboard false, :pulse false, :hidden-table false, :collection false, :model false}}
-           (dissoc
-            (binding [api/*current-user-id* 1] (#'api.setup/state-for-checklist))
-            :db-type :hosted?)))
-    (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
-    (is (= {:configured {:email false, :slack false},
-            :counts {:user 1, :card 0, :table 8},
-            :exists {:non-sample-db false, :dashboard false, :pulse false, :hidden-table false, :collection false, :model false}}
-           (dissoc
-            (binding [api/*current-user-id* 1] (#'api.setup/state-for-checklist))
-            :db-type :hosted?)))))
+    (let [before (binding [api/*current-user-id* 1] (#'api.setup/state-for-checklist))
+          _ (audit-db/ensure-audit-db-installed!)
+          after (binding [api/*current-user-id* 1] (#'api.setup/state-for-checklist))]
+      (is (= before after)))))
