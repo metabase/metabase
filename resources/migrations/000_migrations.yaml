@@ -15722,7 +15722,7 @@ databaseChangeLog:
       comment: Added 0.47.0 - update view for v_audit_log
       changes:
         - sql:
-            dbms: h2,postgres
+            dbms: h2,postgresql
             sql: >-
               create or replace view v_audit_log as
               (
