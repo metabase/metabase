@@ -418,7 +418,7 @@
 
             ;; Apply duration scaling
             scaled-val (if (and value is-duration?)
-                         (/ scaled-val 86400.0)
+                         (abs (/ scaled-val 86400.0))
                          scaled-val)
 
             ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
