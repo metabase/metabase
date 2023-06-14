@@ -5,7 +5,7 @@ import * as Lib from "metabase-lib";
 import { ToggleItem, ColumnItem } from "./FieldPicker.styled";
 
 interface FieldPickerProps {
-  items: Lib.ColumnDisplayInfo[];
+  columnsInfo: Lib.ColumnDisplayInfo[];
   isAll: boolean;
   isNone: boolean;
   isDisabledDeselection?: boolean;
@@ -15,7 +15,7 @@ interface FieldPickerProps {
 }
 
 export const FieldPicker = ({
-  items,
+  columnsInfo,
   isAll,
   isNone,
   isDisabledDeselection,
@@ -42,12 +42,12 @@ export const FieldPicker = ({
           onChange={handleLabelToggle}
         />
       </ToggleItem>
-      {items.map((displayInfo, columnIndex) => (
+      {columnsInfo.map((columnInfo, columnIndex) => (
         <ColumnItem key={columnIndex}>
           <CheckBox
-            checked={displayInfo.selected}
-            label={displayInfo.displayName}
-            disabled={displayInfo.selected && isDisabledDeselection}
+            checked={columnInfo.selected}
+            label={columnInfo.displayName}
+            disabled={columnInfo.selected && isDisabledDeselection}
             onChange={event => onToggle(columnIndex, event.target.checked)}
           />
         </ColumnItem>

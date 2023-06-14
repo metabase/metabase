@@ -89,29 +89,31 @@ const DataFieldsPicker = ({
     [query, stageIndex],
   );
 
-  const items = useMemo(
+  const columnsInfo = useMemo(
     () => columns.map(column => Lib.displayInfo(query, stageIndex, column)),
     [query, stageIndex, columns],
   );
 
   const isAll = useMemo(
-    () => items.every(displayInfo => displayInfo.selected),
-    [items],
+    () => columnsInfo.every(columnInfo => columnInfo.selected),
+    [columnsInfo],
   );
 
   const isNone = useMemo(
-    () => items.every(displayInfo => !displayInfo.selected),
-    [items],
+    () => columnsInfo.every(columnInfo => !columnInfo.selected),
+    [columnsInfo],
   );
 
   const isDisabledDeselection = useMemo(
-    () => items.filter(displayInfo => displayInfo.selected).length <= 1,
-    [items],
+    () => columnsInfo.filter(columnInfo => columnInfo.selected).length <= 1,
+    [columnsInfo],
   );
 
   const handleToggle = (changedIndex: number, isSelected: boolean) => {
     const nextColumns = columns.filter((_, currentIndex) =>
-      currentIndex === changedIndex ? isSelected : items[currentIndex].selected,
+      currentIndex === changedIndex
+        ? isSelected
+        : columnsInfo[currentIndex].selected,
     );
     const nextQuery = Lib.withFields(query, stageIndex, nextColumns);
     updateQuery(nextQuery);
@@ -133,7 +135,7 @@ const DataFieldsPicker = ({
       triggerElement={FieldsPickerIcon}
     >
       <FieldPicker
-        items={items}
+        columnsInfo={columnsInfo}
         isAll={isAll}
         isNone={isNone}
         isDisabledDeselection={isDisabledDeselection}
