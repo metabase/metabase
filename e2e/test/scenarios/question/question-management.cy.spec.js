@@ -34,14 +34,68 @@ describe(
       restore();
     });
 
-    Object.entries(PERMISSIONS).forEach(([permission, userGroup]) => {
-      context(`${permission} access`, () => {
-        userGroup.forEach(user => {
-          onlyOn(permission === "curate", () => {
-            describe(`${user} user`, () => {
-              beforeEach(() => {
-                cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as(
-                  "updateQuestion",
+  Object.entries(PERMISSIONS).forEach(([permission, userGroup]) => {
+    context(`${permission} access`, () => {
+      userGroup.forEach(user => {
+        onlyOn(permission === "curate", () => {
+          describe(`${user} user`, () => {
+            beforeEach(() => {
+              cy.intercept("PUT", `/api/card${ORDERS_QUESTION_ID}`).as(
+                "updateQuestion",
+              );
+
+              cy.signIn(user);
+              visitQuestion(ORDERS_QUESTION_ID);
+            });
+
+            it("should be able to edit question details (metabase#11719-1)", () => {
+              cy.findByTestId("saved-question-header-title")
+                .click()
+                .type("1")
+                .blur();
+              assertOnRequest("updateQuestion");
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+              cy.findByText("Orders1");
+            });
+
+            it("should be able to edit a question's description", () => {
+              questionInfoButton().click();
+
+              cy.findByPlaceholderText("Add description")
+                .type("foo", { delay: 0 })
+                .blur();
+
+              assertOnRequest("updateQuestion");
+
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+              cy.findByText("foo");
+            });
+
+            describe("move", () => {
+              it("should be able to move the question (metabase#11719-2)", () => {
+                openNavigationSidebar();
+                navigationSidebar().within(() => {
+                  // Highlight "Our analytics"
+                  cy.findByText("Our analytics")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "true");
+                  cy.findByText("Your personal collection")
+                    .parents("li")
+                    .should("have.attr", "aria-selected", "false");
+                });
+
+                openQuestionActions();
+                cy.findByTestId("move-button").click();
+                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                cy.findByText("My personal collection").click();
+                clickButton("Move");
+                assertOnRequest("updateQuestion");
+                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                cy.contains("37.65");
+
+                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                cy.contains(
+                  `Question moved to ${getPersonalCollectionName(USERS[user])}`,
                 );
 
                 cy.signIn(user);
@@ -333,12 +387,12 @@ describe(
             });
           });
 
-          onlyOn(permission === "view", () => {
-            describe(`${user} user`, () => {
-              beforeEach(() => {
-                cy.signIn(user);
-                visitQuestion(ORDERS_QUESTION_ID);
-              });
+        onlyOn(permission === "view", () => {
+          describe(`${user} user`, () => {
+            beforeEach(() => {
+              cy.signIn(user);
+              visitQuestion(ORDERS_QUESTION_ID);
+            });
 
               it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {
                 openQuestionActions();

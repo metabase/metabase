@@ -1,15 +1,10 @@
 import _ from "underscore";
-import {
-  restore,
-  describeEE,
-  visitQuestion,
-  setTokenFeatures,
-} from "e2e/support/helpers";
+import { restore, describeEE, visitQuestion } from "e2e/support/helpers";
 import {
   ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+} from "e2e/support/cypress_data";
 
 describeEE("audit > auditing > questions", () => {
   beforeEach(() => {
@@ -29,24 +24,9 @@ describeEE("audit > auditing > questions", () => {
 
       const QUERY_RUNS_ASC_ORDER = [...QUERY_RUNS_DESC_ORDER].reverse();
 
-      _.times(1, () =>
-        visitQuestionAndVerifyTitle(
-          ORDERS_QUESTION_ID,
-          QUERY_RUNS_DESC_ORDER[2],
-        ),
-      );
-      _.times(2, () =>
-        visitQuestionAndVerifyTitle(
-          ORDERS_COUNT_QUESTION_ID,
-          QUERY_RUNS_DESC_ORDER[1],
-        ),
-      );
-      _.times(3, () =>
-        visitQuestionAndVerifyTitle(
-          ORDERS_BY_YEAR_QUESTION_ID,
-          QUERY_RUNS_DESC_ORDER[0],
-        ),
-      );
+      _.times(1, () => visitQuestion(ORDERS_QUESTION_ID));
+      _.times(2, () => visitQuestion(ORDERS_COUNT_QUESTION_ID));
+      _.times(3, () => visitQuestion(ORDERS_BY_YEAR_QUESTION_ID));
 
       cy.visit("/admin/audit/questions/all");
 

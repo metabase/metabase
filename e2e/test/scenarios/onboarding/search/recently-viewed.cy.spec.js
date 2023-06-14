@@ -7,7 +7,7 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
@@ -49,6 +49,12 @@ describe("search > recently viewed", () => {
       "Orders in a dashboard",
       "Dashboard",
       `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
+    );
+    assertRecentlyViewedItem(
+      ORDERS_QUESTION_ID,
+      "Orders",
+      "Question",
+      `/question/${ORDERS_QUESTION_ID}-orders`,
     );
     assertRecentlyViewedItem(
       ORDERS_QUESTION_ID,

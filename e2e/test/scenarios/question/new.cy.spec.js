@@ -11,7 +11,11 @@ import {
   modal,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USERS,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
@@ -137,7 +141,7 @@ describe("scenarios > question > new", () => {
         parent_id: null,
       }).then(({ body: { id: COLLECTION_ID } }) => {
         // Move question #1 ("Orders") to newly created collection
-        cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+        cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, {
           collection_id: COLLECTION_ID,
         });
         // Sanity check: make sure Orders is indeed inside new collection
@@ -155,9 +159,11 @@ describe("scenarios > question > new", () => {
     });
 
     it("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
-      // Move first question in a DB snapshot ("Orders") to a "Second collection"
-      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-        collection_id: SECOND_COLLECTION_ID,
+      getCollectionIdFromSlug("second_collection", id => {
+        // Move first question in a DB snapshot ("Orders") to a "Second collection"
+        cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, {
+          collection_id: id,
+        });
       });
 
       startNewQuestion();

@@ -11,10 +11,7 @@ import {
   appBar,
 } from "e2e/support/helpers";
 
-import {
-  ORDERS_QUESTION_ID,
-  SECOND_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
@@ -229,8 +226,8 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should show collection breadcrumbs for a saved question in a non-root collection", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-      collection_id: SECOND_COLLECTION_ID,
+    getCollectionIdFromSlug("second_collection", collection_id => {
+      cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { collection_id });
     });
 
     visitQuestion(ORDERS_QUESTION_ID);

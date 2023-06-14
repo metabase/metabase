@@ -4,14 +4,11 @@ import {
   popover,
   getFullName,
 } from "e2e/support/helpers";
-import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
+  USERS,
+  SAMPLE_DB_ID,
   ORDERS_QUESTION_ID,
-  ADMIN_PERSONAL_COLLECTION_ID,
-  NORMAL_PERSONAL_COLLECTION_ID,
-  FIRST_COLLECTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
+} from "e2e/support/cypress_data";
 
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 

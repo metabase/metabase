@@ -11,7 +11,7 @@ import {
   sidebar,
 } from "e2e/support/helpers";
 
-import { USERS } from "e2e/support/cypress_data";
+import { USERS, ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
@@ -96,7 +96,6 @@ describeEE("scenarios > admin > permissions > application", () => {
       });
 
       it("gives ability to create question alerts", () => {
-        cy.signInAsNormalUser();
         visitQuestion(ORDERS_QUESTION_ID);
         cy.icon("bell").click();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

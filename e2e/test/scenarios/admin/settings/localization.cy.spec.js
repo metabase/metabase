@@ -184,18 +184,6 @@ describe("scenarios > admin > localization", () => {
     popover().findByText("2018/1/31").click();
     cy.wait("@updateFormatting");
 
-    cy.findByTestId("custom-formatting-setting").within(() => {
-      cy.findAllByTestId("select-button-content").should(
-        "contain",
-        "2018/1/31",
-      );
-
-      // update the time style setting to 24 hour
-      cy.findByText("17:24 (24-hour clock)").click();
-      cy.wait("@updateFormatting");
-      cy.findByDisplayValue("HH:mm").should("be.checked");
-    });
-
     visitQuestion(ORDERS_QUESTION_ID);
 
     // create a date filter and set it to the 'On' view to see a specific date

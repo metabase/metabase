@@ -21,11 +21,7 @@ import {
   filterWidget,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const PG_DB_ID = 2;
@@ -95,13 +91,11 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.findByTestId("native-query-editor").should("not.be.visible");
   });
 
-  it(
-    "should display a back to the dashboard button in table x-ray dashboards",
-    { tags: "@slow" },
-    () => {
-      const cardTitle = "Sales per state";
-      cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
-      cy.wait("@dataset");
+  it("should display a back to the dashboard button in model x-ray dashboards", () => {
+    const cardTitle = "Orders by Subtotal";
+    cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.visit("/auto/dashboard/model/1");
+    cy.wait("@dataset");
 
       getDashboardCards()
         .filter(`:contains("${cardTitle}")`)

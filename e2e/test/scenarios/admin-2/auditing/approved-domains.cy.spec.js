@@ -8,10 +8,7 @@ import {
   visitDashboard,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 
 const allowedDomain = "metabase.test";
 const deniedDomain = "metabase.example";

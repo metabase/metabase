@@ -5,11 +5,7 @@ import {
   modal,
   visitIframe,
 } from "e2e/support/helpers";
-import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
-import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const standalonePath =
@@ -299,11 +295,10 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       });
       visitAndEnableSharing("question");
 
-      cy.document().then(doc => {
-        const iframe = doc.querySelector("iframe");
+    cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { dataset: true });
 
-        cy.signOut();
-        cy.visit(iframe.src);
+    cy.visit(`/model/${ORDERS_QUESTION_ID}`);
+    cy.wait("@dataset");
 
         cy.findByTestId("embed-frame").contains("37.65");
 

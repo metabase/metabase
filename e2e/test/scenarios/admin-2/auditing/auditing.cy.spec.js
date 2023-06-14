@@ -1,11 +1,9 @@
+import { restore, describeEE, visitQuestion } from "e2e/support/helpers";
 import {
-  restore,
-  describeEE,
-  visitQuestion,
-  getDashboardCard,
-  setTokenFeatures,
-} from "e2e/support/helpers";
-import { USERS } from "e2e/support/cypress_data";
+  USERS,
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import {

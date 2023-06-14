@@ -1,17 +1,5 @@
-import {
-  describeWithSnowplow,
-  enableTracking,
-  expectGoodSnowplowEvents,
-  expectNoBadSnowplowEvents,
-  resetSnowplow,
-  restore,
-} from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createMetric,
-  createSegment,
-} from "e2e/support/helpers/e2e-table-metadata-helpers";
+import { restore } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 
 const typeFilters = [
   {
