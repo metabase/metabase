@@ -19,7 +19,7 @@ import type {
 import {
   ActionParameterMappingForm,
   getTargetKey,
-} from "./ActionParameterMapper";
+} from "./ActionParameterMapping";
 import {
   ActionSettingsWrapper,
   ParameterMapperContainer,

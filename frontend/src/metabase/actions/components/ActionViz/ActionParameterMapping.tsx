@@ -22,14 +22,14 @@ import {
   ParameterFormSection,
   ParameterFormLabel,
   ParameterFormBadge,
-} from "./ActionParameterMapper.styled";
+} from "./ActionParameterMapping.styled";
 import {
   getParameterDefaultValue,
   isParameterHidden,
   isParameterRequired,
 } from "./utils";
 
-interface ActionParameterMapperProps {
+interface ActionParameterMappingProps {
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
   model?: Question;
@@ -46,7 +46,7 @@ export const ActionParameterMappingForm = ({
   dashboard,
   action,
   currentMappings,
-}: ActionParameterMapperProps) => {
+}: ActionParameterMappingProps) => {
   const dispatch = useDispatch();
   const actionParameters = action.parameters;
   const dashboardParameters = dashboard.parameters ?? [];
@@ -71,7 +71,7 @@ export const ActionParameterMappingForm = ({
         const mappedValue = currentMappings[getTargetKey(actionParameter)];
 
         return (
-          <ActionParameterMapperItem
+          <ActionParameterMappingItem
             key={actionParameter.id}
             action={action}
             actionParameter={actionParameter}
@@ -88,7 +88,7 @@ export const ActionParameterMappingForm = ({
   );
 };
 
-interface ActionParameterMapperItemProps {
+interface ActionParameterMappingItemProps {
   action: WritebackAction;
   actionParameter: WritebackParameter;
   mappedValue: string;
@@ -98,13 +98,13 @@ interface ActionParameterMapperItemProps {
 
 const DEFAULT_VALUE = "default value";
 
-export const ActionParameterMapperItem = ({
+export const ActionParameterMappingItem = ({
   action,
   actionParameter,
   mappedValue,
   dashboardParameters,
   onChange,
-}: ActionParameterMapperItemProps) => {
+}: ActionParameterMappingItemProps) => {
   const [value, setValue] = useState(mappedValue ?? null);
 
   const isHidden = isParameterHidden(action, actionParameter);
