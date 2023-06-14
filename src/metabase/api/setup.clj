@@ -228,7 +228,8 @@
                                                            [:not= :db_id config/default-audit-db-id]]})
                 :collection    (t2/exists? Collection {:where [:and
                                                                [:not [:in :id (map :id (api.collection/instance-analytics-collections))]]
-                                                               [:not= :personal_owner_id api/*current-user-id*]]})
+                                                               (when api/*current-user-id*
+                                                                 [:not= :personal_owner_id api/*current-user-id*])]})
                 :model         (t2/exists? Card {:where [:and
                                                          [:not= :creator_id config/internal-mb-user-id]
                                                          [:= :dataset true]]})}})
