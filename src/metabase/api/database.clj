@@ -311,8 +311,8 @@
   (if-not include
     db
     (-> (t2/hydrate db (case include
-                      "tables"        :tables
-                      "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
+                         "tables"        :tables
+                         "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
         (update :tables (fn [tables]
                           (cond->> tables
                             ; filter hidden tables
@@ -945,22 +945,7 @@
   api/generic-204-no-content)
 
 
-;;; ------------------------------------------ POST /api/database/:id/sync -------------------------------------------
-
-;; TODO - Shouldn't we just check for superuser status instead of write checking?
-;; NOTE Atte: This becomes maybe obsolete
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/sync"
-  "Update the metadata for this `Database`. This happens asynchronously."
-  [id]
-  ;; just publish a message and let someone else deal with the logistics
-  ;; TODO - does this make any more sense having this extra level of indirection?
-  ;; Why not just use a future?
-  (events/publish-event! :database-trigger-sync (api/write-check Database id))
-  {:status :ok})
-
-;; NOTE Atte Keinänen: If you think that these endpoints could have more descriptive names, please change them.
-;; Currently these match the titles of the admin UI buttons that call these endpoints
+;;; ------------------------------------------ POST /api/database/:id/sync_schema -------------------------------------------
 
 ;; Should somehow trigger sync-database/sync-database!
 (api/defendpoint POST "/:id/sync_schema"
@@ -984,8 +969,11 @@
         tables (map api/write-check (:tables (first (add-tables [db]))))]
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
-    (t2/update! Table {:id [:in (map :id tables)]} {:initial_sync_status "complete"}))
+    (when-let [table-ids (seq (map :id tables))]
+      (t2/update! Table {:id [:in table-ids]} {:initial_sync_status "complete"})))
   {:status :ok})
+
+;;; ------------------------------------------ POST /api/database/:id/rescan_values -------------------------------------------
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
 

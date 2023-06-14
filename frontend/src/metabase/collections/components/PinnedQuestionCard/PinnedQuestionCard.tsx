@@ -67,14 +67,12 @@ const PinnedQuestionCard = ({
         <PinnedQuestionLoader id={item.id}>
           {({ question, rawSeries, loading, error, errorIcon }) =>
             loading ? (
-              <>
-                {positionedActionMenu}
-                <CardPreviewSkeleton
-                  name={question?.displayName()}
-                  display={question?.display()}
-                  description={question?.description()}
-                />
-              </>
+              <CardPreviewSkeleton
+                name={question?.displayName()}
+                display={question?.display()}
+                description={question?.description()}
+                actionMenu={actionMenu}
+              />
             ) : (
               <Visualization
                 actionButtons={actionMenu}
