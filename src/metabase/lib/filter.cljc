@@ -322,6 +322,6 @@
   [filter-operator :- ::lib.schema.filter/operator
    column :- lib.metadata/ColumnMetadata
    & args]
-  {:lib/type :lib/external-onp
+  {:lib/type :lib/external-op
    :operator (:short filter-operator)
    :args (into [column] args)})
