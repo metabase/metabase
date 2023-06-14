@@ -30,7 +30,7 @@ describe("scenarios > models metadata", () => {
   describe("GUI model", () => {
     beforeEach(() => {
       // Convert saved question "Orders" into a model
-      cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, {
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
         name: "GUI Model",
         dataset: true,
       });

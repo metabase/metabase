@@ -191,7 +191,7 @@ describe("scenarios > question > saved", () => {
 
   it("should show collection breadcrumbs for a saved question in a non-root collection", () => {
     getCollectionIdFromSlug("second_collection", collection_id => {
-      cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { collection_id });
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { collection_id });
     });
 
     visitQuestion(ORDERS_QUESTION_ID);

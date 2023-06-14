@@ -482,7 +482,7 @@ describe("scenarios > collection defaults", () => {
         });
 
         it("should clean up selection when opening another collection (metabase#16491)", () => {
-          cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, {
+          cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
             collection_id: 1,
           });
           cy.visit("/collection/root");
@@ -592,7 +592,7 @@ describe("scenarios > collection defaults", () => {
     });
 
     it("should allow to x-ray models from collection views", () => {
-      cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { dataset: true });
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
       cy.visit("/collection/root");
 
       openEllipsisMenuFor("Orders");

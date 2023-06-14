@@ -91,7 +91,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
 
   it("should display a back to the dashboard button in model x-ray dashboards", () => {
     const cardTitle = "Orders by Subtotal";
-    cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
     cy.visit("/auto/dashboard/model/1");
     cy.wait("@dataset");
 

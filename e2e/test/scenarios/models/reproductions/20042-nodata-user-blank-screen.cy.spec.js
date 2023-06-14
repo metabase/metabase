@@ -8,7 +8,7 @@ describe("issue 20042", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
       name: "Orders Model",
       dataset: true,
     });

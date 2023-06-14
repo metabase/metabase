@@ -58,7 +58,7 @@ describe("revision history", () => {
             beforeEach(() => {
               cy.signInAsAdmin();
               // Generate some history for the question
-              cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, {
+              cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
                 name: "Orders renamed",
               });
 

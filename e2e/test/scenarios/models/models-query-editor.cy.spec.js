@@ -20,7 +20,7 @@ describe("scenarios > models query editor", () => {
 
   describe("GUI models", () => {
     beforeEach(() => {
-      cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, {
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
         name: "Orders Model",
         dataset: true,
       });

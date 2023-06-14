@@ -16,7 +16,7 @@ describeEE("scenarios > question > caching", () => {
   });
 
   it("can set cache ttl for a saved question", () => {
-    cy.intercept("PUT", `/api/card${ORDERS_QUESTION_ID}`).as("updateQuestion");
+    cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as("updateQuestion");
     visitQuestion(ORDERS_QUESTION_ID);
 
     questionInfoButton().click();

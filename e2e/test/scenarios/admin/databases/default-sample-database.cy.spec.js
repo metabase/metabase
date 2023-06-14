@@ -114,7 +114,7 @@ describe("scenarios > admin > databases > sample database", () => {
     );
     cy.intercept("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
     // model
-    cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
     // Create a segment through API
     cy.request("POST", "/api/segment", {
       name: "Small orders",
