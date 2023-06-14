@@ -11,6 +11,13 @@
 (mr/def ::drill-thru-types
   [:enum :drill-thru/quick-filter])
 
+(mr/def ::drill-thru-keyed
+  [:map
+   [:type      keyword?]
+   [:lib/type  [:= :metabase.lib.drill-thru/drill-thru]]
+   [:object-id :any]
+   [:many-pks? :boolean]])
+
 (mr/def ::drill-thru
   [:multi {:dispatch :type}
    [:drill-thru/quick-filter
@@ -19,4 +26,7 @@
      [:lib/type  [:= :metabase.lib.drill-thru/drill-thru]]
      [:operators [:sequential [:map
                                [:name   string?]
-                               [:filter ::mbql-clause/clause]]]]]]])
+                               [:filter ::mbql-clause/clause]]]]]]
+   [:drill-thru/pk   ::drill-thru-keyed]
+   [:drill-thru/fk   ::drill-thru-keyed]
+   [:drill-thru/zoom ::drill-thru-keyed]])
