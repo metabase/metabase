@@ -3,7 +3,6 @@ import { updateIn } from "icepick";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
-import { GET } from "metabase/lib/api";
 import { color } from "metabase/lib/colors";
 import {
   getMetadata,
@@ -26,22 +25,6 @@ const Questions = createEntity({
   name: "questions",
   nameOne: "question",
   path: "/api/card",
-  // FIXME temp mock code
-  api: {
-    get: async (...params) => {
-      const card = await GET(`/api/card/:id`)(params[0]);
-
-      if (
-        ["Audit", "Performance", "Usage", "Instance analytics"].includes(
-          card?.collection?.name,
-        )
-      ) {
-        card.collection.type = "instance-analytics";
-        card.can_write = false;
-      }
-      return card;
-    },
-  },
 
   objectActions: {
     setArchived: ({ id, dataset, model }, archived, opts) =>
