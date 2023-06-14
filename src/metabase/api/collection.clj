@@ -6,6 +6,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [compojure.core :refer [GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
    [malli.core :as mc]
@@ -13,6 +14,7 @@
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
@@ -57,6 +59,25 @@
     (if (seq prefixes)
       (remove personal? collections)
       collections)))
+
+(defn instance-analytics-collections
+  "Gather instance-analytic type collections and their children (who may or may-not have type=instance-analytics)."
+  []
+  (if-not config/ee-available?
+    #{}
+    (let [colls (t2/select Collection)
+          id->coll (m/index-by :id colls)
+          collection-tree (collection/collections->tree {} colls)]
+      (->> (loop [[tree & coll-tree] collection-tree
+                  ia-ids #{}]
+             (cond (not tree) ia-ids
+                   (= "instance-analytics" (:type tree)) (let [ids (transient #{})]
+                                                           (walk/postwalk
+                                                            (fn [x] (when (and (map? x) (:id x)) (conj! ids (:id x))) x)
+                                                            tree)
+                                                           (recur coll-tree (into ia-ids (persistent! ids))))
+                   :else (recur (concat coll-tree (:children tree)) ia-ids)))
+           (mapv id->coll)))))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an

@@ -172,3 +172,8 @@
   "The user-id of the internal metabase user.
    This is needed in the OSS edition to filter out users for setup/has-user-setup."
    13371338)
+
+(def ^:const default-audit-db-id
+  "The database-id of the internal analytics database in metabase_database.
+   This is needed in the OSS edition to filter out users for the admin onboarding checklist.."
+  13371337)

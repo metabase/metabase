@@ -80,26 +80,6 @@
 ;;; |                                                GET /collection                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn instance-analytics-collection-names
-  "Gather instance-analytic type collections and their children (who may or may-not have type=instance-analytics)."
-  []
-  (if-not config/ee-available?
-    #{}
-    (let [colls (mapv #(select-keys % [:id :name :location :type]) (t2/select Collection))
-          id->coll (m/index-by :id colls)
-          collection-tree (collection/collections->tree {} colls)]
-      (->> (loop [[tree & coll-tree] collection-tree
-                  ia-ids #{}]
-             (cond (not tree) ia-ids
-                   (= "instance-analytics" (:type tree)) (let [ids (transient #{})]
-                                                           (walk/postwalk
-                                                            (fn [x] (when (and (map? x) (:id x)) (conj! ids (:id x))) x)
-                                                            tree)
-                                                           (recur coll-tree (into ia-ids (persistent! ids))))
-                   ;; TODO: put my children onto the end of the coll-tree, then recur like normal
-                   :else (recur (concat coll-tree (:children tree)) ia-ids)))
-           (mapv (comp :name id->coll))))))
-
 (deftest list-collections-test
   (testing "GET /api/collection"
     (testing "check that we can get a basic list of collections"
@@ -153,7 +133,7 @@
                                                 (:name collection)
                                                 "Collection with Items"
                                                 "subcollection"}
-                                              (instance-analytics-collection-names))
+                                              (map :name (api.collection/instance-analytics-collections)))
                 crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
                 crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
                 luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
