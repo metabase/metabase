@@ -8,7 +8,7 @@ interface FieldPickerProps {
   items: Lib.ColumnDisplayInfo[];
   isAll: boolean;
   isNone: boolean;
-  onSelect: (columnIndex: number) => void;
+  onToggle: (columnIndex: number, isSelected: boolean) => void;
   onSelectAll: () => void;
   onSelectNone: () => void;
 }
@@ -17,7 +17,7 @@ export const FieldPicker = ({
   items,
   isAll,
   isNone,
-  onSelect,
+  onToggle,
   onSelectAll,
   onSelectNone,
 }: FieldPickerProps) => {
@@ -45,7 +45,7 @@ export const FieldPicker = ({
           <CheckBox
             checked={displayInfo.selected}
             label={displayInfo.displayName}
-            onChange={() => onSelect(columnIndex)}
+            onChange={event => onToggle(columnIndex, event.target.checked)}
           />
         </ColumnItem>
       ))}

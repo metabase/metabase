@@ -104,7 +104,7 @@ const DataFieldsPicker = ({
     [items],
   );
 
-  const handleSelect = (changedIndex: number) => {
+  const handleToggle = (changedIndex: number) => {
     const nextColumns = items
       .map((displayInfo, currentIndex) =>
         currentIndex !== changedIndex
@@ -135,7 +135,7 @@ const DataFieldsPicker = ({
         items={items}
         isAll={isAll}
         isNone={isNone}
-        onSelect={handleSelect}
+        onToggle={handleToggle}
         onSelectAll={handleSelectAll}
         onSelectNone={handleSelectNone}
       />
