@@ -62,6 +62,7 @@ describe("banner", () => {
     it("should not render for public links", () => {
       visitPublicQuestion(QUESTION_ID);
 
+      cy.findByRole("heading", { name: "Orders" }).should("exist");
       cy.findAllByRole("banner")
         .first()
         .within(() => {
@@ -83,6 +84,7 @@ describe("banner", () => {
       };
       visitEmbeddedPage(payload);
 
+      cy.findByRole("heading", { name: "Orders" }).should("exist");
       cy.findAllByRole("banner")
         .first()
         .within(() => {
@@ -95,6 +97,9 @@ describe("banner", () => {
     describe("full-app embeddings", () => {
       it("should render database prompt banner when logged in as an admin, an instance is on a paid plan, only have a single sample dataset, and is not white labeling", () => {
         visitUrl({ url: "/", qs: { side_nav: false, logo: false } });
+
+        cy.findByRole("link", { name: "Metabase tips" }).should("exist");
+
         // Test that we're in full-app embedding since parameters are working.
         appBar().should("not.exist");
 
@@ -112,6 +117,9 @@ describe("banner", () => {
         cy.addH2SampleDatabase({ name: "H2 DB" });
 
         visitUrl({ url: "/", qs: { side_nav: false, logo: false } });
+
+        cy.findByRole("link", { name: "Metabase tips" }).should("exist");
+
         // Test that we're in full-app embedding since parameters are working.
         appBar().should("not.exist");
 
