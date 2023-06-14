@@ -198,9 +198,6 @@ function isPinnedColumn(
   column: Lib.ColumnMetadata,
 ) {
   const { breakoutPosition } = Lib.displayInfo(query, STAGE_INDEX, column);
-  if (typeof breakoutPosition === "number") {
-    const breakout = Lib.breakouts(query, STAGE_INDEX)[breakoutPosition];
-    return pinnedBreakouts.includes(breakout);
-  }
-  return false;
+  const maxPinnedBreakoutIndex = pinnedBreakouts.length - 1;
+  return breakoutPosition != null && breakoutPosition <= maxPinnedBreakoutIndex;
 }
