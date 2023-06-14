@@ -2,6 +2,7 @@ import { useState } from "react";
 import * as React from "react";
 import { t } from "ttag";
 
+import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
@@ -13,13 +14,13 @@ import Database from "metabase-lib/metadata/Database";
 
 import {
   Body,
-  Description,
   Header,
   ActionsContainer,
   ItemCard,
   ItemIcon,
   ItemLink,
   Title,
+  TruncatedMarkdown,
 } from "./PinnedItemCard.styled";
 
 type Props = {
@@ -56,7 +57,6 @@ function PinnedItemCard({
   onMove,
 }: Props) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
-  const [showDescriptionTooltip, setShowDescriptionTooltip] = useState(false);
   const icon = item.getIcon().name;
   const { description, name, model } = item;
 
@@ -106,20 +106,17 @@ function PinnedItemCard({
             </Title>
           </Tooltip>
           <Tooltip
-            tooltip={description}
-            placement="bottom"
-            maxWidth={TOOLTIP_MAX_WIDTH}
-            isEnabled={showDescriptionTooltip}
+            tooltip={
+              <Markdown disallowHeading unstyleLinks>
+                {defaultedDescription ?? ""}
+              </Markdown>
+            }
           >
-            {defaultedDescription && (
-              <Description
-                onMouseEnter={e =>
-                  maybeEnableTooltip(e, setShowDescriptionTooltip)
-                }
-              >
-                {defaultedDescription}
-              </Description>
-            )}
+            <div>
+              <TruncatedMarkdown disallowHeading unstyleLinks>
+                {defaultedDescription ?? ""}
+              </TruncatedMarkdown>
+            </div>
           </Tooltip>
         </Body>
       </ItemCard>

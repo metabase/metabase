@@ -4,6 +4,7 @@ import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
 import Card from "metabase/components/Card";
+import Markdown from "metabase/core/components/Markdown";
 
 export const ItemCard = styled(Card)``;
 
@@ -37,11 +38,13 @@ export const Title = styled.div`
   overflow: hidden;
 `;
 
-export const Description = styled.div`
+export const TruncatedMarkdown = styled(Markdown)`
   color: ${color("text-medium")};
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
   overflow: hidden;
+  overflow-wrap: break-word;
 `;
 
 export const Body = styled.div`
