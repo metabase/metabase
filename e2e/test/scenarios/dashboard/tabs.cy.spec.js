@@ -63,8 +63,27 @@ describe("scenarios > dashboard > tabs", () => {
     });
   });
 
-  // TODO
-  it("should only fetch cards on the current tab", () => {});
+  it("should only fetch cards on the current tab", () => {
+    visitDashboardAndCreateTab({ dashboardId: 1, save: false });
+
+    // Add card to second tab
+    cy.icon("pencil").click();
+    openQuestionsSidebar();
+    sidebar().within(() => {
+      cy.findByText("Orders, Count").click();
+    });
+    saveDashboard();
+
+    // Visit first tab and check for dashcard query
+    visitDashboard(1, { params: { tabId: 1 } });
+    cy.intercept("POST", `/api/dashboard/1/dashcard/2/card/2/query`).as(
+      "secondTabQuery",
+    );
+
+    // Visit second tab and check for dashcard query
+    cy.findByRole("tab", { name: "Page 2" }).click();
+    cy.wait("@secondTabQuery");
+  });
 });
 
 describeWithSnowplow.only("scenarios > dashboard > tabs", () => {

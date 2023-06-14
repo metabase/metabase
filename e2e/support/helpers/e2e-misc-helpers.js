@@ -169,7 +169,13 @@ export function visitDashboard(dashboard_id, { params = {} } = {}) {
     cy.intercept("GET", `/api/dashboard/${dashboard_id}`).as(dashboardAlias);
 
     const canViewDashboard = hasAccess(status);
-    const validQuestions = dashboardHasQuestions(ordered_cards);
+
+    let validQuestions = dashboardHasQuestions(ordered_cards);
+    if (params.tabId != null) {
+      validQuestions = validQuestions.filter(
+        card => card.dashboard_tab_id === params.tabId,
+      );
+    }
 
     if (canViewDashboard && validQuestions) {
       // If dashboard has valid questions (GUI or native),
