@@ -423,10 +423,10 @@
 (define-migration MigrateLegacyDashboardCardColumnSettingsFieldRefs
   (let [update-one! (fn [{:keys [id visualization_settings]}]
                       (let [parsed  (json/parse-string visualization_settings)
-                            updated (update-legacy-field-refs-in-viz-settings visualization_settings)]
-                        (when (not= visualization_settings parsed)
+                            updated (update-legacy-field-refs-in-viz-settings parsed)]
+                        (when (not= parsed updated)
                           (t2/query-one {:update :report_dashboardcard
-                                         :set    {:visualization_settings updated}
+                                         :set    {:visualization_settings (json/generate-string updated)}
                                          :where  [:= :id id]}))))]
     (run! update-one! (t2/reducible-query
                        {:select [:id :visualization_settings]
@@ -464,13 +464,11 @@
                                                      [:like :dc.visualization_settings "%ref\\\\\\\",[\\\\\\\"field%"]]
                                                     [:like :c.result_metadata "%join-alias%"]]})))
   (let [update! (fn [{:keys [id visualization_settings]}]
-                  (let [updated (-> visualization_settings
-                                    json/parse-string
-                                    remove-join-alias-from-column-settings-field-refs
-                                    json/generate-string)]
-                    (when (not= visualization_settings updated)
+                  (let [parsed  (json/parse-string visualization_settings)
+                        updated (remove-join-alias-from-column-settings-field-refs parsed)]
+                    (when (not= parsed updated)
                       (t2/query-one {:update :report_dashboardcard
-                                     :set    {:visualization_settings updated}
+                                     :set    {:visualization_settings (json/generate-string updated)}
                                      :where  [:= :id id]}))))]
     (run! update! (t2/reducible-query {:select [:dc.id :dc.visualization_settings]
                                        :from   [[:report_card :c]]
@@ -510,16 +508,16 @@
 (define-reversible-migration RevisionAddJoinAliasToDashboardCardColumnSettingsFieldRefs
   (let [add-join-aliases
         (fn [dashcard]
-          (if-let [dataset_query (:dataset_query (t2/query-one {:select [:dataset_query]
-                                                                :from   [:report_card]
-                                                                :where  [:and
-                                                                         [:or
-                                                                           ;; native queries won't have join aliases, so we can exclude them
-                                                                          [:= :query_type nil]
-                                                                          [:= :query_type "query"]]
-                                                                         [:= :id (get dashcard "card_id")]
-                                                                          ;; only include cards with joins
-                                                                         [:like :dataset_query "%joins%"]]}))]
+          (if-let [{:keys [dataset_query]} (t2/query-one {:select [:dataset_query]
+                                                          :from   [:report_card]
+                                                          :where  [:and
+                                                                   [:or
+                                                                    ;; native queries won't have join aliases, so we can exclude them
+                                                                    [:= :query_type nil]
+                                                                    [:= :query_type "query"]]
+                                                                   [:= :id (get dashcard "card_id")]
+                                                                   ;; only include cards with joins
+                                                                   [:like :dataset_query "%joins%"]]})]
             (if-let [join-aliases (->> (get-in (json/parse-string dataset_query) ["query" "joins"])
                                        (map #(get % "alias"))
                                        set
@@ -559,14 +557,14 @@
   (let [update-one!
         (fn [revision]
           (let [dashboard (json/parse-string (:object revision))
-                updated      (update dashboard "cards"
-                                     (fn [dashcards]
-                                       (map #(update % "visualization_settings" remove-join-alias-from-column-settings-field-refs)
-                                            dashcards)))]
+                updated   (update dashboard "cards"
+                                  (fn [dashcards]
+                                    (map #(update % "visualization_settings" remove-join-alias-from-column-settings-field-refs)
+                                         dashcards)))]
             (when (not= updated dashboard)
               (t2/query {:update :revision
-                         :set {:object (json/generate-string updated)}
-                         :where [:= :id (:id revision)]}))))]
+                         :set    {:object (json/generate-string updated)}
+                         :where  [:= :id (:id revision)]}))))]
     (run! update-one! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
                                            :where  [:and
