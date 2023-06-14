@@ -264,3 +264,13 @@
               :lib/desired-column-alias "Cat__NAME",
               :display-name "Name"}]
             (lib.metadata.calculation/visible-columns query)))))
+
+(deftest ^:parallel expression-breakout-visible-column
+  (testing "expression breakouts are handled by visible-columns"
+    (let [expr-name "ID + 1"
+          query (-> (query-with-expressions)
+                    (lib/breakout [:expression {:lib/uuid (str (random-uuid))} expr-name]))]
+      (is (=? [{:lib/type :metadata/field
+                :lib/source :source/expressions}]
+              (filter #(= (:name %) expr-name)
+                      (lib.metadata.calculation/visible-columns query)))))))

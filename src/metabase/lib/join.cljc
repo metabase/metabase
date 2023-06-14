@@ -80,7 +80,7 @@
       (:display-name (lib.metadata/table query source-table))
       ;; handle card__<id> source tables.
       (let [card-id (lib.util/string-table-id->card-id source-table)]
-        (i18n/tru "Saved Question #{0}" card-id)))
+        (i18n/tru "Question {0}" card-id)))
     (i18n/tru "Native Query")))
 
 (defmethod lib.metadata.calculation/display-info-method :mbql/join
@@ -115,7 +115,10 @@
 (defmethod lib.metadata.calculation/metadata-method :mbql/join
   [query stage-number {:keys [fields stages], join-alias :alias, :or {fields :none}, :as _join}]
   (when-not (= fields :none)
-    (let [join-query (assoc query :stages stages)
+    (let [ensure-previous-stages-have-metadata (resolve 'metabase.lib.stage/ensure-previous-stages-have-metadata)
+          join-query (cond-> (assoc query :stages stages)
+                       ensure-previous-stages-have-metadata
+                       (ensure-previous-stages-have-metadata -1))
           field-metadatas (if (= fields :all)
                             (lib.metadata.calculation/metadata join-query -1 (peek stages))
                             (for [field-ref fields
