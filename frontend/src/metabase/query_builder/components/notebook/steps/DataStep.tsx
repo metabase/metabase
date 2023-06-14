@@ -1,27 +1,25 @@
-import * as React from "react";
+import { useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { getDatabasesList } from "metabase/query_builder/selectors";
+import { FieldPicker } from "metabase/common/components/FieldPicker";
 
 import type { TableId } from "metabase-types/api";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import type Dimension from "metabase-lib/Dimension";
-import { isLocalField } from "metabase-lib/queries/utils/field-ref";
-
+import * as Lib from "metabase-lib";
 import type { NotebookStepUiComponentProps } from "../types";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import {
-  FieldsPickerIcon,
   FieldPickerContentContainer,
   FIELDS_PICKER_STYLES,
 } from "../FieldsPickerIcon";
-import FieldsPicker from "./FieldsPicker";
 
 function DataStep({
-  color,
+  topLevelQuery,
   query,
+  step,
+  color,
   updateQuery,
   readOnly,
 }: NotebookStepUiComponentProps) {
@@ -37,10 +35,9 @@ function DataStep({
         right={
           canSelectTableColumns && (
             <DataFieldsPicker
-              query={query}
+              query={topLevelQuery}
+              stageIndex={step.stageIndex}
               updateQuery={updateQuery}
-              triggerStyle={FIELDS_PICKER_STYLES.trigger}
-              triggerElement={FieldsPickerIcon}
             />
           )
         }
@@ -75,58 +72,66 @@ export default connect(state => ({ databases: getDatabasesList(state) }))(
 );
 
 interface DataFieldsPickerProps {
-  query: StructuredQuery;
-  updateQuery: NotebookStepUiComponentProps["updateQuery"];
-  triggerStyle?: React.CSSProperties;
-  triggerElement: React.ComponentType<{ isTriggeredComponentOpen?: boolean }>;
+  query: Lib.Query;
+  stageIndex: number;
+  updateQuery: (query: Lib.Query) => Promise<void>;
 }
 
 const DataFieldsPicker = ({
   query,
+  stageIndex,
   updateQuery,
-  ...props
 }: DataFieldsPickerProps) => {
-  const dimensions = query.tableDimensions();
-  const expressionDimensions = query.expressionDimensions();
-  const selectedDimensions = query.columnDimensions();
-  const selected = new Set(selectedDimensions.map(d => d.key()));
-  const fields = query.fields();
+  const columns = useMemo(
+    () => Lib.fieldableColumns(query, stageIndex),
+    [query, stageIndex],
+  );
+
+  const items = useMemo(
+    () => columns.map(column => Lib.displayInfo(query, stageIndex, column)),
+    [query, stageIndex, columns],
+  );
+
+  const isAll = useMemo(
+    () => items.every(displayInfo => displayInfo.selected),
+    [items],
+  );
+
+  const isNone = useMemo(
+    () => items.every(displayInfo => !displayInfo.selected),
+    [items],
+  );
+
+  const handleSelect = (changedIndex: number) => {
+    const nextColumns = items
+      .map((displayInfo, currentIndex) =>
+        currentIndex !== changedIndex
+          ? displayInfo.selected
+          : !displayInfo.selected,
+      )
+      .map((_, currentIndex) => columns[currentIndex]);
+    const nextQuery = Lib.withFields(query, stageIndex, nextColumns);
+    updateQuery(nextQuery);
+  };
+
+  const handleSelectAll = () => {
+    const nextQuery = Lib.withFields(query, stageIndex, []);
+    updateQuery(nextQuery);
+  };
 
   const handleSelectNone = () => {
-    updateQuery(
-      query.setFields([
-        dimensions[0].mbql(),
-        ...expressionDimensions.map(d => d.mbql()),
-      ]),
-    );
+    const nextQuery = Lib.withFields(query, stageIndex, [columns[0]]);
+    updateQuery(nextQuery);
   };
-
-  const handleToggleDimension = (dimension: Dimension) => {
-    const newFields = [...dimensions, ...expressionDimensions]
-      .filter(d => {
-        if (d === dimension) {
-          return !selected.has(d.key());
-        } else {
-          return selected.has(d.key());
-        }
-      })
-      .map(d => d.mbql());
-
-    updateQuery(query.setFields(newFields));
-  };
-
-  const hasOneColumnSelected = fields.filter(isLocalField).length === 1;
 
   return (
-    <FieldsPicker
-      {...props}
-      dimensions={dimensions}
-      selectedDimensions={selectedDimensions}
-      isAll={!fields || fields.length === 0}
-      onSelectAll={() => updateQuery(query.clearFields())}
+    <FieldPicker
+      items={items}
+      isAll={isAll}
+      isNone={isNone}
+      onSelect={handleSelect}
+      onSelectAll={handleSelectAll}
       onSelectNone={handleSelectNone}
-      disableSelected={hasOneColumnSelected}
-      onToggleDimension={handleToggleDimension}
     />
   );
 };
