@@ -8,8 +8,6 @@ labels: ".Epic"
 
 ---
 
-<Insert feature / project description here>: Notes - This demonstrates a workflow and implementation plan around feature X that we can use in features that go out in a release. There should be a paragraph description of the problem we're trying to solve and a high level what the solution will be.
-
 **Links**
 - product doc: _link to product doc_
 - eng doc: _link to technical design doc_
