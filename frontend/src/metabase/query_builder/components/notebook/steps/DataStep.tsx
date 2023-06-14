@@ -2,9 +2,10 @@ import { useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { FieldPicker } from "metabase/common/components/FieldPicker";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { getDatabasesList } from "metabase/query_builder/selectors";
-import { FieldPicker } from "metabase/common/components/FieldPicker";
 
 import type { TableId } from "metabase-types/api";
 import * as Lib from "metabase-lib";
@@ -12,6 +13,7 @@ import type { NotebookStepUiComponentProps } from "../types";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import {
   FieldPickerContentContainer,
+  FieldsPickerIcon,
   FIELDS_PICKER_STYLES,
 } from "../FieldsPickerIcon";
 
@@ -125,13 +127,18 @@ const DataFieldsPicker = ({
   };
 
   return (
-    <FieldPicker
-      items={items}
-      isAll={isAll}
-      isNone={isNone}
-      onSelect={handleSelect}
-      onSelectAll={handleSelectAll}
-      onSelectNone={handleSelectNone}
-    />
+    <PopoverWithTrigger
+      triggerStyle={FIELDS_PICKER_STYLES.trigger}
+      triggerElement={FieldsPickerIcon}
+    >
+      <FieldPicker
+        items={items}
+        isAll={isAll}
+        isNone={isNone}
+        onSelect={handleSelect}
+        onSelectAll={handleSelectAll}
+        onSelectNone={handleSelectNone}
+      />
+    </PopoverWithTrigger>
   );
 };
