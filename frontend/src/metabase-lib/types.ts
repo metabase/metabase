@@ -16,18 +16,24 @@ export type CardMetadata = unknown & { _opaque: typeof CardMetadata };
 
 export type Limit = number | null;
 
+declare const BreakoutClause: unique symbol;
+export type BreakoutClause = unknown & { _opaque: typeof BreakoutClause };
+
 declare const OrderByClause: unique symbol;
 export type OrderByClause = unknown & { _opaque: typeof OrderByClause };
 
 export type OrderByDirection = "asc" | "desc";
 
-export type Clause = OrderByClause;
+export type Clause = BreakoutClause | OrderByClause;
 
 declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
 
 declare const ColumnGroup: unique symbol;
 export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
+
+declare const Bucket: unique symbol;
+export type Bucket = unknown & { _opaque: typeof Bucket };
 
 export type TableDisplayInfo = {
   name: string;
@@ -45,8 +51,10 @@ type TableInlineDisplayInfo = Pick<
 export type ColumnDisplayInfo = {
   name: string;
   displayName: string;
+  longDisplayName: string;
+
   fkReferenceName?: string;
-  is_calculated: boolean;
+  isCalculated: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
   table?: TableInlineDisplayInfo;
@@ -55,10 +63,20 @@ export type ColumnDisplayInfo = {
   orderByPosition?: number;
 };
 
-export type OrderByClauseDisplayInfo = Pick<
+export type ClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
-  "name" | "displayName" | "table"
-> & {
+  "name" | "displayName" | "longDisplayName" | "table"
+>;
+
+export type BreakoutClauseDisplayInfo = ClauseDisplayInfo;
+
+export type BucketDisplayInfo = {
+  displayName: string;
+  default?: boolean;
+  selected?: boolean;
+};
+
+export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
