@@ -17,15 +17,8 @@ labels: ".Epic"
 **Implementation Plan**
 
 
-***Milestone 1*** )_(note, each milestone should correspond to a point at which product/design can jump in to apply polish, evaluate changes, etc)_
-- [x] step 1: #somePRnumber
-- [ ] step 2
-- [ ] step 3
+***Milestone 1***
+_<insert tasklist here>_
 
 ***Milestone 2***
-- [ ] etc
-
-***Milestone N*** _(we can put stuff like translations, docs, testing, etc)_
-- [ ] String translations
-- [ ] Write rough pass documents for handoff to customer success
 
