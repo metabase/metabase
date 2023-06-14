@@ -684,18 +684,16 @@ describe("scenarios > dashboard", () => {
     });
   });
 
-  it("should now overflow markdown content in description (metabase#31326)", () => {
+  it("should not have markdown content overflow in description (metabase#31326)", () => {
     cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
     cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
     visitDashboard(1);
     cy.wait("@getDashboard");
 
-    cy.get("main header").within(() => {
-      cy.icon("info").click();
-    });
+    cy.get("main header").icon("info").click();
 
     const testMarkdownContent =
-      "{selectall}# Heading 1{enter}{enter}**bold** [link](https://metabase.com){enter}{enter}![alt](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg){enter}{enter}This is my description. ";
+      "{selectall}# Heading 1{enter}{enter}**bold** https://www.metabase.com/community_posts/how-to-measure-the-success-of-new-product-features-and-why-it-is-important{enter}{enter}![alt](/app/assets/img/welcome-modal-2.png){enter}{enter}This is my description. ";
 
     rightSidebar().within(() => {
       cy.findByPlaceholderText("Add description")
@@ -707,17 +705,33 @@ describe("scenarios > dashboard", () => {
     cy.wait("@updateDashboard");
 
     rightSidebar().within(() => {
+      // check that markdown content is not bigger than its container
       cy.findByTestId("editable-text").then($markdown => {
-        expect($markdown[0].clientHeight).to.be.gte(
-          $markdown[0].firstElementChild.clientHeight,
-        );
+        const el = $markdown[0];
+
+        // vertical
+        expect(el.clientHeight).to.be.gte(el.firstElementChild.clientHeight);
+
+        // horizontal
+        $markdown.find("*").each((_index, childEl) => {
+          const parentRect = el.getBoundingClientRect();
+          const childRect = childEl.getBoundingClientRect();
+
+          expect(parentRect.left).to.be.lte(childRect.left);
+          expect(parentRect.right).to.be.gte(childRect.right);
+        });
       });
 
       cy.findByTestId("editable-text")
         .click()
         .then($el => {
+          const lineHeight = parseFloat(
+            window.getComputedStyle($el[0]).lineHeight,
+          );
+
+          // check that textarea has proper height when we change markdown text
           expect($el[0].scrollHeight).to.be.gte(
-            testMarkdownContent.split("{enter}").length * 16, // num of lines * font size
+            testMarkdownContent.split("{enter}").length * lineHeight, // num of lines * lineHeight
           );
         });
     });

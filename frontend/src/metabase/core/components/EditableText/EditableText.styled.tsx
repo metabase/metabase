@@ -14,6 +14,7 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
   padding: 0.25rem;
   border: 1px solid transparent;
   border-radius: 4px;
+  word-wrap: break-word;
 
   &:hover,
   &:focus-within {
