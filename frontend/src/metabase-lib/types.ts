@@ -53,6 +53,7 @@ export type ColumnDisplayInfo = {
 
   breakoutPosition?: number;
   orderByPosition?: number;
+  selected?: boolean;
 };
 
 export type OrderByClauseDisplayInfo = Pick<
