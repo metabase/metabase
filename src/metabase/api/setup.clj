@@ -3,6 +3,7 @@
    [compojure.core :refer [GET POST]]
    [java-time :as t]
    [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.collection :as api.collection]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.database :as api.database]
@@ -96,10 +97,10 @@
       (throw (ex-info (:message error (tru "Cannot connect to Database")) (assoc error :status-code 400))))
     (first (t2/insert-returning-instances! Database
                                            (merge
-                                             {:name name, :engine driver, :details details, :creator_id creator-id}
-                                             (u/select-non-nil-keys database #{:is_on_demand :is_full_sync :auto_run_queries})
-                                             (when schedules
-                                               (sync.schedules/schedule-map->cron-strings schedules)))))))
+                                            {:name name, :engine driver, :details details, :creator_id creator-id}
+                                            (u/select-non-nil-keys database #{:is_on_demand :is_full_sync :auto_run_queries})
+                                            (when schedules
+                                              (sync.schedules/schedule-map->cron-strings schedules)))))))
 
 (defn- setup-set-settings! [_request {:keys [email site-name site-locale allow-tracking?]}]
   ;; set a couple preferences
@@ -194,7 +195,6 @@
       {:status 400
        :body   error-or-nil})))
 
-
 ;;; Admin Checklist
 
 (def ^:private ChecklistState
@@ -223,15 +223,23 @@
    :hosted?    (premium-features/is-hosted?)
    :configured {:email (email/email-configured?)
                 :slack (slack/slack-configured?)}
-   :counts     {:user  (t2/count User)
-                :card  (t2/count Card)
-                :table (t2/count Table)}
-   :exists     {:non-sample-db (t2/exists? Database, :is_sample false)
-                :dashboard     (t2/exists? Dashboard)
+   :counts     {:user  (t2/count User {:where [:not= :id config/internal-mb-user-id]})
+                :card  (t2/count Card :creator_id [:not= config/internal-mb-user-id])
+                :table (t2/count Table :db_id [:not= config/default-audit-db-id])}
+   :exists     {:non-sample-db (t2/exists? Database {:where [:and
+                                                             [:= :is_sample false]
+                                                             [:not= :id config/default-audit-db-id]]})
+                :dashboard     (t2/exists? Dashboard :creator_id [:not= config/default-audit-db-id])
                 :pulse         (t2/exists? Pulse)
-                :hidden-table  (t2/exists? Table, :visibility_type [:not= nil])
-                :collection    (t2/exists? Collection)
-                :model         (t2/exists? Card :dataset true)}})
+                :hidden-table  (t2/exists? Table, {:where [:and
+                                                           [:not= :visibility_type nil]
+                                                           [:not= :db_id config/default-audit-db-id]]})
+                :collection    (t2/exists? Collection {:where [:and
+                                                               [:not [:in :id (map :id (api.collection/instance-analytics-collections))]]
+                                                               [:not= :personal_owner_id api/*current-user-id*]]})
+                :model         (t2/exists? Card {:where [:and
+                                                         [:not= :creator_id config/internal-mb-user-id]
+                                                         [:= :dataset true]]})}})
 
 (defn- get-connected-tasks
   [{:keys [configured counts exists] :as _info}]
@@ -277,20 +285,20 @@
     :group       (tru "Curate your data")
     :description (tru "If your data contains technical or irrelevant info you can hide it.")
     :link        "/admin/datamodel/database"
-    :completed   (exists :hidden-table)
-    :triggered   (>= (counts :table) 20)}
+    :completed   (:hidden-table exists)
+    :triggered   (>= (:table counts) 20)}
    {:title       (tru "Organize questions")
     :group       (tru "Curate your data")
     :description (tru "Have a lot of saved questions in {0}? Create collections to help manage them and add context." (tru "Metabase"))
     :link        "/collection/root"
-    :completed   (exists :collection)
-    :triggered   (>= (counts :card) 30)}
+    :completed   (:collection exists)
+    :triggered   (>= (:card counts) 30)}
    {:title       (tru "Create a model")
     :group       (tru "Curate your data")
     :description (tru "Set up friendly starting points for your team to explore data")
     :link        "/model/new"
-    :completed   (exists :model)
-    :triggered   (not (exists :model))}])
+    :completed   (:model exists)
+    :triggered   (not (:model exists))}])
 
 (mu/defn ^:private checklist-items
   [info :- ChecklistState]
