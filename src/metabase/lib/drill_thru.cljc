@@ -14,6 +14,10 @@
     [metabase.shared.util.i18n :as i18n]
     [metabase.util.malli :as mu]))
 
+;; TODO: Different ways to apply drill-thru to a query.
+;; So far:
+;; - :filter on each :operators of :drill-thru/quick-filter applied with (lib/filter query stage filter-clause)
+
 (defn- structured? [query stage-number]
   (-> (lib.util/query-stage query stage-number)
       :lib/type
@@ -58,6 +62,28 @@
      :type      :drill-thru/quick-filter
      :operators (operators-for column value)}))
 
+;;; ------------------------------------- Quick Filters ------------------------------------------
+(mu/defn ^:private object-detail-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column       :- lib.metadata/ColumnMetadata
+   value]
+  (when (and (structured? query stage-number)
+             column
+             (some? value))
+    (let [many-pks?  (> (count (lib.metadata.calculation/primary-keys query)) 1)
+          drill-type (cond
+                       (and (lib.types.isa/primary-key? column) many-pks?) :drill-thru/pk
+                       ;; TODO: Figure out clicked.extraData and the dashboard flow.
+                       (lib.types.isa/primary-key? column)                 :drill-thru/zoom
+                       (lib.types.isa/foreign-key? column)                 :drill-thru/fk)]
+      (when drill-type
+        {:lib/type  ::drill-thru
+         :type      drill-type
+         :object-id value
+         :many-pks? many-pks?}))))
+
+;;; --------------------------------------- Top Level --------------------------------------------
 (mu/defn available-drill-thrus :- [:sequential [:ref ::lib.schema.drill-thru/drill-thru]]
   "Get a list (possibly empty) of available drill-thrus for a column, or a column + value pair.
 
@@ -70,7 +96,8 @@
     column       :- lib.metadata/ColumnMetadata
     value]
    (keep #(% query stage-number column value)
-         [quick-filter-drill])))
+         [object-detail-drill
+          quick-filter-drill])))
 
 (comment
   (let [query    (metabase.lib.dev/query-for-table-name
@@ -82,6 +109,7 @@
         ops      (operators-for subtotal 100)
         filters  (map :filter ops)]
     #_(quick-filter-drill query -1 subtotal 200)
-    (available-drill-thrus query -1 subtotal 100))
+    (available-drill-thrus query -1 (nth cols 1) 100)
+    )
   *e
   )
