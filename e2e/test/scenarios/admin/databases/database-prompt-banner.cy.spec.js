@@ -7,6 +7,7 @@ import {
   resetSnowplow,
   restore,
   visitEmbeddedPage,
+  visitPublicQuestion,
 } from "e2e/support/helpers";
 
 describe("banner", () => {
@@ -59,11 +60,7 @@ describe("banner", () => {
   describe("embeddings", () => {
     const QUESTION_ID = 1;
     it("should not render for public links", () => {
-      cy.request("POST", `/api/card/${QUESTION_ID}/public_link`, {}).then(
-        ({ body: { uuid } }) => {
-          cy.visit(`/public/question/${uuid}`);
-        },
-      );
+      visitPublicQuestion(QUESTION_ID);
 
       cy.findAllByRole("banner")
         .first()
