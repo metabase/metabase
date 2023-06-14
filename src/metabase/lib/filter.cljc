@@ -9,6 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.external-op :as lib.schema.external-op]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -315,12 +316,12 @@
              (keep with-operators)
              columns)))))
 
-(mu/defn filter-clause
+(mu/defn filter-clause :- ::lib.schema.external-op/external-op
   "Returns a standalone filter clause for a `filter-operator`,
   a `column`, and arguments."
   [filter-operator :- ::lib.schema.filter/operator
    column :- lib.metadata/ColumnMetadata
    & args]
-  {:lib/type :lib/external-op
+  {:lib/type :lib/external-onp
    :operator (:short filter-operator)
    :args (into [column] args)})
