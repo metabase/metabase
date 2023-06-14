@@ -15724,7 +15724,8 @@ databaseChangeLog:
         - sql:
             dbms: h2,postgresql
             sql: >-
-              create or replace view v_audit_log as
+              drop view v_audit_log;
+              create view v_audit_log as
               (
               select row_number() over (order by timestamp) as id, source.*
               from (select case
@@ -15769,9 +15770,10 @@ databaseChangeLog:
         - sql:
             dbms: mysql,mariadb
             sql: >-
-              create or replace view v_audit_log as
+              drop view v_audit_log;
+              create view v_audit_log as
               (
-              select row_number() over(order by timestamp) as id, source.*
+              select uuid() as id, source.*
               from (select case
                                when model = 'card' then 'question-view'
                                when model = 'table' then 'table-view'
@@ -15810,7 +15812,7 @@ databaseChangeLog:
                                end as model_id,
                            details
                     from activity) AS source
-                  )
+                  );
       rollback:
         - sql:
             sql: drop view if exists v_audit_log;
