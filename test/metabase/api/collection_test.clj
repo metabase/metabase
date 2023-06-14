@@ -4,10 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
-   [medley.core :as m]
    [metabase.api.collection :as api.collection]
-   [metabase.config :as config]
    [metabase.models
     :refer [Card
             Collection
