@@ -71,6 +71,8 @@ const dashboard = createMockDashboard({
   parameters: [dashboardParameter],
 });
 
+const DEFAULT_VALUE = "default value";
+
 const setup = (
   options?: Partial<
     React.ComponentProps<typeof ConnectedActionDashcardSettings>
@@ -98,73 +100,259 @@ const setup = (
 };
 
 describe("ActionViz > ActionDashcardSettings", () => {
-  describe("when there are required, hidden and mapped parameters", () => {
-    const action = {
-      ...actions1[0],
-      parameters: [actionParameter1, actionParameterRequired],
-      visualization_settings: {
-        fields: {
-          [actionParameter1.id]: createMockFieldSettings({
-            id: actionParameter1.id,
-            hidden: false,
-          }),
-          [actionParameterRequired.id]: createMockFieldSettings({
-            id: actionParameterRequired.id,
-            hidden: true,
-          }),
-        },
-      },
-    };
+  describe.each([
+    { required: true, mapped: true, hasDefaultValue: true },
+    { required: true, mapped: true, hasDefaultValue: false },
+    { required: true, mapped: false, hasDefaultValue: true },
+    { required: true, mapped: false, hasDefaultValue: false },
+    { required: false, mapped: true, hasDefaultValue: true },
+    { required: false, mapped: true, hasDefaultValue: false },
+    { required: false, mapped: false, hasDefaultValue: true },
+    { required: false, mapped: false, hasDefaultValue: false },
+  ])(
+    "when not hidden, required: $required, mapped: $mapped, hasDefaultValue: $hasDefaultValue",
+    ({ required, mapped, hasDefaultValue }) => {
+      beforeEach(() => {
+        const getDashcard = dashcardFactory({
+          required,
+          mapped,
+          hasDefaultValue,
+          hidden: false,
+        });
 
-    const dashcard = {
-      ...actionDashcardWithAction,
-      action,
-      parameter_mappings: action.parameters.map(parameter => ({
-        parameter_id: dashboardParameter.id,
-        target: parameter.target,
-      })),
-    };
+        setup({
+          dashcard: getDashcard(),
+        });
+      });
 
+      it("doesn't show a hidden badge for not hidden field", () => {
+        const formSection = screen.getByTestId(
+          `parameter-form-section-${actionParameter1.id}`,
+        );
+
+        expect(
+          within(formSection).queryByText("Hidden"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("doesn't show validation error", () => {
+        const formSection = screen.getByTestId(
+          `parameter-form-section-${actionParameter1.id}`,
+        );
+
+        expect(
+          within(formSection).queryByText(`${actionParameter1.name}: required`),
+        ).not.toBeInTheDocument();
+      });
+
+      it("allows to submit a form", () => {
+        expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+      });
+
+      it("populates popover properly", async () => {
+        const formSection = screen.getByTestId(
+          `parameter-form-section-${actionParameter1.id}`,
+        );
+
+        userEvent.click(within(formSection).getByTestId("select-button"));
+
+        const popover = await screen.findByRole("grid");
+
+        expect(
+          within(popover).getByText(dashboardParameter.name),
+        ).toBeInTheDocument();
+        expect(within(popover).getByText("Ask the user")).toBeInTheDocument();
+      });
+    },
+  );
+
+  describe.each([
+    { required: true, mapped: true, hasDefaultValue: true },
+    { required: true, mapped: true, hasDefaultValue: false },
+    { required: true, mapped: false, hasDefaultValue: true },
+    { required: true, mapped: false, hasDefaultValue: false },
+    { required: false, mapped: true, hasDefaultValue: true },
+    { required: false, mapped: true, hasDefaultValue: false },
+    { required: false, mapped: false, hasDefaultValue: true },
+    { required: false, mapped: false, hasDefaultValue: false },
+  ])(
+    "when hidden, required: $required, mapped: $mapped, hasDefaultValue: $hasDefaultValue",
+    ({ required, mapped, hasDefaultValue }) => {
+      beforeEach(() => {
+        const getDashcard = dashcardFactory({
+          required,
+          mapped,
+          hasDefaultValue,
+          hidden: true,
+        });
+
+        setup({
+          dashcard: getDashcard(),
+        });
+      });
+
+      it("shows a hidden badge", () => {
+        const formSection = screen.getByTestId(
+          `parameter-form-section-${actionParameter1.id}`,
+        );
+
+        expect(within(formSection).getByText("Hidden")).toBeInTheDocument();
+      });
+
+      it("populates popover properly", async () => {
+        const formSection = screen.getByTestId(
+          `parameter-form-section-${actionParameter1.id}`,
+        );
+
+        userEvent.click(within(formSection).getByTestId("select-button"));
+
+        const popover = await screen.findByRole("grid");
+
+        expect(
+          within(popover).queryByText("Ask the user"),
+        ).not.toBeInTheDocument();
+      });
+    },
+  );
+
+  describe("when hidden, required, but not mapped and no default value", () => {
     beforeEach(() => {
+      const getDashcard = dashcardFactory({
+        required: true,
+        mapped: false,
+        hasDefaultValue: false,
+        hidden: true,
+      });
+
       setup({
-        dashcard,
+        dashcard: getDashcard(),
       });
     });
 
-    it("doesn't show a hidden badge for not hidden field", () => {
+    it("doesn't allow to submit a form", () => {
+      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    });
+
+    it("shows validation error for not required field", () => {
       const formSection = screen.getByTestId(
         `parameter-form-section-${actionParameter1.id}`,
       );
 
-      expect(within(formSection).queryByText("Hidden")).not.toBeInTheDocument();
-    });
-
-    it("shows a hidden badge for hidden field", () => {
-      const formSection = screen.getByTestId(
-        `parameter-form-section-${actionParameterRequired.id}`,
-      );
-
-      expect(within(formSection).getByText("Hidden")).toBeInTheDocument();
-    });
-
-    it("doesn't show validation error for not required field", () => {
-      const formSection = screen.getByTestId(
-        `parameter-form-section-${actionParameterRequired.id}`,
-      );
-
       expect(
-        within(formSection).queryByText(
-          `${actionParameterRequired.name}: required`,
-        ),
-      ).not.toBeInTheDocument();
-    });
-
-    it("allows to submit a form", () => {
-      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+        within(formSection).getByText(`${actionParameter1.name}: required`),
+      ).toBeInTheDocument();
     });
   });
 
-  describe("when there are required, hidden, but not mapped parameters", () => {
+  describe("when hidden, required, has default value, but not mapped", () => {
+    beforeEach(() => {
+      const getDashcard = dashcardFactory({
+        required: true,
+        mapped: false,
+        hasDefaultValue: true,
+        hidden: true,
+      });
+
+      setup({
+        dashcard: getDashcard(),
+      });
+    });
+
+    it("populates popover properly", async () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameter1.id}`,
+      );
+
+      userEvent.click(within(formSection).getByTestId("select-button"));
+
+      const popover = await screen.findByRole("grid");
+
+      expect(within(popover).getByText("Select a value")).toBeInTheDocument();
+      expect(within(popover).getByText(DEFAULT_VALUE)).toBeInTheDocument();
+      expect(
+        within(popover).queryByText("Ask the user"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(popover).getByText(dashboardParameter.name),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe.each([
+    { required: true, mapped: true },
+    { required: true, mapped: false },
+    { required: false, mapped: true },
+    { required: false, mapped: false },
+  ])(
+    "when hidden and has default value, required: $required, mapped: $mapped",
+    ({ required, mapped }) => {
+      beforeEach(() => {
+        const getDashcard = dashcardFactory({
+          required,
+          mapped,
+          hasDefaultValue: true,
+          hidden: true,
+        });
+
+        setup({
+          dashcard: getDashcard(),
+        });
+      });
+
+      it("populates popover properly", async () => {
+        const formSection = screen.getByTestId(
+          `parameter-form-section-${actionParameter1.id}`,
+        );
+
+        userEvent.click(within(formSection).getByTestId("select-button"));
+
+        const popover = await screen.findByRole("grid");
+
+        expect(
+          within(popover).queryByText("Ask the user"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("allows to submit a form", () => {
+        expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+      });
+    },
+  );
+
+  describe.each([{ required: true }, { required: false }])(
+    "when hidden, mapped but no default value, required: $required",
+    ({ required }) => {
+      beforeEach(() => {
+        const getDashcard = dashcardFactory({
+          required,
+          mapped: true,
+          hasDefaultValue: false,
+          hidden: true,
+        });
+
+        setup({
+          dashcard: getDashcard(),
+        });
+      });
+
+      it("populates popover properly", async () => {
+        const formSection = screen.getByTestId(
+          `parameter-form-section-${actionParameter1.id}`,
+        );
+
+        userEvent.click(within(formSection).getByTestId("select-button"));
+
+        const popover = await screen.findByRole("grid");
+
+        expect(within(popover).getByText("Select a value")).toBeInTheDocument();
+        expect(
+          within(popover).queryByText("Ask the user"),
+        ).not.toBeInTheDocument();
+      });
+    },
+  );
+
+  describe("when there are required, hidden, but not mapped parameters and no default value", () => {
     const action = createMockQueryAction({
       ...actions1[0],
       parameters: [actionParameter1, actionParameterRequired],
@@ -193,22 +381,6 @@ describe("ActionViz > ActionDashcardSettings", () => {
       });
     });
 
-    it("doesn't show a hidden badge for not hidden field", () => {
-      const formSection = screen.getByTestId(
-        `parameter-form-section-${actionParameter1.id}`,
-      );
-
-      expect(within(formSection).queryByText("Hidden")).not.toBeInTheDocument();
-    });
-
-    it("shows a hidden badge for hidden field", () => {
-      const formSection = screen.getByTestId(
-        `parameter-form-section-${actionParameterRequired.id}`,
-      );
-
-      expect(within(formSection).getByText("Hidden")).toBeInTheDocument();
-    });
-
     it("shows validation error for not required field", () => {
       const formSection = screen.getByTestId(
         `parameter-form-section-${actionParameterRequired.id}`,
@@ -233,49 +405,6 @@ describe("ActionViz > ActionDashcardSettings", () => {
       expect(within(formSection).getByRole("button")).toHaveTextContent(
         "Select a value",
       );
-    });
-  });
-
-  describe.each([
-    [
-      "not required, not hidden, mapped",
-      dashcardFactory({ hidden: false, required: false, mapped: true }),
-    ],
-    [
-      "required, not hidden, not mapped",
-      dashcardFactory({ hidden: false, required: true, mapped: false }),
-    ],
-    [
-      "not required, not hidden, not mapped",
-      dashcardFactory({ hidden: false, required: false, mapped: false }),
-    ],
-  ])("when parameter %s", (_, getDashcard) => {
-    beforeEach(() => {
-      setup({
-        dashcard: getDashcard(),
-      });
-    });
-
-    it("doesn't show a hidden badge for not hidden field", () => {
-      const formSection = screen.getByTestId(
-        `parameter-form-section-${actionParameter1.id}`,
-      );
-
-      expect(within(formSection).queryByText("Hidden")).not.toBeInTheDocument();
-    });
-
-    it("doesn't show validation error for not required field", () => {
-      const formSection = screen.getByTestId(
-        `parameter-form-section-${actionParameter1.id}`,
-      );
-
-      expect(
-        within(formSection).queryByText(`${actionParameter1.name}: required`),
-      ).not.toBeInTheDocument();
-    });
-
-    it("allows to submit a form", () => {
-      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
     });
   });
 
@@ -353,10 +482,12 @@ function dashcardFactory({
   required,
   hidden,
   mapped,
+  hasDefaultValue,
 }: {
   required: boolean;
   hidden: boolean;
   mapped: boolean;
+  hasDefaultValue?: boolean;
 }) {
   const action = {
     ...actions1[0],
@@ -367,6 +498,7 @@ function dashcardFactory({
           id: actionParameter1.id,
           hidden,
           required,
+          defaultValue: hasDefaultValue ? DEFAULT_VALUE : undefined,
         }),
       },
     },
