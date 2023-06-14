@@ -552,14 +552,15 @@
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                         (assoc mapping :card-id card_id)))
-  ;(api/check-500 (dashboard/add-dashcards! dashboard dashcards))
-  (u/prog1 (api/check-500 (dashboard/add-dashcards! dashboard (map #(assoc % :creator_id @api/*current-user*) dashcards)))
-    (audit-log/record-event! :dashboard-add-cards (assoc dashboard :dashcards <>))
-    (for [{:keys [card_id]} <>
-          :when             (pos-int? card_id)]
-      (snowplow/track-event! ::snowplow/question-added-to-dashboard
-                             api/*current-user-id*
-                             {:dashboard-id (:id dashboard) :question-id card_id}))))
+  (u/prog1 (api/check-500 (dashboard/add-dashcards! dashboard dashcards))
+   (audit-log/record-event! :dashboard-add-cards (assoc dashboard
+                                                        :dashcards
+                                                        (map #(assoc % :creator_id @api/*current-user*) <>)))
+   (for [{:keys [card_id]} <>
+         :when             (pos-int? card_id)]
+     (snowplow/track-event! ::snowplow/question-added-to-dashboard
+                            api/*current-user-id*
+                            {:dashboard-id (:id dashboard) :question-id card_id}))))
 
 (defn- update-dashcards! [dashboard dashcards]
   (check-updated-parameter-mapping-permissions (:id dashboard) dashcards)
@@ -572,7 +573,8 @@
   (when (seq dashcard-ids)
     (let [dashcards (t2/select DashboardCard :id [:in dashcard-ids])]
       (dashboard-card/delete-dashboard-cards! dashcards)
-      (audit-log/record-event! :dashboard-remove-cards (assoc dashboard :dashcards dashcards)))))
+      (audit-log/record-event! :dashboard-remove-cards (assoc dashboard :dashcards dashcards))
+      dashcards)))
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
