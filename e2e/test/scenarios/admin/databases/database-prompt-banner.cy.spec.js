@@ -6,8 +6,6 @@ import {
   expectNoBadSnowplowEvents,
   resetSnowplow,
   restore,
-  visitEmbeddedPage,
-  visitPublicQuestion,
 } from "e2e/support/helpers";
 
 describe("banner", () => {
@@ -58,41 +56,7 @@ describe("banner", () => {
   });
 
   describe("embeddings", () => {
-    const QUESTION_ID = 1;
-    it("should not render for public links", () => {
-      visitPublicQuestion(QUESTION_ID);
-
-      cy.findByRole("heading", { name: "Orders" }).should("exist");
-      cy.findAllByRole("banner")
-        .first()
-        .within(() => {
-          cy.findByText(
-            "Connect to your database to get the most from Metabase.",
-          ).should("not.exist");
-        });
-    });
-
-    it("should not render for signed embeds", () => {
-      cy.request("PUT", `/api/card/${QUESTION_ID}`, {
-        embedding_params: {},
-        enable_embedding: true,
-      });
-
-      const payload = {
-        resource: { question: 1 },
-        params: {},
-      };
-      visitEmbeddedPage(payload);
-
-      cy.findByRole("heading", { name: "Orders" }).should("exist");
-      cy.findAllByRole("banner")
-        .first()
-        .within(() => {
-          cy.findByText(
-            "Connect to your database to get the most from Metabase.",
-          ).should("not.exist");
-        });
-    });
+    // Public and signed embeds are tested in `PublicQuestion.unit.spec.tsx`
 
     describe("full-app embeddings", () => {
       it("should render database prompt banner when logged in as an admin, an instance is on a paid plan, only have a single sample dataset, and is not white labeling", () => {
