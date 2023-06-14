@@ -446,11 +446,11 @@
 
 ;;; TODO -- definitions duplicated with code in [[metabase.lib.filter]]
 
-(def ^:private equals-join-condition-operator-definition
+(defn- equals-join-condition-operator-definition []
   {:lib/type :mbql.filter/operator, :short :=, :display-name  (i18n/tru "Equal to")})
 
-(def ^:private join-condition-operator-definitions
-  [equals-join-condition-operator-definition
+(defn- join-condition-operator-definitions []
+  [(equals-join-condition-operator-definition)
    {:lib/type :mbql.filter/operator, :short :>, :display-name  (i18n/tru "Greater than")}
    {:lib/type :mbql.filter/operator, :short :<, :display-name  (i18n/tru "Less than")}
    {:lib/type :mbql.filter/operator, :short :>=, :display-name (i18n/tru "Greater than or equal to")}
@@ -470,7 +470,7 @@
     _lhs-column-or-nil :- [:maybe lib.metadata/ColumnMetadata]
     _rhs-column-or-nil :- [:maybe lib.metadata/ColumnMetadata]]
    ;; currently hardcoded to these six operators regardless of LHS and RHS.
-   join-condition-operator-definitions))
+   (join-condition-operator-definitions)))
 
 (mu/defn ^:private pk-column :- [:maybe lib.metadata/ColumnMetadata]
   "Given something `x` (e.g. a Table metadata) find the PK column."
@@ -505,4 +505,4 @@
     joined-thing]
    (when-let [pk-col (pk-column query stage-number joined-thing)]
      (when-let [fk-col (fk-column query stage-number pk-col)]
-       (lib.filter/filter-clause equals-join-condition-operator-definition fk-col pk-col)))))
+       (lib.filter/filter-clause (equals-join-condition-operator-definition) fk-col pk-col)))))
