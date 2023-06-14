@@ -35,10 +35,12 @@ describe("managing question from the question's details sidebar", () => {
         onlyOn(permission === "curate", () => {
           describe(`${user} user`, () => {
             beforeEach(() => {
-              cy.intercept("PUT", "/api/card/1").as("updateQuestion");
+              cy.intercept("PUT", `/api/card${ORDERS_QUESTION_ID}`).as(
+                "updateQuestion",
+              );
 
               cy.signIn(user);
-              visitQuestion(1);
+              visitQuestion(ORDERS_QUESTION_ID);
             });
 
             it("should be able to edit question details (metabase#11719-1)", () => {
@@ -196,7 +198,7 @@ describe("managing question from the question's details sidebar", () => {
           describe(`${user} user`, () => {
             beforeEach(() => {
               cy.signIn(user);
-              visitQuestion(1);
+              visitQuestion(ORDERS_QUESTION_ID);
             });
 
             it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {

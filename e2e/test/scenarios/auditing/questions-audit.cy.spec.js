@@ -1,5 +1,10 @@
 import _ from "underscore";
 import { restore, describeEE, visitQuestion } from "e2e/support/helpers";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
+} from "e2e/support/cypress_data";
 
 describeEE("audit > auditing > questions", () => {
   beforeEach(() => {
@@ -17,9 +22,9 @@ describeEE("audit > auditing > questions", () => {
 
       const QUERY_RUNS_ASC_ORDER = [...QUERY_RUNS_DESC_ORDER].reverse();
 
-      _.times(1, () => visitQuestion(1));
-      _.times(2, () => visitQuestion(2));
-      _.times(3, () => visitQuestion(3));
+      _.times(1, () => visitQuestion(ORDERS_QUESTION_ID));
+      _.times(2, () => visitQuestion(ORDERS_COUNT_QUESTION_ID));
+      _.times(3, () => visitQuestion(ORDERS_BY_YEAR_QUESTION_ID));
 
       cy.visit("/admin/audit/questions/all");
 
