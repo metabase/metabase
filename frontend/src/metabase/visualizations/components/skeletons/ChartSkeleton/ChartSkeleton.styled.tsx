@@ -14,13 +14,6 @@ export const fadingKeyframes = keyframes`
     opacity: 0.5;
   }
 `;
-
-export const containerStyles = css`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-`;
-
 export const animationStyles = css`
   color: ${color("bg-medium")};
   animation: ${fadingKeyframes} 1.5s infinite;

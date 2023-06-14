@@ -11,6 +11,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time :as t]
    [medley.core :as m]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
    [metabase.driver :as driver]
@@ -34,6 +35,7 @@
             Timeline
             TimelineEvent
             ViewLog]]
+   [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -49,6 +51,7 @@
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
+   [metabase.upload :as upload]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.schema :as su]
@@ -2814,14 +2817,27 @@
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
 
-(defn- upload-example-csv! [collection-id]
-  (let [file (upload-test/csv-file-with
-              ["id, name"
-               "1, Luke Skywalker"
-               "2, Darth Vader"]
-              "example_csv_file")]
-    (mt/with-current-user (mt/user->id :rasta)
-      (api.card/upload-csv! collection-id "example_csv_file.csv" file))))
+(defn upload-example-csv!
+  "Upload a small CSV file to the given collection ID"
+  ([collection-id]
+   (upload-example-csv! collection-id true))
+  ([collection-id grant-permission?]
+   (mt/with-current-user (mt/user->id :rasta)
+     (let [file              (upload-test/csv-file-with
+                              ["id, name"
+                               "1, Luke Skywalker"
+                               "2, Darth Vader"]
+                              "example_csv_file")
+           group-id          (u/the-id (perms-group/all-users))
+           can-already-read? (mi/can-read? (mt/db))
+           grant?            (and (not can-already-read?)
+                                  grant-permission?)]
+       (when grant?
+         (perms/grant-permissions! group-id (perms/data-perms-path (mt/id))))
+       (u/prog1
+         (api.card/upload-csv! collection-id "example_csv_file.csv" file)
+         (when grant?
+           (perms/revoke-data-perms! group-id (mt/id))))))))
 
 (deftest upload-csv!-schema-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
@@ -2851,7 +2867,7 @@
                       new-table))
               (is (= #{"id" "name"}
                      (->> (t2/select Field :table_id (:id new-table))
-                          (map (comp #_{:clj-kondo/ignore [:discouraged-var]} str/lower-case :name))
+                          (map (comp u/lower-case-en :name))
                           set))))))))))
 
 (deftest upload-csv!-table-prefix-test
@@ -2959,3 +2975,33 @@
                           (-> (jdbc/query (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                                           ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public')"])
                               first :exists))))))))))
+
+(deftest csv-upload-snowplow-test
+  (mt/test-driver :h2
+    (mt/with-empty-db
+      (let [db-id (u/the-id (mt/db))]
+        (mt/with-temporary-setting-values [uploads-enabled      true
+                                           uploads-database-id  db-id
+                                           uploads-schema-name  "PUBLIC"
+                                           uploads-table-prefix nil]
+          (snowplow-test/with-fake-snowplow-collector
+            (upload-example-csv! nil)
+            (is (=? {:data {"model_id"        pos?
+                            "size_mb"         3.910064697265625E-5
+                            "num_columns"     2
+                            "num_rows"        2
+                            "upload_seconds"  pos?
+                            "event"           "csv_upload_successful"}
+                     :user-id (str (mt/user->id :rasta))}
+                    (last (snowplow-test/pop-event-data-and-user-id!))))
+            (with-redefs [upload/load-from-csv (fn [_ _ _ _]
+                                                 (throw (Exception.)))]
+              (try (upload-example-csv! nil)
+                   (catch Throwable _
+                     nil))
+              (is (= {:data {"size_mb"     3.910064697265625E-5
+                             "num_columns" 2
+                             "num_rows"    2
+                             "event"       "csv_upload_failed"}
+                      :user-id (str (mt/user->id :rasta))}
+                     (last (snowplow-test/pop-event-data-and-user-id!)))))))))))
