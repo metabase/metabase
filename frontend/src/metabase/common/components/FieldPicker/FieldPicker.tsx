@@ -3,6 +3,7 @@ import { t } from "ttag";
 import CheckBox from "metabase/core/components/CheckBox";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 import * as Lib from "metabase-lib";
+import { ToggleItem, ColumnItem } from "./FieldPicker.styled";
 
 interface FieldPickerProps {
   query: Lib.Query;
@@ -44,7 +45,7 @@ export const FieldPicker = ({
 
   return (
     <ul>
-      <li>
+      <ToggleItem>
         <StackedCheckBox
           className=""
           label={isAll ? t`Select none` : t`Select all`}
@@ -58,16 +59,16 @@ export const FieldPicker = ({
             }
           }}
         />
-      </li>
+      </ToggleItem>
       {items.map(({ column, displayInfo }, index) => (
-        <li key={index}>
+        <ColumnItem key={index}>
           <CheckBox
             checked={displayInfo.selected}
             disabled={displayInfo.selected && !canDeselect}
             label={displayInfo.displayName}
             onChange={event => onToggle(column, event.target.checked)}
           />
-        </li>
+        </ColumnItem>
       ))}
     </ul>
   );
