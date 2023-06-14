@@ -36,7 +36,6 @@ const SkeletonCaption = ({
       <LegendRightContent>
         {description && (
           <Tooltip
-            placement="bottom"
             maxWidth="22em"
             tooltip={
               <Markdown disallowHeading unstyleLinks>
