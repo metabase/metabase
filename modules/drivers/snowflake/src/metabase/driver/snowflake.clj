@@ -76,7 +76,10 @@
                                                           {:user (codec/url-encode user)
                                                            :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))})
         new-conn-uri (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
-    (assoc details :connection-uri new-conn-uri)))
+    (-> details
+        (assoc :connection-uri new-conn-uri)
+        ;; The Snowflake driver uses the :account property, but we need to drop the region from it first
+        (assoc :account (first (str/split account #"\."))))))
 
 (defn- resolve-private-key
   "Convert the private-key secret properties into a private_key_file property in `details`.
