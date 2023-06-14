@@ -39,6 +39,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findByText("Orders, Count").click();
     });
     saveDashboard();
+    cy.url().should("include", "2-tab-2");
 
     // Go back to first tab
     cy.findByRole("tab", { name: "Tab 1" }).click();
@@ -63,11 +64,6 @@ describe("scenarios > dashboard > tabs", () => {
     dashboardCards().within(() => {
       cy.findByText("Orders").should("be.visible");
     });
-  });
-
-  it("should update slug in url after creating a new tab and saving", () => {
-    visitDashboardAndCreateTab({ dashboardId: 1 });
-    cy.url().should("include", "2-tab-2");
   });
 
   it("should leave dashboard if navigating back after initial load", () => {
