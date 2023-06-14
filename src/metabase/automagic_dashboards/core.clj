@@ -1054,7 +1054,6 @@
         (apply-rule root (rules/get-rule rule)))
       (some
        (fn [rule]
-         (tap> rule)
          (apply-rule root rule))
        (matching-rules (rules/get-rules rules-prefix) root))
       (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))
