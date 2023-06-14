@@ -144,7 +144,16 @@ export const getRoutes = store => (
         </Route>
 
         <Route
-          path="dashboard/:slug(/:tabSlug)"
+          path="dashboard/:slug"
+          title={t`Dashboard`}
+          component={DashboardApp}
+        >
+          <ModalRoute path="move" modal={DashboardMoveModal} />
+          <ModalRoute path="copy" modal={DashboardCopyModal} />
+          <ModalRoute path="archive" modal={ArchiveDashboardModal} />
+        </Route>
+        <Route
+          path="dashboard/:slug/:tabSlug"
           title={t`Dashboard`}
           component={DashboardApp}
         >
