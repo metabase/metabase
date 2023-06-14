@@ -21,7 +21,6 @@ export const Content = styled.div`
   flex: auto;
   align-items: center;
   border-radius: 6px;
-  padding-right: 0.5rem;
 `;
 
 export const TitleContainer = styled.div`
@@ -33,7 +32,6 @@ export const TitleContainer = styled.div`
 `;
 
 export const RemoveButton = styled(Button)`
-  margin-left: 1rem;
   color: ${color("white")};
   background-color: transparent;
 
