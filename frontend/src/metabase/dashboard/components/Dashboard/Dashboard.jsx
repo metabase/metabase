@@ -155,7 +155,6 @@ class Dashboard extends Component {
       (!prevProps.dashboard && this.props.dashboard)
     ) {
       this.props.fetchDashboardCardData({ reload: false, clearCache: true });
-      return;
     }
   }
 
