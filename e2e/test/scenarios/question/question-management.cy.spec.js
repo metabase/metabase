@@ -35,7 +35,7 @@ describe("managing question from the question's details sidebar", () => {
         onlyOn(permission === "curate", () => {
           describe(`${user} user`, () => {
             beforeEach(() => {
-              cy.intercept("PUT", `/api/card${ORDERS_QUESTION_ID}`).as(
+              cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as(
                 "updateQuestion",
               );
 

@@ -11,16 +11,16 @@ import _ from "underscore";
 
 import SAMPLE_INSTANCE_DATA from "./cypress_sample_instance_data.json";
 
-export const ORDERS_QUESTION_ID = _.findWhere_(SAMPLE_INSTANCE_DATA.questions, {
+export const ORDERS_QUESTION_ID = _.findWhere(SAMPLE_INSTANCE_DATA.questions, {
   name: "Orders",
 }).id;
 
-export const ORDERS_COUNT_QUESTION_ID = _.findWhere_(
+export const ORDERS_COUNT_QUESTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.questions,
   { name: "Orders, Count" },
 ).id;
 
-export const ORDERS_BY_YEAR_QUESTION_ID = _.findWhere_(
+export const ORDERS_BY_YEAR_QUESTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.questions,
   { name: "Orders, Count, Grouped by Created At (year)" },
 ).id;
