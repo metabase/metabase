@@ -372,12 +372,14 @@
   (let [{:keys [row col size_x size_y]} (destructure-revision-card-sizes card)]
     ;; new_size_x = size_x + ((col + size_x + 1) // 3) - ((col + 1) // 3)
     ;; new_col = col + ((col + 1) // 3)
-    {:size_x (- (+ size_x
-                   (quot (+ col size_x 1) 3))
-                (quot (+ col 1) 3))
-     :col    (+ col (quot (+ col 1) 3))
-     :size_y size_y
-     :row    row}))
+    (merge
+      card
+      {:size_x (- (+ size_x
+                     (quot (+ col size_x 1) 3))
+                  (quot (+ col 1) 3))
+       :col    (+ col (quot (+ col 1) 3))
+       :size_y size_y
+       :row    row})))
 
 (defn- migrate-dashboard-grid-from-24-to-18
   "Mirror of the rollback algorithm we have in sql."
@@ -385,15 +387,17 @@
   (let [{:keys [row col size_x size_y]} (destructure-revision-card-sizes card)]
     ;; new_size_x = size_x - ((size_x + col + 1) // 4 - (col + 1) // 4)
     ;; new_col = col - (col + 1) // 4
-    {:size_x (if (= size_x 1)
-               1
-               (- size_x
-                  (-
-                   (quot (+ size_x col 1) 4)
-                   (quot (+ col 1) 4))))
-     :col    (- col (quot (+ col 1) 4))
-     :size_y size_y
-     :row    row}))
+    (merge
+      card
+      {:size_x (if (= size_x 1)
+                 1
+                 (- size_x
+                    (-
+                     (quot (+ size_x col 1) 4)
+                     (quot (+ col 1) 4))))
+       :col    (- col (quot (+ col 1) 4))
+       :size_y size_y
+       :row    row})))
 
 (define-reversible-migration RevisionDashboardMigrateGridFrom18To24
   (let [migrate! (fn [revision]

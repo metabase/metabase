@@ -406,10 +406,11 @@
                                                               :password    "superstrong"
                                                               :date_joined :%now}))
 
-          cards        [{:row 0 :col 0 :size_x 4 :size_y 4}          ;; correct case
-                        {:row 0 :col 0 :sizeX 4 :sizeY 4}            ;; sizeX and sizeY are legacy names
-                        {:row nil :col nil :size_x nil :size_y nil}  ;; contains nil fields
-                        {:row "x" :col "x" :size_x "x" :size_y "x"}] ;; string values need to be skipped
+          cards        [{:id 1 :row 0 :col 0 :size_x 4 :size_y 4}          ; correct case
+                        {:id 2 :row 0 :col 0 :sizeX 4 :sizeY 4}            ; sizeX and sizeY are legacy names
+                        {:id 3 :row nil :col nil :size_x nil :size_y nil}  ; contains nil fields
+                        {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}  ; string values need to be skipped
+                        {:id 5 :row 0 :col 0 :size_x 4 :size_y 4 :series [1 2 3]}]  ; include keys other than size
           revision-id (first (t2/insert-returning-pks! 'Revision
                                                        {:object   {:cards cards}
                                                         :model    "Dashboard"
@@ -418,18 +419,20 @@
 
       (migrate!)
       (testing "forward migration migrate correclty and ignore failures"
-        (is (= [{:row 0, :col 0, :size_x 4, :size_y 4}
-                {:row 0, :col 0, :sizeX 4, :sizeY 4}
-                {:row nil, :col nil, :size_x nil, :size_y nil}
-                {:row "x", :col "x", :size_x "x", :size_y "x"}]
+        (is (= [{:id 1 :row 0, :col 0, :size_x 4, :size_y 4}
+                {:id 2 :row 0, :col 0, :sizeX 4, :sizeY 4}
+                {:id 3 :row nil, :col nil, :size_x nil, :size_y nil}
+                {:id 4 :row "x", :col "x", :size_x "x", :size_y "x"}
+                {:id 5 :row 0 :col 0 :size_x 4 :size_y 4 :series [1 2 3]}]
                (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))
       (migrate-down! 46)
 
       (testing "downgrade works correctly and ignore failures"
-        (is (= [{:row 0, :col 0, :size_x 4, :size_y 4}
-                {:row 0, :col 0, :sizeX 4, :sizeY 4}
-                {:row nil, :col nil, :size_x nil, :size_y nil}
-                {:row "x", :col "x", :size_x "x", :size_y "x"}]
+        (is (= [{:id 1 :row 0, :col 0, :size_x 4, :size_y 4}
+                {:id 2 :row 0, :col 0, :sizeX 4, :sizeY 4}
+                {:id 3 :row nil, :col nil, :size_x nil, :size_y nil}
+                {:id 4 :row "x", :col "x", :size_x "x", :size_y "x"}
+                {:id 5 :row 0 :col 0 :size_x 4 :size_y 4 :series [1 2 3]}]
                (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id)))))))
 
 (defn two-cards-overlap? [box1 box2]
