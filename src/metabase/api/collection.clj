@@ -65,19 +65,18 @@
   []
   (if-not config/ee-available?
     #{}
-    (let [colls (t2/select Collection)
-          id->coll (m/index-by :id colls)
-          collection-tree (collection/collections->tree {} colls)]
-      (->> (loop [[tree & coll-tree] collection-tree
-                  ia-ids #{}]
-             (cond (not tree) ia-ids
-                   (= "instance-analytics" (:type tree)) (let [ids (transient #{})]
-                                                           (walk/postwalk
-                                                            (fn [x] (when (and (map? x) (:id x)) (conj! ids (:id x))) x)
-                                                            tree)
-                                                           (recur coll-tree (into ia-ids (persistent! ids))))
-                   :else (recur (concat coll-tree (:children tree)) ia-ids)))
-           (mapv id->coll)))))
+    (let [colls (t2/select [Collection :id :location :type])
+          collection-tree (collection/collections->tree {} colls)
+          ia-collection-ids (->> (loop [[tree & coll-tree] collection-tree
+                                        ia-ids #{}]
+                                   (cond (not tree) ia-ids
+                                         (= "instance-analytics" (:type tree)) (let [ids (transient #{})]
+                                                                                 (walk/postwalk
+                                                                                  (fn [x] (when (and (map? x) (:id x)) (conj! ids (:id x))) x)
+                                                                                  tree)
+                                                                                 (recur coll-tree (into ia-ids (persistent! ids))))
+                                         :else (recur (concat coll-tree (:children tree)) ia-ids))))]
+      (t2/select Collection :id [:in ia-collection-ids]))))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
