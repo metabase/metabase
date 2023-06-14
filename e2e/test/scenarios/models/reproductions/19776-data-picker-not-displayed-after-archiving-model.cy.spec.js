@@ -1,4 +1,5 @@
 import { restore, popover } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 
 const modelName = "Orders Model";
 
@@ -7,7 +8,10 @@ describe("issue 19776", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.request("PUT", "/api/card/1", { name: modelName, dataset: true });
+    cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, {
+      name: modelName,
+      dataset: true,
+    });
   });
 
   it("should show moved model in the data picker without refreshing (metabase#19776)", () => {
