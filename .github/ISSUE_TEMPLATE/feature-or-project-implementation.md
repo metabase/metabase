@@ -27,7 +27,7 @@ labels: ".Epic"
 ***Milestone 2***
 - [ ] etc
 
-***Mileston N*** _(we can put stuff like translations, docs, testing, etc)_
+***Milestone N*** _(we can put stuff like translations, docs, testing, etc)_
 - [ ] String translations
 - [ ] Write rough pass documents for handoff to customer success
 
