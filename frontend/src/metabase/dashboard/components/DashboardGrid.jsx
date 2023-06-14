@@ -49,7 +49,7 @@ class DashboardGrid extends Component {
 
     this.state = {
       visibleCardIds,
-      initLayouts: this.getInitialCardLayout(props.dashboard.ordered_cards),
+      initLayouts: this.initialCardSizes(props.dashboard.ordered_cards),
       layouts: this.getLayouts(props.dashboard.ordered_cards),
       addSeriesModalDashCard: null,
       isDragging: false,
@@ -63,7 +63,6 @@ class DashboardGrid extends Component {
     isEditingParameter: PropTypes.bool.isRequired,
     isNightMode: PropTypes.bool,
     dashboard: PropTypes.object.isRequired,
-    dashboardBeforeEditing: PropTypes.object,
     parameterValues: PropTypes.object.isRequired,
 
     setDashCardAttributes: PropTypes.func.isRequired,
@@ -117,7 +116,7 @@ class DashboardGrid extends Component {
 
     if (!isEditing) {
       this.setState({
-        initLayouts: this.getInitialCardLayout(cards),
+        initLayouts: this.initialCardSizes(cards),
       });
     }
 
@@ -127,7 +126,7 @@ class DashboardGrid extends Component {
     });
   }
 
-  getInitialCardLayout = cards => {
+  initialCardSizes = cards => {
     return cards
       .map(card => this.getLayoutForDashCard(card))
       .reduce((acc, curr) => {
@@ -180,19 +179,15 @@ class DashboardGrid extends Component {
     }
   };
 
-  getLayoutForDashCard = (
-    dashcard,
-    initLayouts = this.state?.initLayouts,
-    isEditing = this.props.isEditing,
-  ) => {
+  getLayoutForDashCard = dashcard => {
     const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
     const initialSize = DEFAULT_CARD_SIZE;
     const minSize = visualization.minSize || DEFAULT_CARD_SIZE;
 
     let minW, minH;
-    if (initLayouts) {
-      minW = Math.min(initLayouts[dashcard.id]?.w, minSize.width);
-      minH = Math.min(initLayouts[dashcard.id]?.h, minSize.height);
+    if (this.state?.initLayouts) {
+      minW = Math.min(this.state?.initLayouts[dashcard.id]?.w, minSize.width);
+      minH = Math.min(this.state?.initLayouts[dashcard.id]?.h, minSize.height);
     } else {
       minW = minSize.width;
       minH = minSize.height;

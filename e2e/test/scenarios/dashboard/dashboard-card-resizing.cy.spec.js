@@ -1,36 +1,38 @@
 import {
-  addOrUpdateDashboardCard,
   editDashboard,
-  getDashboardCards,
   restore,
   saveDashboard,
   visitDashboard,
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { ORDERS, ORDERS_ID, PEOPLE } from "metabase-types/api/mocks/presets";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 
-const MOCK_QUESTION_NAME = "MOCK_QUESTION_NAME";
+const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
-const commonQuestionFields = {
-  name: MOCK_QUESTION_NAME,
+const getMockQuestionName = vizType => `${vizType}_MOCK_QUESTION`;
+
+const getCommonQuestionFields = vizType => ({
+  name: getMockQuestionName(vizType),
   query: {
     "source-table": ORDERS_ID,
     limit: 10,
     aggregation: [["count"]],
   },
   database: SAMPLE_DB_ID,
-};
+});
 
 // covers table, bar, line, pie, row, area, combo, pivot, funnel, detail, and waterfall questions
 const createMockChartQuestion = vizType => {
+  const question = getCommonQuestionFields(vizType);
   return {
-    ...commonQuestionFields,
+    ...question,
     query: {
-      ...commonQuestionFields.query,
+      ...question.query,
       breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "minute" }]],
     },
     display: vizType,
@@ -39,25 +41,27 @@ const createMockChartQuestion = vizType => {
 
 // covers scalar, gauge, and progress questions
 const createMockScalarQuestion = vizType => {
+  const question = getCommonQuestionFields(vizType);
   return {
-    ...commonQuestionFields,
+    ...question,
     display: vizType,
   };
 };
 
 // covers map questions
 const createMockMapQuestion = () => {
+  const question = getCommonQuestionFields("map");
   return {
-    ...commonQuestionFields,
+    ...question,
     query: {
-      ...commonQuestionFields.query,
+      ...question.query,
       breakout: [["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }]],
     },
     display: "map",
   };
 };
 
-const TEST_DATA = [
+const TEST_QUESTIONS = [
   ...[
     "table",
     "bar",
@@ -70,12 +74,11 @@ const TEST_DATA = [
     "funnel",
     "object",
     "waterfall",
-  ].map(vizType => [vizType, createMockChartQuestion(vizType)]),
-  ...["scalar", "gauge", "progress"].map(vizType => [
-    vizType,
+  ].map(vizType => createMockChartQuestion(vizType)),
+  ...["scalar", "gauge", "progress"].map(vizType =>
     createMockScalarQuestion(vizType),
-  ]),
-  ["map", createMockMapQuestion()],
+  ),
+  createMockMapQuestion(),
 ];
 
 describe("scenarios > dashboard card resizing", () => {
@@ -84,85 +87,94 @@ describe("scenarios > dashboard card resizing", () => {
     cy.signInAsAdmin();
   });
 
-  TEST_DATA.forEach(([vizType, question]) => {
-    it(`should initially display the ${vizType} card with its default size`, () => {
-      cy.createDashboard().then(({ body: { id: dashId } }) => {
-        cy.createQuestion(question).then(() => {
-          visitDashboard(dashId);
-          cy.findByTestId("dashboard-header").within(() => {
-            cy.findByLabelText("Edit dashboard").click();
-            cy.findByLabelText("Add questions").click();
-          });
-          cy.findByLabelText(MOCK_QUESTION_NAME).click();
-          saveDashboard();
+  it("should display all visualization cards with their default sizes", () => {
+    TEST_QUESTIONS.forEach(question => {
+      cy.createQuestion(question);
+    });
+    cy.createDashboard().then(({ body: { id: dashId } }) => {
+      visitDashboard(dashId);
 
-          cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
-            expect(body.ordered_cards[0].size_x).to.equal(
-              getDefaultSize(vizType).width,
-            );
-            expect(body.ordered_cards[0].size_y).to.equal(
-              getDefaultSize(vizType).height,
-            );
-          });
+      cy.findByTestId("dashboard-header").within(() => {
+        cy.findByLabelText("Edit dashboard").click();
+        cy.findByLabelText("Add questions").click();
+      });
+
+      TEST_QUESTIONS.forEach(question => {
+        cy.findByLabelText(question.name).click();
+      });
+
+      saveDashboard();
+
+      cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
+        body.ordered_cards.forEach(({ card, size_x, size_y }) => {
+          const { width, height } = getDefaultSize(card.display);
+          expect(size_x).to.equal(width);
+          expect(size_y).to.equal(height);
         });
       });
     });
+  });
 
-    it(`should not allow ${vizType} cards to be resized smaller than min height`, () => {
-      const initSmallSize = { width: 2, height: 2 };
-      cy.createDashboard().then(({ body: { id: dashId } }) => {
-        cy.createQuestion(question).then(({ body: { id: card_id } }) => {
-          addOrUpdateDashboardCard({
-            card_id,
-            dashboard_id: dashId,
-            card: {
-              row: 0,
-              col: 0,
-              size_x: initSmallSize.width,
-              size_y: initSmallSize.height,
-            },
+  it(`should not allow cards to be resized smaller than min height`, () => {
+    const cardIds = [];
+    TEST_QUESTIONS.forEach(question => {
+      cy.createQuestion(question).then(({ body: { id } }) => {
+        cardIds.push(id);
+      });
+    });
+    cy.createDashboard().then(({ body: { id: dashId } }) => {
+      cy.request("PUT", `/api/dashboard/${dashId}/cards`, {
+        cards: cardIds.map((cardId, index) => ({
+          id: index,
+          card_id: cardId,
+          row: index * 2,
+          col: 0,
+          size_x: 2,
+          size_y: 2,
+        })),
+      });
+      visitDashboard(dashId);
+      editDashboard();
+
+      cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
+        const orderedCards = body.ordered_cards;
+        orderedCards.forEach(({ card }) => {
+          const dashCard = cy.contains(".DashCard", card.name);
+          dashCard.within(() => {
+            const resizeHandle = cy.get(".react-resizable-handle");
+            resizeHandle
+              .trigger("mousedown", { button: 0 })
+              .trigger("mousemove", {
+                clientX: getDefaultSize(card.display).width * 100,
+                clientY: getDefaultSize(card.display).height * 100,
+              })
+              .trigger("mouseup", { force: true });
           });
-          visitDashboard(dashId);
+        });
 
-          const resizeHandle = getDashboardCards().get(
-            ".react-resizable-handle",
-          );
+        saveDashboard();
+        editDashboard();
 
-          editDashboard();
+        orderedCards.forEach(({ card }) => {
+          const dashCard = cy.contains(".DashCard", card.name);
+          dashCard.within(() => {
+            const resizeHandle = cy.get(".react-resizable-handle");
+            resizeHandle
+              .trigger("mousedown", { button: 0 })
+              .trigger("mousemove", {
+                clientX: -getDefaultSize(card.display).width * 100,
+                clientY: -getDefaultSize(card.display).height * 100,
+              })
+              .trigger("mouseup", { force: true });
+          });
+        });
 
-          // resize card with tiny dimensions to a size > minSize to test if we can shrink it
-          // back to its initial state
-          resizeHandle
-            .trigger("mousedown", { button: 0 })
-            .trigger("mousemove", {
-              clientX: getDefaultSize(vizType).width * 100,
-              clientY: getDefaultSize(vizType).height * 100,
-            })
-            .trigger("mouseup", { force: true });
+        saveDashboard();
 
-          saveDashboard();
-          editDashboard();
-
-          // attempt to resize card back to 2x2, which should not be possible after saving
-          resizeHandle
-            .trigger("mousedown", { button: 0 })
-            .trigger("mousemove", {
-              clientX:
-                -(getDefaultSize(vizType).width - initSmallSize.width) * 100,
-              clientY:
-                -(getDefaultSize(vizType).height - initSmallSize.height) * 100,
-            })
-            .trigger("mouseup", { force: true });
-
-          saveDashboard();
-
-          cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
-            expect(body.ordered_cards[0].size_x).to.equal(
-              getMinSize(vizType).width,
-            );
-            expect(body.ordered_cards[0].size_y).to.equal(
-              getMinSize(vizType).height,
-            );
+        cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
+          body.ordered_cards.forEach(({ card, size_x, size_y }) => {
+            expect(size_x).to.equal(getMinSize(card.display).width);
+            expect(size_y).to.equal(getMinSize(card.display).height);
           });
         });
       });
