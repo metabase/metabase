@@ -98,6 +98,7 @@ export function BreakoutColumnList({
                 query={query}
                 item={item}
                 breakout={breakout}
+                isPinned
                 onAddColumn={onAddBreakout}
                 onUpdateColumn={column => {
                   if (breakout) {

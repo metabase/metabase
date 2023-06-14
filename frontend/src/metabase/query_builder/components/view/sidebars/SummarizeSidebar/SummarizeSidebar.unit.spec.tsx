@@ -201,6 +201,29 @@ describe("SummarizeSidebar", () => {
     expect(peopleCreatedAt).toHaveAttribute("aria-selected", "false");
   });
 
+  it("should list breakouts added before opening the sidebar in a separate section", () => {
+    setup({ card: createSummarizedCard() });
+
+    const pinnedColumnList = screen.getByTestId("pinned-dimensions");
+    const unpinnedColumnList = screen.getByTestId("unpinned-dimensions");
+
+    expect(
+      within(pinnedColumnList).getByText("Product → Category"),
+    ).toBeInTheDocument();
+    expect(
+      within(pinnedColumnList).getByText("Created At"),
+    ).toBeInTheDocument();
+
+    expect(
+      within(unpinnedColumnList).queryByText("Category"),
+    ).not.toBeInTheDocument();
+
+    // "Product → Created At" and "User → Created At" should still be there
+    expect(within(unpinnedColumnList).getAllByText("Created At")).toHaveLength(
+      2,
+    );
+  });
+
   it("should add an aggregation", async () => {
     const { getNextAggregations } = setup({ withDefaultAggregation: false });
 

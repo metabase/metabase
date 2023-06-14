@@ -20,6 +20,7 @@ interface BreakoutColumnListItemProps {
   query: Lib.Query;
   item: Lib.ColumnDisplayInfo & { column: Lib.ColumnMetadata };
   breakout?: Lib.BreakoutClause;
+  isPinned?: boolean;
   onAddColumn: (column: Lib.ColumnMetadata) => void;
   onUpdateColumn: (column: Lib.ColumnMetadata) => void;
   onRemoveColumn: (column: Lib.ColumnMetadata) => void;
@@ -30,6 +31,7 @@ export function BreakoutColumnListItem({
   query,
   item,
   breakout,
+  isPinned = false,
   onAddColumn,
   onUpdateColumn,
   onRemoveColumn,
@@ -70,9 +72,11 @@ export function BreakoutColumnListItem({
     ],
   );
 
+  const displayName = isPinned ? item.longDisplayName : item.displayName;
+
   return (
     <Root
-      aria-label={item.displayName}
+      aria-label={displayName}
       isSelected={isSelected}
       aria-selected={isSelected}
       data-testid="dimension-list-item"
@@ -80,9 +84,7 @@ export function BreakoutColumnListItem({
       <Content onClick={() => onReplaceColumns?.(item.column)}>
         <TitleContainer>
           <ColumnTypeIcon name={getColumnIcon(item.column)} size={18} />
-          <Title data-testid="dimension-list-item-name">
-            {item.displayName}
-          </Title>
+          <Title data-testid="dimension-list-item-name">{displayName}</Title>
         </TitleContainer>
         {renderBucketPicker()}
         {isSelected && (
