@@ -4,11 +4,11 @@ import {
   popover,
   getFullName,
 } from "e2e/support/helpers";
+import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
-  USERS,
-  SAMPLE_DB_ID,
   ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_data";
+  ADMIN_PERSONAL_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 
@@ -83,7 +83,9 @@ describe("URLs", () => {
       cy.findByText("Your personal collection").click();
       cy.location("pathname").should(
         "eq",
-        `/collection/1-${getUsersPersonalCollectionSlug(admin)}`,
+        `/collection/${ADMIN_PERSONAL_COLLECTION_ID}-${getUsersPersonalCollectionSlug(
+          admin,
+        )}`,
       );
     });
 
@@ -115,7 +117,11 @@ describe("URLs", () => {
         "First collection",
       );
 
-      cy.visit(`/collection/1-${getUsersPersonalCollectionSlug(admin)}`);
+      cy.visit(
+        `/collection/${ADMIN_PERSONAL_COLLECTION_ID}-${getUsersPersonalCollectionSlug(
+          admin,
+        )}`,
+      );
       cy.findByTestId("collection-name-heading").should(
         "have.text",
         `${getFullName(admin)}'s Personal Collection`,

@@ -14,7 +14,7 @@ import {
   checkExpressionEditorHelperPopoverPosition,
 } from "e2e/support/helpers";
 
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

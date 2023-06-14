@@ -1,5 +1,5 @@
 import { restore, popover } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const modelName = "Orders Model";
 

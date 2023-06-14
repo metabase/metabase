@@ -7,8 +7,8 @@
  */
 
 import _ from "underscore";
-// eslint-disable-next-line import/no-unresolved
 
+// eslint-disable-next-line import/no-unresolved
 import SAMPLE_INSTANCE_DATA from "./cypress_sample_instance_data.json";
 
 export const ORDERS_QUESTION_ID = _.findWhere(SAMPLE_INSTANCE_DATA.questions, {
@@ -23,4 +23,9 @@ export const ORDERS_COUNT_QUESTION_ID = _.findWhere(
 export const ORDERS_BY_YEAR_QUESTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.questions,
   { name: "Orders, Count, Grouped by Created At (year)" },
+).id;
+
+export const ADMIN_PERSONAL_COLLECTION_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.collections,
+  { name: "Bobby Tables's Personal Collection" },
 ).id;

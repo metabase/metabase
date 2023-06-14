@@ -20,9 +20,6 @@
 export const SAMPLE_DB_ID = 1;
 export const SAMPLE_DB_SCHEMA_ID = "1:PUBLIC";
 
-// these should be dynamically built when starting cypress
-export * from "e2e/support/cypress_sample_instance_data";
-
 // Use only for e2e helpers and custom commands. Never in e2e tests directly!
 export const SAMPLE_DB_TABLES = {
   // old tables

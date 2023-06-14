@@ -1,5 +1,5 @@
 import { restore, questionInfoButton, visitModel } from "e2e/support/helpers";
-import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_data";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > models > revision history", () => {
   beforeEach(() => {

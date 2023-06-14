@@ -1,8 +1,8 @@
 import { restore, popover, modal, describeEE } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID, ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { visitDatabase } from "./helpers/e2e-database-helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;

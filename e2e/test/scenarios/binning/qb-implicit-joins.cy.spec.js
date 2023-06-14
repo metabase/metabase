@@ -6,7 +6,7 @@ import {
   visitQuestion,
 } from "e2e/support/helpers";
 
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 /**
  * The list of issues this spec covers:
