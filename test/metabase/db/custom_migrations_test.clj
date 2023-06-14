@@ -419,19 +419,19 @@
 
       (migrate!)
       (testing "forward migration migrate correclty and ignore failures"
-        (is (= [{:id 1 :row 0, :col 0, :size_x 4, :size_y 4}
-                {:id 2 :row 0, :col 0, :sizeX 4, :sizeY 4}
-                {:id 3 :row nil, :col nil, :size_x nil, :size_y nil}
-                {:id 4 :row "x", :col "x", :size_x "x", :size_y "x"}
-                {:id 5 :row 0 :col 0 :size_x 4 :size_y 4 :series [1 2 3]}]
+        (is (= [{:id 1 :row 0 :col 0 :size_x 5 :size_y 4}
+                {:id 2 :row 0 :col 0 :size_x 5 :size_y 4}
+                {:id 3 :row 0 :col 0 :size_x 5 :size_y 4}
+                {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}
+                {:id 5 :row 0 :col 0 :size_x 5 :size_y 4 :series [1 2 3]}]
                (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))
       (migrate-down! 46)
 
       (testing "downgrade works correctly and ignore failures"
-        (is (= [{:id 1 :row 0, :col 0, :size_x 4, :size_y 4}
-                {:id 2 :row 0, :col 0, :sizeX 4, :sizeY 4}
-                {:id 3 :row nil, :col nil, :size_x nil, :size_y nil}
-                {:id 4 :row "x", :col "x", :size_x "x", :size_y "x"}
+        (is (= [{:id 1 :row 0 :col 0 :size_x 4 :size_y 4}
+                {:id 2 :row 0 :col 0 :size_x 4 :size_y 4}
+                {:id 3 :size_y 4 :size_x 4 :col 0 :row 0}
+                {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}
                 {:id 5 :row 0 :col 0 :size_x 4 :size_y 4 :series [1 2 3]}]
                (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id)))))))
 
