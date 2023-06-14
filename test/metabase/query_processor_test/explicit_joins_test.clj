@@ -6,11 +6,13 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.driver.util :as driver.u]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
+   [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -884,8 +886,15 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :left-join :inner-join)
       ;; For SQL drivers, this is only fixed for drivers using Honey SQL 2. So skip the test for ones still using Honey
       ;; SQL 1. Honey SQL 1 support is slated for removal in Metabase 0.49.0.
-      (when (or (not (isa? driver/hierarchy driver/*driver* :sql))
-                (= (sql.qp/honey-sql-version driver/*driver*) 2))
+      (when (and (or (not (isa? driver/hierarchy driver/*driver* :sql))
+                     (= (sql.qp/honey-sql-version driver/*driver*) 2))
+                 ;; Joins in MongoDB are extremely slow, especially on version 4.2
+                 ;; (version 5 is about two times faster but still very slow) and
+                 ;; this test is flaky on CI.
+                 (or (not= driver/*driver* :mongo)
+                     (-> (:dbms_version (data/db))
+                         :semantic-version
+                         (driver.u/semantic-version-gte [5]))))
         (mt/dataset sample-dataset
           (doseq [[first-join-strategy second-join-strategy] [[:inner-join :left-join]
                                                               [:left-join :inner-join]]
