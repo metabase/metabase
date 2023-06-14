@@ -50,6 +50,9 @@ export const theme: MantineThemeOverride = {
         return {
           control: {
             paddingLeft: 14,
+            "&:hover": {
+              background: "unset",
+            },
           },
           label: {
             color: theme.colors.brand[1],
@@ -58,7 +61,6 @@ export const theme: MantineThemeOverride = {
           item: {
             border: `1px solid ${theme.colors.border}`,
             borderRadius: theme.spacing.xs,
-            backgroundColor: "transparent",
             "&[data-active]": {
               border: `1px solid ${theme.colors.border}`,
             },
@@ -68,8 +70,10 @@ export const theme: MantineThemeOverride = {
           },
           content: {
             borderTop: `1px solid ${theme.colors.border}`,
+            color: theme.colors.text[2],
           },
           chevron: {
+            color: theme.colors.text[2],
             border: `1px solid ${theme.colors.border}`,
             borderRadius: "100%",
             marginLeft: "1rem",

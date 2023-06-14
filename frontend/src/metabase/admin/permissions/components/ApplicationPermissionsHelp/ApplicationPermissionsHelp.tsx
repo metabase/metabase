@@ -1,6 +1,6 @@
 import { t, jt } from "ttag";
 
-import { Flex, Stack, Text, Title } from "@mantine/core";
+import { Flex, Stack, Text, Title } from "metabase/ui";
 import MetabaseSettings from "metabase/lib/settings";
 
 import ExternalLink from "metabase/core/components/ExternalLink";

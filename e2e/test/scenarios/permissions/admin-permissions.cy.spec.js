@@ -743,19 +743,29 @@ describe("scenarios > admin > permissions", () => {
 
   it("shows permissions help", () => {
     cy.visit("/admin/permissions");
+
+    // Data permissions
     cy.get("main").within(() => {
-      // Data permissions
       cy.findByText("Permission help").as("permissionHelpButton").click();
       cy.get("@permissionHelpButton").should("not.exist");
-      cy.findByText("Data permissions");
-      cy.findByText("Database levels").click();
-      cy.findByText("Unrestricted");
-      cy.findByText("Impersonated (Pro)");
-      cy.findByLabelText("Close").click();
+    });
 
-      // Collection permissions
+    cy.findByLabelText("Permissions help reference")
+      .as("permissionsHelpContent")
+      .within(() => {
+        cy.findByText("Data permissions");
+        cy.findByText("Unrestricted");
+        cy.findByText("Impersonated (Pro)");
+        cy.findByLabelText("Close").click();
+      });
+
+    cy.get("main").within(() => {
       cy.findByText("Collections").click();
       cy.get("@permissionHelpButton").click();
+    });
+
+    // Collection permissions
+    cy.get("@permissionsHelpContent").within(() => {
       cy.findByText("Collection permissions");
       cy.findByText("Collections Permission Levels");
       cy.findByLabelText("Close").click();

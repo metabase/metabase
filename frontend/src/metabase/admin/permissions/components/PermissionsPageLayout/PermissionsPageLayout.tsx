@@ -134,7 +134,7 @@ function PermissionsPageLayout({
       </PermissionPageContent>
 
       {shouldShowHelp && (
-        <PermissionPageSidebar>
+        <PermissionPageSidebar aria-label={t`Permissions help reference`}>
           <CloseSidebarButtonWithDefault
             onClick={() => setShouldShowHelp(prev => !prev)}
           />

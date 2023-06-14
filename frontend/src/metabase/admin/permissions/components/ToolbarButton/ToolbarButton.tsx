@@ -1,4 +1,4 @@
-import { Text } from "@mantine/core";
+import { Text } from "metabase/ui";
 import { IconName } from "metabase/core/components/Icon";
 import { ToolbarButtonIcon, ToolbarButtonRoot } from "./ToolbarButton.styled";
 
