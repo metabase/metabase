@@ -1,8 +1,8 @@
 ---
 name: Epic (Internal Use)
-about: This issue is used to track a feature implementation for a solution to a user
-  problem that may span days to weeks to implement. This is used by the core Metabase
-  team to project plan and manage work.
+about: This issue is used to track a feature/project that may span several days
+  to weeks to implement. This is used by the core Metabase team to project plan
+  and manage work.
 title: [Epic] Title
 labels: ".Epic"
 
