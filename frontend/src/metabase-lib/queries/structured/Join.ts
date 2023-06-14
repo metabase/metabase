@@ -178,7 +178,6 @@ export default class Join extends MBQLObjectClause {
     );
   }
 
-  // TODO migrate to metbase lib
   setDefaultAlias() {
     // The Join alias should be "Table - FK Field" if possible. We need both to disamiguate sitatutions where we have
     // multiple FKs that point to the same Table -- see #8418 and #11452.
