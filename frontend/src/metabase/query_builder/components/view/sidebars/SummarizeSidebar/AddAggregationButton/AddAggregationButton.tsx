@@ -27,18 +27,20 @@ export function AddAggregationButton({
   return (
     <TippyPopoverWithTrigger
       renderTrigger={({ onClick }) => (
-        <Tooltip tooltip={t`Add a metric`} isEnabled={hasAggregations}>
-          <AddAggregationButtonRoot
-            icon="add"
-            borderless
-            onlyIcon={hasAggregations}
-            onClick={onClick}
-            aria-label={t`Add aggregation`}
-            data-testid="add-aggregation-button"
-          >
-            {hasAggregations ? null : t`Add a metric`}
-          </AddAggregationButtonRoot>
-        </Tooltip>
+        <div>
+          <Tooltip tooltip={t`Add a metric`} isEnabled={hasAggregations}>
+            <AddAggregationButtonRoot
+              icon="add"
+              borderless
+              onlyIcon={hasAggregations}
+              onClick={onClick}
+              aria-label={t`Add aggregation`}
+              data-testid="add-aggregation-button"
+            >
+              {hasAggregations ? null : t`Add a metric`}
+            </AddAggregationButtonRoot>
+          </Tooltip>
+        </div>
       )}
       popoverContent={({ closePopover }) => (
         <AggregationPicker
