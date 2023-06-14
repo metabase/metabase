@@ -1,9 +1,9 @@
-import { CollectionId } from "metabase-types/api";
-import ItemPicker, { PickerValue, PickerItemId } from "./ItemPicker";
+import { CollectionId, DashboardId } from "metabase-types/api";
+import ItemPicker from "./ItemPicker";
 
 export interface DashboardPickerProps {
-  value?: PickerItemId;
-  onChange: (dashboardId: PickerItemId | undefined) => void;
+  value?: DashboardId;
+  onChange: (dashboardId: DashboardId) => void;
   collectionId?: CollectionId;
 }
 
@@ -17,9 +17,7 @@ const DashboardPicker = ({
     {...props}
     initialOpenCollectionId={collectionId}
     value={value === undefined ? undefined : { model: "dashboard", id: value }}
-    onChange={(dashboard: PickerValue) =>
-      onChange(dashboard ? dashboard.id : undefined)
-    }
+    onChange={dashboard => onChange(dashboard.id)}
     models={["dashboard"]}
   />
 );
