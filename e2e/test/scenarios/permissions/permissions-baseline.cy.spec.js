@@ -53,7 +53,7 @@ describe("scenarios > permissions", () => {
 
   it("should let a user with no data permissions view questions", () => {
     cy.signIn("nodata");
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("February 11, 2019, 9:40 PM"); // check that the data loads
   });
