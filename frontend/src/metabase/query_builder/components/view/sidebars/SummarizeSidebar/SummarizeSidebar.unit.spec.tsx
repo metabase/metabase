@@ -320,6 +320,18 @@ describe("SummarizeSidebar", () => {
     expect(getNextBreakouts()).toHaveLength(1);
   });
 
+  it("should add a new column instead of replacing when adding a bucketed column", async () => {
+    const { getNextBreakouts } = setup({ card: createSummarizedCard() });
+
+    const [total] = screen.getAllByRole("listitem", { name: "Total" });
+    userEvent.hover(total);
+    userEvent.click(within(total).getByText("Auto bin"));
+    const [strategy] = await screen.findAllByText("10 bins");
+    userEvent.click(strategy);
+
+    await waitFor(() => expect(getNextBreakouts()).toHaveLength(3));
+  });
+
   it("should remove breakout", async () => {
     const { getNextBreakouts } = setup({ card: createSummarizedCard() });
 

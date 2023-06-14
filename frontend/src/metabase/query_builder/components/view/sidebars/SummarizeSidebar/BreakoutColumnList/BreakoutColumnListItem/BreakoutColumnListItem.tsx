@@ -58,18 +58,11 @@ export function BreakoutColumnListItem({
         hasBinning
         hasTemporalBucketing
         onSelect={column =>
-          breakout ? onUpdateColumn(column) : onReplaceColumns?.(column)
+          breakout ? onUpdateColumn(column) : onAddColumn(column)
         }
       />
     ),
-    [
-      query,
-      breakout,
-      item.column,
-      isSelected,
-      onUpdateColumn,
-      onReplaceColumns,
-    ],
+    [query, breakout, item.column, isSelected, onAddColumn, onUpdateColumn],
   );
 
   const displayName = isPinned ? item.longDisplayName : item.displayName;
