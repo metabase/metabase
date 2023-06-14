@@ -5,7 +5,6 @@ about: This issue is used to track a feature implementation for a solution to a 
   team to project plan and manage work.
 title: X - Internal Use - Feature/Project X Implementation
 labels: ".Epic"
-assignees: ''
 
 ---
 
