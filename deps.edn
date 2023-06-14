@@ -31,7 +31,7 @@
                                              :exclusions  [it.unimi.dsi/fastutil
                                                            org.slf4j/slf4j-api]}
   com.draines/postal                        {:mvn/version "2.0.5"}              ; SMTP library
-  com.github.seancorfield/honeysql          {:mvn/version "2.4.962"}            ; Honey SQL 2. SQL generation from Clojure data maps
+  com.github.seancorfield/honeysql          {:mvn/version "2.4.1002"}           ; Honey SQL 2. SQL generation from Clojure data maps
   com.github.seancorfield/next.jdbc         {:git/url "https://github.com/seancorfield/next-jdbc.git"
                                              :sha     "8f372917a4b8b55c893ef6586f9ffe8dce4cbc7e"} ; for https://github.com/seancorfield/next-jdbc/issues/245; when this makes it to a release we can switch to that.
   com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.3"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
