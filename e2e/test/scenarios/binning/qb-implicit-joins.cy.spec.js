@@ -77,7 +77,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
 
   context("via custom question", () => {
     beforeEach(() => {
-      cy.visit(`/question/${ORDERS_QUESTION_ID}/notebook"`);
+      cy.visit(`/question/${ORDERS_QUESTION_ID}/notebook`);
       summarize({ mode: "notebook" });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();

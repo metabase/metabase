@@ -185,7 +185,7 @@ describe("scenarios > embedding > full app", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("New").click();
         popover().findByText("Question").click();
-        popover().findByText("Raw Data").click();
+        popover().findByText("Sample Database").click();
         popover().findByText("Orders").click();
       });
 
