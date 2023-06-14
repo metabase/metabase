@@ -10083,6 +10083,12 @@ msgstr "Bitiş saati"
 msgid "Duration (ms)"
 msgstr "Süre (ms)"
 
+msgid "Duration"
+msgstr "Süre"
+
+msgid "Scientific"
+msgstr "Bilimsel"
+
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.jsx:35
 #: frontend/src/metabase/lib/core.js:102
 #: frontend/src/metabase/visualizations/lib/settings/column.js:268
