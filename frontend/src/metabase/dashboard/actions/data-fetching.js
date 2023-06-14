@@ -35,7 +35,6 @@ import {
   getDashboardById,
   getDashCardById,
   getSelectedTabId,
-  getCardData,
 } from "../selectors";
 
 import {
@@ -423,15 +422,12 @@ export const fetchDashboardCardData = createThunkAction(
   FETCH_DASHBOARD_CARD_DATA,
   options => (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
-    const dashcardData = getCardData(getState());
     const selectedTabId = getSelectedTabId(getState());
 
     const promises = getAllDashboardCards(dashboard)
       .map(({ card, dashcard }) => {
-        // Only fetch cards that haven't been loaded yet on the current tab
         if (
           isVirtualDashCard(dashcard) ||
-          dashcard.id in dashcardData ||
           (selectedTabId !== undefined &&
             dashcard.dashboard_tab_id !== selectedTabId)
         ) {
@@ -460,15 +456,11 @@ export const fetchDashboardCardMetadata = createThunkAction(
   FETCH_DASHBOARD_CARD_METADATA,
   () => async (dispatch, getState) => {
     const allDashCards = getDashboardComplete(getState()).ordered_cards;
-    const dashcardData = getCardData(getState());
     const selectedTabId = getSelectedTabId(getState());
 
-    // Only fetch metadata for cards that haven't been loaded yet on the current tab
     const cards = allDashCards.filter(
       dc =>
-        !(dc.id in dashcardData) &&
-        selectedTabId !== undefined &&
-        dc.dashboard_tab_id === selectedTabId,
+        selectedTabId !== undefined && dc.dashboard_tab_id === selectedTabId,
     );
     await dispatch(loadMetadataForDashboard(cards));
   },

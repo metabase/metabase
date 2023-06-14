@@ -145,9 +145,10 @@ class Dashboard extends Component {
       return;
     }
 
-    if (this.shouldFetchCardsAndMetadata(prevProps)) {
+    if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
       this.props.fetchDashboardCardData();
       this.props.fetchDashboardCardMetadata();
+      return;
     }
 
     if (
@@ -156,19 +157,6 @@ class Dashboard extends Component {
     ) {
       this.props.fetchDashboardCardData({ reload: false, clearCache: true });
     }
-  }
-
-  shouldFetchCardsAndMetadata(prevProps) {
-    if (_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
-      return false;
-    }
-
-    for (const dashcard of this.props.dashboard.ordered_cards) {
-      if (!(dashcard.id in this.props.dashcardData)) {
-        return true;
-      }
-    }
-    return false;
   }
 
   componentWillUnmount() {
