@@ -104,7 +104,7 @@ const DataFieldsPicker = ({
     [items],
   );
 
-  const isDisabled = useMemo(
+  const isDisabledDeselection = useMemo(
     () => items.filter(displayInfo => displayInfo.selected).length <= 1,
     [items],
   );
@@ -136,7 +136,7 @@ const DataFieldsPicker = ({
         items={items}
         isAll={isAll}
         isNone={isNone}
-        isDisabled={isDisabled}
+        isDisabledDeselection={isDisabledDeselection}
         onToggle={handleToggle}
         onSelectAll={handleSelectAll}
         onSelectNone={handleSelectNone}
