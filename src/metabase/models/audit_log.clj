@@ -16,6 +16,9 @@
    [methodical.core :as m]
    [toucan2.core :as t2]))
 
+(doto :m/audit-log
+  (derive :metabase/model))
+
 (m/defmethod t2/table-name :m/audit-log
   [_model]
   :audit_log)
