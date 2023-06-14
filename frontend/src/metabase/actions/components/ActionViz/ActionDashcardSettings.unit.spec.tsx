@@ -148,6 +148,21 @@ describe("ActionViz > ActionDashcardSettings", () => {
       it("allows to submit a form", () => {
         expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
       });
+
+      it("populates popover properly", async () => {
+        const formSection = screen.getByTestId(
+          `parameter-form-section-${actionParameter1.id}`,
+        );
+
+        userEvent.click(within(formSection).getByTestId("select-button"));
+
+        const popover = await screen.findByRole("grid");
+
+        expect(
+          within(popover).getByText(dashboardParameter.name),
+        ).toBeInTheDocument();
+        expect(within(popover).getByText("Ask the user")).toBeInTheDocument();
+      });
     },
   );
 
@@ -229,6 +244,40 @@ describe("ActionViz > ActionDashcardSettings", () => {
     });
   });
 
+  describe("when hidden, required, has default value, but not mapped", () => {
+    beforeEach(() => {
+      const getDashcard = dashcardFactory({
+        required: true,
+        mapped: false,
+        hasDefaultValue: true,
+        hidden: true,
+      });
+
+      setup({
+        dashcard: getDashcard(),
+      });
+    });
+
+    it("populates popover properly", async () => {
+      const formSection = screen.getByTestId(
+        `parameter-form-section-${actionParameter1.id}`,
+      );
+
+      userEvent.click(within(formSection).getByTestId("select-button"));
+
+      const popover = await screen.findByRole("grid");
+
+      expect(within(popover).getByText("Select a value")).toBeInTheDocument();
+      expect(within(popover).getByText(DEFAULT_VALUE)).toBeInTheDocument();
+      expect(
+        within(popover).queryByText("Ask the user"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(popover).getByText(dashboardParameter.name),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe.each([
     { required: true, mapped: true },
     { required: true, mapped: false },
@@ -259,10 +308,6 @@ describe("ActionViz > ActionDashcardSettings", () => {
 
         const popover = await screen.findByRole("grid");
 
-        expect(within(popover).getByText(DEFAULT_VALUE)).toBeInTheDocument();
-        expect(
-          within(popover).queryByText("Select a value"),
-        ).not.toBeInTheDocument();
         expect(
           within(popover).queryByText("Ask the user"),
         ).not.toBeInTheDocument();

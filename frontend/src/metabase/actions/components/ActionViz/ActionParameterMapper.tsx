@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import Select, { SelectChangeEvent } from "metabase/core/components/Select";
@@ -12,6 +12,8 @@ import type {
   Dashboard,
   WritebackParameter,
   WritebackAction,
+  Parameter,
+  ParameterTarget,
 } from "metabase-types/api";
 import { useDispatch } from "metabase/lib/redux";
 import type Question from "metabase-lib/Question";
@@ -65,49 +67,18 @@ export const ActionParameterMappingForm = ({
 
   return (
     <div>
-      {actionParameters.map((actionParam: WritebackParameter) => {
-        const isHidden = isParameterHidden(action, actionParam);
-        const isRequired = isParameterRequired(action, actionParam);
-        const defaultValue = getParameterDefaultValue(action, actionParam);
-        const mappedValue = currentMappings[getTargetKey(actionParam)];
-        const isParameterMapped = mappedValue != null;
-        const hasDefaultValue = defaultValue != null;
-
-        const showError =
-          isHidden && isRequired && !isParameterMapped && !hasDefaultValue;
-        const name = actionParam.name ?? actionParam.id;
+      {actionParameters.map((actionParameter: WritebackParameter) => {
+        const mappedValue = currentMappings[getTargetKey(actionParameter)];
 
         return (
-          <ParameterFormSection
-            key={actionParam.id}
-            data-testid={`parameter-form-section-${actionParam.id}`}
-          >
-            <ParameterFormLabel error={showError}>
-              <span>{`${name}${showError ? t`: required` : ""}`}</span>
-              {isHidden && <ParameterFormBadge>{t`Hidden`}</ParameterFormBadge>}
-            </ParameterFormLabel>
-            <Select
-              value={mappedValue ?? null}
-              onChange={(e: SelectChangeEvent<string>) =>
-                handleParameterChange(e.target.value, actionParam.target)
-              }
-              options={[
-                !hasDefaultValue && {
-                  name: isHidden ? t`Select a value` : t`Ask the user`,
-                  value: null,
-                },
-                hasDefaultValue && {
-                  name: defaultValue,
-                  value: null,
-                },
-                ...dashboardParameters.map(dashboardParam => ({
-                  key: dashboardParam.id,
-                  name: dashboardParam.name,
-                  value: dashboardParam.id,
-                })),
-              ].filter(Boolean)}
-            />
-          </ParameterFormSection>
+          <ActionParameterMapperItem
+            key={actionParameter.id}
+            action={action}
+            actionParameter={actionParameter}
+            mappedValue={mappedValue}
+            dashboardParameters={dashboardParameters}
+            onChange={handleParameterChange}
+          />
         );
       })}
       {actionParameters.length === 0 && (
@@ -116,3 +87,103 @@ export const ActionParameterMappingForm = ({
     </div>
   );
 };
+
+interface ActionParameterMapperItemProps {
+  action: WritebackAction;
+  actionParameter: WritebackParameter;
+  mappedValue: string;
+  dashboardParameters: Parameter[];
+  onChange: (value: string | null, target: ParameterTarget) => void;
+}
+
+const DEFAULT_VALUE = "default value";
+
+export const ActionParameterMapperItem = ({
+  action,
+  actionParameter,
+  mappedValue,
+  dashboardParameters,
+  onChange,
+}: ActionParameterMapperItemProps) => {
+  const [value, setValue] = useState(mappedValue ?? null);
+
+  const isHidden = isParameterHidden(action, actionParameter);
+  const isRequired = isParameterRequired(action, actionParameter);
+  const defaultValue = getParameterDefaultValue(action, actionParameter);
+  const isParameterMapped = mappedValue != null;
+  const hasDefaultValue = defaultValue != null;
+  const showError =
+    isHidden && isRequired && !isParameterMapped && !hasDefaultValue;
+  const name = actionParameter.name ?? actionParameter.id;
+
+  const handleChange = (
+    e: SelectChangeEvent<string>,
+    target: ParameterTarget,
+  ) => {
+    const value = e.target.value;
+
+    setValue(e.target.value);
+
+    if (value !== DEFAULT_VALUE) {
+      onChange(e.target.value, actionParameter.target);
+    } else {
+      onChange(null, target);
+    }
+  };
+
+  return (
+    <ParameterFormSection
+      data-testid={`parameter-form-section-${actionParameter.id}`}
+    >
+      <ParameterFormLabel error={showError}>
+        <span>{`${name}${showError ? t`: required` : ""}`}</span>
+        {isHidden && <ParameterFormBadge>{t`Hidden`}</ParameterFormBadge>}
+      </ParameterFormLabel>
+      <Select
+        value={value}
+        onChange={handleChange}
+        options={[
+          ...getDefaultOptions({
+            isRequired,
+            isHidden,
+            hasDefaultValue,
+            defaultValue,
+          }),
+          ...dashboardParameters.map(dashboardParam => ({
+            key: dashboardParam.id,
+            name: dashboardParam.name,
+            value: dashboardParam.id,
+          })),
+        ]}
+      />
+    </ParameterFormSection>
+  );
+};
+
+function getDefaultOptions({
+  isHidden,
+  isRequired,
+  hasDefaultValue,
+  defaultValue,
+}: {
+  isHidden: boolean;
+  isRequired: boolean;
+  hasDefaultValue: boolean;
+  defaultValue?: string | number;
+}) {
+  const defaultOptions = [];
+
+  defaultOptions.push({
+    name: isHidden ? t`Select a value` : t`Ask the user`,
+    value: null,
+  });
+
+  if (isHidden && isRequired && hasDefaultValue) {
+    defaultOptions.push({
+      name: defaultValue,
+      value: DEFAULT_VALUE,
+    });
+  }
+
+  return defaultOptions;
+}
