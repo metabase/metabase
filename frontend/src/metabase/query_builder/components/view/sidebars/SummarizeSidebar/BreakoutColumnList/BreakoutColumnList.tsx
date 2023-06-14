@@ -88,9 +88,10 @@ export function BreakoutColumnList({
       {!isSearching && (
         <ul data-testid="pinned-dimensions">
           {pinnedItems.map(item => {
-            const breakout = item.breakoutPosition
-              ? breakouts[item.breakoutPosition]
-              : undefined;
+            const breakout =
+              item.breakoutPosition != null
+                ? breakouts[item.breakoutPosition]
+                : undefined;
             return (
               <BreakoutColumnListItem
                 key={item.longDisplayName}
@@ -117,9 +118,10 @@ export function BreakoutColumnList({
             <ColumnGroupName>{section.name}</ColumnGroupName>
             <ul>
               {section.items.map(item => {
-                const breakout = item.breakoutPosition
-                  ? breakouts[item.breakoutPosition]
-                  : undefined;
+                const breakout =
+                  item.breakoutPosition != null
+                    ? breakouts[item.breakoutPosition]
+                    : undefined;
                 return (
                   <BreakoutColumnListItem
                     key={item.longDisplayName}

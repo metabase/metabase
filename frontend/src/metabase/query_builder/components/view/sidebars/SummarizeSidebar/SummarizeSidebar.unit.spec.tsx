@@ -6,6 +6,7 @@ import { checkNotNull } from "metabase/core/utils/types";
 import type { Card, UnsavedCard } from "metabase-types/api";
 import {
   ORDERS,
+  PRODUCTS,
   ORDERS_ID,
   PEOPLE_ID,
   PRODUCTS_ID,
@@ -31,7 +32,10 @@ function createSummarizedCard() {
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+        breakout: [
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
       },
     },
   });
@@ -188,8 +192,12 @@ describe("SummarizeSidebar", () => {
     const [ordersCreatedAt, peopleCreatedAt] = screen.getAllByRole("listitem", {
       name: "Created At",
     });
+    const productCategory = screen.getByRole("listitem", {
+      name: "Product → Category",
+    });
 
     expect(ordersCreatedAt).toHaveAttribute("aria-selected", "true");
+    expect(productCategory).toHaveAttribute("aria-selected", "true");
     expect(peopleCreatedAt).toHaveAttribute("aria-selected", "false");
   });
 
@@ -297,7 +305,8 @@ describe("SummarizeSidebar", () => {
       within(breakout).getByRole("button", { name: "Remove dimension" }),
     );
 
-    await waitFor(() => expect(getNextBreakouts()).toHaveLength(0));
+    await waitFor(() => expect(getNextBreakouts()).toHaveLength(1));
+    expect(getNextBreakouts()[0].longDisplayName).toBe("Product → Category");
   });
 
   it("should replace breakouts by clicking on a column", async () => {
