@@ -13,11 +13,8 @@ import {
 
 import { usePrevious } from "react-use";
 
-import {
-  EditableTextArea,
-  EditableTextRoot,
-  Markdown,
-} from "./EditableText.styled";
+import Markdown from "metabase/core/components/Markdown";
+import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
 
 export type EditableTextAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -133,6 +130,7 @@ const EditableText = forwardRef(function EditableText(
       ref={ref}
       isEditing={isEditing}
       isDisabled={isDisabled}
+      isEditingMarkdown={!shouldShowMarkdown}
       data-value={`${displayValue}\u00A0`}
       data-testid="editable-text"
     >
