@@ -104,14 +104,15 @@ const DataFieldsPicker = ({
     [items],
   );
 
-  const handleToggle = (changedIndex: number) => {
-    const nextColumns = items
-      .map((displayInfo, currentIndex) =>
-        currentIndex !== changedIndex
-          ? displayInfo.selected
-          : !displayInfo.selected,
-      )
-      .map((_, currentIndex) => columns[currentIndex]);
+  const isDisabled = useMemo(
+    () => items.filter(displayInfo => displayInfo.selected).length <= 1,
+    [items],
+  );
+
+  const handleToggle = (changedIndex: number, isSelected: boolean) => {
+    const nextColumns = columns.filter((_, currentIndex) =>
+      currentIndex !== changedIndex ? items[currentIndex].selected : isSelected,
+    );
     const nextQuery = Lib.withFields(query, stageIndex, nextColumns);
     updateQuery(nextQuery);
   };
@@ -135,6 +136,7 @@ const DataFieldsPicker = ({
         items={items}
         isAll={isAll}
         isNone={isNone}
+        isDisabled={isDisabled}
         onToggle={handleToggle}
         onSelectAll={handleSelectAll}
         onSelectNone={handleSelectNone}
