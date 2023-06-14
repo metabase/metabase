@@ -31,7 +31,3 @@ labels: ".Epic"
 - [ ] String translations
 - [ ] Write rough pass documents for handoff to customer success
 
-
-**How to Test This Feature Out**
-
-_(include steps on how to test this project feature out, for someone unfamiliar with this work. please try to use the sample dataset when possible. this will serve as the basis for automated e2e tests, as well as the acceptance test to showcase the essence of this feature for bug bashes, etc)_
