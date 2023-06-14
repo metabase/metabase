@@ -506,7 +506,7 @@ interface SetupOpts {
 }
 
 const setup = ({ collections }: SetupOpts) => {
-  setupCollectionsEndpoints(collections);
+  setupCollectionsEndpoints({ collections });
 
   // renderWithProviders and other setup
 };
