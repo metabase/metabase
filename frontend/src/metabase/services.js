@@ -490,7 +490,6 @@ export const UserApi = {
   delete: DELETE("/api/user/:userId"),
   reactivate: PUT("/api/user/:userId/reactivate"),
   send_invite: POST("/api/user/:id/send_invite"),
-  dismiss_toast: POST("/api/user/:userId/dismissed/:toastKey"),
 };
 
 export const UtilApi = {

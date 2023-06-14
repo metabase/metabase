@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { replace } from "react-router-redux";
 import { isSmallScreen } from "metabase/lib/dom";
 import { openNavbar } from "metabase/redux/app";
-import { dismissToast } from "metabase/redux/settings";
+import { updateSetting } from "metabase/admin/settings/settings";
 import { addUndo } from "metabase/redux/undo";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -12,7 +12,7 @@ import {
 } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
-import { hasUserDismissedToast } from "metabase/selectors/settings";
+import { getSetting } from "metabase/selectors/settings";
 import { CollectionItem } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";
 
@@ -34,7 +34,7 @@ export const HomePage = (): JSX.Element => {
   const error = databaseListState.error ?? modelListState.error;
   const dashboardId = useSelector(getCustomHomePageDashboardId);
   const showHomepageRedirectRoast = useSelector(
-    state => !hasUserDismissedToast(state, "dismissed-custom-dashboard-toast"),
+    state => !getSetting(state, "dismissed-custom-dashboard-toast"),
   );
   const isMetabotEnabled = useSelector(getIsMetabotEnabled);
   const hasMetabot = getHasMetabot(
@@ -60,9 +60,14 @@ export const HomePage = (): JSX.Element => {
             message: t`Your admin has set this dashboard as your homepage`,
             icon: "info",
             timeout: 10000,
-            actions: [dismissToast("dismissed-custom-dashboard-toast")],
+            actions: [
+              updateSetting({
+                key: "dismissed-custom-dashboard-toast",
+                value: true,
+              }),
+            ],
             actionLabel: t`Got it`,
-            hideDismiss: true,
+            canDismiss: false,
           }),
         );
       }

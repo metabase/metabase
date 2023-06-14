@@ -10,7 +10,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import { refreshCurrentUser } from "metabase/redux/user";
-import { dismissToast } from "metabase/redux/settings";
+import { updateSetting } from "./settings";
 
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
@@ -100,7 +100,11 @@ const SECTIONS = updateSectionsWithPlugins({
         getHidden: ({ "custom-homepage": customHomepage }) => !customHomepage,
         widget: DashboardSelector,
         postUpdateActions: [
-          () => dismissToast("dismissed_custom_dashboard_toast"),
+          () =>
+            updateSetting({
+              key: "dismissed_custom_dashboard_toast",
+              value: true,
+            }),
           refreshCurrentUser,
         ],
         getProps: setting => ({

@@ -250,5 +250,3 @@ export interface Settings {
 }
 
 export type SettingKey = keyof Settings;
-
-export type ToastKeys = "dismissed-custom-dashboard-toast";

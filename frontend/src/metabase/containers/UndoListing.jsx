@@ -75,7 +75,7 @@ function UndoToast({ undo, onUndo, onDismiss }) {
                   {undo.actionLabel ?? t`Undo`}
                 </UndoButton>
               )}
-              {!undo.hideDismiss && (
+              {undo.canDismiss && (
                 <DismissIcon name="close" onClick={onDismiss} />
               )}
             </CardContentSide>
