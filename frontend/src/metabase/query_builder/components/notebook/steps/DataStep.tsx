@@ -111,7 +111,7 @@ const DataFieldsPicker = ({
 
   const handleToggle = (changedIndex: number, isSelected: boolean) => {
     const nextColumns = columns.filter((_, currentIndex) =>
-      currentIndex !== changedIndex ? items[currentIndex].selected : isSelected,
+      currentIndex === changedIndex ? isSelected : items[currentIndex].selected,
     );
     const nextQuery = Lib.withFields(query, stageIndex, nextColumns);
     updateQuery(nextQuery);
