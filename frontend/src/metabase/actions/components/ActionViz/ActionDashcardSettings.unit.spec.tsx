@@ -267,6 +267,10 @@ describe("ActionViz > ActionDashcardSettings", () => {
           within(popover).queryByText("Ask the user"),
         ).not.toBeInTheDocument();
       });
+
+      it("allows to submit a form", () => {
+        expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+      });
     },
   );
 
