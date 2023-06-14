@@ -4,8 +4,8 @@
   Drill-thrus are not part of MBQL; they are a set of actions one can take to transform a query.
   For example, adding a filter like `created_at < 2022-01-01`, or following a foreign key."
   (:require
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.mbql-clause :as mbql-clause]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::drill-thru-types
@@ -26,7 +26,17 @@
      [:lib/type  [:= :metabase.lib.drill-thru/drill-thru]]
      [:operators [:sequential [:map
                                [:name   string?]
-                               [:filter ::mbql-clause/clause]]]]]]
-   [:drill-thru/pk   ::drill-thru-keyed]
-   [:drill-thru/fk   ::drill-thru-keyed]
-   [:drill-thru/zoom ::drill-thru-keyed]])
+                               [:filter ::lib.schema.expression/boolean]]]]]]
+   [:drill-thru/pk         ::drill-thru-keyed]
+   [:drill-thru/fk-details ::drill-thru-keyed]
+   [:drill-thru/zoom       ::drill-thru-keyed]
+   [:drill-thru/fk-filter
+    [:map
+     [:type      keyword?]
+     [:lib/type  [:= :metabase.lib.drill-thru/drill-thru]]
+     [:filter    ::lib.schema.expression/boolean]]]
+   [:drill-thru/distribution
+    [:map
+     [:type      keyword?]
+     [:lib/type  [:= :metabase.lib.drill-thru/drill-thru]]
+     [:column    lib.metadata/ColumnMetadata]]]])
