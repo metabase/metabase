@@ -18,7 +18,7 @@ labels: ".Epic"
 
 
 ***Milestone 1***
-_<insert tasklist here>_
+_insert tasklist here_
 
 ***Milestone 2***
 
