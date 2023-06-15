@@ -3,21 +3,26 @@ import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import _ from "underscore";
+import { connect } from "react-redux";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
+import NudgeToPro from "metabase/admin/people/components/NudgeToPro";
 
 import AdminLayout from "metabase/components/AdminLayout";
+import { shouldNudgeToPro } from "metabase/admin/people/selectors";
 
-export default class AdminPeopleApp extends Component {
+class AdminPeopleApp extends Component {
   static propTypes = {
     children: PropTypes.any,
+    shouldNudge: PropTypes.bool,
   };
 
   render() {
-    const { children } = this.props;
+    const { children, shouldNudge } = this.props;
     return (
       <AdminLayout
         sidebar={
-          <LeftNavPane>
+          <LeftNavPane nudge={shouldNudge ? <NudgeToPro /> : null}>
             <LeftNavPaneItem name={t`People`} path="/admin/people" index />
             <LeftNavPaneItem name={t`Groups`} path="/admin/people/groups" />
           </LeftNavPane>
@@ -28,3 +33,10 @@ export default class AdminPeopleApp extends Component {
     );
   }
 }
+
+// selectors:
+const mapStateToProps = state => ({
+  shouldNudge: shouldNudgeToPro(state),
+});
+
+export default _.compose(connect(mapStateToProps))(AdminPeopleApp);

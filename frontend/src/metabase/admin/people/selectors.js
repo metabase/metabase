@@ -1,4 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
+import { getSetting } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { ACTIVE_USERS_NUDGE_THRESHOLD } from "metabase/admin/people/constants";
 
 export const getMemberships = state => state.admin.people.memberships;
 
@@ -31,3 +34,11 @@ export const getUserMemberships = createSelector(
 
 export const getUserTemporaryPassword = (state, props) =>
   state.admin.people.temporaryPasswords[props.userId];
+
+export const shouldNudgeToPro = createSelector(
+  state => getUserIsAdmin(state),
+  state => getSetting(state, "active-users-count"),
+  (isAdmin, numActiveUsers) => {
+    return isAdmin && numActiveUsers >= ACTIVE_USERS_NUDGE_THRESHOLD;
+  },
+);
