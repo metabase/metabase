@@ -50,16 +50,11 @@
 (defn- normalize-name ^String [db-or-table identifier]
   (let [s (str/replace (name identifier) "-" "_")]
     (case db-or-table
-      :db    (cond-> (str "v3_" s)
-               ;; for transient datasets (i.e. those that are created and torn down with each test run), we should add
-               ;; some unique name portion to prevent independent parallel test runs from interfering with each other
-               (transient-dataset? s)
-               ;; for transient datasets, we will make them unique by appending a suffix that represents the millisecond
-               ;; timestamp from when this namespace was loaded (i.e. test initialized on this particular JVM/instance)
-               ;; note that this particular dataset will not be deleted after this test run finishes, since there is no
-               ;; reasonable hook to do so (from this test extension namespace), so instead we will rely on each run
-               ;; cleaning up outdated, transient datasets via the `transient-dataset-outdated?` mechanism above
-               (str "__transient_" ns-load-time))
+      ;; All databases created during test runs by this JVM instance get a suffix based on the timestamp from when
+      ;; this namespace was loaded. This dataset will not be deleted after this test run finishes, since there is no
+      ;; reasonable hook to do so (from this test extension namespace), so instead we will rely on each run cleaning
+      ;; up outdated, transient datasets via the `transient-dataset-outdated?` mechanism.
+      :db    (str "v3_" s "__transient_" ns-load-time)
       :table s)))
 
 (defn- test-db-details []
