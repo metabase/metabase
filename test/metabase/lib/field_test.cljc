@@ -415,6 +415,14 @@
                        (for [option options]
                          (:selected (lib/display-info query2 option)))))))))))))
 
+(deftest ^:parallel available-binning-strategies-expressions-test
+  (testing "There should be no binning strategies for expressions as they are not supported (#31367)"
+    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                    (lib/expression "myadd" (lib/+ 1 (lib/field "VENUES" "CATEGORY_ID"))))]
+      (is (empty? (->> (lib.metadata.calculation/metadata query)
+                       (m/find-first (comp #{"myadd"} :name))
+                       (lib/available-binning-strategies query)))))))
+
 (deftest ^:parallel binning-display-info-test
   (testing "numeric binning"
     (let [query          (lib/query-for-table-name meta/metadata-provider "ORDERS")
