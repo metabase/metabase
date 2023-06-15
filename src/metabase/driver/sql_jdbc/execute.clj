@@ -17,6 +17,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.lib.schema.expression.temporal
     :as lib.schema.expression.temporal]
+   [metabase.models.database :refer [Database]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -28,7 +29,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [potemkin :as p])
+   [next.jdbc]
+   [potemkin :as p]
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -48,22 +51,32 @@
     [:session-timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]]])
 
 (defmulti do-with-connection-with-options
-  "Fetch a [[java.sql.Connection]] from a `driver`/`database`, presumably using a `DataSource` returned
-  by [[datasource]] and a [[with-open]] form, and invoke
+  "Fetch a [[java.sql.Connection]] from a `driver`/`db-or-id-or-spec`, and invoke
 
     (f connection)
 
+  If `db-or-id-or-spec` is a Database or Database ID, the default implementation fetches a pooled connection spec for
+  that Database using [[datasource]].
+
+  If `db-or-id-or-spec` is a `clojure.java.jdbc` spec, it fetches a connection spec
+  using [[next.jdbc/get-datasource]]. Note that this will not be a pooled connection unless your spec is for a pooled
+  DataSource.
+
   `options` matches the [[Options]] schema above.
 
-  The default implementation is basically
+  The default implementation is more or less
 
-    (with-open [conn (.getConnection (datasource driver database))]
+    (with-open [conn (.getConnection (datasource driver db-or-id-or-spec))]
       (set-best-transaction-level! driver conn)
       (set-time-zone-if-supported! driver conn session-timezone)
       (.setReadOnly conn true)
       (.setAutoCommit conn false)
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
       (f conn))
+
+  This default implementation is abstracted out into two
+  functions, [[default-do-with-connection-with-options-set-options!]]
+  and [[default-do-with-connection-with-options-DataSource]], that you can use as needed in custom implementations.
 
   There are two usual ways to set the session timezone if your driver supports them:
 
@@ -85,7 +98,7 @@
    Custom implementations should set transaction isolation to the least-locking level supported by the driver, and make
    connections read-only (*after* setting timezone, if needed)."
   {:added    "0.47.0"
-   :arglists '([driver database options f])}
+   :arglists '([driver db-or-id-or-spec options f])}
    driver/dispatch-on-initialized-driver
    :hierarchy #'driver/hierarchy)
 
@@ -166,18 +179,18 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn datasource
-  "Fetch the connection pool `DataSource` associated with `database`."
+  "Fetch the connection pool `DataSource` associated with `db-or-id-or-spec`."
   {:added "0.35.0"}
-  ^DataSource [database]
-  (:datasource (sql-jdbc.conn/db->pooled-connection-spec database)))
+  ^DataSource [db-or-id-or-spec]
+  (:datasource (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)))
 
 (defn datasource-with-diagnostic-info!
   "Fetch the connection pool `DataSource` associated with `database`, while also recording diagnostic info for the
   pool. To be used in conjunction with `sql-jdbc.execute.diagnostic/capturing-diagnostic-info`."
   {:added "0.40.0"}
-  ^DataSource [driver database]
-  (let [ds (datasource database)]
-    (sql-jdbc.execute.diagnostic/record-diagnostic-info-for-pool! driver (u/the-id database) ds)
+  ^DataSource [driver db-or-id]
+  (let [ds (datasource db-or-id)]
+    (sql-jdbc.execute.diagnostic/record-diagnostic-info-for-pool! driver (u/the-id db-or-id) ds)
     ds))
 
 (defn set-time-zone-if-supported!
@@ -222,31 +235,60 @@
         (seq more)
         (recur more)))))
 
+(defn default-do-with-connection-with-options-set-options!
+  "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
+  Connection."
+  {:added "0.47.0"}
+  [driver ^Connection conn {:keys [^String session-timezone], :as _options}]
+  (set-best-transaction-level! driver conn)
+  (set-time-zone-if-supported! driver conn session-timezone)
+  (try
+    ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
+    ;; to be a hint to the driver to enable database optimizations
+    ;; See https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setReadOnly-boolean-
+    (.setReadOnly conn true)
+    (catch Throwable e
+      (log/debug e (trs "Error setting connection to read-only"))))
+  (try
+    ;; set autocommit to false so that pg honors fetchSize. Otherwise it commits the transaction and needs the
+    ;; entire realized result set
+    (.setAutoCommit conn false)
+    (catch Throwable e
+      (log/debug e (trs "Error setting connection to autoCommit false"))))
+  (try
+    (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
+    (catch Throwable e
+      (log/debug e (trs "Error setting default holdability for connection")))))
+
+(defn default-do-with-connection-with-options-DataSource
+  "Part of the default implementation for [[do-with-connection-with-options]]: get an appropriate `java.sql.DataSource`
+  for `db-or-id-or-spec`."
+  {:added "0.47.0"}
+  ^DataSource [driver db-or-id-or-spec {:keys [^String session-timezone], :as _options}]
+  (if-not (u/id db-or-id-or-spec)
+    ;; not a Database or Database ID... this is a raw `clojure.java.jdbc` spec, use that
+    ;; directly.
+    (next.jdbc/get-datasource db-or-id-or-spec)
+    ;; otherwise this is either a Database or Database ID.
+    (if-let [old-method-impl (get-method sql-jdbc.execute.old/connection-with-timezone driver)]
+      ;; use the deprecated impl for `connection-with-timezone` if one exists.
+      (do
+        (log/warn (trs "{0} is deprecated in Metabase 0.47.0. Implement {1} instead."
+                       `connection-with-timezone
+                       `do-with-connection-with-options))
+        ;; for compatibility, make sure we pass it an actual Database instance.
+        (let [database (if (integer? db-or-id-or-spec)
+                         (t2/select-one Database db-or-id-or-spec)
+                         db-or-id-or-spec)]
+          (reify DataSource
+            (getConnection [_this]
+              (old-method-impl driver database session-timezone)))))
+      (datasource-with-diagnostic-info! driver db-or-id-or-spec))))
+
 (defmethod do-with-connection-with-options :sql-jdbc
-  [driver database {:keys [^String session-timezone]} f]
-  (with-open [^Connection conn (if-let [old-method-impl (get-method sql-jdbc.execute.old/connection-with-timezone driver)]
-                                 (do
-                                   (log/warn (trs "{0} is deprecated in Metabase 0.47.0. Implement {1} instead."
-                                                  `connection-with-timezone
-                                                  `do-with-connection-with-options))
-                                   (old-method-impl driver database session-timezone))
-                                 (.getConnection (datasource-with-diagnostic-info! driver database)))]
-    (set-best-transaction-level! driver conn)
-    (set-time-zone-if-supported! driver conn session-timezone)
-    (try
-      (.setReadOnly conn true)
-      (catch Throwable e
-        (log/debug e (trs "Error setting connection to read-only"))))
-    (try
-      ;; set autocommit to false so that pg honors fetchSize. Otherwise it commits the transaction and needs the
-      ;; entire realized result set
-      (.setAutoCommit conn false)
-      (catch Throwable e
-        (log/debug e (trs "Error setting connection to autoCommit false"))))
-    (try
-      (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
-      (catch Throwable e
-        (log/debug e (trs "Error setting default holdability for connection"))))
+  [driver db-or-id-or-spec options f]
+  (with-open [conn (.getConnection (default-do-with-connection-with-options-DataSource driver db-or-id-or-spec options))]
+    (default-do-with-connection-with-options-set-options! driver conn options)
     (f conn)))
 
 ;; TODO - would a more general method to convert a parameter to the desired class (and maybe JDBC type) be more
