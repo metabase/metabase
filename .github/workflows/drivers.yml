@@ -990,7 +990,7 @@ jobs:
           push: true
 
       - name: Launch Trino
-        run: docker run --rm -dp ${{ env.MB_STARBURST_TEST_PORT }}:8080 localhost:5000/metabase:${{ env.IMAGE_NAME }}
+        run: docker run --rm -dp ${{ env.MB_STARBURST_TEST_PORT }}:8080 localhost:5000/metabase/${{ env.IMAGE_NAME }}
 
       - name: Test Starburst driver
         uses: ./.github/actions/test-driver
