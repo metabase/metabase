@@ -48,8 +48,8 @@ export default class Table extends Component {
   static iconName = "table";
   static canSavePng = false;
 
-  static minSize = getMinSize(this.identifier);
-  static defaultSize = getDefaultSize(this.identifier);
+  static minSize = getMinSize("table");
+  static defaultSize = getDefaultSize("table");
 
   static isSensible({ cols, rows }) {
     return true;

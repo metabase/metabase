@@ -36,8 +36,8 @@ export default class Progress extends Component {
   static identifier = "progress";
   static iconName = "progress";
 
-  static minSize = getMinSize(this.identifier);
-  static defaultSize = getDefaultSize(this.identifier);
+  static minSize = getMinSize("progress");
+  static defaultSize = getDefaultSize("progress");
 
   static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;

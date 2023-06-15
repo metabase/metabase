@@ -64,8 +64,8 @@ export default class Gauge extends Component {
   static identifier = "gauge";
   static iconName = "gauge";
 
-  static minSize = getMinSize(this.identifier);
-  static defaultSize = getDefaultSize(this.identifier);
+  static minSize = getMinSize("gauge");
+  static defaultSize = getDefaultSize("gauge");
 
   static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;

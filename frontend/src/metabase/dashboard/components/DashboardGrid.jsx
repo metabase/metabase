@@ -129,10 +129,11 @@ class DashboardGrid extends Component {
   getInitialCardSizes = cards => {
     return cards
       .map(card => this.getLayoutForDashCard(card))
-      .reduce((acc, curr) => {
+      .reduce((acc, dashcardLayout) => {
+        const dashcardId = dashcardLayout.i;
         return {
           ...acc,
-          [curr.i]: _.pick(curr, ["w", "h"]),
+          [dashcardId]: _.pick(dashcardLayout, ["w", "h"]),
         };
       }, {});
   };
@@ -229,7 +230,7 @@ class DashboardGrid extends Component {
   };
 
   getLayouts(cards) {
-    const desktop = cards.map(card => this.getLayoutForDashCard(card));
+    const desktop = cards.map(this.getLayoutForDashCard);
     const mobile = generateMobileLayout({
       desktopLayout: desktop,
       defaultCardHeight: 6,

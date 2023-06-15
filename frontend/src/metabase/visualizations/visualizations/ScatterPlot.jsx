@@ -20,8 +20,8 @@ export default class ScatterPlot extends LineAreaBarChart {
   static iconName = "bubble";
   static noun = t`scatter plot`;
 
-  static minSize = getMinSize(this.identifier);
-  static defaultSize = getDefaultSize(this.identifier);
+  static minSize = getMinSize("scatter");
+  static defaultSize = getDefaultSize("scatter");
 
   static renderer = scatterRenderer;
 

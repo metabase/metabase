@@ -37,8 +37,8 @@ export default class Smart extends Component {
   static iconName = "smartscalar";
   static canSavePng = false;
 
-  static minSize = getMinSize(this.identifier);
-  static defaultSize = getDefaultSize(this.identifier);
+  static minSize = getMinSize("smartscalar");
+  static defaultSize = getDefaultSize("smartscalar");
 
   static noHeader = true;
 

@@ -40,8 +40,8 @@ export default class Scalar extends Component {
   static noHeader = true;
   static supportsSeries = true;
 
-  static minSize = getMinSize(this.identifier);
-  static defaultSize = getDefaultSize(this.identifier);
+  static minSize = getMinSize("scalar");
+  static defaultSize = getDefaultSize("scalar");
 
   static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;

@@ -152,7 +152,7 @@ export function visitDashboardAndCreateTab({ dashboardId, save = true }) {
   }
 }
 
-export const resizeDashboardCard = ({ card, x, y }) => {
+export function resizeDashboardCard({ card, x, y }) {
   card.within(() => {
     const resizeHandle = cy.get(".react-resizable-handle");
     resizeHandle
@@ -163,4 +163,4 @@ export const resizeDashboardCard = ({ card, x, y }) => {
       })
       .trigger("mouseup", { force: true });
   });
-};
+}

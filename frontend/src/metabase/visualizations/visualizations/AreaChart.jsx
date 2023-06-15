@@ -24,8 +24,8 @@ export default class AreaChart extends LineAreaBarChart {
   static iconName = "area";
   static noun = t`area chart`;
 
-  static minSize = getMinSize(this.identifier);
-  static defaultSize = getDefaultSize(this.identifier);
+  static minSize = getMinSize("area");
+  static defaultSize = getDefaultSize("area");
 
   static settings = {
     ...LINE_SETTINGS,

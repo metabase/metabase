@@ -249,8 +249,8 @@ describe("scenarios > dashboard card resizing", () => {
           dashCard.within(() => {
             resizeDashboardCard({
               card: dashCard,
-              x: -getDefaultSize(card.display).width * 100,
-              y: -getDefaultSize(card.display).height * 100,
+              x: -getDefaultSize(card.display).width * 200,
+              y: -getDefaultSize(card.display).height * 200,
             });
           });
         });

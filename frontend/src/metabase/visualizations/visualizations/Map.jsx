@@ -52,8 +52,8 @@ export default class Map extends Component {
 
   static aliases = ["state", "country", "pin_map"];
 
-  static minSize = getMinSize(this.identifier);
-  static defaultSize = getDefaultSize(this.identifier);
+  static minSize = getMinSize("map");
+  static defaultSize = getDefaultSize("map");
 
   static isSensible({ cols, rows }) {
     return (

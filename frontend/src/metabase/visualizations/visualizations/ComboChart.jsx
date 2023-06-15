@@ -21,8 +21,8 @@ export default class LineChart extends LineAreaBarChart {
   static iconName = "lineandbar";
   static noun = t`line and bar chart`;
 
-  static minSize = getMinSize(this.identifier);
-  static defaultSize = getDefaultSize(this.identifier);
+  static minSize = getMinSize("combo");
+  static defaultSize = getDefaultSize("combo");
 
   static settings = {
     ...LINE_SETTINGS,

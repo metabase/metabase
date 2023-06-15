@@ -22,7 +22,6 @@ export function getSensibleDisplays(data) {
 }
 
 let defaultVisualization;
-
 export function setDefaultVisualization(visualization) {
   defaultVisualization = visualization;
 }

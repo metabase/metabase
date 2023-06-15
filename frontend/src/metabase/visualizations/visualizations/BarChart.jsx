@@ -22,8 +22,8 @@ export default class BarChart extends LineAreaBarChart {
   static iconName = "bar";
   static noun = t`bar chart`;
 
-  static minSize = getMinSize(this.identifier);
-  static defaultSize = getDefaultSize(this.identifier);
+  static minSize = getMinSize("area");
+  static defaultSize = getDefaultSize("area");
 
   static settings = {
     ...STACKABLE_SETTINGS,

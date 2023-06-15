@@ -20,8 +20,8 @@ export default class WaterfallChart extends LineAreaBarChart {
   static iconName = "waterfall";
   static noun = t`waterfall chart`;
 
-  static minSize = getMinSize(this.identifier);
-  static defaultSize = getDefaultSize(this.identifier);
+  static minSize = getMinSize("waterfall");
+  static defaultSize = getDefaultSize("waterfall");
 
   static maxMetricsSupported = 1;
   static maxDimensionsSupported = 1;
