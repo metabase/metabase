@@ -72,7 +72,7 @@ You can upload CSV data by clicking on the **Upload** icon in the top right of t
 
 Metabase will create a [model](../data-modeling/models.md) that contains that CSV data, as well as the model's underlying table.
 
-This option will only be available if your admin has enabled uploads for you Metabase. See [Uploading data](../databases/uploads.md).
+Uploads will only be available if your admin has enabled uploads for your Metabase. See [Uploading data](../databases/uploads.md).
 
 ## Further reading
 
