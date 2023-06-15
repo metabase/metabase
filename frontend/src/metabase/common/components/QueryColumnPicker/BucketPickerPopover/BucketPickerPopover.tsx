@@ -1,10 +1,10 @@
 import * as Lib from "metabase-lib";
 import { BinningStrategyPickerPopover } from "./BinningStrategyPickerPopover";
 import { TemporalBucketPickerPopover } from "./TemporalBucketPickerPopover";
-import { BucketPickerPopoverProps as BaseBucketPickerPopoverProps } from "./types";
+import { CommonBucketPickerProps } from "./types";
 
 interface BucketPickerPopoverProps
-  extends Omit<BaseBucketPickerPopoverProps, "buckets"> {
+  extends Omit<CommonBucketPickerProps, "buckets"> {
   hasBinning?: boolean;
   hasTemporalBucketing?: boolean;
 }
