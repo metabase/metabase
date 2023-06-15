@@ -11,6 +11,10 @@ import IconBorder from "metabase/components/IconBorder";
 import { color } from "metabase/lib/colors";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import { isNumeric } from "metabase-lib/types/utils/isa";
 
 import { getValue } from "./utils";
@@ -31,6 +35,9 @@ export default class Progress extends Component {
   static uiName = t`Progress`;
   static identifier = "progress";
   static iconName = "progress";
+
+  static minSize = getMinSize(this.identifier);
+  static defaultSize = getDefaultSize(this.identifier);
 
   static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;

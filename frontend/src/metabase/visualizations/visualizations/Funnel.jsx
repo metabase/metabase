@@ -21,6 +21,10 @@ import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series"
 
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import FunnelNormal from "../components/FunnelNormal";
 import FunnelBar from "../components/FunnelBar";
 import LegendHeader from "../components/LegendHeader";
@@ -35,6 +39,9 @@ export default class Funnel extends Component {
   static iconName = "funnel";
 
   static noHeader = true;
+
+  static minSize = getMinSize(this.identifier);
+  static defaultSize = getDefaultSize(this.identifier);
 
   static isSensible({ cols, rows }) {
     return cols.length === 2;

@@ -24,6 +24,10 @@ import {
 } from "metabase/visualizations/lib/settings/column";
 
 import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
+import {
   isMetric,
   isDimension,
   isNumber,
@@ -43,6 +47,9 @@ export default class Table extends Component {
   static identifier = "table";
   static iconName = "table";
   static canSavePng = false;
+
+  static minSize = getMinSize(this.identifier);
+  static defaultSize = getDefaultSize(this.identifier);
 
   static isSensible({ cols, rows }) {
     return true;

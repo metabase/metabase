@@ -107,6 +107,7 @@ describe("scenarios > dashboard card resizing", () => {
 
       cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
         body.ordered_cards.forEach(({ card, size_x, size_y }) => {
+          cy.log(`Checking default sizes for ${card.display} card`);
           const { width, height } = getDefaultSize(card.display);
           expect(size_x).to.equal(width);
           expect(size_y).to.equal(height);
@@ -173,6 +174,7 @@ describe("scenarios > dashboard card resizing", () => {
 
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
           body.ordered_cards.forEach(({ card, size_x, size_y }) => {
+            cy.log(`Checking min sizes for ${card.display} card`);
             expect(size_x).to.equal(getMinSize(card.display).width);
             expect(size_y).to.equal(getMinSize(card.display).height);
           });

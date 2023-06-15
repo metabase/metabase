@@ -1,5 +1,9 @@
 import { t } from "ttag";
 
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import { Heading } from "./Heading";
 
 const HeadingWrapper = Object.assign(Heading, {
@@ -13,6 +17,9 @@ const HeadingWrapper = Object.assign(Heading, {
   disableSettingsConfig: true,
   supportPreviewing: false,
   supportsSeries: false,
+
+  minSize: getMinSize("heading"),
+  defaultSize: getDefaultSize("heading"),
 
   checkRenderable: () => {
     // heading can always be rendered, nothing needed here

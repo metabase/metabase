@@ -12,6 +12,10 @@ import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import { TYPE } from "metabase-lib/types/constants";
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
 
@@ -35,6 +39,9 @@ export default class Scalar extends Component {
 
   static noHeader = true;
   static supportsSeries = true;
+
+  static minSize = getMinSize(this.identifier);
+  static defaultSize = getDefaultSize(this.identifier);
 
   static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;

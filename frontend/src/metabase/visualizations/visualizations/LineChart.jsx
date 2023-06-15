@@ -1,4 +1,8 @@
 import { t } from "ttag";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { lineRenderer } from "../lib/LineAreaBarRenderer";
 import { GRAPH_GOAL_SETTINGS } from "../lib/settings/goal";
@@ -16,6 +20,9 @@ export default class LineChart extends LineAreaBarChart {
   static identifier = "line";
   static iconName = "line";
   static noun = t`line chart`;
+
+  static minSize = getMinSize(this.identifier);
+  static defaultSize = getDefaultSize(this.identifier);
 
   static settings = {
     ...LINE_SETTINGS,

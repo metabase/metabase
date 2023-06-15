@@ -16,6 +16,10 @@ import {
   computeMinimalBounds,
   getCanonicalRowKey,
 } from "metabase/visualizations/lib/mapping";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import { isMetric, isString } from "metabase-lib/types/utils/isa";
 import ChartWithLegend from "./ChartWithLegend";
 import LegacyChoropleth from "./LegacyChoropleth";
@@ -96,6 +100,9 @@ function shouldUseCompactFormatting(groups, formatMetric) {
 
 export default class ChoroplethMap extends Component {
   static propTypes = {};
+
+  static minSize = getMinSize("map");
+  static defaultSize = getDefaultSize("map");
 
   static isSensible({ cols }) {
     return cols.filter(isString).length > 0 && cols.filter(isMetric).length > 0;

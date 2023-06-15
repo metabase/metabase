@@ -39,7 +39,7 @@ const VISUALIZATION_SIZES: {
   },
   waterfall: {
     min: { width: 4, height: 3 },
-    default: { width: 12, height: 6 },
+    default: { width: 14, height: 6 },
   },
   pie: {
     min: { width: 4, height: 3 },
@@ -85,7 +85,7 @@ const VISUALIZATION_SIZES: {
     min: { width: 1, height: 1 },
     default: { width: 4, height: 1 },
   },
-  button: {
+  action: {
     min: { width: 1, height: 1 },
     default: { width: 4, height: 1 },
   },

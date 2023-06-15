@@ -49,7 +49,7 @@ class DashboardGrid extends Component {
 
     this.state = {
       visibleCardIds,
-      initLayouts: this.initialCardSizes(props.dashboard.ordered_cards),
+      initialCardSizes: this.getInitialCardSizes(props.dashboard.ordered_cards),
       layouts: this.getLayouts(props.dashboard.ordered_cards),
       addSeriesModalDashCard: null,
       isDragging: false,
@@ -116,7 +116,7 @@ class DashboardGrid extends Component {
 
     if (!isEditing) {
       this.setState({
-        initLayouts: this.initialCardSizes(cards),
+        initLayouts: this.getInitialCardSizes(cards),
       });
     }
 
@@ -126,7 +126,7 @@ class DashboardGrid extends Component {
     });
   }
 
-  initialCardSizes = cards => {
+  getInitialCardSizes = cards => {
     return cards
       .map(card => this.getLayoutForDashCard(card))
       .reduce((acc, curr) => {

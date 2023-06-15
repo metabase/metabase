@@ -1,5 +1,9 @@
 import { t } from "ttag";
 
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import { Text } from "./Text";
 
 const TextWrapper = Object.assign(Text, {
@@ -13,6 +17,9 @@ const TextWrapper = Object.assign(Text, {
   supportsSeries: false,
   hidden: true,
   supportPreviewing: false,
+
+  minSize: getMinSize("text"),
+  defaultSize: getDefaultSize("text"),
 
   checkRenderable: () => {
     // text can always be rendered, nothing needed here
