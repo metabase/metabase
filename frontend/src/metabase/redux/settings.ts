@@ -27,5 +27,8 @@ export const settings = createReducer(
       state.loading = false;
       state.values = payload;
     });
+    builder.addCase(refreshSiteSettings.rejected, state => {
+      state.loading = false;
+    });
   },
 );
