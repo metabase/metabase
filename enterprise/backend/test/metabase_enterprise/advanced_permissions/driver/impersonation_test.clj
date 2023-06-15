@@ -80,14 +80,15 @@
     (premium-features-test/with-premium-features #{:advanced-permissions}
       (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                   :attributes     {"impersonation_attr" "limited_role"}}
-       ;; User with connection impersonation should not be able to query a table they don't have access to
-       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                             #"You do not have permissions to run this query."
-                             (mt/run-mbql-query venues
-                                                {:aggregation [[:count]]})))
-       ;; Non-impersonated user should stil be able to query table
-       (mw.session/as-admin
-        (is (= [100]
-               (mt/first-row
-                (mt/run-mbql-query venues
-                  {:aggregation [[:count]]})))))))))
+        ;; User with connection impersonation should not be able to query a table they don't have access to
+        ;; (`limited_role` in CI Snowflake has no data access)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"You do not have permissions to run this query."
+                              (mt/run-mbql-query venues
+                                                 {:aggregation [[:count]]})))
+        ;; Non-impersonated user should stil be able to query the table
+        (mw.session/as-admin
+         (is (= [100]
+                (mt/first-row
+                 (mt/run-mbql-query venues
+                                    {:aggregation [[:count]]})))))))))
