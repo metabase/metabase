@@ -1,4 +1,5 @@
 import {
+  appBar,
   describeWithSnowplow,
   enableTracking,
   expectGoodSnowplowEvents,
@@ -13,7 +14,7 @@ describe("banner", () => {
     cy.signInAsAdmin();
   });
 
-  it("should show a database prompt banner when logged in as an admin, an instance is on a paid plan, and only have a single sample dataset", () => {
+  it("should show a database prompt banner when logged in as an admin, an instance is on a paid plan, only have a single sample dataset, and is not white labeling", () => {
     cy.visit("/");
     cy.findByRole("main").findByText("Loading...").should("not.exist");
 
@@ -53,6 +54,44 @@ describe("banner", () => {
         ).should("not.exist");
       });
   });
+
+  describe("embeddings", () => {
+    // Public and signed embeds are tested in `PublicQuestion.unit.spec.tsx`
+
+    describe("full-app embeddings", () => {
+      it("should render database prompt banner when logged in as an admin, an instance is on a paid plan, only have a single sample dataset, and is not white labeling", () => {
+        visitUrl({ url: "/", qs: { side_nav: false, logo: false } });
+
+        cy.findByRole("link", { name: "Metabase tips" }).should("exist");
+
+        // Test that we're in full-app embedding since parameters are working.
+        appBar().should("not.exist");
+
+        cy.findAllByRole("banner")
+          .first()
+          .within(() => {
+            cy.findByText(
+              "Connect to your database to get the most from Metabase.",
+            ).should("exist");
+          });
+      });
+
+      it("should not render for any other condition", () => {
+        // Adding a second database should prevent the database prompt
+        cy.addH2SampleDatabase({ name: "H2 DB" });
+
+        visitUrl({ url: "/", qs: { side_nav: false, logo: false } });
+
+        cy.findByRole("link", { name: "Metabase tips" }).should("exist");
+
+        // Test that we're in full-app embedding since parameters are working.
+        appBar().should("not.exist");
+
+        // Since there wouldn't be a database prompt banner, we can assert that there is no banner at all
+        cy.findAllByRole("banner").should("not.exist");
+      });
+    });
+  });
 });
 
 describeWithSnowplow(
@@ -89,3 +128,14 @@ describeWithSnowplow(
     });
   },
 );
+
+const visitUrl = url => {
+  cy.visit({
+    ...url,
+    onBeforeLoad(window) {
+      // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
+      // by removing the property the app would work in embedding mode
+      window.Cypress = undefined;
+    },
+  });
+};

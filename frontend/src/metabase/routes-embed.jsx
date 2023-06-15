@@ -3,7 +3,7 @@ import { Route } from "react-router";
 import PublicNotFound from "metabase/public/components/PublicNotFound";
 
 import PublicApp from "metabase/public/containers/PublicApp";
-import PublicQuestion from "metabase/public/containers/PublicQuestion";
+import { PublicQuestion } from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
 
 export const getRoutes = store => (
