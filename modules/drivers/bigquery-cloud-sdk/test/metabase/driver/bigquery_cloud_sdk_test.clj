@@ -213,14 +213,14 @@
   (mt/test-driver :bigquery-cloud-sdk
     (with-view [#_:clj-kondo/ignore view-name]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
-                     {:schema "v3_test_data", :name view-name})
+                     {:schema (bigquery.tx/normalize-name "test_data"), :name view-name})
           "`describe-database` should see the view")
       (is (= {:schema "v3_test_data"
               :name   view-name
               :fields #{{:name "id", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
                         {:name "venue_name", :database-type "STRING", :base-type :type/Text, :database-position 1}
                         {:name "category_name", :database-type "STRING", :base-type :type/Text, :database-position 2}}}
-             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name, :schema "v3_test_data"}))
+             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name, :schema (bigquery.tx/normalize-name "test_data")}))
           "`describe-tables` should see the fields in the view")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the view (#3414)"
@@ -282,7 +282,7 @@
   (testing "Table with decimal types"
     (with-numeric-types-table [#_:clj-kondo/ignore tbl-nm]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
-                     {:schema "v3_test_data", :name tbl-nm})
+                     {:schema (bigquery.tx/normalize-name "test_data"), :name tbl-nm})
           "`describe-database` should see the table")
       (is (= {:schema "v3_test_data"
               :name   tbl-nm
@@ -296,7 +296,7 @@
                          :database-type "BIGNUMERIC"
                          :base-type :type/Decimal
                          :database-position 3}}}
-            (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
+            (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema (bigquery.tx/normalize-name "test_data")}))
           "`describe-table` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the table"
@@ -323,11 +323,11 @@
                     tbl-nm])
       (fn [tbl-nm] ["DROP TABLE IF EXISTS `v3_test_data.%s`" tbl-nm])
       (fn [tbl-nm]
-        (is (= {:schema "v3_test_data"
+        (is (= {:schema (bigquery.tx/normalize-name "test_data")
                 :name   tbl-nm
                 :fields #{{:name "int_col", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
                           {:name "array_col", :database-type "INTEGER", :base-type :type/Array, :database-position 1}}}
-               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
+               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema (bigquery.tx/normalize-name "test_data")}))
             "`describe-table` should detect the correct base-type for array type columns")))))
 
 (deftest sync-inactivates-old-duplicate-tables
