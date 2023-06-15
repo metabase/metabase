@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
-import * as Lib from "metabase-lib";
+import * as Types from "metabase-lib";
+import { useMetabaseLib } from "metabase-lib/react";
 
 import type { NotebookStepUiComponentProps } from "../../types";
 import ClauseStep from "../ClauseStep";
@@ -27,11 +28,12 @@ function BreakoutStep({
   updateQuery,
 }: NotebookStepUiComponentProps) {
   const { stageIndex } = step;
+  const Lib = useMetabaseLib(topLevelQuery, stageIndex);
 
-  const clauses = Lib.breakouts(topLevelQuery, stageIndex);
+  const clauses = Lib.breakouts();
 
   const checkColumnSelected = (
-    columnInfo: Lib.ColumnDisplayInfo,
+    columnInfo: Types.ColumnDisplayInfo,
     breakoutIndex?: number,
   ) => {
     return (
@@ -41,10 +43,10 @@ function BreakoutStep({
   };
 
   const getColumnGroups = (breakoutIndex?: number) => {
-    const columns = Lib.breakoutableColumns(topLevelQuery, stageIndex);
+    const columns = Lib.breakoutableColumns();
 
     const filteredColumns = columns.filter(column => {
-      const columnInfo = Lib.displayInfo(topLevelQuery, stageIndex, column);
+      const columnInfo = Lib.displayInfo(column);
 
       const isAlreadyUsed = columnInfo.breakoutPosition != null;
       const isSelected = checkColumnSelected(columnInfo, breakoutIndex);
@@ -55,31 +57,26 @@ function BreakoutStep({
     return Lib.groupColumns(filteredColumns);
   };
 
-  const handleAddBreakout = (column: Lib.ColumnMetadata) => {
-    const nextQuery = Lib.breakout(topLevelQuery, stageIndex, column);
+  const handleAddBreakout = (column: Types.ColumnMetadata) => {
+    const nextQuery = Lib.breakout(column);
     updateQuery(nextQuery);
   };
 
   const handleUpdateBreakoutField = (
-    clause: Lib.BreakoutClause,
-    column: Lib.ColumnMetadata,
+    clause: Types.BreakoutClause,
+    column: Types.ColumnMetadata,
   ) => {
-    const nextQuery = Lib.replaceClause(
-      topLevelQuery,
-      stageIndex,
-      clause,
-      column,
-    );
+    const nextQuery = Lib.replaceClause(clause, column);
     updateQuery(nextQuery);
   };
 
-  const handleRemoveBreakout = (clause: Lib.BreakoutClause) => {
-    const nextQuery = Lib.removeClause(topLevelQuery, stageIndex, clause);
+  const handleRemoveBreakout = (clause: Types.BreakoutClause) => {
+    const nextQuery = Lib.removeClause(clause);
     updateQuery(nextQuery);
   };
 
-  const renderBreakoutName = (clause: Lib.BreakoutClause) =>
-    Lib.displayInfo(topLevelQuery, stageIndex, clause).longDisplayName;
+  const renderBreakoutName = (clause: Types.BreakoutClause) =>
+    Lib.displayInfo(clause).longDisplayName;
 
   return (
     <ClauseStep
@@ -100,7 +97,7 @@ function BreakoutStep({
           checkIsColumnSelected={item =>
             checkColumnSelected(item, breakoutIndex)
           }
-          onSelect={(column: Lib.ColumnMetadata) => {
+          onSelect={(column: Types.ColumnMetadata) => {
             const isUpdate = breakout != null;
             if (isUpdate) {
               handleUpdateBreakoutField(breakout, column);

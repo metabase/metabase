@@ -5,7 +5,8 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { Icon, IconName } from "metabase/core/components/Icon";
 import { singularize } from "metabase/lib/formatting";
 
-import * as Lib from "metabase-lib";
+import * as Types from "metabase-lib";
+import { useMetabaseLib } from "metabase-lib/react";
 
 import {
   BinningStrategyPickerPopover,
@@ -14,20 +15,20 @@ import {
 
 const DEFAULT_MAX_HEIGHT = 610;
 
-type ColumnListItem = Lib.ColumnDisplayInfo & {
-  column: Lib.ColumnMetadata;
+type ColumnListItem = Types.ColumnDisplayInfo & {
+  column: Types.ColumnMetadata;
 };
 
 export interface QueryColumnPickerProps {
   className?: string;
-  query: Lib.Query;
+  query: Types.Query;
   stageIndex: number;
-  columnGroups: Lib.ColumnGroup[];
+  columnGroups: Types.ColumnGroup[];
   hasBinning?: boolean;
   hasTemporalBucketing?: boolean;
   maxHeight?: number;
   checkIsColumnSelected: (item: ColumnListItem) => boolean;
-  onSelect: (column: Lib.ColumnMetadata) => void;
+  onSelect: (column: Types.ColumnMetadata) => void;
   onClose?: () => void;
 }
 
@@ -49,13 +50,15 @@ function QueryColumnPicker({
   onSelect,
   onClose,
 }: QueryColumnPickerProps) {
+  const Lib = useMetabaseLib(query, stageIndex);
+
   const sections: Sections[] = useMemo(
     () =>
       columnGroups.map(group => {
-        const groupInfo = Lib.displayInfo(query, stageIndex, group);
+        const groupInfo = Lib.displayInfo(group);
 
         const items = Lib.getColumnsFromColumnGroup(group).map(column => ({
-          ...Lib.displayInfo(query, stageIndex, column),
+          ...Lib.displayInfo(column),
           column,
         }));
 
@@ -65,11 +68,11 @@ function QueryColumnPicker({
           items,
         };
       }),
-    [query, stageIndex, columnGroups],
+    [Lib, columnGroups],
   );
 
   const handleSelect = useCallback(
-    (column: Lib.ColumnMetadata) => {
+    (column: Types.ColumnMetadata) => {
       onSelect(column);
       onClose?.();
     },
@@ -86,25 +89,23 @@ function QueryColumnPicker({
       }
 
       const isBinned = Lib.binning(item.column) != null;
-      const isBinnable =
-        isBinned || Lib.isBinnable(query, stageIndex, item.column);
+      const isBinnable = isBinned || Lib.isBinnable(item.column);
 
       if (hasBinning && isBinnable) {
         const column = isBinned
           ? item.column
-          : Lib.withDefaultBinning(query, stageIndex, item.column);
+          : Lib.withDefaultBinning(item.column);
         handleSelect(column);
         return;
       }
 
       const isBucketed = Lib.temporalBucket(item.column) != null;
-      const isBucketable =
-        isBucketed || Lib.isTemporalBucketable(query, stageIndex, item.column);
+      const isBucketable = isBucketed || Lib.isTemporalBucketable(item.column);
 
       if (hasTemporalBucketing && isBucketable) {
         const column = isBucketed
           ? item.column
-          : Lib.withDefaultTemporalBucket(query, stageIndex, item.column);
+          : Lib.withDefaultTemporalBucket(item.column);
         handleSelect(column);
         return;
       }
@@ -112,8 +113,7 @@ function QueryColumnPicker({
       handleSelect(item.column);
     },
     [
-      query,
-      stageIndex,
+      Lib,
       hasBinning,
       hasTemporalBucketing,
       checkIsColumnSelected,
@@ -124,12 +124,8 @@ function QueryColumnPicker({
 
   const renderItemExtra = useCallback(
     (item: ColumnListItem) => {
-      if (hasBinning && Lib.isBinnable(query, stageIndex, item.column)) {
-        const buckets = Lib.availableBinningStrategies(
-          query,
-          stageIndex,
-          item.column,
-        );
+      if (hasBinning && Lib.isBinnable(item.column)) {
+        const buckets = Lib.availableBinningStrategies(item.column);
         const isEditing = checkIsColumnSelected(item);
         return (
           <BinningStrategyPickerPopover
@@ -143,15 +139,8 @@ function QueryColumnPicker({
         );
       }
 
-      if (
-        hasTemporalBucketing &&
-        Lib.isTemporalBucketable(query, stageIndex, item.column)
-      ) {
-        const buckets = Lib.availableTemporalBuckets(
-          query,
-          stageIndex,
-          item.column,
-        );
+      if (hasTemporalBucketing && Lib.isTemporalBucketable(item.column)) {
+        const buckets = Lib.availableTemporalBuckets(item.column);
         const isEditing = checkIsColumnSelected(item);
         return (
           <TemporalBucketPickerPopover
@@ -168,6 +157,7 @@ function QueryColumnPicker({
       return null;
     },
     [
+      Lib,
       query,
       stageIndex,
       hasBinning,
@@ -208,14 +198,18 @@ function renderItemIcon(item: ColumnListItem) {
   return <Icon name={getColumnIcon(item.column)} size={18} />;
 }
 
-function getGroupName(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
-  const columnInfo = groupInfo as Lib.ColumnDisplayInfo;
-  const tableInfo = groupInfo as Lib.TableDisplayInfo;
+function getGroupName(
+  groupInfo: Types.ColumnDisplayInfo | Types.TableDisplayInfo,
+) {
+  const columnInfo = groupInfo as Types.ColumnDisplayInfo;
+  const tableInfo = groupInfo as Types.TableDisplayInfo;
   return columnInfo.fkReferenceName || singularize(tableInfo.displayName);
 }
 
-function getGroupIcon(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
-  if ((groupInfo as Lib.TableDisplayInfo).isSourceTable) {
+function getGroupIcon(
+  groupInfo: Types.ColumnDisplayInfo | Types.TableDisplayInfo,
+) {
+  if ((groupInfo as Types.TableDisplayInfo).isSourceTable) {
     return "table";
   }
   if (groupInfo.isFromJoin) {
