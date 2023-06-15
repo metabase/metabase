@@ -8,12 +8,22 @@ export function useShouldShowDatabasePromptBanner(): boolean | undefined {
   const isAdmin = useSelector(getUserIsAdmin);
   const isPaidPlan = useSelector(getIsPaidPlan);
   const isWhiteLabeling = useSelector(PLUGIN_SELECTORS.getIsWhiteLabeling);
+  const isEligibleForDatabasePromptBanner =
+    isAdmin && isPaidPlan && !isWhiteLabeling;
 
   const { data: databases } = useDatabaseListQuery({
-    enabled: isAdmin && isPaidPlan && !isWhiteLabeling,
+    enabled: isEligibleForDatabasePromptBanner,
   });
-  const onlyHaveSampleDatabase =
-    databases && databases.length === 1 && databases[0].is_sample;
 
-  return isAdmin && isPaidPlan && !isWhiteLabeling && onlyHaveSampleDatabase;
+  if (!isEligibleForDatabasePromptBanner) {
+    return false;
+  }
+
+  if (databases === undefined) {
+    return undefined;
+  }
+
+  const onlyHasSampleDatabase =
+    databases.length === 1 && databases[0].is_sample;
+  return onlyHasSampleDatabase;
 }
