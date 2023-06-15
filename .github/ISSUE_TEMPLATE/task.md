@@ -8,7 +8,5 @@ labels: ".Task"
 ---
 
 **Links**
-- product doc: _link to product doc_
-- eng doc: _link to technical design doc_
-- issue links: _list of issues this should close when this is delivered_
+- issue links: _related issues if any_
 
