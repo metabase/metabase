@@ -1,0 +1,79 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_group_members
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Member of
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  type: query
+  query:
+    source-table: lTp-ATFsCUFEr9I0fMEaO
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_id
+      - null
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - null
+  database: Internal Metabase Database
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: zn_VtBXm5-teZmXpwGcNu
+  label: member_of
+display: table
+entity_id: zn_VtBXm5-teZmXpwGcNu
+collection_preview: true
+visualization_settings:
+  table.columns:
+  - name: user_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_group_members
+      - user_id
+    - null
+    enabled: false
+  - name: group_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_group_members
+      - group_id
+    - null
+    enabled: true
+  - name: group_name
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_group_members
+      - group_name
+    - null
+    enabled: true
+  table.pivot_column: group_id
+  table.cell_column: group_name
+  column_settings: null
+parameters: []
+dataset: false
+created_at: '2023-06-15T02:00:12.773345Z'
+public_uuid: null
