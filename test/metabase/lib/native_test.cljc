@@ -126,16 +126,16 @@
 
 #?(:cljs
    (deftest converters-test
-     (let [clj-tags {"a"         {:id           #uuid "c5ad010c-632a-4498-b667-9188fbe965f9"
+     (let [clj-tags {"a"         {:id           "c5ad010c-632a-4498-b667-9188fbe965f9"
                                   :name         "a"
                                   :display-name "A"
                                   :type         :text}
-                     "#123-foo"  {:id           #uuid "7e58e086-5d63-4986-8fe7-87e05dfa4089"
+                     "#123-foo"  {:id           "7e58e086-5d63-4986-8fe7-87e05dfa4089"
                                   :name         "#123-foo"
                                   :display-name "#123-foo"
                                   :type         :card
                                   :card-id      123}
-                     "snippet:b" {:id           #uuid "604131d0-a74c-4822-b113-8e9515b1a985"
+                     "snippet:b" {:id           "604131d0-a74c-4822-b113-8e9515b1a985"
                                   :name         "snippet:b"
                                   :display-name "Snippet B"
                                   :type         :snippet
