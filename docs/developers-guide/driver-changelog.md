@@ -27,17 +27,8 @@ title: Driver interface changelog
 
 ## Metabase 0.46.0
 
-- `metabase.driver.sql-jdbc.execute/connection-with-timezone` has been marked deprecated and is scheduled for removal
-  in Metabase 0.49.0. The new method `metabase.driver.sql-jdbc.execute/do-with-connection-with-timezone` replaces it.
-  Migration to the new method is straightforward. See PR [#22166](https://github.com/metabase/metabase/pull/22166) for
-  more information.
-
-- `metabase.driver/table-rows-sample` has been added. This method is used in situations where Metabase needs
-  a limited sample from a table, like when fingerprinting. The default implementation defined in the
-  `metabase.db.metadata-queries` namespace runs an MBQL query using the regular query processor to produce the
-  sample rows. This is good enough in most cases, so this multimethod should not be implemented unless really
-  necessary. Currently, the only case when a special implementation is used is for BigQuery, which does not
-  respect limit clauses.
+- The process for building a driver has changed slightly in Metabase 0.46.0. Your build command should now look
+  something like this:
 
   ```sh
   # Example for building the driver with bash or similar
