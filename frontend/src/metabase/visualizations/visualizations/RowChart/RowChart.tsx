@@ -332,10 +332,8 @@ RowChartVisualization.iconName = "horizontal_bar";
 RowChartVisualization.noun = t`row chart`;
 
 RowChartVisualization.noHeader = true;
-RowChartVisualization.minSize = getMinSize(RowChartVisualization.identifier);
-RowChartVisualization.defaultSize = getDefaultSize(
-  RowChartVisualization.identifier,
-);
+RowChartVisualization.minSize = getMinSize("row");
+RowChartVisualization.defaultSize = getDefaultSize("row");
 
 RowChartVisualization.settings = {
   ...ROW_CHART_SETTINGS,

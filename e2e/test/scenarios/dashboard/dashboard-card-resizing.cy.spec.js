@@ -131,6 +131,14 @@ const createMockChartQuestion = vizType => {
       breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "minute" }]],
     },
     display: vizType,
+    visualization_settings: {
+      "graph.dimensions": [
+        Object.keys(ORDERS).find(key => ORDERS[key] === ORDERS.CREATED_AT),
+      ],
+      "graph.series_order_dimension": null,
+      "graph.series_order": null,
+      "graph.metrics": ["count"],
+    },
   };
 };
 
@@ -165,6 +173,7 @@ const TEST_QUESTIONS = [
     "area",
     "combo",
     "pivot",
+    "scatter",
     "funnel",
     "object",
     "waterfall",
