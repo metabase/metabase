@@ -59,7 +59,7 @@
        false
        (config/config-bool :mb-colorize-logs))))
 
-(def ^{:arglists '(^String [color-symb x])} colorize
+(def ^{:arglists '(^String [color-symb x])} ^:redef colorize
   "Colorize string `x` using `color`, a symbol or keyword, but only if `MB_COLORIZE_LOGS` is enabled (the default).
   `color` can be `green`, `red`, `yellow`, `blue`, `cyan`, `magenta`, etc. See the entire list of avaliable
   colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj)"
