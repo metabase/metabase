@@ -22,7 +22,7 @@ export const AppBanner = ({ location }: AppBannerProps) => {
     return (
       <PaymentBanner isAdmin={isAdmin} tokenStatusStatus={tokenStatusStatus} />
     );
-  } else {
-    return <DatabasePromptBanner location={location} />;
   }
+
+  return <DatabasePromptBanner location={location} />;
 };

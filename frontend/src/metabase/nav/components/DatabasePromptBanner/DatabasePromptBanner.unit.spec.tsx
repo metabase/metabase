@@ -36,9 +36,9 @@ async function setup({
   isOnAdminAddDatabasePage = false,
 }: setupOpts = {}) {
   if (onlyHaveSampleDatabase) {
-    await setupDatabasesEndpoints([TEST_DB]);
+    setupDatabasesEndpoints([TEST_DB]);
   } else {
-    await setupDatabasesEndpoints([TEST_DB, DATA_WAREHOUSE_DB]);
+    setupDatabasesEndpoints([TEST_DB, DATA_WAREHOUSE_DB]);
   }
 
   const state = createMockState({
@@ -64,12 +64,11 @@ async function setup({
     },
   );
 
-  // 1. We will only call this endpoint when `isAdmin` and `isPaidPlan` are both true.
-  // 2. This check ensures the conditions for database prompt banner are all available.
+  // This check ensures the conditions for database prompt banner are all available.
   // Then we could safely assert that the banner is not rendered.
   // If we don't wait for this API call to finish, the banner could have rendered,
   // and the test would still pass.
-  if (isAdmin && isPaidPlan) {
+  if (isAdmin && isPaidPlan && !isWhiteLabeling) {
     await waitFor(() => {
       expect(fetchMock.called("path:/api/database")).toBe(true);
     });
