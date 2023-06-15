@@ -40,13 +40,6 @@
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
-(defn- transient-dataset?
-  "Returns a boolean indicating whether the given `dataset-name` (as per its definition, NOT the physical schema name
-  that is to be created on the cluster) should be made transient (i.e. created and destroyed with every test run, for
-  instance to check time intervals relative to \"now\")."
-  [dataset-name]
-  (str/includes? dataset-name "checkins_interval_"))
-
 (defn- normalize-name ^String [db-or-table identifier]
   (let [s (str/replace (name identifier) "-" "_")]
     (case db-or-table
@@ -99,7 +92,7 @@
   (.delete (bigquery) dataset-id (u/varargs
                                    BigQuery$DatasetDeleteOption
                                    [(BigQuery$DatasetDeleteOption/deleteContents)]))
-  (log/error (u/format-color 'red "Deleted BigQuery dataset `%s.%s`." (project-id) dataset-id)))
+  (log/infof "Deleted BigQuery dataset `%s.%s`." (project-id) dataset-id))
 
 (defn execute!
   "Execute arbitrary (presumably DDL) SQL statements against the test project. Waits for statement to complete, throwing
@@ -298,19 +291,12 @@
 (defn- existing-dataset-names
   "Fetch a list of *all* dataset names that currently exist in the BQ test project."
   []
-  (for [^Dataset dataset (.iterateAll (.listDatasets (bigquery) (into-array BigQuery$DatasetListOption [])))
-        :let    [dataset-name (.. dataset getDatasetId getDataset)]]
-    dataset-name))
-
-;; keep track of databases we haven't created yet
-(def ^:private existing-datasets
-  "All datasets that already exist in the BigQuery cluster, so that we can possibly avoid recreating/repopulating them
-  on every run."
-  (atom #{}))
+  (for [^Dataset dataset (.iterateAll (.listDatasets (bigquery) (into-array BigQuery$DatasetListOption [])))]
+    (.. dataset getDatasetId getDataset)))
 
 (defn- transient-dataset-outdated?
   "Checks whether the given `dataset-name` is a transient dataset that is outdated, and should be deleted.  Note that
-  unlike `transient-dataset?`, this doesn't need any domain specific knowledge about which transient datasets are
+  this doesn't need any domain specific knowledge about which transient datasets are
   outdated. The fact that a *created* dataset (i.e. created on BigQuery) is transient has already been encoded by a
   suffix, so we can just look for that here."
   [dataset-name]
@@ -321,52 +307,37 @@
 (defmethod tx/create-db! :bigquery-cloud-sdk [_ {:keys [database-name table-definitions]} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
   ;; fetch existing datasets if we haven't done so yet
-  (when-not (seq @existing-datasets)
-    (let [{transient-datasets true non-transient-datasets false} (group-by transient-dataset?
-                                                                   (existing-dataset-names))]
-      (reset! existing-datasets (set non-transient-datasets))
-      (log/infof "These BigQuery datasets have already been loaded:\n%s" (u/pprint-to-str (sort @existing-datasets)))
-      (when-let [outdated-transient-datasets (seq (filter transient-dataset-outdated? transient-datasets))]
-        (log/info (u/format-color
-                    'blue
-                    "These BigQuery datasets are transient, and more than two hours old; deleting them: %s`."
-                    (u/pprint-to-str (sort outdated-transient-datasets))))
-        (doseq [delete-ds outdated-transient-datasets]
-          (u/ignore-exceptions
-            (destroy-dataset! delete-ds))))))
+  (let [datasets (existing-dataset-names)]
+    (doseq [outdated (filter transient-dataset-outdated? datasets)]
+      (log/info (u/format-color 'blue "Deleting temporary dataset more than two hours old: %s`." outdated))
+      (u/ignore-exceptions
+       (destroy-dataset! outdated))))
   ;; now check and see if we need to create the requested one
   (let [database-name (normalize-name :db database-name)]
-    (when-not (contains? @existing-datasets database-name)
-      (u/ignore-exceptions
+    (u/auto-retry 2
+     (try
+       (log/infof "Creating dataset %s..." (pr-str database-name))
+       ;; if the dataset failed to load successfully last time around, destroy whatever was loaded so we start
+       ;; again from a blank slate
+       (u/ignore-exceptions
         (destroy-dataset! database-name))
-      (u/auto-retry 2
-        (try
-          (log/infof "Creating dataset %s..." (pr-str database-name))
-          ;; if the dataset failed to load successfully last time around, destroy whatever was loaded so we start
-          ;; again from a blank slate
-          (destroy-dataset! database-name)
-          #_(u/ignore-exceptions
-              (destroy-dataset! database-name))
-          (create-dataset! database-name)
+       (create-dataset! database-name)
           ;; now create tables and load data.
-          (doseq [tabledef table-definitions]
-            (load-tabledef! database-name tabledef))
-          (swap! existing-datasets conj database-name)
-          (log/info (u/format-color 'green "Successfully created %s." (pr-str database-name)))
-          (catch Throwable e
-            (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str database-name)))
-            (log/error (u/pprint-to-str 'red (Throwable->map e)))
+       (doseq [tabledef table-definitions]
+         (load-tabledef! database-name tabledef))
+       (log/info (u/format-color 'green "Successfully created %s." (pr-str database-name)))
+       (catch Throwable e
+         (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str database-name)))
+         (log/error (u/pprint-to-str 'red (Throwable->map e)))
             ;; if creating the dataset ultimately fails to complete, then delete it so it will hopefully
             ;; work next time around
-            (u/ignore-exceptions
-              (destroy-dataset! database-name))
-            (throw e)))))))
+         (u/ignore-exceptions
+          (destroy-dataset! database-name))
+         (throw e))))))
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ {:keys [database-name]}]
-  (destroy-dataset! database-name)
-  (when (seq @existing-datasets)
-    (swap! existing-datasets disj database-name)))
+  (destroy-dataset! database-name))
 
 (defmethod tx/aggregate-column-info :bigquery-cloud-sdk
   ([driver aggregation-type]
