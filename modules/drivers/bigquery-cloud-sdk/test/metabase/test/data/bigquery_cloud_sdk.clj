@@ -322,17 +322,13 @@
        (u/ignore-exceptions
         (destroy-dataset! database-name))
        (create-dataset! database-name)
-          ;; now create tables and load data.
+       ;; now create tables and load data.
        (doseq [tabledef table-definitions]
          (load-tabledef! database-name tabledef))
        (log/info (u/format-color 'green "Successfully created %s." (pr-str database-name)))
        (catch Throwable e
          (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str database-name)))
          (log/error (u/pprint-to-str 'red (Throwable->map e)))
-            ;; if creating the dataset ultimately fails to complete, then delete it so it will hopefully
-            ;; work next time around
-         (u/ignore-exceptions
-          (destroy-dataset! database-name))
          (throw e))))))
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
