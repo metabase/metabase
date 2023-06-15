@@ -10,6 +10,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
@@ -511,3 +512,298 @@
         (is (true? (no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-24 18))))
       (testing "shouldn't have overlapping cards"
         (is (true? (no-cards-are-overlap? rollbacked-to-24)))))))
+
+(deftest migrate-legacy-dashboard-card-column-settings-field-refs-test
+  (testing "Migrations v47.00-043: update report_dashboardcard.visualization_settings.column_settings legacy field refs"
+    (impl/test-migrations ["v47.00-043"] [migrate!]
+      (let [visualization-settings
+            {"column_settings" (-> {["name" "column_name"]                              {"column_title" "ID6"},
+                                    ["ref" ["field-literal" "column_name" "type/Text"]] {"column_title" "ID5"},
+                                    ["ref" ["field-id" 39]]                             {"column_title" "ID1"},
+                                    ["ref" ["field" 40 nil]]                            {"column_title" "ID2"},
+                                    ["ref" ["fk->" ["field-id" 39] ["field-id" 40]]]    {"column_title" "ID3"},
+                                    ["ref" ["fk->" 41 42]]                              {"column_title" "ID4"}}
+                                   (update-keys json/generate-string))}
+            expected
+            {"column_settings" (-> {["name" "column_name"]                                    {"column_title" "ID6"},
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "ID5"},
+                                    ["ref" ["field" 39 nil]]                                  {"column_title" "ID1"},
+                                    ["ref" ["field" 40 nil]]                                  {"column_title" "ID2"},
+                                    ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
+                                    ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
+                                   (update-keys json/generate-string))}
+            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
+                                                        :last_name   "Hughes"
+                                                        :email       "howard@aircraft.com"
+                                                        :password    "superstrong"
+                                                        :date_joined :%now})
+            database-id (t2/insert-returning-pks! :model/Database {:name       "DB"
+                                                                   :engine     "h2"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now
+                                                                   :details    "{}"})
+            card-id     (t2/insert-returning-pks! :model/Card {:name                   "My Saved Question"
+                                                               :created_at             :%now
+                                                               :updated_at             :%now
+                                                               :creator_id             user-id
+                                                               :display                "table"
+                                                               :dataset_query          "{}"
+                                                               :visualization_settings "{}"
+                                                               :database_id            database-id
+                                                               :collection_id          nil})
+            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
+                                                                     :creator_id          user-id
+                                                                     :parameters          []})
+            dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
+                                                                         :visualization_settings (json/generate-string visualization-settings)
+                                                                         :card_id      card-id
+                                                                         :size_x       4
+                                                                         :size_y       4
+                                                                         :col          1
+                                                                         :row          1})]
+        (migrate!)
+        (testing "legacy column_settings are updated"
+          (is (= expected
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     json/parse-string))))
+        (testing "legacy column_settings are updated to the current format"
+          (is (= (-> visualization-settings
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings)
+                     walk/stringify-keys)
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     json/parse-string))))
+        (testing "visualization_settings are equivalent before and after migration"
+          (is (= (-> visualization-settings
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings))
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     json/parse-string
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings)))))))))
+
+(deftest add-join-alias-to-dashboard-card-visualization-settings-field-refs-test
+  (testing "Migrations v47.00-044: update report_dashboardcard.visualization_settings.column_settings legacy field refs"
+    (impl/test-migrations ["v47.00-044"] [migrate!]
+      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+            result_metadata
+            [{:field_ref [:field 1 nil]}
+             {:field_ref [:field 1 {:join-alias "Self-joined Table"}]}
+             {:field_ref [:field 2 {:source-field 3}]}
+             {:field_ref [:field 3 {:temporal-unit "default"}]}
+             {:field_ref [:field 4 {:join-alias "Self-joined Table"
+                                    :binning {:strategy "default"}}]}
+             {:field_ref [:field "column_name" {:base-type :type/Text}]}
+             {:field_ref [:name "column_name"]}]
+            visualization-settings
+            {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
+                                    ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
+                                    ["ref" ["field" 3 nil]]                                   {"column_title" "3"}
+                                    ["ref" ["field" 4 nil]]                                   {"column_title" "4"}
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
+                                    ["name" "column_name"]                                    {"column_title" "6"}}
+                                   (update-keys json/generate-string))}
+            expected
+            {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
+                                    ["ref" ["field" 1 {"join-alias" "Self-joined Table"}]]    {"column_title" "1"}
+                                    ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
+                                    ["ref" ["field" 3 nil]]                                   {"column_title" "3"}
+                                    ["ref" ["field" 4 {"join-alias" "Self-joined Table"}]]    {"column_title" "4"}
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
+                                    ["name" "column_name"]                                    {"column_title" "6"}}
+                                   (update-keys json/generate-string))}
+            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
+                                                        :last_name   "Hughes"
+                                                        :email       "howard@aircraft.com"
+                                                        :password    "superstrong"
+                                                        :date_joined :%now})
+            database-id (t2/insert-returning-pks! :model/Database {:name       "DB"
+                                                                   :engine     "h2"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now
+                                                                   :details    "{}"})
+            card-id     (t2/insert-returning-pks! :model/Card {:name                   "My Saved Question"
+                                                               :created_at             :%now
+                                                               :updated_at             :%now
+                                                               :creator_id             user-id
+                                                               :display                "table"
+                                                               :dataset_query          "{}"
+                                                               :result_metadata        (json/generate-string result_metadata)
+                                                               :visualization_settings "{}"
+                                                               :database_id            database-id
+                                                               :collection_id          nil})
+            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
+                                                                     :creator_id          user-id
+                                                                     :parameters          []})
+            dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
+                                                                         :visualization_settings (json/generate-string visualization-settings)
+                                                                         :card_id      card-id
+                                                                         :size_x       4
+                                                                         :size_y       4
+                                                                         :col          1
+                                                                         :row          1})]
+        (migrate!)
+        (testing "After the migration, column_settings field refs are updated to include join-alias"
+          (is (= expected
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     json/parse-string))))
+        (db.setup/migrate! db-type data-source :down 46)
+        (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
+          (is (= visualization-settings
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     json/parse-string))))))))
+
+(deftest revision-migrate-legacy-dashboard-card-column-settings-field-refs-test
+  (testing "Migrations v47.00-045: update dashboard cards' visualization_settings.column_settings legacy field refs"
+    (impl/test-migrations ["v47.00-045"] [migrate!]
+      (let [visualization-settings
+            {"column_settings" (-> {["name" "column_name"]                              {"column_title" "ID6"},
+                                    ["ref" ["field-literal" "column_name" "type/Text"]] {"column_title" "ID5"},
+                                    ["ref" ["field-id" 39]]                             {"column_title" "ID1"},
+                                    ["ref" ["field" 40 nil]]                            {"column_title" "ID2"},
+                                    ["ref" ["fk->" ["field-id" 39] ["field-id" 40]]]    {"column_title" "ID3"},
+                                    ["ref" ["fk->" 41 42]]                              {"column_title" "ID4"}}
+                                   (update-keys json/generate-string))}
+            expected
+            {"column_settings" (-> {["name" "column_name"]                                    {"column_title" "ID6"},
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "ID5"},
+                                    ["ref" ["field" 39 nil]]                                  {"column_title" "ID1"},
+                                    ["ref" ["field" 40 nil]]                                  {"column_title" "ID2"},
+                                    ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
+                                    ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
+                                   (update-keys json/generate-string))}
+            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
+                                                        :last_name   "Hughes"
+                                                        :email       "howard@aircraft.com"
+                                                        :password    "superstrong"
+                                                        :date_joined :%now})
+            dashboard   {:cards [{:visualization_settings visualization-settings}]}
+            revision-id (t2/insert-returning-pks! :model/Revision {:model    "Dashboard"
+                                                                   :model_id 1
+                                                                   :user_id  user-id
+                                                                   :object   (json/generate-string dashboard)})]
+        (migrate!)
+        (testing "legacy column_settings are updated"
+          (is (= expected
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get-in ["cards" 0 "visualization_settings"])))))
+        (testing "legacy column_settings are updated to the current format"
+          (is (= (-> visualization-settings
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings)
+                     walk/stringify-keys)
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get-in ["cards" 0 "visualization_settings"])))))
+        (testing "visualization_settings are equivalent before and after migration"
+          (is (= (-> visualization-settings
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings))
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get-in ["cards" 0 "visualization_settings"])
+                     mi/normalize-visualization-settings
+                     (#'mi/migrate-viz-settings)))))))))
+
+(deftest revision-add-join-alias-to-dashboard-card-column-settings-field-refs-test
+  (testing "Migrations v47.00-046: update dashboard cards' visualization_settings.column_settings legacy field refs"
+    (impl/test-migrations ["v47.00-046"] [migrate!]
+      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+            visualization-settings
+            {"column_settings" (-> {["ref" ["field" 1 {"join-alias" "Joined table"}]]         {"column_title" "THIS SHOULD TAKE PRECENDCE"}
+                                    ["ref" ["field" 1 nil]]                                   {"column_title" "THIS SHOULD NOT TAKE PRECEDENCE"}
+                                    ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "3"}
+                                    ["name" "column_name"]                                    {"column_title" "4"}}
+                                   (update-keys json/generate-string))}
+            expected
+            {"column_settings" (-> {["ref" ["field" 1 {"join-alias" "Joined table"}]]             {"column_title" "THIS SHOULD TAKE PRECENDCE"}
+                                    ["ref" ["field" 1 nil]]                                       {"column_title" "THIS SHOULD NOT TAKE PRECEDENCE"}
+                                    ["ref" ["field" 2 {"source-field" 3}]]                        {"column_title" "2"}
+                                    ["ref" ["field" 2 {"source-field" 3
+                                                       "join-alias"   "Joined table"}]]           {"column_title" "2"}
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]]     {"column_title" "3"}
+                                    ["ref" ["field" "column_name" {"base-type"  "type/Text"
+                                                                   "join-alias" "Joined table"}]] {"column_title" "3"}
+                                    ["name" "column_name"]                                        {"column_title" "4"}}
+                                   (update-keys json/generate-string))}
+            user-id            (t2/insert-returning-pks! User {:first_name  "Howard"
+                                                               :last_name   "Hughes"
+                                                               :email       "howard@aircraft.com"
+                                                               :password    "superstrong"
+                                                               :date_joined :%now})
+            database-id        (t2/insert-returning-pks! Database {:name       "DB"
+                                                                   :engine     "h2"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now
+                                                                   :details    "{}"})
+            [card-id]          (t2/insert-returning-pks!
+                                :model/Card
+                                {:name                   "My Saved Question"
+                                 :created_at             :%now
+                                 :updated_at             :%now
+                                 :creator_id             user-id
+                                 :display                "table"
+                                 :dataset_query          (json/generate-string {:database 1
+                                                                                :query    {:joins [{:alias        "Joined table"
+                                                                                                    :condition    [:=
+                                                                                                                   [:field 43 nil]
+                                                                                                                   [:field 46 {:join-alias "Joined table"}]]
+                                                                                                    :fields       :all
+                                                                                                    :source-table 5}]
+                                                                                           :source-table 2}
+                                                                                :type     :query})
+                                 :result_metadata        "{}"
+                                 :visualization_settings "{}"
+                                 :database_id            database-id
+                                 :collection_id          nil})
+            dashboard   {:cards [{:card_id                card-id
+                                  :visualization_settings visualization-settings}]}
+            revision-id (t2/insert-returning-pks! :model/Revision {:model    "Dashboard"
+                                                                   :model_id 1
+                                                                   :user_id  user-id
+                                                                   :object   (json/generate-string dashboard)})]
+        (migrate!)
+        (testing "column_settings field refs are updated"
+          (is (= expected
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get-in ["cards" 0 "visualization_settings"])))))
+        (db.setup/migrate! db-type data-source :down 46)
+        (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
+          (is (= (m/dissoc-in visualization-settings
+                              ["column_settings" (json/generate-string ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get-in ["cards" 0 "visualization_settings"])))))))))
