@@ -41,14 +41,16 @@
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
 (defn normalize-name
-  "Returns a normalized name for a test dataset with the test timestamp suffix"
-  ^String [identifier]
+  "Returns a normalized name for a test database or table"
+  ^String [db-or-table identifier]
   (let [s (str/replace (name identifier) "-" "_")]
-    ;; All databases created during test runs by this JVM instance get a suffix based on the timestamp from when
-    ;; this namespace was loaded. This dataset will not be deleted after this test run finishes, since there is no
-    ;; reasonable hook to do so (from this test extension namespace), so instead we will rely on each run cleaning
-    ;; up outdated, transient datasets via the `transient-dataset-outdated?` mechanism.
-    (str "v3_" s "__transient_" ns-load-time)))
+    (case db-or-table
+      ;; All databases created during test runs by this JVM instance get a suffix based on the timestamp from when
+      ;; this namespace was loaded. This dataset will not be deleted after this test run finishes, since there is no
+      ;; reasonable hook to do so (from this test extension namespace), so instead we will rely on each run cleaning
+      ;; up outdated, transient datasets via the `transient-dataset-outdated?` mechanism.
+      :db    (str "v3_" s "__transient_" ns-load-time)
+      :table s)))
 
 (defn- test-db-details []
   (reduce
@@ -73,7 +75,7 @@
 
 (defmethod tx/dbdef->connection-details :bigquery-cloud-sdk
   [_driver _context {:keys [database-name]}]
-  (assoc (test-db-details) :dataset-id (normalize-name database-name) :include-user-id-and-hash true))
+  (assoc (test-db-details) :dataset-id (normalize-name :db database-name) :include-user-id-and-hash true))
 
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
@@ -273,11 +275,20 @@
              :id (inc i)))))
 
 (defn- load-tabledef! [dataset-name {:keys [table-name field-definitions], :as tabledef}]
-  (create-table! dataset-name table-name (fielddefs->field-name->base-type field-definitions))
-  ;; retry the `insert-data!` step up to 5 times because it seems to fail silently a lot. Since each row is given a
-  ;; unique key it shouldn't result in duplicates.
-  (u/auto-retry 5
-    (insert-data! dataset-name table-name (tabledef->prepared-rows tabledef))))
+  (let [table-name (normalize-name :table table-name)]
+    (create-table! dataset-name table-name (fielddefs->field-name->base-type field-definitions))
+    ;; retry the `insert-data!` step up to 5 times because it seens to fail silently a lot. Since each row is given a
+    ;; unique key it shouldn't result in duplicates.
+    (loop [num-retries 5]
+      (let [^Throwable e (try
+                           (insert-data! dataset-name table-name (tabledef->prepared-rows tabledef))
+                           nil
+                           (catch Throwable e
+                             e))]
+        (when e
+          (if (pos? num-retries)
+            (recur (dec num-retries))
+            (throw e)))))))
 
 (defn- existing-dataset-names
   "Fetch a list of *all* dataset names that currently exist in the BQ test project."
@@ -304,7 +315,7 @@
       (u/ignore-exceptions
        (destroy-dataset! outdated))))
   ;; now check and see if we need to create the requested one
-  (let [database-name (normalize-name database-name)]
+  (let [database-name (normalize-name :db database-name)]
     (u/auto-retry 2
      (try
        (log/infof "Creating dataset %s..." (pr-str database-name))
