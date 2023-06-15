@@ -1223,11 +1223,17 @@ saved later when it is ready."
 (api/defendpoint ^:multipart POST "/from-csv"
   "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
   [:as {raw-params :params}]
-  ;; parse-long returns nil with "root", which is what we want anyway
-  (let [model-id (:id (upload-csv! (parse-long (get raw-params "collection_id"))
-                                   (get-in raw-params ["file" :filename])
-                                   (get-in raw-params ["file" :tempfile])))]
-    {:status 200
-     :body   model-id}))
+  ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway
+  (try
+    (let [model-id (:id (upload-csv! (parse-long (get raw-params "collection_id"))
+                                     (get-in raw-params ["file" :filename])
+                                     (get-in raw-params ["file" :tempfile])))]
+      {:status 200
+       :body   model-id})
+    (catch Throwable e
+      {:status (or (-> e ex-data :status-code)
+                   500)
+       :body   {:message (or (ex-message e)
+                             (tru "There was an error uploading the file"))}})))
 
 (api/define-routes)
