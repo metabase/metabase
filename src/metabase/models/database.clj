@@ -232,10 +232,11 @@
 
 (t2/define-before-insert :model/Database
   [{:keys [details initial_sync_status], :as database}]
-  (let [defaults {:details             {}
-                  :initial_sync_status "incomplete"}]
-    (-> (merge defaults database)
-        handle-secrets-changes)))
+  (-> database
+      (cond->
+        (not details)             (assoc :details {})
+        (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
+      handle-secrets-changes)
 
 (defmethod mi/perms-objects-set :model/Database
   [{db-id :id} read-or-write]
