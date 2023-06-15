@@ -35,7 +35,7 @@
     (map? x)    (update-vals x with-test-db-name)
     (vector? x) (mapv with-test-db-name x)
     (list?   x) (-> x vec with-test-db-name list*)
-    (symbol? x) (symbol (with-test-db-name (str x)))
+    (symbol? x) (-> x str with-test-db-name symbol)
     :else       x))
 
 (deftest native-query-test
