@@ -322,7 +322,6 @@
                                                      (sync-fields! database))]
               (future
                 (sync/sync-database! (mt/db))
-                (Thread/sleep 1000)
                 (a/>!! completed-chan ::sync-completed))
               (a/<!! syncing-chan)
               (testing "for existing tables initial_sync_status is complete while sync is running"
