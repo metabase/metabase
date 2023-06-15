@@ -25,10 +25,7 @@ To upload data to Metabase, an admin will need to connect your Metabase to a dat
 
 You can also upload data to the Sample Database included with Metabase (an H2 database), though we don't recommend using the Sample Database for any data that you want to keep around.
 
-For more, check out:
-
-- [Adding and managing databases](./connecting.md)
-- [Database users, roles, and privileges](./users-roles-privileges.md)
+See [Adding and managing databases](./connecting.md).
 
 ### Select the database and schema that you want to store the data in
 
@@ -48,16 +45,19 @@ Admins can optionally specify the
 
 ## Uploading CSV data
 
-
 Metabase will create a [model](../data-modeling/models.md) that contains that CSV data, as well as the model's underlying table. You can edit the model to add metadata to that data set.
 
 ## File size limit
 
-CSV files cannot exceed 200 MB in size. If you have a file larger than 200 MB, the workaround here is to:
+CSV files cannot exceed 200 MB in size.
+
+> Note that while Metabase may be configured to max out at 200MB upload size, the server used to run your Metabase may impose a separate limit. You may beed People on Metabase Cloud don't have to worry about this.
+
+If you have a file larger than 200 MB, the workaround here is to:
 
 1. Split the data into multiple files.
 2. Upload those files one by one. Metabase will create a new model for each sheet.
-3. Create a new question or model that joins the data from the models Metabase created to store that CSV data.
+3. Create a new model that joins the data from the models Metabase created to store that CSV data in a single model.
 
 ## Note on uploading data to a MySQL database
 
