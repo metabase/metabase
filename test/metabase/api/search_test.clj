@@ -592,7 +592,7 @@
     :model               "table"
     :database_id         true
     :pk_ref              nil
-    :initial_sync_status "incomplete"}))
+    :initial_sync_status "complete"}))
 
 (defmacro ^:private do-test-users {:style/indent 1} [[user-binding users] & body]
   `(doseq [user# ~users
