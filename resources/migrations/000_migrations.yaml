@@ -15328,6 +15328,38 @@ databaseChangeLog:
             sql: drop view v_users;
 
   - changeSet:
+      id: v47.00-043
+      author: calherres
+      comment: Added 0.47.0 - Migrate report_dashboardcard.visualization_settings.column_settings field refs from legacy format
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyDashboardCardColumnSettingsFieldRefs"
+
+  - changeSet:
+      id: v47.00-044
+      author: calherries
+      comment: Added 0.47.0 - Add join-alias to the report_dashboardcard.visualization_settings.column_settings field refs
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.AddJoinAliasToDashboardCardColumnSettingsFieldRefs"
+
+  - changeSet:
+      id: v47.00-045
+      author: calherres
+      comment: Added 0.47.0 - Migrate dashboard revision dashboard cards' visualization_settings.column_settings field refs from legacy format
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.RevisionMigrateLegacyDashboardCardColumnSettingsFieldRefs"
+
+  - changeSet:
+      id: v47.00-046
+      author: calherries
+      comment: Added 0.47.0 - Add join-alias to dashboard revision dashboard cards' visualization_settings.column_settings field refs
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.RevisionAddJoinAliasToDashboardCardColumnSettingsFieldRefs"
+
+  - changeSet:
       id: v47.00-047
       author: escherize
       comment: Added 0.47.0 - Add view for v_audit_log
