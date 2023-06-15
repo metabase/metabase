@@ -39,7 +39,7 @@ export const getZoomDrillTitle = (
 ): string => {
   let currentGranularity;
   dimensions.some(dimension => {
-    if (dimension.column.field_ref) {
+    if (dimension.column?.field_ref) {
       const field = FieldDimension.parseMBQL(dimension.column.field_ref);
       if (field && field.temporalUnit()) {
         currentGranularity = Lib.describeTemporalUnit(

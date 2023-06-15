@@ -25,9 +25,12 @@ export function underlyingRecordsDrill({ question, clicked }) {
 
 export function underlyingRecordsDrillQuestion({ question, clicked }) {
   // removes post-aggregation filter stage
-  clicked = clicked && question.topLevelClicked(clicked);
-  question = question.topLevelQuestion();
+  const topLevelClicked = clicked && question.topLevelClicked(clicked);
+  const topLevelQuestion = question.topLevelQuestion();
 
-  const dimensions = clicked?.dimensions ?? [];
-  return question.drillUnderlyingRecords(dimensions, clicked.column);
+  const dimensions = topLevelClicked?.dimensions ?? [];
+  return topLevelQuestion.drillUnderlyingRecords(
+    dimensions,
+    topLevelClicked.column,
+  );
 }

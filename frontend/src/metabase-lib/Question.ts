@@ -572,7 +572,7 @@ class QuestionInner {
     }
 
     dimensions.forEach(({ value, column }) => {
-      if (column.source !== "aggregation") {
+      if (column && column.source !== "aggregation") {
         query = drillFilter(query, value, column);
       }
     });
@@ -866,12 +866,10 @@ class QuestionInner {
       return {
         ...clicked,
         column: clicked.column && query.topLevelColumn(clicked.column),
-        dimensions:
-          clicked.dimensions &&
-          clicked.dimensions.map(dimension => ({
-            ...dimension,
-            column: dimension.column && query.topLevelColumn(dimension.column),
-          })),
+        dimensions: clicked.dimensions?.map(dimension => ({
+          ...dimension,
+          column: dimension.column && query.topLevelColumn(dimension.column),
+        })),
       };
     } else {
       return clicked;

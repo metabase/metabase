@@ -33,7 +33,7 @@ export interface QueryMode {
 
 export interface ClickObjectDimension {
   value: RowValue;
-  column: DatasetColumn;
+  column: DatasetColumn | null;
 }
 
 export interface ClickObject {

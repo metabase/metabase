@@ -19,7 +19,7 @@ export function automaticInsightsDrill({
 
   // ExpressionDimensions don't work right now (see metabase#16680)
   const includesExpressionDimensions = dimensions.some(dimension => {
-    return isExpressionField(dimension.column.field_ref);
+    return isExpressionField(dimension.column?.field_ref);
   });
 
   const isUnsupportedDrill =
