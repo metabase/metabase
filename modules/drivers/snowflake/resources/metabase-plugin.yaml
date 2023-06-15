@@ -10,7 +10,7 @@ driver:
   connection-properties:
     - name: account
       display-name: Account name
-      helper-text: Enter your Account ID with the region that your Snowflake cluster is running on e.g. "xxxxxxxx.us-east-2.aws". Some regions don't have this suffix.
+      helper-text: Enter your Account ID with the region that your Snowflake cluster is running on e.g. "xxxxxxxx.us-east-2.aws". Some regions don't have this suffix.
       placeholder: xxxxxxxx.us-east-2.aws
       required: true
     - user
