@@ -271,6 +271,13 @@
   (when (not= (:initial_sync_status table) "complete")
     (t2/update! Table (u/the-id table) {:initial_sync_status "complete"})))
 
+(s/defn set-all-tables-initial-sync-status-complete!
+  "Mark all tables in a DATABASE to have initial_sync_status=complete. They should be marked even if their sync failed,
+   because only sync-aborting errors should be surfaced to the UI (see [[sync-util/exception-classes-not-to-retry]])."
+  [database :- i/DatabaseInstance]
+  (t2/update! Table {:db_id (u/the-id database)} {:initial_sync_status "complete"})
+  nil)
+
 (defn set-initial-database-sync-complete!
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
   [database]
@@ -288,9 +295,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn db->sync-tables
-  "Return all the Tables that should go through the sync processes for `database-or-id`."
-  [database-or-id]
-  (t2/select Table, :db_id (u/the-id database-or-id), :active true, :visibility_type nil))
+  "Return all the Tables that should go through the sync processes for `database-or-id`. Optionally filter by kv-args."
+  [database-or-id & kv-args]
+  (apply t2/select Table
+         :db_id (u/the-id database-or-id)
+         :active true
+         :visibility_type nil
+         kv-args))
 
 (defmulti name-for-logging
   "Return an appropriate string for logging an object in sync logging messages. Should be something like

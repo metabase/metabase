@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase.sync.util-test
   "Tests for the utility functions shared by all parts of sync, such as the duplicate ops guard."
   (:require
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time :as t]
@@ -11,6 +12,7 @@
    [metabase.models.task-history :refer [TaskHistory]]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
@@ -299,3 +301,40 @@
             db (t2/select-one Database :id (:id (mt/db)))]
         (sync/sync-database! db)
         (is (= "complete" (t2/select-one-fn :initial_sync_status Database :id (:id db))))))))
+
+(deftest initial-sync-status-table-only-test
+  ;; Test that if a database is already completed sync'ing, then the sync is started again, it should initially be marked as
+  ;; incomplete, but then marked as complete after the sync is finished.
+  (mt/dataset sample-dataset
+    (reset! metabase.sync.util/operation->db-ids {})
+    (testing "If `initial-sync-status` on a DB is already `complete`"
+      (let [[active-table inactive-table deleted-table] (t2/select Table :db_id (mt/id))
+            get-active-table #(t2/select-one Table :id (:id active-table))
+            get-inactive-table #(t2/select-one Table :id (:id inactive-table))
+            get-deleted-table #(t2/select-one Table :name (:name deleted-table) :db_id (:db_id deleted-table))]
+        (t2/update! Table (:id active-table) {:initial_sync_status "complete" :active true})
+        (t2/update! Table (:id inactive-table) {:initial_sync_status "complete" :active false})
+        (t2/delete! Table (:id deleted-table))
+        (let [syncing-chan   (a/chan)
+              completed-chan (a/chan)]
+          (let [sync-fields! sync-fields/sync-fields!]
+            (with-redefs [sync-fields/sync-fields! (fn [database]
+                                                     (a/>!! syncing-chan ::syncing)
+                                                     (sync-fields! database))]
+              (future
+                (sync/sync-database! (mt/db))
+                (Thread/sleep 1000)
+                (a/>!! completed-chan ::sync-completed))
+              (a/<!! syncing-chan)
+              (testing "for existing tables initial_sync_status is complete while sync is running"
+                (is (= "complete"   (:initial_sync_status (get-active-table)))))
+              (testing "for new or previously inactive tables, initial_sync_status is incomplete while sync is running"
+                (is (= "incomplete" (:initial_sync_status (get-inactive-table))))
+                (is (= "incomplete" (:initial_sync_status (get-deleted-table)))))
+              (a/<!! completed-chan)
+              (testing "initial_sync_status is complete after the sync is finished"
+                (is (= "complete"   (:initial_sync_status (get-active-table))))
+                (is (= "complete"   (:initial_sync_status (get-inactive-table))))
+                (is (= "complete"   (:initial_sync_status (get-deleted-table)))))))
+          (a/close! syncing-chan)
+          (a/close! completed-chan))))))

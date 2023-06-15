@@ -96,25 +96,29 @@
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
   [database {schema :schema, table-name :name, :as table}]
-  (if-let [existing-id (t2/select-one-pk Table
-                         :db_id (u/the-id database)
-                         :schema schema
-                         :name table-name
-                         :active false)]
-    ;; if the table already exists but is marked *inactive*, mark it as *active*
-    (t2/update! Table existing-id
-      {:active true})
-    ;; otherwise create a new Table
-    (let [is-crufty? (is-crufty-table? table)]
+  (let [;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
+        is-crufty?          (is-crufty-table? table)
+        initial-sync-status (if is-crufty? "complete" "incomplete")
+        visibility-type     (when is-crufty? :cruft)]
+    (if-let [existing-id (t2/select-one-pk Table
+                                           :db_id (u/the-id database)
+                                           :schema schema
+                                           :name table-name
+                                           :active false)]
+      ;; if the table already exists but is marked *inactive*, mark it as *active*
+      (t2/update! Table existing-id
+                  {:active              true
+                   :visibility_type     (when is-crufty? :cruft)
+                   :initial_sync_status initial-sync-status})
+      ;; otherwise create a new Table
       (first (t2/insert-returning-instances! Table
                                              :db_id (u/the-id database)
                                              :schema schema
                                              :name table-name
                                              :display_name (humanization/name->human-readable-name table-name)
                                              :active true
-                                             :visibility_type (when is-crufty? :cruft)
-                                             ;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
-                                             :initial_sync_status (if is-crufty? "complete" "incomplete"))))))
+                                             :visibility_type visibility-type
+                                             :initial_sync_status initial-sync-status)))))
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
 
