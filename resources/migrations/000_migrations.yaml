@@ -15299,7 +15299,7 @@ databaseChangeLog:
                       left join timeline on event.timeline_id = timeline.id
       rollback:
         - sql:
-            sql: drop view v_content;
+            sql: drop view if exists v_content;
 
   - changeSet:
       id: v47.00-041
@@ -15326,6 +15326,496 @@ databaseChangeLog:
       rollback:
         - sql:
             sql: drop view v_users;
+
+  - changeSet:
+      id: v47.00-047
+      author: escherize
+      comment: Added 0.47.0 - Add view for v_audit_log
+      changes:
+        - sql:
+            sql: >-
+              create or replace view v_audit_log as
+              select id,
+                     case
+                         when model = 'card' then 'question_view'
+                         when model = 'table' then 'table_view'
+                         when model = 'dashboard' then 'dashboard_view'
+                         else 'other'
+                         end  as topic,
+                     timestamp,
+                     null     as end_timestamp,
+                     user_id,
+                     model,
+                     model_id,
+                     metadata as details
+              from view_log
+      rollback:
+        - sql:
+            sql: drop view if exists v_audit_log;
+
+  - changeSet:
+      id: v47.00-048
+      author: escherize
+      comment: Added 0.47.0 - Update view for v_content
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+             create or replace view v_content as
+             select
+                 concat('action_', id) as id,
+                 'action' as entity_type,
+                 created_at,
+                 updated_at,
+                 creator_id,
+                 name,
+                 description,
+                 cast(null as int) as collection_id,
+                 made_public_by_id as made_public_by_user,
+                 cast(null as boolean) as is_embedding_enabled,
+                 archived,
+                 type as action_type,
+                 model_id as action_model_id,
+                 null as collection_is_official,
+                 null as collection_is_personal,
+                 null as question_viz_type,
+                 null as question_database_id,
+                 cast(null as boolean) as question_is_native,
+                 cast(null as timestamp) as event_timestamp
+                 from action
+             union
+             select
+                 concat('collection_', id) as id,
+                 'collection' as entity_type,
+                 created_at,
+                 null as updated_at,
+                 null as creator_id,
+                 name,
+                 description,
+                 null as collection_id,
+                 null as made_public_by_user,
+                 null as is_embedding_enabled,
+                 archived,
+                 null as action_type,
+                 null as action_model_id,
+                 case when authority_level='official' then true else false end as collection_is_official,
+                 case when personal_owner_id is not null then true else false end as collection_is_personal,
+                 null as question_viz_type,
+                 null as question_database_id,
+                 null as question_is_native,
+                 null as event_timestamp
+                 from collection
+             union
+             select
+                 concat(
+                     case when dataset
+                         then 'model_'
+                         else 'question_'
+                     end, id) as id,
+                 case when dataset then 'model' else 'question' end as entity_type,
+                 created_at,
+                 updated_at,
+                 creator_id,
+                 name,
+                 description,
+                 collection_id as collection_id,
+                 made_public_by_id as made_public_by_user,
+                 enable_embedding as is_embedding_enabled,
+                 archived,
+                 null as action_type,
+                 null as action_model_id,
+                 null as collection_is_official,
+                 null as collection_is_personal,
+                 display as question_viz_type,
+                 concat('database_', database_id) as question_database_id,
+                 case when query_type='native' then true else false end as question_is_native,
+                 null as event_timestamp
+                 from report_card
+             union
+             select
+                 concat('dashboard_', id) as id,
+                 'dashboard' as entity_type,
+                 created_at,
+                 updated_at,
+                 creator_id,
+                 name,
+                 description,
+                 collection_id as collection_id,
+                 made_public_by_id as made_public_by_user,
+                 enable_embedding as is_embedding_enabled,
+                 archived,
+                 null as action_type,
+                 null as action_model_id,
+                 null as collection_is_official,
+                 null as collection_is_personal,
+                 null as question_viz_type,
+                 null as question_database_id,
+                 null as question_is_native,
+                 null as event_timestamp
+                 from report_dashboard
+             union
+             select
+                 concat('event_', event.id) as id,
+                 'event' as entity_type,
+                 event.created_at,
+                 event.updated_at,
+                 event.creator_id,
+                 event.name,
+                 event.description,
+                 timeline.collection_id,
+                 null as made_public_by_user,
+                 null as is_embedding_enabled,
+                 event.archived,
+                 null as action_type,
+                 null as action_model_id,
+                 null as collection_is_official,
+                 null as collection_is_personal,
+                 null as question_viz_type,
+                 null as question_database_id,
+                 null as question_is_native,
+                 timestamp as event_timestamp
+                 from timeline_event event
+                     left join timeline on event.timeline_id = timeline.id;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+             create or replace view v_content as
+             select
+                 concat('action_', id) as id,
+                 'action' as entity_type,
+                 created_at,
+                 updated_at,
+                 creator_id,
+                 name,
+                 description,
+                 null as collection_id,
+                 made_public_by_id as made_public_by_user,
+                 null as is_embedding_enabled,
+                 archived,
+                 type as action_type,
+                 model_id as action_model_id,
+                 null as collection_is_official,
+                 null as collection_is_personal,
+                 null as question_viz_type,
+                 null as question_database_id,
+                 null as question_is_native,
+                 null as event_timestamp
+                 from action
+             union
+             select
+                 concat('collection_', id) as id,
+                 'collection' as entity_type,
+                 created_at,
+                 null as updated_at,
+                 null as creator_id,
+                 name,
+                 description,
+                 null as collection_id,
+                 null as made_public_by_user,
+                 null as is_embedding_enabled,
+                 archived,
+                 null as action_type,
+                 null as action_model_id,
+                 case when authority_level='official' then true else false end as collection_is_official,
+                 case when personal_owner_id is not null then true else false end as collection_is_personal,
+                 null as question_viz_type,
+                 null as question_database_id,
+                 null as question_is_native,
+                 null as event_timestamp
+                 from collection
+             union
+             select
+                 concat(
+                     case when dataset
+                         then 'model_'
+                         else 'question_'
+                     end, id) as id,
+                 case when dataset then 'model' else 'question' end as entity_type,
+                 created_at,
+                 updated_at,
+                 creator_id,
+                 name,
+                 description,
+                 collection_id as collection_id,
+                 made_public_by_id as made_public_by_user,
+                 enable_embedding as is_embedding_enabled,
+                 archived,
+                 null as action_type,
+                 null as action_model_id,
+                 null as collection_is_official,
+                 null as collection_is_personal,
+                 display as question_viz_type,
+                 concat('database_', database_id) as question_database_id,
+                 case when query_type='native' then true else false end as question_is_native,
+                 null as event_timestamp
+                 from report_card
+             union
+             select
+                 concat('dashboard_', id) as id,
+                 'dashboard' as entity_type,
+                 created_at,
+                 updated_at,
+                 creator_id,
+                 name,
+                 description,
+                 collection_id as collection_id,
+                 made_public_by_id as made_public_by_user,
+                 enable_embedding as is_embedding_enabled,
+                 archived,
+                 null as action_type,
+                 null as action_model_id,
+                 null as collection_is_official,
+                 null as collection_is_personal,
+                 null as question_viz_type,
+                 null as question_database_id,
+                 null as question_is_native,
+                 null as event_timestamp
+                 from report_dashboard
+             union
+             select
+                 concat('event_', event.id) as id,
+                 'event' as entity_type,
+                 event.created_at,
+                 event.updated_at,
+                 event.creator_id,
+                 event.name,
+                 event.description,
+                 timeline.collection_id,
+                 null as made_public_by_user,
+                 null as is_embedding_enabled,
+                 event.archived,
+                 null as action_type,
+                 null as action_model_id,
+                 null as collection_is_official,
+                 null as collection_is_personal,
+                 null as question_viz_type,
+                 null as question_database_id,
+                 null as question_is_native,
+                 timestamp as event_timestamp
+                 from timeline_event event
+                     left join timeline on event.timeline_id = timeline.id;
+        - sql:
+            dbms: h2
+            sql: >-
+             create or replace view v_content as
+             select
+                 concat('action_', id) as id,
+                 'action' as entity_type,
+                 created_at,
+                 updated_at,
+                 creator_id,
+                 name,
+                 description,
+                 cast(null as int) as collection_id,
+                 made_public_by_id as made_public_by_user,
+                 cast(null as boolean) as is_embedding_enabled,
+                 archived,
+                 type as action_type,
+                 model_id as action_model_id,
+                 null as collection_is_official,
+                 null as collection_is_personal,
+                 null as question_viz_type,
+                 null as question_database_id,
+                 cast(null as boolean) as question_is_native,
+                 cast(null as timestamp) as event_timestamp
+                 from action
+             union
+             select
+                 concat('collection_', id) as id,
+                 'collection' as entity_type,
+                 created_at,
+                 null as updated_at,
+                 null as creator_id,
+                 name,
+                 description,
+                 null as collection_id,
+                 null as made_public_by_user,
+                 null as is_embedding_enabled,
+                 archived,
+                 null as action_type,
+                 null as action_model_id,
+                 case when authority_level='official' then true else false end as collection_is_official,
+                 case when personal_owner_id is not null then true else false end as collection_is_personal,
+                 null as question_viz_type,
+                 null as question_database_id,
+                 null as question_is_native,
+                 null as event_timestamp
+                 from collection
+             union
+             select
+                 concat(
+                     case when dataset
+                         then 'model_'
+                         else 'question_'
+                     end, id) as id,
+                 case when dataset then 'model' else 'question' end as entity_type,
+                 created_at,
+                 updated_at,
+                 creator_id,
+                 name,
+                 description,
+                 collection_id as collection_id,
+                 made_public_by_id as made_public_by_user,
+                 enable_embedding as is_embedding_enabled,
+                 archived,
+                 null as action_type,
+                 null as action_model_id,
+                 null as collection_is_official,
+                 null as collection_is_personal,
+                 display as question_viz_type,
+                 concat('database_', database_id) as question_database_id,
+                 case when query_type='native' then true else false end as question_is_native,
+                 null as event_timestamp
+                 from report_card
+             union
+             select
+                 concat('dashboard_', id) as id,
+                 'dashboard' as entity_type,
+                 created_at,
+                 updated_at,
+                 creator_id,
+                 name,
+                 description,
+                 collection_id as collection_id,
+                 made_public_by_id as made_public_by_user,
+                 enable_embedding as is_embedding_enabled,
+                 archived,
+                 null as action_type,
+                 null as action_model_id,
+                 null as collection_is_official,
+                 null as collection_is_personal,
+                 null as question_viz_type,
+                 null as question_database_id,
+                 null as question_is_native,
+                 null as event_timestamp
+                 from report_dashboard
+             union
+             select
+                 concat('event_', event.id) as id,
+                 'event' as entity_type,
+                 event.created_at,
+                 event.updated_at,
+                 event.creator_id,
+                 event.name,
+                 event.description,
+                 timeline.collection_id,
+                 null as made_public_by_user,
+                 null as is_embedding_enabled,
+                 event.archived,
+                 null as action_type,
+                 null as action_model_id,
+                 null as collection_is_official,
+                 null as collection_is_personal,
+                 null as question_viz_type,
+                 null as question_database_id,
+                 null as question_is_native,
+                 timestamp as event_timestamp
+                 from timeline_event event
+                     left join timeline on event.timeline_id = timeline.id;
+      rollback:
+        - sql:
+            sql: drop view if exists v_content;
+
+  - changeSet:
+      id: v47.00-049
+      author: escherize
+      comment: Added 0.47.0 - update view for v_audit_log
+      changes:
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              drop view v_audit_log;
+              create view v_audit_log as
+              (
+              select row_number() over (order by timestamp) as id, source.*
+              from (select case
+                               when model = 'card' then 'question-view'
+                               when model = 'table' then 'table-view'
+                               when model = 'dashboard' then 'dashboard-view'
+                               end  as topic,
+                           timestamp,
+                           null     as end_timestamp,
+                           user_id,
+                           model,
+                           case
+                               when model = 'card' then concat('question_', cast(model_id as text))
+                               when model = 'table' then concat('table_', cast(model_id as text))
+                               when model = 'dashboard' then concat('dashboard_', cast(model_id as text))
+                               else cast(model_id as text)
+                               end  as model_id,
+                           metadata as details
+                    from view_log
+                    union
+                    select case
+                               when topic = 'card-create' then 'question-create'
+                               when topic = 'card-delete' then 'question-delete'
+                               when topic = 'card-update' then 'question-update'
+                               when topic = 'pulse-create' then 'subscription-create'
+                               when topic = 'pulse-delete' then 'subscription-delete'
+                               else topic
+                               end as topic,
+                           timestamp,
+                           null    as end_timestamp,
+                           user_id,
+                           model,
+                           case
+                               when model = 'dataset' then concat('model_', cast(model_id as text))
+                               when model = 'card' then concat('question_', cast(model_id as text))
+                               when model = 'pulse' then concat('subscription_', cast(model_id as text))
+                               else concat(model, '_', model_id)
+                               end as model_id,
+                           details
+                    from activity) AS source
+                  )
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              drop view v_audit_log;
+              create view v_audit_log as
+              (
+              select uuid() as id, source.*
+              from (select case
+                               when model = 'card' then 'question-view'
+                               when model = 'table' then 'table-view'
+                               when model = 'dashboard' then 'dashboard-view'
+                               end  as topic,
+                           timestamp,
+                           null     as end_timestamp,
+                           user_id,
+                           model,
+                           case
+                               when model = 'card' then concat('question_', cast(model_id as char)) collate utf8mb4_unicode_ci
+                               when model = 'table' then concat('table_', cast(model_id as char)) collate utf8mb4_unicode_ci
+                               when model = 'dashboard' then concat('dashboard_', cast(model_id as char)) collate utf8mb4_unicode_ci
+                               else cast(model_id as char) collate utf8mb4_unicode_ci
+                               end  as model_id,
+                           metadata as details
+                    from view_log
+                    union
+                    select case
+                               when topic = 'card-create' then 'question-create'
+                               when topic = 'card-delete' then 'question-delete'
+                               when topic = 'card-update' then 'question-update'
+                               when topic = 'pulse-create' then 'subscription-create'
+                               when topic = 'pulse-delete' then 'subscription-delete'
+                               else topic
+                               end as topic,
+                           timestamp,
+                           null    as end_timestamp,
+                           user_id,
+                           model,
+                           case
+                               when model = 'dataset' then concat('model_', cast(model_id as char)) collate utf8mb4_unicode_ci
+                               when model = 'card' then concat('question_', cast(model_id as char)) collate utf8mb4_unicode_ci
+                               when model = 'pulse' then concat('subscription_', cast(model_id as char)) collate utf8mb4_unicode_ci
+                               else concat(model, '_', model_id) collate utf8mb4_unicode_ci
+                               end as model_id,
+                           details
+                    from activity) AS source
+                  );
+      rollback:
+        - sql:
+            sql: drop view if exists v_audit_log;
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
