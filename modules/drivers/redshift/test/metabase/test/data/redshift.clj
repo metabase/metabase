@@ -1,6 +1,5 @@
 (ns metabase.test.data.redshift
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [java-time :as t]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -8,6 +7,7 @@
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -165,11 +165,13 @@
       (.execute stmt sql))))
 
 (defmethod tx/before-run :redshift
-  [_driver]
-  (with-open [conn (jdbc/get-connection
-                    (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details))]
-    (delete-old-schemas! conn)
-    (create-session-schema! conn)))
+  [driver]
+  (sql-jdbc.tx/do-with-connection-for-loading-test-data
+   driver
+   (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
+   (fn [conn]
+     (delete-old-schemas! conn)
+     (create-session-schema! conn))))
 
 (defonce ^:private ^{:arglists '([driver connection metadata _ _])}
   original-filtered-syncable-schemas

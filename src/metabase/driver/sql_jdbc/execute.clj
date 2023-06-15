@@ -6,6 +6,7 @@
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
   (:require
    [clojure.core.async :as a]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [java-time :as t]
    [metabase.db.query :as mdb.query]
@@ -17,6 +18,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.lib.schema.expression.temporal
     :as lib.schema.expression.temporal]
+   [metabase.lib.schema.literal.jvm :as lib.schema.literal.jvm]
    [metabase.models.database :refer [Database]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.query-processor.context :as qp.context]
@@ -29,7 +31,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [next.jdbc]
+   [metabase.util.malli :as mu]
    [potemkin :as p]
    [toucan2.core :as t2])
   (:import
@@ -48,7 +50,9 @@
   [:maybe
    [:map
     ;; a string like 'US/Pacific' or something like that.
-    [:session-timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]]])
+    [:session-timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]
+    ;; whether this Connection should NOT be read-only, e.g. for DDL stuff or inserting data or whatever.
+    [:write? {:optional true} [:maybe :boolean]]]])
 
 (defmulti do-with-connection-with-options
   "Fetch a [[java.sql.Connection]] from a `driver`/`db-or-id-or-spec`, and invoke
@@ -58,13 +62,19 @@
   If `db-or-id-or-spec` is a Database or Database ID, the default implementation fetches a pooled connection spec for
   that Database using [[datasource]].
 
-  If `db-or-id-or-spec` is a `clojure.java.jdbc` spec, it fetches a connection spec
-  using [[next.jdbc/get-datasource]]. Note that this will not be a pooled connection unless your spec is for a pooled
-  DataSource.
+  If `db-or-id-or-spec` is a `clojure.java.jdbc` spec, it fetches a Connection
+  using [[clojure.java..jdbc/get-connection]]. Note that this will not be a pooled connection unless your spec is for
+  a pooled DataSource.
 
   `options` matches the [[Options]] schema above.
 
-  The default implementation is more or less
+  * If `:session-timezone` is passed, it should be used to set the Session timezone for the Connection. If not passed,
+    leave as-is
+
+  * If `:write?` is NOT passed or otherwise falsey, make the connection read-only if possible; if it is truthy, make
+    the connection read-write
+
+  The normal 'happy path' is more or less
 
     (with-open [conn (.getConnection (datasource driver db-or-id-or-spec))]
       (set-best-transaction-level! driver conn)
@@ -75,8 +85,8 @@
       (f conn))
 
   This default implementation is abstracted out into two
-  functions, [[default-do-with-connection-with-options-set-options!]]
-  and [[default-do-with-connection-with-options-DataSource]], that you can use as needed in custom implementations.
+  functions, [[set-default-connection-options!]]
+  and [[default-connection-with-options-DataSource]], that you can use as needed in custom implementations.
 
   There are two usual ways to set the session timezone if your driver supports them:
 
@@ -235,32 +245,36 @@
         (seq more)
         (recur more)))))
 
-(defn default-do-with-connection-with-options-set-options!
+(mu/defn set-default-connection-options!
   "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
   Connection."
   {:added "0.47.0"}
-  [driver ^Connection conn {:keys [^String session-timezone], :as _options}]
+  [driver                                                  :- :keyword
+   ^Connection conn                                        :- (lib.schema.literal.jvm/instance-of Connection)
+   {:keys [^String session-timezone write?], :as _options} :- Options]
   (set-best-transaction-level! driver conn)
   (set-time-zone-if-supported! driver conn session-timezone)
-  (try
-    ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
-    ;; to be a hint to the driver to enable database optimizations
-    ;; See https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setReadOnly-boolean-
-    (.setReadOnly conn true)
-    (catch Throwable e
-      (log/debug e (trs "Error setting connection to read-only"))))
-  (try
-    ;; set autocommit to false so that pg honors fetchSize. Otherwise it commits the transaction and needs the
-    ;; entire realized result set
-    (.setAutoCommit conn false)
-    (catch Throwable e
-      (log/debug e (trs "Error setting connection to autoCommit false"))))
+  (let [read-only? (not write?)]
+    (try
+      ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
+      ;; to be a hint to the driver to enable database optimizations
+      ;; See https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setReadOnly-boolean-
+      (.setReadOnly conn read-only?)
+      (catch Throwable e
+        (log/debug e (trs "Error setting connection readOnly to {0}" (pr-str read-only?))))))
+  (let [auto-commit? (boolean write?)]
+    (try
+      ;; set autocommit to false so that pg honors fetchSize. Otherwise it commits the transaction and needs the
+      ;; entire realized result set
+      (.setAutoCommit conn auto-commit?)
+      (catch Throwable e
+        (log/debug e (trs "Error setting connection autoCommit to {0}" (pr-str auto-commit?))))))
   (try
     (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
     (catch Throwable e
       (log/debug e (trs "Error setting default holdability for connection")))))
 
-(defn default-do-with-connection-with-options-DataSource
+(defn default-connection-with-options-DataSource
   "Part of the default implementation for [[do-with-connection-with-options]]: get an appropriate `java.sql.DataSource`
   for `db-or-id-or-spec`."
   {:added "0.47.0"}
@@ -268,9 +282,14 @@
   (if-not (u/id db-or-id-or-spec)
     ;; not a Database or Database ID... this is a raw `clojure.java.jdbc` spec, use that
     ;; directly.
-    (next.jdbc/get-datasource db-or-id-or-spec)
+    (reify DataSource
+      (getConnection [_this]
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (jdbc/get-connection db-or-id-or-spec)))
     ;; otherwise this is either a Database or Database ID.
-    (if-let [old-method-impl (get-method sql-jdbc.execute.old/connection-with-timezone driver)]
+    (if-let [old-method-impl (get-method
+                              #_{:clj-kondo/ignore [:deprecated-var]} sql-jdbc.execute.old/connection-with-timezone
+                              driver)]
       ;; use the deprecated impl for `connection-with-timezone` if one exists.
       (do
         (log/warn (trs "{0} is deprecated in Metabase 0.47.0. Implement {1} instead."
@@ -287,8 +306,8 @@
 
 (defmethod do-with-connection-with-options :sql-jdbc
   [driver db-or-id-or-spec options f]
-  (with-open [conn (.getConnection (default-do-with-connection-with-options-DataSource driver db-or-id-or-spec options))]
-    (default-do-with-connection-with-options-set-options! driver conn options)
+  (with-open [conn (.getConnection (default-connection-with-options-DataSource driver db-or-id-or-spec options))]
+    (set-default-connection-options! driver conn options)
     (f conn)))
 
 ;; TODO - would a more general method to convert a parameter to the desired class (and maybe JDBC type) be more

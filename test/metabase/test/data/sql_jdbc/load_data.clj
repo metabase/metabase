@@ -21,6 +21,22 @@
 
 (set! *warn-on-reflection* true)
 
+(defmulti do-with-connection-for-loading-test-data
+  "Execute `f` like
+
+    (f ^java.sql.Connection conn)
+
+  with a connection that should be used for loading test data."
+  {:added "0.47.0", :arglists '([driver jdbc-spec f])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod do-with-connection-for-loading-test-data :sql-jdbc/test-extensions
+  [_driver jdbc-spec f]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (with-open [conn (jdbc/get-connection jdbc-spec)]
+    (f conn)))
+
 (defmulti load-data!
   "Load the rows for a specific table (which has already been created) into a DB. `load-data-chunked!` is the default
   implementation (see below); several other implementations like `load-data-all-at-once!` are already defined; see
@@ -107,11 +123,11 @@
 (defn- make-insert!
   "Used by `make-load-data-fn`; creates the actual `insert!` function that gets passed to the `insert-middleware-fns`
   described above."
-  [driver conn {:keys [database-name], :as _dbdef} {:keys [table-name], :as _tabledef}]
+  [driver spec {:keys [database-name], :as _dbdef} {:keys [table-name], :as _tabledef}]
   (let [components       (for [component (sql.tx/qualified-name-components driver database-name table-name)]
                            (ddl.i/format-name driver (u/qualified-name component)))
         table-identifier (sql.qp/->honeysql driver (apply hx/identifier :table components))]
-    (partial do-insert! driver conn table-identifier)))
+    (partial do-insert! driver spec table-identifier)))
 
 (defn make-load-data-fn
   "Create an implementation of `load-data!`. This creates a function to actually insert a row or rows, wraps it with any
@@ -119,12 +135,15 @@
   [& insert-middleware-fns]
   (let [insert-middleware (apply comp insert-middleware-fns)]
     (fn [driver dbdef tabledef]
-      (jdbc/with-db-connection [conn (spec/dbdef->spec driver :db dbdef)]
-        (.setAutoCommit (jdbc/get-connection conn) false)
-        (let [insert! (insert-middleware (make-insert! driver conn dbdef tabledef))
-              rows    (load-data-get-rows driver dbdef tabledef)]
-          (log/tracef "Inserting rows like: %s" (first rows))
-          (insert! rows))))))
+      (do-with-connection-for-loading-test-data
+       driver
+       (spec/dbdef->spec driver :db dbdef)
+       (fn [^java.sql.Connection conn]
+         (.setAutoCommit conn false)
+         (let [insert! (insert-middleware (make-insert! driver {:connection conn} dbdef tabledef))
+               rows    (load-data-get-rows driver dbdef tabledef)]
+           (log/tracef "Inserting rows like: %s" (first rows))
+           (insert! rows)))))))
 
 
 ;;; ------------------------------------------ Predefinied load-data! impls ------------------------------------------

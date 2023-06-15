@@ -8,15 +8,21 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Database]]
    [metabase.test :as mt]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- create-test-db! []
-  (jdbc/with-db-connection [server-conn (sql-jdbc.conn/connection-details->spec :mysql
-                                          (mt/dbdef->connection-details :mysql :server nil))]
-    (doseq [statement ["DROP DATABASE IF EXISTS utf8_test;"
-                       "CREATE DATABASE utf8_test;"]]
-      (jdbc/execute! server-conn statement))))
+  (let [spec (sql-jdbc.conn/connection-details->spec
+              :mysql
+              (mt/dbdef->connection-details :mysql :server nil))]
+    (sql-jdbc.tx/do-with-connection-for-loading-test-data
+     :mysql
+     spec
+     (fn [^java.sql.Connection server-conn]
+       (doseq [statement ["DROP DATABASE IF EXISTS utf8_test;"
+                          "CREATE DATABASE utf8_test;"]]
+         (jdbc/execute! server-conn statement))))))
 
 (defn- test-data-source ^javax.sql.DataSource []
   (mdb.data-source/broken-out-details->DataSource

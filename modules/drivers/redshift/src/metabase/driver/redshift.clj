@@ -133,8 +133,11 @@
 ;; This impl is basically the same as the default impl in [[metabase.driver.sql-jdbc.execute]], but doesn't attempt to
 ;; make the connection read-only, because that seems to be causing problems for people
 (defmethod sql-jdbc.execute/do-with-connection-with-options :redshift
-  [driver database {:keys [^String session-timezone]} f]
-  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
+  [driver db-or-id-or-spec {:keys [^String session-timezone], :as options} f]
+  (with-open [conn (.getConnection (sql-jdbc.execute/default-connection-with-options-DataSource
+                                    driver
+                                    db-or-id-or-spec
+                                    options))]
     (sql-jdbc.execute/set-best-transaction-level! driver conn)
     (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
     (try
@@ -163,10 +166,13 @@
 (defn- quote-literal-for-database
   "This function invokes quote-literal-for-connection with a connection for the given database. See its docstring for
   more detail."
-  [database s]
-  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (with-open [conn (jdbc/get-connection jdbc-spec)]
-      (quote-literal-for-connection conn s))))
+  [driver database s]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [conn]
+     (quote-literal-for-connection conn s))))
 
 (defmethod sql.qp/->honeysql [:redshift :regex-match-first]
   [driver [_ arg pattern]]
@@ -175,7 +181,7 @@
    ;; the parameter to REGEXP_SUBSTR can only be a string literal; neither prepared statement parameters nor encoding/
    ;; decoding functions seem to work (fails with java.sql.SQLExcecption: "The pattern must be a valid UTF-8 literal
    ;; character expression"), hence we will use a different function to safely escape it before splicing here
-   [:raw (quote-literal-for-database (qp.store/database) pattern)]])
+   [:raw (quote-literal-for-database driver (qp.store/database) pattern)]])
 
 (defmethod sql.qp/->honeysql [:redshift :replace]
   [driver [_ arg pattern replacement]]

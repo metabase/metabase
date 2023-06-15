@@ -87,18 +87,21 @@
 (defn- old-dataset-names
   "Return a collection of all dataset names that are old -- prefixed with a date two days ago or older?"
   []
-  (with-open [conn (jdbc/get-connection (no-db-connection-spec))]
-    (let [metadata (.getMetaData conn)]
-      (with-open [rset (.getCatalogs metadata)]
-        (loop [acc []]
-          (if-not (.next rset)
-            acc
-            ;; for whatever dumb reason the Snowflake JDBC driver always returns these as uppercase despite us making
-            ;; them all lower-case
-            (let [catalog (u/lower-case-en (.getString rset "TABLE_CAT"))
-                  acc     (cond-> acc
-                            (sql.tu.unique-prefix/old-dataset-name? catalog) (conj catalog))]
-              (recur acc))))))))
+  (sql-jdbc.tx/do-with-connection-for-loading-test-data
+   :snowflake
+   (no-db-connection-spec)
+   (fn [^java.sql.Connection conn]
+     (let [metadata (.getMetaData conn)]
+       (with-open [rset (.getCatalogs metadata)]
+         (loop [acc []]
+           (if-not (.next rset)
+             acc
+             ;; for whatever dumb reason the Snowflake JDBC driver always returns these as uppercase despite us making
+             ;; them all lower-case
+             (let [catalog (u/lower-case-en (.getString rset "TABLE_CAT"))
+                   acc     (cond-> acc
+                             (sql.tu.unique-prefix/old-dataset-name? catalog) (conj catalog))]
+               (recur acc)))))))))
 
 (defn- delete-old-datasets!
   "Delete any datasets prefixed by a date that is two days ago or older. See comments above."
@@ -109,19 +112,22 @@
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println "[Snowflake] deleting old datasets...")
   (when-let [old-datasets (not-empty (old-dataset-names))]
-    (with-open [conn (jdbc/get-connection (no-db-connection-spec))
-                stmt (.createStatement conn)]
-      (doseq [dataset-name old-datasets]
-        #_{:clj-kondo/ignore [:discouraged-var]}
-        (println "[Snowflake] Deleting old dataset:" dataset-name)
-        (try
-          (.execute stmt (format "DROP DATABASE \"%s\";" dataset-name))
-          ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
-          ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
-          ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
-          (catch Throwable e
-            #_{:clj-kondo/ignore [:discouraged-var]}
-            (println "[Snowflake] Error deleting old dataset:" (ex-message e))))))))
+    (sql-jdbc.tx/do-with-connection-for-loading-test-data
+     :snowflake
+     (no-db-connection-spec)
+     (fn [^java.sql.Connection conn]
+       (with-open [stmt (.createStatement conn)]
+         (doseq [dataset-name old-datasets]
+           #_{:clj-kondo/ignore [:discouraged-var]}
+           (println "[Snowflake] Deleting old dataset:" dataset-name)
+           (try
+             (.execute stmt (format "DROP DATABASE \"%s\";" dataset-name))
+             ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
+             ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
+             ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
+             (catch Throwable e
+               #_{:clj-kondo/ignore [:discouraged-var]}
+               (println "[Snowflake] Error deleting old dataset:" (ex-message e))))))))))
 
 (defonce ^:private deleted-old-datasets?
   (atom false))

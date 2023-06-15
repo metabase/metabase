@@ -1,6 +1,5 @@
 (ns metabase.driver.presto-jdbc-test
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [honeysql.format :as hformat]
    [java-time :as t]
@@ -17,6 +16,7 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]
@@ -186,10 +186,13 @@
 (defn- execute-ddl! [ddl-statements]
   (mt/with-driver :presto-jdbc
     (let [jdbc-spec (sql-jdbc.conn/connection-details->spec :presto-jdbc (clone-db-details))]
-      (with-open [conn (jdbc/get-connection jdbc-spec)]
-        (doseq [ddl-stmt ddl-statements]
-          (with-open [stmt (.prepareStatement conn ddl-stmt)]
-            (.executeUpdate stmt)))))))
+      (sql-jdbc.tx/do-with-connection-for-loading-test-data
+       :presto-jdbc
+       jdbc-spec
+       (fn [^java.sql.Connection conn]
+         (doseq [ddl-stmt ddl-statements]
+           (with-open [stmt (.prepareStatement conn ddl-stmt)]
+             (.executeUpdate stmt))))))))
 
 (deftest specific-schema-sync-test
   (mt/test-driver :presto-jdbc

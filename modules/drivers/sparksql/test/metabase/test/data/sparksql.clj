@@ -84,15 +84,18 @@
 (defmethod load-data/do-insert! :sparksql
   [driver spec table-identifier row-or-rows]
   (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
-    (with-open [conn (jdbc/get-connection spec)]
-      (try
-        (.setAutoCommit conn false)
-        (doseq [sql+args statements]
-          (jdbc/execute! {:connection conn} sql+args {:transaction? false}))
-        (catch java.sql.SQLException e
-          (log/infof "Error inserting data: %s" (u/pprint-to-str 'red statements))
-          (jdbc/print-sql-exception-chain e)
-          (throw e))))))
+    (sql-jdbc.tx/do-with-connection-for-loading-test-data
+     driver
+     spec
+     (fn [^java.sql.Connection conn]
+       (try
+         (.setAutoCommit conn false)
+         (doseq [sql+args statements]
+           (jdbc/execute! {:connection conn} sql+args {:transaction? false}))
+         (catch java.sql.SQLException e
+           (log/infof "Error inserting data: %s" (u/pprint-to-str 'red statements))
+           (jdbc/print-sql-exception-chain e)
+           (throw e)))))))
 
 (defmethod load-data/load-data! :sparksql [& args]
   (apply load-data/load-data-add-ids! args))

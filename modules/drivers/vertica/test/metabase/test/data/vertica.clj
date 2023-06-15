@@ -123,42 +123,45 @@
 
 (defn- load-rows-from-csv!
   "Load rows from a CSV file into a Table."
-  [_driver {:keys [database-name], :as _dbdef} {:keys [table-name rows], :as _tabledef} filename]
-  (let [table-identifier (sql.tx/qualify-and-quote :vertica database-name table-name)]
-    (with-open [conn (jdbc/get-connection (dbspec))]
-      (letfn [(execute! [sql]
-                (try
-                  (jdbc/execute! {:connection conn} sql)
-                  (catch Throwable e
-                    (throw (ex-info "Error executing SQL" {:sql sql, :spec (dbspec)} e)))))
-              (actual-rows []
-                (u/ignore-exceptions
-                  (jdbc/query {:connection conn}
-                              (format "SELECT * FROM %s ORDER BY id ASC;" table-identifier))))]
-        (try
-          ;; make sure the Table is empty
-          (execute! (format "TRUNCATE TABLE %s" table-identifier))
-          ;; load the rows from the CSV file
-          (let [[num-rows-inserted] (execute! (format "COPY %s FROM LOCAL '%s' DELIMITER ','"
-                                                      table-identifier
-                                                      filename))]
-            ;; it should return the number of rows inserted; make sure this matches what we expected
-            (when-not (= num-rows-inserted (count rows))
-              (throw (ex-info (format "Expected %d rows to be inserted, but only %d were" (count rows) num-rows-inserted)
-                              {:inserted-rows (take 100 (actual-rows))}))))
-          ;; make sure SELECT COUNT(*) matches as well
-          (let [[{actual-num-rows :count}] (jdbc/query {:connection conn}
-                                                       (format "SELECT count(*) FROM %s;" table-identifier))]
-            (when-not (= actual-num-rows (count rows))
-              (throw (ex-info (format "Expected count(*) to return %d, but only got %d" (count rows) actual-num-rows)
-                              {:inserted-rows (take 100 (actual-rows))}))))
-          ;; success!
-          :ok
-          (catch Throwable e
-            (throw (ex-info "Error loading rows from CSV file"
-                            {:filename filename
-                             :rows     (take 10 (str/split-lines (slurp filename)))}
-                            e))))))))
+  [driver {:keys [database-name], :as _dbdef} {:keys [table-name rows], :as _tabledef} filename]
+  (let [table-identifier (sql.tx/qualify-and-quote driver database-name table-name)]
+    (sql-jdbc.tx/do-with-connection-for-loading-test-data
+     driver
+     (dbspec)
+     (fn [^java.sql.Connection conn]
+       (letfn [(execute! [sql]
+                 (try
+                   (jdbc/execute! {:connection conn} sql)
+                   (catch Throwable e
+                     (throw (ex-info "Error executing SQL" {:sql sql, :spec (dbspec)} e)))))
+               (actual-rows []
+                 (u/ignore-exceptions
+                   (jdbc/query {:connection conn}
+                               (format "SELECT * FROM %s ORDER BY id ASC;" table-identifier))))]
+         (try
+           ;; make sure the Table is empty
+           (execute! (format "TRUNCATE TABLE %s" table-identifier))
+           ;; load the rows from the CSV file
+           (let [[num-rows-inserted] (execute! (format "COPY %s FROM LOCAL '%s' DELIMITER ','"
+                                                       table-identifier
+                                                       filename))]
+             ;; it should return the number of rows inserted; make sure this matches what we expected
+             (when-not (= num-rows-inserted (count rows))
+               (throw (ex-info (format "Expected %d rows to be inserted, but only %d were" (count rows) num-rows-inserted)
+                               {:inserted-rows (take 100 (actual-rows))}))))
+           ;; make sure SELECT COUNT(*) matches as well
+           (let [[{actual-num-rows :count}] (jdbc/query {:connection conn}
+                                                        (format "SELECT count(*) FROM %s;" table-identifier))]
+             (when-not (= actual-num-rows (count rows))
+               (throw (ex-info (format "Expected count(*) to return %d, but only got %d" (count rows) actual-num-rows)
+                               {:inserted-rows (take 100 (actual-rows))}))))
+           ;; success!
+           :ok
+           (catch Throwable e
+             (throw (ex-info "Error loading rows from CSV file"
+                             {:filename filename
+                              :rows     (take 10 (str/split-lines (slurp filename)))}
+                             e)))))))))
 
 (defmethod load-data/load-data! :vertica
   [driver dbdef {:keys [rows], :as tabledef}]

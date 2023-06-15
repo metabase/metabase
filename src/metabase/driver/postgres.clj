@@ -807,15 +807,19 @@
 
 (defmethod driver/insert-into :postgres
   [driver db-id table-name column-names values]
-  (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-    (let [copy-manager (CopyManager. (.unwrap (jdbc/get-connection conn) PgConnection))
-          [sql & _]    (sql/format {::copy       (keyword table-name)
-                                    :columns     (map keyword column-names)
-                                    ::from-stdin "''"}
-                                   :quoted true
-                                   :dialect (sql.qp/quote-style driver))
-          tsvs         (->> values
-                            (map row->tsv)
-                            (str/join "\n")
-                            (StringReader.))]
-      (.copyIn copy-manager ^String sql tsvs))))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db-id
+   {:write? true}
+   (fn [^java.sql.Connection conn]
+     (let [copy-manager (CopyManager. (.unwrap conn PgConnection))
+           [sql & _]    (sql/format {::copy       (keyword table-name)
+                                     :columns     (map keyword column-names)
+                                     ::from-stdin "''"}
+                                    :quoted true
+                                    :dialect (sql.qp/quote-style driver))
+           tsvs         (->> values
+                             (map row->tsv)
+                             (str/join "\n")
+                             (StringReader.))]
+       (.copyIn copy-manager ^String sql tsvs)))))

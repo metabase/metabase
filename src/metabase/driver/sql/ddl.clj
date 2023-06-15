@@ -13,6 +13,8 @@
   (str "-- Metabase\n"
        sql-str))
 
+;;; TODO -- move the JDBC stuff to something like [[metabase.driver.sql-jdbc.ddl]]. JDBC-specific stuff does not belong
+;;; IN [[metabase.driver.sql]] !!
 (defn execute!
   "Executes sql and params with a standard remark prepended to the statement."
   [conn [sql & params]]

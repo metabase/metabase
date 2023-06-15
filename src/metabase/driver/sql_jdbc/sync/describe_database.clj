@@ -1,10 +1,8 @@
 (ns metabase.driver.sql-jdbc.sync.describe-database
   "SQL JDBC impl for `describe-database`."
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
@@ -160,20 +158,21 @@
 (defn describe-database
   "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec]
-  {:tables (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec))]
-             ;; try to set the Connection to `READ_UNCOMMITED` if possible, or whatever the next least-locking level
-             ;; is. Not sure how much of a difference that makes since we're not running this inside a transaction,
-             ;; but better safe than sorry
-             (sql-jdbc.execute/set-best-transaction-level! driver conn)
-             (let [schema-filter-prop      (driver.u/find-schema-filters-prop driver)
-                   has-schema-filter-prop? (some? schema-filter-prop)
-                   default-active-tbl-fn   #(into #{} (sql-jdbc.sync.interface/active-tables driver conn nil nil))]
-               (if has-schema-filter-prop?
-                 (if-let [database (db-or-id-or-spec->database db-or-id-or-spec)]
-                   (let [prop-nm                                 (:name schema-filter-prop)
-                         [inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns
-                                                                  prop-nm
-                                                                  database)]
-                     (into #{} (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))
-                   (default-active-tbl-fn))
-                 (default-active-tbl-fn))))})
+  {:tables
+   (sql-jdbc.execute/do-with-connection-with-options
+    driver
+    db-or-id-or-spec
+    nil
+    (fn [^Connection conn]
+      (let [schema-filter-prop      (driver.u/find-schema-filters-prop driver)
+            has-schema-filter-prop? (some? schema-filter-prop)
+            default-active-tbl-fn   #(into #{} (sql-jdbc.sync.interface/active-tables driver conn nil nil))]
+        (if has-schema-filter-prop?
+          (if-let [database (db-or-id-or-spec->database db-or-id-or-spec)]
+            (let [prop-nm                                 (:name schema-filter-prop)
+                  [inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns
+                                                           prop-nm
+                                                           database)]
+              (into #{} (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))
+            (default-active-tbl-fn))
+          (default-active-tbl-fn)))))})

@@ -410,8 +410,11 @@
 ;; step. SQLite doesn't have a notion of session timezones so don't do that either. The only thing we're doing here from
 ;; the default impl is setting the transaction isolation level
 (defmethod sql-jdbc.execute/do-with-connection-with-options :sqlite
-  [driver database _options f]
-  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
+  [driver db-or-id-or-spec options f]
+  (with-open [conn (.getConnection (sql-jdbc.execute/default-connection-with-options-DataSource
+                                    driver
+                                    db-or-id-or-spec
+                                    options))]
     (sql-jdbc.execute/set-best-transaction-level! driver conn)
     (f conn)))
 

@@ -35,19 +35,8 @@
   (:import
    (com.facebook.presto.jdbc PrestoConnection)
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
-   (java.sql
-     Connection
-     PreparedStatement
-     ResultSet
-     ResultSetMetaData
-     Time
-     Types)
-   (java.time
-     LocalDateTime
-     LocalTime
-     OffsetDateTime
-     OffsetTime
-     ZonedDateTime)
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Time Types)
+   (java.time LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
 
@@ -587,28 +576,34 @@
 
 (defmethod driver/describe-database :presto-jdbc
   [driver {{:keys [catalog schema] :as _details} :details :as database}]
-  (with-open [conn (-> (sql-jdbc.conn/db->pooled-connection-spec database)
-                       jdbc/get-connection)]
-    (let [schemas (if schema #{(describe-schema driver conn catalog schema)}
-                             (all-schemas driver conn catalog))]
-      {:tables (reduce set/union schemas)})))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [schemas (if schema #{(describe-schema driver conn catalog schema)}
+                       (all-schemas driver conn catalog))]
+       {:tables (reduce set/union schemas)}))))
 
 (defmethod driver/describe-table :presto-jdbc
   [driver {{:keys [catalog] :as _details} :details :as database} {schema :schema, table-name :name}]
-  (with-open [conn (-> (sql-jdbc.conn/db->pooled-connection-spec database)
-                     jdbc/get-connection)]
-    (let [sql (describe-table-sql driver catalog schema table-name)]
-      (log/trace (trs "Running statement in describe-table: {0}" sql))
-      {:schema schema
-       :name   table-name
-       :fields (into
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [sql (describe-table-sql driver catalog schema table-name)]
+       (log/trace (trs "Running statement in describe-table: {0}" sql))
+       {:schema schema
+        :name   table-name
+        :fields (into
                  #{}
                  (map-indexed (fn [idx {:keys [column type] :as _col}]
                                 {:name column
                                  :database-type type
                                  :base-type         (presto-type->base-type type)
                                  :database-position idx}))
-                 (jdbc/reducible-query {:connection conn} sql))})))
+                 (jdbc/reducible-query {:connection conn} sql))}))))
 
 ;;; The Presto JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the `:sql-jdbc`
 ;;; implementation doesn't try to use it.
@@ -658,19 +653,23 @@
   (.unwrap pooled-conn PrestoConnection))
 
 (defmethod sql-jdbc.execute/do-with-connection-with-options :presto-jdbc
-  [driver database {:keys [^String session-timezone]} f]
+  [driver db-or-id-or-spec {:keys [^String session-timezone write?], :as options} f]
   ;; Presto supports setting the session timezone via a `PrestoConnection` instance method. Under the covers,
-  ;; this is equivalent to the `X-Presto-Time-Zone` header in the HTTP request (i.e. the `:presto` driver)
-  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
+  ;; this is equivalent to the `X-Presto-Time-Zone` header in the HTTP request.
+  (with-open [conn (.getConnection (sql-jdbc.execute/default-connection-with-options-DataSource
+                                    driver
+                                    db-or-id-or-spec
+                                    (dissoc options :session-timezone)))]
     (let [underlying-conn (pooled-conn->presto-conn conn)]
       (sql-jdbc.execute/set-best-transaction-level! driver conn)
       (when-not (str/blank? session-timezone)
         ;; set session time zone if defined
         (.setTimeZoneId underlying-conn session-timezone))
-      (try
-        (.setReadOnly conn true)
-        (catch Throwable e
-          (log/debug e (trs "Error setting connection to read-only"))))
+      (let [read-only? (not write?)]
+        (try
+          (.setReadOnly conn read-only?)
+          (catch Throwable e
+            (log/debug e (trs "Error setting connection read-only to {0}" (pr-str read-only?))))))
       ;; as with statement and prepared-statement, cannot set holdability on the connection level
       (f conn))))
 
