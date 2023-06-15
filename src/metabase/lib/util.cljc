@@ -14,6 +14,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
@@ -49,18 +50,36 @@
   (when (clause? clause)
     (get-in clause [1 :lib/uuid])))
 
+(defn expression-name
+  "Returns the :lib/expression-name of `clause`. Returns nil if `clause` is not a clause."
+  [clause]
+  (when (clause? clause)
+    (get-in clause [1 :lib/expression-name])))
+
+(defn named-expression-clause
+  "Top level expressions must be clauses with :lib/expression-name, so if we get a literal, wrap it in :value."
+  [clause a-name]
+  (assoc-in
+    (if (clause? clause)
+      clause
+      [:value {:lib/uuid (str (random-uuid))
+               :effective-type (lib.schema.expression/type-of clause)}
+       clause])
+    [1 :lib/expression-name] a-name))
+
 (defn replace-clause
   "Replace the `target-clause` in `stage` `location` with `new-clause`.
    If a clause has :lib/uuid equal to the `target-clause` it is swapped with `new-clause`.
    If `location` contains no clause with `target-clause` no replacement happens."
   [stage location target-clause new-clause]
   {:pre [(clause? target-clause)]}
-  (m/update-existing-in
-    stage
-    location
-    (fn [clause-or-clauses]
-      (if (= :expressions (first location))
-        new-clause
+  (let [new-clause (if (= :expressions (first location))
+                     (named-expression-clause new-clause (expression-name target-clause))
+                     new-clause)]
+    (m/update-existing-in
+      stage
+      location
+      (fn [clause-or-clauses]
         (->> (for [clause clause-or-clauses]
                (if (= (clause-uuid clause) (clause-uuid target-clause))
                  new-clause
@@ -77,9 +96,7 @@
   (if-let [target (get-in stage location)]
     (let [target-uuid (clause-uuid target-clause)
           [first-loc last-loc] [(first location) (last location)]
-          result (if (= :expressions first-loc)
-                   nil
-                   (into [] (remove (comp #{target-uuid} clause-uuid)) target))]
+          result (into [] (remove (comp #{target-uuid} clause-uuid)) target)]
       (cond
         (seq result)
         (assoc-in stage location result)
@@ -138,7 +155,7 @@
   "Convert legacy `:source-metadata` to [[metabase.lib.metadata/StageMetadata]]."
   [source-metadata]
   (when source-metadata
-    (-> (if (vector? source-metadata)
+    (-> (if (seqable? source-metadata)
           {:columns source-metadata}
           source-metadata)
         (update :columns (fn [columns]
@@ -226,6 +243,11 @@
   (let [stage-number (non-negative-stage-index stages stage-number)]
     (when (pos? stage-number)
       (dec stage-number))))
+
+(defn first-stage?
+  "Whether a `stage-number` is referring to the first stage of a query or not."
+  [query stage-number]
+  (not (previous-stage-number query stage-number)))
 
 (defn next-stage-number
   "The index of the next stage, if there is one. `nil` if there is no next stage."
@@ -422,7 +444,9 @@
   [query]
   (-> query :stages first :source-table))
 
-(defn unique-name-generator
+(mu/defn unique-name-generator :- [:=>
+                                   [:cat ::lib.schema.common/non-blank-string]
+                                   ::lib.schema.common/non-blank-string]
   "Create a new function with the signature
 
     (f str) => str

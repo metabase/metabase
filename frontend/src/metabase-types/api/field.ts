@@ -54,7 +54,10 @@ export type FieldValue = [RowValue] | [RowValue, HumanReadableFieldValue];
 
 export type FieldValuesType = "list" | "search" | "none";
 
+export type FieldDimensionType = "internal" | "external";
+
 export type FieldDimension = {
+  type: FieldDimensionType;
   name: string;
   human_readable_field_id?: FieldId;
   human_readable_field?: Field;

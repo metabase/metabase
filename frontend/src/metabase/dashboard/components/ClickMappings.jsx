@@ -5,7 +5,7 @@ import _ from "underscore";
 import { t } from "ttag";
 import { getIn, assocIn, dissocIn } from "icepick";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Select from "metabase/core/components/Select";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -294,7 +294,6 @@ function loadQuestionMetadata(getQuestion) {
       }
 
       render() {
-        // eslint-disable-next-line no-unused-vars
         const { question, metadata, ...rest } = this.props;
         return <ComposedComponent {...rest} />;
       }

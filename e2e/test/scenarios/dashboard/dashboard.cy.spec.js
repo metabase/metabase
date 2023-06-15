@@ -405,7 +405,7 @@ describe("scenarios > dashboard", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          size_x: 12,
+          size_x: 16,
           size_y: 8,
           parameter_mappings: [
             {
@@ -466,7 +466,7 @@ describe("scenarios > dashboard", () => {
                 card_id: 1,
                 row: 0,
                 col: 0,
-                size_x: 12,
+                size_x: 16,
                 size_y: 8,
                 series: [],
                 visualization_settings: {
@@ -511,7 +511,7 @@ describe("scenarios > dashboard", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          size_x: 12,
+          size_x: 16,
           size_y: 20,
           series: [],
           visualization_settings: {},
@@ -626,7 +626,7 @@ describe("scenarios > dashboard", () => {
           card_id: 1,
           row: 0,
           col: 0,
-          size_x: 12,
+          size_x: 16,
           size_y: 8,
           parameter_mappings: [
             {
@@ -681,6 +681,59 @@ describe("scenarios > dashboard", () => {
 
     cy.findByTestId("dashcard").within(() => {
       cy.findByText("There was a problem displaying this chart.");
+    });
+  });
+
+  it("should not have markdown content overflow in description (metabase#31326)", () => {
+    cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
+    cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
+    visitDashboard(1);
+    cy.wait("@getDashboard");
+
+    cy.get("main header").icon("info").click();
+
+    const testMarkdownContent =
+      "{selectall}# Heading 1{enter}{enter}**bold** https://www.metabase.com/community_posts/how-to-measure-the-success-of-new-product-features-and-why-it-is-important{enter}{enter}![alt](/app/assets/img/welcome-modal-2.png){enter}{enter}This is my description. ";
+
+    rightSidebar().within(() => {
+      cy.findByPlaceholderText("Add description")
+        .click()
+        .type(testMarkdownContent)
+        .blur();
+    });
+
+    cy.wait("@updateDashboard");
+
+    rightSidebar().within(() => {
+      // check that markdown content is not bigger than its container
+      cy.findByTestId("editable-text").then($markdown => {
+        const el = $markdown[0];
+
+        // vertical
+        expect(el.clientHeight).to.be.gte(el.firstElementChild.clientHeight);
+
+        // horizontal
+        $markdown.find("*").each((_index, childEl) => {
+          const parentRect = el.getBoundingClientRect();
+          const childRect = childEl.getBoundingClientRect();
+
+          expect(parentRect.left).to.be.lte(childRect.left);
+          expect(parentRect.right).to.be.gte(childRect.right);
+        });
+      });
+
+      cy.findByTestId("editable-text")
+        .click()
+        .then($el => {
+          const lineHeight = parseFloat(
+            window.getComputedStyle($el[0]).lineHeight,
+          );
+
+          // check that textarea has proper height when we change markdown text
+          expect($el[0].scrollHeight).to.be.gte(
+            testMarkdownContent.split("{enter}").length * lineHeight, // num of lines * lineHeight
+          );
+        });
     });
   });
 });

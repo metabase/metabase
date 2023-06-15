@@ -13,6 +13,7 @@ import {
   filterField,
   filterFieldPopover,
   setupBooleanQuery,
+  checkExpressionEditorHelperPopoverPosition,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
@@ -1083,6 +1084,19 @@ describe("scenarios > question > filter", () => {
       visualize(() => {
         cy.contains("2").should("exist");
       });
+    });
+  });
+
+  it("should render custom expression helper near the custom expression field", async () => {
+    openReviewsTable({ mode: "notebook" });
+    filter({ mode: "notebook" });
+
+    popover().within(() => {
+      cy.findByText("Custom Expression").click();
+
+      enterCustomColumnDetails({ formula: "floor" });
+
+      checkExpressionEditorHelperPopoverPosition();
     });
   });
 });

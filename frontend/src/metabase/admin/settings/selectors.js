@@ -1,4 +1,3 @@
-/* eslint-disable react/display-name */
 import _ from "underscore";
 import { createSelector } from "@reduxjs/toolkit";
 import { t, jt } from "ttag";
@@ -331,7 +330,7 @@ const SECTIONS = updateSectionsWithPlugins({
   uploads: {
     name: t`Uploads`,
     order: 85,
-    adminOnly: true,
+    adminOnly: false,
     component: UploadSettings,
     settings: [
       {

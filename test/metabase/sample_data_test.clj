@@ -13,8 +13,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;; ---------------------------------------------------- Tooling -----------------------------------------------------
 
@@ -32,7 +32,7 @@
   "Execute `body` with a temporary Sample Database DB bound to `db-binding`."
   {:style/indent 1}
   [[db-binding] & body]
-  `(mt/with-temp Database [db# (sample-database-db false)]
+  `(t2.with-temp/with-temp [Database db# (sample-database-db false)]
      (sync/sync-database! db#)
      (let [~db-binding db#]
        ~@body)))
@@ -101,13 +101,13 @@
                  ;; it should be `nil` after sync but get set to `search` by the auto-inference. We only set `list` in
                  ;; sync and setting anything else is reserved for admins, however we fill in what we think should be
                  ;; the appropiate value with the hydration fn
-                 (hydrate :has_field_values)
+                 (t2/hydrate :has_field_values)
                  (select-keys [:name :description :database_type :semantic_type :has_field_values :active :visibility_type
                                :preview_display :display_name :fingerprint :base_type])))))))
 
 (deftest write-rows-sample-database-test
   (testing "should be able to execute INSERT, UPDATE, and DELETE statements on the Sample Database"
-    (mt/with-temp Database [db (sample-database-db true)]
+    (t2.with-temp/with-temp [Database db (sample-database-db true)]
       (sync/sync-database! db)
       (mt/with-db db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
@@ -150,7 +150,7 @@
 
 (deftest ddl-sample-database-test
   (testing "should be able to execute DDL statements on the Sample Database"
-    (mt/with-temp Database [db (sample-database-db true)]
+    (t2.with-temp/with-temp [Database db (sample-database-db true)]
       (sync/sync-database! db)
       (mt/with-db db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))

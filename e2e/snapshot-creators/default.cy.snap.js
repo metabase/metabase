@@ -67,8 +67,11 @@ describe("snapshots", () => {
         });
       },
     );
-    // Dismiss `it's ok to play around` modal for admin
-    cy.request("PUT", `/api/user/1/modal/qbnewb`, {});
+
+    cy.request("GET", "/api/user/current").then(({ body: { id } }) => {
+      // Dismiss `it's ok to play around` modal for admin
+      cy.request("PUT", `/api/user/${id}/modal/qbnewb`);
+    });
   }
 
   function updateSettings() {
@@ -153,6 +156,7 @@ describe("snapshots", () => {
         parent_id,
       }).then(({ body }) => callback && callback(body));
     }
+
     postCollection("First collection", undefined, firstCollection =>
       postCollection(
         "Second collection",
@@ -176,7 +180,7 @@ describe("snapshots", () => {
     cy.createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
-      cardDetails: { size_x: 12, size_y: 8 },
+      cardDetails: { size_x: 16, size_y: 8 },
     });
 
     // question 2: Orders, Count

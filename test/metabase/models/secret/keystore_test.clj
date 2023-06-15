@@ -6,7 +6,8 @@
    [metabase.models :refer [Database Secret]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io ByteArrayOutputStream File)
    (java.nio.charset StandardCharsets)
@@ -66,11 +67,11 @@
               ks-pw     "embiggen"
               ks        (create-test-jks-instance ks-pw {key-alias key-value})]
           (.store ks baos (.toCharArray ks-pw))
-          (mt/with-temp Database [{:keys [details] :as database} {:engine  :secret-test-driver
-                                                                  :name    "Test DB with keystore"
-                                                                  :details {:host                    "localhost"
-                                                                            :keystore-value          (.toByteArray baos)
-                                                                            :keystore-password-value ks-pw}}]
+          (t2.with-temp/with-temp [Database {:keys [details] :as database} {:engine  :secret-test-driver
+                                                                            :name    "Test DB with keystore"
+                                                                            :details {:host                    "localhost"
+                                                                                      :keystore-value          (.toByteArray baos)
+                                                                                      :keystore-password-value ks-pw}}]
             (is (some? database))
             (is (not (contains? details :keystore-value)) "keystore-value was removed from details")
             (is (contains? details :keystore-id) "keystore-id was added to details")

@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { getIn } from "icepick";
 
 import _ from "underscore";

@@ -20,7 +20,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -51,7 +50,7 @@
                            limit             (sql.helpers/limit limit)
                            offset            (sql.helpers/offset offset))]
     (as-> (t2/select PersistedInfo query) results
-      (hydrate results :creator)
+      (t2/hydrate results :creator)
       (map (fn [{:keys [database_id] :as pi}]
              (assoc pi
                     :schema_name (ddl.i/schema-name {:id database_id} site-uuid-str)

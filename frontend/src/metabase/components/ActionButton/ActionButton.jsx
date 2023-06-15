@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 
 import { t } from "ttag";
 import cx from "classnames";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Button from "metabase/core/components/Button";
 
 import { cancelable } from "metabase/lib/promise";
@@ -108,7 +108,6 @@ export default class ActionButton extends Component {
       successText,
       useLoadingSpinner = false,
       resetState,
-      // eslint-disable-next-line no-unused-vars
       actionFn,
       className,
       successClassName,

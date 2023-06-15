@@ -63,6 +63,8 @@
            ["$2"         2              int-type]
            ["$ 3"        3              int-type]
            ["-43€"       -43            int-type]
+           ["(86)"       -86            int-type]
+           ["($86)"      -86            int-type]
            ["£1000"      1000           int-type]
            ["£1000"      1000           int-type "."]
            ["£1000"      1000           int-type ".,"]
@@ -88,6 +90,7 @@
            ["3.14"       3.14           float-type ".,"]
            ["3,14"       3.14           float-type ",."]
            ["3,14"       3.14           float-type ", "]
+           ["(3.14)"     -3.14          float-type]
            ["3.14"       3.14           float-type ".’"]
            [".14"        ".14"          vchar-type ".,"] ;; TODO: this should be a float type
            ["0.14"       0.14           float-type ".,"]
@@ -468,24 +471,25 @@
               (is (= ["id", "ship", "captain"]
                      (column-names-for-table table))))))))))
 
-(deftest load-from-csv-failed-test
+(deftest load-from-csv-missing-values-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-empty-db
       (with-mysql-local-infile-activated
-        (testing "Can't upload a CSV with missing values"
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo (condp = driver/*driver*
-                                            :postgres #"ERROR: missing data for column \"column_that_doesnt_have_a_value\""
-                                            :mysql #"ERROR: missing data in row \".*\""
-                                            #"Error executing write query: ")
-               (upload/load-from-csv
-                driver/*driver*
-                (mt/id)
-                "upload_test"
-                (csv-file-with ["id,column_that_doesnt_have_a_value" "2"]))))))
-      (testing "Check that the table isn't created if the upload fails"
-        (sync/sync-database! (mt/db))
-        (is (nil? (t2/select-one Table :db_id (mt/id))))))))
+        (testing "Can upload a CSV with missing values"
+          (upload/load-from-csv
+           driver/*driver*
+           (mt/id)
+           "upload_test"
+           (csv-file-with ["id,column_that_doesnt_have_a_value" "2"]))
+          (testing "Table and Fields exist after sync"
+            (sync/sync-database! (mt/db))
+            (let [table (t2/select-one Table :db_id (mt/id))]
+              (is (=? {:name #"(?i)upload_test"} table))
+              (testing "Check the data was uploaded into the table correctly"
+                (is (= ["id", "column_that_doesnt_have_a_value"]
+                       (column-names-for-table table)))
+                (is (= [[2 nil]]
+                       (rows-for-table table)))))))))))
 
 (deftest load-from-csv-tab-test
   (testing "Upload a CSV file with tabs in the values"

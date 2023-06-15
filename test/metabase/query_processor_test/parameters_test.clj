@@ -12,7 +12,8 @@
     [metabase.query-processor :as qp]
     [metabase.test :as mt]
     [metabase.util :as u]
-    [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- run-count-query [query]
   (or (ffirst
@@ -166,7 +167,7 @@
 (deftest filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
     (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
-      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/native-query (qp/compile (mt/mbql-query checkins)))}]
+      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/native-query (qp/compile (mt/mbql-query checkins)))}]
         (let [query (assoc (mt/mbql-query nil
                              {:source-table (format "card__%d" card-id)})
                            :parameters [{:type   :date/all-options
@@ -291,7 +292,7 @@
 (deftest date-parameter-for-native-query-with-nested-mbql-query-test
   (testing "Should be able to have a native query with a nested MBQL query and a date parameter (#21246)"
     (mt/dataset sample-dataset
-      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query products)}]
+      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/mbql-query products)}]
         (let [param-name (format "#%d" card-id)
               query      (mt/native-query
                            {:query         (str/join \newline

@@ -1,12 +1,13 @@
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
+import QueryColumnPicker from "metabase/common/components/QueryColumnPicker";
 
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepUiComponentProps } from "../../types";
 import ClauseStep from "../ClauseStep";
-import { SortDirectionButton, SortColumnPicker } from "./SortStep.styled";
+import { SortDirectionButton } from "./SortStep.styled";
 
 function SortStep({
   topLevelQuery,
@@ -19,9 +20,31 @@ function SortStep({
   const { stageIndex } = step;
 
   const clauses = Lib.orderBys(topLevelQuery, stageIndex);
-  const groupedColumns = Lib.groupColumns(
-    Lib.orderableColumns(topLevelQuery, stageIndex),
-  );
+
+  const checkColumnSelected = (
+    columnInfo: Lib.ColumnDisplayInfo,
+    orderByIndex?: number,
+  ) => {
+    return (
+      typeof orderByIndex === "number" &&
+      columnInfo.orderByPosition === orderByIndex
+    );
+  };
+
+  const getColumnGroups = (orderByIndex?: number) => {
+    const columns = Lib.orderableColumns(topLevelQuery, stageIndex);
+
+    const filteredColumns = columns.filter(column => {
+      const columnInfo = Lib.displayInfo(topLevelQuery, stageIndex, column);
+
+      const isAlreadyUsed = columnInfo.orderByPosition != null;
+      const isSelected = checkColumnSelected(columnInfo, orderByIndex);
+
+      return isSelected || !isAlreadyUsed;
+    });
+
+    return Lib.groupColumns(filteredColumns);
+  };
 
   const handleAddOrderBy = (column: Lib.ColumnMetadata) => {
     const nextQuery = Lib.orderBy(topLevelQuery, stageIndex, column, "asc");
@@ -64,15 +87,18 @@ function SortStep({
           onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
         />
       )}
-      renderPopover={clause => (
-        <SortColumnPicker
+      renderPopover={(orderBy, orderByIndex) => (
+        <QueryColumnPicker
           query={topLevelQuery}
           stageIndex={stageIndex}
-          columnGroups={groupedColumns}
+          columnGroups={getColumnGroups(orderByIndex)}
+          checkIsColumnSelected={item =>
+            checkColumnSelected(item, orderByIndex)
+          }
           onSelect={(column: Lib.ColumnMetadata) => {
-            const isUpdate = clause != null;
+            const isUpdate = orderBy != null;
             if (isUpdate) {
-              handleUpdateOrderByField(clause, column);
+              handleUpdateOrderByField(orderBy, column);
             } else {
               handleAddOrderBy(column);
             }
@@ -103,7 +129,7 @@ function SortDisplayName({
       }}
     >
       <Icon name={icon} />
-      <span>{displayInfo.displayName}</span>
+      <span>{displayInfo.longDisplayName}</span>
     </SortDirectionButton>
   );
 }

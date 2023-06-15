@@ -58,6 +58,7 @@ import {
   createStructuredModelCard as _createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 
+import * as ML_Urls from "metabase-lib/urls";
 import { TYPE } from "metabase-lib/types/constants";
 
 import ModelDetailPage from "./ModelDetailPage";
@@ -226,7 +227,7 @@ async function setup({
 
   setupCardsEndpoints([card]);
   setupModelActionsEndpoints(actions, model.id());
-  setupCollectionsEndpoints(collections);
+  setupCollectionsEndpoints({ collections });
 
   const name = model.displayName()?.toLowerCase();
   const slug = `${model.id()}-${name}`;
@@ -388,7 +389,7 @@ describe("ModelDetailPage", () => {
 
         expect(
           screen.getByRole("link", { name: /Create a new question/i }),
-        ).toHaveAttribute("href", model.getUrl());
+        ).toHaveAttribute("href", ML_Urls.getUrl(model));
         expect(
           screen.getByText(/This model is not used by any questions yet/i),
         ).toBeInTheDocument();
@@ -406,11 +407,11 @@ describe("ModelDetailPage", () => {
 
         expect(screen.getByRole("link", { name: "Q1" })).toHaveAttribute(
           "href",
-          q1.getUrl(),
+          ML_Urls.getUrl(q1),
         );
         expect(screen.getByRole("link", { name: "Q2" })).toHaveAttribute(
           "href",
-          q2.getUrl(),
+          ML_Urls.getUrl(q2),
         );
 
         expect(
@@ -795,7 +796,7 @@ describe("ModelDetailPage", () => {
 
       expect(
         list.getByRole("link", { name: TABLE_1.displayName() }),
-      ).toHaveAttribute("href", TABLE_1.newQuestion().getUrl());
+      ).toHaveAttribute("href", ML_Urls.getUrl(TABLE_1.newQuestion()));
       expect(list.queryByText("Reviews")).not.toBeInTheDocument();
     });
 
@@ -975,7 +976,9 @@ describe("ModelDetailPage", () => {
         model: createSavedStructuredCard(),
       });
 
-      expect(history?.getCurrentLocation().pathname).toBe(question.getUrl());
+      expect(history?.getCurrentLocation().pathname).toBe(
+        ML_Urls.getUrl(question),
+      );
     });
 
     it("shows 404 when opening an archived model", async () => {

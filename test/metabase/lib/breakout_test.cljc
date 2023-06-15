@@ -153,38 +153,64 @@
                  {:id (meta/id :categories :name) :name "NAME"}]
                 (lib/breakoutable-columns query)))))))
 
+(deftest ^:parallel binned-breakouts-test
+  (testing "binned breakout columns should have a position (#31437)"
+    (let [base-query (lib/query-for-table-name meta/metadata-provider "VENUES")
+          breakoutables (lib/breakoutable-columns base-query)
+          price-col (m/find-first #(= (:name %) "PRICE") breakoutables)
+          latitude-col (m/find-first #(= (:name %) "LATITUDE") breakoutables)
+          binning-opts (lib/available-binning-strategies base-query price-col)
+          query (-> base-query
+                    (lib/breakout (lib/with-binning price-col (first binning-opts)))
+                    (lib/breakout latitude-col))]
+      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
+        (is (=? [{:display-name "ID"}
+                 {:display-name "Name"}
+                 {:display-name "Category ID"}
+                 {:display-name "Latitude", :breakout-position 1}
+                 {:display-name "Longitude"}
+                 {:display-name "Price", :breakout-position 0}
+                 {:display-name "ID"}
+                 {:display-name "Name"}]
+                (lib/breakoutable-columns query)))))))
+
 (deftest ^:parallel breakoutable-explicit-joins-test
-  (testing "orderable-columns should include columns from explicit joins"
+  (testing "breakoutable-columns should include columns from explicit joins"
     (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
                                    [(lib/=
-                                      (lib/field "VENUES" "CATEGORY_ID")
-                                      (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                                     (lib/field "VENUES" "CATEGORY_ID")
+                                     (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all))))]
-      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:id (meta/id :venues :id) :name "ID"}
-                 {:id (meta/id :venues :name) :name "NAME"}
-                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
-                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
-                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
-                 {:id (meta/id :venues :price) :name "PRICE"}
-                 {:lib/type     :metadata/field
-                  :name         "ID"
-                  :display-name "ID"
-                  :source_alias "Cat"
-                  :id           (meta/id :categories :id)
-                  :table-id     (meta/id :categories)
-                  :base-type    :type/BigInteger}
-                 {:lib/type     :metadata/field
-                  :name         "NAME"
-                  :display-name "Name"
-                  :source_alias "Cat"
-                  :id           (meta/id :categories :name)
-                  :table-id     (meta/id :categories)
-                  :base-type    :type/Text}]
-                (lib/breakoutable-columns query)))))))
+      (doseq [[message query] {""
+                               query
+
+                               "with an aggregation (#31256)"
+                               (lib/aggregate query (lib/avg (lib/with-join-alias (meta/field-metadata :categories :id) "Cat")))}]
+        (testing (str message (lib.util/format "Query =\n%s" (u/pprint-to-str query)))
+          (is (=? [{:id (meta/id :venues :id) :name "ID"}
+                   {:id (meta/id :venues :name) :name "NAME"}
+                   {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
+                   {:id (meta/id :venues :latitude) :name "LATITUDE"}
+                   {:id (meta/id :venues :longitude) :name "LONGITUDE"}
+                   {:id (meta/id :venues :price) :name "PRICE"}
+                   {:lib/type     :metadata/field
+                    :name         "ID"
+                    :display-name "ID"
+                    :source-alias "Cat"
+                    :id           (meta/id :categories :id)
+                    :table-id     (meta/id :categories)
+                    :base-type    :type/BigInteger}
+                   {:lib/type     :metadata/field
+                    :name         "NAME"
+                    :display-name "Name"
+                    :source-alias "Cat"
+                    :id           (meta/id :categories :name)
+                    :table-id     (meta/id :categories)
+                    :base-type    :type/Text}]
+                  (lib/breakoutable-columns query))))))))
 
 (deftest ^:parallel breakoutable-columns-source-card-test
   (doseq [varr [#'lib.tu/query-with-card-source-table
@@ -439,5 +465,53 @@
                           {:breakout [[:field {:base-type :type/Date, :effective-type :type/Date} "expr"]]}]}
                 query'))
         (testing "description"
-          (is (= "Grouped by Expr"
+          (is (= "Grouped by expr"
                  (lib/describe-query query'))))))))
+
+(deftest ^:parallel breakoutable-columns-include-all-visible-columns-test
+  (testing "Include all visible columns, not just projected ones (#31233)"
+    (is (= ["ID"
+            "NAME"
+            "CATEGORY_ID"
+            "LATITUDE"
+            "LONGITUDE"
+            "PRICE"
+            "Categories__ID" ; this column is not projected, but should still be returned.
+            "Categories__NAME"]
+           (map :lib/desired-column-alias
+                (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/join (-> (lib/join-clause
+                                   (meta/table-metadata :categories)
+                                   [(lib/=
+                                     (lib/field "VENUES" "CATEGORY_ID")
+                                     (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Categories"))])
+                                  (lib/with-join-fields [(lib/with-join-alias (lib/field "CATEGORIES" "NAME") "Categories")])))
+                    lib/breakoutable-columns))))))
+
+(deftest ^:parallel breakoutable-columns-broken-ref-should-be-selected-test
+  (testing "Field refs that differ from what we return should still show up as selected if they refer to the same Field (#31482)"
+    (doseq [[message field-ref] {;; this ref is basically what we [[lib/breakout]] would have added but doesn't
+                                 ;; contain type info, shouldn't matter tho.
+                                 "correct ref but missing :base-type/:effective-type"
+                                 [:field {:lib/uuid (str (random-uuid)), :join-alias "Categories"} (meta/id :categories :name)]
+
+                                 ;; this is a busted Field ref, it's referring to a Field from a joined Table but
+                                 ;; does not include `:join-alias`. It should still work anyway.
+                                 "busted ref"
+                                 [:field {:lib/uuid (str (random-uuid))} (meta/id :categories :name)]}]
+      (testing (str \newline message " ref = " (pr-str field-ref))
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                        (lib/join (-> (lib/join-clause
+                                       (meta/table-metadata :categories)
+                                       [(lib/=
+                                         (lib/field "VENUES" "CATEGORY_ID")
+                                         (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Categories"))])
+                                      (lib/with-join-alias "Categories")
+                                      (lib/with-join-fields [(lib/with-join-alias (lib/field "CATEGORIES" "NAME") "Categories")])))
+                        (lib/breakout field-ref))]
+          (is (= [field-ref]
+                 (lib/breakouts query)))
+          (is (=? {:name              "NAME"
+                   :breakout-position 0}
+                  (m/find-first #(= (:id %) (meta/id :categories :name))
+                                (lib/breakoutable-columns query)))))))))

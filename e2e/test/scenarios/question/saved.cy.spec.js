@@ -127,7 +127,7 @@ describe("scenarios > question > saved", () => {
 
     openQuestionActions();
     popover().within(() => {
-      cy.icon("segment").click();
+      cy.findByText("Duplicate").click();
     });
 
     modal().within(() => {
@@ -249,5 +249,22 @@ describe("scenarios > question > saved", () => {
 
         assertColumnResized();
       });
+  });
+
+  it("should always be possible to view the full title text of the saved question", () => {
+    visitQuestion(1);
+    const savedQuestionTitle = cy.findByTestId("saved-question-header-title");
+    savedQuestionTitle.clear();
+    savedQuestionTitle.type(
+      "Space, the final frontier. These are the voyages of the Starship Enterprise.",
+    );
+    savedQuestionTitle.blur();
+
+    savedQuestionTitle.should("be.visible").should($el => {
+      // clientHeight: height of the textarea
+      // scrollHeight: height of the text content, including content not visible on the screen
+      const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
+      expect(heightDifference).to.eq(0);
+    });
   });
 });

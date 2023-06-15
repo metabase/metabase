@@ -5,7 +5,10 @@
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [java-time :as t]
+   [metabase.api.common :as api]
    [metabase.config :as config]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
@@ -614,7 +617,10 @@
   :getter     (fn []
                 (let [v (setting/get-value-of-type :boolean :show-database-syncing-modal)]
                   (if (nil? v)
-                    (not (t2/exists? 'Database :is_sample false, :initial_sync_status "complete"))
+                    (not (t2/exists? 'Database
+                                     :is_sample false
+                                     :is_audit false
+                                     :initial_sync_status "complete"))
                     ;; frontend should set this value to `true` after the modal has been shown once
                     v))))
 
@@ -624,10 +630,23 @@
   :type       :boolean
   :default    false)
 
+(defn- not-handling-api-request?
+  []
+  (nil? @api/*current-user*))
+
+(defn set-uploads-database-id!
+  "Sets the :uploads-database-id setting, with an appropriate permission check."
+  [new-id]
+  (if (or (not-handling-api-request?)
+          (mi/can-write? Database new-id))
+    (setting/set-value-of-type! :integer :uploads-database-id new-id)
+    (api/throw-403)))
+
 (defsetting uploads-database-id
   (deferred-tru "Database ID for uploads")
   :visibility :authenticated
-  :type       :integer)
+  :type       :integer
+  :setter     set-uploads-database-id!)
 
 (defsetting uploads-schema-name
   (deferred-tru "Schema name for uploads")

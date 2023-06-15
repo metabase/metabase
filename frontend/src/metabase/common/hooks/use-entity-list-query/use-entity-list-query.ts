@@ -1,4 +1,4 @@
-import { useDeepCompareEffect } from "react-use";
+import { useDeepCompareEffect, usePrevious } from "react-use";
 import type { Action } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { State } from "metabase-types/store";
@@ -50,17 +50,19 @@ export const useEntityListQuery = <TItem, TQuery = never>(
 ): UseEntityListQueryResult<TItem> => {
   const options = { entityQuery };
   const data = useSelector(state => getList(state, options));
+  const error = useSelector(state => getError(state, options));
   const isLoading = useSelector(state => getLoading(state, options));
   const isLoaded = useSelector(state => getLoaded(state, options));
-  const error = useSelector(state => getError(state, options));
+  const isLoadedPreviously = usePrevious(isLoaded);
+  const isInvalidated = !isLoaded && isLoadedPreviously;
 
   const dispatch = useDispatch();
   useDeepCompareEffect(() => {
-    if (enabled && !isLoaded) {
+    if (enabled || (enabled && isInvalidated)) {
       const action = dispatch(fetchList(entityQuery, { reload }));
       Promise.resolve(action).catch(() => undefined);
     }
-  }, [dispatch, fetchList, entityQuery, reload, enabled, isLoaded]);
+  }, [dispatch, fetchList, entityQuery, reload, enabled, isInvalidated]);
 
   return { data, isLoading, error };
 };
