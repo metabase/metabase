@@ -290,7 +290,7 @@
             (recur (dec num-retries))
             (throw e)))))))
 
-(defn- existing-dataset-names
+(defn- get-all-datasets
   "Fetch a list of *all* dataset names that currently exist in the BQ test project."
   []
   (for [^Dataset dataset (.iterateAll (.listDatasets (bigquery) (into-array BigQuery$DatasetListOption [])))]
@@ -308,13 +308,11 @@
 
 (defmethod tx/create-db! :bigquery-cloud-sdk [_ {:keys [database-name table-definitions]} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
-  ;; fetch existing datasets if we haven't done so yet
-  (let [datasets (existing-dataset-names)]
-    (doseq [outdated (filter transient-dataset-outdated? datasets)]
-      (log/info (u/format-color 'blue "Deleting temporary dataset more than two hours old: %s`." outdated))
-      (u/ignore-exceptions
-       (destroy-dataset! outdated))))
-  ;; now check and see if we need to create the requested one
+  ;; clean up outdated datasets
+  (doseq [outdated (filter transient-dataset-outdated? (get-all-datasets))]
+    (log/info (u/format-color 'blue "Deleting temporary dataset more than two hours old: %s`." outdated))
+    (u/ignore-exceptions
+     (destroy-dataset! outdated)))
   (let [database-name (normalize-name :db database-name)]
     (u/auto-retry 2
      (try
