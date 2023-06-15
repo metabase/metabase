@@ -306,7 +306,6 @@
   ;; Test that if a database is already completed sync'ing, then the sync is started again, it should initially be marked as
   ;; incomplete, but then marked as complete after the sync is finished.
   (mt/dataset sample-dataset
-    (reset! metabase.sync.util/operation->db-ids {})
     (testing "If `initial-sync-status` on a DB is already `complete`"
       (let [[active-table inactive-table deleted-table] (t2/select Table :db_id (mt/id))
             get-active-table #(t2/select-one Table :id (:id active-table))
