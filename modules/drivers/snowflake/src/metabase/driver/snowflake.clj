@@ -20,7 +20,6 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.driver.sync :as driver.s]
-   [metabase.driver.util :as driver.u]
    [metabase.models.secret :as secret]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -34,7 +33,6 @@
    [ring.util.codec :as codec])
   (:import
    (java.io File)
-   (java.nio.charset StandardCharsets)
    (java.sql Connection DatabaseMetaData ResultSet Types)
    (java.time OffsetDateTime ZonedDateTime)))
 
