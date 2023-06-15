@@ -130,13 +130,13 @@
   [_]
   "SET TIMEZONE TO %s;")
 
-;; This impl is basically the same as the default impl in `sql-jdbc.execute`, but doesn't attempt to make the
-;; connection read-only, because that seems to be causing problems for people
-(defmethod sql-jdbc.execute/do-with-connection-with-timezone :redshift
-  [driver database ^String timezone-id f]
+;; This impl is basically the same as the default impl in [[metabase.driver.sql-jdbc.execute]], but doesn't attempt to
+;; make the connection read-only, because that seems to be causing problems for people
+(defmethod sql-jdbc.execute/do-with-connection-with-options :redshift
+  [driver database {:keys [^String session-timezone]} f]
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (sql-jdbc.execute/set-best-transaction-level! driver conn)
-    (sql-jdbc.execute/set-time-zone-if-supported! driver conn timezone-id)
+    (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
     (try
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
       (catch Throwable e

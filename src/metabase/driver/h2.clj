@@ -478,8 +478,8 @@
   [_]
   #{"INFORMATION_SCHEMA"})
 
-(defmethod sql-jdbc.execute/do-with-connection-with-timezone :h2
-  [driver database ^String _timezone-id f]
+(defmethod sql-jdbc.execute/do-with-connection-with-options :h2
+  [driver database _options f]
   ;; h2 doesn't support setting timezones, or changing the transaction level without admin perms, so we can skip those
   ;; steps that are in the default impl
   (with-open [conn (doto (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))

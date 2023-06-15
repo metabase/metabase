@@ -731,7 +731,7 @@
   (mt/test-driver :postgres
     (testing "We should support the Postgres MONEY type"
       (testing "It should be possible to return money column results (#3754)"
-        (sql-jdbc.execute/do-with-connection-with-timezone
+        (sql-jdbc.execute/do-with-connection-with-options
          :postgres
          (mt/db)
          nil

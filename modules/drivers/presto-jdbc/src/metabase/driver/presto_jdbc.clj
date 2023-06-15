@@ -657,16 +657,16 @@
   ^PrestoConnection [^C3P0ProxyConnection pooled-conn]
   (.unwrap pooled-conn PrestoConnection))
 
-(defmethod sql-jdbc.execute/do-with-connection-with-timezone :presto-jdbc
-  [driver database ^String timezone-id f]
+(defmethod sql-jdbc.execute/do-with-connection-with-options :presto-jdbc
+  [driver database {:keys [^String session-timezone]} f]
   ;; Presto supports setting the session timezone via a `PrestoConnection` instance method. Under the covers,
   ;; this is equivalent to the `X-Presto-Time-Zone` header in the HTTP request (i.e. the `:presto` driver)
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (let [underlying-conn (pooled-conn->presto-conn conn)]
       (sql-jdbc.execute/set-best-transaction-level! driver conn)
-      (when-not (str/blank? timezone-id)
+      (when-not (str/blank? session-timezone)
         ;; set session time zone if defined
-        (.setTimeZoneId underlying-conn timezone-id))
+        (.setTimeZoneId underlying-conn session-timezone))
       (try
         (.setReadOnly conn true)
         (catch Throwable e

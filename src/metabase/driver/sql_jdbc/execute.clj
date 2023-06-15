@@ -15,6 +15,8 @@
     :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.lib.schema.expression.temporal
+    :as lib.schema.expression.temporal]
    [metabase.models.setting :refer [defsetting]]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -38,17 +40,26 @@
 ;;; |                                        SQL JDBC Reducible QP Interface                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmulti do-with-connection-with-timezone
+(def Options
+  "Malli schema for the options passed to [[do-with-connection-with-options]]."
+  [:maybe
+   [:map
+    ;; a string like 'US/Pacific' or something like that.
+    [:session-timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]]])
+
+(defmulti do-with-connection-with-options
   "Fetch a [[java.sql.Connection]] from a `driver`/`database`, presumably using a `DataSource` returned
   by [[datasource]] and a [[with-open]] form, and invoke
 
     (f connection)
 
+  `options` matches the [[Options]] schema above.
+
   The default implementation is basically
 
     (with-open [conn (.getConnection (datasource driver database))]
       (set-best-transaction-level! driver conn)
-      (set-time-zone-if-supported! driver conn timezone-id)
+      (set-time-zone-if-supported! driver conn session-timezone)
       (.setReadOnly conn true)
       (.setAutoCommit conn false)
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
@@ -63,18 +74,18 @@
      method unless you need to do something special with regards to setting the transaction level.
 
   2. Setting the session timezone manually on the [[java.sql.Connection]] returned by [[datasource]] based on the
-     value of `timezone-id`.
+     value of `session-timezone`.
 
     2a. The default implementation will do this for you by executing SQL if you implement
         [[set-timezone-sql]].
 
-    2b. You can implement this method, [[do-with-connection-with-timezone]], yourself and set the timezone however you
-        wish. Only set it if `timezone-id` is not `nil`!
+    2b. You can implement this method, [[do-with-connection-with-options]], yourself and set the timezone however you
+        wish. Only set it if `session-timezone` is not `nil`!
 
    Custom implementations should set transaction isolation to the least-locking level supported by the driver, and make
    connections read-only (*after* setting timezone, if needed)."
-  {:added    "0.46.0"
-   :arglists '([driver database ^String timezone-id f])}
+  {:added    "0.47.0"
+   :arglists '([driver database options f])}
    driver/dispatch-on-initialized-driver
    :hierarchy #'driver/hierarchy)
 
@@ -87,7 +98,7 @@
     [(driver/dispatch-on-initialized-driver driver) (class object)])
   :hierarchy #'driver/hierarchy)
 
-;; TODO -- maybe like [[do-with-connection-with-timezone]] we should replace [[prepared-statment]] and [[statement]]
+;; TODO -- maybe like [[do-with-connection-with-options]] we should replace [[prepared-statment]] and [[statement]]
 ;; with `do-with-prepared-statement` and `do-with-statement` methods -- that way you can't accidentally forget to wrap
 ;; things in a `try-catch` and call `.close`
 
@@ -211,17 +222,17 @@
         (seq more)
         (recur more)))))
 
-(defmethod do-with-connection-with-timezone :sql-jdbc
-  [driver database ^String timezone-id f]
+(defmethod do-with-connection-with-options :sql-jdbc
+  [driver database {:keys [^String session-timezone]} f]
   (with-open [^Connection conn (if-let [old-method-impl (get-method sql-jdbc.execute.old/connection-with-timezone driver)]
                                  (do
-                                   (log/warn (trs "{0} is deprecated in Metabase 0.46.0. Implement {1} instead."
+                                   (log/warn (trs "{0} is deprecated in Metabase 0.47.0. Implement {1} instead."
                                                   `connection-with-timezone
-                                                  `do-with-connection-with-timezone))
-                                   (old-method-impl driver database timezone-id))
+                                                  `do-with-connection-with-options))
+                                   (old-method-impl driver database session-timezone))
                                  (.getConnection (datasource-with-diagnostic-info! driver database)))]
     (set-best-transaction-level! driver conn)
-    (set-time-zone-if-supported! driver conn timezone-id)
+    (set-time-zone-if-supported! driver conn session-timezone)
     (try
       (.setReadOnly conn true)
       (catch Throwable e
@@ -516,10 +527,10 @@
      (execute-reducible-query driver sql params max-rows context respond)))
 
   ([driver sql params max-rows context respond]
-   (do-with-connection-with-timezone
+   (do-with-connection-with-options
     driver
     (qp.store/database)
-    (qp.timezone/report-timezone-id-if-supported)
+    {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (qp.store/database))}
     (fn [^Connection conn]
       (with-open [stmt          (statement-or-prepared-statement driver conn sql params (qp.context/canceled-chan context))
                   ^ResultSet rs (try

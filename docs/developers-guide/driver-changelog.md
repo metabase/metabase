@@ -15,7 +15,14 @@ title: Driver interface changelog
   An implemention of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
   database doesn't store tables in schemas.
 
-- The multimethod `metabase.driver/supports?` has been deprecated in favor of `metabase.driver/database-supports?`. The existing default implementation of `database-supports?` currently calls `supports?`, but it will be removed in 0.55.0.
+- The multimethod `metabase.driver/supports?` has been deprecated in favor of `metabase.driver/database-supports?`.
+  The existing default implementation of `database-supports?` currently calls `supports?`, but it will be removed in
+  0.50.0.
+
+- `metabase.driver.sql-jdbc.execute/connection-with-timezone` has been marked deprecated and is scheduled for removal
+  in Metabase 0.50.0. The new method `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` replaces it.
+  Migration to the new method is straightforward. See PR [#22166](https://github.com/metabase/metabase/pull/22166) for
+  more information.
 
 ## Metabase 0.46.0
 
