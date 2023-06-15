@@ -32,7 +32,7 @@
   [x]
   (cond
     (string? x) (str/replace x "v3_test_data" test-db-name)
-    (map? x)    (clojure.core/update-vals x with-test-db-name)
+    (map? x)    (update-vals x with-test-db-name)
     (vector? x) (mapv with-test-db-name x)
     (list?   x) (-> x vec with-test-db-name list*)
     (symbol? x) (symbol (with-test-db-name (str x)))
