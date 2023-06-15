@@ -116,7 +116,7 @@ class DashboardGrid extends Component {
 
     if (!isEditing) {
       this.setState({
-        initLayouts: this.getInitialCardSizes(cards),
+        initialCardSizes: this.getInitialCardSizes(cards),
       });
     }
 
@@ -185,9 +185,15 @@ class DashboardGrid extends Component {
     const minSize = visualization.minSize || DEFAULT_CARD_SIZE;
 
     let minW, minH;
-    if (this.state?.initLayouts) {
-      minW = Math.min(this.state?.initLayouts[dashcard.id]?.w, minSize.width);
-      minH = Math.min(this.state?.initLayouts[dashcard.id]?.h, minSize.height);
+    if (this.state?.initialCardSizes) {
+      minW = Math.min(
+        this.state?.initialCardSizes[dashcard.id]?.w,
+        minSize.width,
+      );
+      minH = Math.min(
+        this.state?.initialCardSizes[dashcard.id]?.h,
+        minSize.height,
+      );
     } else {
       minW = minSize.width;
       minH = minSize.height;
