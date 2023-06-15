@@ -32,10 +32,12 @@ export const HomePage = (): JSX.Element => {
   });
   const isLoading = databaseListState.isLoading || modelListState.isLoading;
   const error = databaseListState.error ?? modelListState.error;
-  const dashboardId = useSelector(getCustomHomePageDashboardId);
-  const showHomepageRedirectRoast = useSelector(
-    state => !getSetting(state, "dismissed-custom-dashboard-toast"),
-  );
+  const dashboardId = useSelector(state => {
+    return !state.settings.loading && getCustomHomePageDashboardId(state);
+  });
+  const showHomepageRedirectRoast = useSelector(state => {
+    return !getSetting(state, "dismissed-custom-dashboard-toast");
+  });
   const isMetabotEnabled = useSelector(getIsMetabotEnabled);
   const hasMetabot = getHasMetabot(
     databaseListState.data,

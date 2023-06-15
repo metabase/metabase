@@ -1,37 +1,31 @@
+import { createAsyncThunk, createReducer } from "@reduxjs/toolkit";
+
 import MetabaseSettings from "metabase/lib/settings";
-import {
-  handleActions,
-  createThunkAction,
-  combineReducers,
-} from "metabase/lib/redux";
 
 import { SessionApi } from "metabase/services";
-import { Dispatch, GetState } from "metabase-types/store";
 
 export const REFRESH_SITE_SETTINGS = "metabase/settings/REFRESH_SITE_SETTINGS";
 
-export const refreshSiteSettings = createThunkAction(
+export const refreshSiteSettings = createAsyncThunk(
   REFRESH_SITE_SETTINGS,
-  ({ locale }: { locale?: string } = {}) =>
-    async (dispatch: Dispatch, getState: GetState) => {
-      const settings = await SessionApi.properties(null, {
-        headers: locale ? { "X-Metabase-Locale": locale } : {},
-      });
-      MetabaseSettings.setAll(settings);
-      return settings;
-    },
-);
-
-const values = handleActions(
-  {
-    [REFRESH_SITE_SETTINGS]: {
-      next: (state, { payload }) => ({ ...state, ...payload }),
-    },
+  async ({ locale }: { locale?: string } = {}) => {
+    const settings = await SessionApi.properties(null, {
+      headers: locale ? { "X-Metabase-Locale": locale } : {},
+    });
+    MetabaseSettings.setAll(settings);
+    return settings;
   },
-  // seed with setting values from MetabaseBootstrap
-  window.MetabaseBootstrap,
 );
 
-export const settings = combineReducers({
-  values,
-});
+export const settings = createReducer(
+  { values: window.MetabaseBootstrap, loading: false },
+  builder => {
+    builder.addCase(refreshSiteSettings.pending, state => {
+      state.loading = true;
+    });
+    builder.addCase(refreshSiteSettings.fulfilled, (state, { payload }) => {
+      state.loading = false;
+      state.values = payload;
+    });
+  },
+);

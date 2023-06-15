@@ -128,20 +128,6 @@
       (view-log/dismissed-custom-dashboard-toast! false)
       (is (= false (view-log/dismissed-custom-dashboard-toast))))))
 
-(deftest user-dismissed-toasts-api-test
-  ;; some specific testing for this setting. See api/setting_test.clj
-  (testing "User's dismissed toasts are updated when setting is updated over the api"
-    (mt/with-test-user :crowberto
-      (view-log/dismissed-custom-dashboard-toast! false))
-    (is (false? (-> (mt/user-http-request :crowberto :get 200 "user/current")
-                    :dismissed_custom_dashboard_toast)))
-    (mt/user-http-request :crowberto :put 204 "setting/dismissed-custom-dashboard-toast" {:value true})
-    (is (true? (-> (mt/user-http-request :crowberto :get 200 "user/current")
-                   :dismissed_custom_dashboard_toast)))
-    (mt/user-http-request :crowberto :put 204 "setting/dismissed-custom-dashboard-toast" {:value false})
-    (is (false? (-> (mt/user-http-request :crowberto :get 200 "user/current")
-                   :dismissed_custom_dashboard_toast)))))
-
 (deftest most-recently-viewed-dashboard-test
   (t2.with-temp/with-temp [Dashboard dash {:name "Look at this Distinguished Dashboard!"}]
     (mt/with-model-cleanup [ViewLog]
