@@ -105,7 +105,7 @@
        db
        nil
        (fn [conn]
-         (sql-jdbc.describe-database/describe-database driver conn)
+         (sql-jdbc.describe-database/describe-database driver {:connection conn})
          (reduce + (for [^ResultSet rs @resultsets]
                      (if (.isClosed rs) 0 1))))))))
 

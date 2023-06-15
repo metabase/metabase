@@ -99,17 +99,17 @@
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
   schema. Returns a reducible sequence of results."
   [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
-  (sql-jdbc.sync.common/reducible-results
-   #(.getTables metadata db-name-or-nil (some->> schema-or-nil (driver/escape-entity-name-for-metadata driver)) "%"
-                (into-array String ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
-                                    "EXTERNAL TABLE"]))
-   (fn [^ResultSet rs]
-     (fn []
-       {:name        (.getString rs "TABLE_NAME")
-        :schema      (.getString rs "TABLE_SCHEM")
-        :description (when-let [remarks (.getString rs "REMARKS")]
-                       (when-not (str/blank? remarks)
-                         remarks))}))))
+  (with-open [rset (.getTables metadata db-name-or-nil (some->> schema-or-nil (driver/escape-entity-name-for-metadata driver)) "%"
+                               (into-array String ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
+                                                   "EXTERNAL TABLE"]))]
+    (loop [acc []]
+      (if-not (.next rset)
+        acc
+        (recur (conj acc {:name        (.getString rset "TABLE_NAME")
+                          :schema      (.getString rset "TABLE_SCHEM")
+                          :description (when-let [remarks (.getString rset "REMARKS")]
+                                         (when-not (str/blank? remarks)
+                                           remarks))}))))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
@@ -155,9 +155,10 @@
         :else
         nil))
 
-(defn describe-database
+(mu/defn describe-database
   "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db-or-id-or-spec]
+  [driver           :- :keyword
+   db-or-id-or-spec :- [:or :int :map]]
   {:tables
    (sql-jdbc.execute/do-with-connection-with-options
     driver

@@ -45,7 +45,7 @@
 ;;; |                                        SQL JDBC Reducible QP Interface                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def Options
+(def ConnectionOptions
   "Malli schema for the options passed to [[do-with-connection-with-options]]."
   [:maybe
    [:map
@@ -66,7 +66,7 @@
   using [[clojure.java..jdbc/get-connection]]. Note that this will not be a pooled connection unless your spec is for
   a pooled DataSource.
 
-  `options` matches the [[Options]] schema above.
+  `options` matches the [[ConnectionOptions]] schema above.
 
   * If `:session-timezone` is passed, it should be used to set the Session timezone for the Connection. If not passed,
     leave as-is
@@ -251,7 +251,7 @@
   {:added "0.47.0"}
   [driver                                                  :- :keyword
    ^Connection conn                                        :- (lib.schema.literal.jvm/instance-of Connection)
-   {:keys [^String session-timezone write?], :as _options} :- Options]
+   {:keys [^String session-timezone write?], :as _options} :- ConnectionOptions]
   (set-best-transaction-level! driver conn)
   (set-time-zone-if-supported! driver conn session-timezone)
   (let [read-only? (not write?)]
@@ -274,18 +274,22 @@
     (catch Throwable e
       (log/debug e (trs "Error setting default holdability for connection")))))
 
-(defn default-connection-with-options-DataSource
+(mu/defn default-connection-with-options-DataSource :- (lib.schema.literal.jvm/instance-of DataSource)
   "Part of the default implementation for [[do-with-connection-with-options]]: get an appropriate `java.sql.DataSource`
   for `db-or-id-or-spec`."
-  {:added "0.47.0"}
-  ^DataSource [driver db-or-id-or-spec {:keys [^String session-timezone], :as _options}]
+  {:added "0.47.0", :arglists '(^javax.sql.DataSource [driver db-or-id-or-spec options])}
+  [driver                                           :- :keyword
+   db-or-id-or-spec                                 :- [:or :int :map]
+   {:keys [^String session-timezone], :as _options} :- ConnectionOptions]
   (if-not (u/id db-or-id-or-spec)
     ;; not a Database or Database ID... this is a raw `clojure.java.jdbc` spec, use that
     ;; directly.
-    (reify DataSource
-      (getConnection [_this]
-        #_{:clj-kondo/ignore [:discouraged-var]}
-        (jdbc/get-connection db-or-id-or-spec)))
+    (do
+      (assert (map? db-or-id-or-spec) (format "Not a valid JDBC spec: %s" (pr-str db-or-id-or-spec)))
+      (reify DataSource
+        (getConnection [_this]
+          #_{:clj-kondo/ignore [:discouraged-var]}
+          (jdbc/get-connection db-or-id-or-spec))))
     ;; otherwise this is either a Database or Database ID.
     (if-let [old-method-impl (get-method
                               #_{:clj-kondo/ignore [:deprecated-var]} sql-jdbc.execute.old/connection-with-timezone

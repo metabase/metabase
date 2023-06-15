@@ -27,8 +27,8 @@
         (sql-jdbc.tx/do-with-connection-for-loading-test-data
          :h2
          (mdb.spec/spec :h2 details)
-         (fn [conn]
-           (binding [*conn* conn]
+         (fn [^java.sql.Connection conn]
+           (binding [*conn* {:connection conn}]
              (thunk))))))))
 
 (defmacro with-blank-db
