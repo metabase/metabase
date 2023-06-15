@@ -85,27 +85,21 @@ function QueryColumnPicker({
         return;
       }
 
-      const isBinned = Lib.binning(item.column) != null;
-      const isBinnable =
-        isBinned || Lib.isBinnable(query, stageIndex, item.column);
-
+      const isBinnable = Lib.isBinnable(query, stageIndex, item.column);
       if (hasBinning && isBinnable) {
-        const column = isBinned
-          ? item.column
-          : Lib.withDefaultBinning(query, stageIndex, item.column);
-        handleSelect(column);
+        handleSelect(Lib.withDefaultBinning(query, stageIndex, item.column));
         return;
       }
 
-      const isBucketed = Lib.temporalBucket(item.column) != null;
-      const isBucketable =
-        isBucketed || Lib.isTemporalBucketable(query, stageIndex, item.column);
-
-      if (hasTemporalBucketing && isBucketable) {
-        const column = isBucketed
-          ? item.column
-          : Lib.withDefaultTemporalBucket(query, stageIndex, item.column);
-        handleSelect(column);
+      const isTemporalBucketable = Lib.isTemporalBucketable(
+        query,
+        stageIndex,
+        item.column,
+      );
+      if (hasTemporalBucketing && isTemporalBucketable) {
+        handleSelect(
+          Lib.withDefaultTemporalBucket(query, stageIndex, item.column),
+        );
         return;
       }
 
