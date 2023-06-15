@@ -77,4 +77,7 @@
                                      (lib/field "VENUES" "CATEGORY_ID")
                                      (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Categories"))])
                                   (lib/with-join-fields [(lib/with-join-alias (lib/field "CATEGORIES" "NAME") "Categories")])))
-                    lib.metadata.calculation/visible-columns))))))
+                    lib.metadata.calculation/visible-columns)))))
+  (testing "nil has no visible columns (#31366)"
+    (is (empty? (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib.metadata.calculation/visible-columns nil))))))
