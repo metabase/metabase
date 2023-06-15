@@ -302,7 +302,13 @@
   (when (string? s)
     (str/trim (str/replace s #"(?i) id$" ""))))
 
-(defn- similar-names [name0 name1]
+(defn- similar-names?
+  "Checks if `name0` and `name1` are similar.
+  Two names are considered similar if they are the same, one is the plural of the other,
+  or their plurals are equal.
+  This is used to avoid repeating ourselves in situations like when we have a table called
+  PRODUCTS and a field (presumably referring to that table) called PRODUCT."
+  [name0 name1]
   (and (string? name0) (string? name1)
        (let [plural1 (delay (inflections/plural name1))
              plural0 (delay (inflections/plural name0))]
@@ -311,23 +317,12 @@
              (= @plural0 name1)
              (= @plural0 @plural1)))))
 
-(comment
-  (similar-names "jellow" "yellow")
-  (similar-names "yellow" "yellow")
-  (similar-names "yellow" "yellows")
-  (similar-names "yellow" "yellows")
-  (similar-names "yellows" "yellows")
-  (similar-names "cactus" "cacti")
-  (similar-names "cactus" "cactuses")
-  (similar-names "emacs" "emacsen")
-  nil)
-
 (defn- calculate-join-alias [query joined home-col]
   (let [joined-name (lib.metadata.calculation/display-name
                      (if (= (:lib/type joined) :mbql/query) joined query)
                      joined)
         home-name   (when home-col (strip-id (lib.metadata.calculation/display-name query home-col)))
-        similar     (similar-names joined-name home-name)
+        similar     (similar-names? joined-name home-name)
         join-alias  (or (and joined-name
                              home-name
                              (not (re-matches #"(?i)id" home-name))
