@@ -1,5 +1,7 @@
+import _ from "underscore";
 import {
   editDashboard,
+  resizeDashboardCard,
   restore,
   saveDashboard,
   visitDashboard,
@@ -7,10 +9,103 @@ import {
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-import {
-  getDefaultSize,
-  getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
+import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
+
+const VISUALIZATION_SIZES = {
+  line: {
+    min: { width: 4, height: 3 },
+    default: { width: 12, height: 6 },
+  },
+  area: {
+    min: { width: 4, height: 3 },
+    default: { width: 12, height: 6 },
+  },
+  bar: {
+    min: { width: 4, height: 3 },
+    default: { width: 12, height: 6 },
+  },
+  stacked: {
+    min: { width: 4, height: 3 },
+    default: { width: 12, height: 6 },
+  },
+  combo: {
+    min: { width: 4, height: 3 },
+    default: { width: 12, height: 6 },
+  },
+  row: {
+    min: { width: 4, height: 3 },
+    default: { width: 12, height: 6 },
+  },
+  scatter: {
+    min: { width: 4, height: 3 },
+    default: { width: 12, height: 6 },
+  },
+  waterfall: {
+    min: { width: 4, height: 3 },
+    default: { width: 14, height: 6 },
+  },
+  pie: {
+    min: { width: 4, height: 3 },
+    default: { width: 8, height: 6 },
+  },
+  funnel: {
+    min: { width: 4, height: 3 },
+    default: { width: 8, height: 6 },
+  },
+  gauge: {
+    min: { width: 4, height: 3 },
+    default: { width: 8, height: 6 },
+  },
+  progress: {
+    min: { width: 4, height: 3 },
+    default: { width: 8, height: 6 },
+  },
+  map: {
+    min: { width: 4, height: 3 },
+    default: { width: 8, height: 6 },
+  },
+  table: {
+    min: { width: 4, height: 3 },
+    default: { width: 12, height: 9 },
+  },
+  pivot: {
+    min: { width: 4, height: 3 },
+    default: { width: 12, height: 9 },
+  },
+  object: {
+    min: { width: 4, height: 3 },
+    default: { width: 12, height: 9 },
+  },
+  scalar: {
+    min: { width: 1, height: 1 },
+    default: { width: 4, height: 3 },
+  },
+  smartscalar: {
+    min: { width: 2, height: 2 },
+    default: { width: 4, height: 3 },
+  },
+  link: {
+    min: { width: 1, height: 1 },
+    default: { width: 4, height: 1 },
+  },
+  action: {
+    min: { width: 1, height: 1 },
+    default: { width: 4, height: 1 },
+  },
+  heading: {
+    min: { width: 1, height: 1 },
+    default: { width: GRID_WIDTH, height: 1 },
+  },
+  text: {
+    min: { width: 1, height: 1 },
+    default: { width: 6, height: 3 },
+  },
+};
+
+const getMinSize = visualizationType =>
+  _.get(VISUALIZATION_SIZES, [visualizationType, "min"], undefined);
+const getDefaultSize = visualizationType =>
+  _.get(VISUALIZATION_SIZES, [visualizationType, "default"], undefined);
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -60,7 +155,6 @@ const createMockMapQuestion = () => {
     display: "map",
   };
 };
-
 const TEST_QUESTIONS = [
   ...[
     "table",
@@ -107,8 +201,7 @@ describe("scenarios > dashboard card resizing", () => {
 
       cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
         body.ordered_cards.forEach(({ card, size_x, size_y }) => {
-          cy.log(`Checking default sizes for ${card.display} card`);
-          const { width, height } = getDefaultSize(card.display);
+          const { height, width } = getDefaultSize(card.display);
           expect(size_x).to.equal(width);
           expect(size_y).to.equal(height);
         });
@@ -141,15 +234,10 @@ describe("scenarios > dashboard card resizing", () => {
         const orderedCards = body.ordered_cards;
         orderedCards.forEach(({ card }) => {
           const dashCard = cy.contains(".DashCard", card.name);
-          dashCard.within(() => {
-            const resizeHandle = cy.get(".react-resizable-handle");
-            resizeHandle
-              .trigger("mousedown", { button: 0 })
-              .trigger("mousemove", {
-                clientX: getDefaultSize(card.display).width * 100,
-                clientY: getDefaultSize(card.display).height * 100,
-              })
-              .trigger("mouseup", { force: true });
+          resizeDashboardCard({
+            card: dashCard,
+            x: getDefaultSize(card.display).width * 100,
+            y: getDefaultSize(card.display).height * 100,
           });
         });
 
@@ -159,14 +247,11 @@ describe("scenarios > dashboard card resizing", () => {
         orderedCards.forEach(({ card }) => {
           const dashCard = cy.contains(".DashCard", card.name);
           dashCard.within(() => {
-            const resizeHandle = cy.get(".react-resizable-handle");
-            resizeHandle
-              .trigger("mousedown", { button: 0 })
-              .trigger("mousemove", {
-                clientX: -getDefaultSize(card.display).width * 100,
-                clientY: -getDefaultSize(card.display).height * 100,
-              })
-              .trigger("mouseup", { force: true });
+            resizeDashboardCard({
+              card: dashCard,
+              x: -getDefaultSize(card.display).width * 100,
+              y: -getDefaultSize(card.display).height * 100,
+            });
           });
         });
 
@@ -174,9 +259,9 @@ describe("scenarios > dashboard card resizing", () => {
 
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
           body.ordered_cards.forEach(({ card, size_x, size_y }) => {
-            cy.log(`Checking min sizes for ${card.display} card`);
-            expect(size_x).to.equal(getMinSize(card.display).width);
-            expect(size_y).to.equal(getMinSize(card.display).height);
+            const { height, width } = getMinSize(card.display);
+            expect(size_x).to.equal(width);
+            expect(size_y).to.equal(height);
           });
         });
       });
