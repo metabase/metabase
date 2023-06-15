@@ -1,6 +1,4 @@
-import fetchMock from "fetch-mock";
-
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
@@ -25,7 +23,7 @@ const TEST_DB = createSampleDatabase();
 
 const DATA_WAREHOUSE_DB = createMockDatabase({ id: 2 });
 
-async function setup({
+function setup({
   isAdmin = false,
   isPaidPlan = false,
   isWhiteLabeling = false,
@@ -49,6 +47,10 @@ async function setup({
 
   function TestComponent() {
     const shouldShowDatabasePromptBanner = useShouldShowDatabasePromptBanner();
+    if (shouldShowDatabasePromptBanner == null) {
+      return <>Mock loading state</>;
+    }
+
     return shouldShowDatabasePromptBanner ? (
       <>showing database prompt banner</>
     ) : (
@@ -59,16 +61,6 @@ async function setup({
   renderWithProviders(<TestComponent />, {
     storeInitialState: state,
   });
-
-  // This check ensures the conditions for database prompt banner are all available.
-  // Then we could safely assert that the banner is not rendered.
-  // If we don't wait for this API call to finish, the banner could have rendered,
-  // and the test would still pass.
-  if (isAdmin && isPaidPlan && !isWhiteLabeling) {
-    await waitFor(() => {
-      expect(fetchMock.called("path:/api/database")).toBe(true);
-    });
-  }
 }
 
 describe("useShouldShowDatabasePromptBanner", () => {
@@ -77,14 +69,16 @@ describe("useShouldShowDatabasePromptBanner", () => {
   });
 
   it("should render for admin user with paid plan and has only sample database, but not white-labeled", async () => {
-    await setup({
+    setup({
       isAdmin: true,
       isPaidPlan: true,
       onlyHaveSampleDatabase: true,
       isWhiteLabeling: false,
     });
 
-    expect(screen.getByText("showing database prompt banner")).toBeVisible();
+    expect(
+      await screen.findByText("showing database prompt banner"),
+    ).toBeVisible();
   });
 
   it.each([
@@ -126,14 +120,16 @@ describe("useShouldShowDatabasePromptBanner", () => {
   ] as const)(
     "should not render for admin users when isPaidPlan: $isPaidPlan, onlyHaveSampleDatabase: $onlyHaveSampleDatabase, isWhiteLabeling: $isWhiteLabeling",
     async ({ isPaidPlan, onlyHaveSampleDatabase, isWhiteLabeling }) => {
-      await setup({
+      setup({
         isAdmin: true,
         isPaidPlan,
         onlyHaveSampleDatabase,
         isWhiteLabeling,
       });
 
-      expect(screen.getByText("hiding database prompt banner")).toBeVisible();
+      expect(
+        await screen.findByText("hiding database prompt banner"),
+      ).toBeVisible();
     },
   );
 
@@ -181,7 +177,7 @@ describe("useShouldShowDatabasePromptBanner", () => {
   ] as const)(
     "should not render for non-admin users when isPaidPlan: $isPaidPlan, onlyHaveSampleDatabase: $onlyHaveSampleDatabase, isWhiteLabeling: $isWhiteLabeling",
     async ({ isPaidPlan, onlyHaveSampleDatabase, isWhiteLabeling }) => {
-      await setup({
+      setup({
         isAdmin: false,
         isPaidPlan,
         onlyHaveSampleDatabase,
