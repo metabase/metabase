@@ -6,9 +6,9 @@
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.setup :as mdb.setup]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models :refer [Database]]
    [metabase.test :as mt]
-   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [toucan.db :as db]
    [toucan2.core :as t2]))
 
@@ -16,9 +16,10 @@
   (let [spec (sql-jdbc.conn/connection-details->spec
               :mysql
               (mt/dbdef->connection-details :mysql :server nil))]
-    (sql-jdbc.tx/do-with-connection-for-loading-test-data
+    (sql-jdbc.execute/do-with-connection-with-options
      :mysql
      spec
+     {:write? true}
      (fn [^java.sql.Connection server-conn]
        (doseq [statement ["DROP DATABASE IF EXISTS utf8_test;"
                           "CREATE DATABASE utf8_test;"]]

@@ -7,13 +7,13 @@
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Secret]]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [next.jdbc :as next.jdbc]
@@ -51,9 +51,10 @@
         (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
                                                     (original-destroy id destroyed-spec)
                                                     (reset! destroyed? true))]
-          (sql-jdbc.tx/do-with-connection-for-loading-test-data
+          (sql-jdbc.execute/do-with-connection-with-options
            :h2
            spec
+           {:write? true}
            (fn [conn]
              (next.jdbc/execute! conn ["CREATE TABLE birds (name varchar)"])
              (next.jdbc/execute! conn ["INSERT INTO birds values ('rasta'),('lucky')"])

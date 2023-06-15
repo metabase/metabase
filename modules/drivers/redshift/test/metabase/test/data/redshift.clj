@@ -3,11 +3,11 @@
    [clojure.string :as str]
    [java-time :as t]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -166,9 +166,10 @@
 
 (defmethod tx/before-run :redshift
   [driver]
-  (sql-jdbc.tx/do-with-connection-for-loading-test-data
+  (sql-jdbc.execute/do-with-connection-with-options
    driver
    (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
+   {:write? true}
    (fn [conn]
      (delete-old-schemas! conn)
      (create-session-schema! conn))))

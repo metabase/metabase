@@ -5,6 +5,7 @@
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.test.data.interface :as tx]
@@ -84,9 +85,10 @@
 (defmethod load-data/do-insert! :sparksql
   [driver spec table-identifier row-or-rows]
   (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
-    (sql-jdbc.tx/do-with-connection-for-loading-test-data
+    (sql-jdbc.execute/do-with-connection-with-options
      driver
      spec
+     {:write? true}
      (fn [^java.sql.Connection conn]
        (try
          (.setAutoCommit conn false)

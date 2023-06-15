@@ -8,6 +8,7 @@
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -125,9 +126,10 @@
   "Load rows from a CSV file into a Table."
   [driver {:keys [database-name], :as _dbdef} {:keys [table-name rows], :as _tabledef} filename]
   (let [table-identifier (sql.tx/qualify-and-quote driver database-name table-name)]
-    (sql-jdbc.tx/do-with-connection-for-loading-test-data
+    (sql-jdbc.execute/do-with-connection-with-options
      driver
      (dbspec)
+     {:write? true}
      (fn [^java.sql.Connection conn]
        (letfn [(execute! [sql]
                  (try

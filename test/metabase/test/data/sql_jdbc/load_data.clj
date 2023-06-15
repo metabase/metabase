@@ -21,22 +21,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti do-with-connection-for-loading-test-data
-  "Execute `f` like
-
-    (f ^java.sql.Connection conn)
-
-  with a connection that should be used for loading test data."
-  {:added "0.47.0", :arglists '([driver jdbc-spec f])}
-  tx/dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod do-with-connection-for-loading-test-data :sql-jdbc/test-extensions
-  [_driver jdbc-spec f]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (with-open [conn (jdbc/get-connection jdbc-spec)]
-    (f conn)))
-
 (defmulti load-data!
   "Load the rows for a specific table (which has already been created) into a DB. `load-data-chunked!` is the default
   implementation (see below); several other implementations like `load-data-all-at-once!` are already defined; see
@@ -135,9 +119,10 @@
   [& insert-middleware-fns]
   (let [insert-middleware (apply comp insert-middleware-fns)]
     (fn [driver dbdef tabledef]
-      (do-with-connection-for-loading-test-data
+      (sql-jdbc.execute/do-with-connection-with-options
        driver
        (spec/dbdef->spec driver :db dbdef)
+       {:write? true}
        (fn [^java.sql.Connection conn]
          (.setAutoCommit conn false)
          (let [insert! (insert-middleware (make-insert! driver {:connection conn} dbdef tabledef))

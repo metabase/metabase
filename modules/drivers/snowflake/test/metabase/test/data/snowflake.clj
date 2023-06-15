@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.test.data.interface :as tx]
@@ -87,9 +88,10 @@
 (defn- old-dataset-names
   "Return a collection of all dataset names that are old -- prefixed with a date two days ago or older?"
   []
-  (sql-jdbc.tx/do-with-connection-for-loading-test-data
+  (sql-jdbc.execute/do-with-connection-with-options
    :snowflake
    (no-db-connection-spec)
+   {:write? true}
    (fn [^java.sql.Connection conn]
      (let [metadata (.getMetaData conn)]
        (with-open [rset (.getCatalogs metadata)]
@@ -112,9 +114,10 @@
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println "[Snowflake] deleting old datasets...")
   (when-let [old-datasets (not-empty (old-dataset-names))]
-    (sql-jdbc.tx/do-with-connection-for-loading-test-data
+    (sql-jdbc.execute/do-with-connection-with-options
      :snowflake
      (no-db-connection-spec)
+     {:write? true}
      (fn [^java.sql.Connection conn]
        (with-open [stmt (.createStatement conn)]
          (doseq [dataset-name old-datasets]

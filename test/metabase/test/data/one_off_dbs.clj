@@ -5,10 +5,10 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.db.spec :as mdb.spec]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.database :refer [Database]]
    [metabase.sync :as sync]
    [metabase.test.data :as data]
-   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.util.random :as tu.random]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -24,9 +24,10 @@
   (let [details {:db (str "mem:" (tu.random/random-name) ";DB_CLOSE_DELAY=10")}]
     (t2.with-temp/with-temp [Database db {:engine :h2, :details details}]
       (data/with-db db
-        (sql-jdbc.tx/do-with-connection-for-loading-test-data
+        (sql-jdbc.execute/do-with-connection-with-options
          :h2
          (mdb.spec/spec :h2 details)
+         {:write? true}
          (fn [^java.sql.Connection conn]
            (binding [*conn* {:connection conn}]
              (thunk))))))))

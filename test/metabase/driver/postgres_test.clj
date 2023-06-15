@@ -30,7 +30,6 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
-   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -715,9 +714,10 @@
 (defn- do-with-money-test-db [thunk]
   (drop-if-exists-and-create-db! "money_columns_test")
   (let [details (mt/dbdef->connection-details :postgres :db {:database-name "money_columns_test"})]
-    (sql-jdbc.tx/do-with-connection-for-loading-test-data
+    (sql-jdbc.execute/do-with-connection-with-options
      :postgres
      (sql-jdbc.conn/connection-details->spec :postgres details)
+     {:write? true}
      (fn [^java.sql.Connection conn]
        (doseq [sql+args [["CREATE table bird_prices (bird TEXT, price money);"]
                          ["INSERT INTO bird_prices (bird, price) VALUES (?, ?::numeric::money), (?, ?::numeric::money);"

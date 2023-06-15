@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.database :refer [Database]]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
@@ -15,7 +16,6 @@
    [metabase.models.table :refer [Table]]
    [metabase.sync :as sync]
    [metabase.test :as mt]
-   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.util :as u]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]
@@ -168,9 +168,10 @@
 (deftest update-human-readable-values-test
   (testing "Test \"fixing\" of human readable values when field values change"
     ;; Create a temp warehouse database that can have it's field values change
-    (sql-jdbc.tx/do-with-connection-for-loading-test-data
+    (sql-jdbc.execute/do-with-connection-with-options
      :h2
      {:classname "org.h2.Driver", :subprotocol "h2", :subname "mem:temp"}
+     {:write? true}
      (fn [^java.sql.Connection conn]
        (next.jdbc/execute! conn ["drop table foo if exists"])
        (next.jdbc/execute! conn ["create table foo (id integer primary key, category_id integer not null, desc text)"])

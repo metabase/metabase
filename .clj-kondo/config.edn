@@ -128,8 +128,8 @@
    clojure.core/printf                  {:message "Use clojure.tools.logging instead of clojure.core/printf"}
    clojure.core/prn                     {:message "Use clojure.tools.logging instead of clojure.core/prn"}
    clojure.core/pr                      {:message "Use clojure.tools.logging instead of clojure.core/pr"}
-   clojure.java.jdbc/get-connection     {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) or sql-jdbc.tx/do-with-connection-for-loading-test-data (for loading test data) instead of jdbc/get-connection"}
-   clojure.java.jdbc/with-db-connection {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) or sql-jdbc.tx/do-with-connection-for-loading-test-data (for loading test data) instead of jdbc/with-db-connection"}
+   clojure.java.jdbc/get-connection     {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/get-connection"}
+   clojure.java.jdbc/with-db-connection {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/with-db-connection"}
    clojure.java.jdbc/with-db-metadata   {:message "Use sql-jdbc.execute/do-with-connection-with-options + .getMetaData instead of jdbc/with-db-metadata"}
    clojure.pprint/pprint                {:message "Use clojure.tools.logging instead of clojure.pprint/pprint"}
    clojure.string/lower-case            {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}

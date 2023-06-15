@@ -6,8 +6,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.initialize :as initialize]
-   [metabase.util.log :as log]
-   [potemkin :as p]))
+   [metabase.util.log :as log]))
 
 (driver/register! :sql-jdbc/test-extensions, :abstract? true)
 
@@ -25,7 +24,3 @@
 (defmethod tx/destroy-db! :sql-jdbc/test-extensions
   [driver dbdef]
   (load-data/destroy-db! driver dbdef))
-
-(p/import-vars
- [load-data
-  do-with-connection-for-loading-test-data])
