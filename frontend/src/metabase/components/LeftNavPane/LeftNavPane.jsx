@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Link, IndexLink } from "react-router";
 import { t } from "ttag";
+import cx from "classnames";
 
 export function LeftNavPaneItem({ name, path, index = false }) {
   return (
@@ -39,16 +40,13 @@ export function LeftNavPaneItemBack({ path }) {
   );
 }
 
-export function LeftNavPane({ children, nudge }) {
-  return nudge ? (
-    <div className="flex flex-column">
-      <div className="MetadataEditor-table-list AdminList flex-no-shrink">
-        <ul className="AdminList-items pt1">{children}</ul>
-      </div>
-      {nudge}
-    </div>
-  ) : (
-    <div className="MetadataEditor-table-list AdminList flex-no-shrink full-height">
+export function LeftNavPane({ children, fullHeight }) {
+  return (
+    <div
+      className={cx("MetadataEditor-table-list AdminList flex-no-shrink", {
+        "full-height": fullHeight,
+      })}
+    >
       <ul className="AdminList-items pt1">{children}</ul>
     </div>
   );

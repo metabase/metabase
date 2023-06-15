@@ -19,13 +19,23 @@ class AdminPeopleApp extends Component {
 
   render() {
     const { children, shouldNudge } = this.props;
+    const sidebar = (
+      <LeftNavPane fullHeight={!shouldNudge}>
+        <LeftNavPaneItem name={t`People`} path="/admin/people" index />
+        <LeftNavPaneItem name={t`Groups`} path="/admin/people/groups" />
+      </LeftNavPane>
+    );
     return (
       <AdminLayout
         sidebar={
-          <LeftNavPane nudge={shouldNudge ? <NudgeToPro /> : null}>
-            <LeftNavPaneItem name={t`People`} path="/admin/people" index />
-            <LeftNavPaneItem name={t`Groups`} path="/admin/people/groups" />
-          </LeftNavPane>
+          !shouldNudge ? (
+            sidebar
+          ) : (
+            <div className="flex flex-column">
+              {sidebar}
+              <NudgeToPro />
+            </div>
+          )
         }
       >
         {children}
