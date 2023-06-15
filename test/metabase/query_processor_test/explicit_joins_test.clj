@@ -890,7 +890,7 @@
                      (= (sql.qp/honey-sql-version driver/*driver*) 2))
                  ;; Joins in MongoDB are extremely slow, especially on version 4.2
                  ;; (version 5 is about two times faster but still very slow) and
-                 ;; this test is flaky on CI.
+                 ;; this test is flaky on CI. (See #29266.)
                  (or (not= driver/*driver* :mongo)
                      (-> (:dbms_version (data/db))
                          :semantic-version
