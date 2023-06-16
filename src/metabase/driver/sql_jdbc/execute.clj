@@ -109,8 +109,8 @@
    connections read-only (*after* setting timezone, if needed)."
   {:added    "0.47.0"
    :arglists '([driver db-or-id-or-spec options f])}
-   driver/dispatch-on-initialized-driver
-   :hierarchy #'driver/hierarchy)
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
 
 (defmulti set-parameter
   "Set the `PreparedStatement` parameter at index `i` to `object`. Dispatches on driver and class of `object`. By
@@ -644,14 +644,14 @@
   [driver {{sql :query, :keys [params]} :native}]
   {:pre [(string? sql)]}
   (try
-    (let [{:keys [details]} (qp.store/database)
-          jdbc-spec         (sql-jdbc.conn/connection-details->spec driver details)]
-      ;; TODO -- should this be done in a transaction? Should we set the isolation level?
-      (with-open [conn (jdbc/get-connection jdbc-spec)
-                  stmt (statement-or-prepared-statement driver conn sql params nil)]
-        {:rows-affected (if (instance? PreparedStatement stmt)
-                          (.executeUpdate ^PreparedStatement stmt)
-                          (.executeUpdate stmt sql))}))
+    (do-with-connection-with-options
+     driver
+     {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (qp.store/database))}
+     (fn [^Connection conn]
+       (with-open [stmt (statement-or-prepared-statement driver conn sql params nil)]
+         {:rows-affected (if (instance? PreparedStatement stmt)
+                           (.executeUpdate ^PreparedStatement stmt)
+                           (.executeUpdate stmt sql))})))
     (catch Throwable e
       (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
                       {:sql sql, :params params, :type qp.error-type/invalid-query}
@@ -666,5 +666,4 @@
 (p/import-vars
  [sql-jdbc.execute.old
   connection-with-timezone
-  set-timezone-sql
-  read-column])
+  set-timezone-sql])
