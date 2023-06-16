@@ -9,8 +9,7 @@ import Database from "metabase-lib/metadata/Database";
 import Schema from "metabase-lib/metadata/Schema";
 
 import DataSelectorLoading from "../DataSelectorLoading";
-import { RawDataBackButton } from "../DataSelector.styled";
-import { PickerSpinner } from "./DataSelectorDatabaseSchemaPicker.styled";
+import { RawDataBackButton, PickerSpinner } from "../DataSelector.styled";
 
 type DataSelectorDatabaseSchemaPicker = {
   databases: Database[];

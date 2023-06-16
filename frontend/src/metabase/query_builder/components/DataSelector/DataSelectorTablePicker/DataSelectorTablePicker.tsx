@@ -12,9 +12,10 @@ import type Schema from "metabase-lib/metadata/Schema";
 import type Table from "metabase-lib/metadata/Table";
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
 
-// TODO: move to DataSelector.styled
-import { PickerSpinner } from "../DataSelectorDatabaseSchemaPicker/DataSelectorDatabaseSchemaPicker.styled";
-import { DataSelectorSection as Section } from "../DataSelector.styled";
+import {
+  DataSelectorSection as Section,
+  PickerSpinner,
+} from "../DataSelector.styled";
 import {
   DataSelectorTablePickerContainer as Container,
   DataSelectorTablePickerHeaderContainer as HeaderContainer,
