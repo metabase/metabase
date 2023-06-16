@@ -1,4 +1,39 @@
-import { getPathnameBeforeSlug, getSlug } from "./use-sync-url-slug";
+import type { Location } from "history";
+
+import { parseSlug, getSlug } from "./use-sync-url-slug";
+
+function getMockLocation(slug: Location["query"][string]) {
+  return {
+    query: { tab: slug },
+    pathname: "",
+    search: "",
+    hash: "",
+    state: null,
+    action: "PUSH" as const,
+    key: "",
+  };
+}
+
+describe("parseSlug", () => {
+  it("should return the slug from the location object if valid", () => {
+    const slug = "1-tab-name";
+    expect(parseSlug({ location: getMockLocation(slug) })).toBe(slug);
+  });
+
+  it("should return undefined if the slug is invalid", () => {
+    expect(parseSlug({ location: getMockLocation(null) })).toBe(undefined);
+    expect(parseSlug({ location: getMockLocation(undefined) })).toBe(undefined);
+    expect(parseSlug({ location: getMockLocation("") })).toBe(undefined);
+    expect(
+      parseSlug({
+        location: getMockLocation(["1-tab-name", "2-another-tab-name"]),
+      }),
+    ).toBe(undefined);
+    expect(parseSlug({ location: { ...getMockLocation(""), query: {} } })).toBe(
+      undefined,
+    );
+  });
+});
 
 describe("getSlug", () => {
   it("should return a lower-cased, hyphenated concatenation of the tabId and name", () => {
@@ -13,22 +48,5 @@ describe("getSlug", () => {
 
     expect(getSlug({ tabId: 1, name: "" })).toEqual("");
     expect(getSlug({ tabId: 1, name: undefined })).toEqual("");
-  });
-});
-
-describe("getPathnameBeforeSlug", () => {
-  it("should return the portion of the pathname that precedes the tab id slug", () => {
-    expect(getPathnameBeforeSlug("/dashboard/1-name")).toEqual(
-      "/dashboard/1-name",
-    );
-    expect(getPathnameBeforeSlug("/dashboard/1-name/")).toEqual(
-      "/dashboard/1-name",
-    );
-    expect(getPathnameBeforeSlug("/dashboard/1-name/2-tab-name")).toEqual(
-      "/dashboard/1-name",
-    );
-    expect(
-      getPathnameBeforeSlug("public/dashboard/someverylonguuid/3-tab-name"),
-    ).toEqual("public/dashboard/someverylonguuid");
   });
 });

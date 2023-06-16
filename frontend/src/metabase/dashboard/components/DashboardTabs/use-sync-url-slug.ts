@@ -9,10 +9,9 @@ import type { SelectedTabId } from "metabase-types/store";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
 import { initTabs } from "metabase/dashboard/actions";
 
-// TODO test?
 export function parseSlug({ location }: { location: Location }) {
   const slug = location.query["tab"];
-  if (typeof slug === "string") {
+  if (typeof slug === "string" && slug.length > 0) {
     return slug;
   }
   return undefined;
