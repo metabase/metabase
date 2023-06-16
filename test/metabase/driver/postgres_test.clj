@@ -23,8 +23,6 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.secret :as secret]
    [metabase.models.table :refer [Table]]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
@@ -32,7 +30,6 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
-   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.honeysql-extensions :as hx]
