@@ -768,7 +768,15 @@ describe("scenarios > admin > permissions", () => {
     cy.get("@permissionsHelpContent").within(() => {
       cy.findByText("Collection permissions");
       cy.findByText("Collections Permission Levels");
-      cy.findByLabelText("Close").click();
+    });
+
+    // The help reference keeps being open when switching tabs
+    cy.get("main").within(() => {
+      cy.findByText("Data").click();
+    });
+
+    cy.get("@permissionsHelpContent").within(() => {
+      cy.findByText("Data permissions");
     });
   });
 });

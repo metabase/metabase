@@ -365,6 +365,19 @@ const collectionPermissionsRevision = handleActions(
   null,
 );
 
+export const TOGGLE_HELP_REFERENCE =
+  "metabase/admin/permissions/TOGGLE_HELP_REFERENCE";
+export const toggleHelpReference = createAction(TOGGLE_HELP_REFERENCE);
+
+export const isHelpReferenceOpen = handleActions(
+  {
+    [toggleHelpReference]: {
+      next: state => !state,
+    },
+  },
+  false,
+);
+
 export default combineReducers({
   saveError,
   dataPermissions,
@@ -373,4 +386,5 @@ export default combineReducers({
   collectionPermissions,
   originalCollectionPermissions,
   collectionPermissionsRevision,
+  isHelpReferenceOpen,
 });
