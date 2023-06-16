@@ -308,7 +308,7 @@
     (let [[header & rows] (csv/read-csv reader)]
       (rows->schema header (sample-rows rows)))))
 
-(defn load-from-csv
+(defn load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
