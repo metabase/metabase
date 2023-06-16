@@ -109,8 +109,9 @@ describe(
         cy.wait("@getModel");
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Actions").click();
+      cy.findByRole("tablist").within(() => {
+        cy.findByText("Actions").click();
+      });
 
       cy.findByRole("button", { name: /Create basic actions/i }).click();
       cy.findByLabelText("Action list").within(() => {
@@ -162,13 +163,15 @@ describe(
         cy.findByText("Disable basic actions?").should("be.visible");
         cy.button("Disable").click();
       });
-      cy.findByLabelText("Action list").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Create").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Update").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Delete").should("not.exist");
+
+      cy.findAllByRole("tabpanel")
+        .filter(":visible")
+        .within(() => {
+          cy.findByLabelText("Action list").should("not.exist");
+          cy.findByText("Create").should("not.exist");
+          cy.findByText("Update").should("not.exist");
+          cy.findByText("Delete").should("not.exist");
+        });
 
       openNavigationSidebar();
       navigationSidebar().within(() => {
@@ -179,14 +182,21 @@ describe(
       getArchiveListItem("Delete Order").within(() => {
         cy.icon("unarchive").click({ force: true });
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Delete Order").should("not.exist");
+
+      cy.get("main").within(() => {
+        cy.findByText("Delete Order");
+      });
+
       cy.findByRole("button", { name: "Undo" }).click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Delete Order").should("be.visible");
+
+      cy.get("main").within(() => {
+        cy.findByText("Delete Order").should("be.visible");
+      });
+
       getArchiveListItem("Delete Order").within(() => {
         cy.icon("trash").click({ force: true });
       });
+
       cy.findByTestId("Delete Order").should("not.exist");
       cy.findByRole("button", { name: "Undo" }).should("not.exist");
     });
@@ -195,16 +205,19 @@ describe(
       const QUERY = "UPDATE orders SET discount = {{ discount }}";
       cy.visit("/");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New").click();
+      cy.findByTestId("app-bar").findByText("New").click();
       popover().findByText("Action").click();
 
       fillActionQuery(QUERY);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/New Action/)
-        .clear()
-        .type("Discount order");
-      cy.findByRole("button", { name: "Save" }).click();
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText(/New Action/)
+          .clear()
+          .type("Discount order");
+
+        cy.findByRole("button", { name: "Save" }).click();
+      });
+
       modal().within(() => {
         cy.findByText("Select a model").click();
       });
@@ -214,10 +227,13 @@ describe(
       cy.get("@modelId").then(modelId => {
         cy.url().should("include", `/model/${modelId}/detail/actions`);
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Discount order").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(QUERY).should("be.visible");
+
+      cy.findAllByRole("tabpanel")
+        .filter(":visible")
+        .within(() => {
+          cy.findByText("Discount order").should("be.visible");
+          cy.findByText(QUERY).should("be.visible");
+        });
     });
 
     it("should respect permissions", () => {
@@ -285,15 +301,16 @@ describe(
       cy.reload();
 
       // Check can only see the action database
-      cy.findByRole("dialog").findByText("QA Postgres12").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sample Database").should("not.exist");
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("QA Postgres12").click();
+
+        cy.findByText("Sample Database").should("not.exist");
+      });
     });
 
     it("should display parameters for variable template tags only", () => {
       cy.visit("/");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New").click();
+      cy.findByTestId("app-bar").findByText("New").click();
       popover().findByText("Action").click();
 
       fillActionQuery("{{#1-orders-model}}");
@@ -352,10 +369,9 @@ describe(
         cy.button(SAMPLE_QUERY_ACTION.name).click();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
-        "be.visible",
-      );
+      cy.findByTestId("toast-undo")
+        .findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`)
+        .should("be.visible");
 
       queryWritableDB(
         `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
