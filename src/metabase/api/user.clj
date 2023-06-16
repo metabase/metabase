@@ -138,7 +138,7 @@
   - with a status,
   - with a query,
   - with a group_id,
-  - with include_deactivatved"
+  - with include_deactivated"
   [status query group_ids include_deactivated]
   (cond-> {}
     true                               (sql.helpers/where (status-clause status include_deactivated))
