@@ -4,7 +4,7 @@ title: Uploading data
 
 # Uploading data
 
-You can upload data in CSV format to Metabase and start asking questions about it.
+You can upload data in CSV format to Metabase and start asking questions about it. This feature is best suited for ad hoc analysis of spreadsheet data. If you have a lot of data, or will need to update or add to that data regularly, we recommend setting up a way to load that data into a database directly, then connecting Metabase to that database.
 
 ## Enabling uploads
 
@@ -12,7 +12,7 @@ There are a few things admins need to do to support CSV uploads:
 
 - [Connect to a database using a database user account with write access](#connect-to-a-database-using-a-database-user-account-with-write-access). This way Metabase will be able to store the uploaded data somewhere.
 - [Select the database and schema you want to store the uploaded data in](#select-the-database-and-schema-that-you-want-to-store-the-data-in).
-- (Optional) [specify a prefix for Metabase to prepend to the uploaded tables](#specify-a-prefix-for-metabase-to-prepend-to-the-uploaded-tables)
+- (Optional) [specify a prefix for Metabase to prepend to the uploaded tables](#specify-a-prefix-for-metabase-to-prepend-to-the-uploaded-tables).
 
 ### Databases that support uploads
 
@@ -21,7 +21,7 @@ There are a few things admins need to do to support CSV uploads:
 
 ### Connect to a database using a database user account with write access
 
-To upload data to Metabase, an admin will need to connect your Metabase to a database that supports  uploads using a database user account that has write access to that database.
+To upload data to Metabase, an admin will need to connect your Metabase to a database that supports uploads using a database user account that has write access to that database.
 
 You can also upload data to the Sample Database included with Metabase (an H2 database), though we don't recommend using the Sample Database for any data that you want to keep around.
 
@@ -32,7 +32,7 @@ For more, check out:
 
 ### Select the database and schema that you want to store the data in
 
-If Metabase is connected to a database using a database user account with write access, Admins can  enable uploads by:
+If Metabase is connected to a database using a database user account with write access, Admins can enable uploads by:
 
 - Clicking on the **gear** icon in the upper right on the home page and navigating to **Admin settings** > **Settings** > **Uploads**.
 - Selecting the database Metabase should use to store the data.
@@ -74,10 +74,10 @@ You'll need to drop that table in the database itself (not in Metabase). For how
 
 For speeding up uploads to a MySQL database, we recommend that you set a `local_infile` to `ON`. You'll need to set this `local_infile` in MySQL, not Metabase. The command-line format is `--local-infile=ON`.
 
- If `local_infile` is disabled (set to `OFF`), Metabase will automatically fall back to uploading CSVs in a much slower way.
+If `local_infile` is disabled (set to `OFF`), Metabase will automatically fall back to uploading CSVs in a much slower way.
 
 For more context, check out:
 
-- [Non-LOCAL Versus LOCAL Operation]( https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-local)
+- [Non-LOCAL Versus LOCAL Operation](https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-local)
 - [Reference docs for the local_infile variable](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_local_infile)
 - [Security Considerations for LOAD LOCAL DATA](https://dev.mysql.com/doc/refman/8.0/en/load-data-local-security.html
