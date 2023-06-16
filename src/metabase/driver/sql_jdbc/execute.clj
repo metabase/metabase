@@ -33,7 +33,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [potemkin :as p]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [better-cond.core :as b])
   (:import
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -84,9 +85,9 @@
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
       (f conn))
 
-  This default implementation is abstracted out into two
-  functions, [[set-default-connection-options!]]
-  and [[default-connection-with-options-DataSource]], that you can use as needed in custom implementations.
+  This default implementation is abstracted out into two functions, [[do-with-resolved-connection]]
+  and [[set-default-connection-options!]], that you can use as needed in custom implementations. See various driver
+  implementations for examples.
 
   There are two usual ways to set the session timezone if your driver supports them:
 
@@ -245,6 +246,64 @@
         (seq more)
         (recur more)))))
 
+(mu/defn do-with-resolved-connection-data-source :- (lib.schema.literal.jvm/instance-of DataSource)
+  "Part of the default implementation for [[do-with-connection-with-options]]: get an appropriate `java.sql.DataSource`
+  for `db-or-id-or-spec`. Not for use with a JDBC spec wrapping a `java.sql.Connection` (a spec with the key
+  `:connection`), since we do not have control over its lifecycle and would thus not be able to use [[with-open]] with
+  Connections provided by this DataSource."
+  {:added "0.47.0", :arglists '(^javax.sql.DataSource [driver db-or-id-or-spec options])}
+  [driver           :- :keyword
+   db-or-id-or-spec :- [:and
+                        [:or :int :map]
+                        [:fn
+                         ;; can't wrap a java.sql.Connection here because we're not
+                         ;; responsible for its lifecycle and that means you can't use
+                         ;; `with-open` on the Connection you'd get from the DataSource
+                         {:error/message "Cannot be a JDBC spec wrapping a java.sql.Connection"}
+                         (complement :connection)]]
+   {:keys [^String session-timezone], :as _options} :- ConnectionOptions]
+  (if-not (u/id db-or-id-or-spec)
+    ;; not a Database or Database ID... this is a raw `clojure.java.jdbc` spec, use that
+    ;; directly.
+    (reify DataSource
+      (getConnection [_this]
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (jdbc/get-connection db-or-id-or-spec)))
+    ;; otherwise this is either a Database or Database ID.
+    (if-let [old-method-impl (get-method
+                              #_{:clj-kondo/ignore [:deprecated-var]} sql-jdbc.execute.old/connection-with-timezone
+                              driver)]
+      ;; use the deprecated impl for `connection-with-timezone` if one exists.
+      (do
+        (log/warn (trs "{0} is deprecated in Metabase 0.47.0. Implement {1} instead."
+                       `connection-with-timezone
+                       `do-with-connection-with-options))
+        ;; for compatibility, make sure we pass it an actual Database instance.
+        (let [database (if (integer? db-or-id-or-spec)
+                         (t2/select-one Database db-or-id-or-spec)
+                         db-or-id-or-spec)]
+          (reify DataSource
+            (getConnection [_this]
+              (old-method-impl driver database session-timezone)))))
+      (datasource-with-diagnostic-info! driver db-or-id-or-spec))))
+
+(mu/defn do-with-resolved-connection
+  "Execute
+
+    (f ^java.sql.Connection conn)
+
+  with a resolved JDBC connection. Part of the default implementation for [[do-with-connection-with-options]].
+  Generally does not set any `options`, but may set session-timezone if `driver` implements the
+  deprecated [[sql-jdbc.execute.old/connection-with-timezone]] method."
+  [driver           :- :keyword
+   db-or-id-or-spec :- [:or :int :map]
+   options          :- ConnectionOptions
+   f                :- fn?]
+  (if-let [conn (:connection db-or-id-or-spec)]
+    (f conn)
+    (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
+      (f conn))))
+
 (mu/defn set-default-connection-options!
   "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
   Connection."
@@ -274,45 +333,11 @@
     (catch Throwable e
       (log/debug e (trs "Error setting default holdability for connection")))))
 
-(mu/defn default-connection-with-options-DataSource :- (lib.schema.literal.jvm/instance-of DataSource)
-  "Part of the default implementation for [[do-with-connection-with-options]]: get an appropriate `java.sql.DataSource`
-  for `db-or-id-or-spec`."
-  {:added "0.47.0", :arglists '(^javax.sql.DataSource [driver db-or-id-or-spec options])}
-  [driver                                           :- :keyword
-   db-or-id-or-spec                                 :- [:or :int :map]
-   {:keys [^String session-timezone], :as _options} :- ConnectionOptions]
-  (if-not (u/id db-or-id-or-spec)
-    ;; not a Database or Database ID... this is a raw `clojure.java.jdbc` spec, use that
-    ;; directly.
-    (do
-      (assert (map? db-or-id-or-spec) (format "Not a valid JDBC spec: %s" (pr-str db-or-id-or-spec)))
-      (reify DataSource
-        (getConnection [_this]
-          #_{:clj-kondo/ignore [:discouraged-var]}
-          (jdbc/get-connection db-or-id-or-spec))))
-    ;; otherwise this is either a Database or Database ID.
-    (if-let [old-method-impl (get-method
-                              #_{:clj-kondo/ignore [:deprecated-var]} sql-jdbc.execute.old/connection-with-timezone
-                              driver)]
-      ;; use the deprecated impl for `connection-with-timezone` if one exists.
-      (do
-        (log/warn (trs "{0} is deprecated in Metabase 0.47.0. Implement {1} instead."
-                       `connection-with-timezone
-                       `do-with-connection-with-options))
-        ;; for compatibility, make sure we pass it an actual Database instance.
-        (let [database (if (integer? db-or-id-or-spec)
-                         (t2/select-one Database db-or-id-or-spec)
-                         db-or-id-or-spec)]
-          (reify DataSource
-            (getConnection [_this]
-              (old-method-impl driver database session-timezone)))))
-      (datasource-with-diagnostic-info! driver db-or-id-or-spec))))
-
 (defmethod do-with-connection-with-options :sql-jdbc
   [driver db-or-id-or-spec options f]
-  (with-open [conn (.getConnection (default-connection-with-options-DataSource driver db-or-id-or-spec options))]
-    (set-default-connection-options! driver conn options)
-    (f conn)))
+  (do-with-resolved-connection driver db-or-id-or-spec options (fn [^java.sql.Connection conn]
+                                                                 (set-default-connection-options! driver conn options)
+                                                                 (f conn))))
 
 ;; TODO - would a more general method to convert a parameter to the desired class (and maybe JDBC type) be more
 ;; useful? Then we can actually do things like log what transformations are taking place

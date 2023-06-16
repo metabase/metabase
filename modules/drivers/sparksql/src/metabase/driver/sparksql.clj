@@ -177,12 +177,13 @@
 ;; 4.  SparkSQL doesn't support setting the default result set holdability
 (defmethod sql-jdbc.execute/do-with-connection-with-options :sparksql
   [driver db-or-id-or-spec options f]
-  (with-open [conn (.getConnection (sql-jdbc.execute/default-connection-with-options-DataSource
-                                    driver
-                                    db-or-id-or-spec
-                                    options))]
-    (.setTransactionIsolation conn Connection/TRANSACTION_READ_UNCOMMITTED)
-    (f conn)))
+  (sql-jdbc.execute/do-with-resolved-connection
+   driver
+   db-or-id-or-spec
+   options
+   (fn [^Connection conn]
+     (.setTransactionIsolation conn Connection/TRANSACTION_READ_UNCOMMITTED)
+     (f conn))))
 
 ;; 1.  SparkSQL doesn't support setting holdability type to `CLOSE_CURSORS_AT_COMMIT`
 (defmethod sql-jdbc.execute/prepared-statement :sparksql

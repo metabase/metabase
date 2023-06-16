@@ -134,17 +134,18 @@
 ;; make the connection read-only, because that seems to be causing problems for people
 (defmethod sql-jdbc.execute/do-with-connection-with-options :redshift
   [driver db-or-id-or-spec {:keys [^String session-timezone], :as options} f]
-  (with-open [conn (.getConnection (sql-jdbc.execute/default-connection-with-options-DataSource
-                                    driver
-                                    db-or-id-or-spec
-                                    options))]
-    (sql-jdbc.execute/set-best-transaction-level! driver conn)
-    (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
-    (try
-      (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
-      (catch Throwable e
-        (log/debug e (trs "Error setting default holdability for connection"))))
-    (f conn)))
+  (sql-jdbc.execute/do-with-resolved-connection
+   driver
+   db-or-id-or-spec
+   options
+   (fn [^Connection conn]
+     (sql-jdbc.execute/set-best-transaction-level! driver conn)
+     (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
+     (try
+       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
+       (catch Throwable e
+         (log/debug e (trs "Error setting default holdability for connection"))))
+     (f conn))))
 
 (defn- prepare-statement ^PreparedStatement [^Connection conn sql]
   (.prepareStatement conn

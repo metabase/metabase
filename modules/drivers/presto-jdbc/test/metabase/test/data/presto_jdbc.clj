@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.connection-pool :as connection-pool]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -17,7 +16,7 @@
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util.log :as log])
   (:import
-   (java.sql Connection DriverManager PreparedStatement)))
+   (java.sql Connection PreparedStatement)))
 
 (set! *warn-on-reflection* true)
 
@@ -117,29 +116,31 @@
   [_ dbdef tabledef]
   (load-data dbdef tabledef))
 
-(defn- jdbc-spec->connection
-  "This is to work around some weird interplay between clojure.java.jdbc caching behavior of connections based on URL,
-  combined with the fact that the Presto driver apparently closes the connection when it closes a prepare statement.
-  Therefore, create a fresh connection from the DriverManager."
-  ^Connection [jdbc-spec]
-  (DriverManager/getConnection (format "jdbc:%s:%s" (:subprotocol jdbc-spec) (:subname jdbc-spec))
-    (connection-pool/map->properties (select-keys jdbc-spec [:user :SSL]))))
-
 (defmethod load-data/do-insert! :presto-jdbc
   [driver spec table-identifier row-or-rows]
   (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
-    (with-open [conn (jdbc-spec->connection spec)]
-      (doseq [[^String sql & params] statements]
-        (try
-          (with-open [^PreparedStatement stmt (.prepareStatement conn sql)]
-            (sql-jdbc.execute/set-parameters! driver stmt params)
-            (let [tbl-nm        ((comp last :components) (into {} table-identifier))
-                  rows-affected (.executeUpdate stmt)]
-              (log/infof "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm)))
-          (catch Throwable e
-            (throw (ex-info (format "[%s] Error executing SQL: %s" driver (ex-message e))
-                     {:driver driver, :sql sql, :params params}
-                     e))))))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     spec
+     {:write? true, :presto-jdbc/force-fresh? true}
+     (fn [^Connection conn]
+       (doseq [[^String sql & params] statements]
+         (try
+           (let [^PreparedStatement stmt (.prepareStatement conn sql)]
+             (try
+               (sql-jdbc.execute/set-parameters! driver stmt params)
+               (let [tbl-nm        ((comp last :components) (into {} table-identifier))
+                     rows-affected (.executeUpdate stmt)]
+                 (log/infof "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm))
+               (finally
+                 (try
+                   (.close stmt)
+                   (catch Throwable e
+                     (println "ERROR CLOSING STATEMENT! =>" (.getMessage e)))))))
+           (catch Throwable e
+             (throw (ex-info (format "[%s] Error executing SQL: %s" driver (ex-message e))
+                             {:driver driver, :sql sql, :params params}
+                             e)))))))))
 
 (defmethod sql.tx/drop-db-if-exists-sql :presto-jdbc [_ _] nil)
 (defmethod sql.tx/create-db-sql         :presto-jdbc [_ _] nil)
