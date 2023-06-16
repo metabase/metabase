@@ -13,6 +13,7 @@
    [metabase.integrations.ldap :as ldap]
    [metabase.models :refer [PulseChannel]]
    [metabase.models.login-history :refer [LoginHistory]]
+   [metabase.models.pulse :as pulse]
    [metabase.models.session :refer [Session]]
    [metabase.models.setting :as setting]
    [metabase.models.user :as user :refer [User]]
@@ -341,7 +342,7 @@
         (throw (ex-info (tru "Email for pulse-id doesn't exist.")
                         {:type        type
                          :status-code 400}))))
-    {:status :success}))
+     {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))}))
 
 (api/defendpoint POST "/pulse/unsubscribe/undo"
   "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
@@ -358,6 +359,6 @@
                         {:type        type
                          :status-code 400}))
         (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
-    {:status :success}))
+    {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))}))
 
 (api/define-routes +log-all-request-failures)
