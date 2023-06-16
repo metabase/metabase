@@ -12,6 +12,8 @@ import type Schema from "metabase-lib/metadata/Schema";
 import type Table from "metabase-lib/metadata/Table";
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
 
+// TODO: move to DataSelector.styled
+import { PickerSpinner } from "../DataSelectorDatabaseSchemaPicker/DataSelectorDatabaseSchemaPicker.styled";
 import { DataSelectorSection as Section } from "../DataSelector.styled";
 import {
   DataSelectorTablePickerContainer as Container,
@@ -98,6 +100,13 @@ const DataSelectorTablePicker = ({
     const renderItemIcon = ({ table }: { table: Table }) =>
       table ? <Icon name="table" /> : null;
 
+    const renderItemExtra = ({ table }: { table: Table }) => {
+      return (
+        table &&
+        !isSyncCompleted(table) && <PickerSpinner size={16} borderWidth={2} />
+      );
+    };
+
     const handleChange = ({ table }: { table: Table }) => onChangeTable(table);
 
     const isSearchable = hasFiltering && tables.length >= minTablesToShowSearch;
@@ -114,6 +123,7 @@ const DataSelectorTablePicker = ({
           width="100%"
           searchable={isSearchable}
           onChange={handleChange}
+          renderItemExtra={renderItemExtra}
           itemIsSelected={checkIfItemIsSelected}
           itemIsClickable={checkIfItemIsClickable}
           renderItemIcon={renderItemIcon}
