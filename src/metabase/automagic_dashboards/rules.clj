@@ -35,26 +35,19 @@
 (def ^:private Filter {Identifier {(s/required-key :filter) MBQL
                                    (s/required-key :score)  Score}})
 
-(defn ga-dimension?
-  "Does string `t` denote a Google Analytics dimension?"
-  [t]
-  (str/starts-with? t "ga:"))
-
 (defn ->type
   "Turn `x` into proper type name."
   [x]
-  (cond
-    (keyword? x)      x
-    (ga-dimension? x) x
-    :else             (keyword "type" x)))
+  (if (keyword? x)
+    x
+    (keyword "type" x)))
 
 (defn ->entity
   "Turn `x` into proper entity name."
   [x]
-  (cond
-    (keyword? x)      x
-    (ga-dimension? x) x
-    :else             (keyword "entity" x)))
+  (if (keyword? x)
+    x
+    (keyword "entity" x)))
 
 (defn- field-type?
   [t]
@@ -67,8 +60,7 @@
   (isa? t :entity/*))
 
 (def ^:private TableType (s/constrained s/Keyword table-type?))
-(def ^:private FieldType (s/cond-pre (s/constrained s/Str ga-dimension?)
-                                     (s/constrained s/Keyword field-type?)))
+(def ^:private FieldType (s/cond-pre (s/constrained s/Keyword field-type?)))
 
 (def ^:private AppliesTo (s/either [FieldType]
                                    [TableType]

@@ -422,15 +422,6 @@ class StructuredQueryInner extends AtomicQuery {
       return false;
     }
 
-    const table = this.table();
-
-    // NOTE: special case for Google Analytics which requires an aggregation
-    if (table.entity_type === "entity/GoogleAnalyticsTable") {
-      if (!this.hasAggregations()) {
-        return false;
-      }
-    }
-
     return true;
   }
 

@@ -33,13 +33,3 @@
                      (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} 100]))]
     (is (= :type/Integer
            (lib.metadata.calculation/type-of query [:metric {:lib/uuid (str (random-uuid))} 100])))))
-
-(deftest ^:parallel ga-metric-metadata-test
-  (testing "Make sure we can calculate metadata for FAKE Google Analytics metric clauses"
-    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                    (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} "ga:totalEvents"]))]
-      (is (=? [{:lib/type     :metadata/field
-                :name         "metric"
-                :display-name "[Unknown Metric]"
-                :base-type    :type/*}]
-              (lib.metadata.calculation/metadata query -1 query))))))

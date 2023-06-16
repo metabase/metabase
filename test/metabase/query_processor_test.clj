@@ -64,7 +64,7 @@
 (alter-meta! #'normal-drivers-without-feature assoc :arglists (list (into ['&] (sort driver/driver-features))))
 
 (defn normal-drivers-except
-  "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."
+  "Return the set of all drivers except those in `excluded-drivers`."
   [excluded-drivers]
   (set/difference (normal-drivers) (set excluded-drivers)))
 
