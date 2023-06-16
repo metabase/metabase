@@ -15,13 +15,11 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { isEmpty } from "metabase/lib/validate";
 
 import {
-  ClickToEditWrapper,
   DisplayContainer,
   EditModeContainer,
+  ReactMarkdownStyleWrapper,
   TextInput,
 } from "./Text.styled.jsx";
-
-import styles from "./Text.css";
 
 const getSettingsStyle = settings => ({
   "align-center": settings["text.align_horizontal"] === "center",
@@ -97,7 +95,7 @@ export function Text({
         onClick={toggleFocusOn}
       >
         {isPreviewing ? (
-          <ClickToEditWrapper
+          <ReactMarkdownStyleWrapper
             data-testid="editing-dashboard-text-preview"
             onMouseDown={preventDragging}
           >
@@ -106,15 +104,13 @@ export function Text({
               remarkPlugins={REMARK_PLUGINS}
               rehypePlugins={REHYPE_PLUGINS}
               className={cx(
-                "full flex-full flex flex-column text-card-markdown",
-                styles["text-card-markdown"],
-                styles["cursor-text"],
+                "full flex-full flex flex-column text-card-markdown cursor-text",
                 getSettingsStyle(settings),
               )}
             >
               {hasContent ? content : placeholder}
             </ReactMarkdown>
-          </ClickToEditWrapper>
+          </ReactMarkdownStyleWrapper>
         ) : (
           <TextInput
             data-testid="editing-dashboard-text-input"
@@ -133,17 +129,18 @@ export function Text({
 
   return (
     <DisplayContainer className={cx(className)} isSingleRow={isSingleRow}>
-      <ReactMarkdown
-        remarkPlugins={REMARK_PLUGINS}
-        rehypePlugins={REHYPE_PLUGINS}
-        className={cx(
-          "full flex-full flex flex-column text-card-markdown",
-          styles["text-card-markdown"],
-          getSettingsStyle(settings),
-        )}
-      >
-        {content}
-      </ReactMarkdown>
+      <ReactMarkdownStyleWrapper>
+        <ReactMarkdown
+          remarkPlugins={REMARK_PLUGINS}
+          rehypePlugins={REHYPE_PLUGINS}
+          className={cx(
+            "full flex-full flex flex-column text-card-markdown",
+            getSettingsStyle(settings),
+          )}
+        >
+          {content}
+        </ReactMarkdown>
+      </ReactMarkdownStyleWrapper>
     </DisplayContainer>
   );
 }
