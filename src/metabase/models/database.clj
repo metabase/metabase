@@ -236,7 +236,7 @@
       (cond->
         (not details)             (assoc :details {})
         (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
-      handle-secrets-changes)
+      handle-secrets-changes))
 
 (defmethod mi/perms-objects-set :model/Database
   [{db-id :id} read-or-write]
