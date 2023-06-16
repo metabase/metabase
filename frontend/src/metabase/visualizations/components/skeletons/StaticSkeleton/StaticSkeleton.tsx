@@ -3,16 +3,15 @@ import { HTMLAttributes } from "react";
 import { IconName } from "metabase/core/components/Icon";
 import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
-import { getLeadingText, parseMarkdown } from "metabase/lib/markdown";
 
 import {
-  SkeletonDescription,
   SkeletonIcon,
   SkeletonIconContainer,
   SkeletonRoot,
   SkeletonTitle,
   SkeletonTooltipIcon,
   SkeletonTooltipIconContainer,
+  TruncatedMarkdown,
 } from "./StaticSkeleton.styled";
 
 export interface StaticSkeletonProps extends HTMLAttributes<HTMLDivElement> {
@@ -34,8 +33,6 @@ const StaticSkeleton = ({
   ...props
 }: StaticSkeletonProps): JSX.Element => {
   const defaultedDescription = description || "";
-  const descriptionMarkdownRoot = parseMarkdown(defaultedDescription);
-  const hasMoreDescriptionToShow = descriptionMarkdownRoot.children.length > 1;
 
   return (
     <SkeletonRoot {...props}>
@@ -52,19 +49,21 @@ const StaticSkeleton = ({
         </Tooltip>
       )}
       <SkeletonTitle>{name}</SkeletonTitle>
-      {description && (
-        <SkeletonDescription
-          alwaysShowTooltip={hasMoreDescriptionToShow}
-          placement="bottom"
-          tooltip={
-            <Markdown disallowHeading unstyleLinks>
-              {description}
-            </Markdown>
-          }
-        >
-          {getLeadingText(descriptionMarkdownRoot)}
-        </SkeletonDescription>
-      )}
+
+      <Tooltip
+        placement="bottom"
+        tooltip={
+          <Markdown disallowHeading unstyleLinks>
+            {defaultedDescription ?? ""}
+          </Markdown>
+        }
+      >
+        <div>
+          <TruncatedMarkdown allowedElements={[]} unwrapDisallowed>
+            {defaultedDescription ?? ""}
+          </TruncatedMarkdown>
+        </div>
+      </Tooltip>
     </SkeletonRoot>
   );
 };
