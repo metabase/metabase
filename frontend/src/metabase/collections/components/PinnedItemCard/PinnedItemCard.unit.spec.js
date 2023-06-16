@@ -142,12 +142,12 @@ describe("PinnedItemCard", () => {
       userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
 
       const tooltip = screen.getByRole("tooltip");
-      const image = within(tooltip).getByRole("img");
-
       expect(tooltip).not.toHaveTextContent(MARKDOWN);
       expect(tooltip).not.toHaveTextContent(HEADING_1_MARKDOWN);
       expect(tooltip).not.toHaveTextContent(HEADING_2_MARKDOWN);
       expect(tooltip).toHaveTextContent(MARKDOWN_AS_TEXT);
+
+      const image = within(tooltip).getByRole("img");
       expect(image).toBeInTheDocument();
       expect(image).toHaveAttribute("alt", "alt");
       expect(image).toHaveAttribute("src", "https://example.com/img.jpg");
