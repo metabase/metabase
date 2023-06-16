@@ -93,7 +93,7 @@ const setup = (
 
   setupSearchEndpoints(searchItems);
   setupCardsEndpoints(models);
-  setupActionsEndpoints([].concat(actions1, actions2, implicitActions));
+  setupActionsEndpoints([...actions1, ...actions2, ...implicitActions]);
 
   renderWithProviders(
     <ConnectedActionDashcardSettings
