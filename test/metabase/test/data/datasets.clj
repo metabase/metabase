@@ -26,8 +26,9 @@
   (This does NOT bind `*driver*`; use `driver/with-driver` if you want to do that.)"
   {:style/indent 1}
   [driver f]
+  {:pre [(not (seq driver))]}
   (when (contains? (tx.env/test-drivers) driver)
-    (f)))
+   (f)))
 
 (defmacro when-testing-driver
   "Execute `body` only if we're currently testing against `driver`.

@@ -86,6 +86,7 @@
 (defn do-with-driver
   "Impl for `with-driver`."
   [driver f]
+  {:pre [(not (seq driver))]}
   (binding [*driver* (the-driver driver)]
     (f)))
 

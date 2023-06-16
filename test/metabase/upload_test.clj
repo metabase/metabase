@@ -248,7 +248,7 @@
                             "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"]))))))
 
 (deftest unique-table-name-test
-  (mt/test-driver (mt/normal-drivers-with-feature :uploads)
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "File name is slugified"
       (is (=? #"my_file_name_\d+" (#'upload/unique-table-name driver/*driver* "my file name"))))
     (testing "semicolons are removed"
@@ -256,7 +256,7 @@
 
 (deftest load-from-csv-table-name-test
   (testing "Upload a CSV file"
-    (mt/test-driver (mt/normal-drivers-with-feature :uploads)
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (let [file       (csv-file-with ["id" "2" "3"])]
           (testing "Can upload two files with the same name"
