@@ -151,10 +151,6 @@
   "Encode given object as base-64 encoded JSON."
   (comp codec/base64-encode codecs/str->bytes json/encode))
 
-(defn- ga-table?
-  [table]
-  (isa? (:entity_type table) :entity/GoogleAnalyticsTable))
-
 (defmulti ->root
   "root is a datatype that is an entity augmented with metadata for the purposes of creating an automatic dashboard with
   respect to that entity. It is called a root because the automated dashboard uses productions to recursively create a
@@ -909,8 +905,7 @@
 
 (defn- drilldown-fields
   [context]
-  (when (and (->> context :root :source (mi/instance-of? Table))
-             (-> context :root :entity ga-table? not))
+  (when (->> context :root :source (mi/instance-of? Table))
     (->> context
          :dimensions
          vals

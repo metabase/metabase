@@ -10,8 +10,6 @@ export function getEngineNativeType(engine) {
   switch (engine) {
     case "mongo":
     case "druid":
-    case "googleanalytics":
-      return "json";
     default:
       return "sql";
   }
@@ -25,8 +23,6 @@ export function getEngineNativeAceMode(engine) {
   switch (engine) {
     case "mongo":
     case "druid":
-    case "googleanalytics":
-      return "ace/mode/json";
     case "mysql":
       return "ace/mode/mysql";
     case "postgres":
@@ -44,7 +40,6 @@ export function getEngineLogo(engine) {
   switch (engine) {
     case "bigquery":
     case "druid":
-    case "googleanalytics":
     case "h2":
     case "mongo":
     case "mysql":
@@ -75,10 +70,6 @@ export function getElevatedEngines() {
     "bigquery-cloud-sdk",
     "snowflake",
   ];
-}
-
-export function getEngineSupportsFirewall(engine) {
-  return engine !== "googleanalytics";
 }
 
 export function formatJsonQuery(query, engine) {
