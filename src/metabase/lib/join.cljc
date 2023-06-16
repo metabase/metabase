@@ -496,7 +496,7 @@
   (m/find-first lib.types.isa/primary-key?
                 (lib.metadata.calculation/visible-columns query stage-number x)))
 
-(mu/defn ^:private fk-column :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn ^:private fk-column-for :- [:maybe lib.metadata/ColumnMetadata]
   "Given a query stage find an FK column that points to the PK `pk-col`."
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -519,7 +519,7 @@
     stage-number  :- :int
     joinable]
    (when-let [pk-col (pk-column query stage-number joinable)]
-     (when-let [fk-col (fk-column query stage-number pk-col)]
+     (when-let [fk-col (fk-column-for query stage-number pk-col)]
        (lib.common/->op-arg
         query
         stage-number
