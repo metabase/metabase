@@ -1,6 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import { breakpointMinLarge } from "metabase/styled-components/theme";
 
 export const EditModeContainer = styled.div`
   display: flex;
@@ -237,7 +238,7 @@ export const DisplayContainer = styled.div`
   ${({ isSingleRow }) =>
     isSingleRow &&
     css`
-      @media screen and (min-width: 1280px) {
+      ${breakpointMinLarge} {
         font-size: 0.85em;
       }
     `}
