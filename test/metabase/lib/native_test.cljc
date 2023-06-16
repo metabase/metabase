@@ -40,16 +40,16 @@
        (is (=? {"snippet:foo" {:type         :snippet
                                :name         "snippet:foo"
                                :snippet-name "foo"
-                               :id           uuid?}}
+                               :id           string?}}
                (lib.native/template-tags "SELECT * FROM table WHERE {{snippet:foo}}")))
        (is (=? {"snippet:foo"  {:type         :snippet
                                 :name         "snippet:foo"
                                 :snippet-name "foo"
-                                :id           uuid?}
+                                :id           string?}
                 "snippet: foo" {:type         :snippet
                                 :name         "snippet: foo"
                                 :snippet-name "foo"
-                                :id           uuid?}}
+                                :id           string?}}
                  ;; TODO: This should probably be considered a bug - whitespace matters for the name.
                (lib.native/template-tags "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}"))))
 
@@ -57,7 +57,7 @@
        (let [old-tag {:type         :text
                       :name         "foo"
                       :display-name "Foo"
-                      :id           (m/random-uuid)}]
+                      :id           (str (m/random-uuid))}]
          (testing "changes display-name if the original is not customized"
            (is (=? {"bar" {:type         :text
                            :name         "bar"
@@ -77,7 +77,7 @@
            (let [other {:type         :text
                         :name         "other"
                         :display-name "Some Var"
-                        :id           (m/random-uuid)}]
+                        :id           (str (m/random-uuid))}]
              (is (=? {"other" other
                       "bar"   {:type         :text
                                :name         "bar"
@@ -120,13 +120,13 @@
                   "#321"                    c2}
                  (lib.native/template-tags
                   "SELECT * FROM {{#321}} WHERE {{baz}} AND {{bar}} AND {{snippet:another snippet}}"
-                  {"foo"                   (assoc v1 :id (random-uuid))
-                   "#123-card-1"           (assoc c1 :id (random-uuid))
-                   "snippet:first snippet" (assoc s1 :id (random-uuid))})))))))
+                  {"foo"                   (assoc v1 :id (str (random-uuid)))
+                   "#123-card-1"           (assoc c1 :id (str (random-uuid)))
+                   "snippet:first snippet" (assoc s1 :id (str (random-uuid)))})))))))
 
 #?(:cljs
    (deftest converters-test
-     (let [clj-tags {"a"         {:id           "c5ad010c-632a-4498-b667-9188fbe965f9"
+            (let [clj-tags {"a"  {:id           "c5ad010c-632a-4498-b667-9188fbe965f9"
                                   :name         "a"
                                   :display-name "A"
                                   :type         :text}
