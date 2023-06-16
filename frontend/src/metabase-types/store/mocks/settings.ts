@@ -6,4 +6,5 @@ export const createMockSettingsState = (
   opts?: Partial<Settings>,
 ): SettingsState => ({
   values: createMockSettings(opts),
+  loading: false,
 });
