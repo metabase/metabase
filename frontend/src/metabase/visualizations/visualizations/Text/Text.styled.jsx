@@ -41,6 +41,14 @@ export const ReactMarkdownStyleWrapper = styled.div`
   height: 100%;
   width: 100%;
 
+  ${({ isSingleRow }) =>
+    isSingleRow &&
+    css`
+      ${breakpointMinLarge} {
+        font-size: 0.85em;
+      }
+    `}
+
   .text-card-markdown {
     height: 100%;
     overflow-x: hidden;
@@ -234,12 +242,4 @@ export const DisplayContainer = styled.div`
   overflow: hidden;
   padding: 0.4rem;
   width: 100%;
-
-  ${({ isSingleRow }) =>
-    isSingleRow &&
-    css`
-      ${breakpointMinLarge} {
-        font-size: 0.85em;
-      }
-    `}
 `;
