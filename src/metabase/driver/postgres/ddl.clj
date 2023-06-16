@@ -43,8 +43,8 @@
      driver
      database
      {:write? true}
-     (fn [conn]
-       (jdbc/with-db-transaction [tx conn]
+     (fn [^java.sql.Connection conn]
+       (jdbc/with-db-transaction [tx {:connection conn}]
          (set-statement-timeout! tx)
          (sql.ddl/execute! tx [(sql.ddl/drop-table-sql database (:table-name definition))])
          (sql.ddl/execute! tx (into [(sql.ddl/create-table-sql database definition query)] params)))
@@ -106,9 +106,9 @@
      driver
      database
      {:write? true}
-     (fn [conn]
+     (fn [^java.sql.Connection conn]
        (jdbc/with-db-transaction
-         [tx conn]
+         [tx {:connection conn}]
          (set-statement-timeout! tx)
          (loop [[[step stepfn] & remaining] steps]
            (let [result (try (stepfn tx)
