@@ -7,6 +7,7 @@ import { NudgeToPro } from "metabase/admin/people/components/NudgeToPro";
 import AdminLayout from "metabase/components/AdminLayout";
 import { shouldNudgeToPro } from "metabase/admin/people/selectors";
 import { useSelector } from "metabase/lib/redux";
+import { LeftNavWrapper } from "./AdminPeopleApp.styled";
 
 const AdminPeopleApp = ({ children }: { children: React.ReactNode }) => {
   const shouldNudge = useSelector(shouldNudgeToPro);
@@ -22,10 +23,10 @@ const AdminPeopleApp = ({ children }: { children: React.ReactNode }) => {
         !shouldNudge ? (
           sidebar
         ) : (
-          <div className="flex flex-column">
+          <LeftNavWrapper>
             {sidebar}
             <NudgeToPro />
-          </div>
+          </LeftNavWrapper>
         )
       }
     >
