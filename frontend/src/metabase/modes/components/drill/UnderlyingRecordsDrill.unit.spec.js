@@ -26,7 +26,7 @@ describe("UnderlyingRecordsDrill", () => {
     expect(actions).toHaveLength(0);
   });
 
-  it("should be return correct new card for breakout by month", () => {
+  it("should return correct new card for breakout by month", () => {
     const value = "2018-01-01T00:00:00Z";
     const query = ordersTable
       .query()
@@ -47,7 +47,7 @@ describe("UnderlyingRecordsDrill", () => {
     expect(q.display()).toEqual("table");
   });
 
-  it("should be return correct new card for breakout by day-of-week", () => {
+  it("should return correct new card for breakout by day-of-week", () => {
     const value = 4; // corresponds to Wednesday
     const query = ordersTable
       .query()
@@ -165,6 +165,52 @@ describe("UnderlyingRecordsDrill", () => {
       "source-table": ORDERS_ID,
     });
     expect(q.display()).toEqual("table");
+  });
+
+  it("should return correct new card for aggregated query with a top level custom column", () => {
+    const customColumnExpression = [
+      "field",
+      "count",
+      {
+        "base-type": "type/Integer",
+      },
+    ];
+    const query = ordersTable
+      .query()
+      .aggregate(["count"])
+      .breakout(["field", ORDERS.PRODUCT_ID, null])
+      .addExpression("Test column", customColumnExpression);
+    const testProductId = 1;
+
+    const actions = UnderlyingRecordsDrill({
+      question: query.question(),
+      clicked: {
+        column: metadata.field(ORDERS.PRODUCT_ID).column(),
+        value: testProductId,
+        dimensions: [
+          {
+            column: query.breakouts()[0].dimension().column(),
+            value: testProductId,
+          },
+          {
+            column: null,
+            value: 123,
+          },
+        ],
+      },
+    });
+
+    expect(actions).toHaveLength(1);
+
+    const q = actions[0].question();
+
+    expect(q.query().query()).toEqual({
+      expressions: {
+        "Test column": customColumnExpression,
+      },
+      filter: ["=", ["field", ORDERS.PRODUCT_ID, null], testProductId],
+      "source-table": ORDERS_ID,
+    });
   });
 
   describe("title", () => {
