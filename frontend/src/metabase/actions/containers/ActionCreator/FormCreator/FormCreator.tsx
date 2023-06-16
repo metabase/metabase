@@ -155,9 +155,15 @@ function FormCreator({
   );
 
   const showWarning = form.fields.some(field => {
-    const { hidden, required, defaultValue } = fieldSettings[field.name];
+    const settings = fieldSettings[field.name];
 
-    return hidden && required && defaultValue == null;
+    if (!settings) {
+      return false;
+    }
+
+    return (
+      settings.hidden && settings.required && settings.defaultValue == null
+    );
   });
 
   return (
