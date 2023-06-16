@@ -28,7 +28,7 @@ You can also upload data to the Sample Database included with Metabase (an H2 da
 For more, check out:
 
 - [Adding and managing databases](./connecting.md)
-- [Database users, roles, and privileges](./users-roles-privileges.md).
+- [Database users, roles, and privileges](./users-roles-privileges.md)
 
 ### Select the database and schema that you want to store the data in
 
@@ -48,7 +48,7 @@ Admins can optionally specify a string of text to add in front of the table that
 
 ## File size limit
 
-CSV files cannot exceed 200 MB in size. 
+CSV files cannot exceed 200 MB in size.
 
 > Note that while Metabase limits uploads to 200 MB, the server you use to run your Metabase may impose a separate limit. You may need to change your server settings to allow uploads up to 200 MB. People on Metabase Cloud don't have to worry about this.
 
@@ -60,11 +60,11 @@ If you have a file larger than 200 MB, the workaround here is to:
 
 ## Deleting models and tables created by uploads
 
-### Models 
+### Models
 
 You can archive a model by clicking on the three dots in the upper right and selecting **Archive**.
 
-For deleting models completely, see [Deleting items permanently](../exploration-and-organization/history#deleting-items-permanently)
+For deleting models completely, see [Deleting items permanently](../exploration-and-organization/history.md#deleting-items-permanently).
 
 ### Tables
 
