@@ -72,7 +72,8 @@
     leave as-is
 
   * If `:write?` is NOT passed or otherwise falsey, make the connection read-only if possible; if it is truthy, make
-    the connection read-write
+    the connection read-write. Note that this current does not run things inside a transaction automatically; you'll
+    have to do that yourself if you want it
 
   The normal 'happy path' is more or less
 
@@ -80,7 +81,7 @@
       (set-best-transaction-level! driver conn)
       (set-time-zone-if-supported! driver conn session-timezone)
       (.setReadOnly conn true)
-      (.setAutoCommit conn false)
+      (.setAutoCommit conn true) ; so the query(s) are not ran inside a transaction
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
       (f conn))
 
@@ -319,14 +320,17 @@
       ;; See https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setReadOnly-boolean-
       (.setReadOnly conn read-only?)
       (catch Throwable e
-        (log/debug e (trs "Error setting connection readOnly to {0}" (pr-str read-only?))))))
-  (let [auto-commit? (boolean write?)]
+        (log/debugf e "Error setting connection readOnly to %s" (pr-str read-only?)))))
+  ;; if this is (supposedly) a read-only connection, enable auto-commit so this IS NOT ran inside of a transaction.
+  ;;
+  ;; TODO -- for `write?` connections, we should probably disable autoCommit and then manually call `.commit` at after
+  ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
+  ;; manually.
+  (when-not write?
     (try
-      ;; set autocommit to false so that pg honors fetchSize. Otherwise it commits the transaction and needs the
-      ;; entire realized result set
-      (.setAutoCommit conn auto-commit?)
+      (.setAutoCommit conn true)
       (catch Throwable e
-        (log/debug e (trs "Error setting connection autoCommit to {0}" (pr-str auto-commit?))))))
+        (log/debug e "Error enabling connection autoCommit"))))
   (try
     (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
     (catch Throwable e
@@ -334,9 +338,13 @@
 
 (defmethod do-with-connection-with-options :sql-jdbc
   [driver db-or-id-or-spec options f]
-  (do-with-resolved-connection driver db-or-id-or-spec options (fn [^java.sql.Connection conn]
-                                                                 (set-default-connection-options! driver conn options)
-                                                                 (f conn))))
+  (do-with-resolved-connection
+   driver
+   db-or-id-or-spec
+   options
+   (fn [^Connection conn]
+     (set-default-connection-options! driver conn options)
+     (f conn))))
 
 ;; TODO - would a more general method to convert a parameter to the desired class (and maybe JDBC type) be more
 ;; useful? Then we can actually do things like log what transformations are taking place

@@ -1020,12 +1020,15 @@
                            "DROP USER IF EXISTS no_select_test_user;"
                            "CREATE USER no_select_test_user WITH PASSWORD '123456';"
                            "GRANT SELECT ON TABLE \"no-select-test\".PUBLIC.table_with_perms TO no_select_test_user;"]]
-          (jdbc/execute! spec [statement])))
+          (is (= [0]
+                 (jdbc/execute! spec [statement])))))
       (let [test-user-details (assoc (mt/dbdef->connection-details :postgres :db {:database-name "no-select-test"})
                                      :user "no_select_test_user"
                                      :password "123456")]
         (t2.with-temp/with-temp [Database database {:engine :postgres, :details test-user-details}]
-          (sync/sync-database! database)
+          ;; make sure that sync still succeeds even tho some tables are not SELECTable.
+          (binding [sync-util/*log-exceptions-and-continue?* false]
+            (is (some? (sync/sync-database! database))))
           (is (= #{"table_with_perms"}
                  (t2/select-fn-set :name Table :db_id (:id database)))))))))
 

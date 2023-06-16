@@ -156,7 +156,7 @@
         nil))
 
 (mu/defn describe-database
-  "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
+  "Default implementation of [[metabase.driver/describe-database]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver           :- :keyword
    db-or-id-or-spec :- [:or :int :map]]
   {:tables

@@ -620,7 +620,7 @@
     (default-base-types column)))
 
 (defmethod sql-jdbc.sync/column->semantic-type :postgres
-  [_ database-type _]
+  [_driver database-type _column-name]
   ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON semantic-type
   (case database-type
     "json"  :type/SerializedJSON
