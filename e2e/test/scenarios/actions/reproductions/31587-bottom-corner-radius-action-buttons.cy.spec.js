@@ -7,21 +7,20 @@ import {
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
-const sizes = [
+const viewports = [
   [768, 800],
   [1024, 800],
   [1440, 800],
 ];
 describe("metabase#31587", () => {
-  sizes.forEach(([width, height]) => {
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-      setActionsEnabledForDB(SAMPLE_DB_ID);
-      cy.viewport(width, height);
-    });
-
-    context(`Testing on resolution ${width} x ${height}`, () => {
+  viewports.forEach(([width, height]) => {
+    describe(`Testing on resolution ${width} x ${height}`, () => {
+      beforeEach(() => {
+        restore();
+        cy.signInAsAdmin();
+        setActionsEnabledForDB(SAMPLE_DB_ID);
+        cy.viewport(width, height);
+      });
       it("should not allow action buttons to overflow when editing dashboard", () => {
         visitDashboard(1);
         editDashboard();
