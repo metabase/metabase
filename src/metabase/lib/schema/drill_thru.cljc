@@ -50,4 +50,10 @@
     [:map
      [:type            keyword?]
      [:lib/type        [:= :metabase.lib.drill-thru/drill-thru]]
-     [:sort-directions [:sequential ::lib.schema.order-by/direction]]]]])
+     [:sort-directions [:sequential ::lib.schema.order-by/direction]]]]
+   [:drill-thru/summarize-column
+    [:map
+     [:type         keyword?]
+     [:lib/type     [:= :metabase.lib.drill-thru/drill-thru]]
+     [:column       lib.metadata/ColumnMetadata]
+     [:aggregations [:sequential [:enum :avg :distinct :sum]]]]]])
