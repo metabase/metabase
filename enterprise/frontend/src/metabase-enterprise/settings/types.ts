@@ -1,11 +1,11 @@
-import { Settings } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { Settings } from "metabase-types/api";
+import type { SettingsState, State } from "metabase-types/store";
 
 export interface EnterpriseState extends State {
   settings: EnterpriseSettingsState;
 }
 
-interface EnterpriseSettingsState {
+interface EnterpriseSettingsState extends SettingsState {
   values: EnterpriseSettings;
 }
 
