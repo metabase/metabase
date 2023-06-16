@@ -114,7 +114,7 @@ class DashboardGrid extends Component {
       selectedTabId,
     );
 
-    if (!isEditing) {
+    if (!isEditing || !_.isEqual(this.getVisibleCards(), cards)) {
       this.setState({
         initialCardSizes: this.getInitialCardSizes(cards),
       });
