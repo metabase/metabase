@@ -21,17 +21,11 @@
             Field
             FieldValues
             LoginHistory
-            Metric
-            NativeQuerySnippet
             Permissions
             PermissionsGroup
             PermissionsGroupMembership
             PersistedInfo
-            Pulse
-            PulseCard
-            PulseChannel
             Revision
-            Segment
             Setting
             Table
             TaskHistory
@@ -158,14 +152,14 @@
             :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/89.0.4389.86 Safari/537.36"
             :ip_address         "0:0:0:0:0:0:0:1"})
 
-   Metric
+   :model/Metric
    (fn [_] {:creator_id  (rasta-id)
             :definition  {}
             :description "Lookin' for a blueberry"
             :name        "Toucans in the rainforest"
             :table_id    (data/id :checkins)})
 
-   NativeQuerySnippet
+   :model/NativeQuerySnippet
    (fn [_] {:creator_id (user-id :crowberto)
             :name       (tu.random/random-name)
             :content    "1 = 1"})
@@ -187,16 +181,16 @@
    :model/PermissionsGroup
    (fn [_] {:name (tu.random/random-name)})
 
-   Pulse
+   :model/Pulse
    (fn [_] {:creator_id (rasta-id)
             :name       (tu.random/random-name)})
 
-   PulseCard
+   :model/PulseCard
    (fn [_] {:position    0
             :include_csv false
             :include_xls false})
 
-   PulseChannel
+   :model/PulseChannel
    (constantly {:channel_type  :email
                 :details       {}
                 :schedule_type :daily
@@ -207,7 +201,7 @@
             :is_creation  false
             :is_reversion false})
 
-   Segment
+   :model/Segment
    (fn [_] {:creator_id  (rasta-id)
             :definition  {}
             :description "Lookin' for a blueberry"
@@ -247,7 +241,7 @@
       :time_matters true
       :creator_id   (rasta-id)})
 
-   User
+   :model/User
    (fn [_] {:first_name (tu.random/random-name)
             :last_name  (tu.random/random-name)
             :email      (tu.random/random-email)
