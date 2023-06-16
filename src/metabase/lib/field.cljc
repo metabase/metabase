@@ -46,7 +46,6 @@
   [[tag opts id-or-name]]
   [(keyword tag) (normalize-field-options opts) id-or-name])
 
-
 (mu/defn ^:private resolve-field-id :- lib.metadata/ColumnMetadata
   "Integer Field ID: get metadata from the metadata provider. If this is the first stage of the query, merge in
   Saved Question metadata if available."
@@ -389,25 +388,6 @@
         (cond-> strat
           (lib.binning/strategy= strat existing) (assoc :selected true))))
     []))
-
-;;; -------------------------------------- Join Alias --------------------------------------------
-(defmethod lib.join/current-join-alias-method :field
-  [[_tag opts]]
-  (get opts :join-alias))
-
-(defmethod lib.join/current-join-alias-method :metadata/field
-  [metadata]
-  (::join-alias metadata))
-
-(defmethod lib.join/with-join-alias-method :field
-  [[_tag opts id-or-name] join-alias]
-  (if join-alias
-    [:field (assoc opts :join-alias join-alias) id-or-name]
-    [:field (dissoc opts :join-alias) id-or-name]))
-
-(defmethod lib.join/with-join-alias-method :metadata/field
-  [metadata join-alias]
-  (assoc metadata ::join-alias join-alias))
 
 (defmethod lib.ref/ref-method :field
   [field-clause]

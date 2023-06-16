@@ -8,9 +8,9 @@
    [metabase.util.malli :as mu]))
 
 (deftest ^:parallel join-table-metadata-test
-  (testing "You should be able to pass :metadata/table to lib/join"
+  (testing "You should be able to pass :metadata/table to lib/join INDIRECTLY VIA join-clause"
     (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                    (lib/join (-> (lib/table (meta/id :categories))
+                    (lib/join (-> (lib/join-clause (lib/table (meta/id :categories)))
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all))
                               [(lib/= (lib/field (meta/id :venues :category-id))

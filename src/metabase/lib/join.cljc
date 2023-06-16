@@ -1,19 +1,5 @@
 (ns metabase.lib.join
-  "Functions related to manipulating EXPLICIT joins in MBQL.
-
-  Several of the functions in this namespace operate on a 'joinable'. This means anything that we can join:
-
-  * A join map, i.e. a `:lib/type` `:mbql/join` map
-
-  * A Table (a `:metadata/table` map)
-
-  * A Saved Question/Card (a `:metadata/card` map)
-
-  * Another query (an `:mbql/query` map)
-
-  Realistically this is probably more flexibility than we actually needed, so maybe we can pare this stuff down a bit
-  and only have things like [[with-join-alias]] operate on join maps going forward. But that's a project for another
-  day."
+  "Functions related to manipulating EXPLICIT joins in MBQL."
   (:require
    [clojure.string :as str]
    [inflections.core :as inflections]
@@ -37,44 +23,52 @@
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.u.match]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
-(defmulti with-join-alias-method
-  "Implementation for [[with-join-alias]]."
-  {:arglists '([field-or-joinable join-alias])}
-  (fn [field-or-joinable _join-alias]
-    (lib.dispatch/dispatch-value field-or-joinable)))
+(def ^:private PartialJoin
+  "A Join that we are in the process of building, before we add it to a query. Like `::lib.schema.join/join`, but
+  `:alias` and `:condition` are optional. (Actually at the time of this writing `:alias` is optional upstream as well,
+  but we plan on making it required in the near future.)"
+  [:merge
+   [:ref ::lib.schema.join/join]
+   [:map
+    [:alias      {:optional true} [:ref ::lib.schema.join/alias]]
+    [:conditions {:optional true} [:ref ::lib.schema.join/conditions]]]])
 
-(defmethod with-join-alias-method :dispatch-type/fn
-  [f join-alias]
-  (fn [query stage-number]
-    (let [field-or-joinable (f query stage-number)]
-      (with-join-alias-method field-or-joinable join-alias))))
-
-(defmethod with-join-alias-method :mbql/join
-  [join join-alias]
-  (assoc join :alias join-alias))
+(def ^:private FieldOrPartialJoin
+  [:or
+   lib.metadata/ColumnMetadata
+   [:ref :mbql.clause/field]
+   PartialJoin])
 
 (mu/defn with-join-alias
-  "Add a specific `join-alias` to `field-or-joinable`, with is either a `:field`/Field metadata, or something 'joinable'
-  like a join map or Table metadata. Does not recursively update other references (yet; we can add this in the
-  future)."
-  [field-or-joinable join-alias :- ::lib.schema.common/non-blank-string]
-  (with-join-alias-method field-or-joinable join-alias))
+  "Add OR REMOVE a specific `join-alias` to `field-or-joinable`, with is either a `:field`/Field metadata, or something
+  'joinable' like a join map or Table metadata. Does not recursively update other references (yet; we can add this in
+  the future)."
+  [field-or-joinable :- [:or FieldOrPartialJoin fn?]
+   join-alias        :- [:maybe ::lib.schema.common/non-blank-string]]
+  (case (lib.dispatch/dispatch-value field-or-joinable)
+    :field
+    (lib.options/update-options field-or-joinable u/assoc-dissoc :join-alias join-alias)
 
-(defmulti current-join-alias-method
-  "Impl for [[current-join-alias]]."
-  {:arglists '([field-or-joinable])}
-  lib.dispatch/dispatch-value)
+    :metadata/field
+    (u/assoc-dissoc field-or-joinable ::join-alias join-alias)
 
-(defmethod current-join-alias-method :default
-  [_x]
-  nil)
+    :mbql/join
+    (u/assoc-dissoc field-or-joinable :alias join-alias)
+
+    :dispatch-type/fn
+    (fn [query stage-number]
+      (with-join-alias (field-or-joinable query stage-number) join-alias))))
 
 (mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
   "Get the current join alias associated with something, if it has one."
-  [x]
-  (current-join-alias-method x))
+  [field-or-joinable :- FieldOrPartialJoin]
+  (case (lib.dispatch/dispatch-value field-or-joinable)
+    :field          (:join-alias (lib.options/options field-or-joinable))
+    :metadata/field (::join-alias field-or-joinable)
+    :mbql/join      (:alias field-or-joinable)))
 
 (mu/defn resolve-join :- ::lib.schema.join/join
   "Resolve a join with a specific `join-alias`."
@@ -169,6 +163,7 @@
   (mapv (partial add-source-and-desired-aliases join unique-name-fn)
         (lib.metadata.calculation/metadata query stage-number (assoc join :fields :all))))
 
+;;; TODO -- we want to make `:alias` required; once that's done, we can remove this separate schema.
 (def ^:private JoinsWithAliases
   "Schema for a sequence of joins that all have aliases."
   [:and
@@ -253,7 +248,7 @@
                                            :stage-number stage-number
                                            :f            f})))))
 
-(defn join-clause
+(mu/defn join-clause :- [:or PartialJoin fn?]
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
   Saved Question? You should be able to join anything, and this should return a sensible MBQL join map."
   ([joinable]
@@ -271,29 +266,21 @@
    (cond-> (join-clause query stage-number joinable)
      conditions (assoc :conditions (mapv #(lib.common/->op-arg query stage-number %) conditions)))))
 
-(defmulti with-join-fields-method
-  "Impl for [[with-join-fields]]."
-  {:arglists '([x fields])}
-  (fn [x _fields]
-    (lib.dispatch/dispatch-value x))
-  :hierarchy lib.hierarchy/hierarchy)
-
-(defmethod with-join-fields-method :dispatch-type/fn
-  [f fields]
-  (fn [query stage-number]
-    (with-join-fields-method (f query stage-number) (if (keyword? fields)
-                                                      fields
-                                                      (mapv #(lib.common/->op-arg query stage-number %) fields)))))
-
-(defmethod with-join-fields-method :mbql/join
-  [join fields]
-  (assoc join :fields fields))
-
-(mu/defn with-join-fields
+(mu/defn with-join-fields :- [:or PartialJoin fn?]
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
   references."
-  [joinable fields]
-  (with-join-fields-method joinable fields))
+  [joinable :- [:or PartialJoin fn?]
+   fields]
+  (if (fn? joinable)
+    (fn [query stage-number]
+      (let [resolved (joinable query stage-number)
+            ;; if joinable is unresolved, then make sure all of the Fields get resolved too if needed... but what if
+            ;; we have a resolved join + unresolved Fields? We don't handle that FIXME
+            fields   (if (keyword? fields)
+                       fields
+                       (mapv #(lib.common/->op-arg query stage-number %) fields))]
+        (with-join-fields resolved fields)))
+    (u/assoc-dissoc joinable :fields fields)))
 
 (defn- select-home-column
   [home-cols cond-fields]
