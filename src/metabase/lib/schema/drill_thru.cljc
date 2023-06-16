@@ -6,6 +6,7 @@
   (:require
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::drill-thru-types
@@ -39,4 +40,14 @@
     [:map
      [:type      keyword?]
      [:lib/type  [:= :metabase.lib.drill-thru/drill-thru]]
-     [:column    lib.metadata/ColumnMetadata]]]])
+     [:column    lib.metadata/ColumnMetadata]]]
+   [:drill-thru/pivot
+    [:map
+     [:type      keyword?]
+     [:lib/type  [:= :metabase.lib.drill-thru/drill-thru]]
+     [:pivots    [:map-of [:enum :category :location :time] [:sequential lib.metadata/ColumnMetadata]]]]]
+   [:drill-thru/sort
+    [:map
+     [:type            keyword?]
+     [:lib/type        [:= :metabase.lib.drill-thru/drill-thru]]
+     [:sort-directions [:sequential ::lib.schema.order-by/direction]]]]])
