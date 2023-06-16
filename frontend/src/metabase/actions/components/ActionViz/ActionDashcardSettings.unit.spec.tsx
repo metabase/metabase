@@ -1,6 +1,11 @@
 import * as React from "react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+  within,
+} from "__support__/ui";
 
 import {
   setupActionsEndpoints,
@@ -18,6 +23,7 @@ import {
   createMockActionParameter,
   createMockCollectionItem,
   createMockFieldSettings,
+  createMockImplicitCUDActions,
 } from "metabase-types/api/mocks";
 
 import { WritebackParameter } from "metabase-types/api";
@@ -59,6 +65,8 @@ const actions2 = [
   }),
 ];
 
+const implicitActions = createMockImplicitCUDActions(models[1].id, 123);
+
 const dashcard = createMockDashboardOrderedCard();
 const actionDashcard = createMockActionDashboardCard({ id: 2 });
 const actionDashcardWithAction = createMockActionDashboardCard({
@@ -85,7 +93,7 @@ const setup = (
 
   setupSearchEndpoints(searchItems);
   setupCardsEndpoints(models);
-  setupActionsEndpoints([...actions1, ...actions2]);
+  setupActionsEndpoints([...actions1, ...actions2, ...implicitActions]);
 
   renderWithProviders(
     <ConnectedActionDashcardSettings
@@ -455,6 +463,29 @@ describe("ActionViz > ActionDashcardSettings", () => {
     });
     expect(screen.getByText("Action Parameter 1")).toBeInTheDocument();
     expect(screen.getByText("Action Parameter 2")).toBeInTheDocument();
+  });
+
+  it("supports inline edit for implit and query actions", async () => {
+    setup({
+      dashcard: actionDashcardWithAction,
+    });
+
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+
+    const queryAction = screen.getByTestId(`action-item-${actions2[0].name}`);
+    const implicitAction = screen.getByTestId(
+      `action-item-${implicitActions[0].name}`,
+    );
+
+    expect(queryAction).toBeInTheDocument();
+    expect(implicitAction).toBeInTheDocument();
+
+    expect(
+      within(queryAction).getByRole("button", { name: "pencil icon" }),
+    ).toBeInTheDocument();
+    expect(
+      within(implicitAction).getByRole("button", { name: "pencil icon" }),
+    ).toBeInTheDocument();
   });
 
   it("can close the modal with the done button", () => {
