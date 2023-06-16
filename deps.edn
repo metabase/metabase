@@ -476,7 +476,7 @@
                 "metabase\\.driver\\.postgres.*"]}
    ;; different port from `:test` so you can run it at the same time as `:test`.
    :jvm-opts ["-Dmb.jetty.port=3002"
-              ;; default heap size is 1GB
+              ;; default heap size is 1GB, we were getting OOM on CI so we need to bump this
               "-Xmx4g"]}
 
 ;;; building Uberjar, build and release scripts
