@@ -477,8 +477,7 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    x]
-  (m/find-first (fn [{:keys [semantic-type], :as _col}]
-                  (isa? semantic-type :type/PK))
+  (m/find-first lib.types.isa/primary-key?
                 (lib.metadata.calculation/visible-columns query stage-number x)))
 
 (mu/defn ^:private fk-column :- [:maybe lib.metadata/ColumnMetadata]
@@ -487,8 +486,8 @@
    stage-number :- :int
    pk-col       :- [:maybe lib.metadata/ColumnMetadata]]
   (when-let [pk-id (:id pk-col)]
-    (m/find-first (fn [{:keys [semantic-type fk-target-field-id], :as _col}]
-                    (and (isa? semantic-type :type/FK)
+    (m/find-first (fn [{:keys [fk-target-field-id], :as col}]
+                    (and (lib.types.isa/foreign-key? col)
                          (= fk-target-field-id pk-id)))
                   (lib.metadata.calculation/visible-columns query stage-number (lib.util/query-stage query stage-number)))))
 

@@ -436,6 +436,9 @@
           (lib/aggregate (lib/count))))))
 
 (deftest ^:parallel suggested-join-condition-pk->fk-test
+  ;; this is to preserve the existing behavior from MLv1, it doesn't necessarily make sense, but we don't want to have
+  ;; to update a million tests, right? Once v1-compatible joins lands then maybe we can go in and make this work,
+  ;; since it seems like it SHOULD work.
   (testing "Don't suggest join conditions for a PK -> FK relationship"
     (is (nil?
          (lib/suggested-join-condition
