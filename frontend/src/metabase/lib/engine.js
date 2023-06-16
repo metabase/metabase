@@ -10,6 +10,7 @@ export function getEngineNativeType(engine) {
   switch (engine) {
     case "mongo":
     case "druid":
+      return "json";
     default:
       return "sql";
   }
@@ -23,6 +24,7 @@ export function getEngineNativeAceMode(engine) {
   switch (engine) {
     case "mongo":
     case "druid":
+      return "ace/mode/json";
     case "mysql":
       return "ace/mode/mysql";
     case "postgres":
