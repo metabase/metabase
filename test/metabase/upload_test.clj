@@ -247,7 +247,7 @@
                             "2022-01-01,2023-02-28,2022-01-01T00:00:00,2023-02-28T00:00:00"
                             "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"]))))))
 
-(deftest unique-table-name-test
+(deftest ^:parallel unique-table-name-test
   (mt/test-driver (mt/normal-drivers-with-feature :uploads)
     (testing "File name is slugified"
       (is (=? #"my_file_name_\d+" (#'upload/unique-table-name driver/*driver* "my file name"))))
@@ -265,7 +265,7 @@
             (Thread/sleep 1000)
             (is (some? (upload/load-from-csv! driver/*driver* (mt/id) "table_name" file)))))))))
 
-(defn- query-table!
+(defn- query-table
   [table]
   (qp/process-query {:database (:db_id table)
                      :type     :query
@@ -273,13 +273,13 @@
 
 (defn- column-names-for-table
   [table]
-  (->> (query-table! table)
+  (->> (query-table table)
        mt/cols
        (map (comp u/lower-case-en :name))))
 
 (defn- rows-for-table
   [table]
-  (mt/rows (query-table! table)))
+  (mt/rows (query-table table)))
 
 (deftest load-from-csv-test
   (testing "Upload a CSV file"
