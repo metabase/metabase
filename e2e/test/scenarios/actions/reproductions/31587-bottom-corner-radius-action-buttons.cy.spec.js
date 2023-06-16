@@ -34,7 +34,9 @@ describe("metabase#31587", () => {
 
           actionButtonContainer.then(actionButtonElem => {
             dashCard.then(dashCardElem => {
-              expect(actionButtonElem[0].scrollHeight).to.eq(dashCardElem[0].scrollHeight);
+              expect(actionButtonElem[0].scrollHeight).to.eq(
+                dashCardElem[0].scrollHeight,
+              );
             });
           });
         });
@@ -55,9 +57,9 @@ describe("metabase#31587", () => {
           const dashCard = cy.contains(".DashCard", "Click Me");
           actionButtonContainer.then(actionButtonElem => {
             dashCard.then(dashCardElem => {
-              expect(
-                actionButtonElem[0].scrollHeight - dashCardElem[0].scrollHeight,
-              ).to.eq(0);
+              expect(actionButtonElem[0].scrollHeight).to.eq(
+                dashCardElem[0].scrollHeight,
+              );
             });
           });
         });
