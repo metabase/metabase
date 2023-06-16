@@ -474,9 +474,7 @@ class DashboardHeader extends Component {
       setDashboardAttribute,
       setSidebar,
       isHomepageDashboard,
-      params,
     } = this.props;
-
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
@@ -484,8 +482,7 @@ class DashboardHeader extends Component {
         headerClassName="wrapper"
         objectType="dashboard"
         analyticsContext="Dashboard"
-        tabSlug={params.tabSlug}
-        pathname={this.props.location.pathname}
+        location={this.props.location}
         dashboard={dashboard}
         isEditing={isEditing}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}

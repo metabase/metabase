@@ -9,6 +9,7 @@ import {
 import * as React from "react";
 import { t } from "ttag";
 import cx from "classnames";
+import type { Location } from "history";
 
 import { getScrollY } from "metabase/lib/dom";
 import { Dashboard } from "metabase-types/api";
@@ -36,8 +37,7 @@ interface DashboardHeaderViewProps {
   headerButtons: React.ReactNode[];
   headerClassName: string;
   headerModalMessage: string;
-  tabSlug: string | undefined;
-  pathname: string;
+  location: Location;
   isEditing: boolean;
   isEditingInfo: boolean;
   isNavBarOpen: boolean;
@@ -59,8 +59,7 @@ function DashboardHeaderView({
   headerButtons = [],
   headerClassName = "py1 lg-py2 xl-py3 wrapper",
   headerModalMessage,
-  tabSlug,
-  pathname,
+  location,
   isEditing,
   isNavBarOpen,
   dashboard,
@@ -171,11 +170,7 @@ function DashboardHeaderView({
           </HeaderButtonsContainer>
         </HeaderRow>
         <HeaderRow isNavBarOpen={isNavBarOpen}>
-          <DashboardTabs
-            slug={tabSlug}
-            pathname={pathname}
-            isEditing={isEditing}
-          />
+          <DashboardTabs location={location} isEditing={isEditing} />
         </HeaderRow>
       </div>
     </div>

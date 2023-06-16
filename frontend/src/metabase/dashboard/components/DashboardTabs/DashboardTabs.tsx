@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { Location } from "history";
 import { TabRow } from "metabase/core/components/TabRow";
 import { TabButton } from "metabase/core/components/TabButton";
 import { SelectedTabId } from "metabase-types/store";
@@ -13,14 +14,12 @@ import {
 import { useDashboardTabs } from "./use-dashboard-tabs";
 
 interface DashboardTabsProps {
-  slug: string | undefined;
-  pathname: string;
+  location: Location;
   isEditing?: boolean;
 }
 
 export function DashboardTabs({
-  slug,
-  pathname,
+  location,
   isEditing = false,
 }: DashboardTabsProps) {
   const {
@@ -31,7 +30,7 @@ export function DashboardTabs({
     selectTab,
     selectedTabId,
     moveTab,
-  } = useDashboardTabs({ slug, pathname });
+  } = useDashboardTabs({ location });
   const showTabs = tabs.length > 1 || isEditing;
   const showPlaceholder = tabs.length <= 1 && isEditing;
 

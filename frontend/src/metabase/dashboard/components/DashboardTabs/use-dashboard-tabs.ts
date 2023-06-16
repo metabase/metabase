@@ -1,6 +1,7 @@
 import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 import type { UniqueIdentifier } from "@dnd-kit/core";
+import type { Location } from "history";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -16,23 +17,17 @@ import { SelectedTabId } from "metabase-types/store";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
 import { addUndo } from "metabase/redux/undo";
 
-import { useSyncURLSlug } from "./use-sync-url-slug";
+import { parseSlug, useSyncURLSlug } from "./use-sync-url-slug";
 
 let tabDeletionId = 1;
 
-export function useDashboardTabs({
-  slug,
-  pathname,
-}: {
-  slug: string | undefined;
-  pathname: string;
-}) {
+export function useDashboardTabs({ location }: { location: Location }) {
   const dispatch = useDispatch();
   const tabs = useSelector(getTabs);
   const selectedTabId = useSelector(getSelectedTabId);
 
-  useSyncURLSlug({ slug, pathname });
-  useMount(() => dispatch(initTabs({ slug })));
+  useSyncURLSlug({ location });
+  useMount(() => dispatch(initTabs({ slug: parseSlug({ location }) })));
   useUnmount(() => dispatch(selectTab({ tabId: null })));
 
   const deleteTab = (tabId: SelectedTabId) => {

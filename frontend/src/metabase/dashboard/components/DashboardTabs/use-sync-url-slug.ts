@@ -1,11 +1,22 @@
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
 import { push, replace } from "react-router-redux";
+import type { Location } from "history";
 
+import _ from "underscore";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { SelectedTabId } from "metabase-types/store";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
 import { initTabs } from "metabase/dashboard/actions";
+
+// TODO test?
+export function parseSlug({ location }: { location: Location }) {
+  const slug = location.query["tab"];
+  if (typeof slug === "string") {
+    return slug;
+  }
+  return undefined;
+}
 
 export function getSlug({
   tabId,
@@ -20,15 +31,7 @@ export function getSlug({
   return [tabId, ...name.toLowerCase().split(" ")].join("-");
 }
 
-export function getPathnameBeforeSlug(pathname: string) {
-  const match = pathname.match(/(.*\/dashboard\/[^\/]*)\/?/);
-  if (match === null) {
-    throw Error("No match with pathname before dashboard tab slug.");
-  }
-  return match[1];
-}
-
-function useUpdateURLSlug({ pathname: oldPathname }: { pathname: string }) {
+function useUpdateURLSlug({ location }: { location: Location }) {
   const dispatch = useDispatch();
 
   return {
@@ -39,23 +42,18 @@ function useUpdateURLSlug({ pathname: oldPathname }: { pathname: string }) {
       slug: string;
       shouldReplace?: boolean;
     }) => {
-      const pathname = slug
-        ? `${getPathnameBeforeSlug(oldPathname)}/${slug}`
-        : getPathnameBeforeSlug(oldPathname);
-
       const updater = shouldReplace ? replace : push;
-      dispatch(updater({ pathname }));
+
+      const newQuery = slug
+        ? { ...location.query, tab: slug }
+        : _.omit(location.query, "tab");
+      dispatch(updater({ ...location, query: newQuery }));
     },
   };
 }
 
-export function useSyncURLSlug({
-  slug,
-  pathname,
-}: {
-  slug: string | undefined;
-  pathname: string;
-}) {
+export function useSyncURLSlug({ location }: { location: Location }) {
+  const slug = parseSlug({ location });
   const tabs = useSelector(getTabs);
   const selectedTabId = useSelector(getSelectedTabId);
 
@@ -64,7 +62,7 @@ export function useSyncURLSlug({
   const prevSelectedTabId = usePrevious(selectedTabId);
 
   const dispatch = useDispatch();
-  const { updateURLSlug } = useUpdateURLSlug({ pathname });
+  const { updateURLSlug } = useUpdateURLSlug({ location });
 
   useEffect(() => {
     const slugChanged = slug && slug !== prevSlug;

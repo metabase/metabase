@@ -152,15 +152,6 @@ export const getRoutes = store => (
           <ModalRoute path="copy" modal={DashboardCopyModal} />
           <ModalRoute path="archive" modal={ArchiveDashboardModal} />
         </Route>
-        <Route
-          path="dashboard/:slug/:tabSlug"
-          title={t`Dashboard`}
-          component={DashboardApp}
-        >
-          <ModalRoute path="move" modal={DashboardMoveModal} />
-          <ModalRoute path="copy" modal={DashboardCopyModal} />
-          <ModalRoute path="archive" modal={ArchiveDashboardModal} />
-        </Route>
 
         <Route path="/question">
           <IndexRoute component={QueryBuilder} />
