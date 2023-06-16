@@ -8,6 +8,11 @@ export const getSettings = createSelector(
   settings => settings.values,
 );
 
+export const getSettingsLoading = createSelector(
+  (state: State) => state.settings,
+  settings => settings.loading,
+);
+
 export const getSetting = <T extends SettingKey>(
   state: State,
   key: T,
