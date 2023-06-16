@@ -7,10 +7,12 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.external-op :as lib.schema.external-op]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -338,7 +340,8 @@
   [agg-operators :- [:maybe [:sequential OperatorWithColumns]]
    agg-clause]
   (when (seq agg-operators)
-    (let [[op _ agg-col] agg-clause]
+    (let [[op _ agg-col] agg-clause
+          agg-temporal-unit (-> agg-col lib.options/options :temporal-unit)]
       (mapv (fn [agg-op]
               (cond-> agg-op
                 (= (:short agg-op) op)
@@ -346,12 +349,17 @@
                     (m/update-existing
                      :columns
                      (fn [cols]
-                       (mapv (fn [col]
-                               (let [a-ref (lib.ref/ref col)]
-                                 ;; FIXME: This should use [[lib.equality/find-closest-matching-ref]] instead.
-                                 #_{:clj-kondo/ignore [:deprecated-var]}
-                                 (cond-> col
-                                   (lib.equality/ref= a-ref agg-col)
-                                   (assoc :selected? true))))
-                             cols))))))
+                       (let [refs (mapv lib.ref/ref cols)
+                             match (lib.equality/find-closest-matching-ref
+                                    (lib.options/update-options agg-col dissoc :temporal-unit)
+                                    refs)]
+                         (if match
+                           (mapv (fn [r c]
+                                   (cond-> c
+                                     (= r match) (assoc :selected? true)
+
+                                     (some? agg-temporal-unit)
+                                     (lib.temporal-bucket/with-temporal-bucket agg-temporal-unit)))
+                                 refs cols)
+                           cols)))))))
             agg-operators))))

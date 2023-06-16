@@ -20,22 +20,33 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
-(models/defmodel Metric :metric)
+(def Metric
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all these symbols in our codebase."
+  :model/Metric)
 
-(doto Metric
+(methodical/defmethod t2/table-name :model/Metric [_model] :metric)
+
+(doto :model/Metric
+  (derive :metabase/model)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser))
 
-(defn- pre-update [{:keys [creator_id id], :as updates}]
-  (u/prog1 updates
+(t2/deftransforms :model/Metric
+  {:definition mi/transform-metric-segment-definition})
+
+(t2/define-before-update :model/Metric
+  [{:keys [creator_id id], :as metric}]
+  (u/prog1 (t2/changes metric)
     ;; throw an Exception if someone tries to update creator_id
-    (when (contains? updates :creator_id)
-      (when (not= creator_id (t2/select-one-fn :creator_id Metric :id id))
+    (when (contains? <> :creator_id)
+      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id Metric :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Metric.")))))))
 
 (defmethod mi/perms-objects-set Metric
@@ -43,13 +54,6 @@
   (let [table (or (:table metric)
                   (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id metric))))]
     (mi/perms-objects-set table read-or-write)))
-
-(mi/define-methods
- Metric
- {:types      (constantly {:definition :metric-segment-definition})
-  :properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id    true})
-  :pre-update pre-update})
 
 (mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Metric's definition."

@@ -67,7 +67,7 @@
                 (assoc col
                        :lib/source               :source/table-defaults
                        :lib/source-column-alias  (:name col)
-                       :lib/desired-column-alias (unique-name-fn (:name col))))))))
+                       :lib/desired-column-alias (unique-name-fn (or (:name col) ""))))))))
 
 (defmethod lib.join/with-join-alias-method :metadata/table
   [table-metadata join-alias]
