@@ -9,18 +9,16 @@ import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import { IconName } from "metabase/core/components/Icon";
 import Markdown from "metabase/core/components/Markdown";
-import { getLeadingText, parseMarkdown } from "metabase/lib/markdown";
 import Database from "metabase-lib/metadata/Database";
-
 import {
   ActionsContainer,
   Body,
-  Description,
   Header,
   ItemCard,
   ItemIcon,
   ItemLink,
   Title,
+  TruncatedMarkdown,
 } from "./PinnedItemCard.styled";
 
 type Props = {
@@ -58,8 +56,6 @@ function PinnedItemCard({
   const icon = item.getIcon().name;
   const { description, name, model } = item;
   const defaultedDescription = description || DEFAULT_DESCRIPTION[model] || "";
-  const descriptionMarkdownRoot = parseMarkdown(defaultedDescription);
-  const hasMoreDescriptionToShow = descriptionMarkdownRoot.children.length > 1;
 
   const maybeEnableTooltip = (
     event: MouseEvent<HTMLDivElement>,
@@ -105,18 +101,21 @@ function PinnedItemCard({
             </Title>
           </Tooltip>
 
-          <Description
-            alwaysShowTooltip={hasMoreDescriptionToShow}
+          <Tooltip
+            maxWidth={TOOLTIP_MAX_WIDTH}
             placement="bottom"
             tooltip={
               <Markdown disallowHeading unstyleLinks>
-                {defaultedDescription}
+                {defaultedDescription ?? ""}
               </Markdown>
             }
-            tooltipMaxWidth={TOOLTIP_MAX_WIDTH}
           >
-            {getLeadingText(descriptionMarkdownRoot)}
-          </Description>
+            <div>
+              <TruncatedMarkdown allowedElements={[]} unwrapDisallowed>
+                {defaultedDescription ?? ""}
+              </TruncatedMarkdown>
+            </div>
+          </Tooltip>
         </Body>
       </ItemCard>
     </ItemLink>
