@@ -1,5 +1,6 @@
 (ns metabase.lib.drill-thru
   (:require
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -237,6 +238,44 @@
                             :desc [:asc]
                             [:asc :desc])}))))
 
+;;; ------------------------------------ Summarize Column ----------------------------------------
+(mu/defn ^:private summarize-column-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
+  "A set of possible aggregations that can summarize this column: distinct values, sum, average."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column       :- lib.metadata/ColumnMetadata
+   value]
+  (when (and (structured? query stage-number)
+             column
+             (nil? value)
+             (not (lib.types.isa/structured? column)))
+    (let [aggregation-ops (concat [:distinct]
+                                  (when (lib.types.isa/summable? column)
+                                    [:sum :avg]))]
+      {:lib/type     ::drill-thru
+       :type         :drill-thru/summarize-column
+       :column       column
+       :aggregations aggregation-ops})))
+
+;;; ----------------------------------- Automatic Insights ---------------------------------------
+(mu/defn ^:private automatic-insights-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
+  ""
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column       :- lib.metadata/ColumnMetadata
+   value]
+  (when (and (structured? query stage-number)
+             column
+             (nil? value)
+             (not (lib.types.isa/structured? column)))
+    (let [aggregation-ops (concat [:distinct]
+                                  (when (lib.types.isa/summable? column)
+                                    [:sum :avg]))]
+      {:lib/type     ::drill-thru
+       :type         :drill-thru/summarize-column
+       :column       column
+       :aggregations aggregation-ops})))
+
 ;;; --------------------------------------- Top Level --------------------------------------------
 (mu/defn available-drill-thrus :- [:sequential [:ref ::lib.schema.drill-thru/drill-thru]]
   "Get a list (possibly empty) of available drill-thrus for a column, or a column + value pair.
@@ -255,7 +294,8 @@
           object-detail-drill
           pivot-drill
           quick-filter-drill
-          sort-drill])))
+          sort-drill
+          summarize-column-drill])))
 
 (comment
   (let [query    (metabase.lib.dev/query-for-table-name
@@ -279,6 +319,8 @@
         citycol  (->> pivots :category second)]
     #_(quick-filter-drill query -1 subtotal 200)
     #_(metabase.lib.order-by/order-bys (metabase.lib.order-by/order-by query -1 subtotal :asc) -1)
-    (available-drill-thrus query -1 subtotal)
+    (available-drill-thrus query -1 user-id)
+    #_(lib.aggregation/aggregate query (lib.aggregation/distinct subtotal))
+    ;; TODO: Missing drills: automatic insights, format.
     )
   *e)
