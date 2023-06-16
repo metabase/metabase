@@ -10,7 +10,6 @@
    [metabase.api.ldap :as api.ldap]
    [metabase.api.session :as api.session]
    [metabase.email.messages :as messages]
-   [metabase.events.view-log :as view-log]
    [metabase.integrations.google :as google]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]

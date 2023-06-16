@@ -2,7 +2,6 @@
   (:require
    [clojure.core.async :as a]
    [java-time :as t]
-   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.db.connection :as mdb.connection]
    [metabase.events :as events]
@@ -12,7 +11,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (def ^:private view-log-topics
