@@ -8,17 +8,14 @@ export const EditModeContainer = styled.div`
   height: 100%;
   justify-content: center;
   overflow: hidden;
-  padding: 0.75rem;
+  padding: 0.4rem;
   width: 100%;
   pointer-events: auto;
   border-radius: 8px;
 
-  &:hover {
-    padding: calc(0.75rem - 1px); // adjust for border on hover
-  }
-
   .DashCard:hover &,
   .DashCard:focus-within & {
+    padding: calc(0.4rem - 1px);
     border: 1px solid ${color("brand")};
   }
 
@@ -29,7 +26,7 @@ export const EditModeContainer = styled.div`
   ${({ isPreviewing, isEmpty }) =>
     (!isPreviewing || isEmpty) &&
     css`
-      padding: calc(0.75rem - 1px);
+      padding: calc(0.4rem - 1px);
     `} // adjust for border on preview/no entered content
   ${({ isEmpty }) =>
     isEmpty &&
@@ -43,13 +40,14 @@ export const ClickToEditWrapper = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  overflow: hidden;
   height: 100%;
   width: 100%;
+  padding-left: 2px;
 `;
 
 export const TextInput = styled.textarea`
   width: 100%;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   flex: 1 0 auto;
@@ -62,7 +60,6 @@ export const TextInput = styled.textarea`
   line-height: 1.602em;
   min-height: unset;
   outline: none;
-  padding: calc(0.5rem + 2px) 0.75rem; // align ReactMarkdown preview text with input text
   pointer-events: all;
   resize: none;
 `;
@@ -73,7 +70,7 @@ export const DisplayContainer = styled.div`
   height: 100%;
   justify-content: center;
   overflow: hidden;
-  padding: 0.75rem;
+  padding: 0.4rem;
   width: 100%;
 
   ${({ isSingleRow }) =>
