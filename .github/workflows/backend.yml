@@ -34,7 +34,7 @@ jobs:
   be-linter-cloverage:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: buildjet-2vcpu-ubuntu-2204
     timeout-minutes: 90
     steps:
     - uses: actions/checkout@v3
