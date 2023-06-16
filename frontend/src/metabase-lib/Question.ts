@@ -355,7 +355,12 @@ class QuestionInner {
       const breakouts = query.breakouts();
       const sourceQuery = query.sourceQuery();
 
-      if (aggregations.length === 0 && breakouts.length === 0 && sourceQuery) {
+      if (
+        aggregations.length === 0 &&
+        breakouts.length === 0 &&
+        sourceQuery &&
+        !this.isDataset()
+      ) {
         aggregations.push(...sourceQuery.aggregations());
         breakouts.push(...sourceQuery.breakouts());
       }
