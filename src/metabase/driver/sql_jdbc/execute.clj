@@ -33,8 +33,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [potemkin :as p]
-   [toucan2.core :as t2]
-   [better-cond.core :as b])
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
