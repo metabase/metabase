@@ -805,7 +805,7 @@
        (map sanitize-value)
        (str/join "\t")))
 
-(defmethod driver/insert-into :postgres
+(defmethod driver/insert-into! :postgres
   [driver db-id table-name column-names values]
   (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
     (let [copy-manager (CopyManager. (.unwrap (jdbc/get-connection conn) PgConnection))
