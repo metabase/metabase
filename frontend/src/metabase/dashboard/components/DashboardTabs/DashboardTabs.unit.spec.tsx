@@ -1,5 +1,6 @@
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
+import type { Location } from "history";
 
 import { renderWithProviders, screen, fireEvent } from "__support__/ui";
 import { DashboardState, State } from "metabase-types/store";
@@ -31,19 +32,15 @@ function setup({
     },
   };
 
-  const TestComponent = ({
-    location: { pathname },
-  }: {
-    location: Location;
-  }) => {
-    const { selectedTabId } = useDashboardTabs({ slug, pathname });
+  const TestComponent = ({ location }: { location: Location }) => {
+    const { selectedTabId } = useDashboardTabs({ location });
 
     return (
       <>
-        <DashboardTabs slug={slug} pathname={pathname} isEditing={isEditing} />
+        <DashboardTabs location={location} isEditing={isEditing} />
         <span>Selected tab id is {selectedTabId}</span>
         <br />
-        <span>Pathname is {pathname}</span>
+        <span>Path is {location.pathname + location.search}</span>
       </>
     );
   };
@@ -52,7 +49,7 @@ function setup({
     <Route path="dashboard/:slug(/:tabSlug)" component={TestComponent} />,
     {
       storeInitialState: { dashboard },
-      initialRoute: `/dashboard/1/${slug}`,
+      initialRoute: slug ? `/dashboard/1?tab=${slug}` : "/dashboard/1",
       withRouter: true,
     },
   );
@@ -121,7 +118,7 @@ describe("DashboardTabs", () => {
       });
 
       expect(queryTab(1)).not.toBeInTheDocument();
-      expect(screen.getByText("Pathname is /dashboard/1")).toBeInTheDocument();
+      expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
     });
 
     it("should not display tabs when there are none", () => {
@@ -131,7 +128,7 @@ describe("DashboardTabs", () => {
       });
 
       expect(queryTab(1)).not.toBeInTheDocument();
-      expect(screen.getByText("Pathname is /dashboard/1")).toBeInTheDocument();
+      expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
     });
 
     describe("when selecting tabs", () => {
@@ -189,7 +186,7 @@ describe("DashboardTabs", () => {
 
       const placeholderTab = queryTab("Tab 1");
       expect(placeholderTab).toHaveAttribute("aria-disabled", "true");
-      expect(screen.getByText("Pathname is /dashboard/1")).toBeInTheDocument();
+      expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
     });
 
     it("should display a placeholder tab when there is only one", () => {
@@ -199,7 +196,7 @@ describe("DashboardTabs", () => {
 
       const placeholderTab = queryTab("Lonely tab");
       expect(placeholderTab).toHaveAttribute("aria-disabled", "true");
-      expect(screen.getByText("Pathname is /dashboard/1")).toBeInTheDocument();
+      expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
     });
 
     it("should allow you to click to select tabs", async () => {
@@ -287,9 +284,7 @@ describe("DashboardTabs", () => {
         await deleteTab(2);
 
         expect(queryTab(1)).toHaveAttribute("aria-disabled", "true");
-        expect(
-          screen.getByText("Pathname is /dashboard/1"),
-        ).toBeInTheDocument();
+        expect(screen.getByText("Path is /dashboard/1")).toBeInTheDocument();
       });
 
       it("should correctly update selected tab id when deleting tabs (#30923)", async () => {

@@ -2,7 +2,7 @@ import { TEST_DASHBOARD_STATE } from "../components/DashboardTabs/test-utils";
 import { getIdFromSlug, moveTab, tabsReducer } from "./tabs";
 
 /**
- * It's prefererd to write tests in `DashboardTabs.unit.spec.tsx`,
+ * It's preferred to write tests in `DashboardTabs.unit.spec.tsx`,
  * only write tests here for things that are not easily testable at the component level or in Cypress.
  */
 describe("tabsReducer", () => {
