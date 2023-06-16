@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 import Button from "metabase/core/components/Button";
-import { breakpointMinLarge } from "metabase/styled-components/theme";
 
 export const StyledButton = styled(Button)<{
   isFullHeight?: boolean;
@@ -16,9 +15,7 @@ export const StyledButton = styled(Button)<{
     border: 2px solid ${color("focus")};
   `
       : ""}
-  ${breakpointMinLarge} {
-    padding: 0;
-  }
+  padding: 0;
 `;
 
 export const FullContainer = styled.div`
