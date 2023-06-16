@@ -8,11 +8,11 @@ title: Databases overview
 
 Connect to and manage your databases.
 
-## [Database users, roles, and privileges](./databases/users-roles-privileges.md)
+## [Database users, roles, and privileges](./users-roles-privileges.md)
 
 Bundling your privileges into roles based on use cases makes it easier to manage privileges in the future.
 
-## [Syncing and scanning databases](./databases/sync-scan.md)
+## [Syncing and scanning databases](./sync-scan.md)
 
 Metabase runs different types of queries to stay up to date with your database.
 
@@ -30,4 +30,4 @@ You can connect your Metabase Cloud or self-hosted instance to a database using 
 
 ## [Uploading data](./uploads.md)
 
-You can set Metabase up so you can upload CSV files to a database. 
+You can set Metabase up so you can upload CSV files to a database.
