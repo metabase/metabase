@@ -49,7 +49,7 @@ const setup = async ({ dashboard = TEST_DASHBOARD }) => {
       props: {},
     },
     location: {
-      pathname: "/dashboard/1-name",
+      query: {},
     },
     setSidebar: jest.fn(),
     closeSidebar: jest.fn(),
