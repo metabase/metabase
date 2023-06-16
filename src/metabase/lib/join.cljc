@@ -1,4 +1,19 @@
 (ns metabase.lib.join
+  "Functions related to manipulating EXPLICIT joins in MBQL.
+
+  Several of the functions in this namespace operate on a 'joinable'. This means anything that we can join:
+
+  * A join map, i.e. a `:lib/type` `:mbql/join` map
+
+  * A Table (a `:metadata/table` map)
+
+  * A Saved Question/Card (a `:metadata/card` map)
+
+  * Another query (an `:mbql/query` map)
+
+  Realistically this is probably more flexibility than we actually needed, so maybe we can pare this stuff down a bit
+  and only have things like [[with-join-alias]] operate on join maps going forward. But that's a project for another
+  day."
   (:require
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
@@ -10,7 +25,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.external-op :as lib.schema.external-op]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -20,29 +35,30 @@
 
 (defmulti with-join-alias-method
   "Implementation for [[with-join-alias]]."
-  {:arglists '([x join-alias])}
-  (fn [x _join-alias]
-    (lib.dispatch/dispatch-value x)))
+  {:arglists '([field-or-joinable join-alias])}
+  (fn [field-or-joinable _join-alias]
+    (lib.dispatch/dispatch-value field-or-joinable)))
 
 (defmethod with-join-alias-method :dispatch-type/fn
   [f join-alias]
   (fn [query stage-number]
-    (let [x (f query stage-number)]
-      (with-join-alias-method x join-alias))))
+    (let [field-or-joinable (f query stage-number)]
+      (with-join-alias-method field-or-joinable join-alias))))
 
 (defmethod with-join-alias-method :mbql/join
   [join join-alias]
   (assoc join :alias join-alias))
 
 (mu/defn with-join-alias
-  "Add a specific `join-alias` to something `x`, either a `:field` or join map. Does not recursively update other
-  references (yet; we can add this in the future)."
-  [x join-alias :- ::lib.schema.common/non-blank-string]
-  (with-join-alias-method x join-alias))
+  "Add a specific `join-alias` to `field-or-joinable`, with is either a `:field`/Field metadata, or something 'joinable'
+  like a join map or Table metadata. Does not recursively update other references (yet; we can add this in the
+  future)."
+  [field-or-joinable join-alias :- ::lib.schema.common/non-blank-string]
+  (with-join-alias-method field-or-joinable join-alias))
 
 (defmulti current-join-alias-method
   "Impl for [[current-join-alias]]."
-  {:arglists '([x])}
+  {:arglists '([field-or-joinable])}
   lib.dispatch/dispatch-value)
 
 (defmethod current-join-alias-method :default
@@ -234,19 +250,19 @@
 (defn join-clause
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
   Saved Question? You should be able to join anything, and this should return a sensible MBQL join map."
-  ([x]
+  ([joinable]
    (fn [query stage-number]
-     (join-clause query stage-number x)))
+     (join-clause query stage-number joinable)))
 
-  ([x conditions]
+  ([joinable conditions]
    (fn [query stage-number]
-     (join-clause query stage-number x conditions)))
+     (join-clause query stage-number joinable conditions)))
 
-  ([query stage-number x]
-   (join-clause-method query stage-number x))
+  ([query stage-number joinable]
+   (join-clause-method query stage-number joinable))
 
-  ([query stage-number x conditions]
-   (cond-> (join-clause query stage-number x)
+  ([query stage-number joinable conditions]
+   (cond-> (join-clause query stage-number joinable)
      conditions (assoc :conditions (mapv #(lib.common/->op-arg query stage-number %) conditions)))))
 
 (defmulti with-join-fields-method
@@ -270,8 +286,8 @@
 (mu/defn with-join-fields
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
   references."
-  [x fields]
-  (with-join-fields-method x fields))
+  [joinable fields]
+  (with-join-fields-method joinable fields))
 
 (mu/defn join :- ::lib.schema/query
   "Create a join map as if by [[join-clause]] and add it to a `query`.
@@ -279,17 +295,17 @@
   `conditions` is currently required, but in the future I think we should make this smarter and try to infer sensible
   default conditions for things, e.g. when joining a Table B from Table A, if there is an FK relationship between A and
   B, join via that relationship. Not yet implemented!"
-  ([query a-join-clause]
-   (join query -1 a-join-clause (:conditions a-join-clause)))
+  ([query joinable]
+   (join query -1 joinable (:conditions joinable)))
 
-  ([query x conditions]
-   (join query -1 x conditions))
+  ([query joinable conditions]
+   (join query -1 joinable conditions))
 
-  ([query stage-number x conditions]
+  ([query stage-number joinable conditions-or-nil]
    (let [stage-number (or stage-number -1)
-         new-join     (if (seq conditions)
-                        (join-clause query stage-number x conditions)
-                        (join-clause query stage-number x))]
+         new-join     (if (seq conditions-or-nil)
+                        (join-clause query stage-number joinable conditions-or-nil)
+                        (join-clause query stage-number joinable))]
      (lib.util/update-query-stage query stage-number update :joins (fn [joins]
                                                                      (conj (vec joins) new-join))))))
 
@@ -423,7 +439,7 @@
 
 (mu/defn join-condition-rhs-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
-  is the one that belongs to the thing being joined, `joined-thing`, which can be something like a
+  is the one that belongs to the thing being joined, `joinable`, which can be something like a
   Table ([[metabase.lib.metadata/TableMetadata]]), Saved Question/Model ([[metabase.lib.metadata/CardMetadata]]),
   another query, etc. -- anything you can pass to [[join-clause]].
 
@@ -431,18 +447,18 @@
   pass in the chosen LHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
 
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns."
-  ([query joined-thing lhs-column-or-nil]
-   (join-condition-rhs-columns query -1 joined-thing lhs-column-or-nil))
+  ([query joinable lhs-column-or-nil]
+   (join-condition-rhs-columns query -1 joinable lhs-column-or-nil))
 
   ([query              :- ::lib.schema/query
     stage-number       :- :int
-    joined-thing
+    joinable
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible columns out.
     _lhs-column-or-nil :- [:maybe lib.metadata/ColumnMetadata]]
    ;; I was on the fence about whether these should get `:lib/source :source/joins` or not -- it seems like based on
    ;; the QB UI they shouldn't. See screenshots in #31174
    (sort-join-condition-columns
-    (lib.metadata.calculation/visible-columns query stage-number joined-thing {:include-implicitly-joinable? false}))))
+    (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false}))))
 
 ;;; TODO -- definitions duplicated with code in [[metabase.lib.filter]]
 
@@ -491,17 +507,20 @@
                          (= fk-target-field-id pk-id)))
                   (lib.metadata.calculation/visible-columns query stage-number (lib.util/query-stage query stage-number)))))
 
-(mu/defn suggested-join-condition :- [:maybe ::lib.schema.external-op/external-op]
-  "Return a suggested default join condition when constructing a join against `joined-thing`, e.g. a Table, Saved
+(mu/defn suggested-join-condition :- [:maybe ::lib.schema.expression/boolean] ; i.e., a filter clause
+  "Return a suggested default join condition when constructing a join against `joinable`, e.g. a Table, Saved
   Question, or another query. A suggested condition will be returned if the query stage has a foreign key to the
   primary key of the thing we're joining (see #31175 for more info); otherwise this will return `nil` if no default
   condition is suggested."
-  ([query joined-thing]
-   (suggested-join-condition query -1 joined-thing))
+  ([query joinable]
+   (suggested-join-condition query -1 joinable))
 
   ([query         :- ::lib.schema/query
     stage-number  :- :int
-    joined-thing]
-   (when-let [pk-col (pk-column query stage-number joined-thing)]
+    joinable]
+   (when-let [pk-col (pk-column query stage-number joinable)]
      (when-let [fk-col (fk-column query stage-number pk-col)]
-       (lib.filter/filter-clause (equals-join-condition-operator-definition) fk-col pk-col)))))
+       (lib.common/->op-arg
+        query
+        stage-number
+        (lib.filter/filter-clause (equals-join-condition-operator-definition) fk-col pk-col))))))
