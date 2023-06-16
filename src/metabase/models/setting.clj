@@ -415,10 +415,10 @@
         (u/ignore-exceptions
          (classloader/require 'metabase-enterprise.advanced-permissions.common
                               'metabase.public-settings.premium-features))
-        (if-let [current-user-has-application-permisisons?
+        (if-let [current-user-has-application-permissions?
                  (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
                       (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
-          (current-user-has-application-permisisons? :setting)
+          (current-user-has-application-permissions? :setting)
           false))))
 
 (defn- current-user-can-access-setting?

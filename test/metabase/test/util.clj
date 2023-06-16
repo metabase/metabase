@@ -387,28 +387,28 @@
                              (t2/select-one-fn :value Setting :key setting-k)
                              (#'setting/get setting-k))]
         (try
-         (if raw-setting?
-           (upsert-raw-setting! original-value setting-k value)
-           (setting/set! setting-k value))
-         (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
-           (thunk))
-         (catch Throwable e
-           (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
-                           {:setting  setting-k
-                            :location (symbol (name (:namespace setting)) (name setting-k))
-                            :value    value}
-                           e)))
-         (finally
-          (try
-           (if raw-setting?
-             (restore-raw-setting! original-value setting-k)
-             (setting/set! setting-k original-value))
-           (catch Throwable e
-             (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
-                             {:setting        setting-k
-                              :location       (symbol (name (:namespace setting)) setting-k)
-                              :original-value original-value}
-                             e))))))))))
+          (if raw-setting?
+            (upsert-raw-setting! original-value setting-k value)
+            (setting/set! setting-k value))
+          (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
+            (thunk))
+          (catch Throwable e
+            (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
+                            {:setting  setting-k
+                             :location (symbol (name (:namespace setting)) (name setting-k))
+                             :value    value}
+                            e)))
+          (finally
+            (try
+              (if raw-setting?
+                (restore-raw-setting! original-value setting-k)
+                (setting/set! setting-k original-value))
+              (catch Throwable e
+                (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
+                                {:setting        setting-k
+                                 :location       (symbol (name (:namespace setting)) setting-k)
+                                 :original-value original-value}
+                                e))))))))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the site-wide values of one or more `Settings`, execute body, and re-establish the original values.

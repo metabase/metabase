@@ -222,6 +222,29 @@
               :metabase.lib.field/join-alias "Cat"
               :lib/source                    :source/joins}]
             (lib.metadata.calculation/metadata query)))
+    (is (=? [{:table {:name "VENUES"
+                      :display-name "Venues"
+                      :long-display-name "Venues"
+                      :is-source-table true}
+              :effective-type :type/BigInteger
+              :long-display-name "ID"
+              :display-name "ID"}
+             {:table {:name "CATEGORIES"
+                      :display-name "Categories"
+                      :long-display-name "Categories"
+                      :is-source-table false}
+              :effective-type :type/BigInteger
+              :long-display-name "Cat → ID"
+              :display-name "ID"}
+             {:table {:name "CATEGORIES"
+                      :display-name "Categories"
+                      :long-display-name "Categories"
+                      :is-source-table false}
+              :effective-type :type/Text
+              :long-display-name "Cat → Name"
+              :display-name "Name"}]
+            (map #(lib/display-info query %)
+                 (lib.metadata.calculation/metadata query))))
     (testing "Introduce a new stage"
       (let [query' (lib/append-stage query)]
         (is (=? [{:name                     "ID"

@@ -46,12 +46,20 @@
   [[tag opts id-or-name]]
   [(keyword tag) (normalize-field-options opts) id-or-name])
 
+
 (mu/defn ^:private resolve-field-id :- lib.metadata/ColumnMetadata
-  "Integer Field ID: get metadata from the metadata provider. This is probably not 100% the correct thing to do if
-  this isn't the first stage of the query, but we can fix that behavior in a follow-on"
-  [query     :- ::lib.schema/query
-   field-id  :- ::lib.schema.id/field]
-  (lib.metadata/field query field-id))
+  "Integer Field ID: get metadata from the metadata provider. If this is the first stage of the query, merge in
+  Saved Question metadata if available."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   field-id     :- ::lib.schema.id/field]
+  (merge
+   (when (lib.util/first-stage? query stage-number)
+     (when-let [card-id (lib.util/string-table-id->card-id (lib.util/source-table query))]
+       (when-let [card-metadata (lib.metadata/card query card-id)]
+         (m/find-first #(= (:id %) field-id)
+                       (:result-metadata card-metadata)))))
+   (lib.metadata/field query field-id)))
 
 (mu/defn ^:private resolve-column-name-in-metadata :- [:maybe lib.metadata/ColumnMetadata]
   [column-name      :- ::lib.schema.common/non-blank-string
@@ -79,6 +87,8 @@
         ;; we should look in to fixing this if we can.
         stage-columns (or (:metabase.lib.stage/cached-metadata stage)
                           (get-in stage [:lib/stage-metadata :columns])
+                          (when (string? (:source-table stage))
+                            (lib.metadata.calculation/visible-columns query stage-number stage))
                           (log/warn (i18n/tru "Cannot resolve column {0}: stage has no metadata" (pr-str column-name))))]
     (when (seq stage-columns)
       (resolve-column-name-in-metadata column-name stage-columns))))
@@ -102,7 +112,8 @@
    (when-let [unit (:temporal-unit opts)]
      {::temporal-unit unit})
    (cond
-     (integer? id-or-name) (resolve-field-id query id-or-name)
+     (integer? id-or-name) (cond-> (resolve-field-id query stage-number id-or-name)
+                             join-alias (assoc ::join-alias join-alias))
      join-alias            {:lib/type    :metadata/field
                             :name        id-or-name
                             ::join-alias join-alias}
@@ -318,15 +329,17 @@
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/field
   [_query _stage-number field-metadata]
-  (let [effective-type ((some-fn :effective-type :base-type) field-metadata)
-        fingerprint-default (some-> field-metadata :fingerprint fingerprint-based-default-unit)]
-    (cond-> (cond
-              (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
-              (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
-              (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
-              :else                                [])
-      fingerprint-default              (mark-unit :default fingerprint-default)
-      (::temporal-unit field-metadata) (mark-unit :selected (::temporal-unit field-metadata)))))
+  (if (not= (:lib/source field-metadata) :source/expressions)
+    (let [effective-type ((some-fn :effective-type :base-type) field-metadata)
+          fingerprint-default (some-> field-metadata :fingerprint fingerprint-based-default-unit)]
+      (cond-> (cond
+                (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
+                (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
+                (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
+                :else                                [])
+        fingerprint-default              (mark-unit :default fingerprint-default)
+        (::temporal-unit field-metadata) (mark-unit :selected (::temporal-unit field-metadata))))
+    []))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
 (defmethod lib.binning/binning-method :field
@@ -359,21 +372,23 @@
 
 (defmethod lib.binning/available-binning-strategies-method :metadata/field
   [query _stage-number {:keys [effective-type fingerprint semantic-type] :as field-metadata}]
-  (let [binning?    (some-> query lib.metadata/database :features (contains? :binning))
-        fingerprint (get-in fingerprint [:type :type/Number])
-        existing    (lib.binning/binning field-metadata)
-        strategies  (cond
-                      ;; Abort if the database doesn't support binning, or this column does not have a defined range.
-                      (not (and binning?
-                                (:min fingerprint)
-                                (:max fingerprint)))               nil
-                      (isa? semantic-type :type/Coordinate)        (lib.binning/coordinate-binning-strategies)
-                      (and (isa? effective-type :type/Number)
-                           (not (isa? semantic-type :Relation/*))) (lib.binning/numeric-binning-strategies))]
-    ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
-    (for [strat strategies]
-      (cond-> strat
-        (lib.binning/strategy= strat existing) (assoc :selected true)))))
+  (if (not= (:lib/source field-metadata) :source/expressions)
+    (let [binning?    (some-> query lib.metadata/database :features (contains? :binning))
+          fingerprint (get-in fingerprint [:type :type/Number])
+          existing    (lib.binning/binning field-metadata)
+          strategies  (cond
+                        ;; Abort if the database doesn't support binning, or this column does not have a defined range.
+                        (not (and binning?
+                                  (:min fingerprint)
+                                  (:max fingerprint)))               nil
+                        (isa? semantic-type :type/Coordinate)        (lib.binning/coordinate-binning-strategies)
+                        (and (isa? effective-type :type/Number)
+                             (not (isa? semantic-type :Relation/*))) (lib.binning/numeric-binning-strategies))]
+      ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
+      (for [strat strategies]
+        (cond-> strat
+          (lib.binning/strategy= strat existing) (assoc :selected true))))
+    []))
 
 ;;; -------------------------------------- Join Alias --------------------------------------------
 (defmethod lib.join/current-join-alias-method :field
@@ -492,6 +507,8 @@
                               (let [col-ref (lib.ref/ref column)]
                                 (boolean
                                  (some (fn [fields-ref]
+                                         ;; FIXME: This should use [[lib.equality/find-closest-matching-ref]] instead.
+                                         #_{:clj-kondo/ignore [:deprecated-var]}
                                          (lib.equality/ref= col-ref fields-ref))
                                        current-fields)))))]
      (mapv (fn [col]
