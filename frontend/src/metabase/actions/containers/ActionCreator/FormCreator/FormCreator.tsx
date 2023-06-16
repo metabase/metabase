@@ -154,13 +154,11 @@ function FormCreator({
     >{t`Learn more`}</ExternalLink>
   );
 
-  const showWarning =
-    isPublic &&
-    form.fields.some(field => {
-      const settings = fieldSettings[field.name];
+  const showWarning = form.fields.some(field => {
+    const { hidden, required, defaultValue } = fieldSettings[field.name];
 
-      return settings.hidden && !field.optional;
-    });
+    return hidden && required && defaultValue == null;
+  });
 
   return (
     <SidebarContent title={t`Action parameters`}>
@@ -171,7 +169,7 @@ function FormCreator({
         {showWarning && (
           <WarningBanner data-testid="action-warning-banner">
             <b>{t`Heads up.`}</b>{" "}
-            {t`Your action is public and has a hidden required field. There's a good chance this will cause the action to fail.`}
+            {t`Your action has a hidden required field with no default value. There's a good chance this will cause the action to fail.`}
           </WarningBanner>
         )}
         <FormProvider
