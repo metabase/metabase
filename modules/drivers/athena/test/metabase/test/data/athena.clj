@@ -216,8 +216,8 @@
    :athena
    (server-connection-spec)
    nil
-   (fn [conn]
-     (let [dbs (into #{} (map :database_name) (jdbc/query conn ["SHOW DATABASES;"]))]
+   (fn [^java.sql.Connection conn]
+     (let [dbs (into #{} (map :database_name) (jdbc/query {:connection conn} ["SHOW DATABASES;"]))]
        (log/infof "The following Athena databases have already been created: %s" (pr-str (sort dbs)))
        dbs))))
 
