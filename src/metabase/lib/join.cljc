@@ -46,6 +46,7 @@
   "Add OR REMOVE a specific `join-alias` to `field-or-joinable`, with is either a `:field`/Field metadata, or something
   'joinable' like a join map or Table metadata. Does not recursively update other references (yet; we can add this in
   the future)."
+  {:style/indent [:form]}
   [field-or-joinable :- [:or FieldOrPartialJoin fn?]
    join-alias        :- [:maybe ::lib.schema.common/non-blank-string]]
   (case (lib.dispatch/dispatch-value field-or-joinable)

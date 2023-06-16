@@ -560,7 +560,7 @@
 (deftest ^:parallel orderable-columns-exclude-already-sorted-joined-columns-test
   (testing "orderable-columns should return position for joined columns that are already in :order-by (#30568)"
     (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                    (lib/join (-> (lib/table (meta/id :categories))
+                    (lib/join (-> (lib/join-clause (lib/table (meta/id :categories)))
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all))
                               [(lib/= (lib/field (meta/id :venues :category-id))
