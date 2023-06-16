@@ -50,3 +50,10 @@ export const NoTablesFound = styled.div`
   padding: ${space(4)};
   text-align: center;
 `;
+
+export const DataSelectorTablePickerLoader = styled.div`
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+`;

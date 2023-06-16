@@ -23,6 +23,7 @@ import {
   DataSelectorTablePickerHeaderSchemaName as HeaderSchemaName,
   LinkToDocsContainer,
   NoTablesFound,
+  DataSelectorTablePickerLoader,
 } from "./DataSelectorTablePicker.styled";
 
 type DataSelectorTablePickerProps = {
@@ -102,8 +103,11 @@ const DataSelectorTablePicker = ({
 
     const renderItemExtra = ({ table }: { table: Table }) => {
       return (
-        table &&
-        !isSyncCompleted(table) && <PickerSpinner size={16} borderWidth={2} />
+        <DataSelectorTablePickerLoader>
+          {table && !isSyncCompleted(table) && (
+            <PickerSpinner size={16} borderWidth={2} />
+          )}
+        </DataSelectorTablePickerLoader>
       );
     };
 

@@ -10,3 +10,11 @@ export const AggregationItemList = styled(AccordionList)`
 export const AggregationFieldList = styled(FieldList)`
   color: ${color("summarize")};
 `;
+
+export const AggregationMetricItemTooltip = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex: 1;
+  padding: 0.5rem;
+`;

@@ -10,7 +10,10 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { FieldDimension } from "metabase-lib/Dimension";
 
 import { DimensionPicker } from "./DimensionPicker";
-import { FieldListGroupingTrigger } from "./DimensionList.styled";
+import {
+  DimensionListSubDimensionContainer,
+  FieldListGroupingTrigger,
+} from "./DimensionList.styled";
 
 const SUBMENU_TETHER_OPTIONS = {
   attachment: "top left",
@@ -102,7 +105,7 @@ export default class DimensionList extends Component {
         );
 
     return (
-      <div className="Field-extra flex align-center">
+      <DimensionListSubDimensionContainer className="Field-extra">
         {item.dimension?.tag && (
           <span className="h5 text-light px1">{item.dimension.tag}</span>
         )}
@@ -155,7 +158,7 @@ export default class DimensionList extends Component {
             }}
           />
         )}
-      </div>
+      </DimensionListSubDimensionContainer>
     );
   };
 

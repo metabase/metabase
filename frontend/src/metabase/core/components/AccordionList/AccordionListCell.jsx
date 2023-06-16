@@ -137,7 +137,7 @@ export const AccordionListCell = ({
       >
         <span
           className={cx(
-            "p1 flex-auto flex align-center",
+            "p1 flex align-center",
             isClickable ? "cursor-pointer" : "cursor-default",
           )}
           onClick={isClickable ? () => onChange(item) : undefined}

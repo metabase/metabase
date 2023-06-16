@@ -16,6 +16,7 @@ import { QueryDefinitionTooltip } from "../QueryDefinitionTooltip";
 import {
   AggregationItemList,
   AggregationFieldList,
+  AggregationMetricItemTooltip,
 } from "./AggregationPopover.styled";
 
 const COMMON_SECTION_NAME = t`Common Metrics`;
@@ -156,29 +157,24 @@ export default class AggregationPopover extends Component {
   }
 
   renderItemExtra(item, itemIndex) {
+    let content;
+
     if (item.aggregation?.description) {
+      content = item.aggregation.description;
+    } else if (item.metric) {
+      content = <QueryDefinitionTooltip type="metric" object={item.metric} />;
+    }
+
+    if (content) {
       return (
-        <div className="p1">
-          <Tooltip tooltip={item.aggregation.description}>
+        <AggregationMetricItemTooltip>
+          <Tooltip tooltip={content}>
             <span className="QuestionTooltipTarget" />
           </Tooltip>
-        </div>
+        </AggregationMetricItemTooltip>
       );
-    } else if (item.metric) {
-      return this.renderMetricTooltip(item.metric);
     }
-  }
-
-  renderMetricTooltip(metric) {
-    const content = <QueryDefinitionTooltip type="metric" object={metric} />;
-
-    return (
-      <div className="p1">
-        <Tooltip tooltip={content}>
-          <span className="QuestionTooltipTarget" />
-        </Tooltip>
-      </div>
-    );
+    return null;
   }
 
   getSections(table, selectedAggregation) {
