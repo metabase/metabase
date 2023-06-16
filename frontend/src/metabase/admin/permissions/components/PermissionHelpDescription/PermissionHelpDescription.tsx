@@ -12,7 +12,7 @@ interface PermissionHelpDescriptionProps {
   description?: ReactNode;
   icon: IconName;
   iconColor: string;
-  isEnterprise?: boolean;
+  isEnterpriseFeature?: boolean;
 }
 
 export const PermissionHelpDescription = ({
@@ -20,9 +20,9 @@ export const PermissionHelpDescription = ({
   description,
   icon,
   iconColor,
-  isEnterprise: isEnterprisePermission,
+  isEnterpriseFeature,
 }: PermissionHelpDescriptionProps) => {
-  const isEnterpriseNoticeVisible = !MetabaseSettings.isEnterprise();
+  const isEnterpriseInstance = MetabaseSettings.isEnterprise();
 
   return (
     <div>
@@ -36,7 +36,7 @@ export const PermissionHelpDescription = ({
       </Flex>
       {description && <Text>{description}</Text>}
 
-      {isEnterpriseNoticeVisible && isEnterprisePermission ? (
+      {isEnterpriseFeature && !isEnterpriseInstance ? (
         <>
           <Text mt="1rem">{getLimitedPermissionAvailabilityMessage()}</Text>{" "}
           <Text weight="bold">

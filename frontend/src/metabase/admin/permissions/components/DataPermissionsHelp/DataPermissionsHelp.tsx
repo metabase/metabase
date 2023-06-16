@@ -9,7 +9,7 @@ import { PermissionHelpDescription } from "metabase/admin/permissions/components
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
 
 export const DataPermissionsHelp = () => {
-  const isEnterprise = MetabaseSettings.isEnterprise();
+  const isEnterpriseInstance = MetabaseSettings.isEnterprise();
   return (
     <Flex direction="column" py="1.375rem" px="1rem">
       <Box px="0.75rem">
@@ -40,7 +40,7 @@ export const DataPermissionsHelp = () => {
               />
 
               <PermissionHelpDescription
-                isEnterprise
+                isEnterpriseFeature
                 icon="database"
                 iconColor="warning"
                 name={t`Impersonated (Pro)`}
@@ -55,7 +55,7 @@ export const DataPermissionsHelp = () => {
               />
 
               <PermissionHelpDescription
-                isEnterprise
+                isEnterpriseFeature
                 icon="close"
                 iconColor="danger"
                 name={t`Block (Pro)`}
@@ -83,7 +83,7 @@ export const DataPermissionsHelp = () => {
               />
 
               <PermissionHelpDescription
-                isEnterprise
+                isEnterpriseFeature
                 icon="permissions_limited"
                 iconColor="brand"
                 name={t`Sandboxed (Pro)`}
@@ -106,19 +106,22 @@ export const DataPermissionsHelp = () => {
                 {jt`${(
                   <strong>{t`Download results (Pro):`}</strong>
                 )} Allows the group to download results, and sets the maximum number of rows they can export.`}{" "}
-                {!isEnterprise && getLimitedPermissionAvailabilityMessage()}
+                {!isEnterpriseInstance &&
+                  getLimitedPermissionAvailabilityMessage()}
               </Text>
               <Text>
                 {jt`${(
                   <strong>{t`Manage Data Model (Pro):`}</strong>
                 )} The group can edit table metadata in the Admin panel.`}{" "}
-                {!isEnterprise && getLimitedPermissionAvailabilityMessage()}
+                {!isEnterpriseInstance &&
+                  getLimitedPermissionAvailabilityMessage()}
               </Text>
               <Text>
                 {jt`${(
                   <strong>{t`Manage Database (Pro):`}</strong>
                 )} Grants a group access to the Admin settings page for a given database (i.e., the page at Admin settings > Databases > your database).`}{" "}
-                {!isEnterprise && getLimitedPermissionAvailabilityMessage()}
+                {!isEnterpriseInstance &&
+                  getLimitedPermissionAvailabilityMessage()}
               </Text>
             </Stack>
           </Accordion.Panel>
