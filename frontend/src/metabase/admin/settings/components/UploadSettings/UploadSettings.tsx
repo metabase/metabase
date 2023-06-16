@@ -69,8 +69,8 @@ const Header = () => (
   <SettingHeader
     id="upload-settings"
     setting={{
-      display_name: t`Allow users to upload data to Collections`,
-      description: jt`Users will be able to upload CSV files that will be stored in the ${(
+      display_name: t`Allow people to upload data to Collections`,
+      description: jt`People will be able to upload CSV files that will be stored in the ${(
         <Link
           className="link"
           key="db-link"
