@@ -43,7 +43,7 @@ describe("metabase#31587", () => {
         });
       });
 
-      it("should not allow action buttons to overflow viewing info sidebar", () => {
+      it("should not allow action buttons to overflow when viewing info sidebar", () => {
         visitDashboard(1);
         editDashboard();
         cy.findByLabelText("Add action").click();
