@@ -48,7 +48,7 @@ export function withJoinStrategy(join: Join, strategy: JoinStrategy): Join {
   return ML.with_join_strategy(join, strategy);
 }
 
-export function joinConditions(join: Join): ExternalOp[] {
+export function joinConditions(join: Join): FilterClause[] {
   return ML.join_conditions(join);
 }
 
