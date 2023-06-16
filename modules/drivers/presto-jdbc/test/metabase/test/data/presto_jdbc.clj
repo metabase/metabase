@@ -126,17 +126,11 @@
      (fn [^Connection conn]
        (doseq [[^String sql & params] statements]
          (try
-           (let [^PreparedStatement stmt (.prepareStatement conn sql)]
-             (try
-               (sql-jdbc.execute/set-parameters! driver stmt params)
-               (let [tbl-nm        ((comp last :components) (into {} table-identifier))
-                     rows-affected (.executeUpdate stmt)]
-                 (log/infof "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm))
-               (finally
-                 (try
-                   (.close stmt)
-                   (catch Throwable e
-                     (println "ERROR CLOSING STATEMENT! =>" (.getMessage e)))))))
+           (with-open [^PreparedStatement stmt (.prepareStatement conn sql)]
+             (sql-jdbc.execute/set-parameters! driver stmt params)
+             (let [tbl-nm        ((comp last :components) (into {} table-identifier))
+                   rows-affected (.executeUpdate stmt)]
+               (log/infof "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm)))
            (catch Throwable e
              (throw (ex-info (format "[%s] Error executing SQL: %s" driver (ex-message e))
                              {:driver driver, :sql sql, :params params}
