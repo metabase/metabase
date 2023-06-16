@@ -1068,6 +1068,13 @@
 (defn revoke-application-permissions!
   "Remove all permissions entries for a Group to access a Application permisisons"
   [group-or-id perm-type]
+  (when (= perm-type :monitoring)
+    (delete-related-permissions! group-or-id (str "/db/13371337/schema/"))
+    (doseq [audit-collection-id (t2/select ['Collection :id] {:where [:in :entity_id ["vG58R8k-QddHWA7_47umn" "BIuewteY-F31QpFe_Agu0" "C0bd1kiOY1oCdmaORjNy6" "jlpssXoda_EbXFIKNA-lF"]]})]
+      (delete-related-permissions! group-or-id (str "/collection/" audit-collection-id "/read/")))
+    (doseq [audit-collection-report-id (t2/select ['Collection :id] {:where [:in :entity_id ["okNLSZKdSxaoG58JSQY54" "yz5XFcuy-eGq95SYiR9d5" "AHFm6v0B-cb4IfMsshL4h" "UifX7veCwucQN1gC_dtmw"]]})]
+      (delete-related-permissions! group-or-id (str "/collection/" audit-collection-report-id "/")))
+    )
   (delete-related-permissions! group-or-id (application-perms-path perm-type)))
 
 (defn grant-permissions-for-all-schemas!
@@ -1089,6 +1096,13 @@
 (defn grant-application-permissions!
   "Grant full permissions for a group to access a Application permisisons."
   [group-or-id perm-type]
+  (when (= perm-type :monitoring)
+    (grant-permissions! group-or-id (str "/db/13371337/schema/"))
+    (doseq [audit-collection-id (t2/select ['Collection :id] {:where [:in :entity_id ["vG58R8k-QddHWA7_47umn" "BIuewteY-F31QpFe_Agu0" "C0bd1kiOY1oCdmaORjNy6" "jlpssXoda_EbXFIKNA-lF"]]})]
+      (grant-permissions! group-or-id (str "/collection/" audit-collection-id "/read/")))
+    (doseq [audit-collection-report-id (t2/select ['Collection :id] {:where [:in :entity_id ["vG58R8k-QddHWA7_47umn" "BIuewteY-F31QpFe_Agu0" "C0bd1kiOY1oCdmaORjNy6" "jlpssXoda_EbXFIKNA-lF"]]})]
+      (grant-permissions! group-or-id (str "/collection/" audit-collection-report-id "/")))
+    (log/warnf (str "hi " (t2/select ['Collection :id] {:where [:in :entity_id ["vG58R8k-QddHWA7_47umn" "BIuewteY-F31QpFe_Agu0" "C0bd1kiOY1oCdmaORjNy6" "jlpssXoda_EbXFIKNA-lF"]]}))))
   (grant-permissions! group-or-id (application-perms-path perm-type)))
 
 (defn- is-personal-collection-or-descendant-of-one? [collection]
