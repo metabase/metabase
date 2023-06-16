@@ -342,7 +342,7 @@
         (throw (ex-info (tru "Email for pulse-id doesn't exist.")
                         {:type        type
                          :status-code 400}))))
-     {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))}))
+    {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))}))
 
 (api/defendpoint POST "/pulse/unsubscribe/undo"
   "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
