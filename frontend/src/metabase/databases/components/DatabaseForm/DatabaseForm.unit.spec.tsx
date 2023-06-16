@@ -5,18 +5,20 @@ import type { Engine } from "metabase-types/api";
 
 import DatabaseForm from "./DatabaseForm";
 
-interface SetupOpts {
-  onSubmit?: () => void;
+interface SetupResult {
+  onSubmit: () => void;
 }
 
-function setup({ onSubmit }: SetupOpts) {
-  render(<DatabaseForm engines={engines} isAdvanced onSubmit={onSubmit} />);
+function setup(): SetupResult {
+  const onSubmit = jest.fn();
+  render(<DatabaseForm engines={ENGINES} isAdvanced onSubmit={onSubmit} />);
+
+  return { onSubmit };
 }
 
 describe("DatabaseForm", () => {
   it("should submit default values", async () => {
-    const mockOnSubmit = jest.fn();
-    setup({ onSubmit: mockOnSubmit });
+    const { onSubmit } = setup();
 
     const expectedDatabaseName = "My H2 Database";
     const expectedConnectionString = "file:/somewhere";
@@ -32,22 +34,9 @@ describe("DatabaseForm", () => {
     });
     userEvent.click(saveButton);
 
-    const expectedDefaultSchema = {
-      schedules: {
-        metadata_sync: undefined,
-        cache_field_values: undefined,
-      },
-      auto_run_queries: true,
-      refingerprint: false,
-      cache_ttl: null,
-      is_sample: false,
-      is_full_sync: true,
-      is_on_demand: false,
-    };
-
     await waitFor(() => {
-      expect(mockOnSubmit).toHaveBeenCalledWith({
-        ...expectedDefaultSchema,
+      expect(onSubmit).toHaveBeenCalledWith({
+        ...EXPECTED_DEFAULT_SCHEMA,
         engine: "h2",
         name: expectedDatabaseName,
         details: {
@@ -59,7 +48,20 @@ describe("DatabaseForm", () => {
   });
 });
 
-const engines: Record<string, Engine> = {
+const EXPECTED_DEFAULT_SCHEMA = {
+  schedules: {
+    metadata_sync: undefined,
+    cache_field_values: undefined,
+  },
+  auto_run_queries: true,
+  refingerprint: false,
+  cache_ttl: null,
+  is_sample: false,
+  is_full_sync: true,
+  is_on_demand: false,
+};
+
+const ENGINES: Record<string, Engine> = {
   h2: {
     source: {
       type: "official",
