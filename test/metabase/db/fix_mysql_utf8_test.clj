@@ -23,7 +23,7 @@
      (fn [^java.sql.Connection server-conn]
        (doseq [statement ["DROP DATABASE IF EXISTS utf8_test;"
                           "CREATE DATABASE utf8_test;"]]
-         (jdbc/execute! server-conn statement))))))
+         (jdbc/execute! {:connection server-conn} statement))))))
 
 (defn- test-data-source ^javax.sql.DataSource []
   (mdb.data-source/broken-out-details->DataSource
