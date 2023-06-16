@@ -1,4 +1,4 @@
-import { restore, visitDashboard } from "e2e/support/helpers";
+import { popover, restore, visitDashboard } from "e2e/support/helpers";
 
 describe("scenarios > dashboard > visualization options", () => {
   beforeEach(() => {
@@ -35,5 +35,15 @@ describe("scenarios > dashboard > visualization options", () => {
       .findAllByTestId("column-header")
       .first()
       .contains("User ID");
+  });
+
+  it("should refelct column settings accurately when changing (metabase#30966)", () => {
+    visitDashboard(1);
+    cy.icon("pencil").click();
+    cy.get(".Card").realHover();
+    cy.icon("palette").click();
+    cy.findByTestId("Subtotal-settings-button").click();
+    popover().findByLabelText("Show a mini bar chart").click();
+    cy.findAllByTestId("mini-bar").should("have.length.above", 0);
   });
 });
