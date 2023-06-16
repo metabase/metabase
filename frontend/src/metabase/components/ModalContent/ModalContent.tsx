@@ -1,9 +1,8 @@
-/* eslint-disable react/prop-types */
 import { Component, ReactNode } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import {
-  ActionIcon,
+  ModalContentActionIcon,
   ActionsWrapper,
   HeaderContainer,
   HeaderText,
@@ -134,7 +133,11 @@ export const ModalHeader = ({
         <ActionsWrapper>
           {headerActions}
           {onClose && (
-            <ActionIcon name="close" size={actionIconSize} onClick={onClose} />
+            <ModalContentActionIcon
+              name="close"
+              size={actionIconSize}
+              onClick={onClose}
+            />
           )}
         </ActionsWrapper>
       )}

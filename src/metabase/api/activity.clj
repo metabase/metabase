@@ -13,7 +13,6 @@
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (defn- models-query
@@ -40,7 +39,7 @@
 
 (defn- select-items! [model ids]
   (when (seq ids)
-    (for [model (hydrate (models-query model ids) :moderation_reviews)
+    (for [model (t2/hydrate (models-query model ids) :moderation_reviews)
           :let [reviews (:moderation_reviews model)
                 status  (->> reviews
                              (filter :most_recent)

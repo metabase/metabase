@@ -54,7 +54,7 @@ describe("issue 25473", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 12,
+              size_x: 16,
               size_y: 8,
               series: [],
               visualization_settings: {},

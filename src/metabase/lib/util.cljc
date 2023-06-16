@@ -155,7 +155,7 @@
   "Convert legacy `:source-metadata` to [[metabase.lib.metadata/StageMetadata]]."
   [source-metadata]
   (when source-metadata
-    (-> (if (vector? source-metadata)
+    (-> (if (seqable? source-metadata)
           {:columns source-metadata}
           source-metadata)
         (update :columns (fn [columns]
@@ -243,6 +243,11 @@
   (let [stage-number (non-negative-stage-index stages stage-number)]
     (when (pos? stage-number)
       (dec stage-number))))
+
+(defn first-stage?
+  "Whether a `stage-number` is referring to the first stage of a query or not."
+  [query stage-number]
+  (not (previous-stage-number query stage-number)))
 
 (defn next-stage-number
   "The index of the next stage, if there is one. `nil` if there is no next stage."

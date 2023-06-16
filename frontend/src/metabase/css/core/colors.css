@@ -23,6 +23,7 @@
   --color-focus: #cbe2f7;
   --color-shadow: rgba(0, 0, 0, 0.13);
   --color-border: #eeecec;
+  --color-accent2: #b9e68a;
 }
 
 .text-default,
@@ -209,4 +210,8 @@
 }
 .text-dark {
   color: var(--color-text-dark);
+}
+
+.text-accent2-hover:hover {
+  color: var(--color-accent2);
 }

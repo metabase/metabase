@@ -185,12 +185,37 @@ export function ObjectDetailView({
     if (!_.isEmpty(tableForeignKeys)) {
       loadFKReferences();
     }
-    window.addEventListener("keydown", onKeyDown, true);
-
-    return () => {
-      window.removeEventListener("keydown", onKeyDown, true);
-    };
   });
+
+  useEffect(() => {
+    if (hasNotFoundError) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const capturedKeys: Record<string, () => void> = {
+        ArrowUp: viewPreviousObjectDetail,
+        ArrowDown: viewNextObjectDetail,
+        Escape: closeObjectDetail,
+      };
+
+      if (capturedKeys[event.key]) {
+        event.preventDefault();
+        capturedKeys[event.key]();
+      }
+      if (event.key === "Escape") {
+        closeObjectDetail();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [
+    hasNotFoundError,
+    viewPreviousObjectDetail,
+    viewNextObjectDetail,
+    closeObjectDetail,
+  ]);
 
   useEffect(() => {
     if (maybeLoading && pkIndex !== undefined) {
@@ -254,22 +279,6 @@ export function ObjectDetailView({
     },
     [zoomedRowID, followForeignKey],
   );
-
-  const onKeyDown = (event: KeyboardEvent) => {
-    const capturedKeys: Record<string, () => void> = {
-      ArrowUp: viewPreviousObjectDetail,
-      ArrowDown: viewNextObjectDetail,
-      Escape: closeObjectDetail,
-    };
-
-    if (capturedKeys[event.key]) {
-      event.preventDefault();
-      capturedKeys[event.key]();
-    }
-    if (event.key === "Escape") {
-      closeObjectDetail();
-    }
-  };
 
   if (!data) {
     return null;

@@ -8,7 +8,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [methodical.core :as methodical]
-   [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
@@ -98,12 +97,21 @@
   (cond
     (:is_creation revision)  [(deferred-tru "created this")]
     (:is_reversion revision) [(deferred-tru "reverted to an earlier version")]
+    ;; We only keep [[revision/max-revisions]] number of revision per entity.
+    ;; prev-revision can be nil when we generate description for oldest revision
+    (nil? prev-revision)     [(deferred-tru "modified this")]
     :else                    (diff-strings model (:object prev-revision) (:object revision))))
 
 (defn- revision-description-info
   [model prev-revision revision]
   (let [changes (revision-changes model prev-revision revision)]
-    {:description          (build-sentence changes)
+    {:description          (if (seq changes)
+                             (build-sentence changes)
+                             ;; HACK: before #30285 we record revision even when there is nothing changed,
+                             ;; so there are cases when revision can comeback as `nil`.
+                             ;; This is a safe guard for us to not display "Crowberto null" as
+                             ;; description on UI
+                             (deferred-tru "created a revision with no change."))
      ;; this is used on FE
      :has_multiple_changes (> (count changes) 1)}))
 
@@ -114,7 +122,7 @@
       (assoc :diff (diff-map model (:object prev-revision) (:object revision)))
       (merge (revision-description-info model prev-revision revision))
       ;; add revision user details
-      (hydrate :user)
+      (t2/hydrate :user)
       (update :user select-keys [:id :first_name :last_name :common_name])
       ;; Filter out irrelevant info
       (dissoc :model :model_id :user_id :object)))
@@ -142,7 +150,8 @@
   (when-let [old-revisions (seq (drop max-revisions (map :id (t2/select [Revision :id]
                                                                :model    (name model)
                                                                :model_id id
-                                                               {:order-by [[:timestamp :desc]]}))))]
+                                                               {:order-by [[:timestamp :desc]
+                                                                           [:id :desc]]}))))]
     (t2/delete! Revision :id [:in old-revisions])))
 
 (defn push-revision!

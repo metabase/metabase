@@ -37,7 +37,7 @@
     :model/HTTPAction
     :model/ImplicitAction
     :model/QueryAction
-    :metabase.models.activity/Activity
+    :model/Activity
     :model/ApplicationPermissionsRevision
     :model/BookmarkOrdering
     :model/CardBookmark
@@ -46,8 +46,9 @@
     :metabase.models.collection.root/RootCollection
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
+    :metabase.models.field-values/FieldValues
+    :model/LoginHistory
     :model/FieldValues
-    :metabase.models.login-history/LoginHistory
     :metabase.models.metric-important-field/MetricImportantField
     :model/ModelIndex
     :model/ModelIndexValue
@@ -57,7 +58,7 @@
     :model/PermissionsGroup
     :model/PermissionsGroupMembership
     :model/PermissionsRevision
-    :metabase.models.persisted-info/PersistedInfo
+    :model/PersistedInfo
     :metabase.models.pulse-card/PulseCard
     :metabase.models.pulse-channel/PulseChannel
     :metabase.models.pulse-channel-recipient/PulseChannelRecipient
@@ -68,10 +69,10 @@
     :metabase.models.revision-test/FakedCard
     :model/Secret
     :model/Session
-    :metabase.models.task-history/TaskHistory
+    :model/TaskHistory
     :model/TimelineEvent
     :metabase.models.user/User
-    :metabase.models.view-log/ViewLog
+    :model/ViewLog
     :model/GroupTableAccessPolicy})
 
 (deftest ^:parallel comprehensive-entity-id-test

@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import cx from "classnames";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
@@ -29,7 +30,7 @@ export const AddAggregationButton = ({
             aria-label={t`Add aggregation`}
             data-testid="add-aggregation-button"
           >
-            <Icon name="add" mr={shouldShowLabel ? 1 : "none"} />
+            <Icon name="add" className={cx({ mr1: shouldShowLabel })} />
             {shouldShowLabel ? LABEL : null}
           </AddAggregationButtonRoot>
         </Tooltip>
