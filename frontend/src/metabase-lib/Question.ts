@@ -353,6 +353,13 @@ class QuestionInner {
       // TODO: move to StructuredQuery?
       const aggregations = query.aggregations();
       const breakouts = query.breakouts();
+      const sourceQuery = query.sourceQuery();
+
+      if (aggregations.length === 0 && breakouts.length === 0 && sourceQuery) {
+        aggregations.push(...sourceQuery.aggregations());
+        breakouts.push(...sourceQuery.breakouts());
+      }
+
       const breakoutDimensions = breakouts.map(b => b.dimension());
       const breakoutFields = breakoutDimensions.map(d => d.field());
 
