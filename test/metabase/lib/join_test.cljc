@@ -1,6 +1,6 @@
 (ns metabase.lib.join-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
@@ -462,3 +462,45 @@
                                                  (lib/field "USERS" "ID")
                                                  (lib/field "CHECKINS" "USER_ID"))])))
                 :stages first :joins)))))
+
+(deftest ^:parallel suggested-join-condition-test
+  (testing "DO suggest a join condition for an FK -> PK relationship"
+    (are [query] (=? {:lib/type :lib/external-op
+                      :operator :=
+                      :args     [{:name "CATEGORY_ID", :id (meta/id :venues :category-id)}
+                                 {:name "ID", :id (meta/id :categories :id)}]}
+                     (lib/suggested-join-condition
+                      query
+                      (meta/table-metadata :categories)))
+      ;; plain query
+      (lib/query meta/metadata-provider (meta/table-metadata :venues))
+
+      ;; query with an aggregation (FK column is not exported, but is still "visible")
+      (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          (lib/aggregate (lib/count))))))
+
+(deftest ^:parallel suggested-join-condition-pk->fk-test
+  ;; this is to preserve the existing behavior from MLv1, it doesn't necessarily make sense, but we don't want to have
+  ;; to update a million tests, right? Once v1-compatible joins lands then maybe we can go in and make this work,
+  ;; since it seems like it SHOULD work.
+  (testing "Don't suggest join conditions for a PK -> FK relationship"
+    (is (nil?
+         (lib/suggested-join-condition
+          (lib/query meta/metadata-provider (meta/table-metadata :categories))
+          (meta/table-metadata :venues))))))
+
+(deftest ^:parallel suggested-join-condition-fk-from-join-test
+  (testing "DO suggest join conditions for a FK -> PK relationship if the FK comes from a join"
+    (is (=? {:lib/type :lib/external-op
+             :operator :=
+             :args     [{:name "CATEGORY_ID", :id (meta/id :venues :category-id), :source-alias "Venues"}
+                        {:name "ID", :id (meta/id :categories :id)}]}
+            (lib/suggested-join-condition
+             (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                 (lib/join (-> (lib/join-clause
+                                (meta/table-metadata :venues)
+                                [(lib/= (meta/field-metadata :checkins :venue-id)
+                                        (-> (meta/field-metadata :venues :id)
+                                            (lib/with-join-alias "Venues")))])
+                               (lib/with-join-alias "Venues"))))
+             (meta/table-metadata :categories))))))

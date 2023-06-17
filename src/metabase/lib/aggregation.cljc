@@ -11,6 +11,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
+   [metabase.lib.schema.external-op :as lib.schema.external-op]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -308,7 +309,7 @@
                   (map #(assoc % :lib/type :mbql.aggregation/operator)))
             lib.schema.aggregation/aggregation-operators)))))
 
-(mu/defn aggregation-clause
+(mu/defn aggregation-clause :- ::lib.schema.external-op/external-op
   "Returns a standalone aggregation clause for an `aggregation-operator` and
   a `column`.
   For aggregations requiring an argument `column` is mandatory, otherwise

@@ -6,6 +6,7 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -14,6 +15,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.external-op :as lib.schema.external-op]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -577,6 +579,19 @@
    (sort-join-condition-columns
     (lib.metadata.calculation/visible-columns query stage-number joined-thing {:include-implicitly-joinable? false}))))
 
+;;; TODO -- definitions duplicated with code in [[metabase.lib.filter]]
+
+(defn- equals-join-condition-operator-definition []
+  {:lib/type :mbql.filter/operator, :short :=, :display-name  (i18n/tru "Equal to")})
+
+(defn- join-condition-operator-definitions []
+  [(equals-join-condition-operator-definition)
+   {:lib/type :mbql.filter/operator, :short :>, :display-name  (i18n/tru "Greater than")}
+   {:lib/type :mbql.filter/operator, :short :<, :display-name  (i18n/tru "Less than")}
+   {:lib/type :mbql.filter/operator, :short :>=, :display-name (i18n/tru "Greater than or equal to")}
+   {:lib/type :mbql.filter/operator, :short :<=, :display-name (i18n/tru "Less than or equal to")}
+   {:lib/type :mbql.filter/operator, :short :!=, :display-name (i18n/tru "Not equal to")}])
+
 (mu/defn join-condition-operators :- [:sequential ::lib.schema.filter/operator]
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
   UI, this can be chosen at any point before or after choosing the LHS and RHS. Invalid options are not currently
@@ -590,9 +605,38 @@
     _lhs-column-or-nil :- [:maybe lib.metadata/ColumnMetadata]
     _rhs-column-or-nil :- [:maybe lib.metadata/ColumnMetadata]]
    ;; currently hardcoded to these six operators regardless of LHS and RHS.
-   [{:lib/type :mbql.filter/operator, :short :=, :display-name  (i18n/tru "Equal to")}
-    {:lib/type :mbql.filter/operator, :short :>, :display-name  (i18n/tru "Greater than")}
-    {:lib/type :mbql.filter/operator, :short :<, :display-name  (i18n/tru "Less than")}
-    {:lib/type :mbql.filter/operator, :short :>=, :display-name (i18n/tru "Greater than or equal to")}
-    {:lib/type :mbql.filter/operator, :short :<=, :display-name (i18n/tru "Less than or equal to")}
-    {:lib/type :mbql.filter/operator, :short :!=, :display-name (i18n/tru "Not equal to")}]))
+   (join-condition-operator-definitions)))
+
+(mu/defn ^:private pk-column :- [:maybe lib.metadata/ColumnMetadata]
+  "Given something `x` (e.g. a Table metadata) find the PK column."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   x]
+  (m/find-first lib.types.isa/primary-key?
+                (lib.metadata.calculation/visible-columns query stage-number x)))
+
+(mu/defn ^:private fk-column :- [:maybe lib.metadata/ColumnMetadata]
+  "Given a query stage find an FK column that points to the PK `pk-col`."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   pk-col       :- [:maybe lib.metadata/ColumnMetadata]]
+  (when-let [pk-id (:id pk-col)]
+    (m/find-first (fn [{:keys [fk-target-field-id], :as col}]
+                    (and (lib.types.isa/foreign-key? col)
+                         (= fk-target-field-id pk-id)))
+                  (lib.metadata.calculation/visible-columns query stage-number (lib.util/query-stage query stage-number)))))
+
+(mu/defn suggested-join-condition :- [:maybe ::lib.schema.external-op/external-op]
+  "Return a suggested default join condition when constructing a join against `joined-thing`, e.g. a Table, Saved
+  Question, or another query. A suggested condition will be returned if the query stage has a foreign key to the
+  primary key of the thing we're joining (see #31175 for more info); otherwise this will return `nil` if no default
+  condition is suggested."
+  ([query joined-thing]
+   (suggested-join-condition query -1 joined-thing))
+
+  ([query         :- ::lib.schema/query
+    stage-number  :- :int
+    joined-thing]
+   (when-let [pk-col (pk-column query stage-number joined-thing)]
+     (when-let [fk-col (fk-column query stage-number pk-col)]
+       (lib.filter/filter-clause (equals-join-condition-operator-definition) fk-col pk-col)))))
