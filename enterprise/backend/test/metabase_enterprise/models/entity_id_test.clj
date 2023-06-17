@@ -33,12 +33,12 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:metabase.db.data-migrations/DataMigrations
+  #{:model/DataMigrations
     :model/HTTPAction
     :model/ImplicitAction
     :model/QueryAction
     :model/Activity
-    :metabase.models.application-permissions-revision/ApplicationPermissionsRevision
+    :model/ApplicationPermissionsRevision
     :model/BookmarkOrdering
     :model/CardBookmark
     :model/CollectionBookmark
@@ -46,34 +46,33 @@
     :metabase.models.collection.root/RootCollection
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
-    :metabase.models.field-values/FieldValues
     :model/LoginHistory
     :model/FieldValues
-    :metabase.models.metric-important-field/MetricImportantField
+    :model/MetricImportantField
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
-    :metabase.models.parameter-card/ParameterCard
-    :metabase.models.permissions/Permissions
-    :metabase.models.permissions-group/PermissionsGroup
-    :metabase.models.permissions-group-membership/PermissionsGroupMembership
-    :metabase.models.permissions-revision/PermissionsRevision
+    :model/ParameterCard
+    :model/Permissions
+    :model/PermissionsGroup
+    :model/PermissionsGroupMembership
+    :model/PermissionsRevision
     :model/PersistedInfo
-    :metabase.models.pulse-card/PulseCard
-    :metabase.models.pulse-channel/PulseChannel
-    :metabase.models.pulse-channel-recipient/PulseChannelRecipient
-    :metabase.models.query/Query
-    :metabase.models.query-cache/QueryCache
-    :metabase.models.query-execution/QueryExecution
+    :model/PulseCard
+    :model/PulseChannel
+    :model/PulseChannelRecipient
+    :model/Query
+    :model/QueryCache
+    :model/QueryExecution
     :model/Revision
-    :metabase.models.revision-test/FakedCard
+    :model/FakedCard
     :model/Secret
     :model/Session
     :model/TaskHistory
     :model/TimelineEvent
-    :metabase.models.user/User
+    :model/User
     :model/ViewLog
-    :metabase-enterprise.sandbox.models.group-table-access-policy/GroupTableAccessPolicy})
+    :model/GroupTableAccessPolicy})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (doseq [model (->> (v2.seed-entity-ids/toucan-models)

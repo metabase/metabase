@@ -404,7 +404,7 @@ const setup = async ({
   setupDatabasesEndpoints(databases);
 
   if (hasCollectionAccess) {
-    setupCollectionsEndpoints(collections);
+    setupCollectionsEndpoints({ collections });
     setupCardsEndpoints(cards);
   } else {
     setupUnauthorizedCollectionsEndpoints(collections);

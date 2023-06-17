@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib.core]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.stage :as lib.stage]
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
@@ -118,7 +119,9 @@
   ([a-query x]
    (display-info a-query -1 x))
   ([a-query stage-number x]
-   (-> (lib.core/display-info a-query stage-number x)
+   (-> a-query
+       (lib.stage/ensure-previous-stages-have-metadata stage-number)
+       (lib.core/display-info stage-number x)
        (update-keys u/->camelCaseEn)
        (update :table update-keys u/->camelCaseEn)
        (clj->js :keyword-fn u/qualified-name))))
@@ -478,3 +481,11 @@
    (expressionable-columns a-query expression-position))
   ([a-query stage-number expression-position]
    (to-array (lib.core/expressionable-columns a-query stage-number expression-position))))
+
+(defn ^:export suggested-join-condition
+  "Return a suggested default join condition when constructing a join against `joined-thing`, e.g. a Table, Saved
+  Question, or another query. A suggested condition will be returned if the source Table has a foreign key to the
+  primary key of the thing we're joining (see #31175 for more info); otherwise this will return `nil` if no default
+  condition is suggested."
+  [a-query stage-number joined-thing]
+  (lib.core/suggested-join-condition a-query stage-number joined-thing))

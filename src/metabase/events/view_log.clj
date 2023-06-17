@@ -105,6 +105,13 @@
                   (setting/set-value-of-type! :json :user-recent-views views)
                   views)))))
 
+(defsetting dismissed-custom-dashboard-toast
+  (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
+  :user-local :only
+  :visibility :authenticated
+  :type :boolean
+  :default false)
+
 ;; TODO: remove this setting as part of Audit V2 project.
 (defsetting most-recently-viewed-dashboard
   (deferred-tru "The Dashboard that the user has most recently viewed within the last 24 hours.")

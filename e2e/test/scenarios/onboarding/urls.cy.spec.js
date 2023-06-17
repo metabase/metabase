@@ -5,6 +5,10 @@ import {
   getFullName,
 } from "e2e/support/helpers";
 import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  ORDERS_QUESTION_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 
@@ -58,7 +62,10 @@ describe("URLs", () => {
       cy.visit("/collection/root");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders").click();
-      cy.location("pathname").should("eq", "/question/1-orders");
+      cy.location("pathname").should(
+        "eq",
+        `/question/${ORDERS_QUESTION_ID}-orders`,
+      );
     });
   });
 
@@ -76,7 +83,9 @@ describe("URLs", () => {
       cy.findByText("Your personal collection").click();
       cy.location("pathname").should(
         "eq",
-        `/collection/1-${getUsersPersonalCollectionSlug(admin)}`,
+        `/collection/${ADMIN_PERSONAL_COLLECTION_ID}-${getUsersPersonalCollectionSlug(
+          admin,
+        )}`,
       );
     });
 
@@ -108,7 +117,11 @@ describe("URLs", () => {
         "First collection",
       );
 
-      cy.visit(`/collection/1-${getUsersPersonalCollectionSlug(admin)}`);
+      cy.visit(
+        `/collection/${ADMIN_PERSONAL_COLLECTION_ID}-${getUsersPersonalCollectionSlug(
+          admin,
+        )}`,
+      );
       cy.findByTestId("collection-name-heading").should(
         "have.text",
         `${getFullName(admin)}'s Personal Collection`,

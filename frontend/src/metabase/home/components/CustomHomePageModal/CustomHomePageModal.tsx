@@ -13,6 +13,7 @@ import { Collection, DashboardId } from "metabase-types/api";
 
 const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";
 const CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY = "custom-homepage-dashboard";
+const CUSTOM_HOMEPAGE_REDIRECT_TOAST_KEY = "dismissed_custom_dashboard_toast";
 
 interface CustomHomePageModalProps {
   isOpen: boolean;
@@ -31,13 +32,14 @@ export const CustomHomePageModal = ({
       updateSettings({
         [CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY]: dashboardId,
         [CUSTOM_HOMEPAGE_SETTING_KEY]: true,
+        [CUSTOM_HOMEPAGE_REDIRECT_TOAST_KEY]: true,
       }),
     );
     await dispatch(refreshCurrentUser());
   };
 
   const handleChange = useCallback(
-    (value: DashboardId | null | undefined) => {
+    (value?: DashboardId) => {
       if (value) {
         setDashboardId(value);
       } else {

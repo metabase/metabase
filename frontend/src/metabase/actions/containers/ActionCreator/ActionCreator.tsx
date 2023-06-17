@@ -38,6 +38,9 @@ interface OwnProps {
   actionId?: WritebackActionId;
   modelId?: CardId;
   databaseId?: DatabaseId;
+
+  action?: WritebackAction;
+
   onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
 }
@@ -192,11 +195,15 @@ function ActionCreatorWithContext({
   initialAction,
   metadata,
   databaseId,
+  action,
   ...props
 }: Props) {
+  // This is needed in case we already have an action and pass it from the outside
+  const contextAction = action || initialAction;
+
   return (
     <ActionContext
-      initialAction={initialAction}
+      initialAction={contextAction}
       databaseId={databaseId}
       metadata={metadata}
     >

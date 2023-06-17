@@ -40,12 +40,6 @@ const TEST_DATABASES = [
     features: ["schemas"],
   }),
   createMockDatabase({
-    id: 4,
-    name: "Db Cuatro",
-    engine: "mongo",
-    settings: { "database-enable-actions": false },
-  }),
-  createMockDatabase({
     id: 5,
     name: "Db Cinco",
     engine: "h2",
@@ -105,14 +99,16 @@ describe("Admin > Settings > UploadSetting", () => {
   it("should render a description", async () => {
     setup();
     expect(
-      screen.getByText("Allow users to upload data to Collections"),
+      screen.getByText("Allow people to upload data to Collections"),
     ).toBeInTheDocument();
   });
 
-  it("should show an empty state if there are no actions-enabled databases", async () => {
-    setup({ databases: [TEST_DATABASES[3]] });
+  it("should show an empty state if there are no databases", async () => {
+    setup({ databases: [] });
     expect(
-      screen.getByText("No actions-enabled databases available."),
+      screen.getByText(
+        "None of your databases are compatible with this version of the uploads feature.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -123,7 +119,7 @@ describe("Admin > Settings > UploadSetting", () => {
     expect(await screen.findByText("Db Uno")).toBeInTheDocument();
     expect(await screen.findByText("Db Dos")).toBeInTheDocument();
     expect(await screen.findByText("Db Tres")).toBeInTheDocument();
-    expect(screen.queryByText("Db Cuatro")).not.toBeInTheDocument();
+    expect(await screen.findByText("Db Cinco")).toBeInTheDocument();
   });
 
   it("should populate a dropdown of schema for schema-enabled DBs", async () => {
