@@ -474,12 +474,17 @@
 (defn ^:export join
   "Add a join clause (as created by [[join-clause]]) to a stage of a query."
   [a-query stage-number a-join]
-  (lib.core/join a-query stage-number a-join nil))
+  (lib.core/join a-query stage-number a-join))
 
 (defn ^:export join-conditions
   "Get the conditions (filter clauses) associated with a join."
   [a-join]
   (to-array (lib.core/join-conditions a-join)))
+
+(defn ^:export with-join-conditions
+  "Set the `:conditions` (filter clauses) for a join."
+  [a-join conditions]
+  (lib.core/with-join-conditions a-join (js->clj conditions :keywordize-keys true)))
 
 (defn ^:export joins
   "Get the joins associated with a particular query stage."

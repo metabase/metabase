@@ -562,10 +562,10 @@
     (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                     (lib/join (-> (lib/join-clause (lib/table (meta/id :categories)))
                                   (lib/with-join-alias "Cat")
-                                  (lib/with-join-fields :all))
-                              [(lib/= (lib/field (meta/id :venues :category-id))
-                                      (-> (lib/field (meta/id :categories :id))
-                                          (lib/with-join-alias "Cat")))]))]
+                                  (lib/with-join-fields :all)
+                                  (lib/with-join-conditions [(lib/= (lib/field (meta/id :venues :category-id))
+                                                                    (-> (lib/field (meta/id :categories :id))
+                                                                        (lib/with-join-alias "Cat")))]))))]
       (is (=? {:stages [{:joins
                          [{:stages     [{}]
                            :alias      "Cat"

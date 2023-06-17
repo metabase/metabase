@@ -97,10 +97,10 @@
     (let [query (-> (query-with-expressions)
                     (lib/join (-> (lib/join-clause (lib/table (meta/id :categories)))
                                   (lib/with-join-alias "Cat")
-                                  (lib/with-join-fields :all))
-                              [(lib/=
-                                 (lib/field "VENUES" "CATEGORY_ID")
-                                 (-> (lib/field "CATEGORIES" "ID") (lib/with-join-alias "Cat")))]))]
+                                  (lib/with-join-fields :all)
+                                  (lib/with-join-conditions [(lib/=
+                                                              (lib/field "VENUES" "CATEGORY_ID")
+                                                              (-> (lib/field "CATEGORIES" "ID") (lib/with-join-alias "Cat")))]))))]
       (is (=? {:stages [{:joins       [{:alias      "Cat"
                                         :stages     [{:source-table (meta/id :categories)}]
                                         :conditions [[:=
@@ -231,9 +231,9 @@
                                     (lib/field (meta/id :venues :name))])
                   (lib/join (-> (lib/join-clause (lib/table (meta/id :categories)))
                                 (lib/with-join-alias "Cat")
-                                (lib/with-join-fields :all))
-                            [(lib/= (lib/field "VENUES" "CATEGORY_ID")
-                                    (lib/field "CATEGORIES" "ID"))])
+                                (lib/with-join-fields :all)
+                                (lib/with-join-conditions [(lib/= (lib/field "VENUES" "CATEGORY_ID")
+                                                                  (lib/field "CATEGORIES" "ID"))])))
                   (lib/append-stage))]
     (is (=? [{:base-type :type/BigInteger,
               :semantic-type :type/PK,

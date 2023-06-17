@@ -49,10 +49,10 @@
                                                        (meta/id :categories :id)]]]}]}]}
           (let [q (lib/query-for-table-name meta/metadata-provider "VENUES")
                 j (lib/query-for-table-name meta/metadata-provider "CATEGORIES")]
-            (lib/join q j [{:lib/type :lib/external-op
-                            :operator :=
-                            :args [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))
-                                   (lib/ref (lib.metadata/field j nil "CATEGORIES" "ID"))]}])))))
+            (lib/join q (lib/join-clause j [{:lib/type :lib/external-op
+                                             :operator :=
+                                             :args     [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))
+                                                    (lib/ref (lib.metadata/field j nil "CATEGORIES" "ID"))]}]))))))
 
 (deftest ^:parallel join-saved-question-test
   (is (=? {:lib/type :mbql/query
@@ -75,9 +75,10 @@
                                                         :join-alias (symbol "nil #_\"key is not present.\"")}
                                                        (meta/id :categories :id)]]]}]}]}
           (-> (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
-              (lib/join (lib/saved-question-query meta/metadata-provider meta/saved-question)
-                        [(lib/= (lib/field "VENUES" "CATEGORY_ID")
-                                (lib/field "CATEGORIES" "ID"))])
+              (lib/join (lib/join-clause
+                         (lib/saved-question-query meta/metadata-provider meta/saved-question)
+                         [(lib/= (lib/field "VENUES" "CATEGORY_ID")
+                                 (lib/field "CATEGORIES" "ID"))]))
               (dissoc :lib/metadata)))))
 
 (deftest ^:parallel join-condition-field-metadata-test
@@ -116,7 +117,7 @@
                                                             :join-alias "Venues"}
                                                            (meta/id :venues :category-id)]]]}]}]}
               (-> q1
-                  (lib/join q2 [(lib/= categories-id-metadata venues-category-id-metadata)])
+                  (lib/join (lib/join-clause q2 [(lib/= categories-id-metadata venues-category-id-metadata)]))
                   (dissoc :lib/metadata)))))))
 
 (deftest ^:parallel col-info-implicit-join-test
