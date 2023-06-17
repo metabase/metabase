@@ -32,6 +32,7 @@ const UserIsNotAuthenticated = UserAuthWrapper({
   predicate: currentUser => !currentUser,
   failureRedirectPath: "/",
   authSelector: state => state.currentUser,
+  authenticatingSelector: state => state.auth.loginPending,
   allowRedirectBack: false,
   wrapperDisplayName: "UserIsNotAuthenticated",
   redirectAction: routerActions.replace,

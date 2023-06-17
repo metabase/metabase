@@ -118,6 +118,16 @@
                   {:model "card" :model_id (u/the-id dataset)}]
                  recent-views))))))))
 
+(deftest user-dismissed-toasts-setting-test
+  (testing "user-dismissed-toasts! updates user-dismissed-toasts"
+    (binding [metabase.models.setting/*user-local-values* (delay (atom {}))]
+      (view-log/dismissed-custom-dashboard-toast! false)
+      (is (= false (view-log/dismissed-custom-dashboard-toast)))
+      (view-log/dismissed-custom-dashboard-toast! true)
+      (is (= true (view-log/dismissed-custom-dashboard-toast)))
+      (view-log/dismissed-custom-dashboard-toast! false)
+      (is (= false (view-log/dismissed-custom-dashboard-toast))))))
+
 (deftest most-recently-viewed-dashboard-test
   (t2.with-temp/with-temp [Dashboard dash {:name "Look at this Distinguished Dashboard!"}]
     (mt/with-model-cleanup [ViewLog]

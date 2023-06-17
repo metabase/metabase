@@ -67,6 +67,7 @@
   hiccup/hiccup                             {:mvn/version "1.0.5"}              ; HTML templating
   honeysql/honeysql                         {:mvn/version "1.0.461"             ; Transform Clojure data structures to SQL
                                              :exclusions  [org.clojure/clojurescript]}
+  inflections/inflections                   {:mvn/version "0.14.1"}             ; Clojure/Script library used for prularizing words
   info.sunng/ring-jetty9-adapter            {:mvn/version "0.18.5"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver.
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
   clj-commons/clj-yaml                      {:mvn/version "1.0.26"}             ; Clojure wrapper for YAML library SnakeYAML
@@ -475,7 +476,9 @@
                ["metabase\\.driver\\.mysql.*"
                 "metabase\\.driver\\.postgres.*"]}
    ;; different port from `:test` so you can run it at the same time as `:test`.
-   :jvm-opts ["-Dmb.jetty.port=3002"]}
+   :jvm-opts ["-Dmb.jetty.port=3002"
+              ;; default heap size is 1GB, we were getting OOM on CI so we need to bump this
+              "-Xmx4g"]}
 
 ;;; building Uberjar, build and release scripts
 

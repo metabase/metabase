@@ -11,10 +11,12 @@ import { createMockQueryBuilderState } from "./qb";
 import { createMockSettingsState } from "./settings";
 import { createMockSetupState } from "./setup";
 import { createMockUploadState } from "./upload";
+import { createMockAuthState } from "./auth";
 
 export const createMockState = (opts?: Partial<State>): State => ({
   admin: createMockAdminState(),
   app: createMockAppState(),
+  auth: createMockAuthState(),
   currentUser: createMockUser(),
   dashboard: createMockDashboardState(),
   embed: createMockEmbedState(),
