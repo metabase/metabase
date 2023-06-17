@@ -89,7 +89,7 @@
 (define-reversible-migration SplitDataPermissions
   (let [current-perms-set (t2/select-fn-set
                            (juxt :object :group_id)
-                           :metabase.models.permissions/Permissions
+                           :model/Permissions
                            {:where [:or
                                     [:like :object (h2x/literal "/db/%")]
                                     [:like :object (h2x/literal "/data/db/%")]
