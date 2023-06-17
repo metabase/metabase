@@ -182,7 +182,8 @@
    db-or-id-or-spec
    options
    (fn [^Connection conn]
-     (.setTransactionIsolation conn Connection/TRANSACTION_READ_UNCOMMITTED)
+     (when-not (sql-jdbc.execute/recursive-connection?)
+       (.setTransactionIsolation conn Connection/TRANSACTION_READ_UNCOMMITTED))
      (f conn))))
 
 ;; 1.  SparkSQL doesn't support setting holdability type to `CLOSE_CURSORS_AT_COMMIT`

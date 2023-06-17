@@ -23,19 +23,19 @@
      driver
      db-spec
      {:write? true}
-     (fn [conn]
+     (fn [^java.sql.Connection conn]
        (try
          (let [pid (:pid (first (sql.ddl/jdbc-query conn ["select connection_id() pid"])))]
            (a/put! conn-chan pid)
            (sql.ddl/jdbc-query conn sql+params))
          (catch SQLNonTransientConnectionException _e
-           ;; Our connection may be killed due to timeout, `kill` will throw an appropriate exception
+           ;; Our connection may be killed due to timeout, [[kill!]] will throw an appropriate exception
            nil)
          (catch Exception e
            (log/warn e)
            e))))))
 
-(defn- kill [conn pid]
+(defn- kill! [conn pid]
   (let [results (sql.ddl/jdbc-query conn ["show processlist"])
         result? (some (fn [r]
                         (and (= (:id r) pid)
@@ -51,17 +51,18 @@
    If `timeout-ms` passes, send a kill statement to stop execution and throw exception
    Otherwise return results returned by channel."
   [driver conn db-spec timeout-ms sql+params]
-  (let [conn-chan    (a/chan)
+  (let [conn-chan    (a/promise-chan)
         exec-chan    (exec-async driver conn-chan db-spec sql+params)
         pid          (a/<!! conn-chan)
+        _            (a/close! conn-chan)
         timeout-chan (a/timeout timeout-ms)
-        [v port] (a/alts!! [timeout-chan exec-chan])]
+        [v port]     (a/alts!! [timeout-chan exec-chan])]
+    (a/close! exec-chan)
     (cond
-      (= port timeout-chan) (kill conn pid)
-
-      (= port exec-chan) (if (instance? Exception v)
-                           (throw v)
-                           v))))
+      (= port timeout-chan) (kill! conn pid)
+      (= port exec-chan)    (if (instance? Exception v)
+                              (throw v)
+                              v))))
 
 (defmethod ddl.i/refresh! :mysql
   [driver database definition dataset-query]

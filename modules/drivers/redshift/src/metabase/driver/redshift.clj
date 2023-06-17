@@ -139,12 +139,13 @@
    db-or-id-or-spec
    options
    (fn [^Connection conn]
-     (sql-jdbc.execute/set-best-transaction-level! driver conn)
-     (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
-     (try
-       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
-       (catch Throwable e
-         (log/debug e (trs "Error setting default holdability for connection"))))
+     (when-not (sql-jdbc.execute/recursive-connection?)
+       (sql-jdbc.execute/set-best-transaction-level! driver conn)
+       (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
+       (try
+         (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
+         (catch Throwable e
+           (log/debug e (trs "Error setting default holdability for connection")))))
      (f conn))))
 
 (defn- prepare-statement ^PreparedStatement [^Connection conn sql]

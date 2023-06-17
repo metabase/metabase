@@ -659,8 +659,21 @@
 ;;; in [[metabase.test.data.presto-jdbc]]
 (def ^:dynamic ^:private *original-connection-spec* nil)
 
+(defn- set-connection-options! [driver ^java.sql.Connection conn {:keys [^String session-timezone write?], :as _options}]
+  (let [underlying-conn (pooled-conn->presto-conn conn)]
+    (sql-jdbc.execute/set-best-transaction-level! driver conn)
+    (when-not (str/blank? session-timezone)
+      ;; set session time zone if defined
+      (.setTimeZoneId underlying-conn session-timezone))
+    ;; as with statement and prepared-statement, cannot set holdability on the connection level
+    (let [read-only? (not write?)]
+      (try
+        (.setReadOnly conn read-only?)
+        (catch Throwable e
+          (log/debug e (trs "Error setting connection read-only to {0}" (pr-str read-only?))))))))
+
 (defmethod sql-jdbc.execute/do-with-connection-with-options :presto-jdbc
-  [driver db-or-id-or-spec {:keys [^String session-timezone write?], :as options} f]
+  [driver db-or-id-or-spec options f]
   ;; Presto supports setting the session timezone via a `PrestoConnection` instance method. Under the covers,
   ;; this is equivalent to the `X-Presto-Time-Zone` header in the HTTP request.
   (cond
@@ -677,18 +690,9 @@
      db-or-id-or-spec
      (dissoc options :session-timezone)
      (fn [^java.sql.Connection conn]
-       (let [underlying-conn (pooled-conn->presto-conn conn)]
-         (sql-jdbc.execute/set-best-transaction-level! driver conn)
-         (when-not (str/blank? session-timezone)
-           ;; set session time zone if defined
-           (.setTimeZoneId underlying-conn session-timezone))
-         (let [read-only? (not write?)]
-           (try
-             (.setReadOnly conn read-only?)
-             (catch Throwable e
-               (log/debug e (trs "Error setting connection read-only to {0}" (pr-str read-only?))))))
-         ;; as with statement and prepared-statement, cannot set holdability on the connection level
-         (f conn))))))
+       (when-not (sql-jdbc.execute/recursive-connection?)
+         (set-connection-options! driver conn options))
+       (f conn)))))
 
 (defn- date-time->substitution [ts-str]
   (sql.params.substitution/make-stmt-subs "from_iso8601_timestamp(?)" [ts-str]))

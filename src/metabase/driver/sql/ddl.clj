@@ -13,17 +13,23 @@
   (str "-- Metabase\n"
        sql-str))
 
+(defn- jdbc-spec [connection-or-spec]
+  (cond
+    (instance? java.sql.Connection connection-or-spec) {:connection connection-or-spec}
+    (map? connection-or-spec)                          connection-or-spec
+    :else                                              (throw (ex-info "Invalid JDBC connection spec" {:spec connection-or-spec}))))
+
 ;;; TODO -- move the JDBC stuff to something like [[metabase.driver.sql-jdbc.ddl]]. JDBC-specific stuff does not belong
 ;;; IN [[metabase.driver.sql]] !!
 (defn execute!
   "Executes sql and params with a standard remark prepended to the statement."
-  [conn [sql & params]]
-  (jdbc/execute! conn (into [(add-remark sql)] params)))
+  [connection-or-spec [sql & params]]
+  (jdbc/execute! (jdbc-spec connection-or-spec) (into [(add-remark sql)] params)))
 
 (defn jdbc-query
   "Queries sql and params with a standard remark prepended to the statement."
-  [conn [sql & params]]
-  (jdbc/query conn (into [(add-remark sql)] params)))
+  [connection-or-spec [sql & params]]
+  (jdbc/query (jdbc-spec connection-or-spec) (into [(add-remark sql)] params)))
 
 (defn create-schema-sql
   "SQL string to create a schema suitable"

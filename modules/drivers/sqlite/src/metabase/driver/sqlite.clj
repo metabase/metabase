@@ -416,7 +416,8 @@
    db-or-id-or-spec
    options
    (fn [^Connection conn]
-     (sql-jdbc.execute/set-best-transaction-level! driver conn)
+     (when-not (sql-jdbc.execute/recursive-connection?)
+       (sql-jdbc.execute/set-best-transaction-level! driver conn))
      (f conn))))
 
 ;; SQLite's JDBC driver is dumb and complains if you try to call `.setFetchDirection` on the Connection

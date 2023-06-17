@@ -87,7 +87,8 @@
 
   This default implementation is abstracted out into two functions, [[do-with-resolved-connection]]
   and [[set-default-connection-options!]], that you can use as needed in custom implementations. See various driver
-  implementations for examples.
+  implementations for examples. You should only set connection options on top-level calls
+  to [[do-with-connection-with-options]]; check whether this is a [[recursive-connection?]] before setting options.
 
   There are two usual ways to set the session timezone if your driver supports them:
 
@@ -288,6 +289,25 @@
               (old-method-impl driver database session-timezone)))))
       (datasource-with-diagnostic-info! driver db-or-id-or-spec))))
 
+(def ^:private ^:dynamic ^{:added "0.47.0"} *connection-recursion-depth*
+  "In recursive calls to [[do-with-connection-with-options]] we don't want to set options AGAIN, because this might
+  break things. For example in a top-level `:write?` call, we might disable auto-commit and run things in a
+  transaction; a read-only call inside of this transaction block should not go in and change the connection to be
+  auto-commit. So only set options at the top-level call, and use this to keep track of whether we're at the top level
+  or not.
+
+  This gets incremented inside [[do-with-resolved-connection]], so the top level call with have a depth of `0`, a
+  nested call will get `1`, and so forth. This is done this way and inside [[do-with-resolved-connection]]
+  and [[set-default-connection-options!]] so drivers that implement "
+  -1)
+
+(defn recursive-connection?
+  "Whether or not we are in a recursive call to [[do-with-connection-with-options]]. If we are, you shouldn't set
+  Connection options AGAIN, as that may override previous options that we don't want to override."
+  []
+  {:added "0.47.0"}
+  (pos? *connection-recursion-depth*))
+
 (mu/defn do-with-resolved-connection
   "Execute
 
@@ -296,46 +316,53 @@
   with a resolved JDBC connection. Part of the default implementation for [[do-with-connection-with-options]].
   Generally does not set any `options`, but may set session-timezone if `driver` implements the
   deprecated [[sql-jdbc.execute.old/connection-with-timezone]] method."
+  {:added "0.47.0"}
   [driver           :- :keyword
    db-or-id-or-spec :- [:or :int :map]
    options          :- ConnectionOptions
    f                :- fn?]
-  (if-let [conn (:connection db-or-id-or-spec)]
-    (f conn)
-    (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
-      (f conn))))
+  (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
+    (if-let [conn (:connection db-or-id-or-spec)]
+      (f conn)
+      (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
+        (f conn)))))
 
 (mu/defn set-default-connection-options!
   "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
   Connection."
   {:added "0.47.0"}
-  [driver                                                  :- :keyword
-   ^Connection conn                                        :- (lib.schema.literal.jvm/instance-of Connection)
-   {:keys [^String session-timezone write?], :as _options} :- ConnectionOptions]
-  (set-best-transaction-level! driver conn)
-  (set-time-zone-if-supported! driver conn session-timezone)
-  (let [read-only? (not write?)]
+  [driver                                                 :- :keyword
+   ^Connection conn                                       :- (lib.schema.literal.jvm/instance-of Connection)
+   {:keys [^String session-timezone write?], :as options} :- ConnectionOptions]
+  (when-not (recursive-connection?)
+    (log/tracef "Setting default connection options with options %s" (pr-str options))
+    (set-best-transaction-level! driver conn)
+    (set-time-zone-if-supported! driver conn session-timezone)
+    (let [read-only? (not write?)]
+      (try
+        ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
+        ;; to be a hint to the driver to enable database optimizations
+        ;; See https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setReadOnly-boolean-
+        (log/trace (pr-str (list '.setReadOnly 'conn read-only?)))
+        (.setReadOnly conn read-only?)
+        (catch Throwable e
+          (log/debugf e "Error setting connection readOnly to %s" (pr-str read-only?)))))
+    ;; if this is (supposedly) a read-only connection, enable auto-commit so this IS NOT ran inside of a transaction.
+    ;;
+    ;; TODO -- for `write?` connections, we should probably disable autoCommit and then manually call `.commit` at after
+    ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
+    ;; manually.
+    (when-not write?
+      (try
+        (log/trace (pr-str '(.setAutoCommit conn true)))
+        (.setAutoCommit conn true)
+        (catch Throwable e
+          (log/debug e "Error enabling connection autoCommit"))))
     (try
-      ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
-      ;; to be a hint to the driver to enable database optimizations
-      ;; See https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setReadOnly-boolean-
-      (.setReadOnly conn read-only?)
+      (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
+      (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
       (catch Throwable e
-        (log/debugf e "Error setting connection readOnly to %s" (pr-str read-only?)))))
-  ;; if this is (supposedly) a read-only connection, enable auto-commit so this IS NOT ran inside of a transaction.
-  ;;
-  ;; TODO -- for `write?` connections, we should probably disable autoCommit and then manually call `.commit` at after
-  ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
-  ;; manually.
-  (when-not write?
-    (try
-      (.setAutoCommit conn true)
-      (catch Throwable e
-        (log/debug e "Error enabling connection autoCommit"))))
-  (try
-    (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
-    (catch Throwable e
-      (log/debug e (trs "Error setting default holdability for connection")))))
+        (log/debug e (trs "Error setting default holdability for connection"))))))
 
 (defmethod do-with-connection-with-options :sql-jdbc
   [driver db-or-id-or-spec options f]

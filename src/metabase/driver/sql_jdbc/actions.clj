@@ -125,8 +125,6 @@
          ;; execute inside of a transaction.
          (.setAutoCommit conn false)
          (log/tracef "BEGIN transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
-         ;; use the strictest transaction isolation level possible to avoid dirty, non-repeatable, and phantom reads
-         (sql-jdbc.execute/set-best-transaction-level! driver conn)
          (try
            (let [result (binding [*connection* conn]
                           (f conn))]
