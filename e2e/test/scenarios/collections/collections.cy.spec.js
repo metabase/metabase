@@ -16,6 +16,8 @@ import {
   getPinnedSection,
 } from "e2e/support/helpers";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
 const { nocollection } = USERS;
@@ -480,7 +482,7 @@ describe("scenarios > collection defaults", () => {
         });
 
         it("should clean up selection when opening another collection (metabase#16491)", () => {
-          cy.request("PUT", "/api/card/1", {
+          cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
             collection_id: 1,
           });
           cy.visit("/collection/root");
@@ -590,7 +592,7 @@ describe("scenarios > collection defaults", () => {
     });
 
     it("should allow to x-ray models from collection views", () => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
       cy.visit("/collection/root");
 
       openEllipsisMenuFor("Orders");
