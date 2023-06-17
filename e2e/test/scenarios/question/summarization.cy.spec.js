@@ -14,6 +14,7 @@ import {
   checkExpressionEditorHelperPopoverPosition,
 } from "e2e/support/helpers";
 
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -25,7 +26,7 @@ describe("scenarios > question > summarize sidebar", () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     summarize();
   });
 
@@ -147,7 +148,7 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     cy.icon("notebook").click();
 
     summarize({ mode: "notebook" });
