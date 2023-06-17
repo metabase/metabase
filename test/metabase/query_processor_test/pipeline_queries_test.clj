@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-metadata :as meta]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -23,8 +24,8 @@
   [table-name & body]
   `(qp/process-query (pmbql-query ~table-name ~@body)))
 
-(defn- $price [query stage-number]
-  ((lib/field (mt/id :venues :price)) query stage-number))
+(defn- $price [_query _stage-number]
+  (meta/field-metadata :venues :price))
 
 (deftest ^:parallel pipeline-queries-test
   (testing "Ensure that the QP can handle pMBQL queries"

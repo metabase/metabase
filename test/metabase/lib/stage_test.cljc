@@ -58,23 +58,23 @@
            (lib.metadata.calculation/display-name query -1 query)))))
 
 (deftest ^:parallel adding-and-removing-stages
-  (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
+  (let [query                (lib/query meta/metadata-provider (meta/table-metadata :venues))
         query-with-new-stage (-> query
                                  lib/append-stage
-                                 (lib/order-by 1 (lib/field "VENUES" "NAME") :asc))]
+                                 (lib/order-by 1 (meta/field-metadata :venues :name) :asc))]
     (is (= 0 (count (lib/order-bys query-with-new-stage 0))))
     (is (= 1 (count (lib/order-bys query-with-new-stage 1))))
     (is (= query
            (-> query-with-new-stage
-               (lib/filter (lib/= 1 (lib/field "VENUES" "NAME")))
+               (lib/filter (lib/= 1 (meta/field-metadata :venues :name)))
                (lib/drop-stage))))
     (testing "Dropping with 1 stage should error"
       (is (thrown-with-msg? #?(:cljs :default :clj Exception) #"Cannot drop the only stage" (-> query (lib/drop-stage)))))))
 
 (defn- query-with-expressions []
-  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                  (lib/expression "ID + 1" (lib/+ (lib/field "VENUES" "ID") 1))
-                  (lib/expression "ID + 2" (lib/+ (lib/field "VENUES" "ID") 2)))]
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/expression "ID + 1" (lib/+ (meta/field-metadata :venues :id) 1))
+                  (lib/expression "ID + 2" (lib/+ (meta/field-metadata :venues :id) 2)))]
     (is (=? {:stages [{:expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} (meta/id :venues :id)] 1]
                                      [:+ {:lib/expression-name "ID + 2"} [:field {} (meta/id :venues :id)] 2]]}]}
             query))
@@ -95,12 +95,12 @@
 (deftest ^:parallel default-fields-metadata-return-expressions-before-joins-test
   (testing "expressions should come back BEFORE columns from joins"
     (let [query (-> (query-with-expressions)
-                    (lib/join (-> (lib/join-clause (lib/table (meta/id :categories)))
+                    (lib/join (-> (lib/join-clause (meta/table-metadata :categories))
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all)
                                   (lib/with-join-conditions [(lib/=
-                                                              (lib/field "VENUES" "CATEGORY_ID")
-                                                              (-> (lib/field "CATEGORIES" "ID") (lib/with-join-alias "Cat")))]))))]
+                                                              (meta/field-metadata :venues :category-id)
+                                                              (-> (meta/field-metadata :categories :id) (lib/with-join-alias "Cat")))]))))]
       (is (=? {:stages [{:joins       [{:alias      "Cat"
                                         :stages     [{:source-table (meta/id :categories)}]
                                         :conditions [[:=
@@ -209,8 +209,8 @@
                 (lib.metadata.calculation/visible-columns query)))))))
 
 (deftest ^:parallel do-not-propagate-temporal-units-to-next-stage-text
-  (let [query (-> (lib/query-for-table-name meta/metadata-provider "CHECKINS")
-                  (lib/with-fields [(lib/with-temporal-bucket (lib/field (meta/id :checkins :date)) :year)])
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                  (lib/with-fields [(lib/with-temporal-bucket (meta/field-metadata :checkins :date) :year)])
                   lib/append-stage)
         cols (lib.metadata.calculation/visible-columns query)]
     (is (= [nil]
@@ -226,14 +226,14 @@
             (map lib/ref cols)))))
 
 (deftest ^:parallel fields-should-not-hide-joined-fields
-  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                  (lib/with-fields [(lib/field (meta/id :venues :id))
-                                    (lib/field (meta/id :venues :name))])
-                  (lib/join (-> (lib/join-clause (lib/table (meta/id :categories)))
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/with-fields [(meta/field-metadata :venues :id)
+                                    (meta/field-metadata :venues :name)])
+                  (lib/join (-> (lib/join-clause (meta/table-metadata :categories))
                                 (lib/with-join-alias "Cat")
                                 (lib/with-join-fields :all)
-                                (lib/with-join-conditions [(lib/= (lib/field "VENUES" "CATEGORY_ID")
-                                                                  (lib/field "CATEGORIES" "ID"))])))
+                                (lib/with-join-conditions [(lib/= (meta/field-metadata :venues :category-id)
+                                                                  (meta/field-metadata :categories :id))])))
                   (lib/append-stage))]
     (is (=? [{:base-type :type/BigInteger,
               :semantic-type :type/PK,

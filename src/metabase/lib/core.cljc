@@ -93,10 +93,6 @@
   [lib.common
    external-op]
   [lib.dev
-   field
-   query-for-table-id
-   query-for-table-name
-   table
    ref-lookup]
   [lib.expression
    expression

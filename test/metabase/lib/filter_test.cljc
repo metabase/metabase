@@ -15,9 +15,9 @@
               (f' {:lib/metadata meta/metadata} -1))))))
 
 (deftest ^:parallel general-filter-clause-test
-  (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+  (let [q1                          (lib/query meta/metadata-provider (meta/table-metadata :categories))
         q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
-        q3                          (lib/query-for-table-name meta/metadata-provider "CHECKINS")
+        q3                          (lib/query meta/metadata-provider (meta/table-metadata :checkins))
         venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
         venues-name-metadata        (lib.metadata/field q1 nil "VENUES" "NAME")
         venues-latitude-metadata    (lib.metadata/field q1 nil "VENUES" "LATITUDE")
@@ -112,7 +112,7 @@
          id)))))
 
 (deftest ^:parallel filter-test
-  (let [q1                          (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+  (let [q1                          (lib/query meta/metadata-provider (meta/table-metadata :categories))
         q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
         venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
         original-filter
@@ -149,7 +149,7 @@
                   (dissoc :lib/metadata)))))))
 
 (deftest ^:parallel add-filter-test
-  (let [simple-query         (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+  (let [simple-query         (lib/query meta/metadata-provider (meta/table-metadata :categories))
         venues-name-metadata (lib.metadata/field simple-query nil "VENUES" "NAME")
         first-filter         [:between
                               {:lib/uuid string?}
@@ -171,7 +171,7 @@
         third-result-filter  third-filter
         first-add            (lib/filter simple-query
                                          (lib/between
-                                           (lib/field "VENUES" "CATEGORY_ID")
+                                           (meta/field-metadata :venues :category-id)
                                            42
                                            100))
         filtered-query       (assoc-in simple-query [:stages 0 :filters] [first-filter])
@@ -216,16 +216,16 @@
              "t"]))) ))
 
 (deftest ^:parallel filterable-columns
-  (let [query (-> (lib/query-for-table-name meta/metadata-provider "USERS")
-                  (lib/join (-> (lib/join-clause (lib/table (meta/id :checkins))
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
+                  (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
                                                  [(lib/=
-                                                    (lib/field "CHECKINS" "USER_ID")
-                                                    (lib/field "USERS" "ID"))])
+                                                    (meta/field-metadata :checkins :user-id)
+                                                    (meta/field-metadata :users :id))])
                                 (lib/with-join-fields :all)))
-                  (lib/join (-> (lib/join-clause (lib/table (meta/id :venues))
+                  (lib/join (-> (lib/join-clause (meta/table-metadata :venues)
                                               [(lib/=
-                                                 (lib/field "CHECKINS" "VENUE_ID")
-                                                 (lib/field "VENUES" "ID"))])
+                                                 (meta/field-metadata :checkins :venue-id)
+                                                 (meta/field-metadata :venues :id))])
                                 (lib/with-join-fields :all))))
         columns (lib/filterable-columns query)
         pk-operators [:= :!= :> :< :between :>= :<= :is-null :not-null]
@@ -272,7 +272,7 @@
                display-info-by-type-and-op))))))
 
 (deftest ^:parallel filter-clause-test
-  (let [query (-> (lib/query-for-table-name meta/metadata-provider "USERS"))
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users)))
         [first-col] (lib/filterable-columns query)
         new-filter (lib/filter-clause
                      (first (lib/filterable-column-operators first-col))
@@ -285,7 +285,7 @@
 
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
-    (let [query           (lib/query-for-table-name meta/metadata-provider "USERS")
+    (let [query           (lib/query meta/metadata-provider (meta/table-metadata :users))
           [first-col]     (lib/filterable-columns query)
           query           (lib/filter query (lib/filter-clause
                                              (first (lib/filterable-column-operators first-col))
