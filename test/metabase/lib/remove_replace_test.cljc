@@ -180,7 +180,7 @@
       (is (=? {:stages [{:aggregation [(second aggregations)] :order-by (symbol "nil #_\"key is not present.\"")}
                         (complement :filters)]}
               (-> query
-                  (lib/order-by (lib.dev/ref-lookup :aggregation 0))
+                  (lib/order-by [:aggregation {:lib/uuid (str (random-uuid))} 0])
                   (lib/append-stage)
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
                   (lib/remove-clause 0 (first aggregations))))))))
@@ -203,7 +203,7 @@
       (is (=? {:stages [{:expressions [expr-b] :order-by (symbol "nil #_\"key is not present.\"")}
                         (complement :filters)]}
               (-> query
-                (lib/order-by (lib.dev/ref-lookup :expression "a"))
+                (lib/order-by [:expression {:lib/uuid (str (random-uuid))} "a"])
                 (lib/append-stage)
                 (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "a"] 1))
                 (lib/remove-clause 0 expr-a)))))))
@@ -345,7 +345,7 @@
                          :expressions (symbol "nil #_\"key is not present.\"")}
                         (complement :filters)]}
               (-> query
-                  (lib/expression "expr" (lib.dev/ref-lookup :aggregation 0))
+                  (lib/expression "expr" [:aggregation {:lib/uuid (str (random-uuid))} 0])
                   (lib/append-stage)
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
                   (lib/replace-clause 0 (first aggregations) (lib/sum (meta/field-metadata :venues :price)))))))))
@@ -371,8 +371,8 @@
                                        expr-b]}
                         (complement :filters)]}
               (-> query
-                  (lib/aggregate (lib/sum (lib.dev/ref-lookup :expression "a")))
-                  (lib/with-fields [(lib.dev/ref-lookup :expression "a")])
+                  (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "a"]))
+                  (lib/with-fields [[:expression {:lib/uuid (str (random-uuid))} "a"]])
                   (lib/append-stage)
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "a"] 1))
                   (lib/replace-clause 0 expr-a (meta/field-metadata :venues :price))))))

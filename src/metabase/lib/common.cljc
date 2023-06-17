@@ -51,10 +51,6 @@
                                                               (map #(->op-arg query stage-number %))
                                                               args))))
 
-(defmethod ->op-arg :dispatch-type/fn
-  [query stage-number f]
-  (->op-arg query stage-number (f query stage-number)))
-
 #?(:clj
    (defmacro defop
      "Defines a clause creating function with given args.

@@ -450,7 +450,7 @@
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                   (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                   (lib/with-fields [(meta/field-metadata :venues :id)
-                                    (lib.dev/ref-lookup :expression "expr")])
+                                    [:expression {:lib/uuid (str (random-uuid))} "expr"]])
                   (lib/append-stage))]
     (is (=? [{:id (meta/id :venues :id), :name "ID", :display-name "ID", :lib/source :source/previous-stage}
              {:name "expr", :display-name "expr", :lib/source :source/previous-stage}]

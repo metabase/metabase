@@ -742,7 +742,7 @@
   (testing "Maintain the column names in refs from the QP/MLv1 (#31266)"
     (let [query         (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
                             (lib/expression "Half Price" (lib// (meta/field-metadata :products :price) 2))
-                            (lib/aggregate (lib/avg (lib/ref-lookup :expression "Half Price")))
+                            (lib/aggregate (lib/avg [:expression {} "Half Price"]))
                             (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :products :created-at) :month))
                             lib/append-stage)
           ag-op         (m/find-first #(= (:short %) :max)

@@ -51,10 +51,6 @@
   [_query _stage-number clause]
   (lib.options/ensure-uuid clause))
 
-(defmethod ->order-by-clause :dispatch-type/fn
-  [query stage-number f]
-  (->order-by-clause query stage-number (f query stage-number)))
-
 ;;; by default, try to convert `x` to a ref and then order by `:asc`
 (defmethod ->order-by-clause :default
   [_query _stage-number x]

@@ -19,6 +19,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.u.match]
@@ -47,12 +48,12 @@
    [:ref :mbql.clause/field]
    PartialJoin])
 
-(mu/defn with-join-alias
+(mu/defn with-join-alias :- FieldOrPartialJoin
   "Add OR REMOVE a specific `join-alias` to `field-or-joinable`, with is either a `:field`/Field metadata, or something
   'joinable' like a join map or Table metadata. Does not recursively update other references (yet; we can add this in
   the future)."
   {:style/indent [:form]}
-  [field-or-joinable :- [:or FieldOrPartialJoin fn?]
+  [field-or-joinable :- FieldOrPartialJoin
    join-alias        :- [:maybe ::lib.schema.common/non-blank-string]]
   (case (lib.dispatch/dispatch-value field-or-joinable)
     :field
@@ -62,11 +63,7 @@
     (u/assoc-dissoc field-or-joinable ::join-alias join-alias)
 
     :mbql/join
-    (u/assoc-dissoc field-or-joinable :alias join-alias)
-
-    :dispatch-type/fn
-    (fn [query stage-number]
-      (with-join-alias (field-or-joinable query stage-number) join-alias))))
+    (u/assoc-dissoc field-or-joinable :alias join-alias)))
 
 (mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
   "Get the current join alias associated with something, if it has one."
@@ -244,19 +241,9 @@
        :stages   [mbql-stage]}
       lib.options/ensure-uuid))
 
-(defmethod join-clause-method :dispatch-type/fn
-  [query stage-number f]
-  (join-clause-method query
-                      stage-number
-                      (or (f query stage-number)
-                          (throw (ex-info "Error creating join clause: (f query stage-number) returned nil"
-                                          {:query        query
-                                           :stage-number stage-number
-                                           :f            f})))))
-
 ;; TODO -- too complicated, why don't we just ask people to use a separate [[with-join-conditions]] instead of having
 ;; all these arities.
-(mu/defn join-clause :- [:or PartialJoin fn?]
+(mu/defn join-clause :- PartialJoin
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
   Saved Question? You should be able to join anything, and this should return a sensible MBQL join map."
   ([joinable]
@@ -274,21 +261,12 @@
    (cond-> (join-clause query stage-number joinable)
      conditions (assoc :conditions (mapv #(lib.common/->op-arg query stage-number %) conditions)))))
 
-(mu/defn with-join-fields :- [:or PartialJoin fn?]
+(mu/defn with-join-fields :- PartialJoin
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
   references."
-  [joinable :- [:or PartialJoin fn?]
-   fields]
-  (if (fn? joinable)
-    (fn [query stage-number]
-      (let [resolved (joinable query stage-number)
-            ;; if joinable is unresolved, then make sure all of the Fields get resolved too if needed... but what if
-            ;; we have a resolved join + unresolved Fields? We don't handle that FIXME
-            fields   (if (keyword? fields)
-                       fields
-                       (mapv #(lib.common/->op-arg query stage-number %) fields))]
-        (with-join-fields resolved fields)))
-    (u/assoc-dissoc joinable :fields fields)))
+  [joinable :- PartialJoin
+   fields   :- [:maybe [:sequential ::lib.schema.ref/ref]]]
+  (u/assoc-dissoc joinable :fields (not-empty (vec fields))))
 
 (defn- select-home-column
   [home-cols cond-fields]
@@ -425,11 +403,8 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    a-join       :- [:or PartialJoin fn?]]
-   (let [a-join (if (fn? a-join)
-                  (a-join query stage-number)
-                  a-join)
-         a-join (if (contains? a-join :alias)
+    a-join       :- PartialJoin]
+   (let [a-join (if (contains? a-join :alias)
                   ;; if the join clause comes with an alias, keep it and assume that the
                   ;; condition fields have the right join-aliases too
                   a-join
@@ -472,14 +447,11 @@
   [a-join :- ::lib.schema.join/join]
   (get a-join :strategy :left-join))
 
-(mu/defn with-join-strategy :- [:or PartialJoin fn?]
+(mu/defn with-join-strategy :- PartialJoin
   "Return a copy of `a-join` with its `:strategy` set to `strategy`."
-  [a-join   :- [:or PartialJoin fn?]
+  [a-join   :- PartialJoin
    strategy :- ::lib.schema.join/strategy]
-  (if (fn? a-join)
-    (fn [query stage-metadata]
-      (with-join-strategy (a-join query stage-metadata) strategy))
-    (assoc a-join :strategy strategy)))
+  (assoc a-join :strategy strategy))
 
 (mu/defn available-join-strategies :- [:sequential ::lib.schema.join/strategy]
   "Get available join strategies for the current Database (based on the Database's
@@ -651,13 +623,9 @@
         stage-number
         (lib.filter/filter-clause (equals-join-condition-operator-definition) fk-col pk-col))))))
 
-(mu/defn with-join-conditions :- [:or PartialJoin fn?]
+(mu/defn with-join-conditions :- PartialJoin
   "Update the `:conditions` (filters) for a Join clause."
   {:style/indent [:form]}
-  [a-join     :- [:or PartialJoin fn?]
-   conditions :- [:maybe [:sequential [:or ::lib.schema.expression/boolean fn?]]]]
-  (if (fn? a-join)
-    (fn [query stage-number]
-      (with-join-conditions (a-join query stage-number)
-                            (mapv (partial lib.common/->op-arg query stage-number) conditions)))
-    (u/assoc-dissoc a-join :conditions conditions)))
+  [a-join     :- PartialJoin
+   conditions :- [:maybe [:sequential ::lib.schema.expression/boolean]]]
+  (u/assoc-dissoc a-join :conditions (not-empty (vec conditions))))

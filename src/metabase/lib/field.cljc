@@ -450,11 +450,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     xs]
-   (let [xs (mapv (fn [x]
-                    (lib.ref/ref (if (fn? x)
-                                   (x query stage-number)
-                                   x)))
-                  xs)]
+   (let [xs (mapv lib.ref/ref xs)]
      (lib.util/update-query-stage query stage-number u/assoc-dissoc :fields (not-empty xs)))))
 
 (mu/defn fields :- [:maybe [:ref ::lib.schema/fields]]
