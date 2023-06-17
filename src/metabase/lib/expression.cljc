@@ -20,7 +20,8 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.types :as types]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.lib.options :as lib.options]))
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
   "Given `:metadata/field` column metadata for an expression, construct an `:expression` reference."
@@ -182,6 +183,13 @@
         expr-name (u/lower-case-en expression-name)]
     (some #(-> % :name u/lower-case-en (= expr-name)) cols)))
 
+(defn- add-expression-to-stage
+  [stage expression]
+  (cond-> (update stage :expressions (fnil conj []) expression)
+    ;; if there are explicit fields selected, add the expression to them
+    (vector? (:fields stage))
+    (update :fields conj (lib.options/ensure-uuid [:expression {} (lib.util/expression-name expression)]))))
+
 (mu/defn expression :- ::lib.schema/query
   "Adds an expression to query."
   ([query expression-name an-expression-clause]
@@ -192,11 +200,10 @@
        (throw (ex-info "Expression name conflicts with a column in the same query stage"
                        {:expression-name expression-name})))
      (lib.util/update-query-stage
-       query stage-number
-       update :expressions
-       (fnil conj [])
-       (-> (lib.common/->op-arg query stage-number an-expression-clause)
-           (lib.util/named-expression-clause expression-name))))))
+      query stage-number
+      add-expression-to-stage
+      (-> (lib.common/->op-arg query stage-number an-expression-clause)
+          (lib.util/named-expression-clause expression-name))))))
 
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])

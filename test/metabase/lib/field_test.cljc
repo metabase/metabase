@@ -581,18 +581,22 @@
 
 (deftest ^:parallel with-fields-test
   (let [query           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                            (lib/expression "myadd" (lib/+ 1 (lib/field "VENUES" "CATEGORY_ID")))
                             (lib/with-fields [(lib/field "VENUES" "ID") (lib/field "VENUES" "NAME")]))
         fields-metadata (fn [query]
                           (map (partial lib.metadata.calculation/metadata query)
                                (lib/fields query)))
         metadatas       (fields-metadata query)]
-    (is (=? [{:name "ID"}
-             {:name "NAME"}]
-            metadatas))
+    (testing "Expressions should be included in :fields by default (#31236)"
+      (is (=? [{:name "ID"}
+               {:name "NAME"}
+               {:name "myadd"}]
+              metadatas)))
     (testing "Set fields with metadatas"
-      (let [fields' [(last metadatas)]
+      (let [fields' [(second metadatas)]
             query'  (lib/with-fields query fields')]
-        (is (=? [{:name "NAME"}]
+        (is (=? [{:name "NAME"}
+                 {:name "myadd"}]
                 (fields-metadata query')))))
     (testing "remove fields by passing"
       (doseq [new-fields [nil []]]
@@ -604,6 +608,19 @@
               (is (has-fields? query)
                   "sanity check")
               (is (not (has-fields? query'))))))))))
+
+(deftest ^:parallel with-fields-plus-expression-test
+  (let [query           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                            (lib/with-fields [(lib/field "VENUES" "ID")])
+                            (lib/expression "myadd" (lib/+ 1 (lib/field "VENUES" "CATEGORY_ID"))))
+        fields-metadata (fn [query]
+                          (map (partial lib.metadata.calculation/metadata query)
+                               (lib/fields query)))
+        metadatas       (fields-metadata query)]
+    (testing "Expressions should be included in :fields by default (#31236)"
+      (is (=? [{:name "ID"}
+               {:name "myadd"}]
+              metadatas)))))
 
 (deftest ^:parallel fieldable-columns-test
   (testing "query with no :fields"
