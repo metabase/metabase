@@ -12,7 +12,8 @@
    [metabase.test.data :as data]
    [metabase.test.data.users :as test.users]
    [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp]
+   [metabase.public-settings.premium-features-test :as premium-features-test]))
 
 (defn- do-with-conn-impersonation-defs
   {:style/indent 2}
@@ -63,18 +64,19 @@
   `(do-with-impersonations-for-user ~impersonations-and-attributes-map :rasta (fn [~'&group] ~@body)))
 
 (deftest impersonated-user-test
-  (testing "Returns true when a user has an active connection impersonation policy"
-    (with-impersonations {:impersonations [{:db-id (mt/id) :attribute "KEY"}]
-                          :attributes     {"KEY" "VAL"}}
-      (is (advanced-perms.api.u/impersonated-user?))))
+  (premium-features-test/with-premium-features #{:advanced-permissions}
+    (testing "Returns true when a user has an active connection impersonation policy"
+      (with-impersonations {:impersonations [{:db-id (mt/id) :attribute "KEY"}]
+                            :attributes     {"KEY" "VAL"}}
+        (is (advanced-perms.api.u/impersonated-user?))))
 
-  (testing "Returns true if current user is a superuser, even if they are in a group with an impersonation policy in place"
-    (with-impersonations-for-user :crowberto {:impersonations [{:db-id (mt/id) :attribute "KEY"}]
-                                              :attributes     {"KEY" "VAL"}}
-      (is (not (advanced-perms.api.u/impersonated-user?)))))
+    (testing "Returns true if current user is a superuser, even if they are in a group with an impersonation policy in place"
+      (with-impersonations-for-user :crowberto {:impersonations [{:db-id (mt/id) :attribute "KEY"}]
+                                                :attributes     {"KEY" "VAL"}}
+        (is (not (advanced-perms.api.u/impersonated-user?)))))
 
-  (testing "An exception is thrown if no user is bound"
-    (binding [api/*current-user-id* nil]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"No current user found"
-                            (advanced-perms.api.u/impersonated-user?))))))
+    (testing "An exception is thrown if no user is bound"
+      (binding [api/*current-user-id* nil]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"No current user found"
+                              (advanced-perms.api.u/impersonated-user?)))))))
