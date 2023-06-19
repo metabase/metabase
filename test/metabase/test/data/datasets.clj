@@ -26,7 +26,7 @@
   (This does NOT bind `*driver*`; use `driver/with-driver` if you want to do that.)"
   {:style/indent 1}
   [driver f]
-  {:pre [(not (seq driver))]}
+  {:pre [(keyword? driver)]}
   (when (contains? (tx.env/test-drivers) driver)
    (f)))
 
