@@ -49,8 +49,6 @@
    (sync-util/create-sync-step "sync-fields" sync-fields/sync-fields! sync-fields-summary)
    ;; Now for each table, sync the FKS. This has to be done after syncing all the fields to make sure target fields exist
    (sync-util/create-sync-step "sync-fks" sync-fks/sync-fks! sync-fks-summary)
-   ;; Now set initial_sync_status=complete for each table
-   (sync-util/create-sync-step "set-initial-table-sync-complete" sync-util/set-all-tables-initial-sync-status-complete!)
    ;; finally, sync the metadata metadata table if it exists.
    (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata))])
 

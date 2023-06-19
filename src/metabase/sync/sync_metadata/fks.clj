@@ -77,6 +77,9 @@
   [database :- i/DatabaseInstance]
   (reduce (fn [update-info table]
             (let [table-fk-info (sync-fks-for-table! database table)]
+              ;; Mark the table as done with its initial sync once this step is done even if it failed, because only
+              ;; sync-aborting errors should be surfaced to the UI (see [[sync-util/exception-classes-not-to-retry]]).
+              (sync-util/set-initial-table-sync-complete! table)
               (if (instance? Exception table-fk-info)
                 (update update-info :total-failed inc)
                 (merge-with + update-info table-fk-info))))
