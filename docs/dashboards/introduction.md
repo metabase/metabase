@@ -22,11 +22,13 @@ You can make as many dashboards as you want. Go nuts.
 
 In the top right of the screen, click the **+** icon to open the **Create** menu, and select **New Dashboard**. Give your new dashboard a name and a description, choose which [collections](../exploration-and-organization/collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
 
-![Create Dashboard](images/create.png)
-
 ## Dashboard tabs
 
-You can add multiple tabs to a dashboard.
+You can add multiple tabs to a dashboard to keep your cards organized.
+
+![Dashboard tabs](./images/dashboard-tabs.png)
+
+Currently, you can't drag cards from tab to tab. If you want to move a card from one tab to the other, you'll need to remove the card from one tab, and then add the card to the other tab.
 
 ## Duplicating a dashboard
 

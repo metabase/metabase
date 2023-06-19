@@ -14,7 +14,7 @@ Instead of creating duplicate dashboards, you can add [filter widgets](#filter-w
 
 ## Adding a new filter
 
-To add a filter to a dashboard, first click the **pencil icon** to enter dashboard editing mode, then click the **Add a Filter** button that appears in the top-right.
+To add a filter to a dashboard, first click the **pencil icon** to enter dashboard editing mode, then click the **Add a Filter** button that appears in the top-right. Dashboard filters apply across all [dashboard tabs](./introduction.md#dashboard-tabs), though you'll need to connect filters to each card you want to filter.
 
 ![Add a Filter](./images/add-filter.png)
 
