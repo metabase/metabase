@@ -446,6 +446,11 @@
   {:in  validate-cron-string
    :out identity})
 
+(def transform-metric-segment-definition
+  "Transform for inner queries like those in Metric definitions."
+  {:in  (comp json-in normalize-metric-segment-definition)
+   :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization)})
+
 ;; --- predefined hooks
 
 (t2/define-before-insert :hook/timestamped?
@@ -465,6 +470,11 @@
       add-created-at-timestamp))
 
 (t2/define-before-insert :hook/updated-at-timestamped?
+  [instance]
+  (-> instance
+      add-updated-at-timestamp))
+
+(t2/define-before-update :hook/updated-at-timestamped?
   [instance]
   (-> instance
       add-updated-at-timestamp))

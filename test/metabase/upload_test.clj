@@ -16,17 +16,17 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   [java.io File]))
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
-(def bool-type      :metabase.upload/boolean)
-(def int-type       :metabase.upload/int)
-(def float-type     :metabase.upload/float)
-(def vchar-type     :metabase.upload/varchar_255)
-(def date-type      :metabase.upload/date)
-(def datetime-type  :metabase.upload/datetime)
-(def text-type      :metabase.upload/text)
+(def ^:private bool-type      :metabase.upload/boolean)
+(def ^:private int-type       :metabase.upload/int)
+(def ^:private float-type     :metabase.upload/float)
+(def ^:private vchar-type     :metabase.upload/varchar_255)
+(def ^:private date-type      :metabase.upload/date)
+(def ^:private datetime-type  :metabase.upload/datetime)
+(def ^:private text-type      :metabase.upload/text)
 
 (defn- do-with-mysql-local-infile-activated
   "Helper for [[with-mysql-local-infile-activated]]"
@@ -48,7 +48,7 @@
           (jdbc/query conn-spec
                       "set global local_infile = 0"))))))
 
-(defmacro with-mysql-local-infile-activated
+(defmacro ^:private with-mysql-local-infile-activated
   "Turn on local_infile for MySQL"
   [& body]
   `(do-with-mysql-local-infile-activated (fn [] ~@body)))
@@ -129,7 +129,7 @@
           (is (= expected-value
                  (parser string-value))))))))
 
-(deftest type-coalescing-test
+(deftest ^:parallel type-coalescing-test
   (doseq [[type-a type-b expected] [[bool-type     bool-type     bool-type]
                                     [bool-type     int-type      int-type]
                                     [bool-type     date-type     vchar-type]
@@ -169,7 +169,7 @@
        (.write w contents))
      csv-file)))
 
-(deftest detect-schema-test
+(deftest ^:parallel detect-schema-test
   (testing "Well-formed CSV file"
     (is (= {"name"             vchar-type
             "age"              int-type
@@ -236,7 +236,7 @@
                             ;; comma, but blank column
                             "Sebulba, 112,"]))))))
 
-(deftest detect-schema-dates-test
+(deftest ^:parallel detect-schema-dates-test
   (testing "Dates"
     (is (= {"date"         date-type
             "not_date"     vchar-type
@@ -247,8 +247,8 @@
                             "2022-01-01,2023-02-28,2022-01-01T00:00:00,2023-02-28T00:00:00"
                             "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"]))))))
 
-(deftest unique-table-name-test
-  (mt/test-driver (mt/normal-drivers-with-feature :uploads)
+(deftest ^:parallel unique-table-name-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "File name is slugified"
       (is (=? #"my_file_name_\d+" (#'upload/unique-table-name driver/*driver* "my file name"))))
     (testing "semicolons are removed"
@@ -256,14 +256,12 @@
 
 (deftest load-from-csv-table-name-test
   (testing "Upload a CSV file"
-    (mt/test-driver (mt/normal-drivers-with-feature :uploads)
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (let [file       (csv-file-with ["id" "2" "3"])]
           (testing "Can upload two files with the same name"
-            ;; Sleep for a second, because the table name is based on the current second
-            (is (some? (upload/load-from-csv driver/*driver* (mt/id) "table_name" file)))
-            (Thread/sleep 1000)
-            (is (some? (upload/load-from-csv driver/*driver* (mt/id) "table_name" file)))))))))
+            (is (some? (upload/load-from-csv driver/*driver* (mt/id) (format "table_name_%s" driver/*driver*) file)))
+            (is (some? (upload/load-from-csv driver/*driver* (mt/id) (format "table_name_2_%s" driver/*driver*) file)))))))))
 
 (defn- query-table!
   [table]
