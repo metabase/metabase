@@ -284,6 +284,20 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     cy.wait("@cardQuery");
     undoToast().should("not.exist");
   });
+
+  it("should not be able to toggle auto-apply filters toggle for user without dashboard permission", () => {
+    createDashboard();
+    cy.signIn("readonly");
+    openDashboard();
+    cy.wait("@cardQuery");
+
+    dashboardHeader().within(() => {
+      cy.icon("info").click();
+    });
+    rightSidebar().within(() => {
+      cy.findByLabelText("Auto-apply filters").should("be.disabled");
+    });
+  });
 });
 
 describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
