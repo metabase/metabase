@@ -73,7 +73,7 @@ export const CustomHomePageModal = ({
           </Button>,
         ]}
       >
-        <p>{t`Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage. You can update or reset this anytime in Admin Settings > Settings > General`}</p>
+        <p>{t`Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage. You can update or reset the homepage at any time in Admin Settings > Settings > General`}</p>
         <DashboardSelector
           value={dashboardId}
           onChange={handleChange}

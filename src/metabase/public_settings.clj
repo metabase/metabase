@@ -79,7 +79,7 @@
   :visibility :settings-manager)
 
 (defsetting custom-homepage
-  (deferred-tru "Pick one of your dashboards to serve as a homepage. Users without dashboard access will be directed to the default homepage")
+  (deferred-tru "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage. 
   :default    false
   :type       :boolean
   :visibility :public)
