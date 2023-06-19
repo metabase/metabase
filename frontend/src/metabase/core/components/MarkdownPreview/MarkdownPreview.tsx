@@ -1,12 +1,14 @@
+import { ComponentProps } from "react";
+
 import Markdown from "../Markdown";
-import Tooltip, { type TooltipProps } from "../Tooltip";
+import Tooltip from "../Tooltip";
 
 import { TruncatedMarkdown } from "./MarkdownPreview.styled";
 
 interface Props {
   children: string;
   className?: string;
-  tooltipMaxWidth?: TooltipProps["maxWidth"];
+  tooltipMaxWidth?: ComponentProps<typeof Tooltip>["maxWidth"];
 }
 
 const ALLOWED_ELEMENTS: string[] = [];
