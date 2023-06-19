@@ -108,9 +108,9 @@ Metrics exported by Metabase include:
 - `c3p0_max_pool_size`
 - `c3p0_min_pool_size`
 - `c3p0_num_busy_connections`
-- `c3p0_num_threads_awaiting_checkout_default_user`
 - `c3p0_num_connections`
 - `c3p0_num_idle_connections`
+- `c3p0_num_threads_awaiting_checkout_default_user`
 - `jetty_async_dispatches_total`
 - `jetty_async_requests_total`
 - `jetty_async_requests_waiting`
