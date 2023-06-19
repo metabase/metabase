@@ -349,20 +349,25 @@ class QuestionInner {
 
     const query = this.query();
 
+    // TODO: move to StructuredQuery?
     if (query instanceof StructuredQuery) {
-      // TODO: move to StructuredQuery?
-      const aggregations = query.aggregations();
-      const breakouts = query.breakouts();
+      if (this.isDataset()) {
+        return this.setDisplay("table");
+      }
+
+      const joins = query.joins();
       const sourceQuery = query.sourceQuery();
+      let aggregations = query.aggregations();
+      let breakouts = query.breakouts();
 
       if (
         aggregations.length === 0 &&
         breakouts.length === 0 &&
-        sourceQuery &&
-        !this.isDataset()
+        joins.length === 0 &&
+        sourceQuery
       ) {
-        aggregations.push(...sourceQuery.aggregations());
-        breakouts.push(...sourceQuery.breakouts());
+        aggregations = sourceQuery.aggregations();
+        breakouts = sourceQuery.breakouts();
       }
 
       const breakoutDimensions = breakouts.map(b => b.dimension());
