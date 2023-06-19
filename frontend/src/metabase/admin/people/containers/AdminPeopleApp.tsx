@@ -11,23 +11,16 @@ import { LeftNavWrapper } from "./AdminPeopleApp.styled";
 
 export const AdminPeopleApp = ({ children }: { children: React.ReactNode }) => {
   const shouldNudge = useSelector(shouldNudgeToPro);
-  const sidebar = (
-    <LeftNavPane fullHeight={!shouldNudge}>
-      <LeftNavPaneItem name={t`People`} path="/admin/people" index />
-      <LeftNavPaneItem name={t`Groups`} path="/admin/people/groups" />
-    </LeftNavPane>
-  );
   return (
     <AdminLayout
       sidebar={
-        !shouldNudge ? (
-          sidebar
-        ) : (
-          <LeftNavWrapper>
-            {sidebar}
-            <NudgeToPro />
-          </LeftNavWrapper>
-        )
+        <LeftNavWrapper>
+          <LeftNavPane fullHeight={!shouldNudge}>
+            <LeftNavPaneItem name={t`People`} path="/admin/people" index />
+            <LeftNavPaneItem name={t`Groups`} path="/admin/people/groups" />
+          </LeftNavPane>
+          {shouldNudge && <NudgeToPro />}
+        </LeftNavWrapper>
       }
     >
       {children}
