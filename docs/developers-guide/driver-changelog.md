@@ -17,7 +17,7 @@ title: Driver interface changelog
   a table), and `metabase.driver/insert-into!` (inserts values into a table).
 
 - The multimethod `metabase.driver/syncable-schemas` has been added. This method is used to list schemas to upload
-  CSVs to, and it should include all schemas that are able to be synced to. Currently it only needs to be implemented
+  CSVs to, and it should include all schemas that can be synced. Currently it only needs to be implemented
   if the database has schema, and the database supports the `uploads` feature.
 
 - The multimethod `metabase.driver/supports?` has been deprecated in favor of `metabase.driver/database-supports?`. The
