@@ -7,7 +7,6 @@
    [clojure.spec.alpha :as s]
    [clojure.walk :as walk]
    [metabase.db.connection :as mdb.connection]
-   [metabase.db.util :as mdb.u]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
