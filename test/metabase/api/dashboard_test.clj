@@ -1130,6 +1130,11 @@
                      (set (map :name cards-in-coll)))
                   "Cards should have \"-- Duplicate\" appended"))))))))
 
+(defn- ordered-cards-by-position
+  "Returned dashcards for a dashboard ordred by its position instead of creation like [[dashboard/ordered-cards]] did."
+  [dashboard-or-id]
+  (sort dashboard-card/dashcard-comparator (dashboard/ordered-cards dashboard-or-id)))
+
 (deftest copy-dashboard-with-tab-test
   (testing "POST /api/dashboard/:id/copy"
     (testing "for a dashboard that has tabs"
