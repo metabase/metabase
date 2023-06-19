@@ -77,6 +77,15 @@ const SAMPLE_DB_NO_SCHEMA = createSampleDatabase({
   tables: [ORDERS_TABLE_NO_SCHEMA],
 });
 
+const ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE = createOrdersTable({
+  initial_sync_status: "incomplete",
+});
+
+const SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE = createSampleDatabase({
+  name: "Initial sync incomplete",
+  tables: [ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE],
+});
+
 const JSON_FIELD_ROOT = createMockField({
   id: 1,
   name: "JSON",
@@ -234,6 +243,17 @@ describe("MetadataEditor", () => {
       expect(
         screen.getByRole("checkbox", { name: "Irrelevant/Cruft" }),
       ).not.toBeChecked();
+    });
+
+    it("should display tables with initial_sync_status='incomplete' as disabled", async () => {
+      await setup({ databases: [SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE] });
+      expect(
+        screen.getByText(SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE.name),
+      ).toBeInTheDocument();
+      expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
+      expect(
+        screen.getByText(ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name),
+      ).toHaveClass("disabled");
     });
 
     it("should display sort options", async () => {
