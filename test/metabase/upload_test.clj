@@ -129,7 +129,7 @@
           (is (= expected-value
                  (parser string-value))))))))
 
-(deftest type-coalescing-test
+(deftest ^:parallel type-coalescing-test
   (doseq [[type-a type-b expected] [[bool-type     bool-type     bool-type]
                                     [bool-type     int-type      int-type]
                                     [bool-type     date-type     vchar-type]
@@ -169,7 +169,7 @@
        (.write w contents))
      csv-file)))
 
-(deftest detect-schema-test
+(deftest ^:parallel detect-schema-test
   (testing "Well-formed CSV file"
     (is (= {"name"             vchar-type
             "age"              int-type
@@ -236,7 +236,7 @@
                             ;; comma, but blank column
                             "Sebulba, 112,"]))))))
 
-(deftest detect-schema-dates-test
+(deftest ^:parallel detect-schema-dates-test
   (testing "Dates"
     (is (= {"date"         date-type
             "not_date"     vchar-type
@@ -247,7 +247,7 @@
                             "2022-01-01,2023-02-28,2022-01-01T00:00:00,2023-02-28T00:00:00"
                             "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"]))))))
 
-(deftest unique-table-name-test
+(deftest ^:parallel unique-table-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "File name is slugified"
       (is (=? #"my_file_name_\d+" (#'upload/unique-table-name driver/*driver* "my file name"))))
@@ -258,10 +258,10 @@
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-          (let [file       (csv-file-with ["id" "2" "3"])]
-            (testing "Can upload two files with the same name"
-              (is (some? (upload/load-from-csv driver/*driver* (mt/id) (format "table_name_%s" driver/*driver*) file)))
-              (is (some? (upload/load-from-csv driver/*driver* (mt/id) (format "table_name_2_%s" driver/*driver*) file)))))))))
+        (let [file       (csv-file-with ["id" "2" "3"])]
+          (testing "Can upload two files with the same name"
+            (is (some? (upload/load-from-csv driver/*driver* (mt/id) (format "table_name_%s" driver/*driver*) file)))
+            (is (some? (upload/load-from-csv driver/*driver* (mt/id) (format "table_name_2_%s" driver/*driver*) file)))))))))
 
 (defn- query-table!
   [table]
