@@ -307,12 +307,12 @@
       "creator": {
         "email": "admin@metabase.test",
         "first_name": "Bobby",
-        "last_login": "2023-06-19T04:25:34.372913",
+        "last_login": "2023-06-15T09:17:08.17982",
         "is_qbnewb": false,
         "is_superuser": true,
         "id": 1,
         "last_name": "Tables",
-        "date_joined": "2023-06-19T04:25:34.279864",
+        "date_joined": "2023-06-15T09:17:08.085539",
         "common_name": "Bobby Tables"
       },
       "database_id": 1,
@@ -321,7 +321,7 @@
       "query_type": "query",
       "name": "Orders",
       "creator_id": 1,
-      "updated_at": "2023-06-19T04:25:35.88483-07:00",
+      "updated_at": "2023-06-15T09:17:09.843503-07:00",
       "made_public_by_id": null,
       "embedding_params": null,
       "cache_ttl": null,
@@ -335,20 +335,20 @@
       "id": 1,
       "parameter_mappings": [],
       "display": "table",
-      "entity_id": "tDtBHO8mFyZApt6GDbqhY",
+      "entity_id": "Ko4wdxW2bnedG-1mxVuWe",
       "collection_preview": true,
       "last-edit-info": {
         "id": 1,
         "email": "admin@metabase.test",
         "first_name": "Bobby",
         "last_name": "Tables",
-        "timestamp": "2023-06-19T04:25:35.899208-07:00"
+        "timestamp": "2023-06-15T09:17:09.876024-07:00"
       },
       "visualization_settings": {},
       "collection": null,
       "parameters": [],
       "dataset": false,
-      "created_at": "2023-06-19T04:25:35.88483",
+      "created_at": "2023-06-15T09:17:09.843503",
       "public_uuid": null
     },
     {
@@ -372,12 +372,12 @@
       "creator": {
         "email": "admin@metabase.test",
         "first_name": "Bobby",
-        "last_login": "2023-06-19T04:25:34.372913",
+        "last_login": "2023-06-15T09:17:08.17982",
         "is_qbnewb": false,
         "is_superuser": true,
         "id": 1,
         "last_name": "Tables",
-        "date_joined": "2023-06-19T04:25:34.279864",
+        "date_joined": "2023-06-15T09:17:08.085539",
         "common_name": "Bobby Tables"
       },
       "database_id": 1,
@@ -386,7 +386,7 @@
       "query_type": "query",
       "name": "Orders, Count",
       "creator_id": 1,
-      "updated_at": "2023-06-19T04:25:35.967179-07:00",
+      "updated_at": "2023-06-15T09:17:09.99085-07:00",
       "made_public_by_id": null,
       "embedding_params": null,
       "cache_ttl": null,
@@ -405,20 +405,20 @@
       "id": 2,
       "parameter_mappings": [],
       "display": "table",
-      "entity_id": "t0rT0MYzgI0BpAwbR2fie",
+      "entity_id": "PPACh7ge-CKLkvHGoESOb",
       "collection_preview": true,
       "last-edit-info": {
         "id": 1,
         "email": "admin@metabase.test",
         "first_name": "Bobby",
         "last_name": "Tables",
-        "timestamp": "2023-06-19T04:25:35.971171-07:00"
+        "timestamp": "2023-06-15T09:17:09.999772-07:00"
       },
       "visualization_settings": {},
       "collection": null,
       "parameters": [],
       "dataset": false,
-      "created_at": "2023-06-19T04:25:35.967179",
+      "created_at": "2023-06-15T09:17:09.99085",
       "public_uuid": null
     },
     {
@@ -478,12 +478,12 @@
       "creator": {
         "email": "admin@metabase.test",
         "first_name": "Bobby",
-        "last_login": "2023-06-19T04:25:34.372913",
+        "last_login": "2023-06-15T09:17:08.17982",
         "is_qbnewb": false,
         "is_superuser": true,
         "id": 1,
         "last_name": "Tables",
-        "date_joined": "2023-06-19T04:25:34.279864",
+        "date_joined": "2023-06-15T09:17:08.085539",
         "common_name": "Bobby Tables"
       },
       "database_id": 1,
@@ -492,7 +492,7 @@
       "query_type": "query",
       "name": "Orders, Count, Grouped by Created At (year)",
       "creator_id": 1,
-      "updated_at": "2023-06-19T04:25:36.00138-07:00",
+      "updated_at": "2023-06-15T09:17:10.055203-07:00",
       "made_public_by_id": null,
       "embedding_params": null,
       "cache_ttl": null,
@@ -520,20 +520,20 @@
       "id": 3,
       "parameter_mappings": [],
       "display": "line",
-      "entity_id": "9kdhRCkBOlm3rChS7q9Ez",
+      "entity_id": "NwNvCkY3JfAXy8czI7m9u",
       "collection_preview": true,
       "last-edit-info": {
         "id": 1,
         "email": "admin@metabase.test",
         "first_name": "Bobby",
         "last_name": "Tables",
-        "timestamp": "2023-06-19T04:25:36.005655-07:00"
+        "timestamp": "2023-06-15T09:17:10.062892-07:00"
       },
       "visualization_settings": {},
       "collection": null,
       "parameters": [],
       "dataset": false,
-      "created_at": "2023-06-19T04:25:36.00138",
+      "created_at": "2023-06-15T09:17:10.055203",
       "public_uuid": null
     }
   ],
@@ -545,12 +545,12 @@
       "creator": {
         "email": "admin@metabase.test",
         "first_name": "Bobby",
-        "last_login": "2023-06-19T04:25:34.372913",
+        "last_login": "2023-06-15T09:17:08.17982",
         "is_qbnewb": false,
         "is_superuser": true,
         "id": 1,
         "last_name": "Tables",
-        "date_joined": "2023-06-19T04:25:34.279864",
+        "date_joined": "2023-06-15T09:17:08.085539",
         "common_name": "Bobby Tables"
       },
       "enable_embedding": false,
@@ -559,23 +559,23 @@
       "name": "Orders in a dashboard",
       "caveats": null,
       "creator_id": 1,
-      "updated_at": "2023-06-19T04:25:35.912454",
+      "updated_at": "2023-06-15T09:17:09.897367",
       "made_public_by_id": null,
       "embedding_params": null,
       "cache_ttl": null,
       "id": 1,
       "position": null,
-      "entity_id": "jDXT1AdavKA8kfeytBNVC",
+      "entity_id": "mSTMzNovZXN_rvox-nVYY",
       "last-edit-info": {
         "id": 1,
         "email": "admin@metabase.test",
         "first_name": "Bobby",
         "last_name": "Tables",
-        "timestamp": "2023-06-19T04:25:35.940058-07:00"
+        "timestamp": "2023-06-15T09:17:09.949357-07:00"
       },
       "parameters": [],
       "auto_apply_filters": true,
-      "created_at": "2023-06-19T04:25:35.912454",
+      "created_at": "2023-06-15T09:17:09.897367",
       "public_uuid": null,
       "points_of_interest": null
     }
@@ -588,7 +588,7 @@
       "last_login": null,
       "is_active": true,
       "is_qbnewb": false,
-      "updated_at": "2023-06-19T04:25:34.938491",
+      "updated_at": "2023-06-15T09:17:08.867299",
       "group_ids": [
         1,
         3
@@ -600,7 +600,7 @@
       },
       "id": 4,
       "last_name": "1",
-      "date_joined": "2023-06-19T04:25:34.938491",
+      "date_joined": "2023-06-15T09:17:08.785888",
       "sso_source": null,
       "personal_collection_id": 2,
       "common_name": "User 1"
@@ -609,10 +609,10 @@
       "email": "admin@metabase.test",
       "first_name": "Bobby",
       "locale": null,
-      "last_login": "2023-06-19T04:25:34.372913",
+      "last_login": "2023-06-15T09:17:08.17982",
       "is_active": true,
       "is_qbnewb": false,
-      "updated_at": "2023-06-19T04:25:34.279864",
+      "updated_at": "2023-06-15T09:17:08.247561",
       "group_ids": [
         1,
         2
@@ -621,7 +621,7 @@
       "login_attributes": null,
       "id": 1,
       "last_name": "Tables",
-      "date_joined": "2023-06-19T04:25:34.279864",
+      "date_joined": "2023-06-15T09:17:08.085539",
       "sso_source": null,
       "personal_collection_id": 1,
       "common_name": "Bobby Tables"
@@ -633,7 +633,7 @@
       "last_login": null,
       "is_active": true,
       "is_qbnewb": false,
-      "updated_at": "2023-06-19T04:25:35.264082",
+      "updated_at": "2023-06-15T09:17:09.147894",
       "group_ids": [
         1,
         4
@@ -642,7 +642,7 @@
       "login_attributes": null,
       "id": 6,
       "last_name": "Tableton",
-      "date_joined": "2023-06-19T04:25:35.264082",
+      "date_joined": "2023-06-15T09:17:09.072426",
       "sso_source": null,
       "personal_collection_id": 3,
       "common_name": "No Collection Tableton"
@@ -654,7 +654,7 @@
       "last_login": null,
       "is_active": true,
       "is_qbnewb": false,
-      "updated_at": "2023-06-19T04:25:34.77278",
+      "updated_at": "2023-06-15T09:17:08.718209",
       "group_ids": [
         1,
         3
@@ -663,7 +663,7 @@
       "login_attributes": null,
       "id": 3,
       "last_name": "Tableton",
-      "date_joined": "2023-06-19T04:25:34.77278",
+      "date_joined": "2023-06-15T09:17:08.643287",
       "sso_source": null,
       "personal_collection_id": 4,
       "common_name": "No Data Tableton"
@@ -675,7 +675,7 @@
       "last_login": null,
       "is_active": true,
       "is_qbnewb": false,
-      "updated_at": "2023-06-19T04:25:35.430257",
+      "updated_at": "2023-06-15T09:17:09.285579",
       "group_ids": [
         1,
         6
@@ -684,7 +684,7 @@
       "login_attributes": null,
       "id": 7,
       "last_name": "Tableton",
-      "date_joined": "2023-06-19T04:25:35.430257",
+      "date_joined": "2023-06-15T09:17:09.212403",
       "sso_source": null,
       "personal_collection_id": 5,
       "common_name": "No SQL Tableton"
@@ -696,7 +696,7 @@
       "last_login": null,
       "is_active": true,
       "is_qbnewb": false,
-      "updated_at": "2023-06-19T04:25:35.596591",
+      "updated_at": "2023-06-15T09:17:09.417781",
       "group_ids": [
         1
       ],
@@ -704,7 +704,7 @@
       "login_attributes": null,
       "id": 8,
       "last_name": "Tableton",
-      "date_joined": "2023-06-19T04:25:35.596591",
+      "date_joined": "2023-06-15T09:17:09.346078",
       "sso_source": null,
       "personal_collection_id": 6,
       "common_name": "None Tableton"
@@ -716,7 +716,7 @@
       "last_login": null,
       "is_active": true,
       "is_qbnewb": false,
-      "updated_at": "2023-06-19T04:25:35.102787",
+      "updated_at": "2023-06-15T09:17:09.005291",
       "group_ids": [
         1,
         5
@@ -725,7 +725,7 @@
       "login_attributes": null,
       "id": 5,
       "last_name": "Tableton",
-      "date_joined": "2023-06-19T04:25:35.102787",
+      "date_joined": "2023-06-15T09:17:08.932231",
       "sso_source": null,
       "personal_collection_id": 7,
       "common_name": "Read Only Tableton"
@@ -737,7 +737,7 @@
       "last_login": null,
       "is_active": true,
       "is_qbnewb": false,
-      "updated_at": "2023-06-19T04:25:34.570027",
+      "updated_at": "2023-06-15T09:17:08.579558",
       "group_ids": [
         1,
         4,
@@ -747,7 +747,7 @@
       "login_attributes": null,
       "id": 2,
       "last_name": "Tableton",
-      "date_joined": "2023-06-19T04:25:34.570027",
+      "date_joined": "2023-06-15T09:17:08.488332",
       "sso_source": null,
       "personal_collection_id": 8,
       "common_name": "Robert Tableton"
@@ -780,16 +780,16 @@
         "inner-join",
         "advanced-math-expressions"
       ],
-      "cache_field_values_schedule": "0 0 3 * * ? *",
+      "cache_field_values_schedule": "0 0 15 * * ? *",
       "timezone": "America/Los_Angeles",
       "auto_run_queries": true,
-      "metadata_sync_schedule": "0 10 * * * ? *",
+      "metadata_sync_schedule": "0 48 * * * ? *",
       "name": "Sample Database",
       "settings": null,
       "caveats": "You probably don't want to use this for your business-critical analyses, but hey, it's your world, we're just living in it.",
       "creator_id": null,
       "is_full_sync": true,
-      "updated_at": "2023-06-19T04:25:34.448303",
+      "updated_at": "2023-06-15T09:17:08.334322",
       "native_permissions": "write",
       "cache_ttl": null,
       "details": {
@@ -811,7 +811,7 @@
         ]
       },
       "refingerprint": null,
-      "created_at": "2023-06-19T04:25:26.949408",
+      "created_at": "2023-06-15T09:16:57.236936",
       "points_of_interest": "You can find all sorts of different joinable tables ranging from products to people to reviews here."
     }
   ],
@@ -836,10 +836,10 @@
       "personal_owner_id": 1,
       "type": null,
       "id": 1,
-      "entity_id": "ozdhC7BLJj3sQcWDzv9Qw",
+      "entity_id": "DqzSQy1YG1M1os1D6UtTx",
       "location": "/",
       "namespace": null,
-      "created_at": "2023-06-19T04:25:34.385282-07:00"
+      "created_at": "2023-06-15T09:17:08.206266-07:00"
     },
     {
       "authority_level": null,
@@ -852,10 +852,10 @@
       "personal_owner_id": null,
       "type": null,
       "id": 9,
-      "entity_id": "XBNFP0GgZjh17jnn_Ppmp",
+      "entity_id": "u0U7vLKfBWvbKvOS49ZK4",
       "location": "/",
       "namespace": null,
-      "created_at": "2023-06-19T04:25:35.770573-07:00"
+      "created_at": "2023-06-15T09:17:09.610072-07:00"
     },
     {
       "authority_level": null,
@@ -868,10 +868,10 @@
       "personal_owner_id": 6,
       "type": null,
       "id": 3,
-      "entity_id": "u4bzl-APefZ9O8J7fthWO",
+      "entity_id": "vmhIadCXAySkyTqKLJpF5",
       "location": "/",
       "namespace": null,
-      "created_at": "2023-06-19T04:25:35.688789-07:00"
+      "created_at": "2023-06-15T09:17:09.433145-07:00"
     },
     {
       "authority_level": null,
@@ -884,10 +884,10 @@
       "personal_owner_id": 3,
       "type": null,
       "id": 4,
-      "entity_id": "5_lWHGhwDAG73G-fMUmDj",
+      "entity_id": "G3vOjhDGJhW2wICyIiVR3",
       "location": "/",
       "namespace": null,
-      "created_at": "2023-06-19T04:25:35.689669-07:00"
+      "created_at": "2023-06-15T09:17:09.436029-07:00"
     },
     {
       "authority_level": null,
@@ -900,10 +900,10 @@
       "personal_owner_id": 7,
       "type": null,
       "id": 5,
-      "entity_id": "_RcZ744D2ZxCsGnhfdUgm",
+      "entity_id": "-hgjqpiBM3FqE2ALPxk9X",
       "location": "/",
       "namespace": null,
-      "created_at": "2023-06-19T04:25:35.690538-07:00"
+      "created_at": "2023-06-15T09:17:09.438809-07:00"
     },
     {
       "authority_level": null,
@@ -916,10 +916,10 @@
       "personal_owner_id": 8,
       "type": null,
       "id": 6,
-      "entity_id": "35cheU1a1BwoVBRg9d70u",
+      "entity_id": "3gNmETu_7bRkyNx_59L7I",
       "location": "/",
       "namespace": null,
-      "created_at": "2023-06-19T04:25:35.691355-07:00"
+      "created_at": "2023-06-15T09:17:09.441371-07:00"
     },
     {
       "authority_level": null,
@@ -932,10 +932,10 @@
       "personal_owner_id": 5,
       "type": null,
       "id": 7,
-      "entity_id": "HfEev2acNohOSpVrVE078",
+      "entity_id": "cPhyrqJMgyeQ3tDSSLMhS",
       "location": "/",
       "namespace": null,
-      "created_at": "2023-06-19T04:25:35.69215-07:00"
+      "created_at": "2023-06-15T09:17:09.444406-07:00"
     },
     {
       "authority_level": null,
@@ -948,10 +948,10 @@
       "personal_owner_id": 2,
       "type": null,
       "id": 8,
-      "entity_id": "_A4tkToP_U7WzyUQ6xsAw",
+      "entity_id": "LJrVy0AMLQhWes7ya5ZH2",
       "location": "/",
       "namespace": null,
-      "created_at": "2023-06-19T04:25:35.692981-07:00"
+      "created_at": "2023-06-15T09:17:09.446799-07:00"
     },
     {
       "authority_level": null,
@@ -964,10 +964,10 @@
       "personal_owner_id": null,
       "type": null,
       "id": 10,
-      "entity_id": "tt2rteBzKjsHQM5bEjRsZ",
+      "entity_id": "r6IOCIuRozPySTj6dwDH4",
       "location": "/9/",
       "namespace": null,
-      "created_at": "2023-06-19T04:25:35.781824-07:00"
+      "created_at": "2023-06-15T09:17:09.651312-07:00"
     },
     {
       "authority_level": null,
@@ -980,10 +980,10 @@
       "personal_owner_id": null,
       "type": null,
       "id": 11,
-      "entity_id": "5JyQGykbizW7EcSE13REV",
+      "entity_id": "isoWShDEELNlCjvpK0IT0",
       "location": "/9/10/",
       "namespace": null,
-      "created_at": "2023-06-19T04:25:35.790065-07:00"
+      "created_at": "2023-06-15T09:17:09.667374-07:00"
     },
     {
       "authority_level": null,
@@ -996,10 +996,10 @@
       "personal_owner_id": 4,
       "type": null,
       "id": 2,
-      "entity_id": "7H2f7JXMT0OCsi14ki-AG",
+      "entity_id": "edgz1Lm0wXX6jEqTO6_uU",
       "location": "/",
       "namespace": null,
-      "created_at": "2023-06-19T04:25:35.687741-07:00"
+      "created_at": "2023-06-15T09:17:09.430044-07:00"
     }
   ]
 }
