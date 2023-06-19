@@ -440,7 +440,6 @@ class DashboardHeader extends Component {
             <DashboardHeaderButton
               icon="info"
               isActive={isShowingDashboardInfoSidebar}
-              data-testid="dashboard-header-info-button"
               onClick={() =>
                 isShowingDashboardInfoSidebar
                   ? closeSidebar()
