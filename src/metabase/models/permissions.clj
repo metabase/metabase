@@ -193,8 +193,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.regex :as u.regex]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -641,6 +641,15 @@
   (every? (partial set-has-partial-permissions? permissions-set)
           paths-set))
 
+(s/defn set-has-any-native-query-permissions? :- s/Bool
+  "Do the permission paths in `permission-set` grant native query access to any database?"
+  [permissions-set]
+  (boolean
+    ;; Matches "/", "/db/:id/", or "/db/:id/native/"
+    (some
+     #(first (re-find #"^/(db/\d+/(native/)?)?$" %))
+     permissions-set)))
+
 (s/defn set-has-application-permission-of-type? :- s/Bool
   "Does `permissions-set` grant *full* access to a application permission of type `perm-type`?"
   [permissions-set perm-type]
@@ -679,30 +688,33 @@
 ;;; |                                               ENTITY + LIFECYCLE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(models/defmodel Permissions :permissions)
+(def Permissions
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Permissions)
 
-(defn- pre-insert [permissions]
+(methodical/defmethod t2/table-name :model/Permissions [_model] :permissions)
+
+(derive :model/Permissions :metabase/model)
+
+(t2/define-before-insert :model/Permissions
+  [permissions]
   (u/prog1 permissions
     (assert-valid permissions)
     (log/debug (u/colorize 'green (trs "Granting permissions for group {0}: {1}"
                                        (:group_id permissions)
                                        (:object permissions))))))
 
-(defn- pre-update [_]
+(t2/define-before-update :model/Permissions
+  [_]
   (throw (Exception. (tru "You cannot update a permissions entry! Delete it and create a new one."))))
 
-(defn- pre-delete [permissions]
+(t2/define-before-delete :model/Permissions
+  [permissions]
   (log/debug (u/colorize 'red (trs "Revoking permissions for group {0}: {1}"
                                    (:group_id permissions)
                                    (:object permissions))))
   (assert-not-admin-group permissions))
-
-(mi/define-methods
- Permissions
- {:pre-insert pre-insert
-  :pre-update pre-update
-  :pre-delete pre-delete})
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  GRAPH SCHEMA                                                  |

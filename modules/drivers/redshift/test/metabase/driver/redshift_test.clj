@@ -28,7 +28,8 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (metabase.plugins.jdbc_proxy ProxyDriver)))
 
@@ -233,7 +234,7 @@
             qual-tbl-nm  (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) tbl-nm)
             view-nm      "late_binding_view"
             qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
-        (mt/with-temp Database [database {:engine :redshift, :details db-details}]
+        (t2.with-temp/with-temp [Database database {:engine :redshift, :details db-details}]
           (try
             ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
             (execute!
@@ -267,7 +268,7 @@
       (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
             view-nm      "weird_late_binding_view"
             qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
-        (mt/with-temp Database [database {:engine :redshift, :details db-details}]
+        (t2.with-temp/with-temp [Database database {:engine :redshift, :details db-details}]
           (try
             (execute!
              (str "CREATE OR REPLACE VIEW %1$s AS ("
@@ -309,19 +310,23 @@
                   temp-username)
         (try
           (binding [redshift.test/*use-original-filtered-syncable-schemas-impl?* true]
-            (mt/with-temp Database [db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
-              (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db))]
-                (let [schemas (reduce conj
-                                      #{}
-                                      (sql-jdbc.sync/filtered-syncable-schemas :redshift
-                                                                               conn
-                                                                               (.getMetaData conn)
-                                                                               nil
-                                                                               nil))]
-                  (testing "filtered-syncable-schemas for the user should contain the newly created random schema"
-                    (is (contains? schemas random-schema)))
-                  (testing "should not contain the current session-schema name (since that was never granted)"
-                    (is (not (contains? schemas (redshift.test/unique-session-schema)))))))))
+            (t2.with-temp/with-temp [Database db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
+              (sql-jdbc.execute/do-with-connection-with-options
+               :redshift
+               db
+               nil
+               (fn [^java.sql.Connection conn]
+                 (let [schemas (reduce conj
+                                       #{}
+                                       (sql-jdbc.sync/filtered-syncable-schemas :redshift
+                                                                                conn
+                                                                                (.getMetaData conn)
+                                                                                nil
+                                                                                nil))]
+                   (testing "filtered-syncable-schemas for the user should contain the newly created random schema"
+                     (is (contains? schemas random-schema)))
+                   (testing "should not contain the current session-schema name (since that was never granted)"
+                     (is (not (contains? schemas (redshift.test/unique-session-schema))))))))))
           (finally
             (execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
                            "DROP USER IF EXISTS %s;%n"
@@ -340,19 +345,22 @@
                                                                    (eduction
                                                                     cat
                                                                     [(orig metadata) [fake-schema-name]])))]
-            (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-              (with-open [conn (jdbc/get-connection jdbc-spec)]
-                (letfn [(schemas []
-                          (reduce
-                           conj
-                           #{}
-                           (sql-jdbc.sync/filtered-syncable-schemas :redshift conn (.getMetaData conn) nil nil)))]
-                  (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
-                    (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
-                                                                                      reducible)]
-                      (is (contains? (schemas) fake-schema-name))))
-                  (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
-                    (is (not (contains? (schemas) fake-schema-name)))))))))))))
+            (sql-jdbc.execute/do-with-connection-with-options
+             :redshift
+             (mt/db)
+             nil
+             (fn [^java.sql.Connection conn]
+               (letfn [(schemas []
+                         (reduce
+                          conj
+                          #{}
+                          (sql-jdbc.sync/filtered-syncable-schemas :redshift conn (.getMetaData conn) nil nil)))]
+                 (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
+                   (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
+                                                                                     reducible)]
+                     (is (contains? (schemas) fake-schema-name))))
+                 (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
+                   (is (not (contains? (schemas) fake-schema-name)))))))))))))
 
 (mt/defdataset numeric-unix-timestamps
   [["timestamps"

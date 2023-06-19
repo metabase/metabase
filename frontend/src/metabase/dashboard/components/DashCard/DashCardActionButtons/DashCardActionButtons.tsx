@@ -1,7 +1,6 @@
-import React from "react";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 
@@ -71,6 +70,7 @@ function DashCardActionButtons({
       <DashCardActionButton
         onClick={onPreviewToggle}
         tooltip={isPreviewing ? t`Edit` : t`Preview`}
+        aria-label={isPreviewing ? t`Edit card` : t`Preview card`}
         analyticsEvent="Dashboard;Text;edit"
       >
         {isPreviewing ? (

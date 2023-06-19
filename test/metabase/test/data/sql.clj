@@ -4,11 +4,14 @@
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql]
    [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor :as qp]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
    [metabase.util.log :as log]))
+
+(comment metabase.driver.sql/keep-me)
 
 (driver/register! :sql/test-extensions, :abstract? true)
 

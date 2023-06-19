@@ -34,9 +34,12 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
+   (java.io StringReader)
    (java.sql ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
-   (java.util Date UUID)))
+   (java.util Date UUID)
+   (org.postgresql.copy CopyManager)
+   (org.postgresql.jdbc PgConnection)))
 
 (set! *warn-on-reflection* true)
 
@@ -237,7 +240,7 @@
   ;; I tried to write this with Malli but couldn't figure out how to make it work. See
   ;; https://metaboat.slack.com/archives/CKZEMT1MJ/p1676076592468909
   [_fn [amount unit]]
-  {:pre [(int? amount)
+  {:pre [(number? amount)
          (#{:millisecond :second :minute :hour :day :week :month :year} unit)]}
   [(format "INTERVAL '%s %s'" (num amount) (name unit))])
 
@@ -617,7 +620,7 @@
     (default-base-types column)))
 
 (defmethod sql-jdbc.sync/column->semantic-type :postgres
-  [_ database-type _]
+  [_driver database-type _column-name]
   ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON semantic-type
   (case database-type
     "json"  :type/SerializedJSON
@@ -770,3 +773,53 @@
   ;; This could be incorrect if Postgres has been compiled with a value for NAMEDATALEN other than the default (64), but
   ;; that seems unlikely and there's not an easy way to find out.
   63)
+
+(defn- format-copy
+  [_clause table]
+  [(str "COPY " (sql/format-entity table))])
+
+(sql/register-clause! ::copy format-copy :insert-into)
+
+(defn- format-from-stdin
+  [_clause delimiter]
+  [(str "FROM STDIN NULL " delimiter)])
+
+(sql/register-clause! ::from-stdin format-from-stdin :from)
+
+(defn- sanitize-value
+  ;; Per https://www.postgresql.org/docs/current/sql-copy.html#id-1.9.3.55.9.2
+  ;; "Backslash characters (\) can be used in the COPY data to quote data characters that might otherwise be taken as
+  ;; row or column delimiters. In particular, the following characters must be preceded by a backslash if they appear
+  ;; as part of a column value: backslash itself, newline, carriage return, and the current delimiter character."
+  [v]
+  (if (string? v)
+    (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
+                                   "\n" "\\n"
+                                   "\r" "\\r"
+                                   "\t" "\\t"})
+    v))
+
+(defn- row->tsv
+  [row]
+  (->> row
+       (map sanitize-value)
+       (str/join "\t")))
+
+(defmethod driver/insert-into :postgres
+  [driver db-id table-name column-names values]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db-id
+   {:write? true}
+   (fn [^java.sql.Connection conn]
+     (let [copy-manager (CopyManager. (.unwrap conn PgConnection))
+           [sql & _]    (sql/format {::copy       (keyword table-name)
+                                     :columns     (map keyword column-names)
+                                     ::from-stdin "''"}
+                                    :quoted true
+                                    :dialect (sql.qp/quote-style driver))
+           tsvs         (->> values
+                             (map row->tsv)
+                             (str/join "\n")
+                             (StringReader.))]
+       (.copyIn copy-manager ^String sql tsvs)))))

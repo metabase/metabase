@@ -15,7 +15,8 @@
    [metabase.test.mock.util :as mock.util]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        End-to-end 'MovieDB' Sync Tests                                         |
@@ -201,7 +202,7 @@
     :position          0}))
 
 (deftest sync-database-test
-  (mt/with-temp Database [db {:engine ::sync-test}]
+  (t2.with-temp/with-temp [Database db {:engine ::sync-test}]
     (sync/sync-database! db)
     (let [[movie studio] (mapv table-details (t2/select Table :db_id (u/the-id db) {:order-by [:name]}))]
       (testing "`movie` Table"
@@ -222,7 +223,7 @@
                  :fields              [(field:studio-name) (field:studio-studio)]})
                studio)))))
   (testing "Returns results from sync-database step"
-    (mt/with-temp Database [db {:engine ::sync-test}]
+    (t2.with-temp/with-temp [Database db {:engine ::sync-test}]
       (let [results (sync/sync-database! db)]
         (is (= ["metadata" "analyze" "field-values"]
                (map :name results)))))))
@@ -233,15 +234,16 @@
     (sync/sync-table! table)
     (is (= (merge
             (table-defaults)
-            {:schema       "default"
-             :name         "movie"
-             :display_name "Movie"
-             :fields       [(field:movie-id)
-                            (assoc (field:movie-studio)
-                                   :fk_target_field_id false
-                                   :semantic_type nil
-                                   :has_field_values :auto-list)
-                            (field:movie-title)]})
+            {:schema              "default"
+             :name                "movie"
+             :display_name        "Movie"
+             :initial_sync_status "complete"
+             :fields              [(field:movie-id)
+                                   (assoc (field:movie-studio)
+                                          :fk_target_field_id false
+                                          :semantic_type nil
+                                          :has_field_values :auto-list)
+                                   (field:movie-title)]})
            (table-details (t2/select-one Table :id (:id table)))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -1,5 +1,3 @@
-import React from "react";
-
 interface FormFieldDescriptionProps {
   className: string;
   description: string;

@@ -1,4 +1,4 @@
-import React from "react";
+import { useEffect } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -19,9 +19,11 @@ interface Props {
 }
 
 function ActionSettingsButton({ dashcard, setEditingDashcardId }: Props) {
-  if (dashcard.justAdded) {
-    setEditingDashcardId(dashcard.id);
-  }
+  useEffect(() => {
+    if (dashcard.justAdded) {
+      setEditingDashcardId(dashcard.id);
+    }
+  }, [dashcard.id, dashcard.justAdded, setEditingDashcardId]);
 
   return (
     <DashCardActionButton

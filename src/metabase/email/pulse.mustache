@@ -57,6 +57,14 @@
         line-height: 18px;
       }
 
+      hr {
+        border-width: 0;
+        background: #F0F0F0;
+        height: 1px;
+        margin-top: 20px;
+        margin-bottom: 20px;
+      }
+
       {{!-- Emails on smaller devices should have less of our UI chrome to make the content easier to read --}}
       @media screen and (max-width: 450px) {
         .background {
@@ -129,7 +137,9 @@
                 </tr>
               {{/filters}}
             </table>
-            <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
+            {{^dashboardHasTabs}}
+              <hr>
+            {{/dashboardHasTabs}}
             {{{pulse}}}
             {{#alertCondition}}
               <p style="color: {{colorTextMedium}}; font-size: 12px; font-weight: 400">
@@ -141,10 +151,10 @@
               We’ll stop sending you alerts about this question now.
               </p>
             {{/firstRunOnly?}}
-            <hr style="border-width: 0; background: #F0F0F0; height: 1px; margin-top: 20px; margin-bottom: 20px;">
+            <hr>
             <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto">
               Sent from <a href="{{siteUrl}}" style="color: {{applicationColor}}">{{siteUrl}}</a>.
-              <a href="{{notificationManagementUrl}}" style="color: {{applicationColor}}">Manage your subscriptions</a>
+              <a href="{{notificationManagementUrl}}" style="color: {{applicationColor}}">{{notificationText}}</a>
             </div>
           </div>
         </td>

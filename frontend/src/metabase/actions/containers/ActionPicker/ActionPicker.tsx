@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -136,7 +136,7 @@ function ModelActionPicker({
         )}
       </ModelCollapseSection>
       {isActionCreatorOpen && (
-        <Modal wide onClose={closeModal}>
+        <Modal wide onClose={closeModal} closeOnClickOutside>
           <ActionCreator
             modelId={model.id}
             databaseId={model.database_id}

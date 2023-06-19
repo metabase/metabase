@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
@@ -22,6 +22,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 import Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
@@ -37,6 +38,9 @@ interface OwnProps {
   actionId?: WritebackActionId;
   modelId?: CardId;
   databaseId?: DatabaseId;
+
+  action?: WritebackAction;
+
   onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
 }
@@ -87,11 +91,14 @@ function ActionCreator({
     formSettings,
     isNew,
     canSave,
+    isDirty,
     ui: UIProps,
     handleActionChange,
     handleFormSettingsChange,
     renderEditorBody,
   } = useActionContext();
+
+  useBeforeUnload(isDirty);
 
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
@@ -188,11 +195,15 @@ function ActionCreatorWithContext({
   initialAction,
   metadata,
   databaseId,
+  action,
   ...props
 }: Props) {
+  // This is needed in case we already have an action and pass it from the outside
+  const contextAction = action || initialAction;
+
   return (
     <ActionContext
-      initialAction={initialAction}
+      initialAction={contextAction}
       databaseId={databaseId}
       metadata={metadata}
     >

@@ -1,8 +1,6 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import DatabaseForm from "./DatabaseForm";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Databases/DatabaseForm",
   component: DatabaseForm,

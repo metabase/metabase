@@ -1,10 +1,15 @@
 import {
   dashboardHeader,
   dashboardParametersContainer,
+  describeWithSnowplow,
   editDashboard,
+  enableTracking,
+  expectGoodSnowplowEvents,
+  expectNoBadSnowplowEvents,
   filterWidget,
   getDashboardCard,
   popover,
+  resetSnowplow,
   restore,
   rightSidebar,
   saveDashboard,
@@ -60,7 +65,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.wait("@cardQuery");
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.findByText("Rows 1-5 of 53").should("be.visible");
     });
 
     // parameter values should be preserved when disabling auto applying filters
@@ -76,7 +81,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.findByText("Gadget").should("be.visible");
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.findByText("Rows 1-4 of 53").should("be.visible");
     });
 
     // draft parameter values should be applied manually
@@ -88,14 +93,14 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.button("Update filter").click();
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.findByText("Rows 1-4 of 53").should("be.visible");
     });
     dashboardParametersContainer().within(() => {
       cy.button("Apply").click();
       cy.wait("@cardQuery");
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 107").should("be.visible");
+      cy.findByText("Rows 1-4 of 107").should("be.visible");
     });
 
     // draft parameter values should be discarded when enabling auto-applying filters
@@ -226,7 +231,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.findByText("Gadget").should("be.visible");
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.findByText("Rows 1-4 of 53").should("be.visible");
     });
   });
 
@@ -242,7 +247,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.findByText("Gadget").should("be.visible");
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.findByText("Rows 1-5 of 53").should("be.visible");
     });
   });
 
@@ -278,6 +283,63 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     cy.tick(TOAST_TIMEOUT);
     cy.wait("@cardQuery");
     undoToast().should("not.exist");
+  });
+});
+
+describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
+  const NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS = 2;
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+    enableTracking();
+    cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should send snowplow events when disabling auto-apply filters", () => {
+    createDashboard();
+    openDashboard();
+    cy.wait("@cardQuery");
+
+    dashboardHeader().within(() => {
+      cy.icon("info").click();
+    });
+    rightSidebar().within(() => {
+      expectGoodSnowplowEvents(
+        NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
+      );
+      cy.findByLabelText("Auto-apply filters").click();
+      cy.wait("@updateDashboard");
+      cy.findByLabelText("Auto-apply filters").should("not.be.checked");
+      expectGoodSnowplowEvents(
+        NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS + 1,
+      );
+    });
+  });
+
+  it("should not send snowplow events when enabling auto-apply filters", () => {
+    createDashboard({ auto_apply_filters: false });
+    openDashboard();
+    cy.wait("@cardQuery");
+
+    dashboardHeader().within(() => {
+      cy.icon("info").click();
+    });
+    rightSidebar().within(() => {
+      expectGoodSnowplowEvents(
+        NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
+      );
+      cy.findByLabelText("Auto-apply filters").click();
+      cy.wait("@updateDashboard");
+      cy.findByLabelText("Auto-apply filters").should("be.checked");
+      expectGoodSnowplowEvents(
+        NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
+      );
+    });
   });
 });
 

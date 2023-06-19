@@ -1,10 +1,5 @@
-import React, {
-  useEffect,
-  useMemo,
-  useCallback,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useCallback, useRef, useState } from "react";
+import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
@@ -27,6 +22,10 @@ import {
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import type { PivotTableClicked, HeaderWidthType } from "./types";
 
 import { RowToggleIcon } from "./RowToggleIcon";
@@ -490,6 +489,8 @@ export default Object.assign(connect(mapStateToProps)(PivotTable), {
   uiName: t`Pivot Table`,
   identifier: "pivot",
   iconName: "pivot_table",
+  minSize: getMinSize("pivot"),
+  defaultSize: getDefaultSize("pivot"),
   canSavePng: false,
   databaseSupportsPivotTables,
   isSensible,
@@ -497,7 +498,6 @@ export default Object.assign(connect(mapStateToProps)(PivotTable), {
   settings,
   columnSettings,
   isLiveResizable: () => false,
-  seriesAreCompatible: () => false,
 });
 
 export { PivotTable };

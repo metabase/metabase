@@ -35,9 +35,9 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (java.sql DatabaseMetaData)))
+   [next.jdbc :as next.jdbc]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -54,13 +54,14 @@
 (deftest ^:parallel interval-test
   (is (= ["INTERVAL '2 day'"]
          (sql/format-expr [::postgres/interval 2 :day])))
+  (is (= ["INTERVAL '-2.5 year'"]
+         (sql/format-expr [::postgres/interval -2.5 :year])))
   (are [amount unit msg] (thrown-with-msg?
                           AssertionError
                           msg
                           (sql/format-expr [::postgres/interval amount unit]))
-    2.0  :day  #"\QAssert failed: (int? amount)\E"
-    "2"  :day  #"\QAssert failed: (int? amount)\E"
-    :day 2     #"\QAssert failed: (int? amount)\E"
+    "2"  :day  #"\QAssert failed: (number? amount)\E"
+    :day 2     #"\QAssert failed: (number? amount)\E"
     2    "day" #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"
     2    2     #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"
     2    :can  #"\QAssert failed: (#{:day :hour :week :second :month :year :millisecond :minute} unit)\E"))
@@ -198,7 +199,7 @@
         ;; create the postgres DB
         (drop-if-exists-and-create-db! "hyphen-names-test")
         ;; create the DB object
-        (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
           (let [sync! #(sync/sync-database! database)]
             ;; populate the DB and create a view
             (exec! spec ["CREATE SCHEMA \"x-mas\";"
@@ -207,9 +208,9 @@
             (sync!)
             (is (= [["Bird Hat"]]
                    (mt/rows (qp/process-query
-                              {:database (u/the-id database)
-                               :type     :query
-                               :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))))
+                             {:database (u/the-id database)
+                              :type     :query
+                              :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -244,7 +245,7 @@
                        ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
-        (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
           (is (= {:tables #{(default-table-result "test_mview")}}
                  (driver/describe-database :postgres database))))))))
 
@@ -276,7 +277,7 @@
                                 SERVER foreign_server
                                 OPTIONS (user '" (:user details) "');
                               GRANT ALL ON public.local_table to PUBLIC;")])
-        (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
           (is (= {:tables (set (map default-table-result ["foreign_table" "local_table"]))}
                  (driver/describe-database :postgres database))))))))
 
@@ -289,7 +290,7 @@
         ;; create the postgres DB
         (drop-if-exists-and-create-db! "dropped_views_test")
         ;; create the DB object
-        (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
           (let [sync! #(sync/sync-database! database)]
             ;; populate the DB and create a view
             (exec! spec ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
@@ -321,11 +322,15 @@
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         ;; create the postgres DB
         (drop-if-exists-and-create-db! db-name)
-        (let [major-v ((jdbc/with-db-metadata [metadata spec]
-                         #(.getDatabaseMajorVersion ^DatabaseMetaData metadata)))]
+        (let [major-v (sql-jdbc.execute/do-with-connection-with-options
+                       :postgres
+                       spec
+                       nil
+                       (fn [^java.sql.Connection conn]
+                         (.. conn getMetaData getDatabaseMajorVersion)))]
           (if (>= major-v 10)
             ;; create the DB object
-            (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]
+            (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname db-name)}]
               (let [sync! #(sync/sync-database! database)]
                 ;; create a main partitioned table and two partitions for it
                 (exec! spec ["CREATE TABLE part_vals (val bigint NOT NULL) PARTITION BY RANGE (\"val\");"
@@ -402,15 +407,14 @@
             json-part (json/generate-string {:bob :dobbs})
             insert    (str "CREATE TABLE json_alias_test (json_part JSON NOT NULL);"
                            (format "INSERT INTO json_alias_test (json_part) VALUES ('%s');" json-part))]
-        (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
-          (jdbc/execute! spec [insert]))
-        (mt/with-temp* [Database [database    {:engine :postgres, :details details}]
-                        Table    [table       {:db_id (u/the-id database) :name "json_alias_test"}]
-                        Field    [field       {:table_id (u/the-id table)
-                                               :nfc_path [:bob
-                                                          "injection' OR 1=1--' AND released = 1"
-                                                          (keyword "injection' OR 1=1--' AND released = 1")],
-                                               :name     "json_alias_test"}]]
+        (jdbc/execute! spec [insert])
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}
+                                 Table    table    {:db_id (u/the-id database) :name "json_alias_test"}
+                                 Field    field    {:table_id (u/the-id table)
+                                                    :nfc_path [:bob
+                                                               "injection' OR 1=1--' AND released = 1"
+                                                               (keyword "injection' OR 1=1--' AND released = 1")],
+                                                    :name     "json_alias_test"}]
           (let [field-bucketed [:field (u/the-id field)
                                 {:temporal-unit :month,
                                  :metabase.query-processor.util.add-alias-info/source-table (u/the-id table),
@@ -487,9 +491,8 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"
                                                                  :json-unfolding true})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
-          (jdbc/execute! spec [describe-json-table-sql]))
-        (mt/with-temp* [Database [database {:engine :postgres, :details details}]]
+        (jdbc/execute! spec [describe-json-table-sql])
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
           (mt/with-db database
             (is (= [:type/JSON :type/SerializedJSON]
                    (-> (sql-jdbc.sync/describe-table :postgres database {:name "describe_json_table"})
@@ -551,11 +554,10 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "describe-json-with-schema-test"
                                                                  :json-unfolding true})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
-          (jdbc/execute! spec [(str "CREATE SCHEMA bobdobbs;"
-                                    "CREATE TABLE bobdobbs.describe_json_table (trivial_json JSONB NOT NULL);"
-                                    "INSERT INTO bobdobbs.describe_json_table (trivial_json) VALUES ('{\"a\": 1}');")]))
-        (mt/with-temp Database [database {:engine :postgres, :details details}]
+        (jdbc/execute! spec [(str "CREATE SCHEMA bobdobbs;"
+                                  "CREATE TABLE bobdobbs.describe_json_table (trivial_json JSONB NOT NULL);"
+                                  "INSERT INTO bobdobbs.describe_json_table (trivial_json) VALUES ('{\"a\": 1}');")])
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
@@ -577,11 +579,10 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "describe-json-funky-names-test"
                                                                  :json-unfolding true})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
-          (jdbc/execute! spec [(str "CREATE SCHEMA \"AAAH_#\";"
-                                    "CREATE TABLE \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json JSONB NOT NULL);"
-                                    "INSERT INTO \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json) VALUES ('{\"a\": 1}');")]))
-        (mt/with-temp Database [database {:engine :postgres, :details details}]
+        (jdbc/execute! spec [(str "CREATE SCHEMA \"AAAH_#\";"
+                                  "CREATE TABLE \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json JSONB NOT NULL);"
+                                  "INSERT INTO \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json) VALUES ('{\"a\": 1}');")])
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
@@ -607,9 +608,8 @@
             big-json (json/generate-string big-map)
             sql      (str "CREATE TABLE big_json_table (big_json JSON NOT NULL);"
                           (format "INSERT INTO big_json_table (big_json) VALUES ('%s');" big-json))]
-        (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
-          (jdbc/execute! spec [sql]))
-        (mt/with-temp Database [database {:engine :postgres, :details details}]
+        (jdbc/execute! spec [sql])
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= sql-jdbc.describe-table/max-nested-field-columns
@@ -714,13 +714,17 @@
 (defn- do-with-money-test-db [thunk]
   (drop-if-exists-and-create-db! "money_columns_test")
   (let [details (mt/dbdef->connection-details :postgres :db {:database-name "money_columns_test"})]
-    (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
-      (doseq [sql+args [["CREATE table bird_prices (bird TEXT, price money);"]
-                        ["INSERT INTO bird_prices (bird, price) VALUES (?, ?::numeric::money), (?, ?::numeric::money);"
-                         "Lucky Pigeon"   6.0
-                         "Katie Parakeet" 23.99]]]
-        (jdbc/execute! conn sql+args)))
-    (mt/with-temp Database [db {:engine :postgres, :details (assoc details :dbname "money_columns_test")}]
+    (sql-jdbc.execute/do-with-connection-with-options
+     :postgres
+     (sql-jdbc.conn/connection-details->spec :postgres details)
+     {:write? true}
+     (fn [^java.sql.Connection conn]
+       (doseq [sql+args [["CREATE table bird_prices (bird TEXT, price money);"]
+                         ["INSERT INTO bird_prices (bird, price) VALUES (?, ?::numeric::money), (?, ?::numeric::money);"
+                          "Lucky Pigeon"   6.0
+                          "Katie Parakeet" 23.99]]]
+         (next.jdbc/execute! conn sql+args))))
+    (t2.with-temp/with-temp [Database db {:engine :postgres, :details (assoc details :dbname "money_columns_test")}]
       (sync/sync-database! db)
       (mt/with-db db
         (thunk)))))
@@ -729,12 +733,16 @@
   (mt/test-driver :postgres
     (testing "We should support the Postgres MONEY type"
       (testing "It should be possible to return money column results (#3754)"
-        (with-open [conn (sql-jdbc.execute/connection-with-timezone :postgres (mt/db) nil)
-                    stmt (sql-jdbc.execute/prepared-statement :postgres conn "SELECT 1000::money AS \"money\";" nil)
-                    rs   (sql-jdbc.execute/execute-prepared-statement! :postgres stmt)]
-          (let [row-thunk (sql-jdbc.execute/row-thunk :postgres rs (.getMetaData rs))]
-            (is (= [1000.00M]
-                   (row-thunk))))))
+        (sql-jdbc.execute/do-with-connection-with-options
+         :postgres
+         (mt/db)
+         nil
+         (fn [conn]
+           (with-open [stmt (sql-jdbc.execute/prepared-statement :postgres conn "SELECT 1000::money AS \"money\";" nil)
+                       rs   (sql-jdbc.execute/execute-prepared-statement! :postgres stmt)]
+             (let [row-thunk (sql-jdbc.execute/row-thunk :postgres rs (.getMetaData rs))]
+               (is (= [1000.00M]
+                      (row-thunk))))))))
 
       (do-with-money-test-db
        (fn []
@@ -790,12 +798,12 @@
   properly."
   []
   (drop-if-exists-and-create-db! "enums_test")
-  (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres (enums-test-db-details))]
-    (jdbc/execute! conn [enums-db-sql])))
+  (let [spec (sql-jdbc.conn/connection-details->spec :postgres (enums-test-db-details))]
+    (jdbc/execute! spec [enums-db-sql])))
 
 (defn- do-with-enums-db {:style/indent 0} [f]
   (create-enums-db!)
-  (mt/with-temp Database [database {:engine :postgres, :details (enums-test-db-details)}]
+  (t2.with-temp/with-temp [Database database {:engine :postgres, :details (enums-test-db-details)}]
     (sync-metadata/sync-db-metadata! database)
     (f database)
     (#'sql-jdbc.conn/set-pool! (u/id database) nil nil)))
@@ -932,7 +940,7 @@
                              ");"
                              "INSERT INTO toucan_sleep_schedule (start_time, end_time, reason) "
                              "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
-        (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
           (sync/sync-database! database)
           (is (= {"start_time" {:global {:distinct-count 1
                                          :nil%           0.0}
@@ -950,7 +958,7 @@
                                                      :percent-state  0.0
                                                      :average-length 12.0}}}}
                  (t2/select-fn->fn :name :fingerprint Field
-                   :table_id (t2/select-one-pk Table :db_id (u/the-id database))))))))))
+                                   :table_id (t2/select-one-pk Table :db_id (u/the-id database))))))))))
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 
@@ -1012,12 +1020,15 @@
                            "DROP USER IF EXISTS no_select_test_user;"
                            "CREATE USER no_select_test_user WITH PASSWORD '123456';"
                            "GRANT SELECT ON TABLE \"no-select-test\".PUBLIC.table_with_perms TO no_select_test_user;"]]
-          (jdbc/execute! spec [statement])))
+          (is (= [0]
+                 (jdbc/execute! spec [statement])))))
       (let [test-user-details (assoc (mt/dbdef->connection-details :postgres :db {:database-name "no-select-test"})
                                      :user "no_select_test_user"
                                      :password "123456")]
-        (mt/with-temp Database [database {:engine :postgres, :details test-user-details}]
-          (sync/sync-database! database)
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details test-user-details}]
+          ;; make sure that sync still succeeds even tho some tables are not SELECTable.
+          (binding [sync-util/*log-exceptions-and-continue?* false]
+            (is (some? (sync/sync-database! database))))
           (is (= #{"table_with_perms"}
                  (t2/select-fn-set :name Table :db_id (:id database)))))))))
 
@@ -1036,13 +1047,13 @@
                                  "json_val::jsonb ?| array['c', 'd'],"
                                  "json_val::jsonb ?& array['a', 'b']"
                                  "FROM \"json_table\";")]
-        (mt/with-temp Database [database {:engine :postgres, :details json-db-details}]
+        (t2.with-temp/with-temp [Database database {:engine :postgres, :details json-db-details}]
           (mt/with-db database (sync/sync-database! database)
-                               (is (= [[true false true]]
-                                      (-> {:query query}
-                                          (mt/native-query)
-                                          (qp/process-query)
-                                          (mt/rows))))))))))
+            (is (= [[true false true]]
+                   (-> {:query query}
+                       (mt/native-query)
+                       (qp/process-query)
+                       (mt/rows))))))))))
 
 (defn- pretty-sql [s]
   (-> s
@@ -1171,7 +1182,7 @@
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
         (is (= #{"public"}
-               (driver/syncable-schemas driver/*driver* (mt/id))))))
+               (driver/syncable-schemas driver/*driver* (mt/db))))))
     (testing "metabase_cache schemas should be excluded"
       (mt/dataset test-data
         (mt/with-persistence-enabled [persist-models!]
@@ -1184,4 +1195,4 @@
               (is (some (partial re-matches #"metabase_cache(.*)")
                         (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
               (is (nil? (some (partial re-matches #"metabase_cache(.*)")
-                              (driver/syncable-schemas driver/*driver* (mt/id))))))))))))
+                              (driver/syncable-schemas driver/*driver* (mt/db))))))))))))

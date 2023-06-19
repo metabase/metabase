@@ -123,43 +123,52 @@
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {clojure.core/print            {:message "Use clojure.tools.logging instead of clojure.core/print"}
-   clojure.core/println          {:message "Use clojure.tools.logging instead of clojure.core/println"}
-   clojure.core/printf           {:message "Use clojure.tools.logging instead of clojure.core/printf"}
-   clojure.core/prn              {:message "Use clojure.tools.logging instead of clojure.core/prn"}
-   clojure.core/pr               {:message "Use clojure.tools.logging instead of clojure.core/pr"}
-   clojure.pprint/pprint         {:message "Use clojure.tools.logging instead of clojure.pprint/pprint"}
-   clojure.string/lower-case     {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
-   clojure.string/upper-case     {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
-   honeysql.core/call            {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
-   honeysql.core/raw             {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
-   java-time/with-clock          {:message "Use mt/with-clock"}
-   toucan.db/select              {:message "Use t2/select instead of toucan.db/select"}
-   toucan.db/select-one          {:message "Use t2/select-one instead of toucan.db/select-one"}
-   toucan.db/select-one-id       {:message "Use t2/select-one-pk instead of toucan.db/select-one-id"}
-   toucan.db/select-one-field    {:message "Use t2/select-one-fn instead of toucan.db/select-one-field"}
-   toucan.db/select-ids          {:message "Use t2/select-pks-set instead of toucan.db/select-ids"}
-   toucan.db/select-field        {:message "Use t2/select-fn instead of toucan.db/select-field"}
-   toucan.db/select-field->field {:message "Use t2/select-fn->fn instead of toucan.db/select-field->field"}
-   toucan.db/select-field->id    {:message "Use t2/select-fn->pk instead of toucan.db/select-field->id"}
-   toucan.db/select-id->field    {:message "Use t2/select-pk->field instead of toucan.db/select-id->field"}
-   toucan.db/simple-insert!      {:message "Use t2/insert-returning-pks! with table name instead of toucan.db/simple-insert!"}
-   toucan.db/simple-insert-many! {:message "Use t2/insert-returning-pks! with table name instead of toucan.db/simple-insert-many!"}
-   toucan.db/simple-delete!      {:message "Use t2/delete! with table name instead of toucan.db/simple-delete!"}
-   toucan.db/delete!             {:message "Use t2/delete! instead of toucan.db/delete!"}
-   toucan.db/insert!             {:message "Use t2/insert-returning-instances! instead of toucan.db/insert!"}
-   toucan.db/update!             {:message "Use t2/update! instead of toucan.db/update!"}
-   toucan.db/update-where!       {:message "Use t2/update! instead of toucan.db/update-where!"}
-   toucan.db/query               {:message "Use mdb.query/query instead of toucan.db/query"}
-   toucan.db/count               {:message "Use t2/count instead of toucan.db/count"}
-   toucan.db/exists?             {:message "Use t2/exists? instead of toucan.db/exists?"}
-   toucan.db/transaction         {:message "Use t2/with-transaction instead of toucan.db/transaction"}
-   toucan.db/with-call-counting  {:message "Use t2/with-call-count instead of toucan.db/with-call-counting"}
-   toucan.db/execute!            {:message "Use t2/query-one instead of toucan.db/execute!"}
-   toucan.db/reducible-query     {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}
-   toucan.db/resolve-model       {:message "Use metabase.db.util/resolve-model instead of toucan.db/resolve-model"}
-   toucan.models/primary-key     {:message "Use metabase.db.util/primary-key instead of toucan.models/primary-key"}
-   toucan.models/model?          {:message "Use mdb.u/toucan-model? instead of toucan.models/model?"}}
+  {clojure.core/print                   {:message "Use clojure.tools.logging instead of clojure.core/print"}
+   clojure.core/println                 {:message "Use clojure.tools.logging instead of clojure.core/println"}
+   clojure.core/printf                  {:message "Use clojure.tools.logging instead of clojure.core/printf"}
+   clojure.core/prn                     {:message "Use clojure.tools.logging instead of clojure.core/prn"}
+   clojure.core/pr                      {:message "Use clojure.tools.logging instead of clojure.core/pr"}
+   clojure.java.jdbc/get-connection     {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/get-connection"}
+   clojure.java.jdbc/with-db-connection {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/with-db-connection"}
+   clojure.java.jdbc/with-db-metadata   {:message "Use sql-jdbc.execute/do-with-connection-with-options + .getMetaData instead of jdbc/with-db-metadata"}
+   clojure.pprint/pprint                {:message "Use clojure.tools.logging instead of clojure.pprint/pprint"}
+   clojure.string/lower-case            {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
+   clojure.string/upper-case            {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
+   honeysql.core/call                   {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
+   honeysql.core/raw                    {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
+   java-time/with-clock                 {:message "Use mt/with-clock"}
+   metabase.test/with-temp              {:message "Use t2.with-temp/with-temp instead of metabase.test/with-temp"}
+   ;; metabase.test/with-temp*             {:message "Use t2.with-temp/with-temp instead of metabase.test/with-temp*"}
+   toucan.db/select                     {:message "Use t2/select instead of toucan.db/select"}
+   toucan.db/select-one                 {:message "Use t2/select-one instead of toucan.db/select-one"}
+   toucan.db/select-one-id              {:message "Use t2/select-one-pk instead of toucan.db/select-one-id"}
+   toucan.db/select-one-field           {:message "Use t2/select-one-fn instead of toucan.db/select-one-field"}
+   toucan.db/select-ids                 {:message "Use t2/select-pks-set instead of toucan.db/select-ids"}
+   toucan.db/select-field               {:message "Use t2/select-fn instead of toucan.db/select-field"}
+   toucan.db/select-field->field        {:message "Use t2/select-fn->fn instead of toucan.db/select-field->field"}
+   toucan.db/select-field->id           {:message "Use t2/select-fn->pk instead of toucan.db/select-field->id"}
+   toucan.db/select-id->field           {:message "Use t2/select-pk->field instead of toucan.db/select-id->field"}
+   toucan.db/simple-insert!             {:message "Use t2/insert-returning-pks! with table name instead of toucan.db/simple-insert!"}
+   toucan.db/simple-insert-many!        {:message "Use t2/insert-returning-pks! with table name instead of toucan.db/simple-insert-many!"}
+   toucan.db/simple-delete!             {:message "Use t2/delete! with table name instead of toucan.db/simple-delete!"}
+   toucan.db/delete!                    {:message "Use t2/delete! instead of toucan.db/delete!"}
+   toucan.db/insert!                    {:message "Use t2/insert-returning-instances! instead of toucan.db/insert!"}
+   toucan.db/update!                    {:message "Use t2/update! instead of toucan.db/update!"}
+   toucan.db/update-where!              {:message "Use t2/update! instead of toucan.db/update-where!"}
+   toucan.db/query                      {:message "Use mdb.query/query instead of toucan.db/query"}
+   toucan.db/count                      {:message "Use t2/count instead of toucan.db/count"}
+   toucan.db/exists?                    {:message "Use t2/exists? instead of toucan.db/exists?"}
+   toucan.db/transaction                {:message "Use t2/with-transaction instead of toucan.db/transaction"}
+   toucan.db/with-call-counting         {:message "Use t2/with-call-count instead of toucan.db/with-call-counting"}
+   toucan.db/execute!                   {:message "Use t2/query-one instead of toucan.db/execute!"}
+   toucan.db/reducible-query            {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}
+   toucan.db/resolve-model              {:message "Use metabase.db.util/resolve-model instead of toucan.db/resolve-model"}
+   toucan.models/primary-key            {:message "Use metabase.db.util/primary-key instead of toucan.models/primary-key"}
+   toucan.models/model?                 {:message "Use mdb.u/toucan-model? instead of toucan.models/model?"}
+   toucan.hydrate/hydrate               {:message "Use t2/hydrate instead of toucan.hydrate/hydrate"}
+   toucan.util.test/with-temp-defaults  {:message "Use t2.with-temp/with-temp-defaults instead of toucan.util.test/with-temp-defaults"}
+   toucan.util.test/with-temp           {:message "Use t2.with-temp/with-temp instead of toucan.util.test/with-temp"}
+   toucan.util.test/with-temp*          {:message "Use t2.with-temp/with-temp instead of toucan.util.test/with-temp*"}}
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
@@ -590,11 +599,9 @@
    metabase.test/with-log-level                                                                                              hooks.common/with-ignored-first-arg
    metabase.test/with-log-messages-for-level                                                                                 hooks.common/with-ignored-first-arg
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
-   metabase.test/with-temp                                                                                                   hooks.toucan.util.test/with-temp
    metabase.test/with-temp*                                                                                                  hooks.toucan.util.test/with-temp*
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
-   toucan.util.test/with-temp                                                                                                hooks.toucan.util.test/with-temp
    toucan.util.test/with-temp*                                                                                               hooks.toucan.util.test/with-temp*}
 
   :macroexpand

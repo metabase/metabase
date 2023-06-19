@@ -8,10 +8,13 @@ import {
   getCollectionIdFromSlug,
   saveQuestion,
   getPersonalCollectionName,
+  visitCollection,
+  modal,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -128,7 +131,7 @@ describe("scenarios > question > new", () => {
         parent_id: null,
       }).then(({ body: { id: COLLECTION_ID } }) => {
         // Move question #1 ("Orders") to newly created collection
-        cy.request("PUT", "/api/card/1", {
+        cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
           collection_id: COLLECTION_ID,
         });
         // Sanity check: make sure Orders is indeed inside new collection
@@ -148,7 +151,7 @@ describe("scenarios > question > new", () => {
     it("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
       getCollectionIdFromSlug("second_collection", id => {
         // Move first question in a DB snapshot ("Orders") to a "Second collection"
-        cy.request("PUT", "/api/card/1", {
+        cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
           collection_id: id,
         });
       });
@@ -254,5 +257,29 @@ describe("scenarios > question > new", () => {
     cy.findByText("User ID is 1");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65");
+  });
+
+  it("should suggest the currently viewed collection when saving question", () => {
+    getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
+      visitCollection(THIRD_COLLECTION_ID);
+    });
+
+    cy.findByLabelText("Navigation bar").within(() => {
+      cy.findByText("New").click();
+    });
+
+    popover().findByText("Question").click();
+
+    popover().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Orders").click();
+    });
+
+    cy.findByTestId("qb-header").within(() => {
+      cy.findByText("Save").click();
+    });
+    modal().within(() => {
+      cy.findByTestId("select-button").should("have.text", "Third collection");
+    });
   });
 });

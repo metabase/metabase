@@ -1,4 +1,3 @@
-import React from "react";
 import fetchMock from "fetch-mock";
 import {
   renderWithProviders,
@@ -65,7 +64,9 @@ function mockCollectionItemsEndpoint() {
 }
 
 async function setup() {
-  setupCollectionsEndpoints([COLLECTIONS.PERSONAL, COLLECTIONS.REGULAR]);
+  setupCollectionsEndpoints({
+    collections: [COLLECTIONS.PERSONAL, COLLECTIONS.REGULAR],
+  });
 
   mockCollectionItemsEndpoint();
 

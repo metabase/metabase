@@ -4,6 +4,7 @@ import { DatabaseId } from "./database";
 import { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
 import { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import { DownloadPermission } from "./permissions";
+import { ParameterOptions } from "./parameters";
 import { TableId } from "./table";
 
 export type RowValue = string | number | null | boolean;
@@ -33,6 +34,13 @@ export interface DatasetColumn {
   };
   settings?: Record<string, any>;
   fingerprint: FieldFingerprint | null;
+
+  // model with customized metadata
+  fk_target_field_id?: FieldId | null;
+}
+
+export interface ResultsMetadata {
+  columns: DatasetColumn[];
 }
 
 export interface DatasetData {
@@ -42,6 +50,7 @@ export interface DatasetData {
   requested_timezone?: string;
   results_timezone?: string;
   download_perms?: DownloadPermission;
+  results_metadata: ResultsMetadata;
 }
 
 export type JsonQuery = DatasetQuery & {
@@ -54,7 +63,13 @@ export interface Dataset {
   row_count: number;
   running_time: number;
   json_query?: JsonQuery;
-  error?: string;
+  error_type?: string;
+  error?: {
+    status: number; // HTTP status code
+    data?: string;
+  };
+  context?: string;
+  status?: string;
 }
 
 export interface NativeQueryForm {
@@ -63,13 +78,7 @@ export interface NativeQueryForm {
 
 export type SingleSeries = {
   card: Card;
-  data: DatasetData;
-  error_type?: string;
-  error?: {
-    status: number; // HTTP status code
-    data?: string;
-  };
-};
+} & Dataset;
 
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };
@@ -94,6 +103,7 @@ export interface TemplateTag {
   "widget-type"?: string;
   required?: boolean;
   default?: string;
+  options?: ParameterOptions;
 
   // Card template specific
   "card-id"?: number;

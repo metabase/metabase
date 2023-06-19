@@ -69,7 +69,7 @@ const LONG_TEXT_MIN = 80;
  */
 
 class FieldInner extends Base {
-  id: number | FieldReference;
+  id: FieldId | FieldReference;
   name: string;
   display_name: string;
   description: string | null;
@@ -79,8 +79,7 @@ class FieldInner extends Base {
   table?: Table;
   table_id?: Table["id"];
   target?: Field;
-  fk_target_field_id?: Field["id"] | null;
-  name_field?: Field["id"];
+  name_field?: Field;
   remapping?: unknown;
   has_field_values?: FieldValuesType;
   has_more_values?: boolean;
@@ -140,7 +139,7 @@ class FieldInner extends Base {
 
   displayName({
     includeSchema = false,
-    includeTable,
+    includeTable = false,
     includePath = true,
   } = {}) {
     let displayName = "";

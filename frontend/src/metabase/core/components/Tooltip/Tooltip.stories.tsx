@@ -1,8 +1,6 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import Tooltip from "./Tooltip";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/Tooltip",
   component: Tooltip,
@@ -26,4 +24,11 @@ CustomContent.args = {
       <div style={{ background: "red" }}>Red</div>
     </div>
   ),
+};
+
+export const LongScalarString = Template.bind({});
+LongScalarString.args = {
+  tooltip:
+    "looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong string",
+  isOpen: true,
 };

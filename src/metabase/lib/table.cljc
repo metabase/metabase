@@ -57,8 +57,8 @@
              [(or position 0) (u/lower-case-en (or field-name ""))])
            field-metadatas))
 
-(defmethod lib.metadata.calculation/default-columns-method :metadata/table
-  [query _stage-number table-metadata unique-name-fn]
+(defmethod lib.metadata.calculation/visible-columns-method :metadata/table
+  [query _stage-number table-metadata {:keys [unique-name-fn], :as _options}]
   (when-let [field-metadatas (lib.metadata/fields query (:id table-metadata))]
     (->> field-metadatas
          remove-hidden-default-fields
@@ -67,7 +67,7 @@
                 (assoc col
                        :lib/source               :source/table-defaults
                        :lib/source-column-alias  (:name col)
-                       :lib/desired-column-alias (unique-name-fn (:name col))))))))
+                       :lib/desired-column-alias (unique-name-fn (or (:name col) ""))))))))
 
 (defmethod lib.join/with-join-alias-method :metadata/table
   [table-metadata join-alias]

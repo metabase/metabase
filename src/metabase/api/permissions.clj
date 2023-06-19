@@ -26,7 +26,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -146,7 +145,7 @@
                                    [:= :user_id api/*current-user-id*]
                                    [:= :is_group_manager true]]}])]
     (-> (ordered-groups mw.offset-paging/*limit* mw.offset-paging/*offset* query)
-        (hydrate :member_count))))
+        (t2/hydrate :member_count))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/group/:id"
@@ -155,7 +154,7 @@
   (validation/check-group-manager id)
   (api/check-404
    (-> (t2/select-one PermissionsGroup :id id)
-       (hydrate :members))))
+       (t2/hydrate :members))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/group"
@@ -280,8 +279,7 @@
   (api/check-superuser)
   (perms/execution-perms-graph))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/execution/graph"
+(api/defendpoint PUT "/execution/graph"
   "Do a batch update of execution permissions by passing in a modified graph. The modified graph of the same
   form as returned by the corresponding GET endpoint.
 
@@ -289,7 +287,7 @@
   modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
   409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
   [:as {body :body}]
-  {body su/Map}
+  {body [:map]}
   (api/check-superuser)
   ;; TODO remove api.permission-graph/converted-json->graph call
   (let [graph (api.permission-graph/converted-json->graph ::api.permission-graph/execution-permissions-graph body)]

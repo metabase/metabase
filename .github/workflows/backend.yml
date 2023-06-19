@@ -12,6 +12,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
 
+env:
+  CLJ_KONDO_VERSION: "2023.04.14"
+
 jobs:
   files-changed:
     name: Check which files changed
@@ -32,7 +35,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
     - uses: actions/checkout@v3
     - name: Prepare back-end environment
@@ -42,7 +45,7 @@ jobs:
     - name: Build static viz frontend
       run: yarn build-static-viz
     - name: Collect the test coverage
-      run: clojure -X:dev:ee:ee-dev:test:cloverage
+      run: clojure -X:dev:ci:ee:ee-dev:test:cloverage
     - name: Upload coverage to codecov.io
       uses: codecov/codecov-action@v3
       with:
@@ -54,51 +57,60 @@ jobs:
     if: needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 10
+    env:
+      DOWNLOAD_URL: https://github.com/clj-kondo/clj-kondo/releases/download
     steps:
     - uses: actions/checkout@v3
+    - name: Install clj-kondo
+      run: |
+        curl -OL ${DOWNLOAD_URL}/v${CLJ_KONDO_VERSION}/clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip
+        curl -OL ${DOWNLOAD_URL}/v${CLJ_KONDO_VERSION}/clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip.sha256
+        cat clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip.sha256 >> SHA256sum.txt
+        echo " clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip" >> SHA256sum.txt
+        sha256sum -c SHA256sum.txt
+        unzip clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip
+    - run: ./clj-kondo --version
     - name: Run clj-kondo
       run: >-
-        docker run
-        --volume $PWD:/work
-        --rm
-        cljkondo/clj-kondo:2023.02.17
-        clj-kondo
-        --config /work/.clj-kondo/config.edn
-        --config-dir /work/.clj-kondo
+        ./clj-kondo
+        --config ./.clj-kondo/config.edn
+        --config-dir ./.clj-kondo
         --parallel
         --lint
-        /work/src
-        /work/test
-        /work/enterprise/backend/src
-        /work/enterprise/backend/test
-        /work/shared/src
-        /work/shared/test
-        /work/modules/drivers/athena/src
-        /work/modules/drivers/athena/test
-        /work/modules/drivers/bigquery-cloud-sdk/src
-        /work/modules/drivers/bigquery-cloud-sdk/test
-        /work/modules/drivers/druid/src
-        /work/modules/drivers/druid/test
-        /work/modules/drivers/googleanalytics/src
-        /work/modules/drivers/googleanalytics/test
-        /work/modules/drivers/mongo/src
-        /work/modules/drivers/mongo/test
-        /work/modules/drivers/oracle/src
-        /work/modules/drivers/oracle/test
-        /work/modules/drivers/presto-jdbc/src
-        /work/modules/drivers/presto-jdbc/test
-        /work/modules/drivers/redshift/src
-        /work/modules/drivers/redshift/test
-        /work/modules/drivers/snowflake/src
-        /work/modules/drivers/snowflake/test
-        /work/modules/drivers/sparksql/src
-        /work/modules/drivers/sparksql/test
-        /work/modules/drivers/sqlite/src
-        /work/modules/drivers/sqlite/test
-        /work/modules/drivers/sqlserver/src
-        /work/modules/drivers/sqlserver/test
-        /work/modules/drivers/vertica/src
-        /work/modules/drivers/vertica/test
+        ./src
+        ./test
+        ./enterprise/backend/src
+        ./enterprise/backend/test
+        ./shared/src
+        ./shared/test
+        ./modules/drivers/athena/src
+        ./modules/drivers/athena/test
+        ./modules/drivers/bigquery-cloud-sdk/src
+        ./modules/drivers/bigquery-cloud-sdk/test
+        ./modules/drivers/druid/src
+        ./modules/drivers/druid/test
+        ./modules/drivers/googleanalytics/src
+        ./modules/drivers/googleanalytics/test
+        ./modules/drivers/mongo/src
+        ./modules/drivers/mongo/test
+        ./modules/drivers/oracle/src
+        ./modules/drivers/oracle/test
+        ./modules/drivers/presto-jdbc/src
+        ./modules/drivers/presto-jdbc/test
+        ./modules/drivers/redshift/src
+        ./modules/drivers/redshift/test
+        ./modules/drivers/snowflake/src
+        ./modules/drivers/snowflake/test
+        ./modules/drivers/sparksql/src
+        ./modules/drivers/sparksql/test
+        ./modules/drivers/sqlite/src
+        ./modules/drivers/sqlite/test
+        ./modules/drivers/sqlserver/src
+        ./modules/drivers/sqlserver/test
+        ./modules/drivers/vertica/src
+        ./modules/drivers/vertica/test
+
+
 
   be-linter-eastwood:
     needs: files-changed
@@ -122,7 +134,7 @@ jobs:
     if: github.event.pull_request.draft == true && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     name: be-tests-java-11-ee-pre-check
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
@@ -155,7 +167,7 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
-    timeout-minutes: 35
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:

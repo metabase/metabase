@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { connect } from "react-redux";
+import _ from "underscore";
 
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Tables from "metabase/entities/tables";
@@ -26,7 +27,7 @@ function useDependentTableMetadata({
   fetchMetadata,
 }: Pick<AllProps, "table" | "fetchForeignKeys" | "fetchMetadata">) {
   const isMissingFields = !table.numFields();
-  const isMissingFks = table.fks == null;
+  const isMissingFks = _.isEmpty(table.fks);
   const shouldFetchMetadata = isMissingFields || isMissingFks;
   const [hasFetchedMetadata, setHasFetchedMetadata] = useState(
     !shouldFetchMetadata,

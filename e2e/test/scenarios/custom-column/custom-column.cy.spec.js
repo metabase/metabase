@@ -7,8 +7,9 @@ import {
   openPeopleTable,
   visitQuestionAdhoc,
   enterCustomColumnDetails,
-  getBinningButtonForDimension,
   filter,
+  getNotebookStep,
+  checkExpressionEditorHelperPopoverPosition,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -38,7 +39,7 @@ describe("scenarios > question > custom column", () => {
     cy.get(".Visualization").contains("Math");
   });
 
-  it("should allow choosing a binning for a numeric custom column", () => {
+  it("should not show binning for a numeric custom column", () => {
     openOrdersTable({ mode: "notebook" });
     cy.icon("add_data").click();
 
@@ -48,28 +49,25 @@ describe("scenarios > question > custom column", () => {
     });
     cy.button("Done").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summarize").click();
+    cy.button("Summarize").click();
     popover().findByText("Count of rows").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    popover().findByText("Half Price").click();
-
-    cy.get("[data-testid='step-summarize-0-0']")
-      .findByText("Half Price")
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
       .click();
-    getBinningButtonForDimension({
-      name: "Half Price",
-    }).click();
 
-    popover().last().findByText("10 bins").click();
+    popover()
+      .findByRole("option", { name: "Half Price" })
+      .within(() => {
+        cy.findByLabelText("Binning strategy").should("not.exist");
+        cy.findByLabelText("Temporal bucket").should("not.exist");
+      })
+      .click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Half Price: 10 bins").should("be.visible");
+    getNotebookStep("summarize").findByText("Half Price").should("be.visible");
   });
 
-  it("should allow choosing a temporal unit for a date/time custom column", () => {
+  it("should not show temporal units for a date/time custom column", () => {
     openOrdersTable({ mode: "notebook" });
     cy.icon("add_data").click();
 
@@ -79,28 +77,26 @@ describe("scenarios > question > custom column", () => {
     });
     cy.button("Done").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summarize").click();
+    cy.button("Summarize").click();
     popover().findByText("Count of rows").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    popover().findByText("Product Date").click();
-
-    cy.get("[data-testid='step-summarize-0-0']")
-      .findByText("Product Date")
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
       .click();
-    getBinningButtonForDimension({
-      name: "Product Date",
-    }).click();
+    popover()
+      .findByRole("option", { name: "Product Date" })
+      .within(() => {
+        cy.findByLabelText("Binning strategy").should("not.exist");
+        cy.findByLabelText("Temporal bucket").should("not.exist");
+      })
+      .click();
 
-    popover().last().findByText("Month of Year").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Product Date: Month of year").should("be.visible");
+    getNotebookStep("summarize")
+      .findByText("Product Date")
+      .should("be.visible");
   });
 
-  it("should allow choosing a binning for a coordinate custom column", () => {
+  it("should not show binning options for a coordinate custom column", () => {
     openPeopleTable({ mode: "notebook" });
     cy.icon("add_data").click();
 
@@ -110,23 +106,21 @@ describe("scenarios > question > custom column", () => {
     });
     cy.button("Done").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summarize").click();
+    cy.button("Summarize").click();
     popover().findByText("Count of rows").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    popover().findByText("UserLAT").click();
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    popover()
+      .findByRole("option", { name: "UserLAT" })
+      .within(() => {
+        cy.findByLabelText("Binning strategy").should("not.exist");
+        cy.findByLabelText("Temporal bucket").should("not.exist");
+      })
+      .click();
 
-    cy.get("[data-testid='step-summarize-0-0']").findByText("UserLAT").click();
-    getBinningButtonForDimension({
-      name: "UserLAT",
-    }).click();
-
-    popover().last().findByText("Bin every 10 degrees").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("UserLAT: 10°").should("be.visible");
+    getNotebookStep("summarize").findByText("UserLAT").should("be.visible");
   });
 
   // flaky test (#19454)
@@ -662,6 +656,17 @@ describe("scenarios > question > custom column", () => {
     // Shift+Tab and we're back at the editor
     cy.realPress(["Shift", "Tab"]);
     cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
+  });
+
+  it("should render custom expression helper near the custom expression field", async () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    popover().within(() => {
+      enterCustomColumnDetails({ formula: "floor" });
+
+      checkExpressionEditorHelperPopoverPosition();
+    });
   });
 });
 

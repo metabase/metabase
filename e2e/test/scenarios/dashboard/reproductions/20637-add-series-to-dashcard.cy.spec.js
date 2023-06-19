@@ -43,6 +43,10 @@ function createQuestionsAndDashboard() {
       aggregation: [["count"]],
       breakout: [["field", PRODUCTS.CATEGORY, null]],
     },
+    visualization_settings: {
+      "graph.dimensions": ["CATEGORY"],
+      "graph.metrics": ["count"],
+    },
     display: "line",
   };
 
@@ -52,6 +56,10 @@ function createQuestionsAndDashboard() {
       "source-table": PRODUCTS_ID,
       aggregation: [["count"]],
       breakout: [["field", PRODUCTS.CATEGORY, null]],
+    },
+    visualization_settings: {
+      "graph.dimensions": ["CATEGORY"],
+      "graph.metrics": ["count"],
     },
     display: "bar",
   };
@@ -71,7 +79,7 @@ function createQuestionsAndDashboard() {
                 card_id,
                 row: 0,
                 col: 0,
-                size_x: 12,
+                size_x: 16,
                 size_y: 10,
               },
             ],

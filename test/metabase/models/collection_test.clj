@@ -23,8 +23,8 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
@@ -44,7 +44,7 @@
 
 (deftest create-collection-test
   (testing "test that we can create a new Collection with valid inputs"
-    (mt/with-temp Collection [collection {:name "My Favorite Cards", :color "#ABCDEF"}]
+    (t2.with-temp/with-temp [Collection collection {:name "My Favorite Cards", :color "#ABCDEF"}]
       (is (partial= (merge
                      (mt/object-defaults Collection)
                      {:name              "My Favorite Cards"
@@ -70,7 +70,7 @@
 
 (deftest with-temp-defaults-test
   (testing "double-check that `with-temp-defaults` are working correctly for Collection"
-    (mt/with-temp Collection [collection]
+    (t2.with-temp/with-temp [Collection collection]
       (is (some? collection)))))
 
 (deftest duplicate-names-test
@@ -97,7 +97,7 @@
 
 (deftest entity-ids-test
   (testing "entity IDs are generated"
-    (mt/with-temp Collection [collection]
+    (t2.with-temp/with-temp [Collection collection]
       (is (some? (:entity_id collection)))))
 
   (testing "entity IDs are unique"
@@ -124,15 +124,15 @@
   (testing "check that collections' names cannot be blank"
     (is (thrown?
          Exception
-         (mt/with-temp Collection [collection {:name ""}]
+         (t2.with-temp/with-temp [Collection collection {:name ""}]
            collection))))
 
   (testing "check we can't change the name of a Collection to a blank string"
-    (mt/with-temp Collection [collection]
+    (t2.with-temp/with-temp [Collection collection]
       (is (thrown?
            Exception
            (t2/update! Collection (u/the-id collection)
-             {:name ""}))))))
+                       {:name ""}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -376,13 +376,13 @@
          (with-collection-in-location [_ "/a/"]))))
 
   (testing "We should be able to INSERT a Collection with a *valid* location"
-    (mt/with-temp Collection [parent]
+    (t2.with-temp/with-temp [Collection parent]
       (with-collection-in-location [collection (collection/location-path parent)]
         (is (= (collection/location-path parent)
                (:location collection))))))
 
   (testing "Make sure we can't UPDATE a Collection to give it an invalid location"
-    (mt/with-temp Collection [collection]
+    (t2.with-temp/with-temp [Collection collection]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid Collection location: path is invalid"
@@ -401,7 +401,7 @@
          (with-collection-in-location [_ (collection/location-path (nonexistent-collection-id))]))))
 
   (testing "Make sure we can't UPDATE a Collection to give it a non-existent ancestors"
-    (mt/with-temp Collection [collection]
+    (t2.with-temp/with-temp [Collection collection]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid Collection location: some or all ancestors do not exist"
@@ -1032,7 +1032,7 @@
       ;; object is in E; archiving E should cause object to be archived
       (with-collection-hierarchy [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
                                                                   {:namespace "snippets"})]
-        (mt/with-temp model [object {:collection_id (u/the-id e)}]
+        (t2.with-temp/with-temp [model object {:collection_id (u/the-id e)}]
           (t2/update! Collection (u/the-id e) {:archived true})
           (is (= true
                  (t2/select-one-fn :archived model :id (u/the-id object)))))))
@@ -1041,7 +1041,7 @@
       ;; object is in E, a descendant of C; archiving C should cause object to be archived
       (with-collection-hierarchy [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
                                                                     {:namespace "snippets"})]
-        (mt/with-temp model [object {:collection_id (u/the-id e)}]
+        (t2.with-temp/with-temp [model object {:collection_id (u/the-id e)}]
           (t2/update! Collection (u/the-id c) {:archived true})
           (is (= true
                  (t2/select-one-fn :archived model :id (u/the-id object)))))))))
@@ -1053,7 +1053,7 @@
       (with-collection-hierarchy [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
                                                                   {:namespace "snippets"})]
         (t2/update! Collection (u/the-id e) {:archived true})
-        (mt/with-temp model [object {:collection_id (u/the-id e), :archived true}]
+        (t2.with-temp/with-temp [model object {:collection_id (u/the-id e), :archived true}]
           (t2/update! Collection (u/the-id e) {:archived false})
           (is (= false
                  (t2/select-one-fn :archived model :id (u/the-id object)))))))
@@ -1063,7 +1063,7 @@
       (with-collection-hierarchy [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
                                                                     {:namespace "snippets"})]
         (t2/update! Collection (u/the-id c) {:archived true})
-        (mt/with-temp model [object {:collection_id (u/the-id e), :archived true}]
+        (t2.with-temp/with-temp [model object {:collection_id (u/the-id e), :archived true}]
           (t2/update! Collection (u/the-id c) {:archived false})
           (is (= false
                  (t2/select-one-fn :archived model :id (u/the-id object)))))))))
@@ -1123,14 +1123,14 @@
             :let                 [root-collection (assoc collection/root-collection :namespace collection-namespace)
                                   other-namespace (if collection-namespace nil "currency")]]
       (testing (format "Collection namespace = %s\n" (pr-str collection-namespace))
-        (mt/with-temp PermissionsGroup [group]
+        (t2.with-temp/with-temp [PermissionsGroup group]
           (testing "no perms beforehand = no perms after"
-            (mt/with-temp Collection [collection {:name "{new}", :namespace collection-namespace}]
+            (t2.with-temp/with-temp [Collection collection {:name "{new}", :namespace collection-namespace}]
               (is (= #{}
                      (group->perms [collection] group)))))
 
           (perms/grant-collection-read-permissions! group root-collection)
-          (mt/with-temp Collection [collection {:name "{new}", :namespace collection-namespace}]
+          (t2.with-temp/with-temp [Collection collection {:name "{new}", :namespace collection-namespace}]
             (testing "copy read perms"
               (is (= #{"/collection/{new}/read/"
                        (perms/collection-read-path root-collection)}
@@ -1147,32 +1147,32 @@
                      (group->perms [collection] group)))))
 
           (testing "copy readwrite perms"
-            (mt/with-temp Collection [collection {:name "{new}", :namespace collection-namespace}]
+            (t2.with-temp/with-temp [Collection collection {:name "{new}", :namespace collection-namespace}]
               (is (= #{"/collection/{new}/"
                        (perms/collection-readwrite-path root-collection)}
                      (group->perms [collection] group)))))
 
           (testing (format "Perms for Root Collection in %s namespace should not affect Collections in %s namespace"
                            (pr-str collection-namespace) (pr-str other-namespace))
-            (mt/with-temp Collection [collection {:name "{new}", :namespace other-namespace}]
+            (t2.with-temp/with-temp [Collection collection {:name "{new}", :namespace other-namespace}]
               (is (= #{(perms/collection-readwrite-path root-collection)}
                      (group->perms [collection] group))))))))))
 
 (deftest copy-parent-permissions-test
   (testing "Make sure that when creating a new child Collection, we copy the group permissions for its parent"
-    (mt/with-temp PermissionsGroup [group]
+    (t2.with-temp/with-temp [PermissionsGroup group]
       (testing "parent has readwrite permissions"
-        (mt/with-temp Collection [parent {:name "{parent}"}]
+        (t2.with-temp/with-temp [Collection parent {:name "{parent}"}]
           (perms/grant-collection-readwrite-permissions! group parent)
-          (mt/with-temp Collection [child {:name "{child}", :location (collection/children-location parent)}]
+          (t2.with-temp/with-temp [Collection child {:name "{child}", :location (collection/children-location parent)}]
             (is (= #{"/collection/{parent}/"
                      "/collection/{child}/"}
                    (group->perms [parent child] group))))))
 
       (testing "parent has read permissions"
-        (mt/with-temp Collection [parent {:name "{parent}"}]
+        (t2.with-temp/with-temp [Collection parent {:name "{parent}"}]
           (perms/grant-collection-read-permissions! group parent)
-          (mt/with-temp Collection [child {:name "{child}", :location (collection/children-location parent)}]
+          (t2.with-temp/with-temp [Collection child {:name "{child}", :location (collection/children-location parent)}]
             (is (= #{"/collection/{parent}/read/"
                      "/collection/{child}/read/"}
                    (group->perms [parent child] group))))))
@@ -1191,15 +1191,15 @@
                  (group->perms [parent child] group)))))
 
       (testing "If we have Root Collection perms they shouldn't be copied for a Child"
-        (mt/with-temp Collection [parent {:name "{parent}"}]
+        (t2.with-temp/with-temp [Collection parent {:name "{parent}"}]
           (perms/grant-collection-read-permissions! group collection/root-collection)
-          (mt/with-temp Collection [child {:name "{child}", :location (collection/children-location parent)}]
+          (t2.with-temp/with-temp [Collection child {:name "{child}", :location (collection/children-location parent)}]
             (is (= #{"/collection/root/read/"}
                    (group->perms [parent child] group)))))))
 
     (testing (str "Make sure that when creating a new Collection as child of a Personal Collection, no group "
                   "permissions are created")
-      (mt/with-temp Collection [child {:name "{child}", :location (lucky-collection-children-location)}]
+      (t2.with-temp/with-temp [Collection child {:name "{child}", :location (lucky-collection-children-location)}]
         (is (not (t2/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))))
 
     (testing (str "Make sure that when creating a new Collection as grandchild of a Personal Collection, no group "
@@ -1216,7 +1216,7 @@
 
 (deftest personal-collections-restrictions-test
   (testing "Make sure we're not allowed to *unarchive* a Personal Collection"
-    (mt/with-temp User [my-cool-user]
+    (t2.with-temp/with-temp [User my-cool-user]
       (let [personal-collection (collection/user->personal-collection my-cool-user)]
         (is (thrown?
              Exception
@@ -1229,17 +1229,17 @@
         (is (thrown?
              Exception
              (t2/update! Collection (u/the-id personal-collection)
-               {:location (collection/location-path some-other-collection)}))))))
+                         {:location (collection/location-path some-other-collection)}))))))
 
   (testing "Make sure we're not allowed to change the owner of a Personal Collection"
-    (mt/with-temp User [my-cool-user]
+    (t2.with-temp/with-temp [User my-cool-user]
       (let [personal-collection (collection/user->personal-collection my-cool-user)]
         (is (thrown?
              Exception
              (t2/update! Collection (u/the-id personal-collection) {:personal_owner_id (mt/user->id :crowberto)}))))))
 
   (testing "We are not allowed to change the authority_level of a Personal Collection"
-    (mt/with-temp User [my-cool-user]
+    (t2.with-temp/with-temp [User my-cool-user]
       (let [personal-collection (collection/user->personal-collection my-cool-user)]
         (is (thrown-with-msg?
              Exception
@@ -1247,10 +1247,10 @@
              (t2/update! Collection (u/the-id personal-collection) {:authority_level "official"}))))))
 
   (testing "Does hydrating `:personal_collection_id` force creation of Personal Collections?"
-    (mt/with-temp User [temp-user]
+    (t2.with-temp/with-temp [User temp-user]
       (is (schema= {:personal_collection_id su/IntGreaterThanZero
                     s/Keyword               s/Any}
-                   (hydrate temp-user :personal_collection_id))))))
+                   (t2/hydrate temp-user :personal_collection_id))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1265,15 +1265,15 @@
 (defmacro ^:private with-collection-hierarchy-in [parent-location [collection-symb & more] & body]
   (if-not collection-symb
     `(do ~@body)
-    `(mt/with-temp Collection [~collection-symb {:name     ~(u/upper-case-en (name collection-symb))
-                                                 :location ~parent-location}]
+    `(t2.with-temp/with-temp [Collection ~collection-symb {:name     ~(u/upper-case-en (name collection-symb))
+                                                           :location ~parent-location}]
        (with-collection-hierarchy-in (collection/children-location ~collection-symb) ~more ~@body))))
 
 (defmacro ^:private with-personal-and-impersonal-collections {:style/indent 1}
   [[group-binding personal-and-root-collection-bindings] & body]
   (let [collections (zipmap (vals personal-and-root-collection-bindings)
                             (keys personal-and-root-collection-bindings))]
-    `(mt/with-temp PermissionsGroup [~group-binding]
+    `(t2.with-temp/with-temp [PermissionsGroup ~group-binding]
        (with-collection-hierarchy-in (lucky-collection-children-location) ~(:personal collections)
          (with-collection-hierarchy-in (collection/children-location collection/root-collection) ~(:root collections)
            ~@body)))))
@@ -1425,21 +1425,21 @@
   (doseq [[parent-namespace child-namespace] [[nil "x"]
                                               ["x" nil]
                                               ["x" "y"]]]
-    (mt/with-temp Collection [parent-collection {:namespace parent-namespace}]
+    (t2.with-temp/with-temp [Collection parent-collection {:namespace parent-namespace}]
       (testing (format "You should not be able to create a Collection in namespace %s inside a Collection in namespace %s"
                        (pr-str child-namespace) (pr-str parent-namespace))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Collection must be in the same namespace as its parent"
              (t2/insert! Collection
-               {:location  (format "/%d/" (:id parent-collection))
-                :color     "#F38630"
-                :name      "Child Collection"
-                :namespace child-namespace}))))
+                         {:location  (format "/%d/" (:id parent-collection))
+                          :color     "#F38630"
+                          :name      "Child Collection"
+                          :namespace child-namespace}))))
 
       (testing (format "You should not be able to move a Collection of namespace %s into a Collection of namespace %s"
                        (pr-str child-namespace) (pr-str parent-namespace))
-        (mt/with-temp Collection [collection-2 {:namespace child-namespace}]
+        (t2.with-temp/with-temp [Collection collection-2 {:namespace child-namespace}]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Collection must be in the same namespace as its parent"
@@ -1454,25 +1454,25 @@
 
 (deftest check-special-collection-namespace-cannot-be-personal-collection
   (testing "You should not be able to create a Personal Collection with a non-nil `:namespace`."
-    (mt/with-temp User [{user-id :id}]
+    (t2.with-temp/with-temp [User {user-id :id}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Personal Collections must be in the default namespace"
            (t2/insert! Collection
-             {:color             "#F38630"
-              :name              "Personal Collection"
-              :namespace         "x"
-              :personal_owner_id user-id}))))))
+                       {:color             "#F38630"
+                        :name              "Personal Collection"
+                        :namespace         "x"
+                        :personal_owner_id user-id}))))))
 
 (deftest check-collection-namespace-test
   (testing "check-collection-namespace"
     (testing "Should succeed if namespace is allowed"
-      (mt/with-temp Collection [{collection-id :id}]
+      (t2.with-temp/with-temp [Collection {collection-id :id}]
         (is (= nil
                (collection/check-collection-namespace Card collection-id)))))
 
     (testing "Should throw exception if namespace is not allowed"
-      (mt/with-temp Collection [{collection-id :id} {:namespace "x"}]
+      (t2.with-temp/with-temp [Collection {collection-id :id} {:namespace "x"}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Card can only go in Collections in the \"default\" namespace"
@@ -1617,7 +1617,7 @@
             {:id 3 :name "c" :location "/1/2/"   :here #{:dataset} :below #{:dataset}}
             {:id 4 :name "d" :location "/1/2/3/" :here #{:dataset}}
             {:id 5 :name "e" :location "/1/"     :here #{:card}}]
-           (collection/annotate-collections {:card #{1 5} :dataset #{3 4}} collections)))
+           (#'collection/annotate-collections {:card #{1 5} :dataset #{3 4}} collections)))
     (is (= [{:id 1 :here #{:card} :below #{:card :dataset}
              :children
              [{:id 2 :below #{:dataset}

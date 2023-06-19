@@ -17,6 +17,10 @@ export const NewButton = styled(Button)`
   }
 `;
 
+NewButton.defaultProps = {
+  iconSize: 16,
+};
+
 export const NewButtonText = styled.h4`
   display: inline;
   margin-left: 0.5rem;

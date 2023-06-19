@@ -1,4 +1,4 @@
-import React, { forwardRef, ReactNode, Ref, useCallback } from "react";
+import { forwardRef, ReactNode, Ref, useCallback } from "react";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import Toggle, { ToggleProps } from "metabase/core/components/Toggle";

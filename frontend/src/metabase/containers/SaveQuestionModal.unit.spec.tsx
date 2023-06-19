@@ -1,20 +1,25 @@
-import React from "react";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import {
-  SAMPLE_DATABASE,
-  ORDERS,
-  metadata,
-} from "__support__/sample_database_fixture";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import { CollectionId } from "metabase-types/api";
+import {
+  createSampleDatabase,
+  SAMPLE_DB_ID,
+  ORDERS_ID,
+  ORDERS,
+} from "metabase-types/api/mocks/presets";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 const setup = async (
   question: Question,
@@ -78,9 +83,9 @@ function getQuestion({
       visualization_settings: {},
       dataset_query: {
         type: "query",
-        database: SAMPLE_DATABASE.id,
+        database: SAMPLE_DB_ID,
         query: {
-          "source-table": ORDERS.id,
+          "source-table": ORDERS_ID,
           aggregation: [["count"]],
         },
       },
@@ -93,10 +98,7 @@ const EXPECTED_DIRTY_SUGGESTED_NAME = "Orders, Count, Grouped by Total";
 
 function getDirtyQuestion(originalQuestion: Question) {
   const query = originalQuestion.query() as StructuredQuery;
-  return query
-    .breakout(["field", ORDERS.TOTAL.id, null])
-    .question()
-    .markDirty();
+  return query.breakout(["field", ORDERS.TOTAL, null]).question().markDirty();
 }
 
 function fillForm({
@@ -166,7 +168,7 @@ describe("SaveQuestionModal", () => {
           {
             dataset_query: {
               type: "native",
-              database: ORDERS.id,
+              database: ORDERS_ID,
               native: {
                 query: "select * from orders",
               },
@@ -557,8 +559,8 @@ describe("SaveQuestionModal", () => {
 
   describe("Cache TTL field", () => {
     const query = Question.create({
-      databaseId: SAMPLE_DATABASE.id,
-      tableId: ORDERS.id,
+      databaseId: SAMPLE_DB_ID,
+      tableId: ORDERS_ID,
       metadata,
     }).query() as StructuredQuery;
 

@@ -177,7 +177,10 @@ export interface Settings {
   "available-locales": LocaleData[] | null;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
+  "custom-homepage": boolean;
+  "custom-homepage-dashboard": number | null;
   "deprecation-notice-version"?: string;
+  "dismissed-custom-dashboard-toast": boolean;
   "email-configured?": boolean;
   "embedding-secret-key"?: string;
   "enable-embedding": boolean;

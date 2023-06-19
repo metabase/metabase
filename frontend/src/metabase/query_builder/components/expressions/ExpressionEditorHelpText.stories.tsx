@@ -1,14 +1,13 @@
-import React, { useRef } from "react";
+import { useRef } from "react";
 import type { ComponentStory } from "@storybook/react";
 import { checkNotNull } from "metabase/core/utils/types";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import { createMockMetadata } from "__support__/metadata";
-import { getHelpText } from "./ExpressionEditorTextfield/helper-text-strings";
+import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
 import ExpressionEditorHelpText, {
   ExpressionEditorHelpTextProps,
 } from "./ExpressionEditorHelpText";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Query Builder/ExpressionEditorHelpText",
   component: ExpressionEditorHelpText,

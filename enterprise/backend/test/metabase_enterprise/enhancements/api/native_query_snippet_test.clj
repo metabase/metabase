@@ -8,7 +8,8 @@
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def ^:private root-collection (assoc collection/root-collection :name "Root Collection", :namespace "snippets"))
 
@@ -17,11 +18,11 @@
   the permissions we *should* need, either `:read` or `:write`."
   [required-perms has-perms?]
   (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-    (mt/with-temp Collection [normal-collection {:name "Normal Collection", :namespace "snippets"}]
+    (t2.with-temp/with-temp [Collection normal-collection {:name "Normal Collection", :namespace "snippets"}]
       ;; run tests with both a normal Collection and the Root Collection
       (doseq [{collection-name :name, :as collection} [normal-collection root-collection]]
         (testing (format "\nSnippet in %s" collection-name)
-          (mt/with-temp NativeQuerySnippet [snippet {:collection_id (:id collection)}]
+          (t2.with-temp/with-temp [NativeQuerySnippet snippet {:collection_id (:id collection)}]
             (testing "\nShould be allowed regardless if EE features aren't enabled"
               (premium-features-test/with-premium-features #{}
                 (is (= true
@@ -100,13 +101,13 @@
         (mt/with-temp* [Collection [source {:name "Current Parent Collection", :namespace "snippets"}]
                         Collection [dest   {:name "New Parent Collection", :namespace "snippets"}]]
           (doseq [source-collection [source root-collection]]
-            (mt/with-temp NativeQuerySnippet [snippet {:collection_id (:id source-collection)}]
+            (t2.with-temp/with-temp [NativeQuerySnippet snippet {:collection_id (:id source-collection)}]
               (doseq [dest-collection [dest root-collection]]
                 (letfn [(has-perms? []
                           ;; make sure the Snippet is back in the original Collection if it was changed
                           (t2/update! NativeQuerySnippet (:id snippet) {:collection_id (:id source-collection)})
                           (let [response (mt/user-http-request :rasta :put (format "native-query-snippet/%d" (:id snippet))
-                                          {:collection_id (:id dest-collection)})]
+                                                               {:collection_id (:id dest-collection)})]
                             (cond
                               (= response "You don't have permissions to do that.")                     false
                               (and (map? response) (= (:collection_id response) (:id dest-collection))) true

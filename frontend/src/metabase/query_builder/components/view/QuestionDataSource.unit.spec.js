@@ -1,26 +1,36 @@
 /* eslint-disable react/display-name, react/prop-types */
-import React from "react";
-import { renderWithProviders, screen } from "__support__/ui";
+import { Component } from "react";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+
 import {
-  SAMPLE_DATABASE,
-  MULTI_SCHEMA_DATABASE,
+  ORDERS_ID,
   ORDERS,
+  SAMPLE_DB_ID,
   PRODUCTS,
   PEOPLE,
-  metadata,
-} from "__support__/sample_database_fixture";
+  PRODUCTS_ID,
+  PEOPLE_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+import { createMockMetadata } from "__support__/metadata";
+import { renderWithProviders, screen } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
 import Question from "metabase-lib/Question";
+import * as ML_Urls from "metabase-lib/urls";
 import QuestionDataSource from "./QuestionDataSource";
+
+const MULTI_SCHEMA_DB_ID = 2;
+const MULTI_SCHEMA_TABLE1_ID = 100;
+const MULTI_SCHEMA_TABLE2_ID = 101;
 
 const BASE_GUI_QUESTION = {
   display: "table",
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     query: {
-      "source-table": ORDERS.id,
+      "source-table": ORDERS_ID,
     },
   },
 };
@@ -30,7 +40,7 @@ const BASE_NATIVE_QUESTION = {
   visualization_settings: {},
   dataset_query: {
     type: "native",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     native: {
       query: "select * from orders",
     },
@@ -44,11 +54,29 @@ const SAVED_QUESTION = {
   collection_id: null,
 };
 
+const ORDERS_QUERY = {
+  type: "query",
+  database: SAMPLE_DB_ID,
+  query: { "source-table": ORDERS_ID },
+};
+
+const PRODUCTS_QUERY = {
+  type: "query",
+  database: SAMPLE_DB_ID,
+  query: { "source-table": PRODUCTS_ID },
+};
+
+const PEOPLE_QUERY = {
+  type: "query",
+  database: SAMPLE_DB_ID,
+  query: { "source-table": PEOPLE_ID },
+};
+
 const QUERY_IN_MULTI_SCHEMA_DB = {
   type: "query",
-  database: MULTI_SCHEMA_DATABASE.id,
+  database: MULTI_SCHEMA_DB_ID,
   query: {
-    "source-table": MULTI_SCHEMA_DATABASE.tables[0].id,
+    "source-table": MULTI_SCHEMA_TABLE1_ID,
   },
 };
 
@@ -56,42 +84,42 @@ const QUERY_IN_MULTI_SCHEMA_DB = {
 
 const ORDERS_PRODUCT_JOIN_CONDITION = [
   "=",
-  ["field", ORDERS.PRODUCT_ID.id, null],
-  ["field", PRODUCTS.ID.id, { "join-alias": "Products" }],
+  ["field", ORDERS.PRODUCT_ID, null],
+  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
 ];
 
 const ORDERS_PEOPLE_JOIN_CONDITION = [
   "=",
-  ["field", ORDERS.USER_ID.id, null],
-  ["field", PEOPLE.ID.id, { "join-alias": "People" }],
+  ["field", ORDERS.USER_ID, null],
+  ["field", PEOPLE.ID, { "join-alias": "People" }],
 ];
 
 const PRODUCTS_JOIN = {
   alias: "Products",
   condition: ORDERS_PRODUCT_JOIN_CONDITION,
-  "source-table": PRODUCTS.id,
+  "source-table": PRODUCTS_ID,
 };
 
 const PEOPLE_JOIN = {
   alias: "People",
   condition: ORDERS_PEOPLE_JOIN_CONDITION,
-  "source-table": PEOPLE.id,
+  "source-table": PEOPLE_ID,
 };
 
 const QUERY_WITH_PRODUCTS_JOIN = {
   type: "query",
-  database: SAMPLE_DATABASE.id,
+  database: SAMPLE_DB_ID,
   query: {
-    "source-table": ORDERS.id,
+    "source-table": ORDERS_ID,
     joins: [PRODUCTS_JOIN],
   },
 };
 
 const QUERY_WITH_PRODUCTS_PEOPLE_JOIN = {
   type: "query",
-  database: SAMPLE_DATABASE.id,
+  database: SAMPLE_DB_ID,
   query: {
-    "source-table": ORDERS.id,
+    "source-table": ORDERS_ID,
     joins: [PRODUCTS_JOIN, PEOPLE_JOIN],
   },
 };
@@ -99,13 +127,13 @@ const QUERY_WITH_PRODUCTS_PEOPLE_JOIN = {
 // Filters
 
 const RANDOM_ORDER_ID = 155;
-const ORDERS_PK_FILTER = ["=", ["field", ORDERS.ID.id, null], RANDOM_ORDER_ID];
+const ORDERS_PK_FILTER = ["=", ["field", ORDERS.ID, null], RANDOM_ORDER_ID];
 
 const ORDER_DETAIL_QUERY = {
   type: "query",
-  database: SAMPLE_DATABASE.id,
+  database: SAMPLE_DB_ID,
   query: {
-    "source-table": ORDERS.id,
+    "source-table": ORDERS_ID,
     filter: ["and", ORDERS_PK_FILTER],
   },
 };
@@ -119,8 +147,31 @@ const SOURCE_QUESTION_COLLECTION_SCHEMA_NAME = "Everything else";
 
 // Factories
 
+function getMetadata() {
+  return createMockMetadata({
+    databases: [
+      createSampleDatabase(),
+      createMockDatabase({
+        id: MULTI_SCHEMA_DB_ID,
+        tables: [
+          createMockTable({
+            id: MULTI_SCHEMA_TABLE1_ID,
+            db_id: MULTI_SCHEMA_DB_ID,
+            schema: "first_schema",
+          }),
+          createMockTable({
+            id: MULTI_SCHEMA_TABLE2_ID,
+            db_id: MULTI_SCHEMA_DB_ID,
+            schema: "second_schema",
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
 function getQuestion(card) {
-  return new Question(card, metadata);
+  return new Question(card, getMetadata());
 }
 
 function getAdHocQuestion(overrides) {
@@ -143,12 +194,26 @@ function getSavedNativeQuestion(overrides) {
   });
 }
 
+function getAdHocOrdersQuestion() {
+  return getAdHocQuestion({ dataset_query: ORDERS_QUERY });
+}
+
+function getAdHocProductsQuestion() {
+  return getAdHocQuestion({ dataset_query: PRODUCTS_QUERY });
+}
+
+function getAdHocPeopleQuestion() {
+  return getAdHocQuestion({ dataset_query: PEOPLE_QUERY });
+}
+
 function getNestedQuestionTableMock(isMultiSchemaDB) {
-  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATABASE;
+  const dbId = isMultiSchemaDB ? MULTI_SCHEMA_DB_ID : SAMPLE_DB_ID;
+  const metadata = getMetadata();
+
   return {
     id: SOURCE_QUESTION_VIRTUAL_ID,
-    db,
-    db_id: db.id,
+    db: metadata.database(dbId),
+    db_id: dbId,
     display_name: SOURCE_QUESTION_NAME,
     schema_name: SOURCE_QUESTION_COLLECTION_SCHEMA_NAME,
     schema: {
@@ -165,11 +230,11 @@ function getNestedQuestionTableMock(isMultiSchemaDB) {
 }
 
 function getAdHocNestedQuestion({ isMultiSchemaDB } = {}) {
-  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATABASE;
+  const dbId = isMultiSchemaDB ? MULTI_SCHEMA_DB_ID : SAMPLE_DB_ID;
   const question = getAdHocQuestion({
     dataset_query: {
       type: "query",
-      database: db.id,
+      database: dbId,
       query: {
         "source-table": SOURCE_QUESTION_VIRTUAL_ID,
       },
@@ -182,11 +247,11 @@ function getAdHocNestedQuestion({ isMultiSchemaDB } = {}) {
 }
 
 function getSavedNestedQuestion({ isMultiSchemaDB } = {}) {
-  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATABASE;
+  const dbId = isMultiSchemaDB ? MULTI_SCHEMA_DB_ID : SAMPLE_DB_ID;
   const question = getSavedGUIQuestion({
     dataset_query: {
       type: "query",
-      database: db.id,
+      database: dbId,
       query: {
         "source-table": SOURCE_QUESTION_VIRTUAL_ID,
       },
@@ -198,7 +263,7 @@ function getSavedNestedQuestion({ isMultiSchemaDB } = {}) {
   return question;
 }
 
-class ErrorBoundary extends React.Component {
+class ErrorBoundary extends Component {
   componentDidCatch(...args) {
     console.error(...args);
     this.props.onError();
@@ -368,7 +433,7 @@ describe("QuestionDataSource", () => {
           );
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            question.table().newQuestion().getUrl(),
+            ML_Urls.getUrl(question.table().newQuestion()),
           );
         });
 
@@ -379,7 +444,7 @@ describe("QuestionDataSource", () => {
           );
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            question.table().newQuestion().getUrl(),
+            ML_Urls.getUrl(question.table().newQuestion()),
           );
         });
       });
@@ -424,12 +489,12 @@ describe("QuestionDataSource", () => {
           expect(orders).toBeInTheDocument();
           expect(orders.closest("a")).toHaveAttribute(
             "href",
-            ORDERS.newQuestion().getUrl(),
+            ML_Urls.getUrl(getAdHocOrdersQuestion()),
           );
           expect(products).toBeInTheDocument();
           expect(products.closest("a")).toHaveAttribute(
             "href",
-            PRODUCTS.newQuestion().getUrl(),
+            ML_Urls.getUrl(getAdHocProductsQuestion()),
           );
         });
       });
@@ -452,17 +517,17 @@ describe("QuestionDataSource", () => {
           expect(orders).toBeInTheDocument();
           expect(orders.closest("a")).toHaveAttribute(
             "href",
-            ORDERS.newQuestion().getUrl(),
+            ML_Urls.getUrl(getAdHocOrdersQuestion()),
           );
           expect(products).toBeInTheDocument();
           expect(products.closest("a")).toHaveAttribute(
             "href",
-            PRODUCTS.newQuestion().getUrl(),
+            ML_Urls.getUrl(getAdHocProductsQuestion()),
           );
           expect(people).toBeInTheDocument();
           expect(people.closest("a")).toHaveAttribute(
             "href",
-            PEOPLE.newQuestion().getUrl(),
+            ML_Urls.getUrl(getAdHocPeopleQuestion()),
           );
         });
       });

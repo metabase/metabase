@@ -1,4 +1,3 @@
-import React from "react";
 import { Route } from "react-router";
 import fetchMock from "fetch-mock";
 
@@ -38,7 +37,7 @@ async function setup({
   const isAdminApp = pathname.startsWith("/admin");
 
   if (hasContentToFetch) {
-    setupCollectionsEndpoints([]);
+    setupCollectionsEndpoints({ collections: [] });
     setupDatabasesEndpoints([createMockDatabase()]);
     fetchMock.get("path:/api/bookmark", []);
   }

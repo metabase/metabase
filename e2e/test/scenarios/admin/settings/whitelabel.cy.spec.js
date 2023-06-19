@@ -1,4 +1,5 @@
 import { describeEE, restore } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 function checkFavicon() {
   cy.request("/api/setting/application-favicon-url")
@@ -32,29 +33,6 @@ describeEE("formatting > whitelabel", () => {
       cy.findByText("Saved");
       cy.findByDisplayValue(COMPANY_NAME);
       cy.log("Company name has been updated!");
-    });
-
-    it("changes should reflect in different parts of UI", () => {
-      cy.log("New company should show up on activity page");
-      cy.visit("/activity");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`${COMPANY_NAME} is up and running.`);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Metabase is up and running.").should("not.exist");
-
-      cy.log("New company should show up when logged out");
-      cy.signOut();
-      cy.visit("/");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`Sign in to ${COMPANY_NAME}`);
-
-      cy.log("New company should show up for a normal user");
-      cy.signInAsNormalUser();
-      cy.visit("/activity");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`${COMPANY_NAME} is up and running.`);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Metabase is up and running.").should("not.exist");
     });
 
     it.skip("should not show the old name in the admin panel (metabase#17043)", () => {
@@ -126,19 +104,19 @@ describeEE("formatting > whitelabel", () => {
 
   describe("loading message", () => {
     it("should update loading message", () => {
-      cy.visit("/question/1");
+      cy.visit("/question/" + ORDERS_QUESTION_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Doing science...");
 
       const runningQueryMessage = "Running query...";
       changeLoadingMessage(runningQueryMessage);
-      cy.visit("/question/1");
+      cy.visit("/question/" + ORDERS_QUESTION_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(runningQueryMessage);
 
       const loadingResultsMessage = "Loading results...";
       changeLoadingMessage(loadingResultsMessage);
-      cy.visit("/question/1");
+      cy.visit("/question/" + ORDERS_QUESTION_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(loadingResultsMessage);
     });

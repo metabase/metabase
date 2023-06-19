@@ -93,7 +93,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.findByText("783").click();
     // drill through to orders list
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("View these Orders").click();
+    cy.findByText("See these Orders").click();
     // filters are applied
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Source is Affiliate");
@@ -579,7 +579,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           name: DASHBOARD_NAME,
         },
         cardDetails: {
-          size_x: 12,
+          size_x: 16,
           size_y: 8,
         },
       }).then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id));
@@ -621,7 +621,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           name: DASHBOARD_NAME,
         },
         cardDetails: {
-          size_x: 12,
+          size_x: 16,
           size_y: 8,
         },
       }).then(({ body: { card_id, dashboard_id } }) => {

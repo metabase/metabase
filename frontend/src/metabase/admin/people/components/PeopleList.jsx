@@ -1,11 +1,11 @@
-import React, { useEffect } from "react";
+import { Fragment, useEffect } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 import { usePrevious } from "react-use";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import PaginationControls from "metabase/components/PaginationControls";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
@@ -184,16 +184,16 @@ const PeopleList = ({
             <th />
             <th>{t`Email`}</th>
             {showDeactivated ? (
-              <React.Fragment>
+              <Fragment>
                 <th>{t`Deactivated`}</th>
                 <th />
-              </React.Fragment>
+              </Fragment>
             ) : (
-              <React.Fragment>
+              <Fragment>
                 <th>{t`Groups`}</th>
                 <th>{t`Last Login`}</th>
                 <th />
-              </React.Fragment>
+              </Fragment>
             )}
           </tr>
         </thead>
@@ -241,7 +241,7 @@ const PeopleList = ({
       {!hasUsers && (
         <div className="flex flex-column align-center justify-center p4 text-medium text-centered">
           <div className="my3">
-            <Icon name="search" mb={1} size={32} />
+            <Icon name="search" className="mb1" size={32} />
             <h3 className="text-light">{t`No results found`}</h3>
           </div>
         </div>

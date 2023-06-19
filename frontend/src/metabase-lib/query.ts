@@ -18,25 +18,27 @@ export function suggestedName(query: Query): string {
   return ML.suggestedName(query);
 }
 
-declare function RemoveClauseFn(query: Query, targetClause: Clause): Query;
-declare function RemoveClauseFn(
+export function appendStage(query: Query): Query {
+  return ML.append_stage(query);
+}
+
+export function dropStage(query: Query, stageIndex: number): Query {
+  return ML.drop_stage(query, stageIndex);
+}
+
+export function removeClause(
   query: Query,
   stageIndex: number,
   targetClause: Clause,
-): Query;
+): Query {
+  return ML.remove_clause(query, stageIndex, targetClause);
+}
 
-export const removeClause: typeof RemoveClauseFn = ML.remove_clause;
-
-declare function ReplaceClauseFn(
-  query: Query,
-  targetClause: Clause,
-  newClause: Clause | ColumnMetadata,
-): Query;
-declare function ReplaceClauseFn(
+export function replaceClause(
   query: Query,
   stageIndex: number,
   targetClause: Clause,
   newClause: Clause | ColumnMetadata,
-): Query;
-
-export const replaceClause: typeof ReplaceClauseFn = ML.replace_clause;
+): Query {
+  return ML.replace_clause(query, stageIndex, targetClause, newClause);
+}

@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -16,6 +16,7 @@ import type {
   WritebackParameter,
   WritebackAction,
 } from "metabase-types/api";
+import { sortActionParams } from "metabase/actions/utils";
 import type Question from "metabase-lib/Question";
 
 import {
@@ -55,8 +56,18 @@ export const ActionParameterMappingForm = ({
   setParameterMapping,
 }: ActionParameterMapperProps & DispatchProps) => {
   const action = passedAction ?? dashcard?.action;
-  const actionParameters = action?.parameters ?? [];
+
   const dashboardParameters = dashboard.parameters ?? [];
+
+  const sortedParameters = useMemo(() => {
+    const actionParameters = action?.parameters ?? [];
+
+    return actionParameters && action?.visualization_settings?.fields
+      ? [...actionParameters].sort(
+          sortActionParams(action?.visualization_settings),
+        )
+      : actionParameters || [];
+  }, [action]);
 
   const currentMappings = Object.fromEntries(
     dashcard.parameter_mappings?.map(mapping => [
@@ -79,7 +90,7 @@ export const ActionParameterMappingForm = ({
 
   return (
     <div>
-      {actionParameters.map((actionParam: WritebackParameter) => (
+      {sortedParameters.map((actionParam: WritebackParameter) => (
         <ParameterFormSection key={actionParam.id}>
           <ParameterFormLabel>
             {actionParam.name ?? actionParam.id}
@@ -100,7 +111,7 @@ export const ActionParameterMappingForm = ({
           />
         </ParameterFormSection>
       ))}
-      {actionParameters.length === 0 && (
+      {sortedParameters.length === 0 && (
         <EmptyState message={t`This action has no parameters to map`} />
       )}
     </div>

@@ -1,4 +1,3 @@
-import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import { callMockEvent } from "__support__/events";
@@ -18,7 +17,7 @@ interface setupProps {
 }
 
 const setup = ({ isAdmin = false, upload = {} }: setupProps = {}) => {
-  setupCollectionsEndpoints([createMockCollection({})]);
+  setupCollectionsEndpoints({ collections: [createMockCollection({})] });
 
   return renderWithProviders(<StatusListing />, {
     storeInitialState: createMockState({
@@ -46,7 +45,7 @@ describe("StatusListing", () => {
   });
 
   it("should not render if no one is logged in", () => {
-    setupCollectionsEndpoints([createMockCollection({})]);
+    setupCollectionsEndpoints({ collections: [createMockCollection({})] });
     renderWithProviders(<StatusListing />);
     expect(screen.queryByText("DatabaseStatus")).not.toBeInTheDocument();
   });

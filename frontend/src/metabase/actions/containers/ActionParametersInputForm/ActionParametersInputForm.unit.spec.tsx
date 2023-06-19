@@ -1,10 +1,9 @@
-import React from "react";
 import _ from "underscore";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
 
-import { render, screen } from "__support__/ui";
+import { getIcon, render, screen } from "__support__/ui";
 
 import {
   createMockActionDashboardCard,
@@ -65,7 +64,7 @@ function setup(options?: Partial<ActionParametersInputModalProps>) {
   render(<ActionParametersInputForm {...defaultProps} {...options} />);
 }
 
-async function setupModal(options?: any) {
+async function setupModal(options?: Partial<ActionParametersInputModalProps>) {
   render(
     <ActionParametersInputModal
       title="Test Modal"
@@ -249,13 +248,29 @@ describe("Actions > ActionParametersInputForm", () => {
           type: "implicit",
           kind: "row/delete",
         }),
-        missingParameters: [],
         showConfirmMessage: true,
       });
 
       expect(
         screen.getByText(/this action cannot be undone/i),
       ).toBeInTheDocument();
+    });
+
+    it("should render action edit action icon if onEdit is passed", async () => {
+      const onEditMock = jest.fn();
+
+      await setupModal({ onEdit: onEditMock });
+
+      const editActionTrigger = getIcon("pencil");
+      expect(editActionTrigger).toBeInTheDocument();
+
+      userEvent.hover(editActionTrigger);
+
+      expect(screen.getByText("Edit this action")).toBeInTheDocument();
+
+      userEvent.click(editActionTrigger);
+
+      expect(onEditMock).toHaveBeenCalledTimes(1);
     });
   });
 });

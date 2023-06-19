@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,7 +8,7 @@ import Task from "metabase/entities/tasks";
 
 import PaginationControls from "metabase/components/PaginationControls";
 import AdminHeader from "metabase/components/AdminHeader";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 import {
@@ -22,7 +22,7 @@ import {
 // Otherwise @Database.loadList overrides pagination props
 // that come from @Task.LoadList
 
-class TasksAppInner extends React.Component {
+class TasksAppInner extends Component {
   render() {
     const {
       tasks,
@@ -48,9 +48,8 @@ class TasksAppInner extends React.Component {
             >
               <Icon
                 name="info"
-                ml={1}
                 style={{ marginTop: 5 }}
-                className="text-brand-hover cursor-pointer text-medium"
+                className="ml1 text-brand-hover cursor-pointer text-medium"
               />
             </Tooltip>
           </SectionTitle>

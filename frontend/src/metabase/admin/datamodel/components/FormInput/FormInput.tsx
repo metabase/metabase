@@ -1,4 +1,4 @@
-import React, { forwardRef, InputHTMLAttributes, Ref } from "react";
+import { forwardRef, InputHTMLAttributes, Ref } from "react";
 import cx from "classnames";
 import { FormInputRoot } from "./FormInput.styled";
 
@@ -14,6 +14,7 @@ const FormInput = forwardRef(function FormInput(
   return (
     <FormInputRoot
       {...props}
+      value={props.value ?? ""}
       ref={ref}
       className={cx("input", className)}
       type="text"

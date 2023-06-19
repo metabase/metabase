@@ -54,8 +54,13 @@
 
 (shared.ns/import-fns
   [lib.aggregation
-   aggregations
    aggregate
+   aggregation-clause
+   aggregation-operator-columns
+   aggregations
+   aggregations-metadata
+   available-aggregation-operators
+   selected-aggregation-operators
    count
    avg
    count-where
@@ -68,7 +73,9 @@
    stddev
    sum
    sum-where
-   var]
+   var
+   cum-count
+   cum-sum]
   [lib.binning
    available-binning-strategies
    binning
@@ -76,7 +83,8 @@
   [lib.breakout
    breakout
    breakoutable-columns
-   breakouts]
+   breakouts
+   breakouts-metadata]
   [lib.column-group
    columns-group-columns
    group-columns]
@@ -84,10 +92,13 @@
    field
    query-for-table-id
    query-for-table-name
-   table]
+   table
+   ref-lookup]
   [lib.expression
    expression
    expressions
+   expressions-metadata
+   expressionable-columns
    +
    -
    *
@@ -130,10 +141,14 @@
    lower]
   [lib.field
    fields
-   with-fields]
+   with-fields
+   fieldable-columns]
   [lib.filter
    filter
    filters
+   filterable-columns
+   filterable-column-operators
+   filter-clause
    and
    or
    not
@@ -149,13 +164,20 @@
    time-interval
    segment]
   [lib.join
+   available-join-strategies
    join
    join-clause
+   join-condition-lhs-columns
+   join-condition-operators
+   join-condition-rhs-columns
    join-conditions
    join-fields
+   join-strategy
    joins
+   suggested-join-condition
    with-join-alias
-   with-join-fields]
+   with-join-fields
+   with-join-strategy]
   [lib.limit
    current-limit
    limit]
@@ -198,5 +220,4 @@
    describe-relative-datetime
    available-temporal-buckets
    temporal-bucket
-   temporal-bucket-option
    with-temporal-bucket])

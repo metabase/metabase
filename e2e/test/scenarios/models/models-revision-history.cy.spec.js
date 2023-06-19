@@ -1,4 +1,5 @@
 import { restore, questionInfoButton, visitModel } from "e2e/support/helpers";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > models > revision history", () => {
   beforeEach(() => {
@@ -14,7 +15,7 @@ describe("scenarios > models > revision history", () => {
   });
 
   it("should allow reverting to a saved question state and back into a model again", () => {
-    visitModel(3);
+    visitModel(ORDERS_BY_YEAR_QUESTION_ID);
 
     openRevisionHistory();
     revertTo("You created this");
@@ -23,7 +24,7 @@ describe("scenarios > models > revision history", () => {
     cy.location("pathname").should("match", /^\/question\/3/);
     cy.get(".LineAreaBarChart");
 
-    revertTo("^Turned this into a model");
+    revertTo("You edited this");
     cy.wait("@modelQuery3");
 
     cy.location("pathname").should("match", /^\/model\/3/);

@@ -51,9 +51,9 @@ type CollectionItemModel =
 
 export type CollectionItemId = number;
 
-export interface CollectionItem<T = CollectionItemModel> {
+export interface CollectionItem {
   id: CollectionItemId;
-  model: T;
+  model: CollectionItemModel;
   name: string;
   description: string | null;
   copy?: boolean;
@@ -71,4 +71,10 @@ export interface CollectionItem<T = CollectionItemModel> {
   setPinned?: (isPinned: boolean) => void;
   setCollection?: (collection: Collection) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
+}
+
+export interface CollectionListQuery {
+  archived?: boolean;
+  "exclude-other-user-collections"?: boolean;
+  namespace?: string;
 }

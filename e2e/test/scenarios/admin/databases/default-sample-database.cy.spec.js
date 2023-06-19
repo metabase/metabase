@@ -2,7 +2,7 @@ import { restore, popover, modal, describeEE } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { visitDatabase } from "./helpers/e2e-database-helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -114,7 +114,7 @@ describe("scenarios > admin > databases > sample database", () => {
     );
     cy.intercept("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
     // model
-    cy.request("PUT", "/api/card/1", { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
     // Create a segment through API
     cy.request("POST", "/api/segment", {
       name: "Small orders",
@@ -225,6 +225,69 @@ describe("scenarios > admin > databases > sample database", () => {
       "eq",
       `/admin/databases/${newSampleDatabaseId}`,
     );
+  });
+
+  it("updates databases list in Database Browser after bringing sample database back", () => {
+    cy.intercept("GET", "/api/database").as("loadDatabases");
+    cy.intercept("POST", "/api/database/sample_database").as(
+      "restoreSampleDatabase",
+    );
+    cy.intercept("GET", "/api/database/*/usage_info").as(
+      "loadDatabaseUsageInfo",
+    );
+    cy.intercept("GET", "/api/database/*").as("loadDatabase");
+    cy.intercept("DELETE", "/api/database/*").as("deleteDatabase");
+
+    cy.visit("/admin/databases");
+    cy.wait("@loadDatabases");
+    cy.findByTestId("database-list").within(() => {
+      cy.findByText("Sample Database").click();
+    });
+    cy.wait("@loadDatabase");
+
+    cy.button("Remove this database").click();
+    cy.wait("@loadDatabaseUsageInfo");
+    modal().within(() => {
+      cy.findByLabelText(/Delete \d+ saved questions?/).click();
+      cy.findByTestId("database-name-confirmation-input").type(
+        "Sample Database",
+      );
+      cy.findByText("Delete this content and the DB connection").click();
+      cy.wait("@deleteDatabase");
+    });
+
+    cy.findByTestId("database-list").within(() => {
+      cy.findByText("Sample Database").should("not.exist");
+    });
+
+    cy.findByTestId("exit-admin").click();
+
+    cy.wait("@loadDatabases");
+    cy.findByTestId("main-navbar-root").within(() => {
+      cy.findByText("Browse data").should("not.exist");
+    });
+
+    cy.visit("/admin/databases");
+    cy.findByTestId("database-list").within(() => {
+      cy.findByText("Bring the sample database back").click();
+      cy.wait("@restoreSampleDatabase");
+    });
+
+    cy.findByTestId("database-list").within(() => {
+      cy.findByText("Sample Database").should("exist");
+    });
+
+    cy.findByTestId("exit-admin").click();
+
+    cy.wait("@loadDatabases");
+    cy.findByTestId("main-navbar-root").within(() => {
+      cy.findByText("Browse data").should("exist");
+      cy.findByText("Browse data").click();
+    });
+
+    cy.findByTestId("database-browser").within(() => {
+      cy.findByText("Sample Database").should("exist");
+    });
   });
 
   describeEE("custom caching", () => {

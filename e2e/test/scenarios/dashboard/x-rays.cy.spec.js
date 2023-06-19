@@ -40,7 +40,7 @@ describe("scenarios > x-rays", () => {
     cy.findByText(/^Some insights about/).should("not.exist");
   });
 
-  it.skip("should work on questions with explicit joins (metabase#13112)", () => {
+  it("should work on questions with explicit joins (metabase#13112)", () => {
     const PRODUCTS_ALIAS = "Products";
 
     cy.createQuestion(
@@ -76,6 +76,9 @@ describe("scenarios > x-rays", () => {
     cy.get(".dot")
       .eq(23) // Random dot
       .click({ force: true });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Automatic insights…").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("X-ray").click();
 
@@ -89,7 +92,10 @@ describe("scenarios > x-rays", () => {
   });
 
   ["X-ray", "Compare to the rest"].forEach(action => {
-    it(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
+    // Temporarily skipping this due to degraded performance causing the test to fail, blocking all merges to master.
+    // We're actively investigating whether Github's runners or our code is responsible. See discussion at:
+    // https://metaboat.slack.com/archives/C5XHN8GLW/p1685964332028149
+    it.skip(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
 
       cy.createNativeQuestion({
@@ -110,6 +116,9 @@ describe("scenarios > x-rays", () => {
 
       cy.button("Done").click();
       cy.get(".bar").first().click({ force: true });
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Automatic insights…").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(action).click();
 
@@ -144,9 +153,13 @@ describe("scenarios > x-rays", () => {
       });
 
       cy.get(".bar").first().click();
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Automatic insights…").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(action).click();
       cy.wait("@xray");
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("null").should("not.exist");
     });

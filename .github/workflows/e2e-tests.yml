@@ -1,6 +1,9 @@
 name: E2E Tests
 
 on:
+  # We'll record runs using Replay.io and their browser on a schedule as an experiment
+  schedule:
+    - cron: '0 */8 * * *'
   push:
     branches:
       - "master"
@@ -13,6 +16,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test-run-id:
+    runs-on: ubuntu-22.04
+    outputs:
+      testRunId: ${{ steps.testRunId.outputs.testRunId }}
+    steps:
+      - id: testRunId
+        run: echo testRunId=$(npx uuid) >> "$GITHUB_OUTPUT"
   files-changed:
     name: Check which files changed
     runs-on: ubuntu-22.04
@@ -55,13 +65,13 @@ jobs:
         uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    needs: [build, files-changed]
+    needs: [build, files-changed, test-run-id]
     if: |
       always() &&
       needs.files-changed.outputs.e2e_all == 'true' &&
       needs.build.result == 'success'
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
@@ -78,13 +88,13 @@ jobs:
         java-version: [11]
         edition: [ee]
         folder:
+          - "actions"
           - "admin"
           - "binning"
           - "collections"
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"
-          - "downloads"
           - "embedding"
           - "filters"
           - "joins"
@@ -166,7 +176,7 @@ jobs:
           mv version.properties resources/
 
       - name: Run OSS-specific Cypress tests
-        if: matrix.edition == 'oss'
+        if: matrix.edition == 'oss' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
           --env grepTags=@OSS \
@@ -175,13 +185,51 @@ jobs:
           TERM: xterm
 
       - name: Run EE Cypress tests on ${{ matrix.folder }}
-        if: matrix.edition == 'ee'
+        if: matrix.edition == 'ee' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@quarantine" \
           --folder ${{ matrix.folder }}
         env:
           TERM: xterm
+
+      # REPLAY.IO specific jobs
+      - name: Install Replay.io browser
+        if: ${{ github.event_name == 'schedule' }}
+        run: npx @replayio/cypress install
+
+      - name: Run OSS-specific Cypress tests using Replay.io browser
+        if: matrix.edition == 'oss' && github.event_name == 'schedule'
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags=@OSS \
+          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
+          --browser "replay-chromium"
+        env:
+          TERM: xterm
+          CYPRESS_REPLAYIO_ENABLED: 1
+          RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
+          RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
+
+      - name: Run EE Cypress tests on ${{ matrix.folder }} using Replay.io browser
+        if: matrix.edition == 'ee' && github.event_name == 'schedule'
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags="-@quarantine" \
+          --folder ${{ matrix.folder }} \
+          --browser "replay-chromium"
+        env:
+          TERM: xterm
+          CYPRESS_REPLAYIO_ENABLED: 1
+          RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
+          RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
+
+      - name: Upload Replay.io recordings
+        if: github.event_name == 'schedule' && always()
+        uses: replayio/action-upload@v0.4.7
+        with:
+          api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ
+          public: true
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v3
@@ -208,13 +256,13 @@ jobs:
         java-version: [11]
         edition: [ee]
         folder:
+          - "actions"
           - "admin"
           - "binning"
           - "collections"
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"
-          - "downloads"
           - "embedding"
           - "filters"
           - "joins"
@@ -237,8 +285,9 @@ jobs:
 
   visual-regression-tests:
     runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     needs: build
+    if: ${{ github.event_name != 'schedule' }}
     name: percy-visual-regression-tests
     env:
       MB_EDITION: ${{ matrix.edition }}

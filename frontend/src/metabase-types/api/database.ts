@@ -17,12 +17,14 @@ export type DatabaseFeature =
   | "basic-aggregations"
   | "binning"
   | "case-sensitivity-string-filter-options"
+  | "dynamic-schema"
   | "expression-aggregations"
   | "expressions"
   | "foreign-keys"
   | "native-parameters"
   | "nested-queries"
   | "standard-deviation-aggregations"
+  | "percentile-aggregations"
   | "persist-models"
   | "persist-models-enabled"
   | "schemas"
@@ -30,7 +32,8 @@ export type DatabaseFeature =
   | "left-join"
   | "right-join"
   | "inner-join"
-  | "full-join";
+  | "full-join"
+  | "nested-field-columns";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -85,8 +88,6 @@ export interface DatabaseQuery {
 
 export interface DatabaseListQuery {
   include?: "tables";
-  include_cards?: boolean;
-  include_tables?: boolean;
   saved?: boolean;
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
@@ -94,4 +95,10 @@ export interface DatabaseListQuery {
 
 export interface DatabaseIdFieldListQuery {
   include_editable_data_model?: boolean;
+}
+
+export interface SavedQuestionDatabase {
+  id: -1337;
+  name: "Saved Questions";
+  is_saved_questions: true;
 }

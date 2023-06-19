@@ -5,6 +5,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { CardId, Card as SavedCard } from "metabase-types/api";
 import Question, { QuestionCreatorOpts } from "metabase-lib/Question";
+import * as ML_Urls from "metabase-lib/urls";
 
 import { appendSlug, extractQueryParams } from "./utils";
 
@@ -102,7 +103,7 @@ export function newQuestion({
   ...options
 }: NewQuestionUrlBuilderParams = {}) {
   const question = Question.create(options);
-  const url = question.getUrl({
+  const url = ML_Urls.getUrl(question, {
     creationType,
     query: objectId ? { objectId } : undefined,
   });

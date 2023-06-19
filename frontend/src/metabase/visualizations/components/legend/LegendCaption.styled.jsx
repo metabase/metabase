@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { color, lighten } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 export const LegendCaptionRoot = styled.div`
   display: flex;
@@ -36,6 +36,7 @@ export const LegendRightContent = styled.div`
   display: flex;
   justify-content: flex-end;
   margin-left: auto;
+  align-items: center;
 `;
 
 LegendDescriptionIcon.defaultProps = {

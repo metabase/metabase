@@ -7,11 +7,10 @@
    [metabase.models.task-history :as task-history :refer [TaskHistory]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.task :as task]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Fetch a list of recent tasks stored as Task History"
   []
   (validation/check-has-application-permission :monitoring)
@@ -20,18 +19,16 @@
    :offset mw.offset-paging/*offset*
    :data   (task-history/all mw.offset-paging/*limit* mw.offset-paging/*offset*)})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Get `TaskHistory` entry with ID."
   [id]
+  {id ms/PositiveInt}
   (api/check-404 (api/read-check TaskHistory id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/info"
+(api/defendpoint GET "/info"
   "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
   []
   (validation/check-has-application-permission :monitoring)
   (task/scheduler-info))
-
 
 (api/define-routes)

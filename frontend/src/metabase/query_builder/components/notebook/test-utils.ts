@@ -1,10 +1,20 @@
 /* istanbul ignore file */
 
-import { getSavedStructuredQuestion } from "metabase-lib/mocks";
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/core/utils/types";
+import {
+  createSampleDatabase,
+  createSavedStructuredCard,
+} from "metabase-types/api/mocks/presets";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { NotebookStep } from "./types";
 
-export const DEFAULT_QUESTION = getSavedStructuredQuestion();
+export const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+  questions: [createSavedStructuredCard({ id: 1 })],
+});
+
+export const DEFAULT_QUESTION = checkNotNull(metadata.question(1));
 export const DEFAULT_LEGACY_QUERY = DEFAULT_QUESTION.query() as StructuredQuery;
 export const DEFAULT_QUERY = DEFAULT_QUESTION._getMLv2Query();
 

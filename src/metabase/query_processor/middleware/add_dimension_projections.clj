@@ -35,7 +35,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (def ^:private ExternalRemappingDimensionInitialInfo
@@ -433,7 +432,7 @@
   [cols]
   ;; hydrate Dimensions and FieldValues for all of the columns in the results, then make a map of dimension info for
   ;; each one that is `internal` type
-  (let [internal-only-dims (->> (hydrate cols :values :dimensions)
+  (let [internal-only-dims (->> (t2/hydrate cols :values :dimensions)
                                 (keep-indexed col->dim-map)
                                 (filter identity))]
     {:internal-only-dims internal-only-dims

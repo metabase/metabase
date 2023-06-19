@@ -12,8 +12,10 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.public-settings :as public-settings]
    [metabase.search.util :as search-util]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]])
   (:import
+   (java.io File)
    (java.text NumberFormat)
    (java.util Locale)))
 
@@ -73,6 +75,11 @@
 
 (def ^:private currency-regex "Supported currency signs" #"[$€£¥₹₪₩₿¢\s]")
 
+(defn- with-parens
+  "Returns a regex that matches the argument, with or without surrounding parentheses."
+  [number-regex]
+  (re-pattern (str "(" number-regex ")|(\\(" number-regex "\\))")))
+
 (defn- with-currency
   "Returns a regex that matches a positive or negative number, including currency symbols"
   [number-regex]
@@ -86,20 +93,22 @@
   (get-in (public-settings/custom-formatting) [:type/Number :number_separators] ".,"))
 
 (defn- int-regex [number-separators]
-  (with-currency
-    (case number-separators
-      ("." ".,") #"\d[\d,]*"
-      ",." #"\d[\d.]*"
-      ", " #"\d[\d \u00A0]*"
-      ".’" #"\d[\d’]*")))
+  (with-parens
+    (with-currency
+      (case number-separators
+        ("." ".,") #"\d[\d,]*"
+        ",." #"\d[\d.]*"
+        ", " #"\d[\d \u00A0]*"
+        ".’" #"\d[\d’]*"))))
 
 (defn- float-regex [number-separators]
-  (with-currency
-    (case number-separators
-      ("." ".,") #"\d[\d,]*\.\d+"
-      ",." #"\d[\d.]*\,[\d]+"
-      ", " #"\d[\d \u00A0]*\,[\d.]+"
-      ".’" #"\d[\d’]*\.[\d.]+")))
+  (with-parens
+    (with-currency
+      (case number-separators
+        ("." ".,") #"\d[\d,]*\.\d+"
+        ",." #"\d[\d.]*\,[\d]+"
+        ", " #"\d[\d \u00A0]*\,[\d.]+"
+        ".’" #"\d[\d’]*\.[\d.]+"))))
 
 (defn value->type
   "The most-specific possible type for a given value. Possibilities are:
@@ -132,7 +141,7 @@
 
 (defn- lowest-common-member [[x & xs :as all-xs] ys]
   (cond
-    (empty? all-xs)  (throw (IllegalArgumentException. (format "%s and %s must have a common member" xs ys)))
+    (empty? all-xs)  (throw (IllegalArgumentException. (tru "Could not find a common type for {0} and {1}" all-xs ys)))
     (contains? ys x) x
     :else            (recur xs ys)))
 
@@ -183,7 +192,9 @@
   [s]
   (cond
     (re-matches #"(?i)true|t|yes|y|1" s) true
-    (re-matches #"(?i)false|f|no|n|0" s) false))
+    (re-matches #"(?i)false|f|no|n|0" s) false
+    :else                                (throw (IllegalArgumentException.
+                                                 (tru "{0} is not a recognizable boolean" s)))))
 
 (defn- parse-date
   [s]
@@ -192,33 +203,50 @@
 (defn- parse-datetime
   [s]
   (cond
-    (date-string? s) (t/local-date-time (t/local-date s) (t/local-time "00:00:00"))
-    (datetime-string? s) (t/local-date-time s)))
+    (date-string? s)     (t/local-date-time (t/local-date s) (t/local-time "00:00:00"))
+    (datetime-string? s) (t/local-date-time s)
+    :else                (throw (IllegalArgumentException.
+                                 (tru "{0} is not a recognizable datetime" s)))))
 
 (defn- remove-currency-signs
   [s]
   (str/replace s currency-regex ""))
 
-(defn- parse-plain-number [s]
-  (case (get-number-separators)
-    ("." ".,") (. (NumberFormat/getInstance (Locale. "en" "US")) parse s)
-    ",." (. (NumberFormat/getInstance (Locale. "de" "DE")) parse s)
-    ", " (. (NumberFormat/getInstance (Locale. "fr" "FR")) parse (str/replace s \space \u00A0)) ; \u00A0 is a non-breaking space
-    ".’" (. (NumberFormat/getInstance (Locale. "de" "CH")) parse s)))
+(let [us (NumberFormat/getInstance (Locale. "en" "US"))
+      de (NumberFormat/getInstance (Locale. "de" "DE"))
+      fr (NumberFormat/getInstance (Locale. "fr" "FR"))
+      ch (NumberFormat/getInstance (Locale. "de" "CH"))]
+  (defn- parse-plain-number [number-separators s]
+    (let [has-parens?       (re-matches #"\(.*\)" s)
+          deparenthesized-s (str/replace s #"[()]" "")
+          parsed-number     (case number-separators
+                              ("." ".,") (. us parse deparenthesized-s)
+                              ",."       (. de parse deparenthesized-s)
+                              ", "       (. fr parse (str/replace deparenthesized-s \space \u00A0)) ; \u00A0 is a non-breaking space
+                              ".’"       (. ch parse deparenthesized-s))]
+      (if has-parens?
+        (- parsed-number)
+        parsed-number))))
 
 (defn- parse-number
-  [s]
-  (-> s
-      (str/trim)
-      (remove-currency-signs)
-      (parse-plain-number)))
+  [number-separators s]
+  (try
+    (->> s
+         (str/trim)
+         (remove-currency-signs)
+         (parse-plain-number number-separators))
+    (catch Throwable e
+      (throw (ex-info
+              (tru "{0} is not a recognizable number" s)
+              {}
+              e)))))
 
 (defn- upload-type->parser [upload-type]
   (case upload-type
     ::varchar_255 identity
     ::text        identity
-    ::int         parse-number
-    ::float       parse-number
+    ::int         (partial parse-number (get-number-separators))
+    ::float       (partial parse-number (get-number-separators))
     ::boolean     #(parse-bool (str/trim %))
     ::date        #(parse-date (str/trim %))
     ::datetime    #(parse-datetime (str/trim %))))
@@ -228,13 +256,13 @@
    Replaces empty strings with nil."
   [col->upload-type csv-file]
   (with-open [reader (io/reader csv-file)]
-    (let [[_header & rows] (csv/read-csv reader)
-          parsers (map upload-type->parser (vals col->upload-type))]
+    (let [[header & rows] (csv/read-csv reader)
+          column-count    (count header)
+          parsers         (map upload-type->parser (vals col->upload-type))]
       (vec (for [row rows]
-             (for [[v f] (map vector row parsers)]
-               (if (str/blank? v)
-                 nil
-                 (f v))))))))
+             (for [[value parser] (map vector (pad column-count row) parsers)]
+               (when (not (str/blank? value))
+                 (parser value))))))))
 
 ;;;; +------------------+
 ;;;; | Public Functions |
@@ -256,8 +284,12 @@
   "Returns an improper subset of the rows no longer than [[max-sample-rows]]. Takes an evenly-distributed sample (not
   just the first n)."
   [rows]
-  (take max-sample-rows (take-nth (max 1 (long (/ (count rows) max-sample-rows)))
-                                  rows)))
+  (take max-sample-rows
+        (take-nth (max 1
+                       (long (/ (count rows)
+                                max-sample-rows)))
+                  rows)))
+
 (defn detect-schema
   "Returns an ordered map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
   first row. Supported types are:
@@ -277,16 +309,19 @@
       (rows->schema header (sample-rows rows)))))
 
 (defn load-from-csv
-  "Loads a table from a CSV file. If the table already exists, it will throw an error. Returns nil."
-  [driver db-id table-name csv-file]
+  "Loads a table from a CSV file. If the table already exists, it will throw an error.
+   Returns the file size, number of rows, and number of columns."
+  [driver db-id table-name ^File csv-file]
   (let [col->upload-type   (detect-schema csv-file)
         col->database-type (update-vals col->upload-type (partial driver/upload-type->database-type driver))
         column-names       (keys col->upload-type)]
     (driver/create-table driver db-id table-name col->database-type)
     (try
       (let [rows (parsed-rows col->upload-type csv-file)]
-        (driver/insert-into driver db-id table-name column-names rows))
+        (driver/insert-into driver db-id table-name column-names rows)
+        {:num-rows    (count rows)
+         :num-columns (count column-names)
+         :size-mb     (/ (.length csv-file) 1048576.0)})
       (catch Throwable e
         (driver/drop-table driver db-id table-name)
-        (throw (ex-info (ex-message e) {}))))
-    nil))
+        (throw (ex-info (ex-message e) {:status-code 400}))))))

@@ -135,15 +135,18 @@
 (def ^:private schema->version
   "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
   to SnowcatCloud, at the same time that the data sent to the collector is updated."
-  {::account   "1-0-0"
-   ::invite    "1-0-1"
-   ::dashboard "1-0-0"
-   ::database  "1-0-0"
-   ::instance  "1-1-0"
-   ::metabot   "1-0-0"
-   ::timeline  "1-0-0"
-   ::task      "1-0-0"
-   ::action    "1-0-0"})
+  {::account      "1-0-0"
+   ::invite       "1-0-1"
+   ::csvupload    "1-0-0"
+   ::dashboard    "1-0-0"
+   ::dashboardtab "1-0-0"
+   ::database     "1-0-0"
+   ::instance     "1-1-0"
+   ::metabot      "1-0-0"
+   ::search       "1-0-0"
+   ::timeline     "1-0-0"
+   ::task         "1-0-0"
+   ::action       "1-0-0"})
 
 (defn- app-db-type
   "Returns the type of the Metabase application database as a string (e.g. PostgreSQL, MySQL)"
@@ -202,10 +205,15 @@
    ::database-connection-failed     ::database
    ::new-event-created              ::timeline
    ::new-task-history               ::task
+   ::new-search-query               ::search
    ::action-created                 ::action
    ::action-updated                 ::action
    ::action-deleted                 ::action
    ::action-executed                ::action
+   ::dashboard-tabs-created         ::dashboardtab
+   ::dashboard-tabs-deleted         ::dashboardtab
+   ::csv-upload-successful          ::csvupload
+   ::csv-upload-failed              ::csvupload
    ::metabot-feedback-received      ::metabot})
 
 (defn track-event!

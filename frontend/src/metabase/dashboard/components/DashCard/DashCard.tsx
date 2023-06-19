@@ -1,21 +1,20 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import * as React from "react";
 import { getIn } from "icepick";
 import type { LocationDescriptor } from "history";
 
 import { useMount } from "react-use";
-import { IconProps } from "metabase/components/Icon";
+import { IconProps } from "metabase/core/components/Icon";
 
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import Utils from "metabase/lib/utils";
 
-import {
-  getGenericErrorMessage,
-  getPermissionErrorMessage,
-} from "metabase/visualizations/lib/errors";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 
-import { isVirtualDashCard } from "metabase/dashboard/utils";
+import {
+  getDashcardResultsError,
+  isDashcardLoading,
+  isVirtualDashCard,
+} from "metabase/dashboard/utils";
 
 import { isActionCard } from "metabase/actions/utils";
 
@@ -24,14 +23,13 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import type {
   Card,
   CardId,
-  DatasetData,
   Dashboard,
   DashboardOrderedCard,
   DashCardId,
   ParameterId,
   ParameterValueOrArray,
-  Series,
   VisualizationSettings,
+  Dataset,
 } from "metabase-types/api";
 
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
@@ -53,41 +51,12 @@ function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
 }
 
-function getSeriesError(series: Series) {
-  const isAccessRestricted = series.some(
-    s =>
-      s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
-      s.error?.status === 403,
-  );
-
-  if (isAccessRestricted) {
-    return {
-      message: getPermissionErrorMessage(),
-      icon: "key",
-    };
-  }
-
-  const errors = series.map(s => s.error).filter(Boolean);
-  if (errors.length > 0) {
-    if (IS_EMBED_PREVIEW) {
-      const message = errors[0]?.data || getGenericErrorMessage();
-      return { message, icon: "warning" };
-    }
-    return {
-      message: getGenericErrorMessage(),
-      icon: "warning",
-    };
-  }
-
-  return;
-}
-
 interface DashCardProps {
   dashboard: Dashboard;
   dashcard: DashboardOrderedCard & { justAdded?: boolean };
   gridItemWidth: number;
   totalNumGridCols: number;
-  dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
+  dashcardData: Record<DashCardId, Record<CardId, Dataset>>;
   slowCards: Record<CardId, boolean>;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   metadata: Metadata;
@@ -188,13 +157,10 @@ function DashCard({
     }));
   }, [cards, dashcard.id, dashcardData, slowCards]);
 
-  const isLoading = useMemo(() => {
-    if (isVirtualDashCard(dashcard)) {
-      return false;
-    }
-    const hasSeries = series.length > 0 && series.every(s => s.data);
-    return !hasSeries;
-  }, [dashcard, series]);
+  const isLoading = useMemo(
+    () => isDashcardLoading(dashcard, dashcardData),
+    [dashcard, dashcardData],
+  );
 
   const isAction = isActionCard(mainCard);
   const isEmbed = Utils.isJWT(dashcard.dashboard_id);
@@ -211,7 +177,7 @@ function DashCard({
     return { expectedDuration, isSlow };
   }, [series, isLoading]);
 
-  const error = useMemo(() => getSeriesError(series), [series]);
+  const error = useMemo(() => getDashcardResultsError(series), [series]);
   const hasError = !!error;
 
   const parameterValuesBySlug = useMemo(
@@ -223,6 +189,20 @@ function DashCard({
     () => ({ width: dashcard.size_x, height: dashcard.size_y }),
     [dashcard],
   );
+
+  const shouldForceHiddenBackground = useMemo(() => {
+    if (!isEditing) {
+      return false;
+    }
+
+    const isHeadingCard = mainCard.display === "heading";
+    const isTextCard = mainCard.display === "text";
+
+    return (
+      (isHeadingCard || isTextCard) &&
+      mainCard.visualization_settings["dashcard.background"] === false
+    );
+  }, [isEditing, mainCard]);
 
   const hasHiddenBackground = useMemo(() => {
     if (isEditing) {
@@ -318,6 +298,7 @@ function DashCard({
         data-testid="dashcard"
         className="Card rounded flex flex-column hover-parent hover--visibility"
         hasHiddenBackground={hasHiddenBackground}
+        shouldForceHiddenBackground={shouldForceHiddenBackground}
         isNightMode={isNightMode}
         isUsuallySlow={isSlow === "usually-slow"}
         ref={cardRootRef}

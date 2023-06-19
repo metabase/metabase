@@ -28,7 +28,8 @@
               :type/Text)))))
 
 (deftest ^:parallel column-isa-test
-  (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/expression "myadd" (lib/+ 1 (lib/field "VENUES" "CATEGORY_ID"))))
         orderable-columns (lib/orderable-columns query)
         columns-of-type (fn [typ] (filter #(lib.types.isa/isa? % typ)
                                          orderable-columns))]
@@ -55,7 +56,36 @@
                   :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
                   :semantic-type :type/PK
                   :effective-type :type/BigInteger}]
-                (columns-of-type :Relation/*))))))
+                (columns-of-type :Relation/*))))
+      (testing "experssions"
+        (is (=? [{:name "ID"
+                  :lib/desired-column-alias "ID"
+                  :semantic-type :type/PK
+                  :effective-type :type/BigInteger}
+                 {:name "CATEGORY_ID"
+                  :lib/desired-column-alias "CATEGORY_ID"
+                  :semantic-type :type/FK
+                  :effective-type :type/Integer}
+                 {:name "LATITUDE"
+                  :lib/desired-column-alias "LATITUDE"
+                  :semantic-type :type/Latitude
+                  :effective-type :type/Float}
+                 {:name "LONGITUDE"
+                  :lib/desired-column-alias "LONGITUDE"
+                  :semantic-type :type/Longitude
+                  :effective-type :type/Float}
+                 {:name "PRICE"
+                  :lib/desired-column-alias "PRICE"
+                  :semantic-type :type/Category
+                  :effective-type :type/Integer}
+                 {:name "myadd"
+                  :lib/desired-column-alias "myadd"
+                  :effective-type :type/Integer}
+                 {:name "ID"
+                  :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
+                  :semantic-type :type/PK
+                  :effective-type :type/BigInteger}]
+                (filter lib.types.isa/numeric? orderable-columns))))))
 
 (deftest ^:parallel field-type-test
   (testing "temporal"
@@ -90,10 +120,10 @@
   (testing "strings, regardless of the effective type is"
     (are [typ] (= ::lib.types.constants/string (lib.types.isa/field-type {:effective-type :type/Float
                                                                           :semantic-type typ}))
-      :type/Name :type/Category)))
+      :type/Name :type/Category))
   (testing "boolean, regardless of the semantic type"
     (is (= ::lib.types.constants/boolean (lib.types.isa/field-type {:effective-type :type/Boolean
-                                                  :semantic-type :type/Category}))))
+                                                                    :semantic-type :type/Category}))))
   (testing "unexpected things"
     (are [column] (nil? (lib.types.isa/field-type column))
       {:effective-type "DERP DERP DERP"}
@@ -102,7 +132,7 @@
       {:semantic-type nil}
       "DERP DERP DERP"
       :type/Category
-      nil))
+      nil)))
 
 (deftest ^:parallel type-predicate-test
   (letfn [(column [x]

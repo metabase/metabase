@@ -105,6 +105,13 @@
                   (setting/set-value-of-type! :json :user-recent-views views)
                   views)))))
 
+(defsetting dismissed-custom-dashboard-toast
+  (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
+  :user-local :only
+  :visibility :authenticated
+  :type :boolean
+  :default false)
+
 ;; TODO: remove this setting as part of Audit V2 project.
 (defsetting most-recently-viewed-dashboard
   (deferred-tru "The Dashboard that the user has most recently viewed within the last 24 hours.")
@@ -135,14 +142,15 @@
 
 (defn- update-users-recent-views!
   [user-id model model-id]
-  (mw.session/with-current-user user-id
-    (let [view        {:model    (name model)
-                       :model_id model-id}
-          prior-views (remove #{view} (user-recent-views))]
-      (when (= model "dashboard") (most-recently-viewed-dashboard! model-id))
-      (when-not ((set prior-views) view)
-        (let [new-views (vec (take 10 (conj prior-views view)))]
-          (user-recent-views! new-views))))))
+  (when user-id
+    (mw.session/with-current-user user-id
+      (let [view        {:model    (name model)
+                         :model_id model-id}
+            prior-views (remove #{view} (user-recent-views))]
+        (when (= model "dashboard") (most-recently-viewed-dashboard! model-id))
+        (when-not ((set prior-views) view)
+          (let [new-views (vec (take 10 (conj prior-views view)))]
+            (user-recent-views! new-views)))))))
 
 (defn handle-view-event!
   "Handle processing for a single event notification received on the view-log-channel"

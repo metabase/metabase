@@ -1,34 +1,39 @@
 import "__support__/ui-mocks";
-import React from "react";
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders } from "__support__/ui";
 import {
-  SAMPLE_DATABASE,
+  createSampleDatabase,
+  SAMPLE_DB_ID,
+  ORDERS_ID,
   ORDERS,
   PRODUCTS,
-  metadata,
-} from "__support__/sample_database_fixture";
+} from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
 import Filter from "metabase-lib/queries/structured/Filter";
 import FilterPopover from "./FilterPopover";
 
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
 const QUERY = Question.create({
-  databaseId: SAMPLE_DATABASE?.id,
-  tableId: ORDERS.id,
+  databaseId: SAMPLE_DB_ID,
+  tableId: ORDERS_ID,
   metadata,
 })
   .query()
   // eslint-disable-next-line
   // @ts-ignore
   .aggregate(["count"])
-  .filter(["time-interval", ["field", ORDERS.CREATED_AT.id, null], -30, "day"])
-  .filter(["=", ["field", ORDERS.TOTAL.id, null], 1234])
+  .filter(["time-interval", ["field", ORDERS.CREATED_AT, null], -30, "day"])
+  .filter(["=", ["field", ORDERS.TOTAL, null], 1234])
   .filter([
     "contains",
-    ["field", PRODUCTS.TITLE.id, { "source-field": ORDERS.PRODUCT_ID.id }],
+    ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
     "asdf",
   ]);
 

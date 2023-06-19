@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { createSelector } from "@reduxjs/toolkit";
@@ -79,7 +79,7 @@ const getMemoizedEntityQuery = createSelector(
   },
 );
 
-class EntityListLoaderInner extends React.Component {
+class EntityListLoaderInner extends Component {
   state = {
     previousList: [],
     isReloading: this.props.reload,
@@ -180,7 +180,7 @@ class EntityListLoaderInner extends React.Component {
       list: currentList,
       listName = entityDef.nameMany,
       loading,
-      reload, // eslint-disable-line no-unused-vars
+      reload,
       keepListWhileLoading,
       ...props
     } = this.props;
@@ -295,6 +295,9 @@ EntityListLoader.defaultProps = defaultProps;
 
 export default EntityListLoader;
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export const entityListLoader = ellProps => ComposedComponent => {
   function WrappedComponent(props) {
     return (

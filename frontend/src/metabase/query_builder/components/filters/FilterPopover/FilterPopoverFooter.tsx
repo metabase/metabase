@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -39,9 +38,7 @@ export default function FilterPopoverFooter({
           data-ui-tag="add-filter"
           primary
           disabled={!filter.isValid()}
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
-          ml="auto"
+          className="ml-auto"
           onClick={() => onCommit()}
         >
           {isNew ? t`Add filter` : t`Update filter`}

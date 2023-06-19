@@ -144,15 +144,10 @@
   [_x]
   nil)
 
-(mu/defn temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/unit]
-  "Get the current temporal bucketing unit associated with something, if any."
-  [x]
-  (temporal-bucket-method x))
-
-(mu/defn temporal-bucket-option :- [:maybe ::lib.schema.temporal-bucketing/option]
+(mu/defn temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/option]
   "Get the current temporal bucketing option associated with something, if any."
   [x]
-  (when-let [unit (temporal-bucket x)]
+  (when-let [unit (temporal-bucket-method x)]
     {:lib/type :type/temporal-bucketing-option
      :unit unit}))
 
@@ -181,13 +176,13 @@
         lib.schema.temporal-bucketing/ordered-datetime-bucketing-units))
 
 (defmethod lib.metadata.calculation/display-name-method :type/temporal-bucketing-option
-  [_query _stage-number {:keys [unit]}]
+  [_query _stage-number {:keys [unit]} _style]
   (describe-temporal-unit unit))
 
 (defmethod lib.metadata.calculation/display-info-method :type/temporal-bucketing-option
-  [query stage-number {:keys [default] :as option}]
-  {:display-name (lib.metadata.calculation/display-name query stage-number option)
-   :default default})
+  [query stage-number option]
+  (merge {:display-name (lib.metadata.calculation/display-name query stage-number option)}
+         (select-keys option [:default :selected])))
 
 (defmulti available-temporal-buckets-method
   "Implementation for [[available-temporal-buckets]]. Return a set of units from

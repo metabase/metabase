@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useMemo, useState } from "react";
+import { useEffect, useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
@@ -27,7 +27,6 @@ import {
   getForm,
   getFormValidationSchema,
   getDefaultFormSettings,
-  sortActionParams,
 } from "../../../utils";
 import { syncFieldsWithParameters } from "../utils";
 import { reorderFields } from "./utils";
@@ -88,11 +87,6 @@ function FormCreator({
     [validationSchema],
   );
 
-  const sortedParams = useMemo(
-    () => parameters.sort(sortActionParams(formSettings)),
-    [parameters, formSettings],
-  );
-
   const handleDragEnd = useCallback(
     ({ source, destination }: DropResult) => {
       if (!formSettings.fields) {
@@ -132,7 +126,7 @@ function FormCreator({
     [formSettings],
   );
 
-  if (!sortedParams.length) {
+  if (!parameters.length) {
     return (
       <SidebarContent>
         <FormContainer>

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
@@ -31,7 +31,7 @@ const getMemoizedEntityQuery = createSelector(
   },
 );
 
-class EntityObjectLoaderInner extends React.Component {
+class EntityObjectLoaderInner extends Component {
   static defaultProps = {
     fetchType: "fetch",
     requestType: "fetch",
@@ -94,7 +94,7 @@ class EntityObjectLoaderInner extends React.Component {
   }
   renderChildren = () => {
     let { children, entityDef, entityAlias, wrapped, object, ...props } =
-      this.props; // eslint-disable-line no-unused-vars
+      this.props;
 
     if (wrapped) {
       object = this._getWrappedObject(this.props);
@@ -184,9 +184,11 @@ const EntityObjectLoader = _.compose(
 
 export default EntityObjectLoader;
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export const entityObjectLoader =
   eolProps =>
-  // eslint-disable-line react/display-name
   ComposedComponent =>
   // eslint-disable-next-line react/display-name
   props =>

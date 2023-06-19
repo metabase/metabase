@@ -1,4 +1,5 @@
-import React, { RefObject } from "react";
+import { RefObject } from "react";
+import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import AceEditor, { ICommand, IMarker } from "react-ace";
@@ -11,13 +12,13 @@ import { processSource } from "metabase-lib/expressions/process";
 import { diagnose } from "metabase-lib/expressions/diagnostics";
 import { tokenize } from "metabase-lib/expressions/tokenizer";
 import { isExpression } from "metabase-lib/expressions";
+import { suggest, Suggestion } from "metabase-lib/expressions/suggest";
 import type { HelpText } from "metabase-lib/expressions/types";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import ExpressionEditorHelpText from "../ExpressionEditorHelpText";
 import ExpressionEditorSuggestions from "../ExpressionEditorSuggestions";
 import ExpressionMode from "../ExpressionMode";
-import { suggest, Suggestion } from "./suggest";
 import {
   EditorContainer,
   EditorEqualsSign,
@@ -470,6 +471,7 @@ class ExpressionEditorTextfield extends React.Component<
           isFocused={isFocused}
           hasError={Boolean(errorMessage)}
           ref={this.suggestionTarget}
+          data-testid="expression-editor-textfield"
         >
           <EditorEqualsSign>=</EditorEqualsSign>
           <AceEditor

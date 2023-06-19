@@ -1,11 +1,13 @@
 import {
   popover,
   restore,
+  dragAndDrop,
   getPinnedSection,
   openPinnedItemMenu,
   openUnpinnedItemMenu,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -101,7 +103,7 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to pin a model", () => {
-    cy.request("PUT", "/api/card/1", { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
 
     openRootCollection();
     openUnpinnedItemMenu(MODEL_NAME);
@@ -112,7 +114,7 @@ describe("scenarios > collection pinned items overview", () => {
       cy.icon("model").should("be.visible");
       cy.findByText(MODEL_NAME).should("be.visible");
       cy.findByText("A model").click();
-      cy.url().should("include", "/model/1");
+      cy.url().should("include", `/model/${ORDERS_QUESTION_ID}`);
     });
   });
 
@@ -207,6 +209,38 @@ describe("scenarios > collection pinned items overview", () => {
       cy.findByText(SQL_QUESTION_DETAILS.name).should("be.visible");
       cy.findByText("A question").should("be.visible");
     });
+  });
+
+  it("should be able to pin a visualization by dragging it up", () => {
+    cy.request("PUT", "/api/card/2", {
+      collection_position: 1,
+      collection_preview: false,
+    });
+    openRootCollection();
+
+    cy.findByTestId("collection-table")
+      .findByText("Orders, Count, Grouped by Created At (year)")
+      .as("draggingViz");
+
+    cy.findByTestId("pinned-items").as("pinnedItems");
+
+    // this test can give us some degree of confidence, but its effectiveness is limited
+    // because we are manually firing events on the correct elements. It doesn't seem that there's
+    // a way to actually simulate the raw user interaction of dragging a certain distance in cypress.
+    // this will not guarantee that the drag and drop functionality will work in the real world, e.g
+    // when our various drag + drop libraries start interfering with events on one another.
+    // for example, this test would not have caught https://github.com/metabase/metabase/issues/30614
+    // even libraries like https://github.com/dmtrKovalenko/cypress-real-events rely on firing events
+    // on specific elements rather than truly simulating mouse movements across the screen
+    dragAndDrop("draggingViz", "pinnedItems");
+
+    cy.findByTestId("collection-table")
+      .findByText("Orders, Count, Grouped by Created At (year)")
+      .should("not.exist");
+
+    cy.findByTestId("pinned-items")
+      .findByText("Orders, Count, Grouped by Created At (year)")
+      .should("exist");
   });
 });
 

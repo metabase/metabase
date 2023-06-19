@@ -25,7 +25,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -42,7 +41,7 @@
   "Get all `Tables`."
   []
   (as-> (t2/select Table, :active true, {:order-by [[:name :asc]]}) tables
-    (hydrate tables :db)
+    (t2/hydrate tables :db)
     (filterv mi/can-read? tables)))
 
 (api/defendpoint GET "/:id"
@@ -54,7 +53,7 @@
                             api/write-check
                             api/read-check)]
     (-> (api-perm-check-fn Table id)
-        (hydrate :db :pk_field))))
+        (t2/hydrate :db :pk_field))))
 
 (defn- update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
@@ -70,7 +69,7 @@
     (if changed-field-order?
       (do
         (table/update-field-positions! updated-table)
-        (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
+        (t2/hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
 (defn- sync-unhidden-tables
@@ -140,7 +139,7 @@
 (def ^:private time-options
   [[minute-str "minute"]
    [hour-str "hour"]
-   [(deferred-tru "Minute of Hour") "minute-of-hour"]])
+   [(deferred-tru "Minute of hour") "minute-of-hour"]])
 
 (def ^:private datetime-options
   [[minute-str "minute"]
@@ -150,14 +149,14 @@
    [(deferred-tru "Month") "month"]
    [(deferred-tru "Quarter") "quarter"]
    [(deferred-tru "Year") "year"]
-   [(deferred-tru "Minute of Hour") "minute-of-hour"]
-   [(deferred-tru "Hour of Day") "hour-of-day"]
-   [(deferred-tru "Day of Week") "day-of-week"]
-   [(deferred-tru "Day of Month") "day-of-month"]
-   [(deferred-tru "Day of Year") "day-of-year"]
-   [(deferred-tru "Week of Year") "week-of-year"]
-   [(deferred-tru "Month of Year") "month-of-year"]
-   [(deferred-tru "Quarter of Year") "quarter-of-year"]])
+   [(deferred-tru "Minute of hour") "minute-of-hour"]
+   [(deferred-tru "Hour of day") "hour-of-day"]
+   [(deferred-tru "Day of week") "day-of-week"]
+   [(deferred-tru "Day of month") "day-of-month"]
+   [(deferred-tru "Day of year") "day-of-year"]
+   [(deferred-tru "Week of year") "week-of-year"]
+   [(deferred-tru "Month of year") "month-of-year"]
+   [(deferred-tru "Quarter of year") "quarter-of-year"]])
 
 (def ^:private date-options
   [[day-str "day"]
@@ -165,12 +164,12 @@
    [(deferred-tru "Month") "month"]
    [(deferred-tru "Quarter") "quarter"]
    [(deferred-tru "Year") "year"]
-   [(deferred-tru "Day of Week") "day-of-week"]
-   [(deferred-tru "Day of Month") "day-of-month"]
-   [(deferred-tru "Day of Year") "day-of-year"]
-   [(deferred-tru "Week of Year") "week-of-year"]
-   [(deferred-tru "Month of Year") "month-of-year"]
-   [(deferred-tru "Quarter of Year") "quarter-of-year"]])
+   [(deferred-tru "Day of week") "day-of-week"]
+   [(deferred-tru "Day of month") "day-of-month"]
+   [(deferred-tru "Day of year") "day-of-year"]
+   [(deferred-tru "Week of year") "week-of-year"]
+   [(deferred-tru "Month of year") "month-of-year"]
+   [(deferred-tru "Quarter of year") "quarter-of-year"]])
 
 (def ^:private dimension-options
   (let [default-entry [auto-bin-str ["default"]]]
@@ -325,7 +324,7 @@
         include-sensitive-fields? (cond-> include-sensitive-fields? (string? include-sensitive-fields?) Boolean/parseBoolean)
         include-hidden-fields?    (cond-> include-hidden-fields? (string? include-hidden-fields?) Boolean/parseBoolean)]
     (-> table
-        (hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
+        (t2/hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
         (m/dissoc-in [:db :details])
         (assoc-dimension-options db)
         format-fields-for-response
@@ -378,7 +377,7 @@
                       :semantic_type (keyword (:semantic_type col)))
                      (assoc-field-dimension-options db)))
         field->annotated (let [with-ids (filter (comp number? :id) fields)]
-                           (zipmap with-ids (hydrate with-ids [:target :has_field_values] :has_field_values)))]
+                           (zipmap with-ids (t2/hydrate with-ids [:target :has_field_values] :has_field_values)))]
     (map #(field->annotated % %) fields)))
 
 (defn root-collection-schema-name
@@ -392,7 +391,7 @@
   'virtual' fields as well."
   [{:keys [database_id] :as card} & {:keys [include-fields?]}]
   ;; if collection isn't already hydrated then do so
-  (let [card (hydrate card :collection)]
+  (let [card (t2/hydrate card :collection)]
     (cond-> {:id               (str "card__" (u/the-id card))
              :db_id            (:database_id card)
              :display_name     (:name card)
@@ -456,9 +455,9 @@
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
        :origin_id      (:id origin-field)
-       :origin         (hydrate origin-field [:table :db])
+       :origin         (t2/hydrate origin-field [:table :db])
        :destination_id (:fk_target_field_id origin-field)
-       :destination    (hydrate (t2/select-one Field :id (:fk_target_field_id origin-field)) :table)})))
+       :destination    (t2/hydrate (t2/select-one Field :id (:fk_target_field_id origin-field)) :table)})))
 
 (api/defendpoint POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that

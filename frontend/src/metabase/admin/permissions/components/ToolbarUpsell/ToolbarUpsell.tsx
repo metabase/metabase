@@ -1,4 +1,3 @@
-import React from "react";
 import { connect } from "react-redux";
 import { jt, t } from "ttag";
 
@@ -29,11 +28,14 @@ const ToolbarUpsell = ({ upgradeUrl }: ToolbarUpsellProps) => {
     >
       <UpsellContent>
         {jt`${(
-          <ExternalLink href={upgradeUrl}>
+          <ExternalLink key="upsell-cta-link" href={upgradeUrl}>
             {t`Upgrade to Pro or Enterprise`}
           </ExternalLink>
         )} and disable download results, control access to the data model, promote group managers, ${(
-          <ExternalLink href={MetabaseSettings.docsUrl("permissions/start")}>
+          <ExternalLink
+            key="upsell-more-link"
+            href={MetabaseSettings.docsUrl("permissions/start")}
+          >
             {t`and more`}
           </ExternalLink>
         )}.`}

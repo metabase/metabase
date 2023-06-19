@@ -25,7 +25,6 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model])
   (:refer-clojure :exclude [descendants]))
@@ -78,7 +77,7 @@
   [k]
   (fn [entity]
     (or
-     (some-> entity (hydrate k) (get k) identity-hash)
+     (some-> entity (t2/hydrate k) (get k) identity-hash)
      "<none>")))
 
 (defmulti generate-path
@@ -857,7 +856,7 @@
   It's here instead of [metabase.models.dashboard_card] to avoid cyclic deps."
   {"card"       :model/Card
    "dataset"    :model/Card
-   "collection" :metabase.models.collection/Collection
+   "collection" :model/Collection
    "database"   :model/Database
    "dashboard"  :model/Dashboard
    "table"      :model/Table})

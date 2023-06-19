@@ -11,7 +11,7 @@
 
 (defn github-api-request-headers []
   {"Content-Type"  "application/json"
-   "Authorization" (format "token %s" (u/env-or-throw :github-token))})
+   "Authorization" (format "Bearer %s" (u/env-or-throw :github-token))})
 
 (defn- GET [endpoint]
   (-> (http/get (str (github-api-base) endpoint) {:headers (github-api-request-headers)})

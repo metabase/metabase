@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import * as React from "react";
 import _ from "underscore";
 import { jt, t } from "ttag";
 import { useAsyncFn } from "react-use";
@@ -7,7 +8,7 @@ import QuestionPicker from "metabase/containers/QuestionPicker";
 import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import Radio from "metabase/core/components/Radio";
-import Icon from "metabase/components/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import EntityName from "metabase/entities/containers/EntityName";
 
 import QuestionLoader from "metabase/containers/QuestionLoader";
@@ -123,9 +124,9 @@ const EditSandboxingModal = ({
           <Radio
             value={!shouldUseSavedQuestion}
             options={[
-              { name: "Filter by a column in the table", value: true },
+              { name: t`Filter by a column in the table`, value: true },
               {
-                name: "Use a saved question to create a custom view for this table",
+                name: t`Use a saved question to create a custom view for this table`,
                 value: false,
               },
             ]}
@@ -216,7 +217,7 @@ const EditSandboxingModal = ({
 export default EditSandboxingModal;
 
 interface SummaryRowProps {
-  icon: string;
+  icon: IconName;
   content: React.ReactNode;
 }
 
@@ -235,12 +236,12 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
   return (
     <div>
       <div className="px1 pb2 text-uppercase text-small text-grey-4">
-        Summary
+        {t`Summary`}
       </div>
       <SummaryRow
         icon="group"
         content={jt`Users in ${(
-          <strong>
+          <strong key="group-name">
             <EntityName entityType="groups" entityId={policy.group_id} />
           </strong>
         )} can view`}
@@ -250,7 +251,7 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
         content={
           policy.card_id
             ? jt`rows in the ${(
-                <strong>
+                <strong key="question-name">
                   <EntityName
                     entityType="questions"
                     entityId={policy.card_id}
@@ -258,7 +259,7 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
                 </strong>
               )} question`
             : jt`rows in the ${(
-                <strong>
+                <strong key="table-name">
                   <EntityName
                     entityType="tables"
                     entityId={policy.table_id}
@@ -272,15 +273,23 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
         ([attribute, target], index) => (
           <SummaryRow
             key={attribute}
-            icon="funneloutline"
+            icon="funnel_outline"
             content={
               index === 0
                 ? jt`where ${(
-                    <TargetName policy={policy} target={target} />
-                  )} equals ${(<span className="text-code">{attribute}</span>)}`
+                    <TargetName key="target" policy={policy} target={target} />
+                  )} equals ${(
+                    <span key="attr" className="text-code">
+                      {attribute}
+                    </span>
+                  )}`
                 : jt`and ${(
-                    <TargetName policy={policy} target={target} />
-                  )} equals ${(<span className="text-code">{attribute}</span>)}`
+                    <TargetName key="target" policy={policy} target={target} />
+                  )} equals ${(
+                    <span key="attr" className="text-code">
+                      {attribute}
+                    </span>
+                  )}`
             }
           />
         ),
