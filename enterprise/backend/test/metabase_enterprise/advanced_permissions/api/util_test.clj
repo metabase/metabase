@@ -46,7 +46,8 @@
                         (mw.session/with-current-user (u/the-id test-user-name-or-user-id)
                           (f group))))))))
             ;; re-grant perms for All Users group
-            (perms/grant-full-data-permissions! (perms-group/all-users) (data/db)))]
+            (u/ignore-exceptions
+             (perms/grant-full-data-permissions! (perms-group/all-users) (data/db))))]
     (thunk)))
 
 (defmacro with-impersonations-for-user
