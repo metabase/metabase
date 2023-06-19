@@ -36,9 +36,12 @@ export const getUserTemporaryPassword = (state, props) =>
   state.admin.people.temporaryPasswords[props.userId];
 
 export const shouldNudgeToPro = createSelector(
+  state => getSetting(state, "premium-embedding-token"),
   state => getUserIsAdmin(state),
   state => getSetting(state, "active-users-count"),
-  (isAdmin, numActiveUsers) => {
-    return isAdmin && numActiveUsers >= ACTIVE_USERS_NUDGE_THRESHOLD;
+  (premiumToken, isAdmin, numActiveUsers) => {
+    return (
+      !premiumToken && isAdmin && numActiveUsers >= ACTIVE_USERS_NUDGE_THRESHOLD
+    );
   },
 );
