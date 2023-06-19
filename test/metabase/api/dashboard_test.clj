@@ -1131,7 +1131,7 @@
                   "Cards should have \"-- Duplicate\" appended"))))))))
 
 (defn- ordered-cards-by-position
-  "Returned dashcards for a dashboard ordred by its position instead of creation like [[dashboard/ordered-cards]] did."
+  "Returns dashcards for a dashboard ordered by their position instead of creation like [[dashboard/ordered-cards]] does."
   [dashboard-or-id]
   (sort dashboard-card/dashcard-comparator (dashboard/ordered-cards dashboard-or-id)))
 
