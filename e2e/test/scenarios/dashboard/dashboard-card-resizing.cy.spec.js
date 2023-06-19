@@ -1,5 +1,6 @@
 import _ from "underscore";
 import {
+  cypressWaitAll,
   editDashboard,
   resizeDashboardCard,
   restore,
@@ -220,11 +221,14 @@ describe("scenarios > dashboard card resizing", () => {
 
   it(`should not allow cards to be resized smaller than min height`, () => {
     const cardIds = [];
-    TEST_QUESTIONS.forEach(question => {
-      cy.createQuestion(question).then(({ body: { id } }) => {
-        cardIds.push(id);
-      });
-    });
+    cypressWaitAll(
+      TEST_QUESTIONS.map(question => {
+        cy.createQuestion(question).then(({ body: { id } }) => {
+          cardIds.push(id);
+        });
+      }),
+    );
+
     cy.createDashboard().then(({ body: { id: dashId } }) => {
       cy.request("PUT", `/api/dashboard/${dashId}/cards`, {
         cards: cardIds.map((cardId, index) => ({
