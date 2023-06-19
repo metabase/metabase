@@ -29,11 +29,19 @@ export type Clause = BreakoutClause | OrderByClause;
 declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
 
+declare const ColumnWithOperators: unique symbol;
+export type ColumnWithOperators = unknown & {
+  _opaque: typeof ColumnWithOperators;
+};
+
 declare const ColumnGroup: unique symbol;
 export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 
 declare const Bucket: unique symbol;
 export type Bucket = unknown & { _opaque: typeof Bucket };
+
+declare const BooleanExpression: unique symbol;
+export type BooleanExpression = unknown & { _opaque: typeof BooleanExpression };
 
 export type TableDisplayInfo = {
   name: string;
@@ -95,3 +103,10 @@ export type JoinStrategy =
   | "right-join"
   | "inner-join"
   | "full-join";
+
+export type ExpressionArg =
+  | boolean
+  | number
+  | string
+  | ColumnMetadata
+  | ExternalOp;
