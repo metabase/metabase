@@ -48,7 +48,7 @@ describe("metabase#31587", () => {
         cy.findByLabelText("Add action").click();
 
         saveDashboard();
-        cy.findByLabelText("info icon").click();
+        cy.icon("info").click();
 
         cy.findByTestId("dashboard-parameters-and-cards").within(() => {
           const actionButtonContainer = cy.findByTestId(
