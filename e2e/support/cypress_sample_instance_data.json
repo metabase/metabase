@@ -1,0 +1,1005 @@
+{
+  "questions": [
+    {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 2,
+      "result_metadata": [
+        {
+          "description": "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.",
+          "semantic_type": "type/PK",
+          "table_id": 2,
+          "coercion_strategy": null,
+          "name": "ID",
+          "settings": null,
+          "source": "fields",
+          "field_ref": [
+            "field",
+            10,
+            null
+          ],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 10,
+          "visibility_type": "normal",
+          "display_name": "ID",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": "The id of the user who made this order. Note that in some cases where an order was created on behalf of a customer who phoned the order in, this might be the employee who handled the request.",
+          "semantic_type": "type/FK",
+          "table_id": 2,
+          "coercion_strategy": null,
+          "name": "USER_ID",
+          "settings": null,
+          "source": "fields",
+          "field_ref": [
+            "field",
+            16,
+            null
+          ],
+          "effective_type": "type/Integer",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 16,
+          "visibility_type": "normal",
+          "display_name": "User ID",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 929,
+              "nil%": 0
+            }
+          },
+          "base_type": "type/Integer"
+        },
+        {
+          "description": "The product ID. This is an internal identifier for the product, NOT the SKU.",
+          "semantic_type": "type/FK",
+          "table_id": 2,
+          "coercion_strategy": null,
+          "name": "PRODUCT_ID",
+          "settings": null,
+          "source": "fields",
+          "field_ref": [
+            "field",
+            13,
+            null
+          ],
+          "effective_type": "type/Integer",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 13,
+          "visibility_type": "normal",
+          "display_name": "Product ID",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 200,
+              "nil%": 0
+            }
+          },
+          "base_type": "type/Integer"
+        },
+        {
+          "description": "The raw, pre-tax cost of the order. Note that this might be different in the future from the product price due to promotions, credits, etc.",
+          "semantic_type": null,
+          "table_id": 2,
+          "coercion_strategy": null,
+          "name": "SUBTOTAL",
+          "settings": null,
+          "source": "fields",
+          "field_ref": [
+            "field",
+            17,
+            null
+          ],
+          "effective_type": "type/Float",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 17,
+          "visibility_type": "normal",
+          "display_name": "Subtotal",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 340,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 15.691943673970439,
+                "q1": 49.74894519060184,
+                "q3": 105.42965746993103,
+                "max": 148.22900526552291,
+                "sd": 32.53705013056317,
+                "avg": 77.01295465356547
+              }
+            }
+          },
+          "base_type": "type/Float"
+        },
+        {
+          "description": "This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees on some products are not included here, but instead are accounted for in the subtotal.",
+          "semantic_type": null,
+          "table_id": 2,
+          "coercion_strategy": null,
+          "name": "TAX",
+          "settings": null,
+          "source": "fields",
+          "field_ref": [
+            "field",
+            11,
+            null
+          ],
+          "effective_type": "type/Float",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 11,
+          "visibility_type": "normal",
+          "display_name": "Tax",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 797,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 0,
+                "q1": 2.273340386603857,
+                "q3": 5.337275338216307,
+                "max": 11.12,
+                "sd": 2.3206651358900316,
+                "avg": 3.8722100000000004
+              }
+            }
+          },
+          "base_type": "type/Float"
+        },
+        {
+          "description": "The total billed amount.",
+          "semantic_type": null,
+          "table_id": 2,
+          "coercion_strategy": null,
+          "name": "TOTAL",
+          "settings": null,
+          "source": "fields",
+          "field_ref": [
+            "field",
+            15,
+            null
+          ],
+          "effective_type": "type/Float",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 15,
+          "visibility_type": "normal",
+          "display_name": "Total",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4426,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 8.93914247937167,
+                "q1": 51.34535490743823,
+                "q3": 110.29428389265787,
+                "max": 159.34900526552292,
+                "sd": 34.26469575709948,
+                "avg": 80.35871658771228
+              }
+            }
+          },
+          "base_type": "type/Float"
+        },
+        {
+          "description": "Discount amount.",
+          "semantic_type": "type/Discount",
+          "table_id": 2,
+          "coercion_strategy": null,
+          "name": "DISCOUNT",
+          "settings": null,
+          "source": "fields",
+          "field_ref": [
+            "field",
+            9,
+            null
+          ],
+          "effective_type": "type/Float",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 9,
+          "visibility_type": "normal",
+          "display_name": "Discount",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 701,
+              "nil%": 0.898
+            },
+            "type": {
+              "type/Number": {
+                "min": 0.17088996672584322,
+                "q1": 2.9786226681458743,
+                "q3": 7.338187788658235,
+                "max": 61.69684269960571,
+                "sd": 3.053663125001991,
+                "avg": 5.161255547580326
+              }
+            }
+          },
+          "base_type": "type/Float"
+        },
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 2,
+          "coercion_strategy": null,
+          "unit": "default",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "fields",
+          "field_ref": [
+            "field",
+            14,
+            {
+              "temporal-unit": "default"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 14,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 9998,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2016-04-30T18:56:13.352Z",
+                "latest": "2020-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "description": "Number of products bought.",
+          "semantic_type": "type/Quantity",
+          "table_id": 2,
+          "coercion_strategy": null,
+          "name": "QUANTITY",
+          "settings": null,
+          "source": "fields",
+          "field_ref": [
+            "field",
+            12,
+            null
+          ],
+          "effective_type": "type/Integer",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 12,
+          "visibility_type": "normal",
+          "display_name": "Quantity",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 62,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 0,
+                "q1": 1.755882607764982,
+                "q3": 4.882654507928044,
+                "max": 100,
+                "sd": 4.214258386403798,
+                "avg": 3.7015
+              }
+            }
+          },
+          "base_type": "type/Integer"
+        }
+      ],
+      "creator": {
+        "email": "admin@metabase.test",
+        "first_name": "Bobby",
+        "last_login": "2023-06-15T09:17:08.17982",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Tables",
+        "date_joined": "2023-06-15T09:17:08.085539",
+        "common_name": "Bobby Tables"
+      },
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "Orders",
+      "creator_id": 1,
+      "updated_at": "2023-06-15T09:17:09.843503-07:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "type": "query",
+        "query": {
+          "source-table": 2
+        },
+        "database": 1
+      },
+      "id": 1,
+      "parameter_mappings": [],
+      "display": "table",
+      "entity_id": "Ko4wdxW2bnedG-1mxVuWe",
+      "collection_preview": true,
+      "last-edit-info": {
+        "id": 1,
+        "email": "admin@metabase.test",
+        "first_name": "Bobby",
+        "last_name": "Tables",
+        "timestamp": "2023-06-15T09:17:09.876024-07:00"
+      },
+      "visualization_settings": {},
+      "collection": null,
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-06-15T09:17:09.843503",
+      "public_uuid": null
+    },
+    {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 2,
+      "result_metadata": [
+        {
+          "base_type": "type/Integer",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": [
+            "aggregation",
+            0
+          ]
+        }
+      ],
+      "creator": {
+        "email": "admin@metabase.test",
+        "first_name": "Bobby",
+        "last_login": "2023-06-15T09:17:08.17982",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Tables",
+        "date_joined": "2023-06-15T09:17:08.085539",
+        "common_name": "Bobby Tables"
+      },
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "Orders, Count",
+      "creator_id": 1,
+      "updated_at": "2023-06-15T09:17:09.99085-07:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "type": "query",
+        "query": {
+          "source-table": 2,
+          "aggregation": [
+            [
+              "count"
+            ]
+          ]
+        },
+        "database": 1
+      },
+      "id": 2,
+      "parameter_mappings": [],
+      "display": "table",
+      "entity_id": "PPACh7ge-CKLkvHGoESOb",
+      "collection_preview": true,
+      "last-edit-info": {
+        "id": 1,
+        "email": "admin@metabase.test",
+        "first_name": "Bobby",
+        "last_name": "Tables",
+        "timestamp": "2023-06-15T09:17:09.999772-07:00"
+      },
+      "visualization_settings": {},
+      "collection": null,
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-06-15T09:17:09.99085",
+      "public_uuid": null
+    },
+    {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 2,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 2,
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            14,
+            {
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 14,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 9998,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2016-04-30T18:56:13.352Z",
+                "latest": "2020-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "base_type": "type/Integer",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": [
+            "aggregation",
+            0
+          ]
+        }
+      ],
+      "creator": {
+        "email": "admin@metabase.test",
+        "first_name": "Bobby",
+        "last_login": "2023-06-15T09:17:08.17982",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Tables",
+        "date_joined": "2023-06-15T09:17:08.085539",
+        "common_name": "Bobby Tables"
+      },
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "Orders, Count, Grouped by Created At (year)",
+      "creator_id": 1,
+      "updated_at": "2023-06-15T09:17:10.055203-07:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "type": "query",
+        "query": {
+          "source-table": 2,
+          "aggregation": [
+            [
+              "count"
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              14,
+              {
+                "temporal-unit": "year"
+              }
+            ]
+          ]
+        },
+        "database": 1
+      },
+      "id": 3,
+      "parameter_mappings": [],
+      "display": "line",
+      "entity_id": "NwNvCkY3JfAXy8czI7m9u",
+      "collection_preview": true,
+      "last-edit-info": {
+        "id": 1,
+        "email": "admin@metabase.test",
+        "first_name": "Bobby",
+        "last_name": "Tables",
+        "timestamp": "2023-06-15T09:17:10.062892-07:00"
+      },
+      "visualization_settings": {},
+      "collection": null,
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-06-15T09:17:10.055203",
+      "public_uuid": null
+    }
+  ],
+  "dashboards": [
+    {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "creator": {
+        "email": "admin@metabase.test",
+        "first_name": "Bobby",
+        "last_login": "2023-06-15T09:17:08.17982",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Tables",
+        "date_joined": "2023-06-15T09:17:08.085539",
+        "common_name": "Bobby Tables"
+      },
+      "enable_embedding": false,
+      "collection_id": null,
+      "show_in_getting_started": false,
+      "name": "Orders in a dashboard",
+      "caveats": null,
+      "creator_id": 1,
+      "updated_at": "2023-06-15T09:17:09.897367",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "id": 1,
+      "position": null,
+      "entity_id": "mSTMzNovZXN_rvox-nVYY",
+      "last-edit-info": {
+        "id": 1,
+        "email": "admin@metabase.test",
+        "first_name": "Bobby",
+        "last_name": "Tables",
+        "timestamp": "2023-06-15T09:17:09.949357-07:00"
+      },
+      "parameters": [],
+      "auto_apply_filters": true,
+      "created_at": "2023-06-15T09:17:09.897367",
+      "public_uuid": null,
+      "points_of_interest": null
+    }
+  ],
+  "users": [
+    {
+      "email": "u1@metabase.test",
+      "first_name": "User",
+      "locale": null,
+      "last_login": null,
+      "is_active": true,
+      "is_qbnewb": false,
+      "updated_at": "2023-06-15T09:17:08.867299",
+      "group_ids": [
+        1,
+        3
+      ],
+      "is_superuser": false,
+      "login_attributes": {
+        "attr_uid": "1",
+        "attr_cat": "Widget"
+      },
+      "id": 4,
+      "last_name": "1",
+      "date_joined": "2023-06-15T09:17:08.785888",
+      "sso_source": null,
+      "personal_collection_id": 2,
+      "common_name": "User 1"
+    },
+    {
+      "email": "admin@metabase.test",
+      "first_name": "Bobby",
+      "locale": null,
+      "last_login": "2023-06-15T09:17:08.17982",
+      "is_active": true,
+      "is_qbnewb": false,
+      "updated_at": "2023-06-15T09:17:08.247561",
+      "group_ids": [
+        1,
+        2
+      ],
+      "is_superuser": true,
+      "login_attributes": null,
+      "id": 1,
+      "last_name": "Tables",
+      "date_joined": "2023-06-15T09:17:08.085539",
+      "sso_source": null,
+      "personal_collection_id": 1,
+      "common_name": "Bobby Tables"
+    },
+    {
+      "email": "nocollection@metabase.test",
+      "first_name": "No Collection",
+      "locale": null,
+      "last_login": null,
+      "is_active": true,
+      "is_qbnewb": false,
+      "updated_at": "2023-06-15T09:17:09.147894",
+      "group_ids": [
+        1,
+        4
+      ],
+      "is_superuser": false,
+      "login_attributes": null,
+      "id": 6,
+      "last_name": "Tableton",
+      "date_joined": "2023-06-15T09:17:09.072426",
+      "sso_source": null,
+      "personal_collection_id": 3,
+      "common_name": "No Collection Tableton"
+    },
+    {
+      "email": "nodata@metabase.test",
+      "first_name": "No Data",
+      "locale": null,
+      "last_login": null,
+      "is_active": true,
+      "is_qbnewb": false,
+      "updated_at": "2023-06-15T09:17:08.718209",
+      "group_ids": [
+        1,
+        3
+      ],
+      "is_superuser": false,
+      "login_attributes": null,
+      "id": 3,
+      "last_name": "Tableton",
+      "date_joined": "2023-06-15T09:17:08.643287",
+      "sso_source": null,
+      "personal_collection_id": 4,
+      "common_name": "No Data Tableton"
+    },
+    {
+      "email": "nosql@metabase.test",
+      "first_name": "No SQL",
+      "locale": null,
+      "last_login": null,
+      "is_active": true,
+      "is_qbnewb": false,
+      "updated_at": "2023-06-15T09:17:09.285579",
+      "group_ids": [
+        1,
+        6
+      ],
+      "is_superuser": false,
+      "login_attributes": null,
+      "id": 7,
+      "last_name": "Tableton",
+      "date_joined": "2023-06-15T09:17:09.212403",
+      "sso_source": null,
+      "personal_collection_id": 5,
+      "common_name": "No SQL Tableton"
+    },
+    {
+      "email": "none@metabase.test",
+      "first_name": "None",
+      "locale": null,
+      "last_login": null,
+      "is_active": true,
+      "is_qbnewb": false,
+      "updated_at": "2023-06-15T09:17:09.417781",
+      "group_ids": [
+        1
+      ],
+      "is_superuser": false,
+      "login_attributes": null,
+      "id": 8,
+      "last_name": "Tableton",
+      "date_joined": "2023-06-15T09:17:09.346078",
+      "sso_source": null,
+      "personal_collection_id": 6,
+      "common_name": "None Tableton"
+    },
+    {
+      "email": "readonly@metabase.test",
+      "first_name": "Read Only",
+      "locale": null,
+      "last_login": null,
+      "is_active": true,
+      "is_qbnewb": false,
+      "updated_at": "2023-06-15T09:17:09.005291",
+      "group_ids": [
+        1,
+        5
+      ],
+      "is_superuser": false,
+      "login_attributes": null,
+      "id": 5,
+      "last_name": "Tableton",
+      "date_joined": "2023-06-15T09:17:08.932231",
+      "sso_source": null,
+      "personal_collection_id": 7,
+      "common_name": "Read Only Tableton"
+    },
+    {
+      "email": "normal@metabase.test",
+      "first_name": "Robert",
+      "locale": null,
+      "last_login": null,
+      "is_active": true,
+      "is_qbnewb": false,
+      "updated_at": "2023-06-15T09:17:08.579558",
+      "group_ids": [
+        1,
+        4,
+        3
+      ],
+      "is_superuser": false,
+      "login_attributes": null,
+      "id": 2,
+      "last_name": "Tableton",
+      "date_joined": "2023-06-15T09:17:08.488332",
+      "sso_source": null,
+      "personal_collection_id": 8,
+      "common_name": "Robert Tableton"
+    }
+  ],
+  "databases": [
+    {
+      "description": "Some example data for you to play around with as you embark on your Metabase journey.",
+      "features": [
+        "basic-aggregations",
+        "temporal-extract",
+        "actions/custom",
+        "now",
+        "standard-deviation-aggregations",
+        "date-arithmetics",
+        "actions",
+        "expression-aggregations",
+        "foreign-keys",
+        "right-join",
+        "left-join",
+        "native-parameters",
+        "schemas",
+        "nested-queries",
+        "expressions",
+        "uploads",
+        "regex",
+        "case-sensitivity-string-filter-options",
+        "binning",
+        "datetime-diff",
+        "inner-join",
+        "advanced-math-expressions"
+      ],
+      "cache_field_values_schedule": "0 0 15 * * ? *",
+      "timezone": "America/Los_Angeles",
+      "auto_run_queries": true,
+      "metadata_sync_schedule": "0 48 * * * ? *",
+      "name": "Sample Database",
+      "settings": null,
+      "caveats": "You probably don't want to use this for your business-critical analyses, but hey, it's your world, we're just living in it.",
+      "creator_id": null,
+      "is_full_sync": true,
+      "updated_at": "2023-06-15T09:17:08.334322",
+      "native_permissions": "write",
+      "cache_ttl": null,
+      "details": {
+        "db": "./plugins/sample-database.db;USER=GUEST;PASSWORD=guest"
+      },
+      "is_sample": true,
+      "id": 1,
+      "is_on_demand": false,
+      "options": null,
+      "engine": "h2",
+      "initial_sync_status": "complete",
+      "is_audit": false,
+      "dbms_version": {
+        "flavor": "H2",
+        "version": "2.1.214 (2022-06-13)",
+        "semantic-version": [
+          2,
+          1
+        ]
+      },
+      "refingerprint": null,
+      "created_at": "2023-06-15T09:16:57.236936",
+      "points_of_interest": "You can find all sorts of different joinable tables ranging from products to people to reviews here."
+    }
+  ],
+  "collections": [
+    {
+      "authority_level": null,
+      "name": "Our analytics",
+      "id": "root",
+      "parent_id": null,
+      "effective_location": null,
+      "effective_ancestors": [],
+      "can_write": true
+    },
+    {
+      "authority_level": null,
+      "description": null,
+      "archived": false,
+      "slug": "bobby_tables_s_personal_collection",
+      "color": "#31698A",
+      "can_write": true,
+      "name": "Bobby Tables's Personal Collection",
+      "personal_owner_id": 1,
+      "type": null,
+      "id": 1,
+      "entity_id": "DqzSQy1YG1M1os1D6UtTx",
+      "location": "/",
+      "namespace": null,
+      "created_at": "2023-06-15T09:17:08.206266-07:00"
+    },
+    {
+      "authority_level": null,
+      "description": "Collection First collection",
+      "archived": false,
+      "slug": "first_collection",
+      "color": "#509ee3",
+      "can_write": true,
+      "name": "First collection",
+      "personal_owner_id": null,
+      "type": null,
+      "id": 9,
+      "entity_id": "u0U7vLKfBWvbKvOS49ZK4",
+      "location": "/",
+      "namespace": null,
+      "created_at": "2023-06-15T09:17:09.610072-07:00"
+    },
+    {
+      "authority_level": null,
+      "description": null,
+      "archived": false,
+      "slug": "no_collection_tableton_s_personal_collection",
+      "color": "#31698A",
+      "can_write": true,
+      "name": "No Collection Tableton's Personal Collection",
+      "personal_owner_id": 6,
+      "type": null,
+      "id": 3,
+      "entity_id": "vmhIadCXAySkyTqKLJpF5",
+      "location": "/",
+      "namespace": null,
+      "created_at": "2023-06-15T09:17:09.433145-07:00"
+    },
+    {
+      "authority_level": null,
+      "description": null,
+      "archived": false,
+      "slug": "no_data_tableton_s_personal_collection",
+      "color": "#31698A",
+      "can_write": true,
+      "name": "No Data Tableton's Personal Collection",
+      "personal_owner_id": 3,
+      "type": null,
+      "id": 4,
+      "entity_id": "G3vOjhDGJhW2wICyIiVR3",
+      "location": "/",
+      "namespace": null,
+      "created_at": "2023-06-15T09:17:09.436029-07:00"
+    },
+    {
+      "authority_level": null,
+      "description": null,
+      "archived": false,
+      "slug": "no_sql_tableton_s_personal_collection",
+      "color": "#31698A",
+      "can_write": true,
+      "name": "No SQL Tableton's Personal Collection",
+      "personal_owner_id": 7,
+      "type": null,
+      "id": 5,
+      "entity_id": "-hgjqpiBM3FqE2ALPxk9X",
+      "location": "/",
+      "namespace": null,
+      "created_at": "2023-06-15T09:17:09.438809-07:00"
+    },
+    {
+      "authority_level": null,
+      "description": null,
+      "archived": false,
+      "slug": "none_tableton_s_personal_collection",
+      "color": "#31698A",
+      "can_write": true,
+      "name": "None Tableton's Personal Collection",
+      "personal_owner_id": 8,
+      "type": null,
+      "id": 6,
+      "entity_id": "3gNmETu_7bRkyNx_59L7I",
+      "location": "/",
+      "namespace": null,
+      "created_at": "2023-06-15T09:17:09.441371-07:00"
+    },
+    {
+      "authority_level": null,
+      "description": null,
+      "archived": false,
+      "slug": "read_only_tableton_s_personal_collection",
+      "color": "#31698A",
+      "can_write": true,
+      "name": "Read Only Tableton's Personal Collection",
+      "personal_owner_id": 5,
+      "type": null,
+      "id": 7,
+      "entity_id": "cPhyrqJMgyeQ3tDSSLMhS",
+      "location": "/",
+      "namespace": null,
+      "created_at": "2023-06-15T09:17:09.444406-07:00"
+    },
+    {
+      "authority_level": null,
+      "description": null,
+      "archived": false,
+      "slug": "robert_tableton_s_personal_collection",
+      "color": "#31698A",
+      "can_write": true,
+      "name": "Robert Tableton's Personal Collection",
+      "personal_owner_id": 2,
+      "type": null,
+      "id": 8,
+      "entity_id": "LJrVy0AMLQhWes7ya5ZH2",
+      "location": "/",
+      "namespace": null,
+      "created_at": "2023-06-15T09:17:09.446799-07:00"
+    },
+    {
+      "authority_level": null,
+      "description": "Collection Second collection",
+      "archived": false,
+      "slug": "second_collection",
+      "color": "#509ee3",
+      "can_write": true,
+      "name": "Second collection",
+      "personal_owner_id": null,
+      "type": null,
+      "id": 10,
+      "entity_id": "r6IOCIuRozPySTj6dwDH4",
+      "location": "/9/",
+      "namespace": null,
+      "created_at": "2023-06-15T09:17:09.651312-07:00"
+    },
+    {
+      "authority_level": null,
+      "description": "Collection Third collection",
+      "archived": false,
+      "slug": "third_collection",
+      "color": "#509ee3",
+      "can_write": true,
+      "name": "Third collection",
+      "personal_owner_id": null,
+      "type": null,
+      "id": 11,
+      "entity_id": "isoWShDEELNlCjvpK0IT0",
+      "location": "/9/10/",
+      "namespace": null,
+      "created_at": "2023-06-15T09:17:09.667374-07:00"
+    },
+    {
+      "authority_level": null,
+      "description": null,
+      "archived": false,
+      "slug": "user_1_s_personal_collection",
+      "color": "#31698A",
+      "can_write": true,
+      "name": "User 1's Personal Collection",
+      "personal_owner_id": 4,
+      "type": null,
+      "id": 2,
+      "entity_id": "edgz1Lm0wXX6jEqTO6_uU",
+      "location": "/",
+      "namespace": null,
+      "created_at": "2023-06-15T09:17:09.430044-07:00"
+    }
+  ]
+}

@@ -22,6 +22,10 @@ import {
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import type { PivotTableClicked, HeaderWidthType } from "./types";
 
 import { RowToggleIcon } from "./RowToggleIcon";
@@ -485,6 +489,8 @@ export default Object.assign(connect(mapStateToProps)(PivotTable), {
   uiName: t`Pivot Table`,
   identifier: "pivot",
   iconName: "pivot_table",
+  minSize: getMinSize("pivot"),
+  defaultSize: getDefaultSize("pivot"),
   canSavePng: false,
   databaseSupportsPivotTables,
   isSensible,

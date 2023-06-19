@@ -80,10 +80,6 @@
    :default      true
    :mbql         {:strategy :default}})
 
-(defn- dont-bin []
-  {:display-name (i18n/tru "Don''t bin")
-   :mbql         nil})
-
 (defn- with-binning-option-type [m]
   (assoc m :lib/type ::binning-option))
 
@@ -92,8 +88,7 @@
                [(default-auto-bin)
                 {:display-name (i18n/tru "10 bins")  :mbql {:strategy :num-bins :num-bins 10}}
                 {:display-name (i18n/tru "50 bins")  :mbql {:strategy :num-bins :num-bins 50}}
-                {:display-name (i18n/tru "100 bins") :mbql {:strategy :num-bins :num-bins 100}}
-                (dont-bin)])))
+                {:display-name (i18n/tru "100 bins") :mbql {:strategy :num-bins :num-bins 100}}])))
 
 (defn numeric-binning-strategies
   "List of binning options for numeric fields. These split the data evenly into a fixed number of bins."
@@ -107,8 +102,7 @@
            {:display-name (i18n/tru "Bin every 0.1 degrees") :mbql {:strategy :bin-width :bin-width 0.1}}
            {:display-name (i18n/tru "Bin every 1 degree")    :mbql {:strategy :bin-width :bin-width 1.0}}
            {:display-name (i18n/tru "Bin every 10 degrees")  :mbql {:strategy :bin-width :bin-width 10.0}}
-           {:display-name (i18n/tru "Bin every 20 degrees")  :mbql {:strategy :bin-width :bin-width 20.0}}
-           (dont-bin)])))
+           {:display-name (i18n/tru "Bin every 20 degrees")  :mbql {:strategy :bin-width :bin-width 20.0}}])))
 
 (defn coordinate-binning-strategies
   "List of binning options for coordinate fields (ie. latitude and longitude). These split the data into as many
