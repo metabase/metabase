@@ -18,7 +18,7 @@ title: Driver interface changelog
 
 - The multimethod `metabase.driver/syncable-schemas` has been added. This method is used to list schemas to upload
   CSVs to, and it should include all schemas that can be synced. Currently it only needs to be implemented
-  if the database has schema, and the database supports the `uploads` feature.
+  if the database has schema, and the database supports the `:uploads` feature.
 
 - The multimethod `metabase.driver/supports?` has been deprecated in favor of `metabase.driver/database-supports?`. The
   existing default implementation of `database-supports?` currently calls `supports?`, but it will be removed in 0.55.0.
