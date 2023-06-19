@@ -1,4 +1,9 @@
-import { popover, restore, visitDashboard } from "e2e/support/helpers";
+import {
+  popover,
+  restore,
+  visitDashboard,
+  getDashboardCard,
+} from "e2e/support/helpers";
 
 describe("scenarios > dashboard > visualization options", () => {
   beforeEach(() => {
@@ -8,9 +13,9 @@ describe("scenarios > dashboard > visualization options", () => {
 
   it("column reordering should work (metabase#16229)", () => {
     visitDashboard(1);
-    cy.icon("pencil").click();
-    cy.get(".Card").realHover();
-    cy.icon("palette").click();
+    cy.findByLabelText("Edit dashboard").click();
+    getDashboardCard().realHover();
+    cy.findByLabelText("Show visualization options").click();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("ID")
         .closest("[data-testid^=draggable-item]")
@@ -39,9 +44,9 @@ describe("scenarios > dashboard > visualization options", () => {
 
   it("should refelct column settings accurately when changing (metabase#30966)", () => {
     visitDashboard(1);
-    cy.icon("pencil").click();
-    cy.get(".Card").realHover();
-    cy.icon("palette").click();
+    cy.findByLabelText("Edit dashboard").click();
+    getDashboardCard().realHover();
+    cy.findByLabelText("Show visualization options").click();
     cy.findByTestId("Subtotal-settings-button").click();
     popover().findByLabelText("Show a mini bar chart").click();
     cy.findAllByTestId("mini-bar").should("have.length.above", 0);
