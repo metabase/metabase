@@ -1162,17 +1162,3 @@
       (if (neg? @a)
         (apply f args)
         (throw (ex-info "Not yet" {:remaining @a}))))))
-
-(defn do-with-user-attributes [test-user-name-or-user-id attributes-map thunk]
-  (let [user-id (test.users/test-user-name-or-user-id->user-id test-user-name-or-user-id)]
-    (with-temp-vals-in-db User user-id {:login_attributes attributes-map}
-      (thunk))))
-
-(defmacro with-user-attributes
-  "Execute `body` with the attributes for a User temporarily set to `attributes-map`. `test-user-name-or-user-id` can be
-  either one of the predefined test users e.g. `:rasta` or a User ID.
-
-    (with-user-attributes :rasta {\"cans\" 2} ...)"
-  {:style/indent 2}
-  [test-user-name-or-user-id attributes-map & body]
-  `(do-with-user-attributes ~test-user-name-or-user-id ~attributes-map (fn [] ~@body)))

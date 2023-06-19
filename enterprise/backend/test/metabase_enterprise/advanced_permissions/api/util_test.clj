@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.api.util
     :as advanced-perms.api.u]
+   [metabase-enterprise.sandbox.test-util :as met]
    [metabase.api.common :as api]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -10,7 +11,6 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.users :as test.users]
-   [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -34,7 +34,7 @@
               (perms/update-data-perms-graph! [(u/the-id group) (data/id) :data :native] :write)
               (let [{:keys [impersonations attributes]} args]
                 ;; set user login_attributes
-                (tu/with-user-attributes test-user-name-or-user-id attributes
+                (met/with-user-attributes test-user-name-or-user-id attributes
                   (do-with-conn-impersonation-defs group impersonations
                     (fn []
                       ;; bind user as current user, then run f
