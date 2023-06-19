@@ -4,7 +4,7 @@ import Tooltip, { type TooltipProps } from "../Tooltip";
 import { TruncatedMarkdown } from "./MarkdownPreview.styled";
 
 interface Props {
-  children?: string;
+  children: string;
   className?: string;
   tooltipMaxWidth?: TooltipProps["maxWidth"];
 }
@@ -12,7 +12,7 @@ interface Props {
 const ALLOWED_ELEMENTS: string[] = [];
 
 export const MarkdownPreview = ({
-  children = "",
+  children,
   className,
   tooltipMaxWidth,
 }: Props) => (
