@@ -9,6 +9,7 @@
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.card :as lib.card]
    [metabase.lib.column-group :as lib.column-group]
+   [metabase.lib.common :as lib.common]
    [metabase.lib.dev :as lib.dev]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
@@ -85,6 +86,8 @@
    breakoutable-columns
    breakouts
    breakouts-metadata]
+  [lib.common
+   external-op]
   [lib.column-group
    columns-group-columns
    group-columns]
