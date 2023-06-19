@@ -474,6 +474,11 @@
   (-> instance
       add-updated-at-timestamp))
 
+(t2/define-before-update :hook/updated-at-timestamped?
+  [instance]
+  (-> instance
+      add-updated-at-timestamp))
+
 (t2/define-before-insert :hook/entity-id
   [instance]
   (-> instance
