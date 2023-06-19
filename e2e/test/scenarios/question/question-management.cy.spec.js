@@ -17,6 +17,7 @@ import {
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -35,10 +36,12 @@ describe("managing question from the question's details sidebar", () => {
         onlyOn(permission === "curate", () => {
           describe(`${user} user`, () => {
             beforeEach(() => {
-              cy.intercept("PUT", "/api/card/1").as("updateQuestion");
+              cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as(
+                "updateQuestion",
+              );
 
               cy.signIn(user);
-              visitQuestion(1);
+              visitQuestion(ORDERS_QUESTION_ID);
             });
 
             it("should be able to edit question details (metabase#11719-1)", () => {
@@ -170,7 +173,7 @@ describe("managing question from the question's details sidebar", () => {
               cy.findByText("Nothing here");
 
               // Check page for archived questions
-              cy.visit("/question/1");
+              cy.visit("/question/" + ORDERS_QUESTION_ID);
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("This question has been archived");
             });
@@ -196,7 +199,7 @@ describe("managing question from the question's details sidebar", () => {
           describe(`${user} user`, () => {
             beforeEach(() => {
               cy.signIn(user);
-              visitQuestion(1);
+              visitQuestion(ORDERS_QUESTION_ID);
             });
 
             it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {

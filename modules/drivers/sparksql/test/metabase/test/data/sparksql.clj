@@ -5,6 +5,7 @@
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.test.data.interface :as tx]
@@ -84,15 +85,19 @@
 (defmethod load-data/do-insert! :sparksql
   [driver spec table-identifier row-or-rows]
   (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
-    (with-open [conn (jdbc/get-connection spec)]
-      (try
-        (.setAutoCommit conn false)
-        (doseq [sql+args statements]
-          (jdbc/execute! {:connection conn} sql+args {:transaction? false}))
-        (catch java.sql.SQLException e
-          (log/infof "Error inserting data: %s" (u/pprint-to-str 'red statements))
-          (jdbc/print-sql-exception-chain e)
-          (throw e))))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     spec
+     {:write? true}
+     (fn [^java.sql.Connection conn]
+       (try
+         (.setAutoCommit conn false)
+         (doseq [sql+args statements]
+           (jdbc/execute! {:connection conn} sql+args {:transaction? false}))
+         (catch java.sql.SQLException e
+           (log/infof "Error inserting data: %s" (u/pprint-to-str 'red statements))
+           (jdbc/print-sql-exception-chain e)
+           (throw e)))))))
 
 (defmethod load-data/load-data! :sparksql [& args]
   (apply load-data/load-data-add-ids! args))
