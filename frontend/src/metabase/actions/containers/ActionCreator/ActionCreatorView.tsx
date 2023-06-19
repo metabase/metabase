@@ -21,7 +21,6 @@ import {
 import { isNotNull } from "metabase/core/utils/types";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
-import { isActionPublic } from "metabase/actions/utils";
 import type { ActionCreatorUIProps, SideView } from "./types";
 import InlineActionSettings, {
   ActionSettingsTriggerButton,
@@ -126,7 +125,6 @@ export default function ActionCreatorView({
               parameters={action.parameters ?? []}
               formSettings={formSettings}
               isEditable={isEditable && canChangeFieldSettings}
-              isPublic={isActionPublic(action)}
               onChange={onChangeFormSettings}
             />
           ) : activeSideView === "dataReference" ? (

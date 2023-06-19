@@ -48,7 +48,6 @@ interface FormCreatorProps {
   parameters: Parameter[];
   formSettings?: ActionFormSettings;
   isEditable: boolean;
-  isPublic: boolean;
   onChange: (formSettings: ActionFormSettings) => void;
 }
 
@@ -56,7 +55,6 @@ function FormCreator({
   parameters,
   formSettings: passedFormSettings,
   isEditable,
-  isPublic,
   onChange,
 }: FormCreatorProps) {
   const [formSettings, setFormSettings] = useState<ActionFormSettings>(
@@ -75,8 +73,8 @@ function FormCreator({
   }, [parameters, formSettings]);
 
   const form = useMemo(
-    () => getForm(parameters, formSettings?.fields),
-    [parameters, formSettings?.fields],
+    () => getForm(parameters, formSettings.fields),
+    [parameters, formSettings.fields],
   );
 
   // Validation schema here should only be used to get default values
@@ -159,6 +157,16 @@ function FormCreator({
 
     if (!settings) {
       return false;
+    }
+
+    const isImplicitAction = Object.keys(settings).length === 2;
+
+    if (isImplicitAction) {
+      const parameter = parameters.find(
+        parameter => parameter.id === settings.id,
+      );
+
+      return parameter?.required && settings.hidden;
     }
 
     return (

@@ -43,10 +43,9 @@ const makeParameter = ({
 type SetupOpts = {
   parameters: WritebackParameter[];
   formSettings: ActionFormSettings;
-  isPublic?: boolean;
 };
 
-const setup = ({ parameters, formSettings, isPublic = false }: SetupOpts) => {
+const setup = ({ parameters, formSettings }: SetupOpts) => {
   const onChange = jest.fn();
 
   render(
@@ -54,7 +53,6 @@ const setup = ({ parameters, formSettings, isPublic = false }: SetupOpts) => {
       parameters={parameters}
       formSettings={formSettings}
       isEditable
-      isPublic={isPublic}
       onChange={onChange}
     />,
   );
@@ -247,125 +245,116 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
     const WARNING_BANNER_TEXT =
       "Your action has a hidden required field with no default value. There's a good chance this will cause the action to fail.";
 
-    describe.each([{ isPublic: true }, { isPublic: false }])(
-      "when public: $isPublic",
-      ({ isPublic }) => {
-        describe("when there is hidden, required parameter without default value", () => {
-          it("shows a warning banner for query action", () => {
-            const parameter1 = makeParameter({ required: true });
-            const parameter2 = makeParameter({ id: "2" });
-            const fieldSettings = makeFieldSettings({
-              inputType: "string",
-              required: true,
-              defaultValue: undefined,
-              hidden: true,
-            });
-
-            setup({
-              parameters: [parameter1, parameter2],
-              formSettings: {
-                type: "form",
-                fields: {
-                  [parameter1.id]: fieldSettings,
-                  [parameter2.id]: { ...fieldSettings, id: parameter2.id },
-                },
-              },
-              isPublic,
-            });
-
-            expect(screen.getByText(WARNING_BANNER_TEXT)).toBeInTheDocument();
-          });
-
-          it("shows a warning banner for implicit action", () => {
-            const parameter = makeParameter({ required: true });
-            const fieldSettings = createMockImplicitActionFieldSettings({
-              id: parameter.id,
-              required: true,
-              defaultValue: undefined,
-              hidden: true,
-            });
-
-            setup({
-              parameters: [parameter],
-              formSettings: {
-                type: "form",
-                fields: {
-                  [parameter.id]: fieldSettings,
-                },
-              },
-              isPublic,
-            });
-
-            expect(screen.getByText(WARNING_BANNER_TEXT)).toBeInTheDocument();
-          });
+    describe("when there is hidden, required parameter without default value", () => {
+      it("shows a warning banner for query action", () => {
+        const parameter1 = makeParameter({ required: true });
+        const parameter2 = makeParameter({ id: "2" });
+        const fieldSettings = makeFieldSettings({
+          inputType: "string",
+          required: true,
+          defaultValue: undefined,
+          hidden: true,
         });
 
-        describe.each([
-          { required: false, hidden: false, hasDefaultValue: false },
-          { required: false, hidden: false, hasDefaultValue: true },
-          { required: false, hidden: true, hasDefaultValue: false },
-          { required: false, hidden: true, hasDefaultValue: true },
-          { required: true, hidden: false, hasDefaultValue: false },
-          { required: true, hidden: false, hasDefaultValue: true },
-          { required: true, hidden: true, hasDefaultValue: true },
-        ])(
-          `when required: $required, hidden: $hidden, hasDefaultValue: $hasDefaultValue`,
-          ({ required, hidden, hasDefaultValue }) => {
-            it("does not show a warning banner for query action", () => {
-              const defaultValue = "foo bar";
-              const parameter1 = makeParameter({ required });
-              const parameter2 = makeParameter({ id: "2", required });
-              const fieldSettings = makeFieldSettings({
-                id: parameter1.id,
-                inputType: "string",
-                required,
-                defaultValue: hasDefaultValue ? defaultValue : undefined,
-                hidden,
-              });
-
-              setup({
-                parameters: [parameter1, parameter2],
-                formSettings: {
-                  type: "form",
-                  fields: {
-                    [parameter1.id]: fieldSettings,
-                    [parameter2.id]: { ...fieldSettings, id: parameter2.id },
-                  },
-                },
-              });
-
-              expect(
-                screen.queryByText(WARNING_BANNER_TEXT),
-              ).not.toBeInTheDocument();
-            });
-
-            it("doesn't show a banner for implicit action", () => {
-              const defaultValue = "foo bar";
-              const parameter = makeParameter({ required });
-              const fieldSettings = createMockImplicitActionFieldSettings({
-                id: parameter.id,
-                required,
-                defaultValue: hasDefaultValue ? defaultValue : undefined,
-                hidden,
-              });
-
-              setup({
-                parameters: [parameter],
-                formSettings: {
-                  type: "form",
-                  fields: {
-                    [parameter.id]: fieldSettings,
-                  },
-                },
-                isPublic,
-              });
-
-              expect(
-                screen.queryByText(WARNING_BANNER_TEXT),
-              ).not.toBeInTheDocument();
-            });
+        setup({
+          parameters: [parameter1, parameter2],
+          formSettings: {
+            type: "form",
+            fields: {
+              [parameter1.id]: fieldSettings,
+              [parameter2.id]: { ...fieldSettings, id: parameter2.id },
+            },
           },
-        );
+        });
+
+        expect(screen.getByText(WARNING_BANNER_TEXT)).toBeInTheDocument();
+      });
+
+      it("shows a warning banner for implicit action", () => {
+        const parameter = makeParameter({ required: true });
+        // implicit actions initially have only hidden and id fields
+        const fieldSettings = createMockImplicitActionFieldSettings({
+          id: parameter.id,
+          hidden: true,
+        });
+
+        setup({
+          parameters: [parameter],
+          formSettings: {
+            type: "form",
+            fields: {
+              [parameter.id]: fieldSettings,
+            },
+          },
+        });
+
+        expect(screen.getByText(WARNING_BANNER_TEXT)).toBeInTheDocument();
+      });
+    });
+
+    describe.each([
+      { required: false, hidden: false, hasDefaultValue: false },
+      { required: false, hidden: false, hasDefaultValue: true },
+      { required: false, hidden: true, hasDefaultValue: false },
+      { required: false, hidden: true, hasDefaultValue: true },
+      { required: true, hidden: false, hasDefaultValue: false },
+      { required: true, hidden: false, hasDefaultValue: true },
+      { required: true, hidden: true, hasDefaultValue: true },
+    ])(
+      `when required: $required, hidden: $hidden, hasDefaultValue: $hasDefaultValue`,
+      ({ required, hidden, hasDefaultValue }) => {
+        it("does not show a warning banner for query action", () => {
+          const defaultValue = "foo bar";
+          const parameter1 = makeParameter({ required });
+          const parameter2 = makeParameter({ id: "2", required });
+          const fieldSettings = makeFieldSettings({
+            id: parameter1.id,
+            inputType: "string",
+            required,
+            defaultValue: hasDefaultValue ? defaultValue : undefined,
+            hidden,
+          });
+
+          setup({
+            parameters: [parameter1, parameter2],
+            formSettings: {
+              type: "form",
+              fields: {
+                [parameter1.id]: fieldSettings,
+                [parameter2.id]: { ...fieldSettings, id: parameter2.id },
+              },
+            },
+          });
+
+          expect(
+            screen.queryByText(WARNING_BANNER_TEXT),
+          ).not.toBeInTheDocument();
+        });
+
+        it("doesn't show a banner for implicit action", () => {
+          const defaultValue = "foo bar";
+          const parameter = makeParameter({ required });
+          const fieldSettings = createMockImplicitActionFieldSettings({
+            id: parameter.id,
+            required,
+            defaultValue: hasDefaultValue ? defaultValue : undefined,
+            hidden,
+          });
+
+          setup({
+            parameters: [parameter],
+            formSettings: {
+              type: "form",
+              fields: {
+                [parameter.id]: fieldSettings,
+              },
+            },
+          });
+
+          expect(
+            screen.queryByText(WARNING_BANNER_TEXT),
+          ).not.toBeInTheDocument();
+        });
       },
     );
 
