@@ -285,17 +285,31 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     undoToast().should("not.exist");
   });
 
-  it("should not be able to toggle auto-apply filters toggle for user without dashboard permission", () => {
-    createDashboard();
-    cy.signIn("readonly");
-    openDashboard();
-    cy.wait("@cardQuery");
-
-    dashboardHeader().within(() => {
-      cy.icon("info").click();
+  describe("no collection curate permission", () => {
+    beforeEach(() => {
+      createDashboard();
+      cy.signIn("readonly");
     });
-    rightSidebar().within(() => {
-      cy.findByLabelText("Auto-apply filters").should("be.disabled");
+
+    it("should not be able to toggle auto-apply filters toggle", () => {
+      openDashboard();
+      cy.wait("@cardQuery");
+
+      dashboardHeader().within(() => {
+        cy.icon("info").click();
+      });
+      rightSidebar().within(() => {
+        cy.findByLabelText("Auto-apply filters").should("be.disabled");
+      });
+    });
+
+    it("should not display a toast even when a dashboard takes longer than 15s to load", () => {
+      cy.clock();
+      openSlowDashboard({ [FILTER.slug]: "Gadget" });
+
+      cy.tick(TOAST_TIMEOUT);
+      cy.wait("@cardQuery");
+      undoToast().should("not.exist");
     });
   });
 });
