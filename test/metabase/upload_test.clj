@@ -247,8 +247,8 @@
                             "2022-01-01,2023-02-28,2022-01-01T00:00:00,2023-02-28T00:00:00"
                             "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"]))))))
 
-(deftest unique-table-name-test
-  (mt/test-driver (mt/normal-drivers-with-feature :uploads)
+(deftest ^:parallel unique-table-name-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "File name is slugified"
       (is (=? #"my_file_name_\d+" (#'upload/unique-table-name driver/*driver* "my file name"))))
     (testing "semicolons are removed"
@@ -256,14 +256,12 @@
 
 (deftest load-from-csv-table-name-test
   (testing "Upload a CSV file"
-    (mt/test-driver (mt/normal-drivers-with-feature :uploads)
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (let [file       (csv-file-with ["id" "2" "3"])]
           (testing "Can upload two files with the same name"
-            ;; Sleep for a second, because the table name is based on the current second
-            (is (some? (upload/load-from-csv driver/*driver* (mt/id) "table_name" file)))
-            (Thread/sleep 1000)
-            (is (some? (upload/load-from-csv driver/*driver* (mt/id) "table_name" file)))))))))
+            (is (some? (upload/load-from-csv driver/*driver* (mt/id) (format "table_name_%s" driver/*driver*) file)))
+            (is (some? (upload/load-from-csv driver/*driver* (mt/id) (format "table_name_2_%s" driver/*driver*) file)))))))))
 
 (defn- query-table!
   [table]
