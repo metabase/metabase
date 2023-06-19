@@ -4,11 +4,13 @@ import { renderWithProviders, screen } from "__support__/ui";
 import {
   setupCollectionsEndpoints,
   setupCollectionItemsEndpoint,
+  setupDashboardEndpoints,
 } from "__support__/server-mocks";
 
 import {
   createMockCollection,
   createMockCollectionItem,
+  createMockDashboard,
 } from "metabase-types/api/mocks";
 import { CustomHomePageModal } from "./CustomHomePageModal";
 
@@ -23,11 +25,16 @@ const COLLECTION_ITEM = createMockCollectionItem({
   model: "dashboard",
 });
 
+const FOO_DASHBOARD = createMockDashboard({
+  name: "Foo",
+});
+
 const setup = ({ ...props } = {}) => {
   const onClose = jest.fn();
 
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupCollectionItemsEndpoint(ROOT_COLLECTION, [COLLECTION_ITEM]);
+  setupDashboardEndpoints(FOO_DASHBOARD);
 
   renderWithProviders(
     <CustomHomePageModal onClose={onClose} isOpen={true} {...props} />,
