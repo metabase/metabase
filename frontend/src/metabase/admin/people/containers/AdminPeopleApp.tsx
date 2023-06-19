@@ -9,7 +9,7 @@ import { shouldNudgeToPro } from "metabase/admin/people/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { LeftNavWrapper } from "./AdminPeopleApp.styled";
 
-const AdminPeopleApp = ({ children }: { children: React.ReactNode }) => {
+export const AdminPeopleApp = ({ children }: { children: React.ReactNode }) => {
   const shouldNudge = useSelector(shouldNudgeToPro);
   const sidebar = (
     <LeftNavPane fullHeight={!shouldNudge}>
@@ -34,6 +34,3 @@ const AdminPeopleApp = ({ children }: { children: React.ReactNode }) => {
     </AdminLayout>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AdminPeopleApp;
