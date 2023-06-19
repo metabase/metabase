@@ -1146,9 +1146,10 @@
                                             {:order-by [[:position :asc]]})
               new->old-tab-id   (zipmap (map :id new-tabs) (map :id original-tabs))]
          (testing "Cards are located correctly between tabs"
-           (is (= (map #(select-keys % [:name :display :dashboard_tab_id]) (dashboard/ordered-cards dashboard-id))
-                  (map #(select-keys % [:name :display :dashboard_tab_id])
-                       (for [card (dashboard/ordered-cards new-dash-id)]
+           (is (= (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
+                       (ordered-cards-by-position dashboard-id))
+                  (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
+                       (for [card (ordered-cards-by-position new-dash-id)]
                          (assoc card :dashboard_tab_id (new->old-tab-id (:dashboard_tab_id card))))))))
 
          (testing "new tabs should have the same name and position"
@@ -1630,7 +1631,7 @@
                                  :dashboard_id dashboard-id
                                  :name         "New Tab 2"
                                  :position     1}]}
-               resp))))))
+                (update resp :cards #(sort dashboard-card/dashcard-comparator %))))))))
 
 (deftest update-cards-error-handling-test
   (testing "PUT /api/dashboard/:id/cards"
