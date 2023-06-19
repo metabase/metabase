@@ -21,6 +21,7 @@ import type {
   ActionFormSettings,
   FieldSettings,
   Parameter,
+  WritebackAction,
 } from "metabase-types/api";
 
 import {
@@ -48,15 +49,15 @@ interface FormCreatorProps {
   parameters: Parameter[];
   formSettings?: ActionFormSettings;
   isEditable: boolean;
-  isPublic: boolean;
+  actionType: WritebackAction["type"];
   onChange: (formSettings: ActionFormSettings) => void;
 }
 
-function FormCreator({
+export function FormCreator({
   parameters,
   formSettings: passedFormSettings,
   isEditable,
-  isPublic,
+  actionType,
   onChange,
 }: FormCreatorProps) {
   const [formSettings, setFormSettings] = useState<ActionFormSettings>(
@@ -75,8 +76,8 @@ function FormCreator({
   }, [parameters, formSettings]);
 
   const form = useMemo(
-    () => getForm(parameters, formSettings?.fields),
-    [parameters, formSettings?.fields],
+    () => getForm(parameters, formSettings.fields),
+    [parameters, formSettings.fields],
   );
 
   // Validation schema here should only be used to get default values
@@ -161,6 +162,14 @@ function FormCreator({
       return false;
     }
 
+    if (actionType === "implicit") {
+      const parameter = parameters.find(
+        parameter => parameter.id === settings.id,
+      );
+
+      return parameter?.required && settings.hidden;
+    }
+
     return (
       settings.hidden && settings.required && settings.defaultValue == null
     );
@@ -221,6 +230,3 @@ function FormCreator({
     </SidebarContent>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FormCreator;

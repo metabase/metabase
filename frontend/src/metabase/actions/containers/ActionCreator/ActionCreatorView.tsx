@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import ActionCreatorHeader from "metabase/actions/containers/ActionCreator/ActionCreatorHeader";
-import FormCreator from "metabase/actions/containers/ActionCreator/FormCreator";
+import { FormCreator } from "metabase/actions/containers/ActionCreator/FormCreator";
 import {
   DataReferenceTriggerButton,
   DataReferenceInline,
@@ -21,7 +21,6 @@ import {
 import { isNotNull } from "metabase/core/utils/types";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
-import { isActionPublic } from "metabase/actions/utils";
 import type { ActionCreatorUIProps, SideView } from "./types";
 import InlineActionSettings, {
   ActionSettingsTriggerButton,
@@ -123,10 +122,10 @@ export default function ActionCreatorView({
         <ModalRight>
           {activeSideView === "actionForm" ? (
             <FormCreator
+              actionType={action.type ?? "query"}
               parameters={action.parameters ?? []}
               formSettings={formSettings}
               isEditable={isEditable && canChangeFieldSettings}
-              isPublic={isActionPublic(action)}
               onChange={onChangeFormSettings}
             />
           ) : activeSideView === "dataReference" ? (
