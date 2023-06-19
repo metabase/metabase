@@ -21,6 +21,7 @@ import type {
   ActionFormSettings,
   FieldSettings,
   Parameter,
+  WritebackAction,
 } from "metabase-types/api";
 
 import {
@@ -48,13 +49,15 @@ interface FormCreatorProps {
   parameters: Parameter[];
   formSettings?: ActionFormSettings;
   isEditable: boolean;
+  actionType: WritebackAction["type"];
   onChange: (formSettings: ActionFormSettings) => void;
 }
 
-function FormCreator({
+export function FormCreator({
   parameters,
   formSettings: passedFormSettings,
   isEditable,
+  actionType,
   onChange,
 }: FormCreatorProps) {
   const [formSettings, setFormSettings] = useState<ActionFormSettings>(
@@ -159,9 +162,7 @@ function FormCreator({
       return false;
     }
 
-    const isImplicitAction = Object.keys(settings).length === 2;
-
-    if (isImplicitAction) {
+    if (actionType === "implicit") {
       const parameter = parameters.find(
         parameter => parameter.id === settings.id,
       );
@@ -229,6 +230,3 @@ function FormCreator({
     </SidebarContent>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FormCreator;

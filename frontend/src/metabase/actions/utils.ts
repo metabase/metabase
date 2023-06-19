@@ -211,10 +211,7 @@ const getFormField = (
   parameter: Parameter,
   fieldSettings: LocalFieldSettings,
 ) => {
-  if (
-    fieldSettings.field &&
-    !isEditableField(fieldSettings.field, parameter as Parameter)
-  ) {
+  if (fieldSettings.field && !isEditableField(fieldSettings.field, parameter)) {
     return undefined;
   }
 

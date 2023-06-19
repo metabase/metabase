@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type {
   ActionFormSettings,
   FieldSettings,
+  WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
 import {
@@ -11,7 +12,7 @@ import {
   createMockImplicitActionFieldSettings,
 } from "metabase-types/api/mocks";
 
-import FormCreator from "./FormCreator";
+import { FormCreator } from "./FormCreator";
 
 const makeFieldSettings = (
   overrides: Partial<FieldSettings> = {},
@@ -43,9 +44,10 @@ const makeParameter = ({
 type SetupOpts = {
   parameters: WritebackParameter[];
   formSettings: ActionFormSettings;
+  actionType?: WritebackAction["type"];
 };
 
-const setup = ({ parameters, formSettings }: SetupOpts) => {
+const setup = ({ parameters, formSettings, actionType }: SetupOpts) => {
   const onChange = jest.fn();
 
   render(
@@ -54,6 +56,7 @@ const setup = ({ parameters, formSettings }: SetupOpts) => {
       formSettings={formSettings}
       isEditable
       onChange={onChange}
+      actionType={actionType || "query"}
     />,
   );
 
@@ -279,6 +282,7 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
         });
 
         setup({
+          actionType: "implicit",
           parameters: [parameter],
           formSettings: {
             type: "form",
@@ -346,6 +350,7 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
         });
 
         setup({
+          actionType: "implicit",
           parameters: [parameter],
           formSettings: {
             type: "form",
