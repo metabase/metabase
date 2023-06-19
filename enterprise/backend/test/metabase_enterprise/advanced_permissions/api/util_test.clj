@@ -28,7 +28,7 @@
 
 (defn do-with-impersonations-for-user [args test-user-name-or-user-id f]
   (letfn [(thunk []
-            ;; remove perks for All Users group)]))
+            ;; remove perms for All Users group
             (perms/revoke-data-perms! (perms-group/all-users) (data/db))
             ;; create new perms group
             (test.users/with-group-for-user [group test-user-name-or-user-id]
@@ -44,7 +44,9 @@
                         (test.users/with-test-user test-user-name-or-user-id
                           (f group))
                         (mw.session/with-current-user (u/the-id test-user-name-or-user-id)
-                          (f group)))))))))]
+                          (f group))))))))
+            ;; re-grant perms for All Users group
+            (perms/grant-full-data-permissions! (perms-group/all-users) (data/db)))]
     (thunk)))
 
 (defmacro with-impersonations-for-user
