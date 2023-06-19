@@ -27,8 +27,8 @@
    [toucan2.model :as t2.model]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
-   [toucan2.tools.identity-query :as t2.identity-query]
    [toucan2.tools.hydrate :as t2.hydrate]
+   [toucan2.tools.identity-query :as t2.identity-query]
    [toucan2.util :as t2.u])
   (:import
    (java.io BufferedInputStream ByteArrayInputStream DataInputStream)
