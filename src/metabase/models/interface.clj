@@ -27,6 +27,7 @@
    [toucan2.model :as t2.model]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
+   [toucan2.tools.identity-query :as t2.identity-query]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.util :as t2.u])
   (:import
@@ -414,6 +415,8 @@
   (-> instance
       add-entity-id))
 
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
+
 ;; --- helper fns
 (defn pre-update-changes
   "Returns the changes used for pre-update hooks.
@@ -422,7 +425,12 @@
   (t2.protocols/with-current row (merge (t2.model/primary-key-values-map row)
                                         (t2.protocols/changes row))))
 
-(methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
+(defn do-post-select
+  "Do [[toucan2.tools.after-select]] stuff for row map `object` using methods for `modelable`."
+  [modelable row-map]
+  {:pre [(map? row-map)]}
+  (let [model (t2/resolve-model modelable)]
+    (t2/select-one model (t2.identity-query/identity-query [row-map]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |

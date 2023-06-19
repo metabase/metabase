@@ -19,7 +19,6 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n]
-   [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
    (java.nio.charset StandardCharsets)))
@@ -55,7 +54,7 @@
       (mt/test-drivers #{:postgres :h2 :mysql}
          (let [data-source (dump-to-h2-test/persistent-data-source driver/*driver* db-name)]
            ;; `database.details` use mi/transform-encrypted-json as transformation
-           ;; the original definition of  mi/transform-encrypted-json has a cached version of out transform
+           ;; the original definition of mi/transform-encrypted-json has a cached version of out transform
            ;; in this test we change they key multiple times and we don't want the value to be cached when key change
            (with-redefs [mi/transform-encrypted-json {:in  #'mi/encrypted-json-in
                                                       :out #'mi/encrypted-json-out}]

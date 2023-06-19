@@ -13,7 +13,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 (s/defn ^:private find-gtap-question :- (s/maybe (mi/InstanceOf Card))
@@ -29,7 +28,7 @@
                       [:= :sandboxes.table_id (u/the-id table-or-table-id)]
                       [:= :pgm.user_id (u/the-id user-or-user-id)]]})
            first
-           (models/do-post-select Card)))
+           (mi/do-post-select Card)))
 
 (s/defn only-segmented-perms? :- s/Bool
   "Returns true if the user has only segemented and not full table permissions. If the user has full table permissions

@@ -10,7 +10,6 @@
    [metabase.models.table :refer [Table]]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
