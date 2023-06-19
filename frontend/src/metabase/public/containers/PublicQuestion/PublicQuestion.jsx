@@ -30,7 +30,7 @@ import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 import { applyParameters } from "metabase-lib/queries/utils/card";
-import EmbedFrame from "../components/EmbedFrame";
+import EmbedFrame from "../../components/EmbedFrame";
 
 const mapStateToProps = state => ({
   metadata: getMetadata(state),
@@ -42,7 +42,7 @@ const mapDispatchToProps = {
   addFields,
 };
 
-class PublicQuestion extends Component {
+class PublicQuestionInner extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -233,8 +233,8 @@ class PublicQuestion extends Component {
   }
 }
 
-export default _.compose(
+export const PublicQuestion = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   title(({ card }) => card && card.name),
   ExplicitSize({ refreshMode: "debounceLeading" }),
-)(PublicQuestion);
+)(PublicQuestionInner);
