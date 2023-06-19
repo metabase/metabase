@@ -20,7 +20,6 @@
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
-   [toucan.models :as models]
    [toucan2.core :as t2])
   (:import
    (java.nio.charset StandardCharsets)))
@@ -28,26 +27,6 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
-
-(defn- do-with-encrypted-json-caching-disabled
-  [thunk]
-  (let [mf (methodical/add-primary-method
-            @#'models/type-fn
-            [:encrypted-json :out]
-            (fn [_next-method _type _direction]
-              #'mi/encrypted-json-out))]
-    (with-redefs [models/type-fn mf]
-      (thunk))))
-
-(defmacro ^:private with-encrypted-json-caching-disabled
-  "Replace the Toucan `:encrypted-json` `:out` type function with `:json` `:out`. This will prevent cached values from
-  being returned by [[metabase.models.interface/cached-encrypted-json-out]]. This might seem fishy -- shouldn't we be
-  including the secret key in the cache key itself, if we have to swap out the Toucan type function to get this test
-  to pass? But under normal usage the cache key cannot change at runtime -- only in this test do we change it -- so
-  making the code in [[metabase.models.interface]] smarter is not necessary."
-  {:style/indent 0}
-  [& body]
-  `(do-with-encrypted-json-caching-disabled (^:once fn* [] ~@body)))
 
 (defn- raw-value [keyy]
   (:value (first (jdbc/query {:datasource (mdb.connection/data-source)}
@@ -74,13 +53,12 @@
           secret-id-enc      (atom nil)
           secret-id-unenc    (atom nil)]
       (mt/test-drivers #{:postgres :h2 :mysql}
-        (with-encrypted-json-caching-disabled
-          (let [data-source (dump-to-h2-test/persistent-data-source driver/*driver* db-name)]
-            ;; `database.details` use mi/transform-encrypted-json as transformation
-            ;; the original definition of  mi/transform-encrypted-json has a cached version of out transform
-            ;; in this test we change they key multiple times and we don't want the value to be cached when key change
-            (with-redefs [mi/transform-encrypted-json {:in  #'mi/encrypted-json-in
-                                                       :out #'mi/encrypted-json-out}]
+         (let [data-source (dump-to-h2-test/persistent-data-source driver/*driver* db-name)]
+           ;; `database.details` use mi/transform-encrypted-json as transformation
+           ;; the original definition of  mi/transform-encrypted-json has a cached version of out transform
+           ;; in this test we change they key multiple times and we don't want the value to be cached when key change
+           (with-redefs [mi/transform-encrypted-json {:in  #'mi/encrypted-json-in
+                                                      :out #'mi/encrypted-json-out}]
              (binding [;; EXPLANATION FOR WHY THIS TEST WAS FLAKY
                        ;; at this point, all the state switching craziness that happens for
                        ;; `metabase.util.i18n.impl/site-locale-from-setting` has already taken place, so this function has
@@ -167,9 +145,9 @@
                     (is (=? {:name "k2"}
                             db)))
                   (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
-                       (rotate-encryption-key! k3))))
+                        clojure.lang.ExceptionInfo
+                        #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
+                        (rotate-encryption-key! k3))))
                 (encryption-test/with-secret-key k3
                   (is (not= {:db "/tmp/k2.db"} (t2/select-one-fn :details Database :name "k2")))
                   (is (= {:db "/tmp/k3.db"} (t2/select-one-fn :details Database :name "k3")))))
@@ -186,4 +164,4 @@
                 (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value Secret :id @secret-id-enc))))
 
               (testing "short keys fail to rotate"
-                (is (thrown? Throwable (rotate-encryption-key! "short"))))))))))))
+                (is (thrown? Throwable (rotate-encryption-key! "short")))))))))))
