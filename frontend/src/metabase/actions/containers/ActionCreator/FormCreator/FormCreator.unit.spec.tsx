@@ -244,12 +244,16 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
   });
 
   describe("Warning banner", () => {
+    const WARNING_BANNER_TEXT =
+      "Your action has a hidden required field with no default value. There's a good chance this will cause the action to fail.";
+
     describe.each([{ isPublic: true }, { isPublic: false }])(
       "when public: $isPublic",
       ({ isPublic }) => {
         describe("when there is hidden, required parameter without default value", () => {
           it("shows a warning banner for query action", () => {
-            const parameter = makeParameter({ required: true });
+            const parameter1 = makeParameter({ required: true });
+            const parameter2 = makeParameter({ id: "2" });
             const fieldSettings = makeFieldSettings({
               inputType: "string",
               required: true,
@@ -258,19 +262,18 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
             });
 
             setup({
-              parameters: [parameter],
+              parameters: [parameter1, parameter2],
               formSettings: {
                 type: "form",
                 fields: {
-                  [parameter.id]: fieldSettings,
+                  [parameter1.id]: fieldSettings,
+                  [parameter2.id]: { ...fieldSettings, id: parameter2.id },
                 },
               },
               isPublic,
             });
 
-            expect(
-              screen.getByTestId("action-warning-banner"),
-            ).toBeInTheDocument();
+            expect(screen.getByText(WARNING_BANNER_TEXT)).toBeInTheDocument();
           });
 
           it("shows a warning banner for implicit action", () => {
@@ -293,17 +296,10 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
               isPublic,
             });
 
-            expect(
-              screen.getByTestId("action-warning-banner"),
-            ).toBeInTheDocument();
+            expect(screen.getByText(WARNING_BANNER_TEXT)).toBeInTheDocument();
           });
         });
-      },
-    );
 
-    describe.each([{ isPublic: true }, { isPublic: false }])(
-      "when public: $isPublic",
-      ({ isPublic }) => {
         describe.each([
           { required: false, hidden: false, hasDefaultValue: false },
           { required: false, hidden: false, hasDefaultValue: true },
@@ -313,13 +309,14 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
           { required: true, hidden: false, hasDefaultValue: true },
           { required: true, hidden: true, hasDefaultValue: true },
         ])(
-          `when there is no hidden, required parameter without default value`,
+          `when required: $required, hidden: $hidden, hasDefaultValue: $hasDefaultValue`,
           ({ required, hidden, hasDefaultValue }) => {
             it("does not show a warning banner for query action", () => {
               const defaultValue = "foo bar";
-              const parameter = makeParameter({ required });
+              const parameter1 = makeParameter({ required });
+              const parameter2 = makeParameter({ id: "2", required });
               const fieldSettings = makeFieldSettings({
-                id: parameter.id,
+                id: parameter1.id,
                 inputType: "string",
                 required,
                 defaultValue: hasDefaultValue ? defaultValue : undefined,
@@ -327,17 +324,18 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
               });
 
               setup({
-                parameters: [parameter],
+                parameters: [parameter1, parameter2],
                 formSettings: {
                   type: "form",
                   fields: {
-                    [parameter.id]: fieldSettings,
+                    [parameter1.id]: fieldSettings,
+                    [parameter2.id]: { ...fieldSettings, id: parameter2.id },
                   },
                 },
               });
 
               expect(
-                screen.queryByTestId("action-warning-banner"),
+                screen.queryByText(WARNING_BANNER_TEXT),
               ).not.toBeInTheDocument();
             });
 
@@ -363,12 +361,40 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
               });
 
               expect(
-                screen.queryByTestId("action-warning-banner"),
+                screen.queryByText(WARNING_BANNER_TEXT),
               ).not.toBeInTheDocument();
             });
           },
         );
       },
     );
+
+    describe("when settings are not available (e.g. before action is saved)", () => {
+      it("does not show a warning banner for query action", () => {
+        setup({
+          parameters: [makeParameter()],
+          formSettings: {
+            type: "form",
+            fields: undefined,
+          },
+        });
+
+        expect(screen.queryByText(WARNING_BANNER_TEXT)).not.toBeInTheDocument();
+      });
+    });
+
+    describe("when there is no parameters", () => {
+      it("does not show a warning banner for query action", () => {
+        setup({
+          parameters: [],
+          formSettings: {
+            type: "form",
+            fields: {},
+          },
+        });
+
+        expect(screen.queryByText(WARNING_BANNER_TEXT)).not.toBeInTheDocument();
+      });
+    });
   });
 });

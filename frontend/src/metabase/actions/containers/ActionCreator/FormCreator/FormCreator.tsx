@@ -173,7 +173,7 @@ function FormCreator({
           {jt`Configure your parameters' types and properties here. The values for these parameters can come from user input, or from a dashboard filter. ${docsLink}`}
         </InfoText>
         {showWarning && (
-          <WarningBanner data-testid="action-warning-banner">
+          <WarningBanner>
             <b>{t`Heads up.`}</b>{" "}
             {t`Your action has a hidden required field with no default value. There's a good chance this will cause the action to fail.`}
           </WarningBanner>
