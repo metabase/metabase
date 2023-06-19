@@ -143,10 +143,12 @@
                                              :position     1}
      DashboardCard       {dashcard-id-1 :id} {:dashboard_id     dashboard-id
                                               :card_id          card-id-1
-                                              :dashboard_tab_id dashtab-id-1}
+                                              :dashboard_tab_id dashtab-id-1
+                                              :row              1}
      DashboardCard       {dashcard-id-2 :id} {:dashboard_id     dashboard-id
                                               :card_id          card-id-2
-                                              :dashboard_tab_id dashtab-id-2}]
+                                              :dashboard_tab_id dashtab-id-2
+                                              :row              2}]
     (f {:dashboard-id  dashboard-id
         :card-id-1     card-id-1
         :card-id-2     card-id-1
@@ -1144,10 +1146,10 @@
                                             {:order-by [[:position :asc]]})
               new->old-tab-id   (zipmap (map :id new-tabs) (map :id original-tabs))]
          (testing "Cards are located correctly between tabs"
-                     (is (= (map #(select-keys % [:name :display :dashboard_tab_id]) (dashboard/ordered-cards dashboard-id))
-                            (map #(select-keys % [:name :display :dashboard_tab_id])
-                                 (for [card (dashboard/ordered-cards new-dash-id)]
-                                   (assoc card :dashboard_tab_id (new->old-tab-id (:dashboard_tab_id card))))))))
+           (is (= (map #(select-keys % [:name :display :dashboard_tab_id]) (dashboard/ordered-cards dashboard-id))
+                  (map #(select-keys % [:name :display :dashboard_tab_id])
+                       (for [card (dashboard/ordered-cards new-dash-id)]
+                         (assoc card :dashboard_tab_id (new->old-tab-id (:dashboard_tab_id card))))))))
 
          (testing "new tabs should have the same name and position"
            (is (= (map #(dissoc % :id) original-tabs)
@@ -1596,14 +1598,14 @@
                                             :size_x           4
                                             :size_y           4
                                             :col              1
-                                            :row              1
+                                            :row              2
                                             :dashboard_tab_id -1
                                             :card_id          card-id-1}
                                            {:id               -1
                                             :size_x           4
                                             :size_y           4
                                             :col              1
-                                            :row              1
+                                            :row              3
                                             :dashboard_tab_id -2
                                             :card_id          card-id-2}]})
             tab-1-id (t2/select-one-pk :model/DashboardTab :name "New Tab 1" :dashboard_id dashboard-id)
