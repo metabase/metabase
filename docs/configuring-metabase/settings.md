@@ -20,7 +20,7 @@ The site URL is the web address that people use to access your Metabase instance
 
 ## Custom homepage
 
-Admins can pick a dashboard to serve as a homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default home page.
+Admins can pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage.
 
 ## Redirect to HTTPS
 
