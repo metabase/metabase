@@ -12,7 +12,7 @@ export const NudgeToPro = () => {
   return (
     <NudgeCard>
       <Icon name="group" size={40} color={color("brand")} />
-      <Description>{t`Tired of manually manging people and groups?`}</Description>
+      <Description>{t`Tired of manually managing people and groups?`}</Description>
       <Subtitle>{t`Get single-sign on (SSO) via SAML, JWT, or LDAP with Metabase Pro`}</Subtitle>
       <ProLink href={upgradeUrl}>{t`Learn more`}</ProLink>
     </NudgeCard>
