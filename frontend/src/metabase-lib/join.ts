@@ -1,13 +1,14 @@
 import * as ML from "cljs/metabase.lib.js";
 
 import type {
+  CardMetadata,
   ColumnMetadata,
+  ExternalOp,
   FilterOperator,
   Join,
   JoinStrategy,
   Query,
   TableMetadata,
-  CardMetadata,
 } from "./types";
 
 export function joinStrategy(join: Join): JoinStrategy {
@@ -54,4 +55,12 @@ export function joinConditionOperators(
   rhsColumn?: ColumnMetadata,
 ): FilterOperator[] {
   return ML.join_condition_operators(query, stageIndex, lhsColumn, rhsColumn);
+}
+
+export function suggestedJoinCondition(
+  query: Query,
+  stageIndex: number,
+  joinedThing: TableMetadata | CardMetadata,
+): ExternalOp | null {
+  return ML.suggested_join_condition(query, stageIndex, joinedThing);
 }

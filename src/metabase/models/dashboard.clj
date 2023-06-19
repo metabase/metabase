@@ -184,6 +184,7 @@
    ;; > The position this Dashboard should appear in the Dashboards list,
    ;;   lower-numbered positions appearing before higher numbered ones.
    ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
+   :public_uuid :made_public_by_id
    :position])
 
 (def ^:private excluded-columns-for-dashcard-revision
