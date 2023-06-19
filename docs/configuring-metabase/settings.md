@@ -16,9 +16,13 @@ How you’d like to refer to this instance of Metabase.
 
 ## Site URL
 
-The site URL is the web address that people use to access your Metabase instance. Make sure to include `http://` or `https://` to make sure it’s reachable.
+The site URL is the web address that people use to access your Metabase instance. Make sure to include `http://` or `https://` to make sure it’s reachable. This feature is only available for self-hosted Metabases.
 
-### Redirect to HTTPS
+## Custom homepage
+
+Admins can pick a dashboard to serve as a homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default home page.
+
+## Redirect to HTTPS
 
 By default, Metabase is served over HTTP.
 
@@ -36,13 +40,13 @@ This email address will be displayed in various messages throughout Metabase whe
 
 {% include plans-blockquote.html feature="Approved domains for notifications" %}
 
-Allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/sharing/alerts.md). 
+Allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/sharing/alerts.md).
 
 Adding approved domains allows you to restrict which email addresses people can send alerts and subscriptions to.
 
 To allow all domains, leave the field empty (allowing all domains is the default).
 
-To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2"). 
+To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2").
 
 You can also set this property using the environment variable [`MB_SUBSCRIPTION_ALLOWED_DOMAINS`](../configuring-metabase/environment-variables.md#mb_subscription_allowed_domains).
 
