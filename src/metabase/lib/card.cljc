@@ -42,8 +42,12 @@
                                  (sequential? result-metadata) result-metadata))]
       (mapv (fn [col]
               (merge
+               {:base-type :type/*, :lib/type :metadata/field}
                (when-let [field-id (:id col)]
-                 (lib.metadata/field metadata-providerable field-id))
+                 (try
+                   (lib.metadata/field metadata-providerable field-id)
+                   (catch #?(:clj Throwable :cljs js/Error) _
+                     nil)))
                (update-keys col u/->kebab-case-en)
                {:lib/type                :metadata/field
                 :lib/source              :source/card
@@ -58,7 +62,7 @@
   ;; it seems like in some cases (unit tests) the FE is renaming `:result-metadata` to `:fields`, not 100% sure why
   ;; but handle that case anyway. (#29739)
   (when-let [card (lib.metadata/card metadata-providerable card-id)]
-    (card-metadata-columns metadata-providerable card)))
+    (not-empty (card-metadata-columns metadata-providerable card))))
 
 (defmethod lib.metadata.calculation/visible-columns-method :metadata/card
   [query _stage-number card {:keys [unique-name-fn], :as _options}]
