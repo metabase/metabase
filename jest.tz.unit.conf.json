@@ -19,8 +19,7 @@
   ],
   "globals": {
     "ace": {},
-    "ga": {},
-    "document": {}
+    "ga": {}
   },
   "coverageDirectory": "./",
   "coverageReporters": ["text", "json-summary"],
