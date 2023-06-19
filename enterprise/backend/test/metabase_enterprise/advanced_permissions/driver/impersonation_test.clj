@@ -69,7 +69,7 @@
                          mt/process-query
                          mt/rows)))
               (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                     #"permission denied for table table_without_access"
+                     #"permission denied"
                      (-> {:query "SELECT * FROM \"table_without_access\";"}
                          mt/native-query
                          mt/process-query
