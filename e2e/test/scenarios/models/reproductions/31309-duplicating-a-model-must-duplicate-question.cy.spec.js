@@ -1,4 +1,10 @@
-import { modal, popover, restore } from "e2e/support/helpers";
+import {
+  getNotebookStep,
+  modal,
+  openQuestionActions,
+  popover,
+  restore,
+} from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -40,15 +46,10 @@ describe("scenarios > models with aggregation and breakout", () => {
       },
       {
         visitQuestion: true,
-        wrapId: true,
-        idAlias: "modelId",
       },
     );
 
-    cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.findByLabelText("Move, archive, and more...").click();
-    });
-
+    openQuestionActions();
     popover().within(() => {
       cy.findByText("Duplicate").click();
     });
@@ -71,36 +72,29 @@ describe("scenarios > models with aggregation and breakout", () => {
       );
     });
 
-    cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.findByLabelText("Move, archive, and more...").click();
-    });
-
+    openQuestionActions();
     popover().within(() => {
       cy.findByText("Edit query definition").click();
     });
 
-    cy.findByTestId("data-step-cell").within(() => {
-      cy.findByText("Orders").should("exist");
-    });
+    cy.findByTestId("data-step-cell").findByText("Orders").should("exist");
 
-    cy.findByTestId("aggregate-step").within(() => {
-      cy.findByText("Sum of Total").should("exist");
-    });
+    cy.findByTestId("aggregate-step")
+      .findByText("Sum of Total")
+      .should("exist");
 
-    cy.findByTestId("breakout-step").within(() => {
-      cy.findByText("User → Name").should("exist");
-    });
+    cy.findByTestId("breakout-step").findByText("User → Name").should("exist");
 
-    cy.findByTestId("step-filter-1-0").within(() => {
-      cy.findByText("Sum of Total is less than 100").should("exist");
-    });
+    getNotebookStep("filter", { stage: 1, index: 0 })
+      .findByText("Sum of Total is less than 100")
+      .should("exist");
 
-    cy.findByTestId("step-sort-1-0").within(() => {
-      cy.findByText("Sum of Total").should("exist");
-    });
+    getNotebookStep("sort", { stage: 1, index: 0 })
+      .findByText("Sum of Total")
+      .should("exist");
 
-    cy.findByTestId("step-limit-1-0").within(() => {
-      cy.findByDisplayValue("10").should("exist");
-    });
+    getNotebookStep("limit", { stage: 1, index: 0 })
+      .findByDisplayValue("10")
+      .should("exist");
   });
 });
