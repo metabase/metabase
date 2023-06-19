@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
-   [metabase.db.util :as mdb.u]
    [metabase.models]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -71,7 +70,7 @@
 
 (defn- seed-entity-id-for-instance! [model instance]
   (try
-    (let [primary-key (mdb.u/primary-key model)
+    (let [primary-key (first (t2/primary-keys model))
           pk-value    (get instance primary-key)]
       (when-not (some? pk-value)
         (throw (ex-info (format "Missing value for primary key column %s" (pr-str primary-key))

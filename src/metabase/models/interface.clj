@@ -22,7 +22,6 @@
    [potemkin :as p]
    [schema.core :as schema]
    [taoensso.nippy :as nippy]
-   [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.protocols :as t2.protocols]
@@ -537,7 +536,7 @@
 (defn- check-perms-with-fn
   ([fn-symb read-or-write a-model object-id]
    (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (t2/select-one a-model (mdb.u/primary-key a-model) object-id))))
+       (check-perms-with-fn fn-symb read-or-write (t2/select-one a-model (first (t2/primary-keys a-model)) object-id))))
 
   ([fn-symb read-or-write object]
    (and object
@@ -614,15 +613,6 @@
 (defmethod can-create? ::create-policy.superuser
   [_model _m]
   (superuser?))
-
-;;;; [[define-methods]]
-
-(defn define-methods
-  "Helper for defining Toucan 2 methods using a Toucan-1-style `IModel` method map. This should be considered deprecated
-  and will be removed at some point in the future."
-  {:style/indent [:form]}
-  [model method-map]
-  (models/define-methods-with-IModel-method-map model method-map))
 
 ;;;; [[to-json]]
 

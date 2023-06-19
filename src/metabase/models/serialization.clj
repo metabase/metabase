@@ -93,7 +93,7 @@
   "Returns `{:model \"ModelName\" :id \"id-string\"}`"
   [model-name entity]
   (let [model (t2.model/resolve-model (symbol model-name))
-        pk    (mdb.u/primary-key model)]
+        pk    (first (t2/primary-keys model))]
     {:model model-name
      :id    (or (entity-id model-name entity)
                 (some-> (get entity pk) model identity-hash))}))
@@ -198,7 +198,7 @@
   Returns the Clojure map."
   [model-name entity]
   (let [model (t2.model/resolve-model (symbol model-name))
-        pk    (mdb.u/primary-key model)]
+        pk    (first (t2/primary-keys model))]
     (-> (into {} entity)
         (assoc :serdes/meta (generate-path model-name entity))
         (dissoc pk :updated_at))))
@@ -301,7 +301,7 @@
 
 (defmethod load-update! :default [model-name ingested local]
   (let [model    (t2.model/resolve-model (symbol model-name))
-        pk       (mdb.u/primary-key model)
+        pk       (first (t2/primary-keys model))
         id       (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
     (t2/update! model id ingested)
@@ -448,7 +448,7 @@
   (when id
     (let [model-name (name model)
           model      (t2.model/resolve-model (symbol model-name))
-          entity     (t2/select-one model (mdb.u/primary-key model) id)
+          entity     (t2/select-one model (first (t2/primary-keys model)) id)
           path       (mapv :id (generate-path model-name entity))]
       (if (= (count path) 1)
         (first path)
@@ -474,7 +474,7 @@
                        eid)
           entity     (lookup-by-id model eid)]
       (if entity
-        (get entity (mdb.u/primary-key model))
+        (get entity (first (t2/primary-keys model)))
         (throw (ex-info "Could not find foreign key target - bad serdes-dependencies or other serialization error"
                         {:entity_id eid :model (name model)}))))))
 
