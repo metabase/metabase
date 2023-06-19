@@ -842,7 +842,7 @@
             permissions)))
 
 (defenterprise add-impersonations-to-permissions-graph
-  "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is.."
+  "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
   metabase-enterprise.advanced-permissions.models.connection-impersonation
   [graph]
   graph)
@@ -1295,6 +1295,16 @@
     :write (grant-native-readwrite-permissions! group-id db-id)
     :none  nil))
 
+(defn- delete-block-perms-for-db!
+  [group-id db-id]
+  (log/trace "Deleting block permissions entries for Group %d for Database %d" group-id db-id)
+  (t2/delete! Permissions :group_id group-id, :object (database-block-perms-path db-id)))
+
+(defn- revoke-schema-and-block-perms!
+  [group-id db-id]
+  (revoke-db-schema-permissions! group-id db-id)
+  (delete-block-perms-for-db! group-id db-id))
+
 (mu/defn ^:private update-db-data-access-permissions!
   [group-id :- pos-int?
    db-id :- pos-int?
@@ -1304,42 +1314,35 @@
   (when-let [schemas (:schemas new-db-perms)]
     ;; TODO -- consider whether `delete-block-perms-for-this-db!` should be enterprise-only... not sure how to make it
     ;; work, especially if you downgraded from enterprise... FWIW the sandboxing code (for updating the graph) is not enterprise only.
-    (letfn [(delete-block-perms-for-this-db! []
-              (log/trace "Deleting block permissions entries for Group %d for Database %d" group-id db-id)
-              (t2/delete! Permissions :group_id group-id, :object (database-block-perms-path db-id)))]
-      (condp = schemas
-        :all
-        (do
-          (revoke-db-schema-permissions! group-id db-id)
-          (delete-block-perms-for-this-db!)
-          (grant-permissions-for-all-schemas! group-id db-id))
+    (condp = schemas
+      :all
+      (do
+        (revoke-schema-and-block-perms! group-id db-id)
+        (grant-permissions-for-all-schemas! group-id db-id))
 
-        :none
-        (do
-          (revoke-db-schema-permissions! group-id db-id)
-          (delete-block-perms-for-this-db!))
+      :none
+      (revoke-schema-and-block-perms! group-id db-id)
 
-        ;; Groups using connection impersonation for a DB should be treated the same as if they had full self-service
-        ;; data access.
-        :impersonated
-        (do
-          (revoke-db-schema-permissions! group-id db-id)
-          (delete-block-perms-for-this-db!)
-          (grant-permissions-for-all-schemas! group-id db-id))
+      ;; Groups using connection impersonation for a DB should be treated the same as if they had full self-service
+      ;; data access.
+      :impersonated
+      (do
+        (revoke-schema-and-block-perms! group-id db-id)
+        (grant-permissions-for-all-schemas! group-id db-id))
 
-        ;; TODO -- should this code be enterprise only?
-        :block
-        (do
-          (when-not (premium-features/has-feature? :advanced-permissions)
-            (throw (ee-permissions-exception :block)))
-          (revoke-data-perms! group-id db-id)
-          (revoke-download-perms! group-id db-id)
-          (grant-permissions! group-id (database-block-perms-path db-id)))
+      ;; TODO -- should this code be enterprise only?
+      :block
+      (do
+        (when-not (premium-features/has-feature? :advanced-permissions)
+          (throw (ee-permissions-exception :block)))
+        (revoke-data-perms! group-id db-id)
+        (revoke-download-perms! group-id db-id)
+        (grant-permissions! group-id (database-block-perms-path db-id)))
 
-        (when (map? schemas)
-          (delete-block-perms-for-this-db!)
-          (doseq [schema (keys schemas)]
-            (update-schema-data-access-permissions! group-id db-id schema (get-in new-db-perms [:schemas schema]))))))))
+      (when (map? schemas)
+        (delete-block-perms-for-db! group-id db-id)
+        (doseq [schema (keys schemas)]
+          (update-schema-data-access-permissions! group-id db-id schema (get-in new-db-perms [:schemas schema])))))))
 
 (defn- update-feature-level-permission!
   [group-id db-id new-perms perm-type]
