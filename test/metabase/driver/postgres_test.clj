@@ -31,8 +31,8 @@
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x
-    #_{:clj-kondo/ignore [:discouraged-namespace]}]
+   [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]

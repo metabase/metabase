@@ -7,13 +7,14 @@
    [metabase.api.common :as api]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.users :as test.users]
    [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]
-   [metabase.public-settings.premium-features-test :as premium-features-test]))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- do-with-conn-impersonation-defs
   {:style/indent 2}

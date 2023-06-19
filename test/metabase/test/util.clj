@@ -43,7 +43,6 @@
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.data :as data]
-   [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log :as tu.log]
