@@ -3,8 +3,9 @@ import { t } from "ttag";
 import { Icon, IconName } from "metabase/core/components/Icon";
 import { Flex, Text, Title } from "metabase/ui";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import MetabaseSettings from "metabase/lib/settings";
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
+import { useSelector } from "metabase/lib/redux";
+import { getUpgradeUrl } from "metabase/selectors/settings";
 import { PermissionIconContainer } from "./PermissionHelpDescription.styled";
 
 interface PermissionHelpDescriptionProps {
@@ -12,7 +13,7 @@ interface PermissionHelpDescriptionProps {
   description?: ReactNode;
   icon: IconName;
   iconColor: string;
-  isEnterpriseFeature?: boolean;
+  hasUpgradeNotice?: boolean;
 }
 
 export const PermissionHelpDescription = ({
@@ -20,9 +21,11 @@ export const PermissionHelpDescription = ({
   description,
   icon,
   iconColor,
-  isEnterpriseFeature,
+  hasUpgradeNotice,
 }: PermissionHelpDescriptionProps) => {
-  const isEnterpriseInstance = MetabaseSettings.isEnterprise();
+  const upgradeUrl = useSelector(state =>
+    getUpgradeUrl(state, { utm_media: "admin_permissions" }),
+  );
 
   return (
     <div>
@@ -36,13 +39,11 @@ export const PermissionHelpDescription = ({
       </Flex>
       {description && <Text>{description}</Text>}
 
-      {isEnterpriseFeature && !isEnterpriseInstance ? (
+      {hasUpgradeNotice ? (
         <>
           <Text mt="1rem">{getLimitedPermissionAvailabilityMessage()}</Text>{" "}
           <Text weight="bold">
-            <ExternalLink href={MetabaseSettings.pricingUrl()}>
-              {t`Upgrade to Pro`}
-            </ExternalLink>
+            <ExternalLink href={upgradeUrl}>{t`Upgrade to Pro`}</ExternalLink>
           </Text>
         </>
       ) : null}

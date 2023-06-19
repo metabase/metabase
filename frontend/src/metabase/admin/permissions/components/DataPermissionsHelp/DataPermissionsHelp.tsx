@@ -7,9 +7,14 @@ import { Icon } from "metabase/core/components/Icon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
+import { getSetting } from "metabase/selectors/settings";
+import { useSelector } from "metabase/lib/redux";
 
 export const DataPermissionsHelp = () => {
-  const isEnterpriseInstance = MetabaseSettings.isEnterprise();
+  const isAdvancedPermissionsFeatureEnabled = useSelector(
+    state => getSetting(state, "token-features").advanced_permissions,
+  );
+
   return (
     <Flex direction="column" py="1.375rem" px="1rem">
       <Box px="0.75rem">
@@ -40,7 +45,7 @@ export const DataPermissionsHelp = () => {
               />
 
               <PermissionHelpDescription
-                isEnterpriseFeature
+                hasUpgradeNotice={!isAdvancedPermissionsFeatureEnabled}
                 icon="database"
                 iconColor="warning"
                 name={t`Impersonated (Pro)`}
@@ -55,7 +60,7 @@ export const DataPermissionsHelp = () => {
               />
 
               <PermissionHelpDescription
-                isEnterpriseFeature
+                hasUpgradeNotice={!isAdvancedPermissionsFeatureEnabled}
                 icon="close"
                 iconColor="danger"
                 name={t`Block (Pro)`}
@@ -83,7 +88,7 @@ export const DataPermissionsHelp = () => {
               />
 
               <PermissionHelpDescription
-                isEnterpriseFeature
+                hasUpgradeNotice={!isAdvancedPermissionsFeatureEnabled}
                 icon="permissions_limited"
                 iconColor="brand"
                 name={t`Sandboxed (Pro)`}
@@ -106,21 +111,21 @@ export const DataPermissionsHelp = () => {
                 {jt`${(
                   <strong>{t`Download results (Pro):`}</strong>
                 )} Allows the group to download results, and sets the maximum number of rows they can export.`}{" "}
-                {!isEnterpriseInstance &&
+                {!isAdvancedPermissionsFeatureEnabled &&
                   getLimitedPermissionAvailabilityMessage()}
               </Text>
               <Text>
                 {jt`${(
                   <strong>{t`Manage Data Model (Pro):`}</strong>
                 )} The group can edit table metadata in the Admin panel.`}{" "}
-                {!isEnterpriseInstance &&
+                {!isAdvancedPermissionsFeatureEnabled &&
                   getLimitedPermissionAvailabilityMessage()}
               </Text>
               <Text>
                 {jt`${(
                   <strong>{t`Manage Database (Pro):`}</strong>
                 )} Grants a group access to the Admin settings page for a given database (i.e., the page at Admin settings > Databases > your database).`}{" "}
-                {!isEnterpriseInstance &&
+                {!isAdvancedPermissionsFeatureEnabled &&
                   getLimitedPermissionAvailabilityMessage()}
               </Text>
             </Stack>
