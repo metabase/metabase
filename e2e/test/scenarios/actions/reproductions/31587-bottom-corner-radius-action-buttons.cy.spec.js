@@ -55,6 +55,7 @@ describe("metabase#31587", () => {
             "action-button-full-container",
           );
           const dashCard = cy.contains(".DashCard", "Click Me");
+
           actionButtonContainer.then(actionButtonElem => {
             dashCard.then(dashCardElem => {
               expect(actionButtonElem[0].scrollHeight).to.eq(

@@ -7,6 +7,7 @@ export const StyledButton = styled(Button)<{
   isFullHeight?: boolean;
   focus?: boolean;
 }>`
+  padding: 0;
   height: ${({ isFullHeight }) => (isFullHeight ? "100%" : "auto")};
 
   ${({ focus }) =>
@@ -15,7 +16,6 @@ export const StyledButton = styled(Button)<{
     border: 2px solid ${color("focus")};
   `
       : ""}
-  padding: 0;
 `;
 
 export const FullContainer = styled.div`
