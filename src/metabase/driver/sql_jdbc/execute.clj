@@ -356,23 +356,23 @@
         (log/trace (pr-str (list '.setReadOnly 'conn read-only?)))
         (.setReadOnly conn read-only?)
         (catch Throwable e
-          (log/debugf e "Error setting connection readOnly to %s" (pr-str read-only?))))
-      ;; if this is (supposedly) a read-only connection, enable auto-commit so this IS NOT ran inside of a transaction.
-      ;;
-      ;; TODO -- for `write?` connections, we should probably disable autoCommit and then manually call `.commit` at after
-      ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
-      ;; manually.
-      (when-not write?
-        (try
-          (log/trace (pr-str '(.setAutoCommit conn true)))
-          (.setAutoCommit conn true)
-          (catch Throwable e
-            (log/debug e "Error enabling connection autoCommit"))))
+          (log/debugf e "Error setting connection readOnly to %s" (pr-str read-only?)))))
+    ;; if this is (supposedly) a read-only connection, enable auto-commit so this IS NOT ran inside of a transaction.
+    ;;
+    ;; TODO -- for `write?` connections, we should probably disable autoCommit and then manually call `.commit` at after
+    ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
+    ;; manually.
+    (when-not write?
       (try
-        (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
-        (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
+        (log/trace (pr-str '(.setAutoCommit conn true)))
+        (.setAutoCommit conn true)
         (catch Throwable e
-          (log/debug e (trs "Error setting default holdability for connection")))))))
+          (log/debug e "Error enabling connection autoCommit"))))
+    (try
+      (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
+      (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
+      (catch Throwable e
+        (log/debug e (trs "Error setting default holdability for connection"))))))
 
 (defmethod do-with-connection-with-options :sql-jdbc
   [driver db-or-id-or-spec options f]
