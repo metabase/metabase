@@ -41,9 +41,9 @@ describe("scenarios > visualizations > table", () => {
     popover().within(() => {
       cy.findByText("Filter by this column");
       cy.icon("gear").click();
-      cy.findByTestId("column_title").type(" updated");
+      cy.findByLabelText("Column title").type(" updated");
       // This defocuses the input, which triggers the update
-      cy.get("#column_title").click();
+      cy.findByText("Column title").click();
     });
     // click somewhere else to close the popover
     headerCells().last().click();
