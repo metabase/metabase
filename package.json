@@ -283,7 +283,8 @@
     "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
     "unset-value": "2.0.1",
     "nth-check": "2.0.1",
-    "json5": "2.2.2"
+    "json5": "2.2.2",
+    "webpack": "^5.0.0"
   },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",
