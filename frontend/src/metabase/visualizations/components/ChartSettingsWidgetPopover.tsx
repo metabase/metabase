@@ -7,6 +7,7 @@ import ChartSettingsWidget from "./ChartSettingsWidget";
 
 interface Widget {
   id: string;
+  section: string;
   props: Record<string, unknown>;
 }
 
@@ -14,30 +15,27 @@ interface ChartSettingsWidgetPopoverProps {
   anchor: HTMLElement;
   handleEndShowWidget: () => void;
   widgets: Widget[];
-  currentWidgetKey: string;
 }
 
 const ChartSettingsWidgetPopover = ({
   anchor,
   handleEndShowWidget,
   widgets,
-  currentWidgetKey,
 }: ChartSettingsWidgetPopoverProps) => {
-  const sections = useRef<Record<React.Key, Widget[]>>({});
+  const sections = useRef<string[]>([]);
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    sections.current = _.groupBy(widgets, "section");
+    sections.current = _.chain(widgets).pluck("section").unique().value();
   }, [widgets]);
 
   const [currentSection, setCurrentSection] = useState("");
 
   useEffect(() => {
-    setCurrentSection(Object.keys(sections.current)[0]);
-  }, [currentWidgetKey, sections]);
+    setCurrentSection(sections.current[0]);
+  }, [anchor, sections]);
 
-  const sectionNames = Object.keys(sections.current) || [];
-  const hasMultipleSections = sectionNames.length > 1;
+  const hasMultipleSections = sections.current.length > 1;
 
   const onClose = () => {
     const activeElement = document.activeElement as HTMLElement;
@@ -56,7 +54,7 @@ const ChartSettingsWidgetPopover = ({
             {hasMultipleSections && (
               <PopoverTabs
                 value={currentSection}
-                options={sectionNames.map((sectionName: string) => ({
+                options={sections.current.map((sectionName: string) => ({
                   name: sectionName,
                   value: sectionName,
                 }))}
@@ -64,9 +62,15 @@ const ChartSettingsWidgetPopover = ({
                 variant="underlined"
               />
             )}
-            {sections.current[currentSection]?.map(widget => (
-              <ChartSettingsWidget key={widget.id} {...widget} hidden={false} />
-            ))}
+            {widgets
+              .filter(widget => widget.section === currentSection)
+              ?.map(widget => (
+                <ChartSettingsWidget
+                  key={widget.id}
+                  {...widget}
+                  hidden={false}
+                />
+              ))}
           </PopoverRoot>
         ) : null
       }
