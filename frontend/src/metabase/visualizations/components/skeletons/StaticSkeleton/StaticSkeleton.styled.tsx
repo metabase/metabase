@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+
 import Ellipsified from "metabase/core/components/Ellipsified";
-import Markdown from "metabase/core/components/Markdown";
+import { Icon } from "metabase/core/components/Icon";
+import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
+import { color } from "metabase/lib/colors";
 
 export const SkeletonRoot = styled.div`
   position: relative;
@@ -15,15 +16,9 @@ export const SkeletonTitle = styled(Ellipsified)`
   font-weight: bold;
 `;
 
-export const TruncatedMarkdown = styled(Markdown)`
+export const SkeletonDescription = styled(MarkdownPreview)`
   color: ${color("text-medium")};
   line-height: 1.5rem;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  overflow-wrap: break-word;
-  white-space: pre-line;
 `;
 
 export const SkeletonIcon = styled(Icon)`

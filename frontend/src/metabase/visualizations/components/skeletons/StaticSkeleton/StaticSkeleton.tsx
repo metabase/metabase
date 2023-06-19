@@ -1,17 +1,16 @@
 import { HTMLAttributes } from "react";
 
 import { IconName } from "metabase/core/components/Icon";
-import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import {
+  SkeletonDescription,
   SkeletonIcon,
   SkeletonIconContainer,
   SkeletonRoot,
   SkeletonTitle,
   SkeletonTooltipIcon,
   SkeletonTooltipIconContainer,
-  TruncatedMarkdown,
 } from "./StaticSkeleton.styled";
 
 export interface StaticSkeletonProps extends HTMLAttributes<HTMLDivElement> {
@@ -50,20 +49,7 @@ const StaticSkeleton = ({
       )}
       <SkeletonTitle>{name}</SkeletonTitle>
 
-      <Tooltip
-        placement="bottom"
-        tooltip={
-          <Markdown disallowHeading unstyleLinks>
-            {defaultedDescription ?? ""}
-          </Markdown>
-        }
-      >
-        <div>
-          <TruncatedMarkdown allowedElements={[]} unwrapDisallowed>
-            {defaultedDescription ?? ""}
-          </TruncatedMarkdown>
-        </div>
-      </Tooltip>
+      <SkeletonDescription>{defaultedDescription}</SkeletonDescription>
     </SkeletonRoot>
   );
 };

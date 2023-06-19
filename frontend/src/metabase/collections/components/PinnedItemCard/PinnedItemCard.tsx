@@ -8,17 +8,16 @@ import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import { IconName } from "metabase/core/components/Icon";
-import Markdown from "metabase/core/components/Markdown";
 import Database from "metabase-lib/metadata/Database";
 import {
   ActionsContainer,
   Body,
+  Description,
   Header,
   ItemCard,
   ItemIcon,
   ItemLink,
   Title,
-  TruncatedMarkdown,
 } from "./PinnedItemCard.styled";
 
 type Props = {
@@ -101,21 +100,9 @@ function PinnedItemCard({
             </Title>
           </Tooltip>
 
-          <Tooltip
-            maxWidth={TOOLTIP_MAX_WIDTH}
-            placement="bottom"
-            tooltip={
-              <Markdown disallowHeading unstyleLinks>
-                {defaultedDescription ?? ""}
-              </Markdown>
-            }
-          >
-            <div>
-              <TruncatedMarkdown allowedElements={[]} unwrapDisallowed>
-                {defaultedDescription ?? ""}
-              </TruncatedMarkdown>
-            </div>
-          </Tooltip>
+          <Description tooltipMaxWidth={TOOLTIP_MAX_WIDTH}>
+            {defaultedDescription}
+          </Description>
         </Body>
       </ItemCard>
     </ItemLink>

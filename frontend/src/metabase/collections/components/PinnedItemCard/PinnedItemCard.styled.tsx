@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
+import Card from "metabase/components/Card";
 import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
-import Card from "metabase/components/Card";
-import Markdown from "metabase/core/components/Markdown";
+import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
+import { color } from "metabase/lib/colors";
 
 export const ItemCard = styled(Card)``;
 
@@ -38,14 +38,8 @@ export const Title = styled.div`
   overflow: hidden;
 `;
 
-export const TruncatedMarkdown = styled(Markdown)`
+export const Description = styled(MarkdownPreview)`
   color: ${color("text-medium")};
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  overflow-wrap: break-word;
-  white-space: pre-line;
 `;
 
 export const Body = styled.div`
