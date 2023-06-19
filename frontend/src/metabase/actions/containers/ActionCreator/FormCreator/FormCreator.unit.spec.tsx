@@ -330,33 +330,34 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
             screen.queryByText(WARNING_BANNER_TEXT),
           ).not.toBeInTheDocument();
         });
-
-        it("doesn't show a banner for implicit action", () => {
-          const defaultValue = "foo bar";
-          const parameter = makeParameter({ required });
-          const fieldSettings = createMockImplicitActionFieldSettings({
-            id: parameter.id,
-            required,
-            defaultValue: hasDefaultValue ? defaultValue : undefined,
-            hidden,
-          });
-
-          setup({
-            parameters: [parameter],
-            formSettings: {
-              type: "form",
-              fields: {
-                [parameter.id]: fieldSettings,
-              },
-            },
-          });
-
-          expect(
-            screen.queryByText(WARNING_BANNER_TEXT),
-          ).not.toBeInTheDocument();
-        });
       },
     );
+
+    describe.each([
+      { required: false, hidden: false },
+      { required: false, hidden: true },
+      { required: true, hidden: false },
+    ])(`when required: $required, hidden: $hidden`, ({ required, hidden }) => {
+      it("doesn't show a banner for implicit action", () => {
+        const parameter = makeParameter({ required });
+        const fieldSettings = createMockImplicitActionFieldSettings({
+          id: parameter.id,
+          hidden,
+        });
+
+        setup({
+          parameters: [parameter],
+          formSettings: {
+            type: "form",
+            fields: {
+              [parameter.id]: fieldSettings,
+            },
+          },
+        });
+
+        expect(screen.queryByText(WARNING_BANNER_TEXT)).not.toBeInTheDocument();
+      });
+    });
 
     describe("when settings are not available (e.g. before action is saved)", () => {
       it("does not show a warning banner for query action", () => {
