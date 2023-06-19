@@ -9,6 +9,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -20,8 +21,7 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.types :as types]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [metabase.lib.options :as lib.options]))
+   [metabase.util.malli :as mu]))
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
   "Given `:metadata/field` column metadata for an expression, construct an `:expression` reference."
