@@ -63,18 +63,18 @@ describe("scenarios > visualizations > table", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Link").click();
 
-    cy.findByTestId("link_text").type("{{C");
+    cy.findByLabelText("Link text").type("{{C");
     cy.findByTestId("select-list").within(() => {
       cy.findAllByText("CITY").click();
     });
 
-    cy.findByTestId("link_text")
+    cy.findByLabelText("Link text")
       .type(" {{ID}} fixed text", {
         parseSpecialCharSequences: false,
       })
       .blur();
 
-    cy.findByTestId("link_url")
+    cy.findByLabelText("Link URL")
       .type("http://metabase.com/people/{{ID}}", {
         parseSpecialCharSequences: false,
       })
