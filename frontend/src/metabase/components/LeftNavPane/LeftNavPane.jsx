@@ -40,7 +40,7 @@ export function LeftNavPaneItemBack({ path }) {
   );
 }
 
-export function LeftNavPane({ children, fullHeight }) {
+export function LeftNavPane({ children, fullHeight = true }) {
   return (
     <div
       className={cx("MetadataEditor-table-list AdminList flex-no-shrink", {
