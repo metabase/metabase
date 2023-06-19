@@ -1185,7 +1185,7 @@ saved later when it is ready."
           schema+table-name (if (str/blank? schema-name)
                               table-name
                               (str schema-name "." table-name))
-          stats             (upload/load-from-csv driver db-id schema+table-name csv-file)
+          stats             (upload/load-from-csv! driver db-id schema+table-name csv-file)
           ;; Syncs are needed immediately to create the Table and its Fields; the scan is settings-dependent and can be async
           table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
           _sync             (scan-and-sync-table! database table)

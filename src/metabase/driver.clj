@@ -831,22 +831,19 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-;;; FIXME -- should be named `create-table!`
-(defmulti create-table
+(defmulti create-table!
   "Create a table named `table-name`. If the table already exists it will throw an error."
   {:added "0.47.0", :arglists '([driver db-id table-name col->type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-;;; FIXME -- should be named `drop-table!`
-(defmulti drop-table
+(defmulti drop-table!
   "Drop a table named `table-name`. If the table doesn't exist it will not be dropped."
   {:added "0.47.0", :arglists '([driver db-id table-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-;;; FIXME -- should be named `insert-into!`
-(defmulti insert-into
+(defmulti insert-into!
   "Insert `values` into a table named `table-name`. `values` is a sequence of rows, where each row's order matches
    `column-names`."
   {:added "0.47.0", :arglists '([driver db-id table-name column-names values])}
