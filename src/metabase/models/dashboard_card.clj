@@ -348,10 +348,10 @@
 (defn dashcard-comparator
   "Comparator that determines which of two dashcards comes first in the layout order used for pulses.
   This is the same order used on the frontend for the mobile layout. Orders cards left-to-right, then top-to-bottom"
-  [dashcard-1 dashcard-2]
-  (if-not (= (:row dashcard-1) (:row dashcard-2))
-    (compare (:row dashcard-1) (:row dashcard-2))
-    (compare (:col dashcard-1) (:col dashcard-2))))
+  [{row-1 :row col-1 :col} {row-2 :row col-2 :col}]
+  (if (= row-1 row-2)
+    (compare col-1 col-2)
+    (compare row-1 row-2)
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 ;; DashboardCards are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.
