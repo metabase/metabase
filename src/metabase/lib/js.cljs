@@ -481,3 +481,11 @@
    (expressionable-columns a-query expression-position))
   ([a-query stage-number expression-position]
    (to-array (lib.core/expressionable-columns a-query stage-number expression-position))))
+
+(defn ^:export suggested-join-condition
+  "Return a suggested default join condition when constructing a join against `joined-thing`, e.g. a Table, Saved
+  Question, or another query. A suggested condition will be returned if the source Table has a foreign key to the
+  primary key of the thing we're joining (see #31175 for more info); otherwise this will return `nil` if no default
+  condition is suggested."
+  [a-query stage-number joined-thing]
+  (lib.core/suggested-join-condition a-query stage-number joined-thing))

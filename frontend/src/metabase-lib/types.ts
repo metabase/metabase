@@ -83,6 +83,10 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
 declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
 
+// ExternalOp is a special representation of a filter clause or aggregation clause.
+declare const ExternalOp: unique symbol;
+export type ExternalOp = unknown & { _opaque: typeof ExternalOp };
+
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
 

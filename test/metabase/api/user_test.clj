@@ -95,7 +95,7 @@
   [group-or-ids]
   (map (fn [group-or-id] {:id (u/the-id group-or-id)}) group-or-ids))
 
-(deftest user-recipients-liPst-test
+(deftest user-recipients-list-test
   (testing "GET /api/user/recipients"
     (mt/with-non-admin-groups-no-root-collection-perms
       (let [crowberto "crowberto@metabase.com"
