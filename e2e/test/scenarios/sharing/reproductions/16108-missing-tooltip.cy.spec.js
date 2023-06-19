@@ -1,4 +1,5 @@
 import { restore, visitQuestion } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("issue 16108", () => {
   beforeEach(() => {
@@ -7,7 +8,7 @@ describe("issue 16108", () => {
   });
 
   it("should display a tooltip for CTA icons on an individual question (metabase#16108)", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     cy.icon("download").realHover();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Download full results");

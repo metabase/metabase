@@ -21,7 +21,8 @@
 (mu/defn ^:private infer-results-metadata
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card-query            :- :map]
-  (lib.metadata.calculation/metadata (lib.query/query metadata-providerable (lib.convert/->pMBQL card-query))))
+  (when (some? card-query)
+    (lib.metadata.calculation/metadata (lib.query/query metadata-providerable (lib.convert/->pMBQL card-query)))))
 
 (def ^:private Card
   [:map

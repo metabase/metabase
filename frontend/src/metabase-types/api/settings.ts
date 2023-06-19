@@ -180,6 +180,7 @@ export interface Settings {
   "custom-homepage": boolean;
   "custom-homepage-dashboard": number | null;
   "deprecation-notice-version"?: string;
+  "dismissed-custom-dashboard-toast": boolean;
   "email-configured?": boolean;
   "embedding-secret-key"?: string;
   "enable-embedding": boolean;

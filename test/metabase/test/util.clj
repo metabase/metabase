@@ -21,17 +21,11 @@
             Field
             FieldValues
             LoginHistory
-            Metric
-            NativeQuerySnippet
             Permissions
             PermissionsGroup
             PermissionsGroupMembership
             PersistedInfo
-            Pulse
-            PulseCard
-            PulseChannel
             Revision
-            Segment
             Setting
             Table
             TaskHistory
@@ -158,14 +152,14 @@
             :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/89.0.4389.86 Safari/537.36"
             :ip_address         "0:0:0:0:0:0:0:1"})
 
-   Metric
+   :model/Metric
    (fn [_] {:creator_id  (rasta-id)
             :definition  {}
             :description "Lookin' for a blueberry"
             :name        "Toucans in the rainforest"
             :table_id    (data/id :checkins)})
 
-   NativeQuerySnippet
+   :model/NativeQuerySnippet
    (fn [_] {:creator_id (user-id :crowberto)
             :name       (tu.random/random-name)
             :content    "1 = 1"})
@@ -184,19 +178,19 @@
             :created_at    (t/zoned-date-time)
             :creator_id    (rasta-id)})
 
-   PermissionsGroup
+   :model/PermissionsGroup
    (fn [_] {:name (tu.random/random-name)})
 
-   Pulse
+   :model/Pulse
    (fn [_] {:creator_id (rasta-id)
             :name       (tu.random/random-name)})
 
-   PulseCard
+   :model/PulseCard
    (fn [_] {:position    0
             :include_csv false
             :include_xls false})
 
-   PulseChannel
+   :model/PulseChannel
    (constantly {:channel_type  :email
                 :details       {}
                 :schedule_type :daily
@@ -207,7 +201,7 @@
             :is_creation  false
             :is_reversion false})
 
-   Segment
+   :model/Segment
    (fn [_] {:creator_id  (rasta-id)
             :definition  {}
             :description "Lookin' for a blueberry"
@@ -247,7 +241,7 @@
       :time_matters true
       :creator_id   (rasta-id)})
 
-   User
+   :model/User
    (fn [_] {:first_name (tu.random/random-name)
             :last_name  (tu.random/random-name)
             :email      (tu.random/random-email)
@@ -393,28 +387,28 @@
                              (t2/select-one-fn :value Setting :key setting-k)
                              (#'setting/get setting-k))]
         (try
-         (if raw-setting?
-           (upsert-raw-setting! original-value setting-k value)
-           (setting/set! setting-k value))
-         (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
-           (thunk))
-         (catch Throwable e
-           (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
-                           {:setting  setting-k
-                            :location (symbol (name (:namespace setting)) (name setting-k))
-                            :value    value}
-                           e)))
-         (finally
-          (try
-           (if raw-setting?
-             (restore-raw-setting! original-value setting-k)
-             (setting/set! setting-k original-value))
-           (catch Throwable e
-             (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
-                             {:setting        setting-k
-                              :location       (symbol (name (:namespace setting)) setting-k)
-                              :original-value original-value}
-                             e))))))))))
+          (if raw-setting?
+            (upsert-raw-setting! original-value setting-k value)
+            (setting/set! setting-k value))
+          (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
+            (thunk))
+          (catch Throwable e
+            (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
+                            {:setting  setting-k
+                             :location (symbol (name (:namespace setting)) (name setting-k))
+                             :value    value}
+                            e)))
+          (finally
+            (try
+              (if raw-setting?
+                (restore-raw-setting! original-value setting-k)
+                (setting/set! setting-k original-value))
+              (catch Throwable e
+                (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
+                                {:setting        setting-k
+                                 :location       (symbol (name (:namespace setting)) setting-k)
+                                 :original-value original-value}
+                                e))))))))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the site-wide values of one or more `Settings`, execute body, and re-establish the original values.

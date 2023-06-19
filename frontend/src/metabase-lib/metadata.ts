@@ -3,7 +3,12 @@ import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation"
 import type { DatabaseId } from "metabase-types/api";
 import type Metadata from "./metadata/Metadata";
 import type {
+  BreakoutClause,
+  BreakoutClauseDisplayInfo,
+  Bucket,
+  BucketDisplayInfo,
   Clause,
+  ClauseDisplayInfo,
   ColumnDisplayInfo,
   ColumnGroup,
   ColumnMetadata,
@@ -40,6 +45,21 @@ declare function DisplayInfoFn(
   stageIndex: number,
   orderByClause: OrderByClause,
 ): OrderByClauseDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  breakoutClause: BreakoutClause,
+): BreakoutClauseDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  clause: Clause,
+): ClauseDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  bucket: Bucket,
+): BucketDisplayInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
