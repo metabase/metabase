@@ -8,7 +8,7 @@ You can export metrics in [Prometheus](https://prometheus.io/) format from your 
 
 ## Running Metabase and Prometheus locally
 
-To give you an idea of how Metabase and Prometheus would work in your production environment, we'll walk through how to set up Metabase and Prometheus locally. 
+To give you an idea of how Metabase and Prometheus would work in your production environment, we'll walk through how to set up Metabase and Prometheus locally.
 
 ### Start up Metabase with `MB_PROMETHEUS_SERVER_PORT`
 
@@ -108,6 +108,7 @@ Metrics exported by Metabase include:
 - `c3p0_max_pool_size`
 - `c3p0_min_pool_size`
 - `c3p0_num_busy_connections`
+- `c3p0_num_threads_awaiting_checkout_default_user`
 - `c3p0_num_connections`
 - `c3p0_num_idle_connections`
 - `jetty_async_dispatches_total`
