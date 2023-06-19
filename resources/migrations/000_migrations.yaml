@@ -14841,6 +14841,22 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.RevisionDashboardMigrateGridFrom18To24"
 
   - changeSet:
+      id: v47.00-033
+      author: calherries
+      comment: Added 0.47.0 - Migrate field refs in visualization_settings.column_settings keys from legacy format
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.RevisionMigrateLegacyColumnSettingsFieldRefs"
+
+  - changeSet:
+      id: v47.00-034
+      author: calherries
+      comment: Added 0.47.0 - Add join-alias to the visualization_settings.column_settings field refs in card revisions
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.RevisionAddJoinAliasToColumnSettingsFieldRefs"
+
+  - changeSet:
       id: v47.00-035
       author: calherries
       comment: Added 0.47.0 - Drop foreign key constraint on implicit_action.action_id

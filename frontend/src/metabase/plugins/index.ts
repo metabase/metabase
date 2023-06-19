@@ -88,9 +88,9 @@ export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
-  getHasCustomColors: (state: State) => false,
-  canWhitelabel: (state: State) => false,
-  getLoadingMessage: (state: State) => t`Doing science...`,
+  canWhitelabel: (_state: State) => false,
+  getLoadingMessage: (_state: State) => t`Doing science...`,
+  getIsWhiteLabeling: (_state: State) => false,
 };
 
 export const PLUGIN_FORM_WIDGETS: Record<string, React.ComponentType<any>> = {};

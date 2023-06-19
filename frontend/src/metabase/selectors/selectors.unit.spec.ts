@@ -3,7 +3,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { getUpgradeUrl } from "./settings";
+import { getIsPaidPlan, getUpgradeUrl } from "./settings";
 
 describe("getUpgradeUrl", () => {
   it.each([
@@ -42,4 +42,36 @@ describe("getUpgradeUrl", () => {
     const url = new URL(getUpgradeUrl(state, { utm_media: media }));
     expect(url.search).toEqual(params);
   });
+});
+
+describe("getIsPaidPlan", () => {
+  it.each([
+    {
+      features: { hosting: false, sso: false },
+      isPaidPlan: false,
+    },
+    {
+      features: { hosting: true, sso: false },
+      isPaidPlan: true,
+    },
+    {
+      features: { hosting: false, sso: true },
+      isPaidPlan: true,
+    },
+    {
+      features: { hosting: true, sso: true },
+      isPaidPlan: true,
+    },
+  ])(
+    "should return `$isPaidPlan` if token features have hosting: $features.hosting, and sso: $features.sso",
+    ({ features, isPaidPlan }) => {
+      const state = createMockState({
+        settings: createMockSettingsState({
+          "token-features": createMockTokenFeatures(features),
+        }),
+      });
+
+      expect(getIsPaidPlan(state)).toEqual(isPaidPlan);
+    },
+  );
 });
