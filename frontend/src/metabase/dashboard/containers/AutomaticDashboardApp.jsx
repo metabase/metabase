@@ -216,6 +216,9 @@ const TransientFilters = ({ filter, metadata }) => (
 
 const TransientFilter = ({ filter, metadata }) => {
   const dimension = getFilterDimension(filter, metadata);
+  if (!dimension) {
+    return null;
+  }
 
   return (
     <div className="mr3">
