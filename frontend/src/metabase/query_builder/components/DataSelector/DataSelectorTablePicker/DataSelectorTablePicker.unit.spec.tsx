@@ -1,21 +1,23 @@
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { SchemaId, TableId } from "metabase-types/api";
+import { InitialSyncStatus, Schema, Table } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import DataSelectorTablePicker from "./DataSelectorTablePicker";
 
 const TEST_TABLE = createMockTable();
 const TEST_DATABASE = createMockDatabase({ tables: [TEST_TABLE] });
+const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];
 
 interface SetupOpts {
-  schemaIds?: SchemaId[];
-  tableIds?: TableId[];
+  schemas?: Schema[];
+  tables?: Table[];
 }
 
-const setup = ({ schemaIds = [], tableIds = [] }: SetupOpts = {}) => {
+const setup = ({ schemas = [], tables = [] }: SetupOpts = {}) => {
+  const TEST_DATABASE = createMockDatabase({ tables: tables });
   const state = createMockState({
     entities: createMockEntitiesState({
       databases: [TEST_DATABASE],
@@ -23,14 +25,18 @@ const setup = ({ schemaIds = [], tableIds = [] }: SetupOpts = {}) => {
   });
   const metadata = getMetadata(state);
   const database = checkNotNull(metadata.database(TEST_DATABASE.id));
-  const schemas = schemaIds.map(id => checkNotNull(metadata.schema(id)));
-  const tables = tableIds.map(id => checkNotNull(metadata.table(id)));
+  const metadataSchemas = schemas.map(schema =>
+    checkNotNull(metadata.schema(schema.id)),
+  );
+  const metadataTables = tables.map(table =>
+    checkNotNull(metadata.table(table.id)),
+  );
 
   renderWithProviders(
     <DataSelectorTablePicker
       selectedDatabase={database}
-      schemas={schemas}
-      tables={tables}
+      schemas={metadataSchemas}
+      tables={metadataTables}
       onChangeTable={jest.fn()}
     />,
     { storeInitialState: state },
@@ -38,6 +44,24 @@ const setup = ({ schemaIds = [], tableIds = [] }: SetupOpts = {}) => {
 };
 
 describe("DataSelectorTablePicker", () => {
+  it.each(NOT_SYNCED_DB_STATUSES)(
+    "render a loading spinner when a table has initial_sync_status='incomplete'",
+    initial_sync_status => {
+      setup({ tables: [createMockTable({ initial_sync_status })] });
+      expect(
+        within(screen.getByRole("option")).getByTestId("loading-spinner"),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("don't render a loading spinner when a table has initial_sync_status='complete'", () => {
+    setup({ tables: [createMockTable({ initial_sync_status: "complete" })] });
+    // eslint-disable-next-line testing-library/prefer-presence-queries
+    expect(
+      within(screen.getByRole("option")).queryByTestId("loading-spinner"),
+    ).not.toBeInTheDocument();
+  });
+
   it("when no table is in database", () => {
     setup();
 
@@ -50,7 +74,7 @@ describe("DataSelectorTablePicker", () => {
 
   it("when tables are passed", () => {
     setup({
-      tableIds: [TEST_TABLE.id],
+      tables: [TEST_TABLE],
     });
 
     expect(screen.getByText(TEST_DATABASE.name)).toBeInTheDocument();
