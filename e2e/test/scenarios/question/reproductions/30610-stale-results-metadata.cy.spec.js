@@ -23,7 +23,7 @@ describe("issue 30610", () => {
     removeSourceColumns();
     saveQuestion("New orders");
     createAdHocQuestion("New orders");
-    visualizeAdHocQuestion();
+    visualizeAndAssertColumns();
   });
 
   it("should remove stale metadata when updating an existing question (metabase#30610)", () => {
@@ -32,7 +32,7 @@ describe("issue 30610", () => {
     removeSourceColumns();
     updateQuestion();
     createAdHocQuestion("Orders");
-    visualizeAdHocQuestion();
+    visualizeAndAssertColumns();
   });
 });
 
@@ -60,7 +60,7 @@ function createAdHocQuestion(questionName) {
   });
 }
 
-function visualizeAdHocQuestion() {
+function visualizeAndAssertColumns() {
   visualize();
   cy.findByTestId("TableInteractive-root").within(() => {
     cy.findByText("ID").should("exist");
