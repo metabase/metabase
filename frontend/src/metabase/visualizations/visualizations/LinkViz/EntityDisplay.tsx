@@ -22,9 +22,7 @@ export const EntityDisplay = ({
     <EntityDisplayContainer>
       <LeftContainer>
         <Icon color={color("brand")} name={getSearchIconName(entity)} />
-        <EllipsifiedEntityContainer style={{ flex: 1 }}>
-          {entity?.name}
-        </EllipsifiedEntityContainer>
+        <EllipsifiedEntityContainer>{entity?.name}</EllipsifiedEntityContainer>
       </LeftContainer>
       {showDescription && entity?.description && (
         <Icon
