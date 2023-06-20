@@ -102,18 +102,22 @@
 
 (defn- warn-on-unsupported-versions [driver details]
   (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
-    (jdbc/with-db-metadata [metadata jdbc-spec]
-      (when (unsupported-version? metadata)
-        (log/warn
-         (u/format-color 'red
-                         (str
-                          "\n\n********************************************************************************\n"
-                          (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
-                               min-supported-mysql-version
-                               min-supported-mariadb-version)
-                          "\n"
-                          (trs "All Metabase features may not work properly when using an unsupported version.")
-                          "\n********************************************************************************\n")))))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     jdbc-spec
+     nil
+     (fn [^java.sql.Connection conn]
+       (when (unsupported-version? (.getMetaData conn))
+         (log/warn
+          (u/format-color 'red
+                          (str
+                           "\n\n********************************************************************************\n"
+                           (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
+                                min-supported-mysql-version
+                                min-supported-mariadb-version)
+                           "\n"
+                           (trs "All Metabase features may not work properly when using an unsupported version.")
+                           "\n********************************************************************************\n"))))))))
 
 (defmethod driver/can-connect? :mysql
   [driver details]

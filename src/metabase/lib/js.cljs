@@ -1,5 +1,8 @@
 (ns metabase.lib.js
   "JavaScript-friendly interface to the entire Metabase lib? This stuff will probably change a bit as MLv2 evolves."
+  (:refer-clojure
+   :exclude
+   [filter])
   (:require
    [medley.core :as m]
    [metabase.lib.convert :as convert]
@@ -373,12 +376,9 @@
 
 (defn ^:export filterable-columns
   "Get the available filterable columns for the stage with `stage-number` of
-  the query `a-query`.
-  If `stage-number` is omitted, the last stage is used."
-  ([a-query]
-   (filterable-columns a-query -1))
-  ([a-query stage-number]
-   (to-array (lib.core/filterable-columns a-query stage-number))))
+  the query `a-query`."
+  [a-query stage-number]
+  (to-array (lib.core/filterable-columns a-query stage-number)))
 
 (defn ^:export filterable-column-operators
   "Returns the operators for which `filterable-column` is applicable."
@@ -390,6 +390,19 @@
   a `column`, and arguments."
   [filter-operator column & args]
   (apply lib.core/filter-clause filter-operator column args))
+
+(defn ^:export filter
+  "Sets `boolean-expression` as a filter on `query`."
+  [a-query stage-number boolean-expression]
+  (lib.core/filter a-query stage-number (js->clj boolean-expression :keywordize-keys true)))
+
+(defn ^:export filters
+  "Returns the current filters in stage with `stage-number` of `query`.
+  Logicaly, the filter attached to the query is the conjunction of the expressions
+  in the returned list. If the returned list is empty, then there is no filter
+  attached to the query."
+  [a-query stage-number]
+  (to-array (lib.core/filters a-query stage-number)))
 
 (defn ^:export fields
   "Get the current `:fields` in a query. Unlike the lib core version, this will return an empty sequence if `:fields` is
@@ -481,3 +494,11 @@
    (expressionable-columns a-query expression-position))
   ([a-query stage-number expression-position]
    (to-array (lib.core/expressionable-columns a-query stage-number expression-position))))
+
+(defn ^:export suggested-join-condition
+  "Return a suggested default join condition when constructing a join against `joined-thing`, e.g. a Table, Saved
+  Question, or another query. A suggested condition will be returned if the source Table has a foreign key to the
+  primary key of the thing we're joining (see #31175 for more info); otherwise this will return `nil` if no default
+  condition is suggested."
+  [a-query stage-number joined-thing]
+  (lib.core/suggested-join-condition a-query stage-number joined-thing))
