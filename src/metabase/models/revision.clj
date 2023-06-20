@@ -173,18 +173,22 @@
         last-object       (t2/select-one-fn :object Revision :model (name entity) :model_id id {:order-by [[:id :desc]]})]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
+    ;; the last-object could have nested object, e.g: Dashboard can have multiple Card in it,
+    ;; even though we call `post-select` on the `object`, the nested object might not be transformed correctly
+    ;; E.g: Cards inside Dashboard will not be transformed
+    ;; so to be safe, we'll just compare them as string
     (when-not (= (json/generate-string serialized-object)
                  (json/generate-string last-object))
-      (t2/insert! Revision
-                  :model        (name entity)
-                  :model_id     id
-                  :user_id      user-id
-                  :object       serialized-object
-                  :is_creation  is-creation?
-                  :is_reversion false
-                  :message      message)
-      (delete-old-revisions! entity id)
-      object)))
+     (t2/insert! Revision
+                 :model        (name entity)
+                 :model_id     id
+                 :user_id      user-id
+                 :object       serialized-object
+                 :is_creation  is-creation?
+                 :is_reversion false
+                 :message      message)
+     (delete-old-revisions! entity id)
+     object)))
 
 (defn revert!
   "Revert `entity` with `id` to a given Revision."

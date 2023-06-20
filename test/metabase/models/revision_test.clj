@@ -173,25 +173,24 @@
 
   (testing "Check that we don't record revision on dashboard if it has a filter"
     (t2.with-temp/with-temp
-      [:model/Dashboard     {dash-id :id} {:parameters [{:name       "Category Name"
-                                                         :slug       "category_name"
-                                                         :id         "_CATEGORY_NAME_"
-                                                         :type       "category"}]}
+      [:model/Dashboard     {dash-id :id} {:parameters [{:name "Category Name"
+                                                         :slug "category_name"
+                                                         :id   "_CATEGORY_NAME_"
+                                                         :type "category"}]}
        :model/Card          {card-id :id} {}
        :model/DashboardCard {}            {:dashboard_id       dash-id
                                            :card_id            card-id
                                            :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
                                                                  :card_id      card-id
                                                                  :target       [:dimension (mt/$ids $categories.name)]}]}]
-      (let [push-revision (fn []
-                            (revision/push-revision! :entity :model/Dashboard
-                                                     :id     dash-id
-                                                     :user-id (mt/user->id :rasta)
-                                                     :object (t2/select-one :model/Dashboard dash-id)))]
+      (let [push-revision (fn [] (revision/push-revision!
+                                   :entity :model/Dashboard
+                                   :id     dash-id
+                                   :user-id (mt/user->id :rasta)
+                                   :object (t2/select-one :model/Dashboard dash-id)))]
         (testing "first revision should be recorded"
           (push-revision)
           (is (= 1 (count (revision/revisions :model/Dashboard dash-id)))))
-
         (testing "push again without changes shouldn't record new revision"
           (push-revision)
           (is (= 1 (count (revision/revisions :model/Dashboard dash-id)))))
