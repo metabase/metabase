@@ -12,7 +12,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const TEST_DASHBOARD_NAME = "Test Dashboard";
-const TEST_QUESTION_NAME = "Super long name".repeat(2);
+const TEST_QUESTION_NAME = "Test Question";
 
 const viewports = [
   [768, 800],
@@ -83,7 +83,7 @@ const createEntityLinkDashboard = () => {
   editDashboard();
   cy.icon("link").click();
 
-  getDashboardCard(0).click().type("Super long name");
+  getDashboardCard(0).click().type(TEST_QUESTION_NAME);
   popover().within(() => {
     cy.findAllByTestId("search-result-item-name").first().trigger("click");
   });
