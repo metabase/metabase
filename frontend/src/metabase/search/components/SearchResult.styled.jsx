@@ -75,7 +75,7 @@ const resultStyles = props => `
   cursor: ${props.active ? "pointer" : "default"};
 
   &:hover {
-    background-color: ${props.acitve ? lighten("brand", 0.63) : ""};
+    background-color: ${props.active ? lighten("brand", 0.63) : ""};
 
     h3 {
       color: ${props =>
