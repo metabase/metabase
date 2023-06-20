@@ -48,7 +48,7 @@
    PartialJoin])
 
 (mu/defn with-join-alias
-  "Add OR REMOVE a specific `join-alias` to `field-or-joinable`, with is either a `:field`/Field metadata, or something
+  "Add OR REMOVE a specific `join-alias` to `field-or-joinable`, which is either a `:field`/Field metadata, or something
   'joinable' like a join map or Table metadata. Does not recursively update other references (yet; we can add this in
   the future)."
   {:style/indent [:form]}
