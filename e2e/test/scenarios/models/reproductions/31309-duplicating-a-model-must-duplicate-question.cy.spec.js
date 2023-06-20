@@ -28,7 +28,7 @@ const TEST_QUERY = {
   },
 };
 
-describe("scenarios > models with aggregation and breakout", () => {
+describe("issue 31309", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
