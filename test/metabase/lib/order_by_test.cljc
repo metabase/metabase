@@ -395,7 +395,7 @@
                   name-col))
           (let [query' (lib/order-by query name-col)]
             (is (=? {:stages
-                     [{:source-table "card__1"
+                     [{:source-card 1
                        :order-by [[:asc
                                    {}
                                    [:field {:base-type :type/Integer} "USER_ID"]]]}]}

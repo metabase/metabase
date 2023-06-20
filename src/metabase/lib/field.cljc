@@ -54,7 +54,7 @@
    field-id     :- ::lib.schema.id/field]
   (merge
    (when (lib.util/first-stage? query stage-number)
-     (when-let [card-id (lib.util/string-table-id->card-id (lib.util/source-table query))]
+     (when-let [card-id (lib.util/source-card query)]
        (when-let [card-metadata (lib.metadata/card query card-id)]
          (m/find-first #(= (:id %) field-id)
                        (:result-metadata card-metadata)))))
@@ -86,7 +86,7 @@
         ;; we should look in to fixing this if we can.
         stage-columns (or (:metabase.lib.stage/cached-metadata stage)
                           (get-in stage [:lib/stage-metadata :columns])
-                          (when (string? (:source-table stage))
+                          (when (:source-card stage)
                             (lib.metadata.calculation/visible-columns query stage-number stage))
                           (log/warn (i18n/tru "Cannot resolve column {0}: stage has no metadata" (pr-str column-name))))]
     (when (seq stage-columns)
@@ -180,6 +180,16 @@
     (cond->> metadata
       (:parent-id metadata) (add-parent-column-metadata query))))
 
+(defn- table-metadata
+  "Work around the fact that sometimes columns in results metadata come back with legacy `card__<id>` `:table-id`s.
+  TODO: It would probably be nice to have the metadata providers parse these into a `:card-id` or something as they
+  come in, sort of like what we do with legacy queries in [[metabase.lib.convert]], but this will have to be good
+  enough for now."
+  [query table-id]
+  (cond
+    (string? table-id)  (lib.metadata/card query (lib.util/legacy-string-table-id->card-id table-id))
+    (integer? table-id) (lib.metadata/table query table-id)))
+
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.
 (defmethod lib.metadata.calculation/display-name-method :metadata/field
@@ -211,7 +221,7 @@
                                    (-> (lib.metadata.calculation/display-info query stage-number field)
                                        :display-name
                                        lib.util/strip-id)
-                                   (let [table (lib.metadata/table query table-id)]
+                                   (let [table (table-metadata query table-id)]
                                      (lib.metadata.calculation/display-name query stage-number table style))))
                                (or join-alias (lib.join/current-join-alias field-metadata))))
         display-name       (if join-display-name
@@ -421,8 +431,8 @@
 
 (defn- implicit-join-name [query {:keys [fk-field-id table-id], :as _field-metadata}]
   (when (and fk-field-id table-id)
-    (when-let [table-metadata (lib.metadata/table query table-id)]
-      (let [table-name           (:name table-metadata)
+    (when-let [table (table-metadata query table-id)]
+      (let [table-name           (:name table)
             source-field-id-name (:name (lib.metadata/field query fk-field-id))]
         (lib.join/implicit-join-name table-name source-field-id-name)))))
 
