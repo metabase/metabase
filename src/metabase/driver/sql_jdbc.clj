@@ -4,6 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -12,7 +13,9 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.query-processor.writeback :as qp.writeback]
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.util.honeysql-extensions :as hx])
+  (:import
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -153,3 +156,9 @@
      (let [[inclusion-patterns
             exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
        (into #{} (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn (.getMetaData conn) inclusion-patterns exclusion-patterns))))))
+
+(defmethod driver/set-role! :sql-jdbc
+  [driver conn role]
+  (let [sql (driver.sql/set-role-statement driver role)]
+    (with-open [stmt (.createStatement ^Connection conn)]
+      (.execute stmt sql))))

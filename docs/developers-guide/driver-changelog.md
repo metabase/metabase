@@ -25,10 +25,10 @@ title: Driver interface changelog
   more information. You should use `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` instead of
   `clojure.java.jdbc/with-db-connection` or `clojure.java.jdbc/get-connection` going forward.
 
-- The multimethods `set-role-statement` and `default-database-role` have been added. These methods are used to enable
-  connection impersonation, which is a new feature added in 0.47.0. Connection impersonation allows users to be
-  assigned to specific database roles which are set before any queries are executed, so that access to tables can be
-  restricted at the database level instead of (or in conjunction with) Metabase's built-in permissions system.
+- The multimethods `set-role!`, `set-role-statement`, and `default-database-role` have been added. These methods are
+  used to enable connection impersonation, which is a new feature added in 0.47.0. Connection impersonation allows users
+  to be assigned to specific database roles which are set before any queries are executed, so that access to tables can
+  be restricted at the database level instead of (or in conjunction with) Metabase's built-in permissions system.
 
 ## Metabase 0.46.0
 

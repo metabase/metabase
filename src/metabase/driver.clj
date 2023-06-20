@@ -824,6 +824,14 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti set-role!
+  "Sets the database role used on a connection. Called prior to query execution for drivers that support connection
+  impersonation (an EE-only feature)."
+  {:arglists '([driver conn role])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Upload                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+

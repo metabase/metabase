@@ -13,6 +13,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.postgres.ddl :as postgres.ddl]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -26,7 +27,6 @@
    [metabase.models.field :as field]
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.upload :as upload]
    [metabase.util :as u]
@@ -828,10 +828,10 @@
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
-(defmethod qp.util/set-role-statement :postgres
+(defmethod driver.sql/set-role-statement :postgres
   [_ role]
   (format "SET ROLE %s;" role))
 
-(defmethod qp.util/default-database-role :postgres
+(defmethod driver.sql/default-database-role :postgres
   [_ _]
   "NONE")

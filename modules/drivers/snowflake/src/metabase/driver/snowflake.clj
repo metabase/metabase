@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -25,7 +26,6 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -582,11 +582,11 @@
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
-(defmethod qp.util/set-role-statement :snowflake
+(defmethod driver.sql/set-role-statement :snowflake
   [_ role]
   (format "USE ROLE %s;" role))
 
-(defmethod qp.util/default-database-role :snowflake
+(defmethod driver.sql/default-database-role :snowflake
   [_ database]
   (or
    (-> database :details :role)

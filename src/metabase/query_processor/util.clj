@@ -57,33 +57,6 @@
   (default-query->remark query))
 
 
-;;; ------------------------------------------------- User Impersonation --------------------------------------------------
-
-;; TODO (noahmoss) find better namespace for this?
-
-(defmulti set-role-statement
-  "Generates a statement that sets the active role for a session, such as USE ROLE or equivalent, for the given driver.
-  This is be prepended or appended to a query when user impersonation is enabled for the database being queried."
-  {:arglists '(^String [driver role])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod set-role-statement :default
-  [_ _role]
-  nil)
-
-(defmulti default-database-role
-  "The name of the default role for a given database, used for queries that do not have custom user
-  impersonation rules configured for them. This must be implemented for each driver that supports user impersonation."
-  {:arglists '(^String [driver database])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod default-database-role :default
-  [_ _database]
-  nil)
-
-
 ;;; ------------------------------------------------- Normalization --------------------------------------------------
 
 ;; TODO - this has been moved to `metabase.mbql.util`; use that implementation instead.

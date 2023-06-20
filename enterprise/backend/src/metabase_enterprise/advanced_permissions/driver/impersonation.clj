@@ -2,10 +2,10 @@
   (:require
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -46,11 +46,9 @@
   [driver ^Connection conn database]
   (when (driver/database-supports? driver :connection-impersonation database)
     (try
-      (let [default-role       (qp.util/default-database-role driver database)
-            impersonation-role (connection-impersonation-role database)
-            sql                (qp.util/set-role-statement driver (or impersonation-role default-role))]
-        (with-open [stmt (.createStatement conn)]
-          (.execute stmt sql)))
+      (let [default-role       (driver.sql/default-database-role driver database)
+            impersonation-role (connection-impersonation-role database)]
+        (driver/set-role! driver conn (or impersonation-role default-role)))
       (catch Throwable e
         (log/debug e (tru "Error setting role on connection"))
         (throw e)))))
