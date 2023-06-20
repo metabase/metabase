@@ -58,7 +58,7 @@
     :field
     (lib.options/update-options field-or-joinable u/assoc-dissoc :join-alias join-alias)
 
-    :metadata/field
+    :metadata/column
     (u/assoc-dissoc field-or-joinable ::join-alias join-alias)
 
     :mbql/join
@@ -73,7 +73,7 @@
   [field-or-joinable :- FieldOrPartialJoin]
   (case (lib.dispatch/dispatch-value field-or-joinable)
     :field          (:join-alias (lib.options/options field-or-joinable))
-    :metadata/field (::join-alias field-or-joinable)
+    :metadata/column (::join-alias field-or-joinable)
     :mbql/join      (:alias field-or-joinable)))
 
 (mu/defn resolve-join :- ::lib.schema.join/join
