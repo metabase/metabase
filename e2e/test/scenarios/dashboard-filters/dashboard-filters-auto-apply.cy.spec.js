@@ -29,14 +29,25 @@ const FILTER = {
   sectionId: "string",
 };
 
+const FILTER_WITH_DEFAULT_VALUE = {
+  default: ["Gadget"],
+  name: "Category with default value",
+  slug: "category_with_default_value",
+  id: "e2809ab2",
+  type: "string/=",
+  sectionId: "string",
+};
+
 const QUESTION_DETAILS = {
   name: "Products table",
   query: { "source-table": PRODUCTS_ID },
 };
 
-const DASHBOARD_DETAILS = {
-  parameters: [FILTER],
-};
+function createDashboardDetails({ parameters }) {
+  return {
+    parameters,
+  };
+}
 
 const TOAST_TIMEOUT = 20000;
 
@@ -69,9 +80,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     });
 
     // parameter values should be preserved when disabling auto applying filters
-    dashboardHeader().within(() => {
-      cy.icon("info").click();
-    });
+    toggleDashboardInfoSidebar();
     rightSidebar().within(() => {
       cy.findByLabelText("Auto-apply filters").click();
       cy.wait("@updateDashboard");
@@ -209,6 +218,50 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     });
   });
 
+  describe("parameter with default values", () => {
+    beforeEach(() => {
+      createDashboard(undefined, FILTER_WITH_DEFAULT_VALUE);
+      openDashboard();
+    });
+
+    it("should handle toggling auto applying filters on and off", () => {
+      toggleDashboardInfoSidebar();
+
+      getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+
+      // parameter with default value should still be applied after turning auto-apply filter off
+      rightSidebar().within(() => {
+        cy.findByLabelText("Auto-apply filters").should("be.checked").click();
+        cy.wait("@updateDashboard");
+        cy.findByLabelText("Auto-apply filters").should("not.be.checked");
+      });
+
+      getDashboardCard().within(() => {
+        cy.findByText("Rows 1-4 of 53").should("be.visible");
+      });
+
+      // card result should be updated after manually update the filter
+      filterWidget().icon("close").click();
+      dashboardParametersContainer()
+        .button("Apply")
+        .should("be.visible")
+        .click();
+
+      getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
+
+      // should not use the default parameter after turning auto-apply filter on again since the parameter was manually updated
+      rightSidebar().within(() => {
+        cy.findByLabelText("Auto-apply filters")
+          .should("not.be.checked")
+          .click();
+        cy.wait("@updateDashboard");
+        cy.findByLabelText("Auto-apply filters").should("be.checked");
+      });
+
+      getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
+    });
+  });
+
   describe("auto-apply filter toast", () => {
     it("should display a toast when a dashboard takes longer than 15s to load", () => {
       cy.clock();
@@ -222,9 +275,8 @@ describe("scenarios > dashboards > filters > auto apply", () => {
         cy.button("Turn off").click();
         cy.wait("@updateDashboard");
       });
-      dashboardHeader().within(() => {
-        cy.icon("info").click();
-      });
+
+      toggleDashboardInfoSidebar();
       rightSidebar().within(() => {
         cy.findByLabelText("Auto-apply filters").should("not.be.checked");
       });
@@ -297,9 +349,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       openDashboard();
       cy.wait("@cardQuery");
 
-      dashboardHeader().within(() => {
-        cy.icon("info").click();
-      });
+      toggleDashboardInfoSidebar();
       rightSidebar().within(() => {
         cy.findByLabelText("Auto-apply filters").should("be.disabled");
       });
@@ -335,9 +385,7 @@ describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
     openDashboard();
     cy.wait("@cardQuery");
 
-    dashboardHeader().within(() => {
-      cy.icon("info").click();
-    });
+    toggleDashboardInfoSidebar();
     rightSidebar().within(() => {
       expectGoodSnowplowEvents(
         NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
@@ -356,9 +404,7 @@ describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
     openDashboard();
     cy.wait("@cardQuery");
 
-    dashboardHeader().within(() => {
-      cy.icon("info").click();
-    });
+    toggleDashboardInfoSidebar();
     rightSidebar().within(() => {
       expectGoodSnowplowEvents(
         NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
@@ -373,24 +419,28 @@ describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
   });
 });
 
-const createDashboard = (dashboardOpts = {}) => {
+const createDashboard = (dashboardOpts = {}, parameter = FILTER) => {
+  const parameters = [parameter];
   cy.createQuestionAndDashboard({
     questionDetails: QUESTION_DETAILS,
-    dashboardDetails: { ...DASHBOARD_DETAILS, ...dashboardOpts },
+    dashboardDetails: {
+      ...createDashboardDetails({ parameters }),
+      ...dashboardOpts,
+    },
   }).then(({ body: card }) => {
-    cy.editDashboardCard(card, getParameterMapping(card));
+    cy.editDashboardCard(card, getParameterMapping(card, parameters));
     cy.wrap(card.dashboard_id).as("dashboardId");
   });
 };
 
-const getParameterMapping = ({ card_id }) => ({
-  parameter_mappings: [
-    {
+const getParameterMapping = ({ card_id }, parameters) => ({
+  parameter_mappings: parameters.map(parameter => {
+    return {
       card_id,
-      parameter_id: FILTER.id,
+      parameter_id: parameter.id,
       target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-    },
-  ],
+    };
+  }),
 });
 
 const openDashboard = (params = {}) => {
@@ -417,3 +467,9 @@ const openSlowDashboard = (params = {}) => {
 
   getDashboardCard().should("be.visible");
 };
+
+function toggleDashboardInfoSidebar() {
+  dashboardHeader().within(() => {
+    cy.icon("info").click();
+  });
+}
