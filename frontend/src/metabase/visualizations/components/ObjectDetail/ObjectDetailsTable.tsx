@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
-import { Flex } from "metabase/ui";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import EmptyState from "metabase/components/EmptyState";
 
@@ -90,6 +89,12 @@ export function DetailsTableCell({
 
   const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
 
+  const isImage =
+    !isColumnName &&
+    (isImageURL(column) || isAvatarURL(column)) &&
+    typeof value === "string" &&
+    value.startsWith("http");
+
   return (
     <div>
       <span
@@ -110,6 +115,11 @@ export function DetailsTableCell({
       >
         {cellValue}
       </span>
+      {isImage && (
+        <div>
+          <FitImage src={value} alt={value} />
+        </div>
+      )}
     </div>
   );
 }
@@ -167,10 +177,6 @@ export function DetailsTable({
       <GridContainer cols={3}>
         {cols.map((column, columnIndex) => {
           const columnValue = row[columnIndex];
-          const isImage =
-            (isImageURL(column) || isAvatarURL(column)) &&
-            typeof columnValue === "string" &&
-            columnValue.startsWith("http");
 
           return (
             <Fragment key={columnIndex}>
@@ -196,13 +202,6 @@ export function DetailsTable({
                   visualizationIsClickable={visualizationIsClickable}
                 />
               </GridCell>
-              {isImage && (
-                <GridCell colSpan={3}>
-                  <Flex>
-                    <FitImage src={columnValue} alt={columnValue} />
-                  </Flex>
-                </GridCell>
-              )}
             </Fragment>
           );
         })}
