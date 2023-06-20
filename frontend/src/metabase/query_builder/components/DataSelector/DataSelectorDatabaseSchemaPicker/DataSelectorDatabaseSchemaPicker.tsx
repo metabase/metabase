@@ -1,3 +1,4 @@
+import cx from "classnames";
 import * as React from "react";
 import { t } from "ttag";
 
@@ -93,7 +94,9 @@ const DataSelectorDatabaseSchemaPicker = ({
   };
 
   const renderSectionExtra = ({ active }: { active?: boolean }) =>
-    !active && <PickerSpinner size={16} borderWidth={2} />;
+    !active && (
+      <PickerSpinner size={16} borderWidth={2} className={cx("ml1")} />
+    );
 
   const renderSectionIcon = ({ icon }: { icon?: IconName }) =>
     icon && <Icon className="Icon text-default" name={icon} size={18} />;

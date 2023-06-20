@@ -98,5 +98,4 @@ export const PickerSpinner = styled(LoadingSpinner)`
   flex-direction: column;
   justify-content: center;
   color: ${color("brand")};
-  margin-left: 0.5rem;
 `;
