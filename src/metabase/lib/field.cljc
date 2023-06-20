@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
@@ -55,10 +56,13 @@
   (merge
    (when (lib.util/first-stage? query stage-number)
      (when-let [card-id (lib.util/string-table-id->card-id (lib.util/source-table query))]
-       (when-let [card-metadata (lib.metadata/card query card-id)]
+       (when-let [card-metadata (lib.card/saved-question-metadata query card-id)]
          (m/find-first #(= (:id %) field-id)
-                       (:result-metadata card-metadata)))))
-   (lib.metadata/field query field-id)))
+                       card-metadata))))
+   (try
+     (lib.metadata/field query field-id)
+     (catch #?(:clj Throwable :cljs :default) _
+       nil))))
 
 (mu/defn ^:private resolve-column-name-in-metadata :- [:maybe lib.metadata/ColumnMetadata]
   [column-name      :- ::lib.schema.common/non-blank-string
