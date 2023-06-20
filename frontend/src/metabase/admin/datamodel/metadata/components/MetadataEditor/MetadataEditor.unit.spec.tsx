@@ -251,9 +251,10 @@ describe("MetadataEditor", () => {
         screen.getByText(SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE.name),
       ).toBeInTheDocument();
       expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
-      expect(
+      const computedStyles = window.getComputedStyle(
         screen.getByText(ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name),
-      ).toHaveClass("disabled");
+      );
+      expect(computedStyles.pointerEvents).toBe("none");
     });
 
     it("should display sort options", async () => {
