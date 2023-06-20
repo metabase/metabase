@@ -21,6 +21,7 @@ interface ScalarValueWrapperProps {
 }
 
 export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
+  display: inline;
   cursor: pointer;
   &:hover {
     color: ${color("brand")};
