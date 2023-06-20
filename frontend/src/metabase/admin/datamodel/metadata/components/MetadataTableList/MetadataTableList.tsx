@@ -21,6 +21,7 @@ import { Dispatch, State } from "metabase-types/store";
 import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 import Table from "metabase-lib/metadata/Table";
 import { getSchemaName } from "metabase-lib/metadata/utils/schema";
+import { AdminListItem } from "./MetadataTableList.styled";
 
 const RELOAD_INTERVAL = 2000;
 
@@ -260,11 +261,9 @@ const TableRow = ({
 
   return (
     <li className="hover-parent hover--visibility">
-      <a
-        className={cx(
-          "AdminList-item flex align-center no-decoration text-wrap justify-between",
-          { selected: isSelected, disabled: !isSyncCompleted(table) },
-        )}
+      <AdminListItem
+        disabled={!isSyncCompleted(table)}
+        selected={isSelected}
         onClick={handleSelect}
       >
         {table.displayName()}
@@ -277,7 +276,7 @@ const TableRow = ({
             />
           </div>
         )}
-      </a>
+      </AdminListItem>
     </li>
   );
 };
