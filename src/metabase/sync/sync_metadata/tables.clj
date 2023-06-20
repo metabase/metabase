@@ -108,7 +108,7 @@
       ;; if the table already exists but is marked *inactive*, mark it as *active*
       (t2/update! Table existing-id
                   {:active              true
-                   :visibility_type     (when is-crufty? :cruft)
+                   :visibility_type     visibility-type
                    :initial_sync_status initial-sync-status})
       ;; otherwise create a new Table
       (first (t2/insert-returning-instances! Table
