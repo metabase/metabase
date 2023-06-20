@@ -63,13 +63,9 @@ describe("issue 31309", () => {
     });
 
     cy.wait("@createModel").then(({ response: { body } }) => {
-      cy.request("GET", `/api/card/${body.id}`).then(
-        ({ body: { dataset_query } }) => {
-          expect(dataset_query.query).to.deep.eq(TEST_QUERY);
-          expect(dataset_query.database).to.eq(SAMPLE_DB_ID);
-          expect(dataset_query.type).to.eq("query");
-        },
-      );
+      expect(body.dataset_query.query).to.deep.eq(TEST_QUERY);
+      expect(body.dataset_query.database).to.eq(SAMPLE_DB_ID);
+      expect(body.dataset_query.type).to.eq("query");
     });
 
     openQuestionActions();
