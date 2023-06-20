@@ -263,8 +263,11 @@ const TableRow = ({
     <li className="hover-parent hover--visibility">
       <AdminListItem
         disabled={!isSyncCompleted(table)}
-        selected={isSelected}
         onClick={handleSelect}
+        className={cx(
+          "AdminList-item flex align-center no-decoration text-wrap justify-between",
+          { selected: isSelected },
+        )}
       >
         {table.displayName()}
         {isSyncCompleted(table) && (

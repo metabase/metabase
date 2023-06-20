@@ -94,6 +94,28 @@
   border-bottom-color: var(--color-border);
 }
 
+.AdminList-item {
+  padding: 0.75em 1em 0.75em 1em;
+  border: var(--border-size) var(--border-style) transparent;
+  border-radius: var(--default-border-radius);
+  margin-bottom: 0.25em;
+}
+
+.AdminList-item.selected {
+  color: var(--color-brand);
+}
+
+.AdminList-item.selected,
+.AdminList-item:hover {
+  background-color: white;
+  border-color: var(--color-border);
+  margin-left: -0.5em;
+  margin-right: -0.5em;
+  padding-left: 1.5em;
+  padding-right: 1.5em;
+  box-shadow: 0 1px 2px var(--color-shadow);
+}
+
 .AdminList-section {
   margin-top: 1em;
   padding: 0.5em 1em 0.5em 1em;
