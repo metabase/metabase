@@ -62,7 +62,7 @@
                        card-metadata))))
    (try
      (lib.metadata/field query field-id)
-     (catch #?(:clj Throwable :cljs js/Error) _
+     (catch #?(:clj Throwable :cljs :default) _
        nil))))
 
 (mu/defn ^:private resolve-column-name-in-metadata :- [:maybe lib.metadata/ColumnMetadata]

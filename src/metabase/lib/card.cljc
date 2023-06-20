@@ -46,7 +46,7 @@
                (when-let [field-id (:id col)]
                  (try
                    (lib.metadata/field metadata-providerable field-id)
-                   (catch #?(:clj Throwable :cljs js/Error) _
+                   (catch #?(:clj Throwable :cljs :default) _
                      nil)))
                (update-keys col u/->kebab-case-en)
                {:lib/type                :metadata/field
@@ -62,7 +62,7 @@
   ;; it seems like in some cases (unit tests) the FE is renaming `:result-metadata` to `:fields`, not 100% sure why
   ;; but handle that case anyway. (#29739)
   (when-let [card (lib.metadata/card metadata-providerable card-id)]
-    (not-empty (card-metadata-columns metadata-providerable card))))
+    (card-metadata-columns metadata-providerable card)))
 
 (defmethod lib.metadata.calculation/visible-columns-method :metadata/card
   [query _stage-number card {:keys [unique-name-fn], :as _options}]
