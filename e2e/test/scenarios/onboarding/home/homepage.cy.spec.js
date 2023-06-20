@@ -170,6 +170,25 @@ describe("scenarios > home > custom homepage", () => {
 
       cy.findByRole("status").findByText("Saved");
 
+      cy.log(
+        "disabling custom-homepge-setting should also remove custom-homepage-dashboard-setting",
+      );
+
+      cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+      cy.findByRole("status").findByText("Saved");
+
+      cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+      cy.findByTestId("custom-homepage-dashboard-setting").should(
+        "contain",
+        "Select a dashboard",
+      );
+
+      cy.findByTestId("custom-homepage-dashboard-setting")
+        .findByRole("button")
+        .click();
+
+      popover().findByText("Orders in a dashboard").click();
+
       cy.findByRole("navigation").findByText("Exit admin").click();
       cy.location("pathname").should("equal", "/dashboard/1");
 

@@ -3000,8 +3000,8 @@
                             "event"           "csv_upload_successful"}
                      :user-id (str (mt/user->id :rasta))}
                     (last (snowplow-test/pop-event-data-and-user-id!))))
-            (with-redefs [upload/load-from-csv (fn [_ _ _ _]
-                                                 (throw (Exception.)))]
+            (with-redefs [upload/load-from-csv! (fn [_ _ _ _]
+                                                  (throw (Exception.)))]
               (try (upload-example-csv! nil)
                    (catch Throwable _
                      nil))

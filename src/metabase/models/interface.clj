@@ -400,6 +400,11 @@
   (-> instance
       add-updated-at-timestamp))
 
+(t2/define-before-update :hook/updated-at-timestamped?
+  [instance]
+  (-> instance
+      add-updated-at-timestamp))
+
 (defn- add-entity-id [obj & _]
   (if (or (contains? obj :entity_id)
           *deserializing?*)

@@ -50,7 +50,7 @@ describe("issue 24235", () => {
 
     cy.wait("@getCardQuery");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rows 1-10 of 200").should("be.visible");
+    cy.findByText("Rows 1-11 of 200").should("be.visible");
   });
 });
 

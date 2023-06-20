@@ -805,7 +805,7 @@
        (map sanitize-value)
        (str/join "\t")))
 
-(defmethod driver/insert-into :postgres
+(defmethod driver/insert-into! :postgres
   [driver db-id table-name column-names values]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
