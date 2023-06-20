@@ -3977,21 +3977,23 @@
     debug "^3.1.0"
     lodash.once "^4.1.1"
 
-"@deploysentinel/cypress-debugger@^0.7.8":
-  version "0.7.8"
-  resolved "https://registry.yarnpkg.com/@deploysentinel/cypress-debugger/-/cypress-debugger-0.7.8.tgz#1b12e31038d971b0500958afb9a1f23d1dbfb85d"
-  integrity sha512-9slYbphUKZy4LBSTlMfIsTPzdyrLbnpasFi1OevSdT6FpXt/AjbNp09/6SX04inx9U/gLW0HPWr5CV/3laKy3g==
+"@deploysentinel/cypress-debugger@^0.8.1":
+  version "0.8.1"
+  resolved "https://registry.yarnpkg.com/@deploysentinel/cypress-debugger/-/cypress-debugger-0.8.1.tgz#cbed82bc3f83c73d62b5c6b7fd735e4538388d13"
+  integrity sha512-Bl/b1yGxOIeOr+MssRTUi09Uq2axGSYJ8pj/dZretGGEUNNQgOkPHWbq7tSEVjXCvKtT1ALhkj8vE6F9YPxfAA==
   dependencies:
     "@cypress/commit-info" "^2.2.0"
-    "@deploysentinel/cypress-runner" "^3.2.0"
-    "@deploysentinel/debugger-core" "^0.3.4"
+    "@deploysentinel/cypress-runner" "^3.3.0"
+    "@deploysentinel/debugger-core" "^0.3.5"
     ansi-styles "^6.1.0"
     axios "^0.27.2"
     axios-retry "^3.3.1"
     chrome-remote-interface "^0.31.3"
+    cypress "^12.5.1"
     fast-safe-stringify "^2.1.1"
-    fast-xml-parser "^4.0.12"
+    fast-xml-parser "^4.2.4"
     fflate "^0.7.4"
+    human-interval "^2.0.1"
     lodash "^4.17.21"
     minimatch "^5.1.1"
     semver "^7.3.8"
@@ -4000,10 +4002,10 @@
     bufferutil "^4.0.7"
     utf-8-validate "^5.0.10"
 
-"@deploysentinel/cypress-runner@^3.2.0":
-  version "3.2.0"
-  resolved "https://registry.yarnpkg.com/@deploysentinel/cypress-runner/-/cypress-runner-3.2.0.tgz#23030fe40e33f214d83d9047f0df12cce2a4bb79"
-  integrity sha512-t0MYEmbPKq40x/Z4aNPQaM5Ic4JXrl5J8su1KGK7MUIwnt8aeOi5xJJge6Qan6cr8VCCXgqiSMW6JHJhMTjxAw==
+"@deploysentinel/cypress-runner@^3.3.0":
+  version "3.3.0"
+  resolved "https://registry.yarnpkg.com/@deploysentinel/cypress-runner/-/cypress-runner-3.3.0.tgz#f706de729fb49dae61aeecf45b436f92e16572b7"
+  integrity sha512-4H6e67sCzOx0f0JHm8nyNx8fzsWVHlmvdnC9cJxuhclHbr0AyXtbqYt6mD0hiI0w3vqYMut2Diq6UV1WISYjUQ==
   dependencies:
     acorn "^8.8.0"
     debug "^4.3.2"
@@ -4018,10 +4020,10 @@
     source-map-support "^0.5.21"
     tmp "^0.2.1"
 
-"@deploysentinel/debugger-core@^0.3.4":
-  version "0.3.4"
-  resolved "https://registry.yarnpkg.com/@deploysentinel/debugger-core/-/debugger-core-0.3.4.tgz#cda7fb06e5bbe3bff7f1623d27ba1f6eb1569295"
-  integrity sha512-+nNceMbTWn05oCg+RCPUBdMlK3rFKqPmZrVU3Y5Q9M/Xk/9GcQh/ii2sQJvDHoc9OEDiRqpUFTQ7CA7bsp/iWA==
+"@deploysentinel/debugger-core@^0.3.5":
+  version "0.3.6"
+  resolved "https://registry.yarnpkg.com/@deploysentinel/debugger-core/-/debugger-core-0.3.6.tgz#21b74fcd4466e3fa8ed9b6f8a1188b96d382fac0"
+  integrity sha512-msK0FIJk3QrL/5GdTwoxNcWcxT9QlOhmHq+PnWQvf5qpWpnkMgiUJ/71eVJwM1Y0m/fV5JIUjmGOAe+8G636Jg==
   dependencies:
     axios "^0.27.2"
     axios-retry "^3.3.1"
@@ -5323,21 +5325,21 @@
     redux-thunk "^2.4.2"
     reselect "^4.1.7"
 
-"@replayio/cypress@^0.5.15":
-  version "0.5.15"
-  resolved "https://registry.yarnpkg.com/@replayio/cypress/-/cypress-0.5.15.tgz#cba2af6b2417533026ec4a895a2b44dabc043320"
-  integrity sha512-9/v9efJxT35FEqGzoca3DjX2a9QUHfEW4fhyHGTvrVSiBq0jQAvP/uvlcojFh2e4IxrrZiRwxVCp+kga1fEtxA==
+"@replayio/cypress@^1.0.1":
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/@replayio/cypress/-/cypress-1.0.1.tgz#9ac721635fcd94d4c58a7127a88f3db1da66ed51"
+  integrity sha512-n1UMNk8Nbkxj3Q5ROzU/rRF7cPkaqKM84qooYYqBrD5GMj62IC3HWC1nm2J005Jp/CbldCzwEboEy+L/69ge6A==
   dependencies:
-    "@replayio/replay" "^0.12.10"
-    "@replayio/test-utils" "^0.5.9"
+    "@replayio/replay" "^0.12.12"
+    "@replayio/test-utils" "^1.0.0"
     debug "^4.3.4"
     semver "^7.3.8"
     uuid "^8.3.2"
 
-"@replayio/replay@^0.12.10":
-  version "0.12.10"
-  resolved "https://registry.yarnpkg.com/@replayio/replay/-/replay-0.12.10.tgz#21c4bf8da8966866d25d9a6450019eb3f75f0b1e"
-  integrity sha512-FKfxX3KpwR/H6PNzNqv40OjXUOO40ucQxnv9wFntFXAZdpspwlbpN3M0Gc45f3sOGzCrnP3ReseB0TPU3bWkrQ==
+"@replayio/replay@^0.12.12":
+  version "0.12.12"
+  resolved "https://registry.yarnpkg.com/@replayio/replay/-/replay-0.12.12.tgz#e3cd09c169a24fb0daab3d9f5e0aa729258b9845"
+  integrity sha512-myuviCc3l8K1P9jM5AIcZYaP+PeiAaJoYXvMQsG+T4f76j282hUPcpwg3M1y3Qrvd29ZrOG34SSw2hTb01yFbQ==
   dependencies:
     "@replayio/sourcemap-upload" "^1.0.7"
     commander "^7.2.0"
@@ -5361,12 +5363,12 @@
     node-fetch "^2.6.1"
     string.prototype.matchall "^4.0.5"
 
-"@replayio/test-utils@^0.5.9":
-  version "0.5.9"
-  resolved "https://registry.yarnpkg.com/@replayio/test-utils/-/test-utils-0.5.9.tgz#3f7f9088641b56cccc9156781aa023f999095d1e"
-  integrity sha512-wGtLXLkAdH9tQ1oHQ4E/e3LCi1tKzYBPBkpi3Ef9qhY/EvsjEU5jFMyqLnd5YQXNo1k3rpOLyL+T+u7GVJea5g==
+"@replayio/test-utils@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@replayio/test-utils/-/test-utils-1.0.0.tgz#1171e9fd9555ba4e7b557dc674dd1e6ddb09d86a"
+  integrity sha512-f+SluJJRX7dmHWyXFAXov17iC9bxEFA33XU4QFiq18S3Pd/m2zbr84ETN4g2LZJPQ8AfA68gMBjcXN9Ft5DBtA==
   dependencies:
-    "@replayio/replay" "^0.12.10"
+    "@replayio/replay" "^0.12.12"
     "@types/node-fetch" "^2.6.2"
     debug "^4.3.4"
     node-fetch "^2.6.7"
@@ -8882,9 +8884,9 @@ accepts@~1.3.8:
     negotiator "0.6.3"
 
 ace-builds@^1.4.13:
-  version "1.4.13"
-  resolved "https://registry.yarnpkg.com/ace-builds/-/ace-builds-1.4.13.tgz#186f42d3849ebcc6a48b93088a058489897514c1"
-  integrity sha512-SOLzdaQkY6ecPKYRDDg+MY1WoGgXA34cIvYJNNoBMGGUswHmlauU2Hy0UL96vW0Fs/LgFbMUjD+6vqzWTldIYQ==
+  version "1.22.1"
+  resolved "https://registry.yarnpkg.com/ace-builds/-/ace-builds-1.22.1.tgz#3d765d1cfffc79226e372b6353750fd997816154"
+  integrity sha512-o5RGTPBIiRxguWNors3pT6KuLqj0a2NvNLoqir7/2LLiFm34PJV3BMq4sl9kjPayo4+lmd99m6zAq+XPdhyHQA==
 
 acorn-globals@^7.0.0:
   version "7.0.1"
@@ -10468,15 +10470,10 @@ camelcase@^6.2.0:
   resolved "https://registry.yarnpkg.com/camelcase/-/camelcase-6.2.0.tgz#924af881c9d525ac9d87f40d964e5cea982a1809"
   integrity sha512-c7wVvbw3f37nuobQNtgsgG9POC9qMbNuMQmTCqZv23b6MIz0fcYpBiOlv9gEN/hdLdnZTDQhg6e9Dq5M1vKvfg==
 
-caniuse-lite@^1.0.30000981, caniuse-lite@^1.0.30001109, caniuse-lite@^1.0.30001219, caniuse-lite@^1.0.30001274, caniuse-lite@^1.0.30001280, caniuse-lite@^1.0.30001400:
-  version "1.0.30001439"
-  resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001439.tgz"
-  integrity sha512-1MgUzEkoMO6gKfXflStpYgZDlFM7M/ck/bgfVCACO5vnAf0fXoNVHdWtqGU+MYca+4bL9Z5bpOVmR33cWW9G2A==
-
-caniuse-lite@^1.0.30001489:
-  version "1.0.30001489"
-  resolved "https://registry.yarnpkg.com/caniuse-lite/-/caniuse-lite-1.0.30001489.tgz#ca82ee2d4e4dbf2bd2589c9360d3fcc2c7ba3bd8"
-  integrity sha512-x1mgZEXK8jHIfAxm+xgdpHpk50IN3z3q3zP261/WS+uvePxW8izXuCu6AHz0lkuYTlATDehiZ/tNyYBdSQsOUQ==
+caniuse-lite@^1.0.30000981, caniuse-lite@^1.0.30001109, caniuse-lite@^1.0.30001219, caniuse-lite@^1.0.30001274, caniuse-lite@^1.0.30001280, caniuse-lite@^1.0.30001400, caniuse-lite@^1.0.30001489:
+  version "1.0.30001505"
+  resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001505.tgz"
+  integrity sha512-jaAOR5zVtxHfL0NjZyflVTtXm3D3J9P15zSJ7HmQF8dSKGA6tqzQq+0ZI3xkjyQj46I4/M0K2GbMpcAFOcbr3A==
 
 canvg@^3.0.6:
   version "3.0.10"
@@ -11777,6 +11774,54 @@ cypress-real-events@^1.7.6:
   version "1.7.6"
   resolved "https://registry.yarnpkg.com/cypress-real-events/-/cypress-real-events-1.7.6.tgz#6f17e0b2ceea1d6dc60f6737d8f84cc517bbbb4c"
   integrity sha512-yP6GnRrbm6HK5q4DH6Nnupz37nOfZu/xn1xFYqsE2o4G73giPWQOdu6375QYpwfU1cvHNCgyD2bQ2hPH9D7NMw==
+
+cypress@^12.5.1:
+  version "12.14.0"
+  resolved "https://registry.yarnpkg.com/cypress/-/cypress-12.14.0.tgz#37a19b85f5e9d881995e9fee1ddf41b3d3a623dd"
+  integrity sha512-HiLIXKXZaIT1RT7sw1sVPt+qKtis3uYNm6KwC4qoYjabwLKaqZlyS/P+uVvvlBNcHIwL/BC6nQZajpbUd7hOgQ==
+  dependencies:
+    "@cypress/request" "^2.88.10"
+    "@cypress/xvfb" "^1.2.4"
+    "@types/node" "^14.14.31"
+    "@types/sinonjs__fake-timers" "8.1.1"
+    "@types/sizzle" "^2.3.2"
+    arch "^2.2.0"
+    blob-util "^2.0.2"
+    bluebird "^3.7.2"
+    buffer "^5.6.0"
+    cachedir "^2.3.0"
+    chalk "^4.1.0"
+    check-more-types "^2.24.0"
+    cli-cursor "^3.1.0"
+    cli-table3 "~0.6.1"
+    commander "^6.2.1"
+    common-tags "^1.8.0"
+    dayjs "^1.10.4"
+    debug "^4.3.4"
+    enquirer "^2.3.6"
+    eventemitter2 "6.4.7"
+    execa "4.1.0"
+    executable "^4.1.1"
+    extract-zip "2.0.1"
+    figures "^3.2.0"
+    fs-extra "^9.1.0"
+    getos "^3.2.1"
+    is-ci "^3.0.0"
+    is-installed-globally "~0.4.0"
+    lazy-ass "^1.6.0"
+    listr2 "^3.8.3"
+    lodash "^4.17.21"
+    log-symbols "^4.0.0"
+    minimist "^1.2.8"
+    ospath "^1.2.2"
+    pretty-bytes "^5.6.0"
+    proxy-from-env "1.0.0"
+    request-progress "^3.0.0"
+    semver "^7.3.2"
+    supports-color "^8.1.1"
+    tmp "~0.2.1"
+    untildify "^4.0.0"
+    yauzl "^2.10.0"
 
 cypress@^12.8.1:
   version "12.8.1"
@@ -13783,10 +13828,10 @@ fast-shallow-equal@^1.0.0:
   resolved "https://registry.yarnpkg.com/fast-shallow-equal/-/fast-shallow-equal-1.0.0.tgz#d4dcaf6472440dcefa6f88b98e3251e27f25628b"
   integrity sha512-HPtaa38cPgWvaCFmRNhlc6NG7pv6NUHqjPgVAkWGoB9mQMwYB27/K0CvOM5Czy+qpT3e8XJ6Q4aPAnzpNpzNaw==
 
-fast-xml-parser@^4.0.12:
-  version "4.1.2"
-  resolved "https://registry.yarnpkg.com/fast-xml-parser/-/fast-xml-parser-4.1.2.tgz#5a98c18238d28a57bbdfa9fe4cda01211fff8f4a"
-  integrity sha512-CDYeykkle1LiA/uqQyNwYpFbyF6Axec6YapmpUP+/RHWIoR1zKjocdvNaTsxCxZzQ6v9MLXaSYm9Qq0thv0DHg==
+fast-xml-parser@^4.2.4:
+  version "4.2.4"
+  resolved "https://registry.yarnpkg.com/fast-xml-parser/-/fast-xml-parser-4.2.4.tgz#6e846ede1e56ad9e5ef07d8720809edf0ed07e9b"
+  integrity sha512-fbfMDvgBNIdDJLdLOwacjFAPYt67tr31H9ZhWSm45CDAxvd0I6WTlSOUo7K2P/K5sA5JgMKG64PI3DMcaFdWpQ==
   dependencies:
     strnum "^1.0.5"
 
@@ -15294,6 +15339,13 @@ https-proxy-agent@^5.0.1:
   dependencies:
     agent-base "6"
     debug "4"
+
+human-interval@^2.0.1:
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/human-interval/-/human-interval-2.0.1.tgz#655baf606c7067bb26042dcae14ec777b099af15"
+  integrity sha512-r4Aotzf+OtKIGQCB3odUowy4GfUDTy3aTWTfLd7ZF2gBCy3XW3v/dJLRefZnOFFnjqs5B1TypvS8WarpBkYUNQ==
+  dependencies:
+    numbered "^1.1.0"
 
 human-signals@^1.1.1:
   version "1.1.1"
@@ -18498,6 +18550,11 @@ minimist@^1.1.1, minimist@^1.1.3, minimist@^1.2.0, minimist@^1.2.5, minimist@^1.
   resolved "https://registry.yarnpkg.com/minimist/-/minimist-1.2.6.tgz#8637a5b759ea0d6e98702cfb3a9283323c93af44"
   integrity sha512-Jsjnk4bw3YJqYzbdyBiNsPWHPfO++UGG749Cxs6peCu5Xg4nrena6OVxOYxrQTqww0Jmwt+Ref8rggumkTLz9Q==
 
+minimist@^1.2.8:
+  version "1.2.8"
+  resolved "https://registry.yarnpkg.com/minimist/-/minimist-1.2.8.tgz#c1a464e7693302e082a075cee0c057741ac4772c"
+  integrity sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==
+
 minipass-collect@^1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/minipass-collect/-/minipass-collect-1.0.2.tgz#22b813bf745dc6edba2576b940022ad6edc8c617"
@@ -19074,6 +19131,11 @@ number-to-locale-string@^1.0.1:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/number-to-locale-string/-/number-to-locale-string-1.2.0.tgz#6c5030fb47e9c9ad14bf59a1ae81b33cc84b4038"
   integrity sha512-q2BNrXwz250d/FR/wwHIr26oFx5eQiXfKxniS3V31TsSR1rJnYwKPfi7SaHRZYlMIOQTaXkAynjv9Pr/+vfyFQ==
+
+numbered@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/numbered/-/numbered-1.1.0.tgz#9fcd79564c73a84b9574e8370c3d8e58fe3c133c"
+  integrity sha512-pv/ue2Odr7IfYOO0byC1KgBI10wo5YDauLhxY6/saNzAdAs0r1SotGCPzzCLNPL0xtrAwWRialLu23AAu9xO1g==
 
 nwsapi@^2.2.2:
   version "2.2.2"

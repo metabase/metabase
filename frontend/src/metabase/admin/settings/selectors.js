@@ -1,4 +1,3 @@
-/* eslint-disable react/display-name */
 import _ from "underscore";
 import { createSelector } from "@reduxjs/toolkit";
 import { t, jt } from "ttag";
@@ -11,6 +10,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import { refreshCurrentUser } from "metabase/redux/user";
+import { updateSetting } from "./settings";
 
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
@@ -92,14 +92,26 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "custom-homepage",
         display_name: t`Custom Homepage`,
         type: "boolean",
-        postUpdateAction: refreshCurrentUser,
+        postUpdateActions: [refreshCurrentUser],
+        onChanged: (oldVal, newVal, _settings, handleChangeSetting) => {
+          if (!newVal && oldVal) {
+            handleChangeSetting("custom-homepage-dashboard", null);
+          }
+        },
       },
       {
         key: "custom-homepage-dashboard",
         description: null,
         getHidden: ({ "custom-homepage": customHomepage }) => !customHomepage,
         widget: DashboardSelector,
-        postUpdateAction: refreshCurrentUser,
+        postUpdateActions: [
+          () =>
+            updateSetting({
+              key: "dismissed_custom_dashboard_toast",
+              value: true,
+            }),
+          refreshCurrentUser,
+        ],
         getProps: setting => ({
           value: setting.value,
           collectionFilter: collection =>
@@ -331,7 +343,7 @@ const SECTIONS = updateSectionsWithPlugins({
   uploads: {
     name: t`Uploads`,
     order: 85,
-    adminOnly: true,
+    adminOnly: false,
     component: UploadSettings,
     settings: [
       {

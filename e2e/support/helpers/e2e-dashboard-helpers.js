@@ -23,7 +23,7 @@ const DEFAULT_CARD = {
   id: -1,
   row: 0,
   col: 0,
-  size_x: 8,
+  size_x: 11,
   size_y: 8,
   visualization_settings: {},
   parameter_mappings: [],
@@ -45,6 +45,7 @@ export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
       body: response.body.cards[0],
     }));
 }
+
 /**
  * Replaces all the cards on a dashboard with the array given in the `cards` parameter.
  * Can be used to remove cards (exclude from array), or add/update them.
@@ -64,8 +65,16 @@ export function showDashboardCardActions(index = 0) {
   getDashboardCard(index).realHover();
 }
 
+export function showDashcardVisualizationSettings(index = 0) {
+  return getDashboardCard(index)
+    .realHover()
+    .within(() => {
+      cy.findByLabelText("Show visualization options").click();
+    });
+}
+
 export function editDashboard() {
-  cy.icon("pencil").click();
+  cy.findByLabelText("Edit dashboard").click();
   cy.findByText("You're editing this dashboard.");
 }
 
@@ -98,12 +107,32 @@ export function setFilter(type, subType) {
   });
 }
 
+export function createEmptyTextBox() {
+  cy.findByLabelText("Edit dashboard").click();
+  cy.findByLabelText("Add a heading or text box").click();
+  popover().findByText("Text").click();
+}
+
 export function addTextBox(string, options = {}) {
-  cy.icon("pencil").click();
-  cy.icon("string").click();
+  cy.findByLabelText("Edit dashboard").click();
+  cy.findByLabelText("Add a heading or text box").click();
+  popover().findByText("Text").click();
   cy.findByPlaceholderText(
     "You can use Markdown here, and include variables {{like_this}}",
   ).type(string, options);
+}
+
+export function createEmptyHeading() {
+  cy.findByLabelText("Edit dashboard").click();
+  cy.findByLabelText("Add a heading or text box").click();
+  popover().findByText("Heading").click();
+}
+
+export function addHeading(string, options = {}) {
+  cy.findByLabelText("Edit dashboard").click();
+  cy.findByLabelText("Add a heading or text box").click();
+  popover().findByText("Heading").click();
+  cy.findByPlaceholderText("Heading").type(string, options);
 }
 
 export function openQuestionsSidebar() {
@@ -121,4 +150,17 @@ export function visitDashboardAndCreateTab({ dashboardId, save = true }) {
   if (save) {
     saveDashboard();
   }
+}
+
+export function resizeDashboardCard({ card, x, y }) {
+  card.within(() => {
+    const resizeHandle = cy.get(".react-resizable-handle");
+    resizeHandle
+      .trigger("mousedown", { button: 0 })
+      .trigger("mousemove", {
+        clientX: x,
+        clientY: y,
+      })
+      .trigger("mouseup", { force: true });
+  });
 }

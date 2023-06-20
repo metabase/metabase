@@ -1,5 +1,5 @@
 import { restore } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("issue 20045", () => {
   beforeEach(() => {
@@ -8,7 +8,7 @@ describe("issue 20045", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
       name: "Orders Model",
       dataset: true,
     });

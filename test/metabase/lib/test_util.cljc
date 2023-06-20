@@ -17,6 +17,7 @@
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def venues-query
+  "A mock query against the `VENUES` test data table."
   (lib/query meta/metadata-provider (meta/table-metadata :venues)))
 
 (defn venues-query-with-last-stage [m]

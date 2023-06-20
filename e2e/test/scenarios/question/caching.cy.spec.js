@@ -6,7 +6,7 @@ import {
   rightSidebar,
   popover,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describeEE("scenarios > question > caching", () => {
   beforeEach(() => {
@@ -16,7 +16,7 @@ describeEE("scenarios > question > caching", () => {
   });
 
   it("can set cache ttl for a saved question", () => {
-    cy.intercept("PUT", `/api/card${ORDERS_QUESTION_ID}`).as("updateQuestion");
+    cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as("updateQuestion");
     visitQuestion(ORDERS_QUESTION_ID);
 
     questionInfoButton().click();

@@ -1,5 +1,5 @@
 import { restore, enterCustomColumnDetails } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const ccName = "CTax";
 
@@ -11,7 +11,7 @@ describe.skip("issue 28193", () => {
     cy.signInAsAdmin();
 
     // Turn the question into a model
-    cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
   });
 
   it("should be able to use custom column in a model query (metabase#28193)", () => {

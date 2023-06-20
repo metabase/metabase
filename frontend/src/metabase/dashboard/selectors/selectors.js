@@ -155,21 +155,22 @@ const getIsParameterValuesEmpty = createSelector(
 
 export const getCanShowAutoApplyFiltersToast = createSelector(
   [
-    getDashboardId,
+    getDashboard,
     getAutoApplyFiltersToastDashboardId,
     getIsAutoApplyFilters,
     getIsSlowDashboard,
     getIsParameterValuesEmpty,
   ],
   (
-    dashboardId,
+    dashboard,
     toastDashboardId,
     isAutoApply,
     isSlowDashboard,
     isParameterValuesEmpty,
   ) => {
     return (
-      dashboardId !== toastDashboardId &&
+      dashboard.can_write &&
+      dashboard.id !== toastDashboardId &&
       isAutoApply &&
       isSlowDashboard &&
       !isParameterValuesEmpty

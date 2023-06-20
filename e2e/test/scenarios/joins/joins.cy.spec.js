@@ -9,6 +9,7 @@ import {
   visitQuestionAdhoc,
   enterCustomColumnDetails,
   openProductsTable,
+  selectSavedQuestionsToJoin,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -32,9 +33,6 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should allow joins on tables (metabase#11452, metabase#12221, metabase#13468, metabase#15570)", () => {
-    // Pluralization isn't reliable so we have to guard against it
-    const joinedTable = new RegExp(/Reviews? - Products?/);
-
     openOrdersTable({ mode: "notebook" });
 
     // join to Reviews on orders.product_id = reviews.product_id
@@ -57,7 +55,13 @@ describe("scenarios > question > joined questions", () => {
     filter();
 
     cy.get(".Modal").within(() => {
+      // Temporal compat between MLv1 and MLv2
+      // MLv2 does a better job naming joined tables,
+      // but simple mode's summarization sidebar still uses MLv1
+      // Once it's ported, we should just look for "Review"
+      const joinedTable = new RegExp(/Reviews? - Products?/);
       cy.findByText(joinedTable).click();
+
       cy.findByTestId("filter-field-Rating").contains("2").click();
       cy.button("Apply Filters").click();
       cy.wait("@dataset");
@@ -72,12 +76,12 @@ describe("scenarios > question > joined questions", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Average of ...").click();
-    popover().contains(joinedTable).click();
+    popover().contains("Review").click();
     popover().contains("Rating").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
-    popover().contains(joinedTable).click();
+    popover().contains("Review").click();
     popover().contains("Reviewer").click();
 
     visualize();
@@ -118,18 +122,7 @@ describe("scenarios > question > joined questions", () => {
 
     // start a custom question with question a
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("question a").click();
-
-    // join to question b
-    cy.icon("join_left_outer").click();
-
-    popover().within(() => {
-      cy.findByTextEnsureVisible("Saved Questions").click();
-      cy.findByText("question b").click();
-    });
+    selectSavedQuestionsToJoin("question a", "question b");
 
     // select the join columns
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -221,10 +214,6 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should join saved questions that themselves contain joins (metabase#12928)", () => {
-    cy.intercept("GET", "/api/table/card__*/query_metadata").as(
-      "cardQueryMetadata",
-    );
-
     // Save Question 1
     cy.createQuestion({
       name: "12928_Q1",
@@ -284,22 +273,7 @@ describe("scenarios > question > joined questions", () => {
 
     // Join two previously saved questions
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("12928_Q1").click();
-    cy.wait("@cardQueryMetadata");
-
-    cy.icon("join_left_outer").click();
-
-    popover().within(() => {
-      cy.findByTextEnsureVisible("Saved Questions").click();
-    });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("12928_Q2").click();
-    cy.wait("@cardQueryMetadata");
+    selectSavedQuestionsToJoin("12928_Q1", "12928_Q2");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(/Products? → Category/).click();

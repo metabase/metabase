@@ -1,4 +1,3 @@
-/* eslint-disable react/display-name */
 import type { StoryObj } from "@storybook/react";
 import styled from "@emotion/styled";
 import { Icon } from "./Icon";

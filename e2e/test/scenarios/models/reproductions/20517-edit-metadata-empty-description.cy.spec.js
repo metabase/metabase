@@ -1,14 +1,14 @@
 import { restore } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("issue 20517", () => {
   beforeEach(() => {
-    cy.intercept("PUT", `/api/card${ORDERS_QUESTION_ID}`).as("updateCard");
+    cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as("updateCard");
 
     restore();
     cy.signInAsAdmin();
 
-    cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
   });
 
   it("should be able to save metadata changes with empty description (metabase#20517)", () => {

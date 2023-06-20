@@ -199,6 +199,7 @@
       (is (=? result-query
               (-> q
                   (lib/aggregate {:operator :sum
+                                  :lib/type :lib/external-op
                                   :args [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))]})
                   (dissoc :lib/metadata)))))))
 
@@ -521,6 +522,73 @@
                  {:display-name "double-price"
                   :selected true}]
                 (map #(lib/display-info query %) (-> selected-operators second :columns))))))))
+
+(deftest ^:parallel selected-aggregation-operator-with-temporal-bucket-test
+  (testing "aggregating temporal bucketed fields keeps temporal bucket and selectedness info (#31555)"
+    (let [query (-> (lib/query-for-table-name meta/metadata-provider "CHECKINS")
+                    (lib/aggregate (lib/max (lib/with-temporal-bucket (lib/field "CHECKINS" "DATE") :quarter))))
+          aggregations (lib/aggregations query)
+          aggregation-operators (lib/available-aggregation-operators query)]
+      (testing "selected-aggregation-operators w/o column"
+        (is (=? [{:lib/type :mbql.aggregation/operator
+                  :short :max
+                  :selected? true
+                  :columns
+                  [{:display-name "ID"
+                    :effective-type :type/BigInteger
+                    :semantic-type :type/PK
+                    :lib/source :source/table-defaults}
+                   {:display-name "Date"
+                    :effective-type :type/Date
+                    :lib/source :source/table-defaults
+                    :metabase.lib.field/temporal-unit :quarter
+                    :selected? true}
+                   {:display-name "User ID"
+                    :effective-type :type/Integer
+                    :semantic-type :type/FK
+                    :lib/source :source/table-defaults}
+                   {:display-name "Venue ID"
+                    :effective-type :type/Integer
+                    :semantic-type :type/FK
+                    :lib/source :source/table-defaults}
+                   {:display-name "ID"
+                    :effective-type :type/BigInteger
+                    :semantic-type :type/PK
+                    :lib/source :source/implicitly-joinable}
+                   {:display-name "Name"
+                    :effective-type :type/Text
+                    :semantic-type :type/Name
+                    :lib/source :source/implicitly-joinable}
+                   {:display-name "Last Login"
+                    :effective-type :type/DateTime
+                    :semantic-type nil
+                    :lib/source :source/implicitly-joinable}
+                   {:display-name "ID"
+                    :effective-type :type/BigInteger
+                    :semantic-type :type/PK
+                    :lib/source :source/implicitly-joinable}
+                   {:display-name "Name"
+                    :effective-type :type/Text
+                    :semantic-type :type/Name
+                    :lib/source :source/implicitly-joinable}
+                   {:display-name "Category ID"
+                    :effective-type :type/Integer
+                    :semantic-type :type/FK
+                    :lib/source :source/implicitly-joinable}
+                   {:display-name "Latitude"
+                    :effective-type :type/Float
+                    :semantic-type :type/Latitude
+                    :lib/source :source/implicitly-joinable}
+                   {:display-name "Longitude"
+                    :effective-type :type/Float
+                    :semantic-type :type/Longitude
+                    :lib/source :source/implicitly-joinable}
+                   {:display-name "Price"
+                    :effective-type :type/Integer
+                    :semantic-type :type/Category
+                    :lib/source :source/implicitly-joinable}]}]
+                (->> (lib/selected-aggregation-operators aggregation-operators (first aggregations))
+                     (filterv :selected?))))))))
 
 (deftest ^:parallel preserve-field-settings-metadata-test
   (testing "Aggregation metadata should return the `:settings` for the field being aggregated, for some reason."

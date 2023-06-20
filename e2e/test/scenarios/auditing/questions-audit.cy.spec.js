@@ -4,7 +4,7 @@ import {
   ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
-} from "e2e/support/cypress_data";
+} from "e2e/support/cypress_sample_instance_data";
 
 describeEE("audit > auditing > questions", () => {
   beforeEach(() => {

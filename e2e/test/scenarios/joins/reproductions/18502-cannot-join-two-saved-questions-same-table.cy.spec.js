@@ -1,8 +1,8 @@
 import {
   restore,
-  popover,
   visualize,
   startNewQuestion,
+  selectSavedQuestionsToJoin,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -26,18 +26,7 @@ describe("issue 18502", () => {
     cy.createQuestion(question2);
 
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("18502#1").click();
-    cy.icon("join_left_outer").click();
-    cy.wait("@getCollectionContent");
-
-    popover().within(() => {
-      cy.findByTextEnsureVisible("Saved Questions").click();
-      cy.findByText("18502#2").click();
-    });
+    selectSavedQuestionsToJoin("18502#1", "18502#2");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At").click();

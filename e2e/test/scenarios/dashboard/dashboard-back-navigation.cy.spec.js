@@ -16,7 +16,8 @@ import {
   visualize,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { SAMPLE_DB_ID, ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const PG_DB_ID = 2;
@@ -90,7 +91,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
 
   it("should display a back to the dashboard button in model x-ray dashboards", () => {
     const cardTitle = "Orders by Subtotal";
-    cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
     cy.visit("/auto/dashboard/model/1");
     cy.wait("@dataset");
 
@@ -420,15 +421,15 @@ const createDashboardWithPermissionError = () => {
   const dashcard1Details = {
     row: 0,
     col: 0,
-    size_x: 6,
-    size_y: 6,
+    size_x: 8,
+    size_y: 8,
   };
 
   const dashcard2Details = {
     row: 0,
-    col: 6,
-    size_x: 6,
-    size_y: 6,
+    col: 8,
+    size_x: 8,
+    size_y: 8,
   };
 
   cy.createQuestion(question1Details).then(({ body: { id: card_id_1 } }) => {

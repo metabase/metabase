@@ -9,9 +9,15 @@ import {
   openQuestionActions,
   questionInfoButton,
   getPersonalCollectionName,
+  describeWithSnowplow,
+  resetSnowplow,
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectGoodSnowplowEvents,
 } from "e2e/support/helpers";
 
-import { USERS, ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
+import { USERS } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -30,7 +36,7 @@ describe("managing question from the question's details sidebar", () => {
         onlyOn(permission === "curate", () => {
           describe(`${user} user`, () => {
             beforeEach(() => {
-              cy.intercept("PUT", `/api/card${ORDERS_QUESTION_ID}`).as(
+              cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as(
                 "updateQuestion",
               );
 
@@ -249,6 +255,35 @@ describe("managing question from the question's details sidebar", () => {
         });
       });
     });
+  });
+});
+
+describeWithSnowplow("send snowplow question events", () => {
+  const NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_MODEL_CONVERSION = 2;
+
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+    enableTracking();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should send event when clicking `Turn into a model`", () => {
+    visitQuestion(1);
+    openQuestionActions();
+    expectGoodSnowplowEvents(
+      NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_MODEL_CONVERSION,
+    );
+    popover().within(() => {
+      cy.findByText("Turn into a model").click();
+    });
+    expectGoodSnowplowEvents(
+      NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_MODEL_CONVERSION + 1,
+    );
   });
 });
 

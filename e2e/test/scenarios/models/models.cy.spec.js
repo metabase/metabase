@@ -19,11 +19,12 @@ import {
   openQuestionsSidebar,
 } from "e2e/support/helpers";
 
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
-  SAMPLE_DB_ID,
   ORDERS_QUESTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
-} from "e2e/support/cypress_data";
+} from "e2e/support/cypress_sample_instance_data";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { questionInfoButton } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
@@ -167,8 +168,8 @@ describe("scenarios > models", () => {
   });
 
   it("allows to turn a model back into a saved question", () => {
-    cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { dataset: true });
-    cy.intercept("PUT", `/api/card${ORDERS_QUESTION_ID}`).as("cardUpdate");
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as("cardUpdate");
     cy.visit(`/model/${ORDERS_QUESTION_ID}`);
 
     openQuestionActions();
@@ -197,7 +198,7 @@ describe("scenarios > models", () => {
   });
 
   it("redirects to /model URL when opening a model with /question URL", () => {
-    cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
     // Important - do not use visitQuestion(ORDERS_QUESTION_ID) here!
     cy.visit("/question/" + ORDERS_QUESTION_ID);
     cy.wait("@dataset");
@@ -209,7 +210,7 @@ describe("scenarios > models", () => {
   describe("data picker", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/search*").as("search");
-      cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { dataset: true });
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
     });
 
     it("transforms the data picker", () => {
@@ -316,7 +317,7 @@ describe("scenarios > models", () => {
 
   describe("simple mode", () => {
     beforeEach(() => {
-      cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, {
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
         name: "Orders Model",
         dataset: true,
       });
@@ -392,7 +393,7 @@ describe("scenarios > models", () => {
     });
 
     it("can edit model info", () => {
-      cy.intercept("PUT", `/api/card${ORDERS_QUESTION_ID}`).as("updateCard");
+      cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as("updateCard");
       cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
@@ -520,7 +521,7 @@ describe("scenarios > models", () => {
 
   describe("listing", () => {
     beforeEach(() => {
-      cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, {
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
         name: "Orders Model",
         dataset: true,
       });

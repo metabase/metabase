@@ -65,7 +65,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.wait("@cardQuery");
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.findByText("Rows 1-5 of 53").should("be.visible");
     });
 
     // parameter values should be preserved when disabling auto applying filters
@@ -81,7 +81,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.findByText("Gadget").should("be.visible");
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.findByText("Rows 1-4 of 53").should("be.visible");
     });
 
     // draft parameter values should be applied manually
@@ -93,14 +93,14 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.button("Update filter").click();
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.findByText("Rows 1-4 of 53").should("be.visible");
     });
     dashboardParametersContainer().within(() => {
       cy.button("Apply").click();
       cy.wait("@cardQuery");
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 107").should("be.visible");
+      cy.findByText("Rows 1-4 of 107").should("be.visible");
     });
 
     // draft parameter values should be discarded when enabling auto-applying filters
@@ -231,7 +231,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.findByText("Gadget").should("be.visible");
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.findByText("Rows 1-4 of 53").should("be.visible");
     });
   });
 
@@ -247,7 +247,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.findByText("Gadget").should("be.visible");
     });
     getDashboardCard().within(() => {
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
+      cy.findByText("Rows 1-5 of 53").should("be.visible");
     });
   });
 
@@ -283,6 +283,34 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     cy.tick(TOAST_TIMEOUT);
     cy.wait("@cardQuery");
     undoToast().should("not.exist");
+  });
+
+  describe("no collection curate permission", () => {
+    beforeEach(() => {
+      createDashboard();
+      cy.signIn("readonly");
+    });
+
+    it("should not be able to toggle auto-apply filters toggle", () => {
+      openDashboard();
+      cy.wait("@cardQuery");
+
+      dashboardHeader().within(() => {
+        cy.icon("info").click();
+      });
+      rightSidebar().within(() => {
+        cy.findByLabelText("Auto-apply filters").should("be.disabled");
+      });
+    });
+
+    it("should not display a toast even when a dashboard takes longer than 15s to load", () => {
+      cy.clock();
+      openSlowDashboard({ [FILTER.slug]: "Gadget" });
+
+      cy.tick(TOAST_TIMEOUT);
+      cy.wait("@cardQuery");
+      undoToast().should("not.exist");
+    });
   });
 });
 

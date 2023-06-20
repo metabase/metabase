@@ -1,11 +1,19 @@
 (ns metabase.lib.js
-  "JavaScript-friendly interface to the entire Metabase lib? This stuff will probably change a bit as MLv2 evolves."
+  "JavaScript-friendly interface to the entire Metabase lib? This stuff will probably change a bit as MLv2 evolves.
+
+  Note that in JS we've made the decision to make the stage number always be required as an explicit parameter, so we
+  DO NOT need to expose the `stage-index = -1` arities of functions below. Generally we probably only need to export
+  one arity... see TypeScript wrappers for actual usage."
+  (:refer-clojure
+   :exclude
+   [filter])
   (:require
    [medley.core :as m]
    [metabase.lib.convert :as convert]
    [metabase.lib.core :as lib.core]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.stage :as lib.stage]
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
@@ -83,10 +91,10 @@
   As an example of such a value, `(get-in card [:template-tags \"some-tag\" :widget-type])` can be `:date/all-options`."
   [x]
   (cond
-    (qualified-keyword? x)    (str (namespace x) "/" (name x))
-    (map? x)                  (update-vals x fix-namespaced-values)
-    (sequential? x)           (map fix-namespaced-values x)
-    :else                     x))
+    (qualified-keyword? x) (str (namespace x) "/" (name x))
+    (map? x)               (update-vals x fix-namespaced-values)
+    (sequential? x)        (map fix-namespaced-values x)
+    :else                  x))
 
 (defn ^:export legacy-query
   "Coerce a CLJS pMBQL query back to (1) a legacy query (2) in vanilla JS."
@@ -106,48 +114,36 @@
 (defn ^:export orderable-columns
   "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To
   add an order by, pass the result to [[order-by]]."
-  ([a-query]
-   (orderable-columns a-query -1))
-  ([a-query stage-number]
-   (to-array (lib.core/orderable-columns a-query stage-number))))
+  [a-query stage-number]
+  (to-array (lib.core/orderable-columns a-query stage-number)))
 
 (defn ^:export display-info
   "Given an opaque Cljs object, return a plain JS object with info you'd need to implement UI for it.
   See `:metabase.lib.metadata.calculation/display-info` for the keys this might contain. Note that the JS versions of
   the keys are converted to the equivalent `camelCase` strings from the original `:kebab-case`."
-  ([a-query x]
-   (display-info a-query -1 x))
-  ([a-query stage-number x]
-   (-> (lib.core/display-info a-query stage-number x)
-       (update-keys u/->camelCaseEn)
-       (update :table update-keys u/->camelCaseEn)
-       (clj->js :keyword-fn u/qualified-name))))
+  [a-query stage-number x]
+  (-> a-query
+      (lib.stage/ensure-previous-stages-have-metadata stage-number)
+      (lib.core/display-info stage-number x)
+      (update-keys u/->camelCaseEn)
+      (update :table update-keys u/->camelCaseEn)
+      (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
-  ([a-query stage-number x]
-   (order-by-clause a-query stage-number x nil))
-  ([a-query stage-number x direction]
-   (lib.core/order-by-clause a-query stage-number (lib.core/normalize (js->clj x :keywordize-keys true)) direction)))
+  [a-query stage-number x direction]
+  (lib.core/order-by-clause a-query stage-number (lib.core/normalize (js->clj x :keywordize-keys true)) direction))
 
 (defn ^:export order-by
   "Add an `order-by` clause to `a-query`. Returns updated query."
-  ([a-query x]
-   (order-by a-query -1 x nil))
-
-  ([a-query x direction]
-   (order-by a-query -1 x direction))
-
-  ([a-query stage-number x direction]
-   (lib.core/order-by a-query stage-number x (keyword direction))))
+  [a-query stage-number x direction]
+  (lib.core/order-by a-query stage-number x (keyword direction)))
 
 (defn ^:export order-bys
   "Get the order-by clauses (as an array of opaque objects) in `a-query` at a given `stage-number`.
   Returns an empty array if there are no order bys in the query."
-  ([a-query]
-   (order-bys a-query -1))
-  ([a-query stage-number]
-   (to-array (lib.core/order-bys a-query stage-number))))
+  [a-query stage-number]
+  (to-array (lib.core/order-bys a-query stage-number)))
 
 (defn ^:export change-direction
   "Flip the direction of `current-order-by` in `a-query`."
@@ -158,25 +154,19 @@
   "Return an array of Column metadatas about the columns that can be broken out by in a given stage of `a-query.`
   To break out by a given column, the corresponding element of the result has to be added to the query using
   [[breakout]]."
-  ([a-query]
-   (breakoutable-columns a-query -1))
-  ([a-query stage-number]
-   (to-array (lib.core/breakoutable-columns a-query stage-number))))
+  [a-query stage-number]
+  (to-array (lib.core/breakoutable-columns a-query stage-number)))
 
 (defn ^:export breakouts
   "Get the breakout clauses (as an array of opaque objects) in `a-query` at a given `stage-number`.
   Returns an empty array if there are no order bys in the query."
-  ([a-query]
-   (breakouts a-query -1))
-  ([a-query stage-number]
-   (to-array (lib.core/breakouts a-query stage-number))))
+  [a-query stage-number]
+  (to-array (lib.core/breakouts a-query stage-number)))
 
 (defn ^:export breakout
   "Add an `order-by` clause to `a-query`. Returns updated query."
-  ([a-query x]
-   (breakout a-query -1 x))
-  ([a-query stage-number x]
-   (lib.core/breakout a-query stage-number (lib.core/ref x))))
+  [a-query stage-number x]
+  (lib.core/breakout a-query stage-number (lib.core/ref x)))
 
 (defn ^:export binning
   "Retrieve the current binning state of a `:field` clause, field metadata, etc. as an opaque object, or `nil` if it
@@ -226,22 +216,18 @@
 
 (defn ^:export remove-clause
   "Removes the `target-clause` in the filter of the `query`."
-  ([a-query clause]
-   (remove-clause a-query -1 clause))
-  ([a-query stage-number clause]
-   (lib.core/remove-clause
-     a-query stage-number
-     (lib.core/normalize (js->clj clause :keywordize-keys true)))))
+  [a-query stage-number clause]
+  (lib.core/remove-clause
+   a-query stage-number
+   (lib.core/normalize (js->clj clause :keywordize-keys true))))
 
 (defn ^:export replace-clause
   "Replaces the `target-clause` with `new-clause` in the `query` stage."
-  ([a-query target-clause new-clause]
-   (replace-clause a-query -1 target-clause new-clause))
-  ([a-query stage-number target-clause new-clause]
-   (lib.core/replace-clause
-     a-query stage-number
-     (lib.core/normalize (js->clj target-clause :keywordize-keys true))
-     (lib.core/normalize (js->clj new-clause :keywordize-keys true)))))
+  [a-query stage-number target-clause new-clause]
+  (lib.core/replace-clause
+   a-query stage-number
+   (lib.core/normalize (js->clj target-clause :keywordize-keys true))
+   (lib.core/normalize (js->clj new-clause :keywordize-keys true))))
 
 (defn- prep-query-for-equals [a-query field-ids]
   (-> a-query
@@ -325,17 +311,13 @@
 
 (defn ^:export aggregate
   "Adds an aggregation to query."
-  ([a-query an-aggregate-clause]
-   (aggregate a-query -1 an-aggregate-clause))
-  ([a-query stage-number an-aggregate-clause]
-   (lib.core/aggregate a-query stage-number an-aggregate-clause)))
+  [a-query stage-number an-aggregate-clause]
+  (lib.core/aggregate a-query stage-number an-aggregate-clause))
 
 (defn ^:export aggregations
   "Get the aggregations in a given stage of a query."
-  ([a-query]
-   (aggregations a-query -1))
-  ([a-query stage-number]
-   (to-array (lib.core/aggregations a-query stage-number))))
+  [a-query stage-number]
+  (to-array (lib.core/aggregations a-query stage-number)))
 
 (defn ^:export aggregation-clause
   "Returns a standalone aggregation clause for an `aggregation-operator` and
@@ -351,10 +333,8 @@
   "Get the available aggregation operators for the stage with `stage-number` of
   the query `a-query`.
   If `stage-number` is omitted, the last stage is used."
-  ([a-query]
-   (available-aggregation-operators a-query -1))
-  ([a-query stage-number]
-   (to-array (lib.core/available-aggregation-operators a-query stage-number))))
+  [a-query stage-number]
+  (to-array (lib.core/available-aggregation-operators a-query stage-number)))
 
 (defn ^:export aggregation-operator-columns
   "Get the columns `aggregation-operator` can be applied to.
@@ -369,13 +349,9 @@
   (to-array (lib.core/selected-aggregation-operators (seq agg-operators) agg-clause)))
 
 (defn ^:export filterable-columns
-  "Get the available filterable columns for the stage with `stage-number` of
-  the query `a-query`.
-  If `stage-number` is omitted, the last stage is used."
-  ([a-query]
-   (filterable-columns a-query -1))
-  ([a-query stage-number]
-   (to-array (lib.core/filterable-columns a-query stage-number))))
+  "Get the available filterable columns for the stage with `stage-number` of the query `a-query`."
+  [a-query stage-number]
+  (to-array (lib.core/filterable-columns a-query stage-number)))
 
 (defn ^:export filterable-column-operators
   "Returns the operators for which `filterable-column` is applicable."
@@ -388,20 +364,29 @@
   [filter-operator column & args]
   (apply lib.core/filter-clause filter-operator column args))
 
+(defn ^:export filter
+  "Sets `boolean-expression` as a filter on `query`."
+  [a-query stage-number boolean-expression]
+  (lib.core/filter a-query stage-number (js->clj boolean-expression :keywordize-keys true)))
+
+(defn ^:export filters
+  "Returns the current filters in stage with `stage-number` of `query`.
+  Logicaly, the filter attached to the query is the conjunction of the expressions
+  in the returned list. If the returned list is empty, then there is no filter
+  attached to the query."
+  [a-query stage-number]
+  (to-array (lib.core/filters a-query stage-number)))
+
 (defn ^:export fields
   "Get the current `:fields` in a query. Unlike the lib core version, this will return an empty sequence if `:fields` is
   not specified rather than `nil` for JS-friendliness."
-  ([a-query]
-   (fields a-query -1))
-  ([a-query stage-number]
-   (to-array (lib.core/fields a-query stage-number))))
+  [a-query stage-number]
+  (to-array (lib.core/fields a-query stage-number)))
 
 (defn ^:export with-fields
   "Specify the `:fields` for a query. Pass an empty sequence or `nil` to remove `:fields`."
-  ([a-query new-fields]
-   (with-fields a-query -1 new-fields))
-  ([a-query stage-number new-fields]
-   (lib.core/with-fields a-query stage-number new-fields)))
+  [a-query stage-number new-fields]
+  (lib.core/with-fields a-query stage-number new-fields))
 
 (defn ^:export fieldable-columns
   "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query."
@@ -439,7 +424,7 @@
 
 (defn ^:export join-condition-rhs-columns
   "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
-  is the one that belongs to the thing being joined, `joined-thing`, which can be something like a
+  is the one that belongs to the thing being joined, `joinable`, which can be something like a
   Table ([[metabase.lib.metadata/TableMetadata]]), Saved Question/Model ([[metabase.lib.metadata/CardMetadata]]),
   another query, etc. -- anything you can pass to [[join-clause]].
 
@@ -447,8 +432,8 @@
   pass in the chosen LHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
 
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns."
-  [a-query stage-number joined-thing lhs-column-or-nil]
-  (to-array (lib.core/join-condition-rhs-columns a-query stage-number joined-thing lhs-column-or-nil)))
+  [a-query stage-number joinable lhs-column-or-nil]
+  (to-array (lib.core/join-condition-rhs-columns a-query stage-number joinable lhs-column-or-nil)))
 
 (defn ^:export join-condition-operators
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
@@ -459,17 +444,13 @@
 
 (defn ^:export expression
   "Adds an expression to query."
-  ([a-query expression-name an-expression-clause]
-   (expression a-query -1 expression-name an-expression-clause))
-  ([a-query stage-number expression-name an-expression-clause]
-   (lib.core/expression a-query stage-number expression-name an-expression-clause)))
+  [a-query stage-number expression-name an-expression-clause]
+  (lib.core/expression a-query stage-number expression-name an-expression-clause))
 
 (defn ^:export expressions
   "Get the expressions map from a given stage of a `query`."
-  ([a-query]
-   (expressions a-query -1))
-  ([a-query stage-number]
-   (to-array (lib.core/expressions a-query stage-number))))
+  [a-query stage-number]
+  (to-array (lib.core/expressions a-query stage-number)))
 
 (defn ^:export expressionable-columns
   "Return an array of Column metadatas about the columns that can be used in an expression in a given stage of `a-query`.
@@ -478,3 +459,48 @@
    (expressionable-columns a-query expression-position))
   ([a-query stage-number expression-position]
    (to-array (lib.core/expressionable-columns a-query stage-number expression-position))))
+
+(defn ^:export suggested-join-condition
+  "Return a suggested default join condition when constructing a join against `joinable`, e.g. a Table, Saved
+  Question, or another query. A suggested condition will be returned if the source Table has a foreign key to the
+  primary key of the thing we're joining (see #31175 for more info); otherwise this will return `nil` if no default
+  condition is suggested."
+  [a-query stage-number joinable]
+  (lib.core/suggested-join-condition a-query stage-number joinable))
+
+(defn ^:export join-fields
+  "Get the join conditions for a given join."
+  [a-join]
+  (to-array (lib.core/join-fields a-join)))
+
+(defn ^:export with-join-fields
+  "Set the `:fields` for `a-join`."
+  [a-join new-fields]
+  (lib.core/with-join-fields a-join new-fields))
+
+(defn ^:export join-clause
+  "Create a join clause (an `:mbql/join` map) against something `joinable` (Table metadata, a Saved Question, another
+  query, etc.) with `conditions`, which should be an array of filter clauses. You can then manipulate this join clause
+  with stuff like [[with-join-fields]], or add it to a query with [[join]]."
+  [a-query stage-number joinable conditions]
+  (lib.core/join-clause a-query stage-number joinable conditions))
+
+(defn ^:export join
+  "Add a join clause (as created by [[join-clause]]) to a stage of a query."
+  [a-query stage-number a-join]
+  (lib.core/join a-query stage-number a-join))
+
+(defn ^:export join-conditions
+  "Get the conditions (filter clauses) associated with a join."
+  [a-join]
+  (to-array (lib.core/join-conditions a-join)))
+
+(defn ^:export with-join-conditions
+  "Set the `:conditions` (filter clauses) for a join."
+  [a-join conditions]
+  (lib.core/with-join-conditions a-join (js->clj conditions :keywordize-keys true)))
+
+(defn ^:export joins
+  "Get the joins associated with a particular query stage."
+  [a-query stage-number]
+  (to-array (lib.core/joins a-query stage-number)))

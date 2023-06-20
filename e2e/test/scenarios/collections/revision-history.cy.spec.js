@@ -9,7 +9,7 @@ import {
   openQuestionsSidebar,
 } from "e2e/support/helpers";
 
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -58,7 +58,7 @@ describe("revision history", () => {
             beforeEach(() => {
               cy.signInAsAdmin();
               // Generate some history for the question
-              cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, {
+              cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
                 name: "Orders renamed",
               });
 

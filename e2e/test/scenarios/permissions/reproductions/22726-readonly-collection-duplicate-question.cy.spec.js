@@ -5,11 +5,8 @@ import {
   openQuestionActions,
   getFullName,
 } from "e2e/support/helpers";
-import {
-  USERS,
-  USER_GROUPS,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_data";
+import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { nocollection } = USERS;
 

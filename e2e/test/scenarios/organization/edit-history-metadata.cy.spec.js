@@ -1,5 +1,6 @@
 import { restore, visitQuestion, visitDashboard } from "e2e/support/helpers";
-import { USERS, ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
+import { USERS } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > collection items metadata", () => {
   beforeEach(() => {
