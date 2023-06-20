@@ -75,6 +75,7 @@ export function DashboardInfoSidebar({
   );
 
   const autoApplyFilterToggleId = useUniqueId();
+  const canWrite = dashboard.can_write;
 
   return (
     <DashboardInfoSidebarRoot data-testid="sidebar-right">
@@ -82,7 +83,7 @@ export function DashboardInfoSidebar({
         <DescriptionHeader>{t`About`}</DescriptionHeader>
         <EditableText
           initialValue={dashboard.description}
-          isDisabled={!dashboard.can_write}
+          isDisabled={!canWrite}
           onChange={handleDescriptionChange}
           isMultiline
           isMarkdown
@@ -98,6 +99,7 @@ export function DashboardInfoSidebar({
           htmlFor={autoApplyFilterToggleId}
         >
           <Toggle
+            disabled={!canWrite}
             id={autoApplyFilterToggleId}
             value={dashboard.auto_apply_filters}
             onChange={handleToggleAutoApplyFilters}
@@ -119,7 +121,7 @@ export function DashboardInfoSidebar({
           events={getTimelineEvents({ revisions, currentUser })}
           data-testid="dashboard-history-list"
           revert={revision => dispatch(revertToRevision(revision))}
-          canWrite={dashboard.can_write}
+          canWrite={canWrite}
         />
       </ContentSection>
     </DashboardInfoSidebarRoot>

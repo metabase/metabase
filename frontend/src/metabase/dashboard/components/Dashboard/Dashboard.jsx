@@ -49,7 +49,6 @@ class Dashboard extends Component {
     isFullscreen: PropTypes.bool,
     isNightMode: PropTypes.bool,
     isSharing: PropTypes.bool,
-    isEditable: PropTypes.bool,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
@@ -104,7 +103,6 @@ class Dashboard extends Component {
   };
 
   static defaultProps = {
-    isEditable: true,
     isSharing: false,
   };
 
