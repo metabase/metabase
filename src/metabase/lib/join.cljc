@@ -583,5 +583,4 @@
     joinable]
    (when-let [pk-col (pk-column query stage-number joinable)]
      (when-let [fk-col (fk-column-for query stage-number pk-col)]
-       (lib.common/->op-arg
-        (lib.filter/filter-clause (equals-join-condition-operator-definition) fk-col pk-col))))))
+       (lib.filter/filter-clause (equals-join-condition-operator-definition) fk-col pk-col)))))

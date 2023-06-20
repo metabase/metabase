@@ -8,8 +8,9 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -316,15 +317,11 @@
              (keep with-operators)
              columns)))))
 
-;;; TODO -- this should return a plain MBQL clause rather than an external op form; people can convert to external op
-;;; as needed using [[metabase.lib.common/external-op]]. See
-;;; https://metaboat.slack.com/archives/C04CYTEL9N2/p1686941960566759
-(mu/defn filter-clause :- ::lib.schema.common/external-op
+(mu/defn filter-clause :- ::lib.schema.expression/boolean
   "Returns a standalone filter clause for a `filter-operator`,
   a `column`, and arguments."
   [filter-operator :- ::lib.schema.filter/operator
    column :- lib.metadata/ColumnMetadata
    & args]
-  {:lib/type :lib/external-op
-   :operator (:short filter-operator)
-   :args (into [column] args)})
+  (lib.options/ensure-uuid (into [(:short filter-operator) {} (lib.common/->op-arg column)]
+                                 (map lib.common/->op-arg args))))
