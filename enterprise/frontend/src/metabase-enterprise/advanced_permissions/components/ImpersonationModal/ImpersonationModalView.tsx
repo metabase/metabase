@@ -13,6 +13,7 @@ import Alert from "metabase/core/components/Alert";
 import FormFooter from "metabase/core/components/FormFooter";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink/ExternalLink";
+import Link from "metabase/core/components/Link/Link";
 import Database from "metabase-lib/metadata/Database";
 import { ImpersonationWarning } from "../ImpersonationWarning";
 import {
@@ -96,10 +97,16 @@ export const ImpersonationModalView = ({
         </FormProvider>
       ) : (
         <>
-          <Alert icon="info">{t`You don't have any user attributes yet.`}</Alert>
+          <Alert icon="warning" variant="warning">
+            {t`To associate a user with a database role, you'll need to give that user at least one user attribute.`}{" "}
+            <Link
+              className="link"
+              to="/admin/people"
+            >{t`Edit user settings`}</Link>
+          </Alert>
 
           <FormFooter>
-            <Button type="button" onClick={onCancel}>{t`Got it`}</Button>
+            <Button type="button" onClick={onCancel}>{t`Close`}</Button>
           </FormFooter>
         </>
       )}
