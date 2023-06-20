@@ -60,7 +60,7 @@ const ScalarValue = ({
 };
 
 export const ScalarTitle = ({ lines = 2, title, description, onClick }) => (
-  <ScalarTitleContainer>
+  <ScalarTitleContainer lines={lines}>
     {/*
       This is a hacky spacer so that the h3 is centered correctly.
       It needs match the width of the tooltip icon on the other side.

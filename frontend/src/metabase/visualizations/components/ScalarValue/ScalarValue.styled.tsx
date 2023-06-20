@@ -2,6 +2,8 @@ import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 
+const TITLE_LINE_HEIGHT_REM = 1.4;
+
 export const ScalarRoot = styled.div`
   position: relative;
   display: flex;
@@ -28,8 +30,13 @@ export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
   font-size: ${props => props.fontSize};
 `;
 
-export const ScalarTitleContainer = styled.div`
-  line-height: 1.4rem;
+interface ScalarTitleContainerProps {
+  lines: number;
+}
+
+export const ScalarTitleContainer = styled.div<ScalarTitleContainerProps>`
+  line-height: ${TITLE_LINE_HEIGHT_REM}rem;
+  height: ${props => props.lines * TITLE_LINE_HEIGHT_REM}rem;
   display: flex;
   justify-content: center;
   padding: 0 1rem;
