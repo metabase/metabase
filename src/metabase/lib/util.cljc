@@ -500,7 +500,7 @@
                     query stage-number
                     update location
                     (fn [summary-clauses]
-                      (conj (vec summary-clauses) (lib.common/->op-arg query stage-number a-summary-clause))))]
+                      (conj (vec summary-clauses) (lib.common/->op-arg a-summary-clause))))]
     (if new-summary?
       (-> new-query
           (update-query-stage

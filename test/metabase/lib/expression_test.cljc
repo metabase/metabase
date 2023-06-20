@@ -23,16 +23,16 @@
                      :expressions [[:+ {:lib/uuid string? :lib/expression-name "myadd"}
                                     1
                                     [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]]}]}
-          (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-              (lib/expression "myadd" (lib/+ 1 (lib/field "VENUES" "CATEGORY_ID")))
+          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+              (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id)))
               (dissoc :lib/metadata)))))
 
 (deftest ^:parallel expression-validation-tests
-  (let [int-field (lib/field "VENUES" "CATEGORY_ID")
-        string-field (lib/field "VENUES" "NAME")
-        float-field (lib/field "VENUES" "LATITUDE")
-        dt-field (lib/field "USERS" "LAST_LOGIN")
-        #_#_boolean-field (lib/->= 1 (lib/field "VENUES" "CATEGORY_ID"))]
+  (let [int-field (meta/field-metadata :venues :category-id)
+        string-field (meta/field-metadata :venues :name)
+        float-field (meta/field-metadata :venues :latitude)
+        dt-field (meta/field-metadata :users :last-login)
+        #_#_boolean-field (lib/->= 1 (meta/field-metadata :venues :category-id))]
     (doseq [[expr typ] (partition-all
                          2
                          [(lib/+ 1.1 2 int-field) :type/Number
@@ -76,7 +76,7 @@
                           (lib/upper string-field) :type/Text
                           (lib/lower string-field) :type/Text])]
       (testing (str "expression: " (pr-str expr))
-        (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                         (lib/expression "myexpr" expr))
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
           (testing (pr-str resolved)
@@ -240,13 +240,13 @@
   (testing "expressions should include the original expression name"
     (is (=? [{:name         "expr"
               :display-name "expr"}]
-            (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+            (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                 lib/expressions-metadata))))
   (testing "collisions with other column names are detected and rejected"
-    (let [query (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
           ex    (try
-                  (lib/expression query "ID" (lib/field "CATEGORIES" "NAME"))
+                  (lib/expression query "ID" (meta/field-metadata :categories :name))
                   nil
                   (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
                     e))]
@@ -263,20 +263,20 @@
             :name "expr",
             :display-name "expr",
             :lib/source :source/expressions}]
-          (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
               (lib/expression "expr" 100)
               (lib/expressions-metadata))))
   (is (=? [[:value {:lib/expression-name "expr" :effective-type :type/Integer} 100]]
-          (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
               (lib/expression "expr" 100)
               (lib/expressions))))
   (is (=? [[:value {:lib/expression-name "expr" :effective-type :type/Text} "value"]]
-          (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
               (lib/expression "expr" "value")
               (lib/expressions)))))
 
 (deftest ^:parallel expressionable-columns-test
-  (let [query (-> (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
                   (lib/expression "a" 1)
                   (lib/expression "b" 2))
         expressionable-expressions-for-position (fn [pos]

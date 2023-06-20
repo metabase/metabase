@@ -180,10 +180,6 @@
   [_query _stage-number expr]
   (lib.schema.expresssion/type-of expr))
 
-(defmethod type-of-method :dispatch-type/fn
-  [query stage-number f]
-  (type-of query stage-number (f query stage-number)))
-
 ;;; for MBQL clauses whose type is the same as the type of the first arg. Also used
 ;;; for [[metabase.lib.schema.expression/type-of]].
 (defmethod type-of-method :lib.type-of/type-is-type-of-first-arg
