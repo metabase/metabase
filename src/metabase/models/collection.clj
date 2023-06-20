@@ -94,7 +94,7 @@
 ;; assembling IDs into a location path, and so forth.
 
 (defn- unchecked-location-path->ids
-  "*** Don't use this directly! Instead use `location-path->ids`. ***
+  "*** Don't use this directly! Instead use [[location-path->ids]]. ***
 
   'Explode' a `location-path` into a sequence of Collection IDs, and parse them as integers. THIS DOES NOT VALIDATE
   THAT THE PATH OR RESULTS ARE VALID. This unchecked version exists solely to power the other version below."

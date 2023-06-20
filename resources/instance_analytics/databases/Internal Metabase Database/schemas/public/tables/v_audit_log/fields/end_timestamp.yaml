@@ -1,0 +1,52 @@
+description: null
+database_type: text
+semantic_type: null
+table_id:
+- Internal Metabase Database
+- public
+- v_audit_log
+coercion_strategy: null
+name: end_timestamp
+fingerprint_version: 5
+has_field_values: auto-list
+settings: null
+caveats: null
+fk_target_field_id: null
+dimensions: []
+custom_position: 0
+effective_type: type/Text
+active: true
+nfc_path: null
+parent_id: null
+last_analyzed: '2023-06-14T14:56:11.791911Z'
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: v_audit_log
+- model: Field
+  id: end_timestamp
+database_is_auto_increment: false
+json_unfolding: false
+position: 3
+visibility_type: normal
+preview_display: true
+display_name: End Timestamp
+database_position: 3
+database_required: false
+fingerprint:
+  global:
+    distinct-count: 1
+    nil%: 1.0
+  type:
+    type/Text:
+      percent-json: 0.0
+      percent-url: 0.0
+      percent-email: 0.0
+      percent-state: 0.0
+      average-length: 0.0
+created_at: '2023-06-14T14:56:02.702697Z'
+base_type: type/Text
+points_of_interest: null

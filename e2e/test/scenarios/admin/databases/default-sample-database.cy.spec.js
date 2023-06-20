@@ -1,6 +1,6 @@
 import { restore, popover, modal, describeEE } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import { visitDatabase } from "./helpers/e2e-database-helpers";
@@ -114,7 +114,7 @@ describe("scenarios > admin > databases > sample database", () => {
     );
     cy.intercept("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
     // model
-    cy.request("PUT", "/api/card/1", { dataset: true });
+    cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { dataset: true });
     // Create a segment through API
     cy.request("POST", "/api/segment", {
       name: "Small orders",

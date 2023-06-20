@@ -5,6 +5,8 @@ import {
   openNavigationSidebar,
   visitQuestion,
 } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
+
 import { getSidebarSectionTitle as getSectionTitle } from "e2e/support/helpers/e2e-collection-helpers";
 
 describe("scenarios > question > bookmarks", () => {
@@ -15,7 +17,7 @@ describe("scenarios > question > bookmarks", () => {
   });
 
   it("should add, update bookmark name when question name is updated, then remove bookmark from question page", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     toggleBookmark();
 
     openNavigationSidebar();

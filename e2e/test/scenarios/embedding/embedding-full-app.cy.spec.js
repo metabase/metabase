@@ -4,6 +4,7 @@ import {
   appBar,
   restore,
 } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 
 describe("scenarios > embedding > full app", () => {
   beforeEach(() => {
@@ -33,7 +34,10 @@ describe("scenarios > embedding > full app", () => {
     });
 
     it("should not hide the top nav when the logo is still visible", () => {
-      visitUrl({ url: "/question/1", qs: { breadcrumbs: false } });
+      visitUrl({
+        url: "/question/" + ORDERS_QUESTION_ID,
+        qs: { breadcrumbs: false },
+      });
       cy.findByTestId("main-logo").should("be.visible");
       appBar().within(() => {
         cy.findByText("Our analytics").should("not.exist");
@@ -119,7 +123,7 @@ describe("scenarios > embedding > full app", () => {
 
   describe("questions", () => {
     it("should show the question header by default", () => {
-      visitQuestionUrl({ url: "/question/1" });
+      visitQuestionUrl({ url: "/question/" + ORDERS_QUESTION_ID });
 
       cy.findByTestId("qb-header").should("be.visible");
       cy.findByTestId("qb-header-left-side").realHover();
@@ -134,13 +138,19 @@ describe("scenarios > embedding > full app", () => {
     });
 
     it("should hide the question header by a param", () => {
-      visitQuestionUrl({ url: "/question/1", qs: { header: false } });
+      visitQuestionUrl({
+        url: "/question/" + ORDERS_QUESTION_ID,
+        qs: { header: false },
+      });
 
       cy.findByTestId("qb-header").should("not.exist");
     });
 
     it("should hide the question's additional info by a param", () => {
-      visitQuestionUrl({ url: "/question/1", qs: { additional_info: false } });
+      visitQuestionUrl({
+        url: "/question/" + ORDERS_QUESTION_ID,
+        qs: { additional_info: false },
+      });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics").should("be.visible");
@@ -149,7 +159,10 @@ describe("scenarios > embedding > full app", () => {
     });
 
     it("should hide the question's action buttons by a param", () => {
-      visitQuestionUrl({ url: "/question/1", qs: { action_buttons: false } });
+      visitQuestionUrl({
+        url: "/question/" + ORDERS_QUESTION_ID,
+        qs: { action_buttons: false },
+      });
 
       cy.icon("refresh").should("be.visible");
       cy.icon("notebook").should("not.exist");
@@ -172,7 +185,7 @@ describe("scenarios > embedding > full app", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("New").click();
         popover().findByText("Question").click();
-        popover().findByText("Sample Database").click();
+        popover().findByText("Raw Data").click();
         popover().findByText("Orders").click();
       });
 
@@ -202,7 +215,7 @@ describe("scenarios > embedding > full app", () => {
       // This can't be unit test in AppBar since the logic to hide the AppBar is in its parent component
       it("should hide main header when there's nothing to display there", () => {
         visitQuestionUrl({
-          url: "/question/1",
+          url: "/question/" + ORDERS_QUESTION_ID,
           qs: { side_nav: false, logo: false, breadcrumbs: false },
         });
         cy.findByRole("banner").should("not.exist");
@@ -220,7 +233,7 @@ describe("scenarios > embedding > full app", () => {
       // This can't be unit test in AppBar since the logic to hide the AppBar is in its parent component
       it("should hide main header when there's nothing to display there", () => {
         visitQuestionUrl({
-          url: "/question/1",
+          url: "/question/" + ORDERS_QUESTION_ID,
           qs: { side_nav: false, logo: false, breadcrumbs: false },
         });
         cy.findByRole("banner").should("not.exist");
@@ -265,7 +278,7 @@ describe("scenarios > embedding > full app", () => {
     it("should preserve embedding options with click behavior (metabase#24756)", () => {
       addLinkClickBehavior({
         dashboardId: 1,
-        linkTemplate: "/question/1",
+        linkTemplate: "/question/" + ORDERS_QUESTION_ID,
       });
       visitDashboardUrl({
         url: "/dashboard/1",

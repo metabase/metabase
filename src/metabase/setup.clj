@@ -1,6 +1,7 @@
 (ns metabase.setup
   (:require
    [environ.core :as env]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.user :refer [User]]
@@ -36,6 +37,7 @@
       (t2/select-one-fn :value Setting :key "setup-token")
       (setting/set-value-of-type! :string :setup-token (str (UUID/randomUUID)))))
 
+
 (defsetting has-user-setup
   "A value that is true iff the metabase instance has one or more users registered."
   :visibility :public
@@ -50,7 +52,7 @@
   :getter     (let [app-db-id->user-exists? (atom {})]
                 (fn []
                   (or (get @app-db-id->user-exists? (mdb.connection/unique-identifier))
-                      (let [exists? (t2/exists? User)]
+                      (let [exists? (t2/exists? User {:where [:not= :id config/internal-mb-user-id]})]
                         (swap! app-db-id->user-exists? assoc (mdb.connection/unique-identifier) exists?)
                         exists?))))
   :doc        false)

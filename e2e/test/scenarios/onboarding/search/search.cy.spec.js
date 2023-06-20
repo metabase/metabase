@@ -1,4 +1,5 @@
 import { restore } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_data";
 
 describe("scenarios > auth > search", () => {
   beforeEach(restore);
@@ -54,7 +55,10 @@ describe("scenarios > auth > search", () => {
       cy.realPress("ArrowDown");
       cy.realPress("Enter");
 
-      cy.location("pathname").should("eq", "/question/1-orders");
+      cy.location("pathname").should(
+        "eq",
+        `/question/${ORDERS_QUESTION_ID}-orders`,
+      );
     });
   });
 });

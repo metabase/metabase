@@ -201,3 +201,7 @@ export const WEBMAIL_CONFIG = {
   WEB_PORT: 1080,
   SMTP_PORT: 1025,
 };
+
+export const ORDERS_QUESTION_ID = 6;
+export const ORDERS_COUNT_QUESTION_ID = 7;
+export const ORDERS_BY_YEAR_QUESTION_ID = 8;

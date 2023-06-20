@@ -19,7 +19,11 @@ import {
   openQuestionsSidebar,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  ORDERS_QUESTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { questionInfoButton } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
@@ -43,8 +47,10 @@ describe("scenarios > models", () => {
   });
 
   it("allows to turn a GUI question into a model", () => {
-    cy.request("PUT", "/api/card/1", { name: "Orders Model" });
-    visitQuestion(1);
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      name: "Orders Model",
+    });
+    visitQuestion(ORDERS_QUESTION_ID);
 
     turnIntoModel();
     openQuestionActions();
@@ -81,7 +87,7 @@ describe("scenarios > models", () => {
       cy.icon("table");
     });
 
-    cy.url().should("not.include", "/question/1");
+    cy.url().should("not.include", "/question/" + ORDERS_QUESTION_ID);
   });
 
   it("allows to turn a native question into a model", () => {
@@ -134,7 +140,7 @@ describe("scenarios > models", () => {
   });
 
   it("changes model's display to table", () => {
-    visitQuestion(3);
+    visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
     cy.get(".LineAreaBarChart");
     cy.get(".TableInteractive").should("not.exist");
@@ -146,7 +152,7 @@ describe("scenarios > models", () => {
   });
 
   it("allows to undo turning a question into a model", () => {
-    visitQuestion(3);
+    visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
     cy.get(".LineAreaBarChart");
 
     turnIntoModel();
@@ -161,9 +167,9 @@ describe("scenarios > models", () => {
   });
 
   it("allows to turn a model back into a saved question", () => {
-    cy.request("PUT", "/api/card/1", { dataset: true });
-    cy.intercept("PUT", "/api/card/1").as("cardUpdate");
-    cy.visit("/model/1");
+    cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { dataset: true });
+    cy.intercept("PUT", `/api/card${ORDERS_QUESTION_ID}`).as("cardUpdate");
+    cy.visit(`/model/${ORDERS_QUESTION_ID}`);
 
     openQuestionActions();
     popover().within(() => {
@@ -185,15 +191,15 @@ describe("scenarios > models", () => {
   });
 
   it("shows 404 when opening a question with a /dataset URL", () => {
-    cy.visit("/model/1");
+    cy.visit(`/model/${ORDERS_QUESTION_ID}`);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/We're a little lost/i);
   });
 
   it("redirects to /model URL when opening a model with /question URL", () => {
-    cy.request("PUT", "/api/card/1", { dataset: true });
-    // Important - do not use visitQuestion(1) here!
-    cy.visit("/question/1");
+    cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { dataset: true });
+    // Important - do not use visitQuestion(ORDERS_QUESTION_ID) here!
+    cy.visit("/question/" + ORDERS_QUESTION_ID);
     cy.wait("@dataset");
     openQuestionActions();
     assertIsModel();
@@ -203,7 +209,7 @@ describe("scenarios > models", () => {
   describe("data picker", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/search*").as("search");
-      cy.request("PUT", "/api/card/1", { dataset: true });
+      cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, { dataset: true });
     });
 
     it("transforms the data picker", () => {
@@ -310,14 +316,14 @@ describe("scenarios > models", () => {
 
   describe("simple mode", () => {
     beforeEach(() => {
-      cy.request("PUT", "/api/card/1", {
+      cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, {
         name: "Orders Model",
         dataset: true,
       });
     });
 
     it("can create a question by filtering and summarizing a model", () => {
-      cy.visit("/model/1");
+      cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
       filter();
@@ -355,11 +361,11 @@ describe("scenarios > models", () => {
         table: "Orders",
       });
 
-      cy.url().should("not.include", "/question/1");
+      cy.url().should("not.include", "/question/" + ORDERS_QUESTION_ID);
     });
 
     it("can create a question using table click actions", () => {
-      cy.visit("/model/1");
+      cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -382,12 +388,12 @@ describe("scenarios > models", () => {
         table: "Orders",
       });
 
-      cy.url().should("not.include", "/question/1");
+      cy.url().should("not.include", "/question/" + ORDERS_QUESTION_ID);
     });
 
     it("can edit model info", () => {
-      cy.intercept("PUT", "/api/card/1").as("updateCard");
-      cy.visit("/model/1");
+      cy.intercept("PUT", `/api/card${ORDERS_QUESTION_ID}`).as("updateCard");
+      cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
       cy.findByTestId("saved-question-header-title").clear().type("M1").blur();
@@ -487,7 +493,7 @@ describe("scenarios > models", () => {
   });
 
   it("should automatically pin newly created models", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
 
     turnIntoModel();
 
@@ -499,7 +505,7 @@ describe("scenarios > models", () => {
   });
 
   it("should undo pinning a question if turning into a model was undone", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
 
     turnIntoModel();
     undo();
@@ -514,7 +520,10 @@ describe("scenarios > models", () => {
 
   describe("listing", () => {
     beforeEach(() => {
-      cy.request("PUT", "/api/card/1", { name: "Orders Model", dataset: true });
+      cy.request("PUT", `/api/card${ORDERS_QUESTION_ID}`, {
+        name: "Orders Model",
+        dataset: true,
+      });
     });
 
     it("should allow adding models to dashboards", () => {

@@ -1,0 +1,75 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_content
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Questions created last week
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  query:
+    source-table: AxSackBiyXVRUzM_TyyQY
+    joins:
+    - fields: all
+      alias: Question 34
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - creator_id
+        - null
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - join-alias: Question 34
+      source-table: lTp-ATFsCUFEr9I0fMEaO
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - created_at
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: week
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_type
+      - null
+    - question
+  type: query
+  database: Internal Metabase Database
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: DnNyT6EtIn-Zx8bHRFHbV
+  label: questions_created_last_week
+display: smartscalar
+entity_id: DnNyT6EtIn-Zx8bHRFHbV
+collection_preview: true
+visualization_settings:
+  graph.dimensions:
+  - created_at
+  - group_name
+  graph.metrics:
+  - count
+  column_settings: null
+parameters: []
+dataset: false
+created_at: '2023-06-14T19:50:43.33191Z'
+public_uuid: null

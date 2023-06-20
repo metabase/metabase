@@ -4,7 +4,11 @@ import {
   popover,
   getFullName,
 } from "e2e/support/helpers";
-import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  USERS,
+  SAMPLE_DB_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_data";
 
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 
@@ -58,7 +62,10 @@ describe("URLs", () => {
       cy.visit("/collection/root");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders").click();
-      cy.location("pathname").should("eq", "/question/1-orders");
+      cy.location("pathname").should(
+        "eq",
+        `/question/${ORDERS_QUESTION_ID}-orders`,
+      );
     });
   });
 

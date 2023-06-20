@@ -1,0 +1,288 @@
+description: Each row describes one user event
+archived: false
+collection_position: 3
+table_id:
+- Internal Metabase Database
+- public
+- v_audit_log
+result_metadata:
+- description: null
+  semantic_type: type/PK
+  coercion_strategy: null
+  name: id
+  settings: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - id
+  - null
+  effective_type: type/BigInteger
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - id
+  visibility_type: normal
+  display_name: ID
+  fingerprint: null
+  base_type: type/BigInteger
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: topic
+  settings: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - topic
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - topic
+  visibility_type: normal
+  display_name: Topic
+  fingerprint:
+    global:
+      distinct-count: 3
+      nil%: 0.0
+    type:
+      type/Text:
+        percent-json: 0.0
+        percent-url: 0.0
+        percent-email: 0.0
+        percent-state: 0.0
+        average-length: 13.3124
+  base_type: type/Text
+- description: null
+  semantic_type: type/CreationTimestamp
+  coercion_strategy: null
+  unit: default
+  name: timestamp
+  settings: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - timestamp
+  - temporal-unit: default
+  effective_type: type/DateTimeWithLocalTZ
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - timestamp
+  visibility_type: normal
+  display_name: Timestamp
+  fingerprint:
+    global:
+      distinct-count: 9999
+      nil%: 0.0
+    type:
+      type/DateTime:
+        earliest: '2015-10-24T15:03:46.941Z'
+        latest: '2023-04-05T19:12:53.768915Z'
+  base_type: type/DateTimeWithLocalTZ
+- description: null
+  semantic_type: null
+  coercion_strategy: null
+  name: end_timestamp
+  settings: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - end_timestamp
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - end_timestamp
+  visibility_type: normal
+  display_name: End Timestamp
+  fingerprint:
+    global:
+      distinct-count: 1
+      nil%: 1.0
+    type:
+      type/Text:
+        percent-json: 0.0
+        percent-url: 0.0
+        percent-email: 0.0
+        percent-state: 0.0
+        average-length: 0.0
+  base_type: type/Text
+- description: null
+  semantic_type: type/FK
+  coercion_strategy: null
+  name: user_id
+  settings: null
+  fk_target_field_id: 739
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - user_id
+  - null
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - user_id
+  visibility_type: normal
+  display_name: User ID
+  fingerprint:
+    global:
+      distinct-count: 55
+      nil%: 0.0208
+    type:
+      type/Number:
+        min: 1.0
+        q1: 1.1751828410841485
+        q3: 135.79773790552096
+        max: 161.0
+        sd: 63.12930913321324
+        avg: 60.00071486928105
+  base_type: type/Integer
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: model
+  settings: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - model
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - model
+  visibility_type: normal
+  display_name: Model
+  fingerprint:
+    global:
+      distinct-count: 3
+      nil%: 0.0
+    type:
+      type/Text:
+        percent-json: 0.0
+        percent-url: 0.0
+        percent-email: 0.0
+        percent-state: 0.0
+        average-length: 6.186
+  base_type: type/Text
+- description: null
+  semantic_type: type/FK
+  coercion_strategy: null
+  name: model_id
+  settings: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - model_id
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - model_id
+  visibility_type: normal
+  display_name: Model ID
+  fingerprint:
+    global:
+      distinct-count: 773
+      nil%: 0.0
+    type:
+      type/Number:
+        min: 1.0
+        q1: 17.00948990804476
+        q3: 6017.086550431709
+        max: 37846.0
+        sd: 5704.15845424433
+        avg: 3276.8677
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: details
+  settings: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - details
+  - null
+  effective_type: type/Text
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - details
+  visibility_type: normal
+  display_name: Details
+  fingerprint:
+    global:
+      distinct-count: 6
+      nil%: 0.4754
+    type:
+      type/Text:
+        percent-json: 0.5246
+        percent-url: 0.0
+        percent-email: 0.0
+        percent-state: 0.0
+        average-length: 18.6105
+  base_type: type/Text
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Activity
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    source-table:
+    - Internal Metabase Database
+    - public
+    - v_audit_log
+  type: query
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: -lNDM3tJmuL5ltGbX0oyT
+  label: activity
+display: table
+entity_id: -lNDM3tJmuL5ltGbX0oyT
+collection_preview: true
+visualization_settings:
+  table.pivot_column: end_timestamp
+  table.cell_column: model_id
+  column_settings: null
+parameters: []
+dataset: true
+created_at: '2023-06-14T18:39:19.328399Z'
+public_uuid: null
