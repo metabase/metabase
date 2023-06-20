@@ -1,8 +1,7 @@
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
-
-import SkeletonCaption from "./SkeletonCaption";
+import { MarkdownPreview } from "./MarkdownPreview";
 
 const HEADING_1_TEXT = "Heading 1";
 const HEADING_1_MARKDOWN = `# ${HEADING_1_TEXT}`;
@@ -21,15 +20,25 @@ const MARKDOWN_AS_TEXT = [HEADING_1_TEXT, HEADING_2_TEXT, PARAGRAPH_TEXT].join(
   " ",
 );
 
-function setup({ description }: { description?: string } = {}) {
-  return renderWithProviders(<SkeletonCaption description={description} />);
+interface SetupOpts {
+  markdown?: string;
 }
 
-describe("SkeletonCaption", () => {
-  it("should show description tooltip with markdown formatting on hover", () => {
-    setup({ description: MARKDOWN });
+const setup = ({ markdown = MARKDOWN }: SetupOpts = {}) => {
+  render(<MarkdownPreview>{markdown}</MarkdownPreview>);
+};
 
-    userEvent.hover(screen.getByTestId("skeleton-description-icon"));
+describe("MarkdownPreview", () => {
+  it("should render markdown as plain text in the preview", () => {
+    setup();
+
+    expect(screen.getByText(MARKDOWN_AS_TEXT)).toBeInTheDocument();
+  });
+
+  it("should show tooltip with markdown formatting on hover", () => {
+    setup();
+
+    userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
 
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip).not.toHaveTextContent(MARKDOWN);

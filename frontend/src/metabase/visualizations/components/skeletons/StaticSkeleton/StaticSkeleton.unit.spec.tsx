@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import StaticSkeleton from "./StaticSkeleton";
 
@@ -33,21 +33,12 @@ describe("StaticSkeleton", () => {
       expect(screen.getByText(MARKDOWN_AS_TEXT)).toBeInTheDocument();
     });
 
-    it("should show description tooltip with markdown formatting", () => {
+    it("should show description tooltip with markdown formatting on hover", () => {
       setup({ description: MARKDOWN });
 
       userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
 
-      const tooltip = screen.getByRole("tooltip");
-      expect(tooltip).not.toHaveTextContent(MARKDOWN);
-      expect(tooltip).not.toHaveTextContent(HEADING_1_MARKDOWN);
-      expect(tooltip).not.toHaveTextContent(HEADING_2_MARKDOWN);
-      expect(tooltip).toHaveTextContent(MARKDOWN_AS_TEXT);
-
-      const image = within(tooltip).getByRole("img");
-      expect(image).toBeInTheDocument();
-      expect(image).toHaveAttribute("alt", "alt");
-      expect(image).toHaveAttribute("src", "https://example.com/img.jpg");
+      expect(screen.getByRole("tooltip")).toHaveTextContent(MARKDOWN_AS_TEXT);
     });
   });
 });
