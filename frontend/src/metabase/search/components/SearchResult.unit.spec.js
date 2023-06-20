@@ -29,29 +29,29 @@ function collection({
   return collection;
 }
 
-const setupTableSearchResult = tableOpts => {
-  const TEST_TABLE = createMockTable(tableOpts);
-  const TEST_DATABASE = createMockDatabase();
-  setupTableEndpoints(TEST_TABLE);
-  setupDatabaseEndpoints(TEST_DATABASE);
-  const result = {
-    model: "table",
-    name: TEST_TABLE.name,
-    table_id: TEST_TABLE.id,
-    database_id: TEST_DATABASE.id,
-    getUrl: () => `/table/${TEST_TABLE.id}`,
-    getIcon: () => ({ name: "table" }),
-    ...tableOpts,
-  };
-  const onClick = jest.fn();
-  renderWithProviders(<SearchResult result={result} onClick={onClick} />);
-  const link = screen.getByText(result.name);
-  return { link, onClick };
-};
-
 describe("SearchResult > Tables", () => {
+  const setup = tableOpts => {
+    const TEST_TABLE = createMockTable(tableOpts);
+    const TEST_DATABASE = createMockDatabase();
+    setupTableEndpoints(TEST_TABLE);
+    setupDatabaseEndpoints(TEST_DATABASE);
+    const result = {
+      model: "table",
+      name: TEST_TABLE.name,
+      table_id: TEST_TABLE.id,
+      database_id: TEST_DATABASE.id,
+      getUrl: () => `/table/${TEST_TABLE.id}`,
+      getIcon: () => ({ name: "table" }),
+      ...tableOpts,
+    };
+    const onClick = jest.fn();
+    renderWithProviders(<SearchResult result={result} onClick={onClick} />);
+    const link = screen.getByText(result.name);
+    return { link, onClick };
+  };
+
   it("tables with initial_sync_status='complete' are clickable", () => {
-    const { link, onClick } = setupTableSearchResult({
+    const { link, onClick } = setup({
       name: "Complete Table",
       initial_sync_status: "complete",
     });
@@ -60,7 +60,7 @@ describe("SearchResult > Tables", () => {
   });
 
   it("tables with initial_sync_status='incomplete' are not clickable", () => {
-    const { link, onClick } = setupTableSearchResult({
+    const { link, onClick } = setup({
       name: "Incomplete Table",
       initial_sync_status: "incomplete",
     });
@@ -69,7 +69,7 @@ describe("SearchResult > Tables", () => {
   });
 
   it("tables with initial_sync_status='aborted' are not clickable", () => {
-    const { link, onClick } = setupTableSearchResult({
+    const { link, onClick } = setup({
       name: "Aborted Table",
       initial_sync_status: "aborted",
     });
