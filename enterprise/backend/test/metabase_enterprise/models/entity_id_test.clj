@@ -72,7 +72,8 @@
     :model/TimelineEvent
     :model/User
     :model/ViewLog
-    :model/GroupTableAccessPolicy})
+    :model/GroupTableAccessPolicy
+    :model/ConnectionImpersonation})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (doseq [model (->> (v2.seed-entity-ids/toucan-models)

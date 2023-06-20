@@ -24,7 +24,10 @@ export type OrderByClause = unknown & { _opaque: typeof OrderByClause };
 
 export type OrderByDirection = "asc" | "desc";
 
-export type Clause = BreakoutClause | OrderByClause;
+declare const FilterClause: unique symbol;
+export type FilterClause = unknown & { _opaque: typeof FilterClause };
+
+export type Clause = BreakoutClause | OrderByClause | FilterClause;
 
 declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
@@ -91,7 +94,11 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
 declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
 
-// ExternalOp is a special representation of a filter clause or aggregation clause.
+// ExternalOp is a JS-friendly representation of a filter clause or aggregation clause.
+//
+// TODO: ExternalOp is not actually supposed to be opaque at all, the whole point of it is for FE friendliness... we
+// should write a real signature here. See https://metaboat.slack.com/archives/C04CYTEL9N2/p1686948727809349 where I
+// was soliciting feedback on what the signature should be. -- Cam
 declare const ExternalOp: unique symbol;
 export type ExternalOp = unknown & { _opaque: typeof ExternalOp };
 
