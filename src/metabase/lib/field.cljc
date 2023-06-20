@@ -46,7 +46,6 @@
   [[tag opts id-or-name]]
   [(keyword tag) (normalize-field-options opts) id-or-name])
 
-
 (mu/defn ^:private resolve-field-id :- lib.metadata/ColumnMetadata
   "Integer Field ID: get metadata from the metadata provider. If this is the first stage of the query, merge in
   Saved Question metadata if available."
@@ -99,27 +98,26 @@
   [query                                                                 :- ::lib.schema/query
    stage-number                                                          :- :int
    [_field {:keys [join-alias], :as opts} id-or-name, :as _field-clause] :- :mbql.clause/field]
-  (merge
-   (when-let [base-type (:base-type opts)]
-     {:base-type base-type})
-   (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
-     {:effective-type effective-type})
-   ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if the Field is
-   ;; temporally bucketed, the base-type/effective-type would probably be affected, right? We should probably be
-   ;; taking that into consideration?
-   (when-let [binning (:binning opts)]
-     {::binning binning})
-   (when-let [unit (:temporal-unit opts)]
-     {::temporal-unit unit})
-   (cond
-     (integer? id-or-name) (cond-> (resolve-field-id query stage-number id-or-name)
-                             join-alias (assoc ::join-alias join-alias))
-     join-alias            {:lib/type    :metadata/field
-                            :name        id-or-name
-                            ::join-alias join-alias}
-     :else                 (or (resolve-column-name query stage-number id-or-name)
-                               {:lib/type :metadata/field
-                                :name     id-or-name}))))
+  (let [metadata (merge
+                  (when-let [base-type (:base-type opts)]
+                    {:base-type base-type})
+                  (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
+                    {:effective-type effective-type})
+                  ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if the Field is
+                  ;; temporally bucketed, the base-type/effective-type would probably be affected, right? We should probably be
+                  ;; taking that into consideration?
+                  (when-let [binning (:binning opts)]
+                    {::binning binning})
+                  (when-let [unit (:temporal-unit opts)]
+                    {::temporal-unit unit})
+                  (cond
+                    (integer? id-or-name) (resolve-field-id query stage-number id-or-name)
+                    join-alias            {:lib/type :metadata/field, :name id-or-name}
+                    :else                 (or (resolve-column-name query stage-number id-or-name)
+                                              {:lib/type :metadata/field
+                                               :name     id-or-name})))]
+    (cond-> metadata
+      join-alias (lib.join/with-join-alias join-alias))))
 
 (mu/defn ^:private add-parent-column-metadata
   "If this is a nested column, add metadata about the parent column."
@@ -162,7 +160,7 @@
    [_tag {source-uuid :lib/uuid :keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
         metadata       (merge
-                        {:lib/type :metadata/field
+                        {:lib/type        :metadata/field
                          :lib/source-uuid source-uuid}
                         field-metadata
                         {:display-name (or (:display-name opts)
@@ -175,10 +173,10 @@
                           {::temporal-unit temporal-unit})
                         (when binning
                           {::binning binning})
-                        (when join-alias
-                          {::join-alias join-alias})
                         (when source-field
-                          {:fk-field-id source-field}))]
+                          {:fk-field-id source-field}))
+        metadata       (cond-> metadata
+                         join-alias (lib.join/with-join-alias join-alias))]
     (cond->> metadata
       (:parent-id metadata) (add-parent-column-metadata query))))
 
@@ -215,7 +213,7 @@
                                        lib.util/strip-id)
                                    (let [table (lib.metadata/table query table-id)]
                                      (lib.metadata.calculation/display-name query stage-number table style))))
-                               (or join-alias (::join-alias field-metadata))))
+                               (or join-alias (lib.join/current-join-alias field-metadata))))
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)]
@@ -390,25 +388,6 @@
           (lib.binning/strategy= strat existing) (assoc :selected true))))
     []))
 
-;;; -------------------------------------- Join Alias --------------------------------------------
-(defmethod lib.join/current-join-alias-method :field
-  [[_tag opts]]
-  (get opts :join-alias))
-
-(defmethod lib.join/current-join-alias-method :metadata/field
-  [metadata]
-  (::join-alias metadata))
-
-(defmethod lib.join/with-join-alias-method :field
-  [[_tag opts id-or-name] join-alias]
-  (if join-alias
-    [:field (assoc opts :join-alias join-alias) id-or-name]
-    [:field (dissoc opts :join-alias) id-or-name]))
-
-(defmethod lib.join/with-join-alias-method :metadata/field
-  [metadata join-alias]
-  (assoc metadata ::join-alias join-alias))
-
 (defmethod lib.ref/ref-method :field
   [field-clause]
   field-clause)
@@ -422,7 +401,7 @@
                             {:lib/uuid       (str (random-uuid))
                              :base-type      (:base-type metadata)
                              :effective-type (column-metadata-effective-type metadata)}
-                            (when-let [join-alias (::join-alias metadata)]
+                            (when-let [join-alias (lib.join/current-join-alias metadata)]
                               {:join-alias join-alias})
                             (when-let [temporal-unit (::temporal-unit metadata)]
                               {:temporal-unit temporal-unit})

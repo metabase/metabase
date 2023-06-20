@@ -49,10 +49,10 @@
                                                        (meta/id :categories :id)]]]}]}]}
           (let [q (lib/query-for-table-name meta/metadata-provider "VENUES")
                 j (lib/query-for-table-name meta/metadata-provider "CATEGORIES")]
-            (lib/join q j [{:lib/type :lib/external-op
-                            :operator :=
-                            :args [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))
-                                   (lib/ref (lib.metadata/field j nil "CATEGORIES" "ID"))]}])))))
+            (lib/join q (lib/join-clause j [{:lib/type :lib/external-op
+                                             :operator :=
+                                             :args     [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))
+                                                    (lib/ref (lib.metadata/field j nil "CATEGORIES" "ID"))]}]))))))
 
 (deftest ^:parallel join-saved-question-test
   (is (=? {:lib/type :mbql/query
@@ -75,9 +75,10 @@
                                                         :join-alias (symbol "nil #_\"key is not present.\"")}
                                                        (meta/id :categories :id)]]]}]}]}
           (-> (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
-              (lib/join (lib/saved-question-query meta/metadata-provider meta/saved-question)
-                        [(lib/= (lib/field "VENUES" "CATEGORY_ID")
-                                (lib/field "CATEGORIES" "ID"))])
+              (lib/join (lib/join-clause
+                         (lib/saved-question-query meta/metadata-provider meta/saved-question)
+                         [(lib/= (lib/field "VENUES" "CATEGORY_ID")
+                                 (lib/field "CATEGORIES" "ID"))]))
               (dissoc :lib/metadata)))))
 
 (deftest ^:parallel join-condition-field-metadata-test
@@ -116,7 +117,7 @@
                                                             :join-alias "Venues"}
                                                            (meta/id :venues :category-id)]]]}]}]}
               (-> q1
-                  (lib/join q2 [(lib/= categories-id-metadata venues-category-id-metadata)])
+                  (lib/join (lib/join-clause q2 [(lib/= categories-id-metadata venues-category-id-metadata)]))
                   (dissoc :lib/metadata)))))))
 
 (deftest ^:parallel col-info-implicit-join-test
@@ -161,9 +162,9 @@
                  :lib/metadata meta/metadata-provider}]
       (let [metadata (lib.metadata.calculation/metadata query)]
         (is (=? [(merge (meta/field-metadata :categories :name)
-                        {:display-name                  "Name"
-                         :lib/source                    :source/fields
-                         :metabase.lib.field/join-alias "CATEGORIES__via__CATEGORY_ID"})]
+                        {:display-name         "Name"
+                         :lib/source           :source/fields
+                         ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
                 metadata))
         (is (=? "CATEGORIES__via__CATEGORY_ID"
                 (lib.join/current-join-alias (first metadata))))
@@ -222,8 +223,8 @@
                   (lib/join (-> (lib/join-clause
                                  (meta/table-metadata :categories)
                                  [(lib/=
-                                    (lib/field "VENUES" "CATEGORY_ID")
-                                    (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                                   (lib/field "VENUES" "CATEGORY_ID")
+                                   (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                                 (lib/with-join-alias "Cat")
                                 (lib/with-join-fields :all)))
                   (lib/with-fields [(lib/field "VENUES" "ID")
@@ -232,38 +233,38 @@
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "ID"
               :lib/source               :source/fields}
-             {:name                          "ID"
-              :lib/source-column-alias       "ID"
-              :lib/desired-column-alias      "Cat__ID"
-              :metabase.lib.field/join-alias "Cat"
-              :lib/source                    :source/fields}
-             {:name                          "NAME"
-              :lib/source-column-alias       "NAME"
-              :lib/desired-column-alias      "Cat__NAME"
-              :metabase.lib.field/join-alias "Cat"
-              :lib/source                    :source/joins}]
+             {:name                     "ID"
+              :lib/source-column-alias  "ID"
+              :lib/desired-column-alias "Cat__ID"
+              ::lib.join/join-alias     "Cat"
+              :lib/source               :source/fields}
+             {:name                     "NAME"
+              :lib/source-column-alias  "NAME"
+              :lib/desired-column-alias "Cat__NAME"
+              ::lib.join/join-alias     "Cat"
+              :lib/source               :source/joins}]
             (lib.metadata.calculation/metadata query)))
-    (is (=? [{:table {:name "VENUES"
-                      :display-name "Venues"
-                      :long-display-name "Venues"
-                      :is-source-table true}
-              :effective-type :type/BigInteger
+    (is (=? [{:table             {:name              "VENUES"
+                                  :display-name      "Venues"
+                                  :long-display-name "Venues"
+                                  :is-source-table   true}
+              :effective-type    :type/BigInteger
               :long-display-name "ID"
-              :display-name "ID"}
-             {:table {:name "CATEGORIES"
-                      :display-name "Categories"
-                      :long-display-name "Categories"
-                      :is-source-table false}
-              :effective-type :type/BigInteger
+              :display-name      "ID"}
+             {:table             {:name              "CATEGORIES"
+                                  :display-name      "Categories"
+                                  :long-display-name "Categories"
+                                  :is-source-table   false}
+              :effective-type    :type/BigInteger
               :long-display-name "Cat → ID"
-              :display-name "ID"}
-             {:table {:name "CATEGORIES"
-                      :display-name "Categories"
-                      :long-display-name "Categories"
-                      :is-source-table false}
-              :effective-type :type/Text
+              :display-name      "ID"}
+             {:table             {:name              "CATEGORIES"
+                                  :display-name      "Categories"
+                                  :long-display-name "Categories"
+                                  :is-source-table   false}
+              :effective-type    :type/Text
               :long-display-name "Cat → Name"
-              :display-name "Name"}]
+              :display-name      "Name"}]
             (map #(lib/display-info query %)
                  (lib.metadata.calculation/metadata query))))
     (testing "Introduce a new stage"
@@ -272,14 +273,14 @@
                   :lib/source-column-alias  "ID"
                   :lib/desired-column-alias "ID"
                   :lib/source               :source/previous-stage}
-                 {:name                          "ID"
-                  :lib/source-column-alias       "Cat__ID"
-                  :lib/desired-column-alias      "Cat__ID"
-                  :lib/source                    :source/previous-stage}
-                 {:name                          "NAME"
-                  :lib/source-column-alias       "Cat__NAME"
-                  :lib/desired-column-alias      "Cat__NAME"
-                  :lib/source                    :source/previous-stage}]
+                 {:name                     "ID"
+                  :lib/source-column-alias  "Cat__ID"
+                  :lib/desired-column-alias "Cat__ID"
+                  :lib/source               :source/previous-stage}
+                 {:name                     "NAME"
+                  :lib/source-column-alias  "Cat__NAME"
+                  :lib/desired-column-alias "Cat__NAME"
+                  :lib/source               :source/previous-stage}]
                 (lib.metadata.calculation/metadata query')))))))
 
 (deftest ^:parallel default-columns-added-by-joins-deduplicate-names-test

@@ -52,7 +52,12 @@ export function joinConditions(join: Join): FilterClause[] {
   return ML.join_conditions(join);
 }
 
-/// TODO: withJoinConditions
+export function withJoinConditions(
+  join: Join,
+  newConditions: FilterClause[] | ExternalOp[],
+): Join {
+  return ML.with_join_conditions(join, newConditions);
+}
 
 export function joinConditionLHSColumns(
   query: Query,
