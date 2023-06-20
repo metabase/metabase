@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
+import { space } from "metabase/styled-components/theme";
 
 const TITLE_LINE_HEIGHT_REM = 1.4;
 
@@ -26,7 +27,7 @@ export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
   &:hover {
     color: ${color("brand")};
   }
-  padding: 0 4px;
+  padding: 0 ${space(1)};
 
   font-size: ${props => props.fontSize};
 `;
@@ -40,7 +41,7 @@ export const ScalarTitleContainer = styled.div<ScalarTitleContainerProps>`
   height: ${props => props.lines * TITLE_LINE_HEIGHT_REM}rem;
   display: flex;
   justify-content: center;
-  padding: 0 1rem;
+  padding: 0 ${space(1)};
   width: 100%;
 `;
 
