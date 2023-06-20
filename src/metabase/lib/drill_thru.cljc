@@ -336,24 +336,24 @@
          :type     :drill-thru/pivot
          :pivots   pivots}))))
 
+(defmethod drill-thru-info-method :drill-thru/pivot
+  [_query _stage-number drill-thru]
+  (select-keys drill-thru [:many-pks? :object-id :type]))
+
 ;; Note that pivot drills have specific public functions for accessing the nested pivoting options.
 ;; Therefore the [[drill-thru-info-method]] is just the default `{:type :drill-thru/pivot}`.
 
-(defmethod drill-thru-method :drill-thru/pivot
-  [query stage-number _drill-thru column & _]
-  ;; TODO: Figure out when the `dimensions` input to the original version is nonempty, and integrate that here.
-  ;; TODO: The FE follows a pivot of the query with `setDefaultDisplay()`; make sure that still happens.
-  (lib.breakout/breakout query stage-number column))
-
 (mu/defn pivot-types :- [:sequential ::lib.schema.drill-thru/drill-thru-pivot-types]
   "A helper for the FE. Returns the set of pivot types (category, location, time) that apply to this drill-thru."
-  [drill-thru :- ::lib.schema.drill-thru/drill-thru]
+  [drill-thru :- [:and ::lib.schema.drill-thru/drill-thru
+                  [:map [:type [:= :drill-thru/pivot]]]]]
   (keys (:pivots drill-thru)))
 
 (mu/defn pivot-columns-for-type :- [:sequential lib.metadata/ColumnMetadata]
   "A helper for the FE. Returns all the columns of the given type which can be used to pivot the query."
-  [drill-thru :- ::lib.schema.drill-thru/drill-thru
-   pivot-type :- ::lib.schema.drill-thru/drill-thru-pivot-types]
+  [drill-thru :- [:and ::lib.schema.drill-thru/drill-thru
+                  [:map [:type [:= :drill-thru/pivot]]]]
+   pivot-type :- ::lib.schema.drill-thru-pivot-types]
   (get-in drill-thru [:pivots pivot-type]))
 
 ;;; ----------------------------------------- Sort -----------------------------------------------
