@@ -6,7 +6,9 @@ import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 
 import CollectionPicker from "metabase/containers/CollectionPicker";
-import { ButtonContainer } from "./CollectionMoveModal.styled";
+import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
+import { Collection } from "metabase-types/api";
+import { ButtonContainer, LightButton } from "./CollectionMoveModal.styled";
 
 interface CollectionMoveModalProps {
   title: string;
@@ -37,6 +39,19 @@ export const CollectionMoveModal = ({
   // const [moving, setMoving] = useState(false);
   // const [error, setError] = useState(null);
 
+  const [shouldCreateCollection, setShouldCreateCollection] = useState(false);
+
+  if (shouldCreateCollection) {
+    return (
+      <CreateCollectionModal
+        onCreate={(collection: Collection) => {
+          onMove({ id: collection.id });
+        }}
+        onClose={() => setShouldCreateCollection(false)}
+      ></CreateCollectionModal>
+    );
+  }
+
   return (
     <ModalContent title={title} onClose={onClose}>
       <CollectionPicker
@@ -44,6 +59,13 @@ export const CollectionMoveModal = ({
         onChange={setSelectedCollectionId}
       />
       <ButtonContainer>
+        <LightButton
+          onlyText
+          icon="add"
+          onClick={() => setShouldCreateCollection(true)}
+        >
+          {t`New collection`}
+        </LightButton>
         <Button
           primary
           className="ml-auto"
