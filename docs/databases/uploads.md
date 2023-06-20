@@ -50,7 +50,7 @@ Admins can optionally specify a string of text to add in front of the table that
 
 CSV files cannot exceed 200 MB in size.
 
-> Note that while Metabase limits uploads to 200 MB, the server you use to run your Metabase may impose a separate limit. You may need to change your server settings to allow uploads up to 200 MB. People on Metabase Cloud don't have to worry about this.
+> While Metabase limits uploads to 200 MB, the server you use to run your Metabase may impose a lower limit. For example, the default client upload limit for [nginx is 1 MB](https://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size). So you may need to change your server settings to allow uploads up to 200 MB. People on Metabase Cloud don't have to worry about this.
 
 If you have a file larger than 200 MB, the workaround here is to:
 
