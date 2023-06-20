@@ -80,6 +80,7 @@ export const HeaderContainer = styled.header`
 
 export const ParametersAndCardsContainer = styled.div`
   flex: auto;
+  min-width: 0;
   overflow-y: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
     shouldMakeDashboardHeaderStickyAfterScrolling ? "auto" : "visible"};
   overflow-x: hidden;
