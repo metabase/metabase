@@ -112,7 +112,7 @@ class Database {
   }
 
   newQuestion() {
-    return this.question().setDefaultQuery().setDefaultDisplay();
+    return this.question().setDefaultDisplay();
   }
 
   question(
