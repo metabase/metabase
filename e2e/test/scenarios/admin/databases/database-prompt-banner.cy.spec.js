@@ -8,7 +8,7 @@ import {
   restore,
 } from "e2e/support/helpers";
 
-describe("banner", () => {
+describe("database prompt banner", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -94,40 +94,37 @@ describe("banner", () => {
   });
 });
 
-describeWithSnowplow(
-  "should send snowplow events when clicking on links in the database prompt banner",
-  () => {
-    const PAGE_VIEW_EVENT = 1;
+describeWithSnowplow("database prompt banner", () => {
+  const PAGE_VIEW_EVENT = 1;
 
-    beforeEach(() => {
-      restore();
-      resetSnowplow();
-      cy.signInAsAdmin();
-      enableTracking();
-      cy.visit("/");
-      cy.findByRole("main").findByText("Loading...").should("not.exist");
-    });
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+    enableTracking();
+    cy.visit("/");
+    cy.findByRole("main").findByText("Loading...").should("not.exist");
+  });
 
-    afterEach(() => {
-      expectNoBadSnowplowEvents();
-    });
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
 
-    it("should send snowplow events when disabling auto-apply filters", () => {
-      expectNoBadSnowplowEvents();
-      expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
-      cy.findAllByRole("banner")
-        .first()
-        .within(() => {
-          cy.findByRole("link", { name: "Get help connecting" }).click();
-          expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 1);
+  it("should send snowplow events when clicking on links in the database prompt banner", () => {
+    expectNoBadSnowplowEvents();
+    expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
+    cy.findAllByRole("banner")
+      .first()
+      .within(() => {
+        cy.findByRole("link", { name: "Get help connecting" }).click();
+        expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 1);
 
-          cy.findByRole("link", { name: "Connect your database" }).click();
-          // clicking this link also brings us to the admin page causing a new page_view event
-          expectGoodSnowplowEvents(2 * PAGE_VIEW_EVENT + 2);
-        });
-    });
-  },
-);
+        cy.findByRole("link", { name: "Connect your database" }).click();
+        // clicking this link also brings us to the admin page causing a new page_view event
+        expectGoodSnowplowEvents(2 * PAGE_VIEW_EVENT + 2);
+      });
+  });
+});
 
 const visitUrl = url => {
   cy.visit({
