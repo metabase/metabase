@@ -351,7 +351,7 @@
   [{row-1 :row col-1 :col} {row-2 :row col-2 :col}]
   (if (= row-1 row-2)
     (compare col-1 col-2)
-    (compare row-1 row-2)
+    (compare row-1 row-2)))
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 ;; DashboardCards are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.
