@@ -121,7 +121,7 @@
       (cond
         (and superuser?
              (not in-admin-group?))
-        (t2/insert! PermissionsGroupMembership
+        (t2/insert! (t2/table-name PermissionsGroupMembership)
                     :group_id (u/the-id (perms-group/admin))
                     :user_id  id)
         ;; don't use [[t2/delete!]] here because that does the opposite and tries to update this user which leads to a

@@ -93,6 +93,11 @@ const SECTIONS = updateSectionsWithPlugins({
         display_name: t`Custom Homepage`,
         type: "boolean",
         postUpdateActions: [refreshCurrentUser],
+        onChanged: (oldVal, newVal, _settings, handleChangeSetting) => {
+          if (!newVal && oldVal) {
+            handleChangeSetting("custom-homepage-dashboard", null);
+          }
+        },
       },
       {
         key: "custom-homepage-dashboard",

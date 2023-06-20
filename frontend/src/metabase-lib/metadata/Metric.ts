@@ -53,9 +53,6 @@ class Metric {
 
     if (aggregation) {
       return aggregation.columnName();
-    } else if (typeof this.id === "string") {
-      // special case for Google Analytics metrics
-      return this.id;
     } else {
       return null;
     }

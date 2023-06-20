@@ -308,20 +308,20 @@
     (let [[header & rows] (csv/read-csv reader)]
       (rows->schema header (sample-rows rows)))))
 
-(defn load-from-csv
+(defn load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
   (let [col->upload-type   (detect-schema csv-file)
         col->database-type (update-vals col->upload-type (partial driver/upload-type->database-type driver))
         column-names       (keys col->upload-type)]
-    (driver/create-table driver db-id table-name col->database-type)
+    (driver/create-table! driver db-id table-name col->database-type)
     (try
       (let [rows (parsed-rows col->upload-type csv-file)]
-        (driver/insert-into driver db-id table-name column-names rows)
+        (driver/insert-into! driver db-id table-name column-names rows)
         {:num-rows    (count rows)
          :num-columns (count column-names)
          :size-mb     (/ (.length csv-file) 1048576.0)})
       (catch Throwable e
-        (driver/drop-table driver db-id table-name)
+        (driver/drop-table! driver db-id table-name)
         (throw (ex-info (ex-message e) {:status-code 400}))))))

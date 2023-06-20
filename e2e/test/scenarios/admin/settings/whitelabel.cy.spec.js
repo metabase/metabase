@@ -1,4 +1,5 @@
 import { describeEE, restore } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 function checkFavicon() {
   cy.request("/api/setting/application-favicon-url")
@@ -103,19 +104,19 @@ describeEE("formatting > whitelabel", () => {
 
   describe("loading message", () => {
     it("should update loading message", () => {
-      cy.visit("/question/1");
+      cy.visit("/question/" + ORDERS_QUESTION_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Doing science...");
 
       const runningQueryMessage = "Running query...";
       changeLoadingMessage(runningQueryMessage);
-      cy.visit("/question/1");
+      cy.visit("/question/" + ORDERS_QUESTION_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(runningQueryMessage);
 
       const loadingResultsMessage = "Loading results...";
       changeLoadingMessage(loadingResultsMessage);
-      cy.visit("/question/1");
+      cy.visit("/question/" + ORDERS_QUESTION_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(loadingResultsMessage);
     });

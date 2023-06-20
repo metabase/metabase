@@ -48,7 +48,7 @@ import getAdminRoutes from "metabase/admin/routes";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 
-import PublicQuestion from "metabase/public/containers/PublicQuestion";
+import { PublicQuestion } from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
 import ArchiveDashboardModal from "metabase/dashboard/containers/ArchiveDashboardModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";

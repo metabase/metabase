@@ -7,7 +7,9 @@ export const StyledButton = styled(Button)<{
   isFullHeight?: boolean;
   focus?: boolean;
 }>`
+  padding: 0;
   height: ${({ isFullHeight }) => (isFullHeight ? "100%" : "auto")};
+
   ${({ focus }) =>
     focus
       ? `

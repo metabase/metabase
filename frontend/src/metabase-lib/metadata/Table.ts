@@ -65,7 +65,7 @@ class Table {
   }
 
   newQuestion() {
-    return this.question().setDefaultQuery().setDefaultDisplay();
+    return this.question().setDefaultDisplay();
   }
 
   question() {
