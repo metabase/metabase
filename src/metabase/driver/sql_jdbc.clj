@@ -111,19 +111,19 @@
                      :quoted true
                      :dialect (sql.qp/quote-style driver))))
 
-(defmethod driver/create-table :sql-jdbc
+(defmethod driver/create-table! :sql-jdbc
   [driver db-id table-name col->type]
   (let [sql (create-table-sql driver table-name col->type)]
     (qp.writeback/execute-write-sql! db-id sql)))
 
-(defmethod driver/drop-table :sql-jdbc
+(defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
   (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
     (qp.writeback/execute-write-sql! db-id sql)))
 
-(defmethod driver/insert-into :sql-jdbc
+(defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]
   (let [table-name (keyword table-name)
         columns    (map keyword column-names)

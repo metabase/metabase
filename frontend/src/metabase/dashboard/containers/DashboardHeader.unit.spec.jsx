@@ -24,7 +24,6 @@ const setup = async ({ dashboard = TEST_DASHBOARD }) => {
 
   const dashboardHeaderProps = {
     dashboard,
-    isEditable: true,
     isEditing: false,
     isFullscreen: false,
     isNavBarOpen: false,

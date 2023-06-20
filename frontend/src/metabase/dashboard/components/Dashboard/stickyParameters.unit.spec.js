@@ -15,7 +15,6 @@ describe("updateParametersWidgetStickiness", () => {
 
     const dashboard = {
       parametersWidgetRef: { offsetTop },
-      parametersAndCardsContainerRef: { style: {} },
       state: {},
       setState,
     };
@@ -34,7 +33,6 @@ describe("updateParametersWidgetStickiness", () => {
 
     const dashboard = {
       parametersWidgetRef: { offsetTop },
-      parametersAndCardsContainerRef: { style: {} },
       state: {},
       setState,
     };
@@ -53,7 +51,6 @@ describe("updateParametersWidgetStickiness", () => {
 
     const dashboard = {
       parametersWidgetRef: { offsetTop },
-      parametersAndCardsContainerRef: { style: {} },
       state: {},
       setState,
     };
@@ -72,7 +69,6 @@ describe("updateParametersWidgetStickiness", () => {
 
     const dashboard = {
       parametersWidgetRef: { offsetTop },
-      parametersAndCardsContainerRef: { style: {} },
       state: {
         isParametersWidgetSticky: true,
         parametersWidgetOffsetTop: offsetTop,
@@ -92,7 +88,6 @@ describe("updateParametersWidgetStickiness", () => {
 
     const dashboard = {
       parametersWidgetRef: { offsetTop },
-      parametersAndCardsContainerRef: { style: {} },
       state: {
         isParametersWidgetSticky: false,
         parametersWidgetOffsetTop: offsetTop,
