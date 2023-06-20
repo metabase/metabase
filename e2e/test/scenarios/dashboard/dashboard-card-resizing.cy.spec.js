@@ -81,7 +81,7 @@ const VISUALIZATION_SIZES = {
     default: { width: 4, height: 3 },
   },
   smartscalar: {
-    min: { width: 2, height: 2 },
+    min: { width: 4, height: 3 },
     default: { width: 4, height: 3 },
   },
   link: {
