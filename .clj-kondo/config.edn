@@ -163,6 +163,7 @@
    toucan.db/execute!                   {:message "Use t2/query-one instead of toucan.db/execute!"}
    toucan.db/reducible-query            {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}
    toucan.db/resolve-model              {:message "Use metabase.db.util/resolve-model instead of toucan.db/resolve-model"}
+   toucan.models/defmodel               {:message "Define a method for t2/table-name instead of toucan.models/defmodel"}
    toucan.models/primary-key            {:message "Use metabase.db.util/primary-key instead of toucan.models/primary-key"}
    toucan.models/model?                 {:message "Use mdb.u/toucan-model? instead of toucan.models/model?"}
    toucan.hydrate/hydrate               {:message "Use t2/hydrate instead of toucan.hydrate/hydrate"}
@@ -292,10 +293,6 @@
     metabase.driver.druid.js                                        druid.js
     metabase.driver.druid.query-processor                           druid.qp
     metabase.driver.druid.sync                                      druid.sync
-    metabase.driver.googleanalytics.client                          ga.client
-    metabase.driver.googleanalytics.execute                         ga.execute
-    metabase.driver.googleanalytics.metadata                        ga.metadata
-    metabase.driver.googleanalytics.query-processor                 ga.qp
     metabase.driver.impl                                            driver.impl
     metabase.driver.mongo.execute                                   mongo.execute
     metabase.driver.mongo.parameters                                mongo.params
