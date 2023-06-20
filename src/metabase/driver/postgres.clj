@@ -13,6 +13,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.postgres.ddl :as postgres.ddl]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -50,11 +51,12 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
-(doseq [[feature supported?] {:convert-timezone true
-                              :datetime-diff    true
-                              :now              true
-                              :persist-models   true
-                              :schemas          true}]
+(doseq [[feature supported?] {:convert-timezone         true
+                              :datetime-diff            true
+                              :now                      true
+                              :persist-models           true
+                              :schemas                  true
+                              :connection-impersonation true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -823,3 +825,13 @@
                              (str/join "\n")
                              (StringReader.))]
        (.copyIn copy-manager ^String sql tsvs)))))
+
+;;; ------------------------------------------------- User Impersonation --------------------------------------------------
+
+(defmethod driver.sql/set-role-statement :postgres
+  [_ role]
+  (format "SET ROLE %s;" role))
+
+(defmethod driver.sql/default-database-role :postgres
+  [_ _]
+  "NONE")

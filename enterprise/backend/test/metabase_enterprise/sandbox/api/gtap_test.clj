@@ -80,7 +80,7 @@
                 #(#{gtap-id-1 gtap-id-2} (:id %))
                 (mt/user-http-request :crowberto :get 200 "mt/gtap/")))))
 
-        (testing "Test that we can fetch the list of GTAPs for a specific table and group"
+        (testing "Test that we can fetch the GTAP for a specific table and group"
           (is (partial=
                {:id gtap-id-1 :table_id table-id-1 :group_id group-id-1}
                (mt/user-http-request :crowberto :get 200 "mt/gtap/"
