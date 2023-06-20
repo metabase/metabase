@@ -1,7 +1,11 @@
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { render, renderWithProviders, screen } from "__support__/ui";
+import { createMockTable, createMockDatabase } from "metabase-types/api/mocks";
 import { setupEnterpriseTest } from "__support__/enterprise";
+import {
+  setupTableEndpoints,
+  setupDatabaseEndpoints,
+} from "__support__/server-mocks";
+import { render, renderWithProviders, screen } from "__support__/ui";
 import SearchResult from "./SearchResult";
 
 function collection({
@@ -25,48 +29,53 @@ function collection({
   return collection;
 }
 
-describe("SearchResult > Tables", () => {
-  it("tables with initial_sync_status='incomplete' are not clickable", async () => {
-    const table = { id: 1, display_name: "Table Name" };
-    const database = { id: 1, name: "Database Name" };
-    fetchMock.get("path:/api/table/1", table);
-    fetchMock.get("path:/api/database/1", database);
-    const result = {
-      model: "table",
-      name: "Incomplete Table",
-      initial_sync_status: "incomplete",
-      table_id: 1,
-      database_id: 1,
-      getUrl: () => `/table/1`,
-      getIcon: () => ({ name: "table" }),
-    };
-    const onClick = jest.fn();
-    renderWithProviders(<SearchResult result={result} onClick={onClick} />);
-    const link = screen.getByText("Incomplete Table");
-    userEvent.click(link);
-    expect(onClick).not.toHaveBeenCalled();
-  });
-});
-
-it("tables with initial_sync_status='complete' are clickable", async () => {
-  const table = { id: 1, display_name: "Table Name" };
-  const database = { id: 1, name: "Database Name" };
-  fetchMock.get("path:/api/table/1", table);
-  fetchMock.get("path:/api/database/1", database);
+const setupTableSearchResult = tableOpts => {
+  const TEST_TABLE = createMockTable(tableOpts);
+  const TEST_DATABASE = createMockDatabase();
+  setupTableEndpoints(TEST_TABLE);
+  setupDatabaseEndpoints(TEST_DATABASE);
   const result = {
     model: "table",
-    name: "Complete Table",
-    initial_sync_status: "complete",
-    table_id: 1,
-    database_id: 1,
-    getUrl: () => `/table/1`,
+    name: TEST_TABLE.name,
+    table_id: TEST_TABLE.id,
+    database_id: TEST_DATABASE.id,
+    getUrl: () => `/table/${TEST_TABLE.id}`,
     getIcon: () => ({ name: "table" }),
+    ...tableOpts,
   };
   const onClick = jest.fn();
   renderWithProviders(<SearchResult result={result} onClick={onClick} />);
-  const link = screen.getByText("Complete Table");
-  userEvent.click(link);
-  expect(onClick).toHaveBeenCalled();
+  const link = screen.getByText(result.name);
+  return { link, onClick };
+};
+
+describe("SearchResult > Tables", () => {
+  it("tables with initial_sync_status='complete' are clickable", async () => {
+    const { link, onClick } = setupTableSearchResult({
+      name: "Complete Table",
+      initial_sync_status: "complete",
+    });
+    userEvent.click(link);
+    expect(onClick).toHaveBeenCalled();
+  });
+
+  it("tables with initial_sync_status='incomplete' are not clickable", async () => {
+    const { link, onClick } = setupTableSearchResult({
+      name: "Incomplete Table",
+      initial_sync_status: "incomplete",
+    });
+    userEvent.click(link);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("tables with initial_sync_status='aborted' are not clickable", async () => {
+    const { link, onClick } = setupTableSearchResult({
+      name: "Aborted Table",
+      initial_sync_status: "aborted",
+    });
+    userEvent.click(link);
+    expect(onClick).not.toHaveBeenCalled();
+  });
 });
 
 describe("SearchResult > Collections", () => {
