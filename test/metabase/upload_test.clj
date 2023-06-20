@@ -260,10 +260,10 @@
       (mt/with-empty-db
         (let [file       (csv-file-with ["id" "2" "3"])]
           (testing "Can upload two files with the same name"
-            (is (some? (upload/load-from-csv driver/*driver* (mt/id) (format "table_name_%s" driver/*driver*) file)))
-            (is (some? (upload/load-from-csv driver/*driver* (mt/id) (format "table_name_2_%s" driver/*driver*) file)))))))))
+            (is (some? (upload/load-from-csv! driver/*driver* (mt/id) (format "table_name_%s" driver/*driver*) file)))
+            (is (some? (upload/load-from-csv! driver/*driver* (mt/id) (format "table_name_2_%s" driver/*driver*) file)))))))))
 
-(defn- query-table!
+(defn- query-table
   [table]
   (qp/process-query {:database (:db_id table)
                      :type     :query
@@ -271,20 +271,20 @@
 
 (defn- column-names-for-table
   [table]
-  (->> (query-table! table)
+  (->> (query-table table)
        mt/cols
        (map (comp u/lower-case-en :name))))
 
 (defn- rows-for-table
   [table]
-  (mt/rows (query-table! table)))
+  (mt/rows (query-table table)))
 
 (deftest load-from-csv-test
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (with-mysql-local-infile-activated
-          (upload/load-from-csv
+          (upload/load-from-csv!
            driver/*driver*
            (mt/id)
            "upload_test"
@@ -328,7 +328,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (with-mysql-local-infile-activated
-          (upload/load-from-csv
+          (upload/load-from-csv!
            driver/*driver*
            (mt/id)
            "upload_test"
@@ -350,7 +350,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (with-mysql-local-infile-activated
-          (upload/load-from-csv
+          (upload/load-from-csv!
            driver/*driver*
            (mt/id)
            "upload_test"
@@ -395,7 +395,7 @@
         (is (pos? length-limit) "driver/table-name-length-limit has been set")
         (mt/with-empty-db
           (with-mysql-local-infile-activated
-            (upload/load-from-csv
+            (upload/load-from-csv!
              driver/*driver*
              (mt/id)
              (upload/unique-table-name driver/*driver* long-name)
@@ -414,7 +414,7 @@
   (testing "Upload a CSV file with a blank column name"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-        (upload/load-from-csv
+        (upload/load-from-csv!
          driver/*driver*
          (mt/id)
          "upload_test"
@@ -434,7 +434,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (with-mysql-local-infile-activated
-          (upload/load-from-csv
+          (upload/load-from-csv!
            driver/*driver*
            (mt/id)
            "upload_test"
@@ -454,7 +454,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (with-mysql-local-infile-activated
-          (upload/load-from-csv
+          (upload/load-from-csv!
            driver/*driver*
            (mt/id)
            "upload_test"
@@ -474,7 +474,7 @@
     (mt/with-empty-db
       (with-mysql-local-infile-activated
         (testing "Can upload a CSV with missing values"
-          (upload/load-from-csv
+          (upload/load-from-csv!
            driver/*driver*
            (mt/id)
            "upload_test"
@@ -494,7 +494,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (with-mysql-local-infile-activated
-          (upload/load-from-csv
+          (upload/load-from-csv!
            driver/*driver*
            (mt/id)
            "upload_test"
@@ -517,7 +517,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (with-mysql-local-infile-activated
-          (upload/load-from-csv
+          (upload/load-from-csv!
            driver/*driver*
            (mt/id)
            "upload_test"
@@ -540,7 +540,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (with-mysql-local-infile-activated
-          (upload/load-from-csv
+          (upload/load-from-csv!
            driver/*driver*
            (mt/id)
            "upload_test"
@@ -562,7 +562,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (with-mysql-local-infile-activated
-          (upload/load-from-csv
+          (upload/load-from-csv!
            driver/*driver*
            (mt/id)
            "upload_test"
@@ -585,7 +585,7 @@
   (testing "Upload a CSV file with Postgres's 'end of input' marker"
     (mt/test-drivers [:postgres]
       (mt/with-empty-db
-        (upload/load-from-csv
+        (upload/load-from-csv!
          driver/*driver*
          (mt/id)
          "upload_test"
@@ -616,7 +616,7 @@
     (mt/test-drivers [:mysql]
       (mt/with-empty-db
         (with-redefs [mysql/get-global-variable (constantly "OFF")]
-          (upload/load-from-csv
+          (upload/load-from-csv!
            driver/*driver*
            (mt/id)
            "upload_test"
