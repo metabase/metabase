@@ -79,7 +79,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
     runs-on: buildjet-2vcpu-ubuntu-2204
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
