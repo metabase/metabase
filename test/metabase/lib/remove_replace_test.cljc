@@ -98,10 +98,11 @@
 
 (deftest ^:parallel remove-clause-fields-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/expression "myadd" (lib/+ 1 (lib/field "VENUES" "CATEGORY_ID")))
                   (lib/with-fields [(lib/field "VENUES" "ID") (lib/field "VENUES" "NAME")]))
         fields (lib/fields query)]
-    (is (= 2 (count fields)))
-    (is (= 1 (-> query
+    (is (= 3 (count fields)))
+    (is (= 2 (-> query
                  (lib/remove-clause (first fields))
                  (lib/fields)
                  count)))
@@ -110,13 +111,13 @@
                   (lib/remove-clause (second fields))
                   (lib/fields))))
     (testing "removing with dependent should cascade"
-      (is (=? {:stages [{:fields [(second fields)]} (complement :filters)]}
+      (is (=? {:stages [{:fields (rest fields)} (complement :filters)]}
               (-> query
                 (lib/append-stage)
                 ;; TODO Should be able to create a ref with lib/field [#29763]
                 (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
                 (lib/remove-clause 0 (first fields)))))
-      (is (=? {:stages [{:fields [(second fields)]}
+      (is (=? {:stages [{:fields (rest fields)}
                         (complement :fields)
                         (complement :filters)]}
               (-> query

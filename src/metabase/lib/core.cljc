@@ -35,6 +35,7 @@
          lib.breakout/keep-me
          lib.card/keep-me
          lib.column-group/keep-me
+         lib.common/keep-me
          lib.dev/keep-me
          lib.expression/keep-me
          lib.field/keep-me
@@ -91,6 +92,8 @@
   [lib.column-group
    columns-group-columns
    group-columns]
+  [lib.common
+   external-op]
   [lib.dev
    field
    query-for-table-id

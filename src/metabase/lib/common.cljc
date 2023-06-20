@@ -15,10 +15,11 @@
   "Convert the internal operator `clause` to the external format."
   [[operator options :as clause]]
   (when clause
-    {:operator (cond-> operator
+    {:lib/type :lib/external-op
+     :operator (cond-> operator
                  (keyword? operator) name)
-     :options options
-     :args (subvec clause 2)}))
+     :options  options
+     :args     (subvec clause 2)}))
 
 (defmulti ->op-arg
   "Ensures that clause arguments are properly unwrapped"
@@ -71,7 +72,8 @@
                                          (cons `list* (remove #{'&} argvec))
                                          argvec)]]
                 `([~'query ~'stage-number ~@argvec]
-                  {:operator ~(keyword op-name)
+                  {:lib/type :lib/external-op
+                   :operator ~(keyword op-name)
                    :args (mapv (fn [~'arg]
                                  (->op-arg ~'query ~'stage-number ~'arg))
                                ~arglist-expr)})))

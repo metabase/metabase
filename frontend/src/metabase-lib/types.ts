@@ -27,7 +27,7 @@ export type OrderByDirection = "asc" | "desc";
 declare const FilterClause: unique symbol;
 export type FilterClause = unknown & { _opaque: typeof FilterClause };
 
-export type Clause = BreakoutClause | FilterClause | OrderByClause;
+export type Clause = BreakoutClause | OrderByClause | FilterClause;
 
 declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
@@ -99,7 +99,7 @@ export type ExpressionArg =
   | ColumnMetadata
   | Clause;
 
-// ExternalOp is a special representation of a filter clause or aggregation clause.
+// ExternalOp is a JS-friendly representation of a filter clause or aggregation clause.
 declare const ExternalOp: unique symbol;
 export type ExternalOp = {
   _opaque: typeof ExternalOp;
