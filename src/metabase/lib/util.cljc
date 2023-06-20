@@ -44,6 +44,12 @@
        (map? (second clause))
        (contains? (second clause) :lib/uuid)))
 
+(defn clause-of-type?
+  "Returns true if this is a clause."
+  [clause clause-type]
+  (and (clause? clause)
+       (= (first clause) clause-type)))
+
 (defn clause-uuid
   "Returns the :lib/uuid of `clause`. Returns nil if `clause` is not a clause."
   [clause]
@@ -90,13 +96,17 @@
   "Remove the `target-clause` in `stage` `location`.
    If a clause has :lib/uuid equal to the `target-clause` it is removed.
    If `location` contains no clause with `target-clause` no removal happens.
-   If the the location is empty, dissoc it from stage."
+   If the the location is empty, dissoc it from stage.
+   For the [:fields] location if only expressions remain, dissoc from stage."
   [stage location target-clause]
   {:pre [(clause? target-clause)]}
   (if-let [target (get-in stage location)]
     (let [target-uuid (clause-uuid target-clause)
           [first-loc last-loc] [(first location) (last location)]
-          result (into [] (remove (comp #{target-uuid} clause-uuid)) target)]
+          result (into [] (remove (comp #{target-uuid} clause-uuid)) target)
+          result (when-not (and (= location [:fields])
+                                (every? #(clause-of-type? % :expression) result))
+                   result)]
       (cond
         (seq result)
         (assoc-in stage location result)
