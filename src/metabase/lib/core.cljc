@@ -87,8 +87,6 @@
    breakoutable-columns
    breakouts
    breakouts-metadata]
-  [lib.common
-   external-op]
   [lib.column-group
    columns-group-columns
    group-columns]
