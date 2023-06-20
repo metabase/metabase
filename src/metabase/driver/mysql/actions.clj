@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -133,13 +134,20 @@
   [_driver _conn thunk]
   (thunk))
 
-(defn- get-primary-keys [db-spec table-components]
+(defn- primary-keys [driver jdbc-spec table-components]
   (let [schema (when (next table-components) (first table-components))
-        table (last table-components)]
-    (jdbc/with-db-metadata [md db-spec]
-      (->> (.getPrimaryKeys md nil schema table)
-           jdbc/metadata-result
-           (mapv :column_name)))))
+        table  (last table-components)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     jdbc-spec
+     nil
+     (fn [^java.sql.Connection conn]
+       (let [metadata (.getMetaData conn)]
+         (with-open [rset (.getPrimaryKeys metadata nil schema table)]
+           (loop [acc []]
+             (if-not (.next rset)
+               acc
+               (recur (conj acc (.getString rset "COLUMN_NAME")))))))))))
 
 ;;; MySQL returns the generated ID (of which cannot be more than one)
 ;;; as insert_id. If this is not null, we determine the name of the
@@ -151,9 +159,9 @@
 ;;; warning and return nil.
 (defmethod sql-jdbc.actions/select-created-row :mysql
   [driver create-hsql conn {:keys [insert_id] :as results}]
-  (let [db-spec {:connection conn}
+  (let [jdbc-spec {:connection conn}
         table-components (-> create-hsql :insert-into :components)
-        pks (get-primary-keys db-spec table-components)
+        pks (primary-keys driver jdbc-spec table-components)
         where-clause (if insert_id
                        [:= (-> pks first keyword) insert_id]
                        (into [:and]
@@ -165,7 +173,7 @@
                                :from [(:insert-into create-hsql)]
                                :where where-clause))
         select-sql-args (sql.qp/format-honeysql driver select-hsql)
-        query-results (jdbc/query db-spec
+        query-results (jdbc/query jdbc-spec
                                   select-sql-args
                                   {:identifiers identity, :transaction? false})]
     (if (next query-results)

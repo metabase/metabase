@@ -77,7 +77,6 @@
 
 (mr/def ::timezone-id
   [:and
-
    ::common/non-blank-string
    (into [:enum
           {:error/message "valid timezone ID"

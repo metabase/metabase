@@ -49,16 +49,26 @@ export const CustomHomePageModal = ({
     [setDashboardId],
   );
 
+  const handleClose = useCallback(() => {
+    setDashboardId(undefined);
+    onClose();
+  }, [onClose, setDashboardId]);
+
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalContent
         title="Customize Homepage"
-        onClose={onClose}
+        onClose={handleClose}
         footer={[
-          <Button onClick={onClose} key="custom-homepage-modal-cancel">
+          <Button onClick={handleClose} key="custom-homepage-modal-cancel">
             Cancel
           </Button>,
-          <Button primary onClick={handleSave} key="custom-homepage-modal-save">
+          <Button
+            primary
+            onClick={handleSave}
+            key="custom-homepage-modal-save"
+            disabled={!dashboardId}
+          >
             Save
           </Button>,
         ]}

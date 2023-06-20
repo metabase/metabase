@@ -43,6 +43,7 @@ describe("scenarios > question > download", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.deleteDownloadsFolder();
   });
 
   testCases.forEach(fileType => {
@@ -160,10 +161,12 @@ describe("scenarios > dashboard > download pdf", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.deleteDownloadsFolder();
   });
   it("should allow you to download a PDF of a dashboard", () => {
+    const date = Date.now();
     cy.createDashboardWithQuestions({
-      dashboardName: "saving pdf dashboard",
+      dashboardName: `saving pdf dashboard - ${date}`,
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
       visitDashboard(dashboard.id);
@@ -174,7 +177,7 @@ describe("scenarios > dashboard > download pdf", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Export as PDF").click();
 
-    cy.verifyDownload("saving pdf dashboard.pdf", { contains: true });
+    cy.verifyDownload(`saving pdf dashboard - ${date}.pdf`);
   });
 });
 
