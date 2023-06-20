@@ -312,7 +312,7 @@
 (defn ^:export aggregate
   "Adds an aggregation to query."
   [a-query stage-number an-aggregate-clause]
-  (lib.core/aggregate a-query stage-number an-aggregate-clause))
+  (lib.core/aggregate a-query stage-number (js->clj an-aggregate-clause :keywordize-keys true)))
 
 (defn ^:export aggregations
   "Get the aggregations in a given stage of a query."
@@ -504,3 +504,11 @@
   "Get the joins associated with a particular query stage."
   [a-query stage-number]
   (to-array (lib.core/joins a-query stage-number)))
+
+(defn ^:export external-op
+  "Convert the internal operator `clause` to the external format."
+  [clause]
+  (let [{:keys [operator options args]} (lib.core/external-op clause)]
+    #js {:operator operator
+         :options (clj->js options)
+         :args (to-array args)}))

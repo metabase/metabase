@@ -43,9 +43,6 @@ export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 declare const Bucket: unique symbol;
 export type Bucket = unknown & { _opaque: typeof Bucket };
 
-declare const BooleanExpression: unique symbol;
-export type BooleanExpression = unknown & { _opaque: typeof BooleanExpression };
-
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
@@ -94,13 +91,22 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
 declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
 
+export type ExpressionArg =
+  | null
+  | boolean
+  | number
+  | string
+  | ColumnMetadata
+  | Clause;
+
 // ExternalOp is a JS-friendly representation of a filter clause or aggregation clause.
-//
-// TODO: ExternalOp is not actually supposed to be opaque at all, the whole point of it is for FE friendliness... we
-// should write a real signature here. See https://metaboat.slack.com/archives/C04CYTEL9N2/p1686948727809349 where I
-// was soliciting feedback on what the signature should be. -- Cam
 declare const ExternalOp: unique symbol;
-export type ExternalOp = unknown & { _opaque: typeof ExternalOp };
+export type ExternalOp = {
+  _opaque: typeof ExternalOp;
+  operator: string;
+  options: Record<string, unknown>;
+  args: ExpressionArg[];
+};
 
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
@@ -110,10 +116,3 @@ export type JoinStrategy =
   | "right-join"
   | "inner-join"
   | "full-join";
-
-export type ExpressionArg =
-  | boolean
-  | number
-  | string
-  | ColumnMetadata
-  | ExternalOp;
