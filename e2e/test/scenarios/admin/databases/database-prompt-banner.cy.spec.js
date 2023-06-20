@@ -6,6 +6,8 @@ import {
   expectNoBadSnowplowEvents,
   resetSnowplow,
   restore,
+  rightSidebar,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 describe("database prompt banner", () => {
@@ -54,6 +56,23 @@ describe("database prompt banner", () => {
         ).should("not.exist");
       });
   });
+
+  // Until we enable multi-browser support, this repro will be skipped by Cypress in CI
+  // Issue was specific to Firefox only - it is still possible to test it locally
+  it(
+    "should show info sidebar correctly on Firefox",
+    { browser: "firefox" },
+    function () {
+      visitDashboard(1);
+      cy.findByRole("main").findByText("Loading...").should("not.exist");
+      cy.findByRole("main").icon("info").click();
+
+      rightSidebar().within(() => {
+        cy.findByRole("heading", { name: "About" }).should("be.visible");
+        cy.findByRole("heading", { name: "History" }).should("be.visible");
+      });
+    },
+  );
 
   describe("embeddings", () => {
     // Public and signed embeds are tested in `PublicQuestion.unit.spec.tsx`
