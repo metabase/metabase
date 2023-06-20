@@ -3,11 +3,9 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import cx from "classnames";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Snippets from "metabase/entities/snippets";
 import { SnippetButton } from "./SnippetRow.styled";
-
-const ICON_SIZE = 16;
 
 class SnippetRowInner extends Component {
   constructor(props) {
@@ -42,21 +40,15 @@ class SnippetRowInner extends Component {
                   }
             }
           >
-            <Icon
-              name="snippet"
-              size={ICON_SIZE}
-              className="hover-child--hidden text-light"
-            />
+            <Icon name="snippet" className="hover-child--hidden text-light" />
             <Icon
               name={insertSnippet ? "arrow_left_to_line" : "snippet"}
-              size={ICON_SIZE}
               className="hover-child"
             />
             <span className="flex-full ml1">{snippet.name}</span>
           </div>
           <Icon
             name={isOpen ? "chevronup" : "chevrondown"}
-            size={ICON_SIZE}
             className={cx({ "hover-child": !isOpen })}
           />
         </div>

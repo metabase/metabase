@@ -7,7 +7,8 @@
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest card-create-test
   (mt/with-temp* [User [user]
@@ -117,8 +118,18 @@
                   {:model "card" :model_id (u/the-id dataset)}]
                  recent-views))))))))
 
+(deftest user-dismissed-toasts-setting-test
+  (testing "user-dismissed-toasts! updates user-dismissed-toasts"
+    (binding [metabase.models.setting/*user-local-values* (delay (atom {}))]
+      (view-log/dismissed-custom-dashboard-toast! false)
+      (is (= false (view-log/dismissed-custom-dashboard-toast)))
+      (view-log/dismissed-custom-dashboard-toast! true)
+      (is (= true (view-log/dismissed-custom-dashboard-toast)))
+      (view-log/dismissed-custom-dashboard-toast! false)
+      (is (= false (view-log/dismissed-custom-dashboard-toast))))))
+
 (deftest most-recently-viewed-dashboard-test
-  (mt/with-temp Dashboard [dash {:name "Look at this Distinguished Dashboard!"}]
+  (t2.with-temp/with-temp [Dashboard dash {:name "Look at this Distinguished Dashboard!"}]
     (mt/with-model-cleanup [ViewLog]
       (testing "When a user views a dashboard, most-recently-viewed-dashboard is updated with that id."
         (mt/with-test-user :crowberto (setting/set-value-of-type! :json :most-recently-viewed-dashboard nil))

@@ -9,8 +9,6 @@ import {
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
 
-import { iconPropTypes } from "metabase/components/Icon";
-
 import { formatValue } from "metabase/lib/formatting";
 
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -23,12 +21,16 @@ import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series"
 
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import FunnelNormal from "../components/FunnelNormal";
 import FunnelBar from "../components/FunnelBar";
 import LegendHeader from "../components/LegendHeader";
 
 const propTypes = {
-  headerIcon: PropTypes.shape(iconPropTypes),
+  headerIcon: PropTypes.object,
 };
 
 export default class Funnel extends Component {
@@ -38,8 +40,8 @@ export default class Funnel extends Component {
 
   static noHeader = true;
 
-  static minSize = { width: 5, height: 4 };
-  static defaultSize = { width: 5, height: 4 };
+  static minSize = getMinSize("funnel");
+  static defaultSize = getDefaultSize("funnel");
 
   static isSensible({ cols, rows }) {
     return cols.length === 2;

@@ -1,30 +1,31 @@
 (ns ^:mb/once metabase.automagic-dashboards.core-test
   (:require
-    [cheshire.core :as json]
-    [clojure.core.async :as a]
-    [clojure.set :as set]
-    [clojure.string :as str]
-    [clojure.test :refer :all]
-    [java-time :as t]
-    [metabase.api.common :as api]
-    [metabase.automagic-dashboards.core :as magic]
-    [metabase.automagic-dashboards.rules :as rules]
-    [metabase.mbql.schema :as mbql.s]
-    [metabase.models :refer [Card Collection Database Field Metric Table Segment]]
-    [metabase.models.interface :as mi]
-    [metabase.models.permissions :as perms]
-    [metabase.models.permissions-group :as perms-group]
-    [metabase.models.query :as query :refer [Query]]
-    [metabase.query-processor.async :as qp.async]
-    [metabase.sync :as sync]
-    [metabase.test :as mt]
-    [metabase.test.automagic-dashboards :as automagic-dashboards.test]
-    [metabase.util :as u]
-    [metabase.util.date-2 :as u.date]
-    [metabase.util.i18n :refer [tru]]
-    [ring.util.codec :as codec]
-    [schema.core :as s]
-    [toucan2.core :as t2]))
+   [cheshire.core :as json]
+   [clojure.core.async :as a]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.api.common :as api]
+   [metabase.automagic-dashboards.core :as magic]
+   [metabase.automagic-dashboards.rules :as rules]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models :refer [Card Collection Database Field Metric Table Segment]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.query :as query :refer [Query]]
+   [metabase.query-processor.async :as qp.async]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.automagic-dashboards :as automagic-dashboards.test]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [ring.util.codec :as codec]
+   [schema.core :as s]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -115,8 +116,8 @@
           (is (pos? (count (:ordered_cards (magic/automagic-analysis field {})))))))))
 
 (deftest metric-test
-  (mt/with-temp Metric [metric {:table_id (mt/id :venues)
-                                :definition {:aggregation [[:count]]}}]
+  (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)
+                                          :definition {:aggregation [[:count]]}}]
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup
         (test-automagic-analysis metric 8)))))
@@ -216,9 +217,6 @@
                       {:table table :column column}))))
 
 (deftest field-matching-predicates-test
-  (testing "A Google Analytics dimension will match on field name."
-    (let [fa-fieldspec "ga:name"]
-      (is (= fa-fieldspec ((#'magic/fieldspec-matcher fa-fieldspec) {:name fa-fieldspec})))))
   (testing "The fieldspec-matcher does not match on ID columns."
     (mt/dataset sample-dataset
       (let [id-field (field! :products :id)]

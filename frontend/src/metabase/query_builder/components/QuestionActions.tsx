@@ -19,6 +19,7 @@ import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { getSetting } from "metabase/selectors/settings";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import Question from "metabase-lib/Question";
 
 import {
@@ -107,6 +108,7 @@ const QuestionActions = ({
     const modal = checkCanBeModel(question)
       ? MODAL_TYPES.TURN_INTO_DATASET
       : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
+    trackTurnIntoModelClicked(question);
     onOpenModal(modal);
   }, [onOpenModal, question]);
 
@@ -165,7 +167,7 @@ const QuestionActions = ({
   if (!isDataset) {
     extraButtons.push({
       title: t`Add to dashboard`,
-      icon: "dashboard",
+      icon: "add_to_dash",
       action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
       testId: ADD_TO_DASH_TESTID,
     });
@@ -189,7 +191,7 @@ const QuestionActions = ({
     if (isDataset) {
       extraButtons.push({
         title: t`Turn back to saved question`,
-        icon: "model_framed",
+        icon: "insight",
         action: turnDatasetIntoQuestion,
       });
     }
@@ -198,7 +200,7 @@ const QuestionActions = ({
   if (!question.query().readOnly()) {
     extraButtons.push({
       title: t`Duplicate`,
-      icon: "segment",
+      icon: "clone",
       action: () => onOpenModal(MODAL_TYPES.CLONE),
       testId: CLONE_TESTID,
     });
@@ -207,7 +209,7 @@ const QuestionActions = ({
   if (canWrite) {
     extraButtons.push({
       title: t`Archive`,
-      icon: "view_archive",
+      icon: "archive",
       action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
       testId: ARCHIVE_TESTID,
     });

@@ -2,7 +2,7 @@ import { HTMLAttributes } from "react";
 import * as React from "react";
 import { t } from "ttag";
 
-import { IconProps } from "metabase/components/Icon";
+import type { IconName, IconProps } from "metabase/core/components/Icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 
 import type {
@@ -88,9 +88,9 @@ export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
-  getHasCustomColors: (state: State) => false,
-  canWhitelabel: (state: State) => false,
-  getLoadingMessage: (state: State) => t`Doing science...`,
+  canWhitelabel: (_state: State) => false,
+  getLoadingMessage: (_state: State) => t`Doing science...`,
+  getIsWhiteLabeling: (_state: State) => false,
 };
 
 export const PLUGIN_FORM_WIDGETS: Record<string, React.ComponentType<any>> = {};
@@ -147,7 +147,7 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 export type RevisionOrModerationEvent = {
   title: string;
   timestamp: string;
-  icon: string | { name: string; color: string } | Record<string, never>;
+  icon: IconName | { name: IconName; color: string } | Record<string, never>;
   description?: string;
   revision?: Revision;
 };

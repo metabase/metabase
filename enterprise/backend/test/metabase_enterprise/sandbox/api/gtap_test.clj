@@ -10,7 +10,8 @@
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"
@@ -79,7 +80,7 @@
                 #(#{gtap-id-1 gtap-id-2} (:id %))
                 (mt/user-http-request :crowberto :get 200 "mt/gtap/")))))
 
-        (testing "Test that we can fetch the list of GTAPs for a specific table and group"
+        (testing "Test that we can fetch the GTAP for a specific table and group"
           (is (partial=
                {:id gtap-id-1 :table_id table-id-1 :group_id group-id-1}
                (mt/user-http-request :crowberto :get 200 "mt/gtap/"
@@ -90,7 +91,7 @@
     (mt/with-temp* [Table            [{table-id :id}]
                     PermissionsGroup [{group-id :id}]]
       (testing "Test that we can create a new GTAP"
-        (mt/with-temp Card [{card-id :id}]
+        (t2.with-temp/with-temp [Card {card-id :id}]
           (with-gtap-cleanup
             (let [post-results (gtap-post {:table_id             table-id
                                            :group_id             group-id
@@ -133,7 +134,7 @@
     (mt/with-temp* [Table            [{table-id :id}]
                     PermissionsGroup [{group-id :id}]]
       (testing "A valid sandbox passes validation and returns no error"
-        (mt/with-temp Card [{card-id :id}]
+        (t2.with-temp/with-temp [Card {card-id :id}]
           (with-gtap-cleanup
             (mt/user-http-request :crowberto :post 204 "mt/gtap/validate"
                                   {:table_id             table-id
@@ -189,40 +190,40 @@
                     Card             [{card-id :id}]]
       (premium-features-test/with-premium-features #{:sandboxes}
         (testing "Test that we can update only the attribute remappings for a GTAP"
-          (mt/with-temp GroupTableAccessPolicy [{gtap-id :id} {:table_id             table-id
-                                                               :group_id             group-id
-                                                               :card_id              card-id
-                                                               :attribute_remappings {"foo" 1}}]
+          (t2.with-temp/with-temp [GroupTableAccessPolicy {gtap-id :id} {:table_id             table-id
+                                                                         :group_id             group-id
+                                                                         :card_id              card-id
+                                                                         :attribute_remappings {"foo" 1}}]
             (is (= (assoc default-gtap-results :attribute_remappings {:bar 2})
                    (mt/boolean-ids-and-timestamps
                     (mt/user-http-request :crowberto :put 200 (format "mt/gtap/%s" gtap-id)
                                           {:attribute_remappings {:bar 2}}))))))
 
         (testing "Test that we can add a card_id via PUT"
-          (mt/with-temp GroupTableAccessPolicy [{gtap-id :id} {:table_id             table-id
-                                                               :group_id             group-id
-                                                               :card_id              nil
-                                                               :attribute_remappings {"foo" 1}}]
+          (t2.with-temp/with-temp [GroupTableAccessPolicy {gtap-id :id} {:table_id             table-id
+                                                                         :group_id             group-id
+                                                                         :card_id              nil
+                                                                         :attribute_remappings {"foo" 1}}]
             (is (= default-gtap-results
                    (mt/boolean-ids-and-timestamps
                     (mt/user-http-request :crowberto :put 200 (format "mt/gtap/%s" gtap-id)
                                           {:card_id card-id}))))))
 
         (testing "Test that we can remove a card_id via PUT"
-          (mt/with-temp GroupTableAccessPolicy [{gtap-id :id} {:table_id             table-id
-                                                               :group_id             group-id
-                                                               :card_id              card-id
-                                                               :attribute_remappings {"foo" 1}}]
+          (t2.with-temp/with-temp [GroupTableAccessPolicy {gtap-id :id} {:table_id             table-id
+                                                                         :group_id             group-id
+                                                                         :card_id              card-id
+                                                                         :attribute_remappings {"foo" 1}}]
             (is (= (assoc default-gtap-results :card_id false)
                    (mt/boolean-ids-and-timestamps
                     (mt/user-http-request :crowberto :put 200 (format "mt/gtap/%s" gtap-id)
                                           {:card_id nil}))))))
 
         (testing "Test that we can remove a card_id and change attribute remappings via PUT"
-          (mt/with-temp GroupTableAccessPolicy [{gtap-id :id} {:table_id             table-id
-                                                               :group_id             group-id
-                                                               :card_id              card-id
-                                                               :attribute_remappings {"foo" 1}}]
+          (t2.with-temp/with-temp [GroupTableAccessPolicy {gtap-id :id} {:table_id             table-id
+                                                                         :group_id             group-id
+                                                                         :card_id              card-id
+                                                                         :attribute_remappings {"foo" 1}}]
             (is (= (assoc default-gtap-results :card_id false, :attribute_remappings {:bar 2})
                    (mt/boolean-ids-and-timestamps
                     (mt/user-http-request :crowberto :put 200 (format "mt/gtap/%s" gtap-id)

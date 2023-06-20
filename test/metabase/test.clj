@@ -15,7 +15,6 @@
    [medley.core :as m]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
-   [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -50,7 +49,8 @@
    [potemkin :as p]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]
-   [toucan2.model :as t2.model]))
+   [toucan2.model :as t2.model]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -82,6 +82,7 @@
   test-runner.assert-exprs/keep-me
   test.users/keep-me
   tt/keep-me
+  t2.with-temp/keepme
   tu/keep-me
   tu.async/keep-me
   tu.log/keep-me
@@ -208,8 +209,9 @@
   with-test-user]
 
  [tt
-  with-temp
-  with-temp*
+  with-temp*]
+
+ [t2.with-temp
   with-temp-defaults]
 
  [tu
@@ -316,12 +318,11 @@
                                      (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser false}))
         temp-admin                 (first (t2/insert-returning-instances! User (merge (with-temp-defaults User)
                                                                                       attributes
-                                                                                      {:is_superuser true})))
-        primary-key                (mdb.u/primary-key User)]
+                                                                                      {:is_superuser true})))]
     (try
       (thunk temp-admin)
       (finally
-        (t2/delete! User primary-key (primary-key temp-admin))
+        (t2/delete! User (:id temp-admin))
         (when (seq existing-admin-ids)
           (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser true}))
         (t2/insert! PermissionsGroupMembership existing-admin-memberships)))))
@@ -403,7 +404,7 @@
   application DB. Example usage:
 
     (deftest update-user-first-name-test
-      (mt/with-temp User [user]
+      (t2.with-temp/with-temp [User user]
         (update-user-first-name! user \"Cam\")
         (is (= (merge (mt/object-defaults User)
                       (select-keys user [:id :last_name :created_at :updated_at])
@@ -426,6 +427,4 @@
 ;;; these are deprecated at runtime so Kondo doesn't complain, also because we can't go around deprecating stuff from
 ;;; other libaries any other way. They're marked deprecated to encourage you to use the `t2.with-temp` versions.
 #_{:clj-kondo/ignore [:discouraged-var]}
-(doseq [varr [#'with-temp
-              #'with-temp*]]
-  (alter-meta! varr assoc :deprecated true))
+(alter-meta! #'with-temp* assoc :deprecated true)

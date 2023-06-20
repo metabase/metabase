@@ -10,7 +10,7 @@ interface Props {
   onBack: () => void;
 }
 
-const ExpressionWidgetHeader = ({
+export const ExpressionWidgetHeader = ({
   title = DEFAULT_SECTION_NAME,
   onBack,
 }: Props): JSX.Element => {
@@ -22,6 +22,3 @@ const ExpressionWidgetHeader = ({
     </Header>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ExpressionWidgetHeader;

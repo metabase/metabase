@@ -2,6 +2,7 @@ import {
   enterCustomColumnDetails,
   restore,
   openProductsTable,
+  popover,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > custom column > help text", () => {
@@ -39,8 +40,7 @@ describe("scenarios > question > custom column > help text", () => {
     cy.findByText("round([Temperature])");
 
     // Click outside of formula field instead of blur
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Expression").click();
+    popover().first().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("round([Temperature])").should("not.exist");
 

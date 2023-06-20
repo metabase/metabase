@@ -6,7 +6,7 @@ import {
   createSampleDatabase,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { getHelpText } from "./ExpressionEditorTextfield/helper-text-strings";
+import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
 import ExpressionEditorHelpText, {
   ExpressionEditorHelpTextProps,
 } from "./ExpressionEditorHelpText";

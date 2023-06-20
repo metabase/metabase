@@ -10,7 +10,7 @@ import {
   restrictToParentElement,
 } from "@dnd-kit/modifiers";
 
-import Icon from "metabase/components/Icon/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { TabListProps } from "../TabList/TabList";
 import { ScrollButton, TabList } from "./TabRow.styled";

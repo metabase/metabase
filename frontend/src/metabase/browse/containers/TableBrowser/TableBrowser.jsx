@@ -7,6 +7,7 @@ import Tables from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
+import * as ML_Urls from "metabase-lib/urls";
 import { RELOAD_INTERVAL } from "../../constants";
 import TableBrowser from "../../components/TableBrowser";
 
@@ -44,7 +45,7 @@ const getReloadInterval = (state, { database }, tables = []) => {
 
 const getTableUrl = (table, metadata) => {
   const metadataTable = metadata?.table(table.id);
-  return metadataTable?.newQuestion().getUrl({ clean: false });
+  return ML_Urls.getUrl(metadataTable?.newQuestion(), { clean: false });
 };
 
 export default _.compose(

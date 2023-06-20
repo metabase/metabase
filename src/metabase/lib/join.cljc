@@ -1,18 +1,26 @@
 (ns metabase.lib.join
   (:require
+   [clojure.string :as str]
+   [inflections.core :as inflections]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.query :as lib.query]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.external-op :as lib.schema.external-op]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.mbql.util.match :as mbql.u.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
@@ -74,7 +82,7 @@
       (:display-name (lib.metadata/table query source-table))
       ;; handle card__<id> source tables.
       (let [card-id (lib.util/string-table-id->card-id source-table)]
-        (i18n/tru "Saved Question #{0}" card-id)))
+        (i18n/tru "Question {0}" card-id)))
     (i18n/tru "Native Query")))
 
 (defmethod lib.metadata.calculation/display-info-method :mbql/join
@@ -89,7 +97,7 @@
    stage-number    :- :int
    column-metadata :- lib.metadata/ColumnMetadata
    join-alias      :- ::lib.schema.common/non-blank-string]
-  (let [column-metadata (assoc column-metadata :source_alias join-alias)
+  (let [column-metadata (assoc column-metadata :source-alias join-alias)
         col             (-> (assoc column-metadata
                                    :display-name (lib.metadata.calculation/display-name query stage-number column-metadata)
                                    :lib/source   :source/joins)
@@ -109,7 +117,10 @@
 (defmethod lib.metadata.calculation/metadata-method :mbql/join
   [query stage-number {:keys [fields stages], join-alias :alias, :or {fields :none}, :as _join}]
   (when-not (= fields :none)
-    (let [join-query (assoc query :stages stages)
+    (let [ensure-previous-stages-have-metadata (resolve 'metabase.lib.stage/ensure-previous-stages-have-metadata)
+          join-query (cond-> (assoc query :stages stages)
+                       ensure-previous-stages-have-metadata
+                       (ensure-previous-stages-have-metadata -1))
           field-metadatas (if (= fields :all)
                             (lib.metadata.calculation/metadata join-query -1 (peek stages))
                             (for [field-ref fields
@@ -268,6 +279,112 @@
   [x fields]
   (with-join-fields-method x fields))
 
+(defn- select-home-column
+  [home-cols cond-fields]
+  (let [cond->home (into {}
+                         (keep  (fn [home-col]
+                                  (when-let [cond-field (lib.equality/find-closest-matching-ref
+                                                         (lib.ref/ref home-col)
+                                                         cond-fields)]
+                                    [cond-field home-col])))
+                         home-cols)
+        cond-home-cols (map cond->home cond-fields)]
+    ;; first choice: the leftmost FK or PK in the condition referring to a home column
+    (or (m/find-first (some-fn lib.types.isa/foreign-key? lib.types.isa/primary-key?) cond-home-cols)
+        ;; otherwise the leftmost home column in the condition
+        (first cond-home-cols)
+        ;; otherwise the first FK home column
+        (m/find-first lib.types.isa/foreign-key? home-cols)
+        ;; otherwise the first PK home column
+        (m/find-first lib.types.isa/primary-key? home-cols)
+        ;; otherwise the first home column
+        (first home-cols))))
+
+(defn- strip-id [s]
+  (when (string? s)
+    (str/trim (str/replace s #"(?i) id$" ""))))
+
+(defn- similar-names?
+  "Checks if `name0` and `name1` are similar.
+  Two names are considered similar if they are the same, one is the plural of the other,
+  or their plurals are equal.
+  This is used to avoid repeating ourselves in situations like when we have a table called
+  PRODUCTS and a field (presumably referring to that table) called PRODUCT."
+  [name0 name1]
+  (and (string? name0) (string? name1)
+       (let [plural1 (delay (inflections/plural name1))
+             plural0 (delay (inflections/plural name0))]
+         (or (= name0 name1)
+             (= name0 @plural1)
+             (= @plural0 name1)
+             (= @plural0 @plural1)))))
+
+(defn- calculate-join-alias [query joined home-col]
+  (let [joined-name (lib.metadata.calculation/display-name
+                     (if (= (:lib/type joined) :mbql/query) joined query)
+                     joined)
+        home-name   (when home-col (strip-id (lib.metadata.calculation/display-name query home-col)))
+        similar     (similar-names? joined-name home-name)
+        join-alias  (or (and joined-name
+                             home-name
+                             (not (re-matches #"(?i)id" home-name))
+                             (not similar)
+                             (str joined-name " - " home-name))
+                        joined-name
+                        home-name
+                        "source")]
+    join-alias))
+
+(defn- field-clause? [field-clause]
+  (and (lib.util/clause? field-clause)
+       (= (first field-clause) :field)))
+
+(defn- add-alias-to-join-refs [metadata-providerable form join-alias join-refs]
+  (mbql.u.match/replace form
+    (field :guard (fn [field-clause]
+                    (and (field-clause? field-clause)
+                         (boolean (lib.equality/find-closest-matching-ref
+                                   metadata-providerable field-clause join-refs)))))
+    (with-join-alias field join-alias)))
+
+(defn- add-alias-to-condition
+  [metadata-providerable condition join-alias home-refs join-refs]
+  (let [condition (add-alias-to-join-refs metadata-providerable condition join-alias join-refs)]
+    ;; Sometimes conditions have field references which cannot be unambigously
+    ;; assigned to one of the sides. The following code tries to deal with
+    ;; these cases, but only for conditions that look like the ones generated
+    ;; generated by the FE. These have the form home-field op join-field,
+    ;; so we break ties by looking at the poisition of the field reference.
+    (mbql.u.match/replace condition
+      [op op-opts (lhs :guard field-clause?) (rhs :guard field-clause?)]
+      (let [lhs-aliased (contains? (lib.options/options lhs) :join-alias)
+            rhs-aliased (contains? (lib.options/options rhs) :join-alias)]
+        (cond
+          ;; no sides obviously belong to joined
+          (not (or lhs-aliased rhs-aliased))
+          (if (lib.equality/find-closest-matching-ref metadata-providerable rhs home-refs)
+            [op op-opts (with-join-alias lhs join-alias) rhs]
+            [op op-opts lhs (with-join-alias rhs join-alias)])
+
+          ;; both sides seem to belong to joined assuming this resulted from
+          ;; overly fuzzy matching, we remove the join alias from the LHS
+          ;; unless the RHS seems to belong to home too while the LHS doen't
+          (and lhs-aliased rhs-aliased)
+          (let [bare-lhs (lib.options/update-options lhs dissoc :join-alias)
+                bare-rhs (lib.options/update-options rhs dissoc :join-alias)]
+            (if (and (nil? (lib.equality/find-closest-matching-ref metadata-providerable bare-lhs home-refs))
+                     (lib.equality/find-closest-matching-ref metadata-providerable bare-rhs home-refs))
+              [op op-opts lhs bare-rhs]
+              [op op-opts bare-lhs rhs]))
+
+          ;; we leave alone the condition otherwise
+          :else &match)))))
+
+(defn- generate-unique-name [base-name taken-names]
+  (let [generator (lib.util/unique-name-generator)]
+    (run! generator taken-names)
+    (generator base-name)))
+
 (mu/defn join :- ::lib.schema/query
   "Create a join map as if by [[join-clause]] and add it to a `query`.
 
@@ -282,9 +399,32 @@
 
   ([query stage-number x conditions]
    (let [stage-number (or stage-number -1)
+         stage        (lib.util/query-stage query stage-number)
+         joined       (if (fn? x) (x query stage) x)
          new-join     (if (seq conditions)
-                        (join-clause query stage-number x conditions)
-                        (join-clause query stage-number x))]
+                        (join-clause query stage-number joined conditions)
+                        (join-clause query stage-number joined))
+         new-join     (if (contains? new-join :alias)
+                        ;; if the join clause comes with an alias, keep it and assume that the
+                        ;; condition fields have the right join-aliases too
+                        new-join
+                        (let [home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
+                              cond-fields (mbql.u.match/match (:conditions new-join) :field)
+                              home-col    (select-home-column home-cols cond-fields)
+                              join-alias  (-> (calculate-join-alias query joined home-col)
+                                              (generate-unique-name (map :alias (:joins stage))))
+                              home-refs   (mapv lib.ref/ref home-cols)
+                              join-refs   (mapv lib.ref/ref
+                                                (if (= (:lib/type joined) :mbql/query)
+                                                  (lib.metadata.calculation/metadata joined)
+                                                  (lib.metadata.calculation/metadata
+                                                   (lib.query/query-with-stages query (:stages joined)))))]
+                          (with-join-alias
+                            (update new-join :conditions
+                                    (fn [conditions]
+                                      (mapv #(add-alias-to-condition query % join-alias home-refs join-refs)
+                                            conditions)))
+                            join-alias)))]
      (lib.util/update-query-stage query stage-number update :joins (fn [joins]
                                                                      (conj (vec joins) new-join))))))
 
@@ -439,6 +579,19 @@
    (sort-join-condition-columns
     (lib.metadata.calculation/visible-columns query stage-number joined-thing {:include-implicitly-joinable? false}))))
 
+;;; TODO -- definitions duplicated with code in [[metabase.lib.filter]]
+
+(defn- equals-join-condition-operator-definition []
+  {:lib/type :mbql.filter/operator, :short :=, :display-name  (i18n/tru "Equal to")})
+
+(defn- join-condition-operator-definitions []
+  [(equals-join-condition-operator-definition)
+   {:lib/type :mbql.filter/operator, :short :>, :display-name  (i18n/tru "Greater than")}
+   {:lib/type :mbql.filter/operator, :short :<, :display-name  (i18n/tru "Less than")}
+   {:lib/type :mbql.filter/operator, :short :>=, :display-name (i18n/tru "Greater than or equal to")}
+   {:lib/type :mbql.filter/operator, :short :<=, :display-name (i18n/tru "Less than or equal to")}
+   {:lib/type :mbql.filter/operator, :short :!=, :display-name (i18n/tru "Not equal to")}])
+
 (mu/defn join-condition-operators :- [:sequential ::lib.schema.filter/operator]
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
   UI, this can be chosen at any point before or after choosing the LHS and RHS. Invalid options are not currently
@@ -452,9 +605,38 @@
     _lhs-column-or-nil :- [:maybe lib.metadata/ColumnMetadata]
     _rhs-column-or-nil :- [:maybe lib.metadata/ColumnMetadata]]
    ;; currently hardcoded to these six operators regardless of LHS and RHS.
-   [{:lib/type :mbql.filter/operator, :short :=, :display-name  (i18n/tru "Equal to")}
-    {:lib/type :mbql.filter/operator, :short :>, :display-name  (i18n/tru "Greater than")}
-    {:lib/type :mbql.filter/operator, :short :<, :display-name  (i18n/tru "Less than")}
-    {:lib/type :mbql.filter/operator, :short :>=, :display-name (i18n/tru "Greater than or equal to")}
-    {:lib/type :mbql.filter/operator, :short :<=, :display-name (i18n/tru "Less than or equal to")}
-    {:lib/type :mbql.filter/operator, :short :!=, :display-name (i18n/tru "Not equal to")}]))
+   (join-condition-operator-definitions)))
+
+(mu/defn ^:private pk-column :- [:maybe lib.metadata/ColumnMetadata]
+  "Given something `x` (e.g. a Table metadata) find the PK column."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   x]
+  (m/find-first lib.types.isa/primary-key?
+                (lib.metadata.calculation/visible-columns query stage-number x)))
+
+(mu/defn ^:private fk-column :- [:maybe lib.metadata/ColumnMetadata]
+  "Given a query stage find an FK column that points to the PK `pk-col`."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   pk-col       :- [:maybe lib.metadata/ColumnMetadata]]
+  (when-let [pk-id (:id pk-col)]
+    (m/find-first (fn [{:keys [fk-target-field-id], :as col}]
+                    (and (lib.types.isa/foreign-key? col)
+                         (= fk-target-field-id pk-id)))
+                  (lib.metadata.calculation/visible-columns query stage-number (lib.util/query-stage query stage-number)))))
+
+(mu/defn suggested-join-condition :- [:maybe ::lib.schema.external-op/external-op]
+  "Return a suggested default join condition when constructing a join against `joined-thing`, e.g. a Table, Saved
+  Question, or another query. A suggested condition will be returned if the query stage has a foreign key to the
+  primary key of the thing we're joining (see #31175 for more info); otherwise this will return `nil` if no default
+  condition is suggested."
+  ([query joined-thing]
+   (suggested-join-condition query -1 joined-thing))
+
+  ([query         :- ::lib.schema/query
+    stage-number  :- :int
+    joined-thing]
+   (when-let [pk-col (pk-column query stage-number joined-thing)]
+     (when-let [fk-col (fk-column query stage-number pk-col)]
+       (lib.filter/filter-clause (equals-join-condition-operator-definition) fk-col pk-col)))))

@@ -32,7 +32,8 @@ export type DatabaseFeature =
   | "left-join"
   | "right-join"
   | "inner-join"
-  | "full-join";
+  | "full-join"
+  | "nested-field-columns";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -87,8 +88,6 @@ export interface DatabaseQuery {
 
 export interface DatabaseListQuery {
   include?: "tables";
-  include_cards?: boolean;
-  include_tables?: boolean;
   saved?: boolean;
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;

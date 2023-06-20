@@ -11,7 +11,7 @@ import { Grid, ScrollSync } from "react-virtualized";
 
 import "./TableInteractive.css";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -794,7 +794,7 @@ class TableInteractive extends Component {
                   <Icon
                     className="Icon mr1"
                     name={isAscending ? "chevronup" : "chevrondown"}
-                    size={8}
+                    size={10}
                   />
                 )}
                 {columnTitle}
@@ -802,7 +802,7 @@ class TableInteractive extends Component {
                   <Icon
                     className="Icon ml1"
                     name={isAscending ? "chevronup" : "chevrondown"}
-                    size={8}
+                    size={10}
                   />
                 )}
               </Ellipsified>,
@@ -1137,7 +1137,6 @@ export default _.compose(
 
 const DetailShortcut = forwardRef((_props, ref) => (
   <div
-    id="detail-shortcut"
     className="TableInteractive-cellWrapper cursor-pointer"
     ref={ref}
     style={{
@@ -1148,6 +1147,7 @@ const DetailShortcut = forwardRef((_props, ref) => (
       width: SIDEBAR_WIDTH,
       zIndex: 3,
     }}
+    data-testid="detail-shortcut"
   >
     <Tooltip tooltip={t`View Details`}>
       <Button

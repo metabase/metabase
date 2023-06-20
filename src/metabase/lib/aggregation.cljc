@@ -1,16 +1,18 @@
 (ns metabase.lib.aggregation
   (:refer-clojure :exclude [count distinct max min var])
   (:require
-   [clojure.math :as math]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
+   [metabase.lib.schema.external-op :as lib.schema.external-op]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -86,14 +88,16 @@
       :count     (i18n/tru "Count")
       :cum-count (i18n/tru "Cumulative count"))))
 
-(defmethod lib.metadata.calculation/column-name-method :count
-  [query stage-number [tag _opts x]]
-  (let [prefix (case tag
-                 :count     "count"
-                 :cum-count "cum_count")]
-    (if x
-      (str prefix \_ (lib.metadata.calculation/column-name query stage-number x))
-      prefix)))
+(defmethod lib.metadata.calculation/column-name-method ::count-aggregation
+  [_query _stage-number [tag :as _clause]]
+  (case tag
+    :count     "count"
+    :cum-count "cum_count"))
+
+(defmethod lib.metadata.calculation/metadata-method ::count-aggregation
+  [query stage-number clause]
+  (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
+         :semantic-type :type/Quantity))
 
 (defmethod lib.metadata.calculation/display-name-method :case
   [_query _stage-number _case _style]
@@ -119,20 +123,18 @@
   (lib.hierarchy/derive tag ::unary-aggregation))
 
 (defmethod lib.metadata.calculation/column-name-method ::unary-aggregation
-  [query stage-number [tag _opts arg]]
-  (let [arg (lib.metadata.calculation/column-name-method query stage-number arg)]
-    (str
-     (case tag
-       :avg       "avg_"
-       :cum-sum   "cum_sum_"
-       :distinct  "distinct_"
-       :max       "max_"
-       :median    "median_"
-       :min       "min_"
-       :stddev    "std_dev_"
-       :sum       "sum_"
-       :var       "var_")
-     arg)))
+  [_query _stage-number [tag _opts _arg]]
+  (case tag
+    :avg       "avg"
+    :cum-sum   "sum"
+    :distinct  "count"
+    :max       "max"
+    :median    "median"
+    :min       "min"
+    :stddev    "stddev"
+    :sum       "sum"
+    :var       "var"))
+
 
 (defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
   [query stage-number [tag _opts arg] style]
@@ -153,12 +155,8 @@
   (i18n/tru "{0}th percentile of {1}" p (lib.metadata.calculation/display-name query stage-number x style)))
 
 (defmethod lib.metadata.calculation/column-name-method :percentile
-  [query stage-number [_percentile _opts x p]]
-  ;; if `p` is between `0` and `1` then just use the first two digits for the name, e.g. `p95_whatever`
-  (let [p (if (< 0 p 1)
-            (int (math/round (* p 100.0)))
-            p)]
-    (lib.util/format "p%s_%s" p (lib.metadata.calculation/column-name query stage-number x))))
+  [_query _stage-number _clause]
+  "percentile")
 
 (lib.hierarchy/derive :percentile ::aggregation)
 
@@ -311,7 +309,7 @@
                   (map #(assoc % :lib/type :mbql.aggregation/operator)))
             lib.schema.aggregation/aggregation-operators)))))
 
-(mu/defn aggregation-clause
+(mu/defn aggregation-clause :- ::lib.schema.external-op/external-op
   "Returns a standalone aggregation clause for an `aggregation-operator` and
   a `column`.
   For aggregations requiring an argument `column` is mandatory, otherwise
@@ -342,7 +340,8 @@
   [agg-operators :- [:maybe [:sequential OperatorWithColumns]]
    agg-clause]
   (when (seq agg-operators)
-    (let [[op _ agg-col] agg-clause]
+    (let [[op _ agg-col] agg-clause
+          agg-temporal-unit (-> agg-col lib.options/options :temporal-unit)]
       (mapv (fn [agg-op]
               (cond-> agg-op
                 (= (:short agg-op) op)
@@ -350,10 +349,17 @@
                     (m/update-existing
                      :columns
                      (fn [cols]
-                       (mapv (fn [col]
-                               (let [a-ref (lib.ref/ref col)]
-                                 (cond-> col
-                                   (lib.equality/ref= a-ref agg-col)
-                                   (assoc :selected? true))))
-                             cols))))))
+                       (let [refs (mapv lib.ref/ref cols)
+                             match (lib.equality/find-closest-matching-ref
+                                    (lib.options/update-options agg-col dissoc :temporal-unit)
+                                    refs)]
+                         (if match
+                           (mapv (fn [r c]
+                                   (cond-> c
+                                     (= r match) (assoc :selected? true)
+
+                                     (some? agg-temporal-unit)
+                                     (lib.temporal-bucket/with-temporal-bucket agg-temporal-unit)))
+                                 refs cols)
+                           cols)))))))
             agg-operators))))

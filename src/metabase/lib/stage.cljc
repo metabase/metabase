@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
@@ -14,6 +15,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
@@ -32,7 +34,7 @@
    {:aggregation (partial mapv lib.normalize/normalize)
     :filters     (partial mapv lib.normalize/normalize)}))
 
-(mu/defn ^:private ensure-previous-stages-have-metadata :- ::lib.schema/query
+(mu/defn ensure-previous-stages-have-metadata :- ::lib.schema/query
   "Recursively calculate the metadata for the previous stages and add it to them, we'll need it for metadata
   calculations for `stage-number` and we don't want to have to calculate it more than once..."
   [query        :- ::lib.schema/query
@@ -259,15 +261,41 @@
    (when include-joined?
      (lib.join/all-joins-visible-columns query stage-number unique-name-fn))))
 
+(defn- ref-to? [[tag _opts pointer :as clause] column]
+  (case tag
+    :field (if (or (number? pointer) (string? pointer))
+             (= pointer (:id column))
+             (throw (ex-info "unknown type of :field ref in lib.stage/ref-to?"
+                             {:clause clause
+                              :column column})))
+    :expression (= pointer (:name column))
+    (throw (ex-info "unknown clause in lib.stage/ref-to?"
+                    {:clause clause
+                     :column column}))))
+
+(defn- mark-selected-breakouts [query stage-number columns]
+  (if-let [breakouts (:breakout (lib.util/query-stage query stage-number))]
+    (for [column columns]
+      (if-let [match (m/find-first #(ref-to? % column) breakouts)]
+        (let [binning        (lib.binning/binning match)
+              {:keys [unit]} (lib.temporal-bucket/temporal-bucket match)]
+          (cond-> column
+            binning (lib.binning/with-binning binning)
+            unit    (lib.temporal-bucket/with-temporal-bucket unit)))
+        column))
+    columns))
+
 (defmethod lib.metadata.calculation/visible-columns-method ::stage
   [query stage-number _stage {:keys [unique-name-fn include-implicitly-joinable?], :as options}]
   (let [;; query   (lib.util/update-query-stage query stage-number dissoc :fields :breakout :aggregation)
+        query            (ensure-previous-stages-have-metadata query stage-number)
         existing-columns (existing-visible-columns query stage-number options)]
-    (concat
-     existing-columns
-     ;; add implicitly joinable columns if desired
-     (when include-implicitly-joinable?
-       (implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))))
+    (->> (concat
+           existing-columns
+           ;; add implicitly joinable columns if desired
+           (when include-implicitly-joinable?
+             (implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
+         (mark-selected-breakouts query stage-number))))
 
 (mu/defn ^:private stage-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Return results metadata about the expected columns in an MBQL query stage. If the query has
@@ -293,7 +321,7 @@
         field-cols
         (do (doall field-cols)          ; force generation of unique names before join columns
             (into []
-                  (m/distinct-by #(dissoc % :source_alias :lib/source :lib/source-uuid :lib/desired-column-alias))
+                  (m/distinct-by #(dissoc % :source-alias :lib/source :lib/source-uuid :lib/desired-column-alias))
                   (concat field-cols
                           (lib.join/all-joins-metadata query stage-number unique-name-fn))))
 
@@ -326,16 +354,17 @@
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/mbql
   [query stage-number _stage style]
-  (or
-   (not-empty
-    (let [descriptions (for [k display-name-parts]
-                         (lib.metadata.calculation/describe-top-level-key query stage-number k))]
-      (str/join ", " (remove str/blank? descriptions))))
-   (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-     (lib.metadata.calculation/display-name query
-                                            previous-stage-number
-                                            (lib.util/query-stage query previous-stage-number)
-                                            style))))
+  (let [query (ensure-previous-stages-have-metadata query stage-number)]
+    (or
+     (not-empty
+      (let [descriptions (for [k display-name-parts]
+                           (lib.metadata.calculation/describe-top-level-key query stage-number k))]
+        (str/join ", " (remove str/blank? descriptions))))
+     (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+       (lib.metadata.calculation/display-name query
+                                              previous-stage-number
+                                              (lib.util/query-stage query previous-stage-number)
+                                              style)))))
 
 (mu/defn append-stage :- ::lib.schema/query
   "Adds a new blank stage to the end of the pipeline"

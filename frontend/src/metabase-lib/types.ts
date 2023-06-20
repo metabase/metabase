@@ -16,18 +16,32 @@ export type CardMetadata = unknown & { _opaque: typeof CardMetadata };
 
 export type Limit = number | null;
 
+declare const BreakoutClause: unique symbol;
+export type BreakoutClause = unknown & { _opaque: typeof BreakoutClause };
+
 declare const OrderByClause: unique symbol;
 export type OrderByClause = unknown & { _opaque: typeof OrderByClause };
 
 export type OrderByDirection = "asc" | "desc";
 
-export type Clause = OrderByClause;
+export type Clause = BreakoutClause | OrderByClause;
 
 declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
 
+declare const ColumnWithOperators: unique symbol;
+export type ColumnWithOperators = unknown & {
+  _opaque: typeof ColumnWithOperators;
+};
+
 declare const ColumnGroup: unique symbol;
 export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
+
+declare const Bucket: unique symbol;
+export type Bucket = unknown & { _opaque: typeof Bucket };
+
+declare const BooleanExpression: unique symbol;
+export type BooleanExpression = unknown & { _opaque: typeof BooleanExpression };
 
 export type TableDisplayInfo = {
   name: string;
@@ -45,8 +59,10 @@ type TableInlineDisplayInfo = Pick<
 export type ColumnDisplayInfo = {
   name: string;
   displayName: string;
+  longDisplayName: string;
+
   fkReferenceName?: string;
-  is_calculated: boolean;
+  isCalculated: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
   table?: TableInlineDisplayInfo;
@@ -55,15 +71,29 @@ export type ColumnDisplayInfo = {
   orderByPosition?: number;
 };
 
-export type OrderByClauseDisplayInfo = Pick<
+export type ClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
-  "name" | "displayName" | "table"
-> & {
+  "name" | "displayName" | "longDisplayName" | "table"
+>;
+
+export type BreakoutClauseDisplayInfo = ClauseDisplayInfo;
+
+export type BucketDisplayInfo = {
+  displayName: string;
+  default?: boolean;
+  selected?: boolean;
+};
+
+export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
 declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
+
+// ExternalOp is a special representation of a filter clause or aggregation clause.
+declare const ExternalOp: unique symbol;
+export type ExternalOp = unknown & { _opaque: typeof ExternalOp };
 
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
@@ -73,3 +103,10 @@ export type JoinStrategy =
   | "right-join"
   | "inner-join"
   | "full-join";
+
+export type ExpressionArg =
+  | boolean
+  | number
+  | string
+  | ColumnMetadata
+  | ExternalOp;

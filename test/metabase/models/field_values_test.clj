@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.database :refer [Database]]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
@@ -16,9 +17,11 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [next.jdbc :as next.jdbc]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest field-should-have-field-values?-test
+(deftest ^:parallel field-should-have-field-values?-test
   (doseq [[group input->expected] {"Text and Category Fields"
                                    {{:has_field_values :list
                                      :visibility_type  :normal
@@ -121,7 +124,7 @@
   (-> (t2/select-one FieldValues :id field-values-id)
       (select-keys [:values :human_readable_values])))
 
-(defn- sync-and-find-values [db field-values-id]
+(defn- sync-and-find-values! [db field-values-id]
   (sync/sync-database! db)
   (find-values field-values-id))
 
@@ -135,9 +138,9 @@
           (is (= 1 (t2/count FieldValues :field_id (mt/id :categories :name) :type :full))))
 
       (testing "if an Advanced FieldValues Exists, make sure we still returns the full FieldValues"
-        (mt/with-temp FieldValues [_ {:field_id (mt/id :categories :name)
-                                      :type     :sandbox
-                                      :hash_key "random-hash"}]
+        (t2.with-temp/with-temp [FieldValues _ {:field_id (mt/id :categories :name)
+                                                :type     :sandbox
+                                                :hash_key "random-hash"}]
           (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one Field :id (mt/id :categories :name))))))))
 
       (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
@@ -154,8 +157,8 @@
 
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
-    (mt/with-temp FieldValues [fv {:field_id (mt/id :venues :id)
-                                   :values   (json/generate-string ["1" "2" "3"])}]
+    (t2.with-temp/with-temp [FieldValues fv {:field_id (mt/id :venues :id)
+                                             :values   (json/generate-string ["1" "2" "3"])}]
       (is (t2/query-one {:update :metabase_fieldvalues
                          :set    {:human_readable_values (json/generate-string {"1" "a", "2" "b", "3" "c"})}
                          :where  [:= :id (:id fv)]}))
@@ -165,51 +168,55 @@
 (deftest update-human-readable-values-test
   (testing "Test \"fixing\" of human readable values when field values change"
     ;; Create a temp warehouse database that can have it's field values change
-    (jdbc/with-db-connection [conn {:classname "org.h2.Driver", :subprotocol "h2", :subname "mem:temp"}]
-      (jdbc/execute! conn ["drop table foo if exists"])
-      (jdbc/execute! conn ["create table foo (id integer primary key, category_id integer not null, desc text)"])
-      (jdbc/insert-multi! conn :foo [{:id 1 :category_id 1 :desc "foo"}
-                                     {:id 2 :category_id 2 :desc "bar"}
-                                     {:id 3 :category_id 3 :desc "baz"}])
-      ;; Create a new in the Database table for this newly created temp database
-      (mt/with-temp Database [db {:engine       :h2
-                                  :name         "foo"
-                                  :is_full_sync true
-                                  :details      "{\"db\": \"mem:temp\"}"}]
-        ;; Sync the database so we have the new table and it's fields
-        (sync/sync-database! db)
-        (let [table-id        (t2/select-one-fn :id Table :db_id (u/the-id db) :name "FOO")
-              field-id        (t2/select-one-fn :id Field :table_id table-id :name "CATEGORY_ID")
-              field-values-id (t2/select-one-fn :id FieldValues :field_id field-id)]
-          ;; Add in human readable values for remapping
-          (is (t2/update! FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))
-          (let [expected-original-values {:values                [1 2 3]
-                                          :human_readable_values ["a" "b" "c"]}
-                expected-updated-values  {:values                [-2 -1 0 1 2 3]
-                                          :human_readable_values ["-2" "-1" "0" "a" "b" "c"]}]
-            (is (= expected-original-values
-                   (find-values field-values-id)))
+    (sql-jdbc.execute/do-with-connection-with-options
+     :h2
+     {:classname "org.h2.Driver", :subprotocol "h2", :subname "mem:temp"}
+     {:write? true}
+     (fn [^java.sql.Connection conn]
+       (next.jdbc/execute! conn ["drop table foo if exists"])
+       (next.jdbc/execute! conn ["create table foo (id integer primary key, category_id integer not null, desc text)"])
+       (jdbc/insert-multi! {:connection conn} :foo [{:id 1 :category_id 1 :desc "foo"}
+                                                    {:id 2 :category_id 2 :desc "bar"}
+                                                    {:id 3 :category_id 3 :desc "baz"}])
+       ;; Create a new in the Database table for this newly created temp database
+       (t2.with-temp/with-temp [Database db {:engine       :h2
+                                             :name         "foo"
+                                             :is_full_sync true
+                                             :details      "{\"db\": \"mem:temp\"}"}]
+         ;; Sync the database so we have the new table and it's fields
+         (sync/sync-database! db)
+         (let [table-id        (t2/select-one-fn :id Table :db_id (u/the-id db) :name "FOO")
+               field-id        (t2/select-one-fn :id Field :table_id table-id :name "CATEGORY_ID")
+               field-values-id (t2/select-one-fn :id FieldValues :field_id field-id)]
+           ;; Add in human readable values for remapping
+           (is (t2/update! FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))
+           (let [expected-original-values {:values                [1 2 3]
+                                           :human_readable_values ["a" "b" "c"]}
+                 expected-updated-values  {:values                [-2 -1 0 1 2 3]
+                                           :human_readable_values ["-2" "-1" "0" "a" "b" "c"]}]
+             (is (= expected-original-values
+                    (find-values field-values-id)))
 
-            (testing "There should be no changes to human_readable_values when resync'd"
-              (is (= expected-original-values
-                     (sync-and-find-values db field-values-id))))
+             (testing "There should be no changes to human_readable_values when resync'd"
+               (is (= expected-original-values
+                      (sync-and-find-values! db field-values-id))))
 
-            (testing "Add new rows that will have new field values"
-              (jdbc/insert-multi! conn :foo [{:id 4 :category_id -2 :desc "foo"}
-                                             {:id 5 :category_id -1 :desc "bar"}
-                                             {:id 6 :category_id 0 :desc "baz"}])
-              (testing "Sync to pickup the new field values and rebuild the human_readable_values"
-                (is (= expected-updated-values
-                       (sync-and-find-values db field-values-id)))))
+             (testing "Add new rows that will have new field values"
+               (jdbc/insert-multi! {:connection conn} :foo [{:id 4 :category_id -2 :desc "foo"}
+                                                            {:id 5 :category_id -1 :desc "bar"}
+                                                            {:id 6 :category_id 0 :desc "baz"}])
+               (testing "Sync to pickup the new field values and rebuild the human_readable_values"
+                 (is (= expected-updated-values
+                        (sync-and-find-values! db field-values-id)))))
 
-            (testing "Resyncing this (with the new field values) should result in the same human_readable_values"
-              (is (= expected-updated-values
-                     (sync-and-find-values db field-values-id))))
+             (testing "Resyncing this (with the new field values) should result in the same human_readable_values"
+               (is (= expected-updated-values
+                      (sync-and-find-values! db field-values-id))))
 
-            (testing "Test that field values can be removed and the corresponding human_readable_values are removed as well"
-              (jdbc/delete! conn :foo ["id in (?,?,?)" 1 2 3])
-              (is (= {:values [-2 -1 0] :human_readable_values ["-2" "-1" "0"]}
-                     (sync-and-find-values db field-values-id))))))))))
+             (testing "Test that field values can be removed and the corresponding human_readable_values are removed as well"
+               (jdbc/delete! {:connection conn} :foo ["id in (?,?,?)" 1 2 3])
+               (is (= {:values [-2 -1 0] :human_readable_values ["-2" "-1" "0"]}
+                      (sync-and-find-values! db field-values-id)))))))))))
 
 (deftest validate-human-readable-values-test
   (testing "Should validate FieldValues :human_readable_values when"
@@ -217,9 +224,9 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid human-readable-values"
-           (mt/with-temp FieldValues [_ {:field_id (mt/id :venues :id), :human_readable_values {"1" "A", "2", "B"}}]))))
+           (t2.with-temp/with-temp [FieldValues _ {:field_id (mt/id :venues :id), :human_readable_values {"1" "A", "2", "B"}}]))))
     (testing "updating"
-      (mt/with-temp FieldValues [{:keys [id]} {:field_id (mt/id :venues :id), :human_readable_values []}]
+      (t2.with-temp/with-temp [FieldValues {:keys [id]} {:field_id (mt/id :venues :id), :human_readable_values []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid human-readable-values"
@@ -234,9 +241,9 @@
           (testing "Should have no FieldValues initially"
             (is (= nil
                    (field-values))))
-          (mt/with-temp Dimension [_ {:field_id                (mt/id :orders :product_id)
-                                      :human_readable_field_id (mt/id :products :title)
-                                      :type                    "external"}]
+          (t2.with-temp/with-temp [Dimension _ {:field_id                (mt/id :orders :product_id)
+                                                :human_readable_field_id (mt/id :products :title)
+                                                :type                    "external"}]
             (mt/with-temp-vals-in-db Field (mt/id :orders :product_id) {:has_field_values "list"}
               (is (= ::field-values/fv-created
                      (field-values/create-or-update-full-field-values! (t2/select-one Field :id (mt/id :orders :product_id)))))
@@ -252,18 +259,18 @@
 (deftest insert-field-values-type-test
   (testing "fieldvalues type=:full shouldn't have hash_key"
     (is (thrown-with-msg?
-          clojure.lang.ExceptionInfo
-          #"Full FieldValues shouldnt have hash_key"
-          (mt/with-temp FieldValues [_ {:field_id (mt/id :venues :id)
-                                        :type :full
-                                        :hash_key "random-hash"}]))))
+         clojure.lang.ExceptionInfo
+         #"Full FieldValues shouldnt have hash_key"
+         (t2.with-temp/with-temp [FieldValues _ {:field_id (mt/id :venues :id)
+                                                 :type :full
+                                                 :hash_key "random-hash"}]))))
 
   (testing "Advanced fieldvalues requires a hash_key"
     (is (thrown-with-msg?
-          clojure.lang.ExceptionInfo
-          #"Advanced FieldValues requires a hash_key"
-          (mt/with-temp FieldValues [_ {:field_id (mt/id :venues :id)
-                                        :type :sandbox}])))))
+         clojure.lang.ExceptionInfo
+         #"Advanced FieldValues requires a hash_key"
+         (t2.with-temp/with-temp [FieldValues _ {:field_id (mt/id :venues :id)
+                                                 :type :sandbox}])))))
 
 (deftest insert-full-field-values-should-remove-all-cached-field-values
   (mt/with-temp* [FieldValues [sandbox-fv {:field_id (mt/id :venues :id)
@@ -283,18 +290,18 @@
     (is (not (t2/exists? FieldValues :id (:id sandbox-fv))))))
 
 (deftest cant-update-type-or-has-of-a-field-values-test
-  (mt/with-temp FieldValues [fv {:field_id (mt/id :venues :id)
-                                  :type     :sandbox
-                                  :hash_key "random-hash"}]
+  (t2.with-temp/with-temp [FieldValues fv {:field_id (mt/id :venues :id)
+                                           :type     :sandbox
+                                           :hash_key "random-hash"}]
     (is (thrown-with-msg?
-          clojure.lang.ExceptionInfo
-          #"Cant update type or hash_key for a FieldValues."
-          (t2/update! FieldValues (:id fv) {:type :full})))
+         clojure.lang.ExceptionInfo
+         #"Cant update type or hash_key for a FieldValues."
+         (t2/update! FieldValues (:id fv) {:type :full})))
 
     (is (thrown-with-msg?
-          clojure.lang.ExceptionInfo
-          #"Cant update type or hash_key for a FieldValues."
-          (t2/update! FieldValues (:id fv) {:hash_key "new-hash"})))))
+         clojure.lang.ExceptionInfo
+         #"Cant update type or hash_key for a FieldValues."
+         (t2/update! FieldValues (:id fv) {:hash_key "new-hash"})))))
 
 
 (deftest identity-hash-test

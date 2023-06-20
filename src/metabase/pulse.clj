@@ -39,6 +39,17 @@
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
+(defn- is-card-empty?
+  "Check if the card is empty"
+  [card]
+  (if-let [result (:result card)]
+    (or (zero? (-> result :row_count))
+        ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
+        (= [[nil]]
+           (-> result :data :rows)))
+    ;; Text cards have no result; treat as empty
+    true))
+
 (defn- merge-default-values
   "For the specific case of Dashboard Subscriptions we should use `:default` parameter values as the actual `:value` for
   the parameter if none is specified. Normally the FE client will take `:default` and pass it in as `:value` if it
@@ -73,20 +84,13 @@
                                     (qp/process-query-and-save-with-max-results-constraints!
                                      (assoc query :async? false)
                                      info)))]
-      {:card     card
-       :dashcard dashcard
-       :result   result
-       :type     :card})
+      (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty]) (is-card-empty? result))
+        {:card     card
+         :dashcard dashcard
+         :result   result
+         :type     :card}))
     (catch Throwable e
       (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
-
-(defn- dashcard-comparator
-  "Comparator that determines which of two dashcards comes first in the layout order used for pulses.
-  This is the same order used on the frontend for the mobile layout. Orders cards left-to-right, then top-to-bottom"
-  [dashcard-1 dashcard-2]
-  (if-not (= (:row dashcard-1) (:row dashcard-2))
-    (compare (:row dashcard-1) (:row dashcard-2))
-    (compare (:col dashcard-1) (:col dashcard-2))))
 
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
@@ -168,7 +172,7 @@
 
 (defn- dashcards->part
   [dashcards pulse dashboard]
-  (let [ordered-dashcards (sort dashcard-comparator dashcards)]
+  (let [ordered-dashcards (sort dashboard-card/dashcard-comparator dashcards)]
     (doall (for [dashcard ordered-dashcards
                  :let  [part (dashcard->part dashcard pulse dashboard)]
                  :when (some? part)]
@@ -333,17 +337,6 @@
              []
              attachments))))
 
-(defn- is-card-empty?
-  "Check if the card is empty"
-  [card]
-  (if-let [result (:result card)]
-    (or (zero? (-> result :row_count))
-        ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
-        (= [[nil]]
-           (-> result :data :rows)))
-    ;; Text cards have no result; treat as empty
-    true))
-
 (defn- are-all-parts-empty?
   "Do none of the cards have any results?"
   [results]
@@ -410,17 +403,27 @@
   (fn [pulse _ {:keys [channel_type]}]
     [(alert-or-pulse pulse) (keyword channel_type)]))
 
+(defn- construct-pulse-email [subject recipient message]
+  {:subject      subject
+   :recipients   [recipient]
+   :message-type :attachments
+   :message      message})
+
 (defmethod notification [:pulse :email]
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} parts {:keys [recipients]}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
                                         pulse-id (pr-str pulse-name) (parts->cards-count parts))))
-  (let [email-recipients (filterv u/email? (map :email recipients))
-        timezone         (->> parts (some :card) defaulted-timezone)
-        dashboard        (update (t2/select-one Dashboard :id dashboard-id) :description markdown/process-markdown :html)]
-    {:subject      (subject pulse)
-     :recipients   email-recipients
-     :message-type :attachments
-     :message      (messages/render-pulse-email timezone pulse dashboard parts)}))
+  (let [user-recipients     (filter (fn [recipient] (and (u/email? (:email recipient))
+                                                         (some? (:id recipient)))) recipients)
+        non-user-recipients (filter (fn [recipient] (and (u/email? (:email recipient))
+                                                         (nil? (:id recipient)))) recipients)
+        timezone            (->> parts (some :card) defaulted-timezone)
+        dashboard           (update (t2/select-one Dashboard :id dashboard-id) :description markdown/process-markdown :html)
+        email-to-users      (for [user (map :email user-recipients)]
+                              (construct-pulse-email (subject pulse) user (messages/render-pulse-email timezone pulse dashboard parts nil)))
+        email-to-nonusers   (for [non-user (map :email non-user-recipients)]
+                              (construct-pulse-email (subject pulse) non-user (messages/render-pulse-email timezone pulse dashboard parts non-user)))]
+    (concat email-to-users email-to-nonusers)))
 
 (defmethod notification [:pulse :slack]
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse}
@@ -438,17 +441,21 @@
 (defmethod notification [:alert :email]
   [{:keys [id] :as pulse} parts channel]
   (log/debug (trs "Sending Alert ({0}: {1}) via email" id name))
-  (let [condition-kwd    (messages/pulse->alert-condition-kwd pulse)
-        email-subject    (trs "Alert: {0} has {1}"
-                              (first-question-name pulse)
-                              (alert-condition-type->description condition-kwd))
-        email-recipients (filterv u/email? (map :email (:recipients channel)))
-        first-part       (some :card parts)
-        timezone         (defaulted-timezone first-part)]
-    {:subject      email-subject
-     :recipients   email-recipients
-     :message-type :attachments
-     :message      (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))}))
+  (let [condition-kwd       (messages/pulse->alert-condition-kwd pulse)
+        email-subject       (trs "Alert: {0} has {1}"
+                                 (first-question-name pulse)
+                                 (alert-condition-type->description condition-kwd))
+        user-recipients     (filter (fn [recipient] (and (u/email? (:email recipient))
+                                                         (some? (:id recipient)))) (:recipients channel))
+        non-user-recipients (filter (fn [recipient] (and (u/email? (:email recipient))
+                                                         (nil? (:id recipient)))) (:recipients channel))
+        first-part          (some :card parts)
+        timezone            (defaulted-timezone first-part)
+        email-to-users      (for [user (map :email user-recipients)]
+                              (construct-pulse-email email-subject user (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))))
+        email-to-nonusers   (for [non-user (map :email non-user-recipients)]
+                              (construct-pulse-email email-subject non-user (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))))]
+       (concat email-to-users email-to-nonusers)))
 
 (defmethod notification [:alert :slack]
   [pulse parts {{channel-id :channel} :details}]
@@ -510,15 +517,16 @@
           (throw e))))))
 
 (defmethod send-notification! :email
-  [{:keys [subject recipients message-type message]}]
-  (try
-    (email/send-message-or-throw! {:subject      subject
-                                   :recipients   recipients
-                                   :message-type message-type
-                                   :message      message})
-    (catch ExceptionInfo e
-      (when (not= :smtp-host-not-set (:cause (ex-data e)))
-        (throw e)))))
+  [emails]
+  (doseq [{:keys [subject recipients message-type message]} emails]
+    (try
+      (email/send-message-or-throw! {:subject      subject
+                                     :recipients   recipients
+                                     :message-type message-type
+                                     :message      message})
+      (catch ExceptionInfo e
+        (when (not= :smtp-host-not-set (:cause (ex-data e)))
+          (throw e))))))
 
 (declare ^:private reconfigure-retrying)
 

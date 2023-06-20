@@ -6,11 +6,15 @@ import _ from "underscore";
 import Color from "color";
 import cx from "classnames";
 import { formatValue } from "metabase/lib/formatting";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import { color } from "metabase/lib/colors";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import { isNumeric } from "metabase-lib/types/utils/isa";
 
 import { getValue } from "./utils";
@@ -32,7 +36,8 @@ export default class Progress extends Component {
   static identifier = "progress";
   static iconName = "progress";
 
-  static minSize = { width: 3, height: 3 };
+  static minSize = getMinSize("progress");
+  static defaultSize = getDefaultSize("progress");
 
   static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;
@@ -218,7 +223,7 @@ export default class Progress extends Component {
             {barMessage && (
               <div className="flex align-center absolute spread text-white text-bold px2">
                 <IconBorder borderWidth={2}>
-                  <Icon name="check" size={14} />
+                  <Icon name="check" />
                 </IconBorder>
                 <div className="pl2">{barMessage}</div>
               </div>

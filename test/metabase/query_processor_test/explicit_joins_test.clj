@@ -6,12 +6,15 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.driver.util :as driver.u]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]))
+   [metabase.test.data :as data]
+   [metabase.test.data.interface :as tx]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest explict-join-with-default-options-test
   (testing "Can we specify an *explicit* JOIN using the default options?"
@@ -307,16 +310,16 @@
 
               :columns
               (mapv mt/format-name ["id" "name" "category_id" "latitude" "longitude" "price" "id_2" "name_2"])}
-             (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query (mt/mbql-query categories))]
+             (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query (mt/mbql-query categories))]
                (mt/format-rows-by [int identity int 4.0 4.0 int int identity]
                  (mt/rows+column-names
-                   (mt/run-mbql-query venues
-                     {:joins    [{:alias        "cat"
-                                  :source-table (str "card__" card-id)
-                                  :fields       :all
-                                  :condition    [:= $category_id &cat.*categories.id]}]
-                      :order-by [[:asc $name]]
-                      :limit    3})))))))))
+                  (mt/run-mbql-query venues
+                    {:joins    [{:alias        "cat"
+                                 :source-table (str "card__" card-id)
+                                 :fields       :all
+                                 :condition    [:= $category_id &cat.*categories.id]}]
+                     :order-by [[:asc $name]]
+                     :limit    3})))))))))
 
 (deftest join-on-field-literal-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -327,32 +330,32 @@
               :columns [(mt/format-name "venue_id") "count" (mt/format-name "category_id") "count_2"]}
              (mt/format-rows-by [int int int int]
                (mt/rows+column-names
-                 (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                                    (mt/mbql-query venues
-                                                      {:aggregation [[:count]]
-                                                       :breakout    [$category_id]}))]
-                   (mt/run-mbql-query checkins
-                     {:source-query {:source-table $$checkins
-                                     :aggregation  [[:count]]
-                                     :breakout     [$venue_id]}
-                      :joins
-                      [{:fields       :all
-                        :alias        "venues"
-                        :source-table (str "card__" card-id)
-                        :strategy         :inner-join
-                        :condition    [:=
-                                       [:field "count" {:base-type :type/Number}]
-                                       [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
-                      :order-by     [[:asc $venue_id]]
-                      :limit        3})))))))))
+                (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                                             (mt/mbql-query venues
+                                                               {:aggregation [[:count]]
+                                                                :breakout    [$category_id]}))]
+                  (mt/run-mbql-query checkins
+                    {:source-query {:source-table $$checkins
+                                    :aggregation  [[:count]]
+                                    :breakout     [$venue_id]}
+                     :joins
+                     [{:fields       :all
+                       :alias        "venues"
+                       :source-table (str "card__" card-id)
+                       :strategy         :inner-join
+                       :condition    [:=
+                                      [:field "count" {:base-type :type/Number}]
+                                      [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
+                     :order-by     [[:asc $venue_id]]
+                     :limit        3})))))))))
 
 (deftest aggregate-join-results-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we aggregate on the results of a JOIN?"
-      (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                         (mt/mbql-query checkins
-                                           {:aggregation [[:count]]
-                                            :breakout    [$user_id]}))]
+      (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                                   (mt/mbql-query checkins
+                                                     {:aggregation [[:count]]
+                                                      :breakout    [$user_id]}))]
         (let [query (mt/mbql-query users
                       {:joins       [{:fields       :all
                                       :alias        "checkins_by_user"
@@ -377,27 +380,27 @@
 (deftest get-all-columns-without-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "NEW! Can we still get all of our columns, even if we *DON'T* specify the metadata?"
-      (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                         (mt/mbql-query venues
-                                           {:aggregation [[:count]]
-                                            :breakout    [$category_id]}))]
+      (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                                   (mt/mbql-query venues
+                                                     {:aggregation [[:count]]
+                                                      :breakout    [$category_id]}))]
         (is (= {:rows    [[1 3 46 3] [2 9 40 9] [4 7 5 7]]
                 :columns [(mt/format-name "venue_id") "count" (mt/format-name "category_id") "count_2"]}
                (mt/rows+column-names
-                 (mt/format-rows-by [int int int int]
-                   (mt/run-mbql-query checkins
-                     {:source-query {:source-table $$checkins
-                                     :aggregation  [[:count]]
-                                     :breakout     [$venue_id]}
-                      :joins        [{:source-table (str "card__" card-id)
-                                      :alias        "venues"
-                                      :fields       :all
-                                      :strategy     :inner-join
-                                      :condition    [:=
-                                                     [:field "count" {:base-type :type/Number}]
-                                                     [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
-                      :order-by     [[:asc $venue_id]]
-                      :limit        3})))))))))
+                (mt/format-rows-by [int int int int]
+                  (mt/run-mbql-query checkins
+                    {:source-query {:source-table $$checkins
+                                    :aggregation  [[:count]]
+                                    :breakout     [$venue_id]}
+                     :joins        [{:source-table (str "card__" card-id)
+                                     :alias        "venues"
+                                     :fields       :all
+                                     :strategy     :inner-join
+                                     :condition    [:=
+                                                    [:field "count" {:base-type :type/Number}]
+                                                    [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
+                     :order-by     [[:asc $venue_id]]
+                     :limit        3})))))))))
 
 (deftest joined-field-in-time-interval-test
   (mt/test-drivers (mt/normal-drivers-with-feature :right-join)
@@ -462,8 +465,8 @@
 (deftest sql-question-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "we should be able to use a SQL question as a source query in a Join"
-      (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                         (mt/native-query (qp/compile (mt/mbql-query venues))))]
+      (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                                   (mt/native-query (qp/compile (mt/mbql-query venues))))]
         (is (= [[1 "2014-04-07T00:00:00Z" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
                 [2 "2014-09-18T00:00:00Z" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
                (mt/formatted-rows [int identity int int int identity int 4.0 4.0 int]
@@ -883,8 +886,15 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :left-join :inner-join)
       ;; For SQL drivers, this is only fixed for drivers using Honey SQL 2. So skip the test for ones still using Honey
       ;; SQL 1. Honey SQL 1 support is slated for removal in Metabase 0.49.0.
-      (when (or (not (isa? driver/hierarchy driver/*driver* :sql))
-                (= (sql.qp/honey-sql-version driver/*driver*) 2))
+      (when (and (or (not (isa? driver/hierarchy driver/*driver* :sql))
+                     (= (sql.qp/honey-sql-version driver/*driver*) 2))
+                 ;; Joins in MongoDB are extremely slow, especially on version 4.2
+                 ;; (version 5 is about two times faster but still very slow) and
+                 ;; this test is flaky on CI. (See #29266.)
+                 (or (not= driver/*driver* :mongo)
+                     (-> (:dbms_version (data/db))
+                         :semantic-version
+                         (driver.u/semantic-version-gte [5]))))
         (mt/dataset sample-dataset
           (doseq [[first-join-strategy second-join-strategy] [[:inner-join :left-join]
                                                               [:left-join :inner-join]]

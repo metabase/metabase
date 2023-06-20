@@ -100,7 +100,7 @@ async function setup({
     collections.push(personalCollection);
   }
 
-  setupCollectionsEndpoints(collections);
+  setupCollectionsEndpoints({ collections });
   setupDatabasesEndpoints(databases);
   fetchMock.get("path:/api/bookmark", []);
 

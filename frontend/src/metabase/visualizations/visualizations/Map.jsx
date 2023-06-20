@@ -7,7 +7,7 @@ import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 
 import Link from "metabase/core/components/Link";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import {
@@ -24,6 +24,10 @@ const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
 import { getAccentColors } from "metabase/lib/colors/groups";
 import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import {
   isNumeric,
   isLatitude,
@@ -48,7 +52,8 @@ export default class Map extends Component {
 
   static aliases = ["state", "country", "pin_map"];
 
-  static minSize = { width: 4, height: 4 };
+  static minSize = getMinSize("map");
+  static defaultSize = getDefaultSize("map");
 
   static isSensible({ cols, rows }) {
     return (
@@ -365,7 +370,7 @@ const CustomMapFooter = connect(mapStateToProps)(function CustomMapFooter({
   const content = (
     <CustomMapContent>
       {t`Custom map`}
-      <Icon name="share" size={14} />
+      <Icon name="share" />
     </CustomMapContent>
   );
 

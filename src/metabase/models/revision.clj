@@ -1,5 +1,6 @@
 (ns metabase.models.revision
   (:require
+   [cheshire.core :as json]
    [clojure.data :as data]
    [metabase.db.util :as mdb.u]
    [metabase.models.interface :as mi]
@@ -8,8 +9,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [methodical.core :as methodical]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
@@ -89,7 +88,7 @@
   ;; those cases
   (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol model)))]
     (cond-> revision
-      model (update :object (partial models/do-post-select model)))))
+      model (update :object (partial mi/do-after-select model)))))
 
 ;;; # Functions
 
@@ -98,12 +97,21 @@
   (cond
     (:is_creation revision)  [(deferred-tru "created this")]
     (:is_reversion revision) [(deferred-tru "reverted to an earlier version")]
+    ;; We only keep [[revision/max-revisions]] number of revision per entity.
+    ;; prev-revision can be nil when we generate description for oldest revision
+    (nil? prev-revision)     [(deferred-tru "modified this")]
     :else                    (diff-strings model (:object prev-revision) (:object revision))))
 
 (defn- revision-description-info
   [model prev-revision revision]
   (let [changes (revision-changes model prev-revision revision)]
-    {:description          (build-sentence changes)
+    {:description          (if (seq changes)
+                             (build-sentence changes)
+                             ;; HACK: before #30285 we record revision even when there is nothing changed,
+                             ;; so there are cases when revision can comeback as `nil`.
+                             ;; This is a safe guard for us to not display "Crowberto null" as
+                             ;; description on UI
+                             (deferred-tru "created a revision with no change."))
      ;; this is used on FE
      :has_multiple_changes (> (count changes) 1)}))
 
@@ -114,7 +122,7 @@
       (assoc :diff (diff-map model (:object prev-revision) (:object revision)))
       (merge (revision-description-info model prev-revision revision))
       ;; add revision user details
-      (hydrate :user)
+      (t2/hydrate :user)
       (update :user select-keys [:id :first_name :last_name :common_name])
       ;; Filter out irrelevant info
       (dissoc :model :model_id :user_id :object)))
@@ -142,7 +150,8 @@
   (when-let [old-revisions (seq (drop max-revisions (map :id (t2/select [Revision :id]
                                                                :model    (name model)
                                                                :model_id id
-                                                               {:order-by [[:timestamp :desc]]}))))]
+                                                               {:order-by [[:timestamp :desc]
+                                                                           [:id :desc]]}))))]
     (t2/delete! Revision :id [:in old-revisions])))
 
 (defn push-revision!
@@ -163,17 +172,22 @@
         last-object       (t2/select-one-fn :object Revision :model (name entity) :model_id id {:order-by [[:id :desc]]})]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
-    (when-not (= serialized-object last-object)
-      (t2/insert! Revision
-                  :model        (name entity)
-                  :model_id     id
-                  :user_id      user-id
-                  :object       serialized-object
-                  :is_creation  is-creation?
-                  :is_reversion false
-                  :message      message)
-      (delete-old-revisions! entity id)
-      object)))
+    ;; the last-object could have nested object, e.g: Dashboard can have multiple Card in it,
+    ;; even though we call `post-select` on the `object`, the nested object might not be transformed correctly
+    ;; E.g: Cards inside Dashboard will not be transformed
+    ;; so to be safe, we'll just compare them as string
+    (when-not (= (json/generate-string serialized-object)
+                 (json/generate-string last-object))
+     (t2/insert! Revision
+                 :model        (name entity)
+                 :model_id     id
+                 :user_id      user-id
+                 :object       serialized-object
+                 :is_creation  is-creation?
+                 :is_reversion false
+                 :message      message)
+     (delete-old-revisions! entity id)
+     object)))
 
 (defn revert!
   "Revert `entity` with `id` to a given Revision."

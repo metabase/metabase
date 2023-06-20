@@ -29,7 +29,6 @@
    [metabase.util.schema :as su]
    [metabase.util.urls :as urls]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
@@ -43,7 +42,7 @@
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
   themselves. Recipients that are plain email addresses are preserved."
   [pulses]
-  (if (premium-features/segmented-user?)
+  (if (premium-features/sandboxed-or-impersonated-user?)
     (for [pulse pulses]
       (assoc pulse :channels
              (for [channel (:channels pulse)]
@@ -94,7 +93,7 @@
         pulses               (if creator-or-recipient
                                (map maybe-strip-sensitive-metadata pulses)
                                pulses)]
-    (hydrate pulses :can_write)))
+    (t2/hydrate pulses :can_write)))
 
 (defn check-card-read-permissions
   "Users can only create a pulse for `cards` they have access to."
@@ -151,14 +150,14 @@
    (-> pulse
        maybe-filter-pulse-recipients
        maybe-strip-sensitive-metadata
-       (hydrate :can_write))))
+       (t2/hydrate :can_write))))
 
-(defn- maybe-add-recipients-for-sandboxed-users
-  "Sandboxed users can't read the full recipient list for a pulse, so we need to merge in existing recipients
-  before writing the pulse updates to avoid them being deleted unintentionally. We only merge in recipients that are
-  Metabase users, not raw email addresses, which sandboxed users can still view and modify."
+(defn- maybe-add-recipients
+  "Sandboxed users and users using connection impersonation can't read the full recipient list for a pulse, so we need
+  to merge in existing recipients before writing the pulse updates to avoid them being deleted unintentionally. We only
+  merge in recipients that are Metabase users, not raw email addresses, which these users can still view and modify."
   [pulse-updates pulse-before-update]
-  (if (premium-features/segmented-user?)
+  (if (premium-features/sandboxed-or-impersonated-user?)
     (let [recipients-to-add (filter
                              (fn [{id :id}] (and id (not= id api/*current-user-id*)))
                              (:recipients (api.alert/email-channel pulse-before-update)))]
@@ -207,7 +206,7 @@
                        (empty? to-add-recipients))
                    [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")])))
 
-    (let [pulse-updates (maybe-add-recipients-for-sandboxed-users pulse-updates pulse-before-update)]
+    (let [pulse-updates (maybe-add-recipients pulse-updates pulse-before-update)]
       (t2/with-transaction [_conn]
        ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
        ;; depending on what changed.
@@ -229,7 +228,7 @@
                        (assoc-in [:slack :configured] (slack/slack-configured?))
                        (assoc-in [:email :configured] (email/email-configured?)))]
     {:channels (cond
-                 (premium-features/segmented-user?)
+                 (premium-features/sandboxed-or-impersonated-user?)
                  (dissoc chan-types :slack)
 
                  ;; no Slack integration, so we are g2g

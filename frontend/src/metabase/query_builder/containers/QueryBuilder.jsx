@@ -293,12 +293,12 @@ function QueryBuilder(props) {
 
   useMount(() => {
     initializeQB(location, params);
-  }, []);
+  });
 
-  useMount(() => {
+  useEffect(() => {
     window.addEventListener("resize", forceUpdateDebounced);
     return () => window.removeEventListener("resize", forceUpdateDebounced);
-  }, []);
+  });
 
   const isExistingModelDirty = useMemo(
     () => isModelQueryDirty || isMetadataDirty,

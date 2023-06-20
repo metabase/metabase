@@ -109,8 +109,10 @@ class SettingsEditorApp extends Component {
         await reloadSettings();
       }
 
-      if (setting.postUpdateAction) {
-        await dispatch(setting.postUpdateAction());
+      if (setting.postUpdateActions) {
+        for (const action of setting.postUpdateActions) {
+          await dispatch(action());
+        }
       }
 
       this.saveStatusRef.current.setSaved();

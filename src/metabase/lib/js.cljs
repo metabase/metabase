@@ -1,11 +1,15 @@
 (ns metabase.lib.js
   "JavaScript-friendly interface to the entire Metabase lib? This stuff will probably change a bit as MLv2 evolves."
+  (:refer-clojure
+   :exclude
+   [filter])
   (:require
    [medley.core :as m]
    [metabase.lib.convert :as convert]
    [metabase.lib.core :as lib.core]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.stage :as lib.stage]
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
@@ -118,7 +122,9 @@
   ([a-query x]
    (display-info a-query -1 x))
   ([a-query stage-number x]
-   (-> (lib.core/display-info a-query stage-number x)
+   (-> a-query
+       (lib.stage/ensure-previous-stages-have-metadata stage-number)
+       (lib.core/display-info stage-number x)
        (update-keys u/->camelCaseEn)
        (update :table update-keys u/->camelCaseEn)
        (clj->js :keyword-fn u/qualified-name))))
@@ -370,12 +376,9 @@
 
 (defn ^:export filterable-columns
   "Get the available filterable columns for the stage with `stage-number` of
-  the query `a-query`.
-  If `stage-number` is omitted, the last stage is used."
-  ([a-query]
-   (filterable-columns a-query -1))
-  ([a-query stage-number]
-   (to-array (lib.core/filterable-columns a-query stage-number))))
+  the query `a-query`."
+  [a-query stage-number]
+  (to-array (lib.core/filterable-columns a-query stage-number)))
 
 (defn ^:export filterable-column-operators
   "Returns the operators for which `filterable-column` is applicable."
@@ -387,6 +390,19 @@
   a `column`, and arguments."
   [filter-operator column & args]
   (apply lib.core/filter-clause filter-operator column args))
+
+(defn ^:export filter
+  "Sets `boolean-expression` as a filter on `query`."
+  [a-query stage-number boolean-expression]
+  (lib.core/filter a-query stage-number (js->clj boolean-expression :keywordize-keys true)))
+
+(defn ^:export filters
+  "Returns the current filters in stage with `stage-number` of `query`.
+  Logicaly, the filter attached to the query is the conjunction of the expressions
+  in the returned list. If the returned list is empty, then there is no filter
+  attached to the query."
+  [a-query stage-number]
+  (to-array (lib.core/filters a-query stage-number)))
 
 (defn ^:export fields
   "Get the current `:fields` in a query. Unlike the lib core version, this will return an empty sequence if `:fields` is
@@ -456,3 +472,33 @@
   filtered out based on values of the LHS or RHS, but in the future we can add this -- see #31174."
   [a-query stage-number lhs-column-or-nil rhs-column-or-nil]
   (to-array (lib.core/join-condition-operators a-query stage-number lhs-column-or-nil rhs-column-or-nil)))
+
+(defn ^:export expression
+  "Adds an expression to query."
+  ([a-query expression-name an-expression-clause]
+   (expression a-query -1 expression-name an-expression-clause))
+  ([a-query stage-number expression-name an-expression-clause]
+   (lib.core/expression a-query stage-number expression-name an-expression-clause)))
+
+(defn ^:export expressions
+  "Get the expressions map from a given stage of a `query`."
+  ([a-query]
+   (expressions a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/expressions a-query stage-number))))
+
+(defn ^:export expressionable-columns
+  "Return an array of Column metadatas about the columns that can be used in an expression in a given stage of `a-query`.
+   Pass the current `expression-position` or `null` for new expressions."
+  ([a-query expression-position]
+   (expressionable-columns a-query expression-position))
+  ([a-query stage-number expression-position]
+   (to-array (lib.core/expressionable-columns a-query stage-number expression-position))))
+
+(defn ^:export suggested-join-condition
+  "Return a suggested default join condition when constructing a join against `joined-thing`, e.g. a Table, Saved
+  Question, or another query. A suggested condition will be returned if the source Table has a foreign key to the
+  primary key of the thing we're joining (see #31175 for more info); otherwise this will return `nil` if no default
+  condition is suggested."
+  [a-query stage-number joined-thing]
+  (lib.core/suggested-join-condition a-query stage-number joined-thing))

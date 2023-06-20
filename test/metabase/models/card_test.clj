@@ -1,19 +1,22 @@
 (ns metabase.models.card-test
   (:require
    [cheshire.core :as json]
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.models
-    :refer [Collection Dashboard DashboardCard ParameterCard NativeQuerySnippet]]
+    :refer [Collection Dashboard DashboardCard ParameterCard NativeQuerySnippet Revision]]
    [metabase.models.card :as card]
+   [metabase.models.revision :as revision]
+   [metabase.models.revision.diff :refer [build-sentence]]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.hydrate :as hydrate]
-   [toucan.util.test :as tt]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (java.util UUID)))
 
 (set! *warn-on-reflection* true)
 
@@ -45,7 +48,7 @@
 
 (deftest dropdown-widget-values-usage-count-test
   (let [hydrated-count (fn [card] (-> card
-                                      (hydrate/hydrate :parameter_usage_count)
+                                      (t2/hydrate :parameter_usage_count)
                                       :parameter_usage_count))
         default-params {:name       "Category Name"
                         :slug       "category_name"
@@ -211,19 +214,19 @@
                        (card-with-source-table (str "card__" (u/the-id card-c)))))))))
 
 (deftest validate-collection-namespace-test
-  (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]
+  (t2.with-temp/with-temp [Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Card in a non-normal Collection"
       (let [card-name (mt/random-name)]
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Card can only go in Collections in the \"default\" namespace"
-               (t2/insert! :model/Card (assoc (tt/with-temp-defaults :model/Card) :collection_id collection-id, :name card-name))))
+               (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card) :collection_id collection-id, :name card-name))))
           (finally
             (t2/delete! :model/Card :name card-name)))))
 
     (testing "Shouldn't be able to move a Card to a non-normal Collection"
-      (mt/with-temp :model/Card [{card-id :id}]
+      (t2.with-temp/with-temp [:model/Card {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Card can only go in Collections in the \"default\" namespace"
@@ -232,19 +235,19 @@
 (deftest normalize-result-metadata-test
   (testing "Should normalize result metadata keys when fetching a Card from the DB"
     (let [metadata (qp/query->expected-cols (mt/mbql-query venues))]
-      (mt/with-temp :model/Card [{card-id :id} {:dataset_query   (mt/mbql-query venues)
-                                                :result_metadata metadata}]
+      (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query venues)
+                                                          :result_metadata metadata}]
         (is (= (mt/derecordize metadata)
                (mt/derecordize (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))
 
 (deftest populate-result-metadata-if-needed-test
   (doseq [[creating-or-updating f]
           {"creating" (fn [properties f]
-                        (mt/with-temp :model/Card [{card-id :id} properties]
+                        (t2.with-temp/with-temp [:model/Card {card-id :id} properties]
                           (f (t2/select-one-fn :result_metadata :model/Card :id card-id))))
            "updating" (fn [changes f]
-                        (mt/with-temp :model/Card [{card-id :id} {:dataset_query   (mt/mbql-query checkins)
-                                                                  :result_metadata (qp/query->expected-cols (mt/mbql-query checkins))}]
+                        (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query checkins)
+                                                                            :result_metadata (qp/query->expected-cols (mt/mbql-query checkins))}]
                           (t2/update! :model/Card card-id changes)
                           (f (t2/select-one-fn :result_metadata :model/Card :id card-id))))}]
 
@@ -322,7 +325,7 @@
 (deftest normalize-visualization-settings-test
   (test-visualization-settings-normalization
    (fn [original expected]
-     (mt/with-temp :model/Card [card {:visualization_settings original}]
+     (t2.with-temp/with-temp [:model/Card card {:visualization_settings original}]
        (is (= expected
               (t2/select-one-fn :visualization_settings :model/Card :id (u/the-id card))))))))
 
@@ -348,9 +351,9 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
-             (mt/with-temp :model/Card [_ bad-card-data]))))
+             (t2.with-temp/with-temp [:model/Card _ bad-card-data]))))
       (testing "Should not be able to update a Card to have a filter with the wrong Database ID"
-        (mt/with-temp :model/Card [{card-id :id} good-card-data]
+        (t2.with-temp/with-temp [:model/Card {card-id :id} good-card-data]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
@@ -364,14 +367,14 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #":parameters must be a sequence of maps with :id and :type keys"
-           (mt/with-temp :model/Card [_ {:parameters {:a :b}}])))
+           (t2.with-temp/with-temp [:model/Card _ {:parameters {:a :b}}])))
 
-     (mt/with-temp :model/Card [card {:parameters [{:id   "valid-id"
-                                                    :type "id"}]}]
-       (is (some? card))))
+      (t2.with-temp/with-temp [:model/Card card {:parameters [{:id   "valid-id"
+                                                               :type "id"}]}]
+        (is (some? card))))
 
     (testing "updating"
-      (mt/with-temp :model/Card [{:keys [id]} {:parameters []}]
+      (t2.with-temp/with-temp [:model/Card {:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with :id and :type keys"
@@ -384,8 +387,8 @@
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
       (testing (format "target = %s" (pr-str target))
-        (mt/with-temp :model/Card [{card-id :id} {:parameter_mappings [{:parameter_id     "_CATEGORY_NAME_"
-                                                                        :target target}]}]
+        (t2.with-temp/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id     "_CATEGORY_NAME_"
+                                                                                  :target target}]}]
 
           (is (= [{:parameter_id     "_CATEGORY_NAME_"
                    :target expected}]
@@ -397,14 +400,14 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
-           (mt/with-temp :model/Card [_ {:parameter_mappings {:a :b}}])))
+           (t2.with-temp/with-temp [:model/Card _ {:parameter_mappings {:a :b}}])))
 
-     (mt/with-temp :model/Card [card {:parameter_mappings [{:parameter_id "valid-id"
-                                                            :target       [:field 1000 nil]}]}]
-       (is (some? card))))
+      (t2.with-temp/with-temp [:model/Card card {:parameter_mappings [{:parameter_id "valid-id"
+                                                                       :target       [:field 1000 nil]}]}]
+        (is (some? card))))
 
     (testing "updating"
-      (mt/with-temp :model/Card [{:keys [id]} {:parameter_mappings []}]
+      (t2.with-temp/with-temp [:model/Card {:keys [id]} {:parameter_mappings []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
@@ -415,9 +418,9 @@
 
 (deftest normalize-parameter-mappings-test
   (testing ":parameter_mappings should get normalized when coming out of the DB"
-    (mt/with-temp :model/Card [{card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
-                                                                    :card_id      1
-                                                                    :target       [:dimension [:field-id 1]]}]}]
+    (t2.with-temp/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
+                                                                              :card_id      1
+                                                                              :target       [:dimension [:field-id 1]]}]}]
       (is (= [{:parameter_id "22486e00",
                :card_id      1,
                :target       [:dimension [:field 1 nil]]}]
@@ -597,15 +600,15 @@
   (let [metadata (qp/query->expected-cols (mt/mbql-query venues))
         query    (mt/mbql-query venues)]
     (testing "normal cards omit result_metadata"
-      (mt/with-temp :model/Card [{card-id :id} {:dataset_query   query
-                                                :result_metadata metadata}]
+      (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query   query
+                                                          :result_metadata metadata}]
         (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
           (is (not (:dataset extracted)))
           (is (nil? (:result_metadata extracted))))))
     (testing "dataset cards (models) retain result_metadata"
-      (mt/with-temp :model/Card [{card-id :id} {:dataset         true
-                                                :dataset_query   query
-                                                :result_metadata metadata}]
+      (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset         true
+                                                          :dataset_query   query
+                                                          :result_metadata metadata}]
         (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
           (is (:dataset extracted))
           (is (string? (:display_name (first (:result_metadata extracted)))))
@@ -617,13 +620,13 @@
 
 (deftest upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
-    (mt/with-temp :model/Card [{card-id :id} {:visualization_settings {:pie.show_legend true}}]
-        (is (= {:version 2
-                :pie.show_legend true
-                :pie.percent_visibility "inside"}
-               (t2/select-one-fn :visualization_settings :model/Card :id card-id)))))
+    (t2.with-temp/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
+      (is (= {:version 2
+              :pie.show_legend true
+              :pie.percent_visibility "inside"}
+             (t2/select-one-fn :visualization_settings :model/Card :id card-id)))))
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 and persisted on update"
-    (mt/with-temp :model/Card [{card-id :id} {:visualization_settings {:pie.show_legend true}}]
+    (t2.with-temp/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
       (t2/update! :model/Card card-id {:name "Favorite Toucan Foods"})
       (is (= {:version 2
               :pie.show_legend true
@@ -631,3 +634,147 @@
              (-> (t2/select-one (t2/table-name :model/Card) {:where [:= :id card-id]})
                  :visualization_settings
                  (json/parse-string keyword)))))))
+
+
+;;; -------------------------------------------- Revision tests  --------------------------------------------
+
+(deftest ^:parallel diff-cards-str-test
+  (are [x y expected] (= expected
+                       (build-sentence (revision/diff-strings :model/Card x y)))
+    {:name        "Diff Test"
+     :description nil}
+    {:name        "Diff Test Changed"
+     :description "foobar"}
+    "added a description and renamed it from \"Diff Test\" to \"Diff Test Changed\"."
+
+    {:name "Apple"}
+    {:name "Next"}
+    "renamed this Card from \"Apple\" to \"Next\"."
+
+    {:display :table}
+    {:display :pie}
+    "changed the display from table to pie."
+
+    {:name        "Diff Test"
+     :description nil}
+    {:name        "Diff Test changed"
+     :description "New description"}
+    "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."))
+
+
+(deftest diff-cards-str-update-collection--test
+ (t2.with-temp/with-temp
+     [Collection {coll-id-1 :id} {:name "Old collection"}
+      Collection {coll-id-2 :id} {:name "New collection"}]
+     (are [x y expected] (= expected
+                          (build-sentence (revision/diff-strings :model/Card x y)))
+
+       {:name "Apple"}
+       {:name          "Apple"
+        :collection_id coll-id-2}
+       "moved this Card to New collection."
+
+       {:name        "Diff Test"
+        :description nil}
+       {:name        "Diff Test changed"
+        :description "New description"}
+       "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."
+
+       {:name          "Apple"
+        :collection_id coll-id-1}
+       {:name          "Apple"
+        :collection_id coll-id-2}
+       "moved this Card from Old collection to New collection.")))
+
+(defn- create-card-revision!
+  "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
+  [card-id is-creation?]
+  (revision/push-revision!
+   :object       (t2/select-one :model/Card :id card-id)
+   :entity       :model/Card
+   :id           card-id
+   :user-id      (mt/user->id :crowberto)
+   :is-creation? is-creation?))
+
+(deftest record-revision-and-description-completeness-test
+  (t2.with-temp/with-temp
+    [:model/Database  db    {:name "random db"}
+     :model/Card      card  {:name                "A Card"
+                             :description          "An important card"
+                             :collection_position 0
+                             :cache_ttl           1000
+                             :archived            false
+                             :dataset             false
+                             :parameters          [{:name       "Category Name"
+                                                    :slug       "category_name"
+                                                    :id         "_CATEGORY_NAME_"
+                                                    :type       "category"}]}
+     Collection       coll {:name "A collection"}]
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [columns     (disj (set/difference (set (keys card)) (set @#'card/excluded-columns-for-card-revision))
+                              ;; we only record result metadata for models, so we'll test that seperately
+                              :result_metadata)
+            update-col  (fn [col value]
+                          (cond
+                            (= col :collection_id)     (:id coll)
+                            (= col :parameters)        (cons {:name "Category ID"
+                                                              :slug "category_id"
+                                                              :id   "_CATEGORY_ID_"
+                                                              :type "number"}
+                                                             value)
+                            (= col :display)           :pie
+                            (= col :made_public_by_id) (mt/user->id :crowberto)
+                            (= col :embedding_params)  {:category_name "locked"}
+                            (= col :public_uuid)       (str (UUID/randomUUID))
+                            (= col :table_id)          (mt/id :venues)
+                            (= col :database_id)       (:id db)
+                            (= col :query_type)        :native
+                            (= col :dataset_query)     (mt/mbql-query users)
+                            (= col :visualization_settings) {:text "now it's a text card"}
+                            (int? value)               (inc value)
+                            (boolean? value)           (not value)
+                            (string? value)            (str value "_changed")))]
+        (doseq [col columns]
+          (let [before  (select-keys card [col])
+                changes {col (update-col col (get card col))}]
+            ;; we'll automatically delete old revisions if we have more than [[revision/max-revisions]]
+            ;; revisions for an instance, so let's clear everything to make it easier to test
+            (t2/delete! Revision :model "Card" :model_id (:id card))
+            (t2/update! :model/Card (:id card) changes)
+            (create-card-revision! (:id card) false)
+
+            (testing (format "we should track when %s changes" col)
+              (is (= 1 (t2/count Revision :model "Card" :model_id (:id card)))))
+
+            (when-not (#{;; these columns are expected to not have a description because it's always
+                         ;; comes with a dataset_query changes
+                         :table_id :database_id :query_type
+                         ;; we don't need a description for made_public_by_id because whenever this field changes
+                         ;; public_uuid will change and we have a description for it.
+                         :made_public_by_id} col)
+              (testing (format "we should have a revision description for %s" col)
+                (is (some? (build-sentence
+                             (revision/diff-strings
+                               Dashboard
+                               before
+                               changes)))))))))))
+
+ ;; test tracking result_metdata for models
+ (let [card-info (mt/card-with-source-metadata-for-query
+                   (mt/mbql-query venues))]
+   (t2.with-temp/with-temp
+     [:model/Card card card-info]
+     (let [before  (select-keys card [:result_metadata])
+           changes (update before :result_metadata drop-last)]
+       (t2/update! :model/Card (:id card) changes)
+       (create-card-revision! (:id card) false)
+
+       (testing "we should track when :result_metadata changes on model"
+         (is (= 1 (t2/count Revision :model "Card" :model_id (:id card)))))
+
+       (testing "we should have a revision description for :result_metadata on model"
+         (is (some? (build-sentence
+                      (revision/diff-strings
+                        Dashboard
+                        before
+                        changes)))))))))

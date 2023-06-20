@@ -18,7 +18,8 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)
@@ -293,9 +294,9 @@
   (mt/with-test-user :rasta
     (testing "Card query template tag gets card's native query"
       (let [test-query "SELECT 1"]
-        (mt/with-temp Card [card {:dataset_query {:database (mt/id)
-                                                  :type     "native"
-                                                  :native   {:query test-query}}}]
+        (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
+                                                            :type     "native"
+                                                            :native   {:query test-query}}}]
           (is (= {:card-id (u/the-id card), :query test-query, :params nil}
                  (value-for-tag
                   {:name         "card-template-tag-test"
@@ -320,7 +321,7 @@
                                   "FROM \"PUBLIC\".\"VENUES\" "
                                   "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3 "
                                   "LIMIT 1048575")]
-            (mt/with-temp Card [card {:dataset_query mbql-query}]
+            (t2.with-temp/with-temp [Card card {:dataset_query mbql-query}]
               (is (= {:card-id (u/the-id card), :query expected-sql, :params nil}
                      (value-for-tag
                       {:name         "card-template-tag-test"
@@ -380,22 +381,22 @@
                                                      :card-id (u/the-id model)}}}}))))))))))))))
 
     (testing "Card query template tag wraps error in tag details"
-      (mt/with-temp Card [param-card {:dataset_query
-                                      (mt/native-query
-                                        {:query "SELECT {{x}}"
-                                         :template-tags
-                                         {"x"
-                                          {:id   "x-tag", :name     "x", :display-name "Number x",
-                                           :type :number, :required false}}})}]
+      (t2.with-temp/with-temp [Card param-card {:dataset_query
+                                                (mt/native-query
+                                                  {:query "SELECT {{x}}"
+                                                   :template-tags
+                                                   {"x"
+                                                    {:id   "x-tag", :name     "x", :display-name "Number x",
+                                                     :type :number, :required false}}})}]
         (let [param-card-id  (:id param-card)
               param-card-tag (str "#" param-card-id)]
-          (mt/with-temp Card [card {:dataset_query
-                                    (mt/native-query
-                                      {:query (str "SELECT * FROM {{#" param-card-id "}} AS y")
-                                       :template-tags
-                                       {param-card-tag
-                                        {:id   param-card-tag, :name    param-card-tag, :display-name param-card-tag
-                                         :type "card",         :card-id param-card-id}}})}]
+          (t2.with-temp/with-temp [Card card {:dataset_query
+                                              (mt/native-query
+                                                {:query (str "SELECT * FROM {{#" param-card-id "}} AS y")
+                                                 :template-tags
+                                                 {param-card-tag
+                                                  {:id   param-card-tag, :name    param-card-tag, :display-name param-card-tag
+                                                   :type "card",         :card-id param-card-id}}})}]
             (let [card-id  (:id card)
                   tag      {:name "card-template-tag-test", :display-name "Card template tag test",
                             :type :card,                    :card-id      card-id}
@@ -473,8 +474,8 @@
            (query->params-map (query-with-snippet :snippet-id Integer/MAX_VALUE)))))
 
     (testing "Snippet parsing should work correctly for a valid Snippet"
-      (mt/with-temp NativeQuerySnippet [{snippet-id :id} {:name    "expensive-venues"
-                                                          :content "venues WHERE price = 4"}]
+      (t2.with-temp/with-temp [NativeQuerySnippet {snippet-id :id} {:name    "expensive-venues"
+                                                                    :content "venues WHERE price = 4"}]
         (let [expected {"expensive-venues" (params/map->ReferencedQuerySnippet {:snippet-id snippet-id
                                                                                 :content    "venues WHERE price = 4"})}]
           (is (= expected
@@ -524,12 +525,12 @@
 (deftest parse-card-include-parameters-test
   (testing "Parsing a Card reference should return a `ReferencedCardQuery` record that includes its parameters (#12236)"
     (mt/dataset sample-dataset
-      (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
-                                                 {:filter      [:between $total 30 60]
-                                                  :aggregation [[:aggregation-options
-                                                                 [:count-where [:starts-with $product_id->products.category "G"]]
-                                                                 {:name "G Monies", :display-name "G Monies"}]]
-                                                  :breakout    [!month.created_at]})}]
+      (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query orders
+                                                           {:filter      [:between $total 30 60]
+                                                            :aggregation [[:aggregation-options
+                                                                           [:count-where [:starts-with $product_id->products.category "G"]]
+                                                                           {:name "G Monies", :display-name "G Monies"}]]
+                                                            :breakout    [!month.created_at]})}]
         (let [card-tag (str "#" (u/the-id card))]
           (is (schema= {:card-id  (s/eq (u/the-id card))
                         :query    su/NonBlankString
@@ -650,7 +651,7 @@
 (deftest handle-referenced-card-parameter-mixed-with-other-parameters-test
   (testing "Should be able to handle for Card ref params regardless of whether other params are passed in (#21246)\n"
     (mt/dataset sample-dataset
-      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query products)}]
+      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/mbql-query products)}]
         (let [param-name    (format "#%d" card-id)
               template-tags {param-name {:type         :card
                                          :card-id      card-id

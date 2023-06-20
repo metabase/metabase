@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.common :as api]
    [metabase.api.search :as api.search]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -133,7 +134,7 @@
                                                   (assoc action-model-params :collection_id (u/the-id coll)))]
                     Action      [{action-id :id
                                   :as action}   (merge (data-map "action %s action")
-                                  {:type :query, :model_id (u/the-id action-model)})]
+                                                 {:type :query, :model_id (u/the-id action-model)})]
                     QueryAction [_qa (query-action action-id)]
                     Card        [card           (coll-data-map "card %s card" coll)]
                     Card        [dataset        (assoc (coll-data-map "dataset %s dataset" coll)
@@ -485,7 +486,7 @@
                    (into #{} (comp relevant (map :name)) (search! "fort"))))
 
             (testing "Sandboxed users do not see indexed entities in search"
-              (with-redefs [premium-features/segmented-user? (constantly true)]
+              (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
                 (is (= #{}
                        (into #{} (comp relevant (map :name)) (search! "fort"))))))
 
@@ -509,7 +510,7 @@
              (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
                                                                          :search-string "foo"
                                                                          :current-user-perms #{"/"}})))
-      (with-redefs [premium-features/segmented-user? (constantly true)]
+      (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
         (is (= [:and [:inline [:= 1 1]] [:or [:= 0 1]]]
                (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
                                                                            :search-string "foo"
@@ -601,7 +602,7 @@
 
 (deftest table-test
   (testing "You should see Tables in the search results!\n"
-    (mt/with-temp Table [_ {:name "RoundTable"}]
+    (t2.with-temp/with-temp [Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "RoundTable")]
                (search-request-data user :q "RoundTable"))))))
@@ -613,19 +614,19 @@
                (search-request-data user :q "Foo"))))))
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
-      (mt/with-temp Table [_ {:name "RoundTable" :display_name lancelot}]
+      (t2.with-temp/with-temp [Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
                  (search-request-data user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
-      (mt/with-temp Table [_ {:name table-name}]
+      (t2.with-temp/with-temp [Table _ {:name table-name}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
                  (search-request-data user :q table-name :archived true)))))))
   (testing "*archived* tables should not appear in search results"
     (let [table-name (mt/random-name)]
-      (mt/with-temp Table [_ {:name table-name, :active false}]
+      (t2.with-temp/with-temp [Table _ {:name table-name, :active false}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
                  (search-request-data user :q table-name)))))))
@@ -678,7 +679,7 @@
                    (filter #(and (= (:model %) "pulse")
                                  (= (:id %) pulse-id)))
                    first))]
-      (mt/with-temp Pulse [pulse {:name "Electro-Magnetic Pulse"}]
+      (t2.with-temp/with-temp [Pulse pulse {:name "Electro-Magnetic Pulse"}]
         (testing "Pulses are not searchable"
           (is (= nil (search-for-pulses pulse))))
         (mt/with-temp* [Card      [card-1]
@@ -717,10 +718,29 @@
                                :name     "segment count test 2"}
      Segment   _              {:table_id table-id
                                :name     "segment count test 3"}]
-    (with-redefs [premium-features/segmented-user? (constantly false)]
+    (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
       (toucan2.execute/with-call-count [call-count]
         (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
         ;; the call count number here are expected to change if we change the search api
         ;; we have this test here just to keep tracks this number to remind us to put effort
         ;; into keep this number as low as we can
         (is (= 7 (call-count)))))))
+
+(deftest snowplow-new-search-query-event-test
+  (testing "Send a snowplow event when a new global search query is made"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/user-http-request :crowberto :get 200 "search?q=test")
+      (is (=? {:data {"event"                "new_search_query"
+                      "runtime_milliseconds" pos?}
+               :user-id (str (mt/user->id :crowberto))}
+              (last (snowplow-test/pop-event-data-and-user-id!))))))
+  (testing "Don't send a snowplow event if the search isn't global"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/user-http-request :crowberto :get 200 "search" :q "test" :models "table")
+      (is (empty? (snowplow-test/pop-event-data-and-user-id!))))
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/user-http-request :crowberto :get 200 "search" :q "test" :table_db_id (mt/id))
+      (is (empty? (snowplow-test/pop-event-data-and-user-id!))))
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/user-http-request :crowberto :get 200 "search" :q "test" :archived true)
+      (is (empty? (snowplow-test/pop-event-data-and-user-id!))))))
