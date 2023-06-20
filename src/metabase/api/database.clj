@@ -143,7 +143,7 @@
   {:pre [(#{:card :dataset} question-type)]}
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
-     (comp (map (partial mi/do-post-select Card))
+     (comp (map (partial mi/do-after-select Card))
            (filter card-can-be-used-as-source-query?)
            xform)
      (completing conj #(t2/hydrate % :collection))

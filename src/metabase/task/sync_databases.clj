@@ -269,7 +269,7 @@
 (defn- randomize-db-schedules-if-needed
   []
   ;; todo: when we can use json operations on h2 we can check details in the query and drop the transducer
-  (transduce (comp (map (partial mi/do-post-select Database))
+  (transduce (comp (map (partial mi/do-after-select Database))
                    (filter metabase-controls-schedule?))
              (fn
                ([] 0)

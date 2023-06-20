@@ -59,7 +59,7 @@
                 "normalized")
     (is (= {:model "Card", :object {:dataset_query {:type :query}}}
            (mt/derecordize
-             (mi/do-post-select Revision {:model "Card", :object {:dataset_query {:type "query"}}}))))))
+             (mi/do-after-select Revision {:model "Card", :object {:dataset_query {:type "query"}}}))))))
 
 ;;; # Default diff-* implementations
 

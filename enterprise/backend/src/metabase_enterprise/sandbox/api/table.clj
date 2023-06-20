@@ -28,7 +28,7 @@
                       [:= :sandboxes.table_id (u/the-id table-or-table-id)]
                       [:= :pgm.user_id (u/the-id user-or-user-id)]]})
            first
-           (mi/do-post-select Card)))
+           (mi/do-after-select Card)))
 
 (s/defn only-segmented-perms? :- s/Bool
   "Returns true if the user has only segemented and not full table permissions. If the user has full table permissions

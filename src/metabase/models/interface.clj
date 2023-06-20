@@ -425,7 +425,7 @@
   (t2.protocols/with-current row (merge (t2.model/primary-key-values-map row)
                                         (t2.protocols/changes row))))
 
-(defn do-post-select
+(defn do-after-select
   "Do [[toucan2.tools.after-select]] stuff for row map `object` using methods for `modelable`."
   [modelable row-map]
   {:pre [(map? row-map)]}

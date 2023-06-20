@@ -87,7 +87,7 @@
   ;; those cases
   (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol model)))]
     (cond-> revision
-      model (update :object (partial mi/do-post-select model)))))
+      model (update :object (partial mi/do-after-select model)))))
 
 ;;; # Functions
 
