@@ -51,7 +51,6 @@ describe("scenarios > dashboard > chained filter", () => {
       });
 
       // connect that to person.city
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       getDashboardCard().within(() => {
         cy.findByText("Column to filter on");
         cy.findByText("Select…");

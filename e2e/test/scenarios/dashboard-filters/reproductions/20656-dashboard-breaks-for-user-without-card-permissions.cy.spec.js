@@ -74,7 +74,6 @@ describe("issue 20656", () => {
       .find(".Icon-gear")
       .click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     getDashboardCard().within(() => {
       cy.findByText("Column to filter on");
       cy.icon("key");
