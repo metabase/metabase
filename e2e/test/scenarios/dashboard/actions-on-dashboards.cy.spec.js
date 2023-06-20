@@ -110,7 +110,7 @@ const MODEL_NAME = "Test Action Model";
           filterWidget().click();
           addWidgetStringFilter("1");
 
-          clickHelper("Update Score");
+          cy.findByRole("button", { name: "Update Score" }).click();
 
           cy.findByRole("dialog").within(() => {
             cy.findByLabelText("New Score").type("55");
@@ -140,7 +140,7 @@ const MODEL_NAME = "Test Action Model";
             actionName: "Create",
           });
 
-          clickHelper("Create");
+          cy.findByRole("button", { name: "Create" }).click();
 
           modal().within(() => {
             cy.findByPlaceholderText("Team Name").type("Zany Zebras");
@@ -179,7 +179,7 @@ const MODEL_NAME = "Test Action Model";
           filterWidget().click();
           addWidgetStringFilter("5");
 
-          clickHelper(actionName);
+          cy.findByRole("button", { name: actionName }).click();
 
           cy.wait("@executePrefetch");
           // let's check that the existing values are pre-filled correctly
@@ -229,7 +229,7 @@ const MODEL_NAME = "Test Action Model";
             actionName: "Delete",
           });
 
-          clickHelper("Delete");
+          cy.findByRole("button", { name: "Delete" }).click();
 
           modal().within(() => {
             cy.findByPlaceholderText("ID").type("3");
@@ -290,7 +290,7 @@ const MODEL_NAME = "Test Action Model";
           filterWidget().click();
           addWidgetStringFilter("5");
 
-          clickHelper(actionName);
+          cy.findByRole("button", { name: actionName }).click();
 
           cy.wait("@executePrefetch");
 
@@ -344,7 +344,7 @@ const MODEL_NAME = "Test Action Model";
           filterWidget().click();
           addWidgetStringFilter("1");
 
-          clickHelper("Update");
+          cy.findByRole("button", { name: "Update" }).click();
 
           cy.wait("@executePrefetch");
 
@@ -436,7 +436,7 @@ const MODEL_NAME = "Test Action Model";
             actionName: "Create",
           });
 
-          clickHelper("Create");
+          cy.findByRole("button", { name: "Create" }).click();
 
           modal().within(() => {
             cy.findByPlaceholderText("UUID").type(
@@ -522,7 +522,7 @@ const MODEL_NAME = "Test Action Model";
             idFilter: true,
           });
 
-          clickHelper("Create");
+          cy.findByRole("button", { name: "Create" }).click();
 
           modal().within(() => {
             cy.findByPlaceholderText("UUID").should("be.visible");
@@ -553,7 +553,7 @@ const MODEL_NAME = "Test Action Model";
           filterWidget().click();
           addWidgetStringFilter("1");
 
-          clickHelper("Update");
+          cy.findByRole("button", { name: "Update" }).click();
 
           cy.wait("@executePrefetch");
 
@@ -817,11 +817,4 @@ const changeValue = ({ fieldName, fieldType, oldValue, newValue }) => {
     .should("have.value", oldValue)
     .clear()
     .type(newValue);
-};
-
-const clickHelper = buttonName => {
-  // this is dirty, but it seems to be the only reliable solution to detached elements before cypress v12
-  // https://github.com/cypress-io/cypress/issues/7306
-  cy.wait(100);
-  cy.button(buttonName).click();
 };
