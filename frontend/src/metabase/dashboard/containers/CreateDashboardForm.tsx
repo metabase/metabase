@@ -118,6 +118,10 @@ function CreateDashboardForm({
           <FormCollectionPicker
             name="collection_id"
             title={t`Which collection should this go in?`}
+            newColl={{
+              isDisabled: false,
+              onClick: () => null,
+            }}
           />
           <FormFooter>
             <FormErrorMessage inline />

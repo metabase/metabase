@@ -27,7 +27,13 @@ import type { CollectionId } from "metabase-types/api";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
+  NewCollectionButton,
 } from "./FormCollectionPicker.styled";
+
+interface NewCollectionProps {
+  isDisabled: boolean;
+  onClick: () => void;
+}
 
 export interface FormCollectionPickerProps
   extends HTMLAttributes<HTMLDivElement> {
@@ -35,6 +41,7 @@ export interface FormCollectionPickerProps
   title?: string;
   placeholder?: string;
   type?: "collections" | "snippet-collections";
+  newColl?: NewCollectionProps;
 }
 
 function ItemName({
@@ -58,6 +65,7 @@ function FormCollectionPicker({
   title,
   placeholder = t`Select a collection`,
   type = "collections",
+  newColl,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -102,20 +110,27 @@ function FormCollectionPicker({
       const entity = type === "collections" ? Collections : SnippetCollections;
 
       return (
-        <PopoverItemPicker
-          value={{ id: value, model: "collection" }}
-          models={["collection"]}
-          entity={entity}
-          onChange={({ id }) => {
-            setValue(id);
-            closePopover();
-          }}
-          showSearch={hasSearch}
-          width={width}
-        />
+        <div>
+          <PopoverItemPicker
+            value={{ id: value, model: "collection" }}
+            models={["collection"]}
+            entity={entity}
+            onChange={({ id }) => {
+              setValue(id);
+              closePopover();
+            }}
+            showSearch={hasSearch}
+            width={width}
+          />
+          {newColl && type === "collections" && (
+            <NewCollectionButton onlyText icon="add" onClick={newColl.onClick}>
+              {t`New collection`}
+            </NewCollectionButton>
+          )}
+        </div>
       );
     },
-    [value, type, width, setValue],
+    [value, type, width, setValue, newColl],
   );
 
   return (
