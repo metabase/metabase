@@ -233,6 +233,10 @@ export function updateLatLonFilter(
 }
 
 export function updateNumericFilter(query, column, start, end) {
-  const fieldRef = fieldRefForColumn(column);
+  // NOTE: if it is a date with binning, then we should use aggregated version
+  const fieldRef = isDate(column)
+    ? fieldRefWithTemporalUnitForColumn(column, column.unit)
+    : fieldRefForColumn(column);
+
   return addOrUpdateFilter(query, ["between", fieldRef, start, end]);
 }

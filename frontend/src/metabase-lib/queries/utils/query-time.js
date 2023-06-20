@@ -26,6 +26,14 @@ export const DATETIME_UNITS = [
   "quarter-of-year",
 ];
 
+const DATETIME_UNITS_WITH_NUMERIC_ARGUMENTS_FORMATTING = [
+  "day-of-week",
+  "day-of-month",
+  "week-of-year",
+  "month-of-year",
+  "quarter-of-year",
+];
+
 export function computeFilterTimeRange(filter) {
   let expandedFilter;
   let defaultUnit;
@@ -143,6 +151,11 @@ export function generateTimeFilterValuesDescriptions(filter) {
 function generateTimeValueDescription(value, bucketing, isExclude) {
   if (typeof value === "number" && bucketing === "hour-of-day") {
     return moment().hour(value).format("h A");
+  } else if (
+    typeof value === "number" &&
+    DATETIME_UNITS_WITH_NUMERIC_ARGUMENTS_FORMATTING.includes(bucketing)
+  ) {
+    return value;
   } else if (typeof value === "string") {
     const m = parseTimestamp(value, bucketing);
     if (bucketing) {
