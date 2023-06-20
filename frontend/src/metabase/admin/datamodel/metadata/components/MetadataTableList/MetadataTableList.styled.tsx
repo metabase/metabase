@@ -26,7 +26,7 @@ export const AdminListItem = styled.a<AdminListItemProps>`
     selected &&
     css`
       background-color: white;
-      border-color: var(--color-border);
+      border-color: ${color("border")};
       margin-left: -0.5em;
       margin-right: -0.5em;
       padding-left: 1.5em;
