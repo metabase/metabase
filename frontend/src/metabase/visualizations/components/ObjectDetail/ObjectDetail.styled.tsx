@@ -87,7 +87,7 @@ export const FitImage = styled.img`
   max-width: 100%;
   max-height: 18rem;
   object-fit: contain;
-  margin: 0 auto;
+  margin: 1rem auto;
 `;
 
 export const RootModal = styled(Modal)`
