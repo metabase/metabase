@@ -9,7 +9,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [methodical.core :as methodical]
-   [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
@@ -89,7 +88,7 @@
   ;; those cases
   (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol model)))]
     (cond-> revision
-      model (update :object (partial models/do-post-select model)))))
+      model (update :object (partial mi/do-after-select model)))))
 
 ;;; # Functions
 
