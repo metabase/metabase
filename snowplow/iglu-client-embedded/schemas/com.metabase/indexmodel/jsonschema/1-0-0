@@ -3,7 +3,7 @@
   "description": "Search events",
   "self": {
     "vendor": "com.example",
-    "name": "indexmodel",
+    "name": "model",
     "format": "jsonschema",
     "version": "1-0-0"
   },

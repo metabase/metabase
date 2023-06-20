@@ -144,7 +144,7 @@
    ::instance     "1-1-0"
    ::metabot      "1-0-0"
    ::search       "1-0-0"
-   ::indexmodel   "1-0-0"
+   ::model        "1-0-0"
    ::timeline     "1-0-0"
    ::task         "1-0-0"
    ::action       "1-0-0"})
@@ -200,7 +200,7 @@
   {::new-instance-created           ::account
    ::new-user-created               ::account
    ::invite-sent                    ::invite
-   ::index-model-entities-enabled   ::indexmodel
+   ::index-model-entities-enabled   ::model
    ::dashboard-created              ::dashboard
    ::question-added-to-dashboard    ::dashboard
    ::database-connection-successful ::database
