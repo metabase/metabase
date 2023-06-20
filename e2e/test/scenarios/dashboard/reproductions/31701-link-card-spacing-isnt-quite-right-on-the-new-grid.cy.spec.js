@@ -1,4 +1,5 @@
 import {
+  createLinkCard,
   editDashboard,
   getDashboardCard,
   popover,
@@ -30,43 +31,33 @@ describe("metabase#31701 - preventing link dashboard card overflows", () => {
         console.count("BEFORE EACH");
       });
 
-      it("should not allow entity links to overflow", () => {
-        createEntityLinkDashboard();
+      it("should not allow links to overflow when editing dashboard", () => {
+        createLinkDashboard();
+        const { entityCard, customCard } = getLinkCards();
 
-        const editDashCard = getDashboardCard(0);
         const editLinkContainer = cy.findByTestId("entity-edit-display-link");
+        const linkContainer = cy.findByTestId("custom-edit-text-link");
 
-        assertLinkCardOverflow(editLinkContainer, editDashCard);
-
-        saveDashboard();
-        const viewDashCard = getDashboardCard(0);
-        const linkContainer = cy.findByTestId("entity-view-display-link");
-
-        assertLinkCardOverflow(linkContainer, viewDashCard);
+        assertLinkCardOverflow(editLinkContainer, entityCard);
+        assertLinkCardOverflow(linkContainer, customCard);
       });
 
-      it("should not allow non-entity links to overflow", () => {
-        createCustomLinkDashboard();
-
-        const editDashCard = getDashboardCard(0);
-        const editLinkContainer = cy.findByTestId("custom-edit-text-link");
-
-        closeLinkSearchDropdown();
-
-        assertLinkCardOverflow(editDashCard, editLinkContainer);
-
+      it("should not allow links to overflow when viewing saved dashboard", () => {
+        createLinkDashboard();
         saveDashboard();
+        const { entityCard, customCard } = getLinkCards();
 
-        const viewDashCard = getDashboardCard(0);
-        const viewLinkContainer = cy.findByTestId("custom-view-text-link");
+        const editLinkContainer = cy.findByTestId("entity-view-display-link");
+        const linkContainer = cy.findByTestId("custom-view-text-link");
 
-        assertLinkCardOverflow(viewLinkContainer, viewDashCard);
+        assertLinkCardOverflow(editLinkContainer, entityCard);
+        assertLinkCardOverflow(linkContainer, customCard);
       });
     });
   });
 });
 
-const createEntityLinkDashboard = () => {
+const createLinkDashboard = () => {
   cy.createQuestion({
     name: TEST_QUESTION_NAME,
     query: {
@@ -81,27 +72,26 @@ const createEntityLinkDashboard = () => {
   });
 
   editDashboard();
-  cy.icon("link").click();
+  createLinkCard();
+  createLinkCard();
 
-  getDashboardCard(0).click().type(TEST_QUESTION_NAME);
+  const { entityCard, customCard } = getLinkCards();
+
+  entityCard.click().type(TEST_QUESTION_NAME);
   popover().within(() => {
     cy.findAllByTestId("search-result-item-name").first().trigger("click");
   });
+  customCard.click().type(TEST_QUESTION_NAME);
+
+  closeLinkSearchDropdown();
 };
 
-const createCustomLinkDashboard = () => {
-  cy.createDashboard({
-    name: TEST_DASHBOARD_NAME,
-  }).then(({ body: { id: dashId } }) => {
-    visitDashboard(dashId);
-  });
-
-  editDashboard();
-  cy.icon("link").click();
-
-  getDashboardCard(0).click().type(TEST_QUESTION_NAME);
+const getLinkCards = () => {
+  return {
+    entityCard: getDashboardCard(0),
+    customCard: getDashboardCard(1),
+  };
 };
-
 const assertLinkCardOverflow = (card1, card2) => {
   card1.then(linkElem => {
     card2.then(dashCardElem => {
