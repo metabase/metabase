@@ -186,16 +186,6 @@
       (delete-old-revisions! entity id)
       object)))
 
-(let [entity :model/Dashboard
-      id 63
-      object (t2/select-one :model/Dashboard 63)
-      serialized-object (serialize-instance entity id object)
-      last-object       (t2/select-one-fn :object Revision :model (name entity) :model_id id {:order-by [[:id :desc]]})]
-  ;; make sure we still have a map after calling out serialization function
-  (= (json/generate-string serialized-object)
-     (json/generate-string last-object)))
-
-
 (defn revert!
   "Revert `entity` with `id` to a given Revision."
   [& {:keys [entity id user-id revision-id]}]
