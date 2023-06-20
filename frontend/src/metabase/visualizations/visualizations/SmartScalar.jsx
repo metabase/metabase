@@ -31,7 +31,7 @@ import {
   Variation,
 } from "./SmartScalar.styled";
 
-export default class Smart extends Component {
+export default class SmartScalar extends Component {
   static uiName = t`Trend`;
   static identifier = "smartscalar";
   static iconName = "smartscalar";
