@@ -4,7 +4,7 @@
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 
 const webpack = require("webpack");
-
+const { EsbuildPlugin } = require('esbuild-loader')
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const HtmlWebpackHarddiskPlugin = require("html-webpack-harddisk-plugin");
@@ -79,7 +79,7 @@ const config = (module.exports = {
       {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
-        use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
+        use: [{ loader: "esbuild-loader", options: {target: "es2015"} }],
       },
       ...(shouldUseEslint
         ? [
@@ -202,6 +202,12 @@ const config = (module.exports = {
         },
       },
     },
+    minimizer: [
+      new EsbuildPlugin({
+        target: "es2015",
+        css: true
+      })
+    ]
   },
 
   plugins: [
@@ -349,9 +355,9 @@ if (WEBPACK_BUNDLE !== "production") {
     }),
   );
 } else {
-  config.plugins.push(
-    new TerserPlugin({ parallel: true, test: /\.(tsx?|jsx?)($|\?)/i }),
-  );
+  // config.plugins.push(
+  //   new TerserPlugin({ parallel: true, test: /\.(tsx?|jsx?)($|\?)/i }),
+  // );
 
   config.devtool = "source-map";
 }

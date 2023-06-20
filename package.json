@@ -223,6 +223,7 @@
     "cypress": "^12.8.1",
     "cypress-real-events": "^1.7.6",
     "esbuild": "^0.17.9",
+    "esbuild-loader": "^3.0.1",
     "eslint": "7.32.0",
     "eslint-import-resolver-webpack": "^0.8.3",
     "eslint-loader": "4.0.2",
