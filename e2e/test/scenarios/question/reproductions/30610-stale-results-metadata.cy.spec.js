@@ -21,13 +21,21 @@ describe("issue 30610", () => {
     saveQuestion("Orders with ID");
 
     cy.findByTestId("app-bar").findByText("New").click();
-    popover().findByText("Question").click();
-    popover().findByText("Saved Questions").click();
-    popover().findByText("Orders with ID").click();
+    popover().within(() => {
+      cy.findByText("Question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("Orders with ID").click();
+    });
     cy.findByTestId("fields-picker").click();
-    popover().findByText("ID").should("be.visible");
-    popover().findByText("Total").should("not.exist");
+    popover().within(() => {
+      cy.findByText("ID").should("be.visible");
+      cy.findByText("Total").should("not.exist");
+    });
 
     visualize();
+    cy.findByTestId("TableInteractive-root").within(() => {
+      cy.findByText("ID").should("exist");
+      cy.findByText("Total").should("not.exist");
+    });
   });
 });
