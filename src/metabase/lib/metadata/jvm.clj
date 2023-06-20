@@ -3,6 +3,7 @@
   (:require
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.models.setting :as setting]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]
@@ -78,7 +79,10 @@
     (fields table-id))
 
   (metrics [_this table-id]
-    (metrics table-id))
+    (metrics table-id)
+
+  (setting [_this setting-name]
+    (setting/get setting-name))
 
   lib.metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]

@@ -1,32 +1,52 @@
 (ns metabase.lib.drill-thru
   (:require
-   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
-   [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
-   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 ;; TODO: Different ways to apply drill-thru to a query.
 ;; So far:
 ;; - :filter on each :operators of :drill-thru/quick-filter applied with (lib/filter query stage filter-clause)
 
+;;; ---------------------------------------- Internals -------------------------------------------
 (defn- structured? [query stage-number]
   (-> (lib.util/query-stage query stage-number)
       :lib/type
       (= :mbql.stage/mbql)))
 
-;;; ------------------------------------- Quick Filters ------------------------------------------
+(defn- drill-thru-dispatch [_query _stage-number drill-thru]
+  (:type drill-thru))
+
+(defmulti drill-thru-method
+  "`(drill-thru-method query stage-number drill-thru)`
+
+  Applies the `drill-thru` to the query and stage. Keyed on the `:type` of the drill-thru.
+  Returns the updated query."
+  drill-thru-dispatch)
+
+(defmulti drill-thru-info-method
+  "Helper for getting the display-info of each specific type of drill-thru."
+  drill-thru-dispatch)
+
+(defmethod drill-thru-info-method :default
+  [_query _stage-number drill-thru]
+  ;; Several drill-thrus are rendered as a fixed label for that type, with no reference to the column or value,
+  ;; so the default is simply the drill-thru type.
+  (select-keys drill-thru [:type]))
+
+(defmethod lib.metadata.calculation/display-info-method ::drill-thru
+  [query stage-number drill-thru]
+  (drill-thru-info-method query stage-number drill-thru))
+
+;;; -------------------------------------- Quick Filters -----------------------------------------
 (defn- operator [op & args]
   (lib.options/ensure-uuid (into [op {}] args)))
 
@@ -74,6 +94,11 @@
      :type      :drill-thru/quick-filter
      :operators (operators-for column value)}))
 
+(defmethod drill-thru-info-method :drill-thru/quick-filter
+  [_query _stage-number drill-thru]
+  {:type      (:type drill-thru)
+   :operators (map :name (:operators drill-thru))})
+
 ;;; ------------------------------------ Object Details ------------------------------------------
 (mu/defn ^:private object-detail-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   "When clicking a foreign key or primary key value, drill through to the details for that specific object.
@@ -97,6 +122,18 @@
          :type      drill-type
          :object-id value
          :many-pks? many-pks?}))))
+
+(defmethod drill-thru-info-method :drill-thru/pk
+  [_query _stage-number drill-thru]
+  (select-keys drill-thru [:many-pks? :object-id :type]))
+
+(defmethod drill-thru-info-method :drill-thru/zoom
+  [_query _stage-number drill-thru]
+  (select-keys drill-thru [:many-pks? :object-id :type]))
+
+(defmethod drill-thru-info-method :drill-thru/fk-details
+  [_query _stage-number drill-thru]
+  (select-keys drill-thru [:many-pks? :object-id :type]))
 
 ;;; ------------------------------------- Foreign Key --------------------------------------------
 (mu/defn ^:private foreign-key-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
@@ -208,6 +245,26 @@
          :type     :drill-thru/pivot
          :pivots   pivots}))))
 
+(defmethod drill-thru-info-method :drill-thru/pivot
+  [_query _stage-number drill-thru]
+  (select-keys drill-thru [:many-pks? :object-id :type]))
+
+;; Note that pivot drills have specific public functions for accessing the nested pivoting options.
+;; Therefore the [[drill-thru-info-method]] is just the default `{:type :drill-thru/pivot}`.
+
+(mu/defn pivot-types :- [:sequential ::lib.schema.drill-thru/drill-thru-pivot-types]
+  "A helper for the FE. Returns the set of pivot types (category, location, time) that apply to this drill-thru."
+  [drill-thru :- [:and ::lib.schema.drill-thru/drill-thru
+                  [:map [:type [:= :drill-thru/pivot]]]]]
+  (keys (:pivots drill-thru)))
+
+(mu/defn pivot-columns-for-type :- [:sequential lib.metadata/ColumnMetadata]
+  "A helper for the FE. Returns all the columns of the given type which can be used to pivot the query."
+  [drill-thru :- [:and ::lib.schema.drill-thru/drill-thru
+                  [:map [:type [:= :drill-thru/pivot]]]]
+   pivot-type :- ::lib.schema.drill-thru-pivot-types]
+  (get-in drill-thru [:pivots pivot-type]))
+
 ;;; ----------------------------------------- Sort -----------------------------------------------
 (mu/defn ^:private sort-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   "Sorting on a clicked column."
@@ -224,7 +281,7 @@
                           (map :id)
                           set)
           order-bys  (lib.order-by/order-bys query stage-number)
-          this-order (first (for [[dir [clause _opts arg :as field]] order-bys
+          this-order (first (for [[dir [clause _opts arg :as _field]] order-bys
                                   :when (and (= clause :field)
                                              (or (= arg (:id column))
                                                  (= arg (:name column))))]
@@ -237,6 +294,11 @@
                             :asc  [:desc]
                             :desc [:asc]
                             [:asc :desc])}))))
+
+(defmethod drill-thru-info-method :drill-thru/sort
+  [_query _stage-number {directions :sort-directions}]
+  {:type       :drill-thru/sort
+   :directions directions})
 
 ;;; ------------------------------------ Summarize Column ----------------------------------------
 (mu/defn ^:private summarize-column-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
@@ -257,24 +319,26 @@
        :column       column
        :aggregations aggregation-ops})))
 
+(defmethod drill-thru-info-method :drill-thru/summarize-column
+  [_query _stage-number {:keys [aggregations]}]
+  {:type         :drill-thru/summarize-column
+   :aggregations aggregations})
+
 ;;; ----------------------------------- Automatic Insights ---------------------------------------
-(mu/defn ^:private automatic-insights-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
+#_(mu/defn ^:private automatic-insights-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   ""
   [query        :- ::lib.schema/query
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata
    value]
   (when (and (structured? query stage-number)
+             (lib.metadata/setting query :enable-xrays)
              column
              (nil? value)
              (not (lib.types.isa/structured? column)))
-    (let [aggregation-ops (concat [:distinct]
-                                  (when (lib.types.isa/summable? column)
-                                    [:sum :avg]))]
-      {:lib/type     ::drill-thru
-       :type         :drill-thru/summarize-column
-       :column       column
-       :aggregations aggregation-ops})))
+    ;; TODO: Check for expression dimensions; don't show if so, they don't work see metabase#16680.
+    ;; TODO: Implement this - it's actually a URL in v1 rather than a click handler.
+    ))
 
 ;;; --------------------------------------- Top Level --------------------------------------------
 (mu/defn available-drill-thrus :- [:sequential [:ref ::lib.schema.drill-thru/drill-thru]]
@@ -289,6 +353,7 @@
     column       :- lib.metadata/ColumnMetadata
     value]
    (keep #(% query stage-number column value)
+         ;; TODO: Missing drills: automatic insights, format.
          [distribution-drill
           foreign-key-drill
           object-detail-drill
@@ -297,30 +362,14 @@
           sort-drill
           summarize-column-drill])))
 
-(comment
-  (let [query    (metabase.lib.dev/query-for-table-name
-                  (metabase.lib.metadata.jvm/application-database-metadata-provider 1)
-                  "ORDERS")
-        stage    (metabase.lib.util/query-stage query -1)
-        cols     (metabase.lib.metadata.calculation/visible-columns query -1 stage)
-        subtotal (nth cols 3)
-        user-id  (nth cols 1)
-        ops      (operators-for subtotal 100)
-        filters  (map :filter ops)
-        binned   (-> query
-                     (metabase.lib.breakout/breakout -1 (metabase.lib.binning/with-binning subtotal
-                                                          {:strategy :num-bins :num-bins 50}))
-                     (metabase.lib.aggregation/aggregate (metabase.lib.aggregation/count)))
-        counted  (metabase.lib.aggregation/aggregate query (metabase.lib.aggregation/count))
-        countcol (first (metabase.lib.metadata.calculation/metadata counted))
-        pivots   (->> (available-drill-thrus counted -1 countcol 0)
-                      (keep :pivots)
-                      first)
-        citycol  (->> pivots :category second)]
-    #_(quick-filter-drill query -1 subtotal 200)
-    #_(metabase.lib.order-by/order-bys (metabase.lib.order-by/order-by query -1 subtotal :asc) -1)
-    (available-drill-thrus query -1 user-id)
-    #_(lib.aggregation/aggregate query (lib.aggregation/distinct subtotal))
-    ;; TODO: Missing drills: automatic insights, format.
-    )
-  *e)
+(mu/defn drill-thru :- ::lib.schema/query
+  "`(drill-thru query stage-number drill-thru)`
+
+  Applies the `drill-thru` to the query and stage. Keyed on the `:type` of the drill-thru. The `drill-thru` should be
+  one of those returned by a call to [[available-drill-thrus]] with the same `query` and `stage-number`.
+
+  Returns the updated query."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   drill        :- ::lib.schema.drill-thru/drill-thru]
+  (drill-thru-method query stage-number drill))
