@@ -597,7 +597,7 @@
   :profile
   {:main-opts ["-m" "metabase.core" "profile"]
    :jvm-opts  ["-XX:+CITime" ; print time spent in JIT compiler
-               "-Xlog:gc"]}
+               "-XX:+PrintGC"]}
 
   ;; get the H2 shell with clojure -X:dev:h2
   :h2
