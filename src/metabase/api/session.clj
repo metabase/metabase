@@ -130,12 +130,10 @@
       (u.password/verify-password password fake-salt fake-hashed-password)
       nil)))
 
-(def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
-
 (defn- throttle-check
   "Pass through to `throttle/check` but will not check if `throttling-disabled?` is true"
   [throttler throttle-key]
-  (when-not throttling-disabled?
+  (when-not (config/config-bool :mb-disable-session-throttle)
     (throttle/check throttler throttle-key)))
 
 (s/defn ^:private login :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
@@ -176,7 +174,7 @@
                        (let [{session-uuid :id, :as session} (login username password (request.u/device-info request))
                              response                        {:id (str session-uuid)}]
                          (mw.session/set-session-cookies request response session request-time)))]
-    (if throttling-disabled?
+    (if (config/config-bool :mb-disable-session-throttle)
       (do-login)
       (http-401-on-error
        (throttle/with-throttling [(login-throttlers :ip-address) ip-address
@@ -292,7 +290,7 @@
   (when-not (google/google-auth-client-id)
     (throw (ex-info "Google Auth is disabled." {:status-code 400})))
   ;; Verify the token is valid with Google
-  (if throttling-disabled?
+  (if (config/config-bool :mb-disable-session-throttle)
     (google/do-google-auth request)
     (http-401-on-error
      (throttle/with-throttling [(login-throttlers :ip-address) (request.u/ip-address request)]

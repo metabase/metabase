@@ -114,7 +114,8 @@
   {:mb-db-host "localhost"
    :mb-db-port 5432})
 
-(defn- env* [db-type]
+(defn- env*
+  [db-type]
   (merge-with
    (fn [env-value default-value]
      (if (nil? env-value)
@@ -131,46 +132,48 @@
     :mb-db-pass           (config/config-str :mb-db-pass)}
    (env-defaults db-type)))
 
-(def env
-  "Metabase Datatbase environment. Used to setup *application-db* and audit-db for enterprise users."
+(defn env
+  "Metabase Database environment. Used to setup *application-db* and audit-db for enterprise users."
+  []
   (env* (config/config-kw :mb-db-type)))
 
 (def db-type
   "Keyword type name of the application DB details specified by environment variables. Matches corresponding driver
   name e.g. `:h2`, `:mysql`, or `:postgres`."
-  (env->db-type env))
-
-(when (= db-type :h2)
-  (log/warn
-   (u/format-color
-    :red
-    ;; Unfortunately this can't be i18n'ed because the application DB hasn't been initialized yet at the time we log
-    ;; this and thus the site locale is unavailable.
-    (str/join
-     " "
-     ["WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
-      "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead."
-      "If you decide to continue to use H2, please be sure to back up the database file regularly."
-      "For more information, see https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"]))))
+  (delay ; << We use DB connection info that is not available at compile time.
+    (let [db-type (env->db-type (env))]
+      (when (= db-type :h2)
+        (log/warn
+          (u/format-color
+            :red
+            ;; Unfortunately, this can't be i18n'ed because the application DB hasn't been initialized yet at the time we log
+            ;; this and thus the site locale is unavailable.
+            (str/join
+              " "
+              ["WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
+               "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead."
+               "If you decide to continue to use H2, please be sure to back up the database file regularly."
+               "For more information, see https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"]))))
+      ;; If someone is using Postgres and specifies `ssl=true` they might need to specify `sslmode=require`. Let's let them
+      ;; know about that to make their lives a little easier. See #8908 for more details.
+      (when-let [raw-connection-string (not-empty (:mb-db-connection-uri (env)))]
+        (when (and (= db-type :postgres)
+                   (str/includes? raw-connection-string "ssl=true")
+                   (not (str/includes? raw-connection-string "sslmode=require")))
+          ;; Unfortunately, this can't be i18n'ed because the application DB hasn't been initialized yet at the time we log
+          ;; this and thus the site locale is unavailable.
+          (log/warn (str/join " " ["Warning: Postgres connection string with `ssl=true` detected."
+                                   "You may need to add `?sslmode=require` to your application DB connection string."
+                                   "If Metabase fails to launch, please add it and try again."
+                                   "See https://github.com/metabase/metabase/issues/8908 for more details."]))))
+      db-type)))
 
 (defn db-file
   "Path to our H2 DB file from env var or app config."
   []
-  (env->db-file env))
+  (env->db-file (env)))
 
-;; If someone is using Postgres and specifies `ssl=true` they might need to specify `sslmode=require`. Let's let them
-;; know about that to make their lives a little easier. See #8908 for more details.
-(when-let [raw-connection-string (not-empty (:mb-db-connection-uri env))]
-  (when (and (= db-type :postgres)
-             (str/includes? raw-connection-string "ssl=true")
-             (not (str/includes? raw-connection-string "sslmode=require")))
-    ;; Unfortunately this can't be i18n'ed because the application DB hasn't been initialized yet at the time we log
-    ;; this and thus the site locale is unavailable.
-    (log/warn (str/join " " ["Warning: Postgres connection string with `ssl=true` detected."
-                             "You may need to add `?sslmode=require` to your application DB connection string."
-                             "If Metabase fails to launch, please add it and try again."
-                             "See https://github.com/metabase/metabase/issues/8908 for more details."]))))
-
-(def ^javax.sql.DataSource data-source
+(def data-source
   "A [[javax.sql.DataSource]] ultimately derived from the environment variables."
-  (env->DataSource db-type env))
+  (delay ; << We use DB connection info that is not available at compile time.
+    (env->DataSource @db-type (env))))

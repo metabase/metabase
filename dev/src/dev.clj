@@ -220,7 +220,7 @@
     (or (t2/select-one Database :name "Application Database")
         (let [details (#'metabase.db.env/broken-out-details
                        (mdb.connection/db-type)
-                       @#'metabase.db.env/env)
+                       (#'metabase.db.env/env))
               app-db  (first (t2/insert-returning-instances! Database
                                                              {:name    "Application Database"
                                                               :engine  (mdb.connection/db-type)

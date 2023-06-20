@@ -51,18 +51,24 @@
 
 (register-customizer! DbActivityTracker)
 
-(def ^:private application-db-connection-pool-props
-  "Options for c3p0 connection pool for the application DB. These are set in code instead of a properties file because
-  we use separate options for data warehouse DBs. See
-  https://www.mchange.com/projects/c3p0/#configuring_connection_testing for an overview of the options used
-  below (jump to the 'Simple advice on Connection testing' section.)"
-  (merge
-   {"idleConnectionTestPeriod" 60
-    "connectionCustomizerClassName" (.getName DbActivityTracker)}
-   ;; only merge in `max-pool-size` if it's actually set, this way it doesn't override any things that may have been
-   ;; set in `c3p0.properties`
-   (when-let [max-pool-size (config/config-int :mb-application-db-max-connection-pool-size)]
-     {"maxPoolSize" max-pool-size})))
+(defn- make-pooled-data-source
+  [db-type ^javax.sql.DataSource unpooled-data-source]
+  (let [ds-name    (format "metabase-%s-app-db" (name db-type))
+        ; Options for c3p0 connection pool for the application DB. These are set in code instead of a properties file because
+        ; we use separate options for data warehouse DBs. See
+        ; https://www.mchange.com/projects/c3p0/#configuring_connection_testing for an overview of the options used
+        ; below (jump to the 'Simple advice on Connection testing' section.)
+        pool-props (merge
+                     {"dataSourceName"                ds-name
+                      "idleConnectionTestPeriod"      60
+                      "connectionCustomizerClassName" (.getName DbActivityTracker)}
+                     ;; only merge in `max-pool-size` if it's actually set, this way it doesn't override any things that may have been
+                     ;; set in `c3p0.properties`
+                     (when-let [max-pool-size (config/config-int :mb-application-db-max-connection-pool-size)]
+                       {"maxPoolSize" max-pool-size}))]
+    (com.mchange.v2.c3p0.DataSources/pooledDataSource
+      unpooled-data-source
+      (connection-pool/map->properties pool-props))))
 
 (s/defn connection-pool-data-source :- PoolBackedDataSource
   "Create a connection pool [[javax.sql.DataSource]] from an unpooled [[javax.sql.DataSource]] `data-source`. If
@@ -71,8 +77,4 @@
    data-source :- javax.sql.DataSource]
   (if (instance? PoolBackedDataSource data-source)
     data-source
-    (let [ds-name    (format "metabase-%s-app-db" (name db-type))
-          pool-props (assoc application-db-connection-pool-props "dataSourceName" ds-name)]
-      (com.mchange.v2.c3p0.DataSources/pooledDataSource
-       data-source
-       (connection-pool/map->properties pool-props)))))
+    (make-pooled-data-source db-type data-source)))

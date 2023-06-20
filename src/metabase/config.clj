@@ -68,8 +68,16 @@
 
    1.  environment variables (ex: MB_DB_TYPE -> :mb-db-type)
    2.  jvm options (ex: -Dmb.db.type -> :mb-db-type)
-   3.  hard coded `app-defaults`"
+   3.  hard coded `app-defaults`
+
+   If you use this to define a global, use `defn`, `delay` or `(when-not *compile-files*)`
+   to delay reading the environment variable until runtime and prevent the value from being
+   baked into the JAR at compile time."
   [k]
+  (when (and *compile-files*
+             ; These are OK to use during compilation, everything else is not:
+             (not= :mb-run-mode k))
+    (throw (IllegalStateException. (format "reading environment variable '%s' from '%s' during compilation; use `(def (delay))`, `(defn)` or `(when-not *compile-files*)` to prevent baking the environment into the JAR during compilation" k *file*))))
   (let [k       (keyword k)
         env-val (k env/env)]
     (or (when-not (str/blank? env-val) env-val)
@@ -134,17 +142,14 @@
   mb-version-and-process-identifier
   (format "%s [%s]" mb-app-id-string local-process-uuid))
 
-(defn- mb-session-cookie-samesite*
+(defn mb-session-cookie-samesite
+  "Value for session cookie's `SameSite` directive. Must be one of \"none\", \"lax\", or \"strict\" (case insensitive)."
   []
   #_{:clj-kondo/ignore [:discouraged-var]}
   (let [same-site (str/lower-case (config-str :mb-session-cookie-samesite))]
     (when-not (#{"none", "lax", "strict"} same-site)
       (throw (ex-info "Invalid value for MB_COOKIE_SAMESITE" {:mb-session-cookie-samesite same-site})))
     (keyword same-site)))
-
-(def ^Keyword mb-session-cookie-samesite
-  "Value for session cookie's `SameSite` directive. Must be one of \"none\", \"lax\", or \"strict\" (case insensitive)."
-  (mb-session-cookie-samesite*))
 
 ;; In 0.41.0 we switched from Leiningen to deps.edn. This warning here to keep people from being bitten in the ass by
 ;; the little gotcha described below.

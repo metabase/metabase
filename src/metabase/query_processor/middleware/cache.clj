@@ -38,7 +38,8 @@
 
 (def ^:dynamic *backend*
   "Current cache backend. Dynamically rebindable primary for test purposes."
-  (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
+  (when-not *compile-files* ; << Do not initialize this at compile time.
+    (i/cache-backend (config/config-kw :mb-qp-cache-backend))))
 
 
 ;;; ------------------------------------------------------ Save ------------------------------------------------------

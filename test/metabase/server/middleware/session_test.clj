@@ -42,19 +42,19 @@
   (testing "`SameSite` value is read from config (env)"
     (is (= :lax ; Default value
            (with-redefs [env/env (dissoc env/env :mb-session-cookie-samesite)]
-             (#'config/mb-session-cookie-samesite*))))
+             (config/mb-session-cookie-samesite))))
 
     (is (= :strict
            (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "StRiCt")]
-             (#'config/mb-session-cookie-samesite*))))
+             (config/mb-session-cookie-samesite))))
 
     (is (= :none
            (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "NONE")]
-             (#'config/mb-session-cookie-samesite*))))
+             (config/mb-session-cookie-samesite))))
 
     (is (thrown-with-msg? ExceptionInfo #"Invalid value for MB_COOKIE_SAMESITE"
           (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "invalid value")]
-            (#'config/mb-session-cookie-samesite*))))))
+            (config/mb-session-cookie-samesite))))))
 
 (deftest set-session-cookie-test
   (mt/with-temporary-setting-values [session-timeout nil]

@@ -86,7 +86,8 @@
 (def ^:dynamic ^ApplicationDB *application-db*
   "Type info and [[javax.sql.DataSource]] for the current Metabase application database. Create a new instance
   with [[application-db]]."
-  (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
+  (when-not *compile-files* ; << Do not initialize this at compile time.
+    (application-db @mdb.env/db-type @mdb.env/data-source :create-pool? true)))
 
 (defn db-type
   "Keyword type name of the application DB. Matches corresponding db-type name e.g. `:h2`, `:mysql`, or `:postgres`."

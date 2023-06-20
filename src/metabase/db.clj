@@ -47,7 +47,7 @@
 (defn db-is-set-up?
   "True if the Metabase DB is setup and ready."
   []
-  (= @(:status mdb.connection/*application-db*) ::setup-finished))
+  (= (some-> mdb.connection/*application-db* :status deref) ::setup-finished))
 
 (defn setup-db!
   "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending

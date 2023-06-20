@@ -31,7 +31,7 @@
    :results (common/reducible-query
               {:with      [cards/query-runs
                            cards/latest-qe
-                           cards/dashboards-ids]
+                           @cards/dashboards-ids]
                :select    [[:card.id :card_id]
                            [:card.name :card_name]
                            [:latest_qe.error :error_str]

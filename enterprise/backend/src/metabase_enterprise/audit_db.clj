@@ -42,17 +42,18 @@
 
   The return values indicate what action was taken."
   []
-  (let [audit-db (t2/select-one Database :is_audit true)]
+  (let [db-type  @mdb.env/db-type
+        audit-db (t2/select-one Database :is_audit true)]
     (cond
       (nil? audit-db)
       (u/prog1 ::installed
         (log/info "Installing Audit DB...")
-        (install-database! mdb.env/db-type))
+        (install-database! db-type))
 
-      (not= mdb.env/db-type (:engine audit-db))
+      (not= db-type (:engine audit-db))
       (u/prog1 ::updated
-        (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name mdb.env/db-type))
-        (t2/update! Database :is_audit true {:engine mdb.env/db-type})
+        (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name db-type))
+        (t2/update! Database :is_audit true {:engine db-type})
         (ensure-db-installed!))
 
       :else
