@@ -209,80 +209,82 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     });
   });
 
-  it("should display a toast when a dashboard takes longer than 15s to load", () => {
-    cy.clock();
-    createDashboard();
-    openSlowDashboard({ [FILTER.slug]: "Gadget" });
+  describe("auto-apply filter toast", () => {
+    it("should display a toast when a dashboard takes longer than 15s to load", () => {
+      cy.clock();
+      createDashboard();
+      openSlowDashboard({ [FILTER.slug]: "Gadget" });
 
-    cy.tick(TOAST_TIMEOUT);
-    cy.wait("@cardQuery");
-    undoToast().within(() => {
-      cy.findByText(TOAST_MESSAGE).should("be.visible");
-      cy.button("Turn off").click();
-      cy.wait("@updateDashboard");
-    });
-    dashboardHeader().within(() => {
-      cy.icon("info").click();
-    });
-    rightSidebar().within(() => {
-      cy.findByLabelText("Auto-apply filters").should("not.be.checked");
-    });
-    filterWidget().within(() => {
-      cy.findByText("Gadget").should("be.visible");
-    });
-    getDashboardCard().within(() => {
-      cy.findByText("Rows 1-4 of 53").should("be.visible");
-    });
-  });
-
-  it("should not display the toast when auto applying filters is disabled", () => {
-    cy.clock();
-    createDashboard({ auto_apply_filters: false });
-    openSlowDashboard({ [FILTER.slug]: "Gadget" });
-
-    cy.tick(TOAST_TIMEOUT);
-    cy.wait("@cardQuery");
-    undoToast().should("not.exist");
-    filterWidget().within(() => {
-      cy.findByText("Gadget").should("be.visible");
-    });
-    getDashboardCard().within(() => {
-      cy.findByText("Rows 1-5 of 53").should("be.visible");
-    });
-  });
-
-  it("should not display the toast if there are no parameter values", () => {
-    cy.clock();
-    createDashboard();
-    openSlowDashboard();
-
-    cy.tick(TOAST_TIMEOUT);
-    cy.wait("@cardQuery");
-    undoToast().should("not.exist");
-  });
-
-  it("should not display the same toast twice for a dashboard", () => {
-    cy.clock();
-    createDashboard();
-    openSlowDashboard({ [FILTER.slug]: "Gadget" });
-
-    cy.tick(TOAST_TIMEOUT);
-    cy.wait("@cardQuery");
-    undoToast().within(() => {
-      cy.button("Turn off").should("be.visible");
-      cy.icon("close").click();
-    });
-    filterWidget().within(() => {
-      cy.findByText("Gadget").click();
-    });
-    popover().within(() => {
-      cy.findByText("Widget").click();
-      cy.findByText("Update filter").click();
+      cy.tick(TOAST_TIMEOUT);
+      cy.wait("@cardQuery");
+      undoToast().within(() => {
+        cy.findByText(TOAST_MESSAGE).should("be.visible");
+        cy.button("Turn off").click();
+        cy.wait("@updateDashboard");
+      });
+      dashboardHeader().within(() => {
+        cy.icon("info").click();
+      });
+      rightSidebar().within(() => {
+        cy.findByLabelText("Auto-apply filters").should("not.be.checked");
+      });
+      filterWidget().within(() => {
+        cy.findByText("Gadget").should("be.visible");
+      });
+      getDashboardCard().within(() => {
+        cy.findByText("Rows 1-4 of 53").should("be.visible");
+      });
     });
 
-    cy.tick(TOAST_TIMEOUT);
-    cy.wait("@cardQuery");
-    undoToast().should("not.exist");
+    it("should not display the toast when auto applying filters is disabled", () => {
+      cy.clock();
+      createDashboard({ auto_apply_filters: false });
+      openSlowDashboard({ [FILTER.slug]: "Gadget" });
+
+      cy.tick(TOAST_TIMEOUT);
+      cy.wait("@cardQuery");
+      undoToast().should("not.exist");
+      filterWidget().within(() => {
+        cy.findByText("Gadget").should("be.visible");
+      });
+      getDashboardCard().within(() => {
+        cy.findByText("Rows 1-5 of 53").should("be.visible");
+      });
+    });
+
+    it("should not display the toast if there are no parameter values", () => {
+      cy.clock();
+      createDashboard();
+      openSlowDashboard();
+
+      cy.tick(TOAST_TIMEOUT);
+      cy.wait("@cardQuery");
+      undoToast().should("not.exist");
+    });
+
+    it("should not display the same toast twice for a dashboard", () => {
+      cy.clock();
+      createDashboard();
+      openSlowDashboard({ [FILTER.slug]: "Gadget" });
+
+      cy.tick(TOAST_TIMEOUT);
+      cy.wait("@cardQuery");
+      undoToast().within(() => {
+        cy.button("Turn off").should("be.visible");
+        cy.icon("close").click();
+      });
+      filterWidget().within(() => {
+        cy.findByText("Gadget").click();
+      });
+      popover().within(() => {
+        cy.findByText("Widget").click();
+        cy.findByText("Update filter").click();
+      });
+
+      cy.tick(TOAST_TIMEOUT);
+      cy.wait("@cardQuery");
+      undoToast().should("not.exist");
+    });
   });
 
   describe("no collection curate permission", () => {
