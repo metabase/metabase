@@ -156,8 +156,10 @@ export default class SmartScalar extends Component {
     const separator = (
       <PreviousValueSeparator gridSize={gridSize}>•</PreviousValueSeparator>
     );
-    const granularityDisplay = (
-      <span style={{ marginLeft: 5 }}>{jt`last ${granularity}`}</span>
+    const granularityDisplay = <span>{jt`last ${granularity}`}</span>;
+    const previousValueDisplay = formatValue(
+      previousValue,
+      settings.column(column),
     );
 
     const clicked = {
@@ -236,11 +238,9 @@ export default class SmartScalar extends Component {
                 />
                 {changeDisplay}
               </Variation>
+
               <PreviousValueVariation id="SmartScalar-PreviousValue">
-                {jt`${separator} was ${formatValue(
-                  previousValue,
-                  settings.column(column),
-                )} ${granularityDisplay}`}
+                {jt`${separator} was ${previousValueDisplay} ${granularityDisplay}`}
               </PreviousValueVariation>
             </PreviousValueContainer>
           )}

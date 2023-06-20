@@ -39,9 +39,8 @@ export const PreviousValueContainer = styled.div`
 `;
 
 export const PreviousValueVariation = styled.h4`
-  align-items: center;
   color: ${color("text-light")};
-  display: flex;
+  text-align: center;
 
   ${breakpointMaxSmall} {
     text-transform: capitalize;
@@ -49,9 +48,10 @@ export const PreviousValueVariation = styled.h4`
 `;
 
 export const PreviousValueSeparator = styled.span`
+  display: inline-block;
+  margin-left: 3px;
   color: ${color("text-light")};
-  font-size: 0.7rem;
-  margin: 0 ${space(0)};
+  transform: scale(0.7);
 
   ${breakpointMaxSmall} {
     display: none;
