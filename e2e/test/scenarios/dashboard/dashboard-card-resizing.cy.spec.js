@@ -109,7 +109,7 @@ const getDefaultSize = visualizationType =>
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
-const getMockQuestionName = vizType => `${vizType}_MOCK_QUESTION`;
+const getMockQuestionName = vizType => `MOCK_${vizType}_QUESTION`;
 
 const getCommonQuestionFields = vizType => ({
   name: getMockQuestionName(vizType),
@@ -176,6 +176,7 @@ const TEST_QUESTIONS = [
     "scatter",
     "funnel",
     "object",
+    "smartscalar",
     "waterfall",
   ].map(vizType => createMockChartQuestion(vizType)),
   ...["scalar", "gauge", "progress"].map(vizType =>
