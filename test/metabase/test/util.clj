@@ -615,7 +615,7 @@
   (mb.hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
-                                     [model (:max-id (t2/select-one [model [(keyword (str "%max." (name (mdb.u/primary-key model))))
+                                     [model (:max-id (t2/select-one [model [(keyword (str "%max." (name (first (t2/primary-keys model)))))
                                                                             :max-id]]))]))]
     (try
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name models))) "\n")
@@ -625,7 +625,7 @@
                 ;; might not have an old max ID if this is the first time the macro is used in this test run.
                 :let  [old-max-id            (or (get model->old-max-id model)
                                                  0)
-                       max-id-condition      [:> (mdb.u/primary-key model) old-max-id]
+                       max-id-condition      [:> (first (t2/primary-keys model)) old-max-id]
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (t2/query-one
            {:delete-from (t2/table-name model)
