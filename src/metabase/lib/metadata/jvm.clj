@@ -7,6 +7,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.models.setting :as setting]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -321,6 +322,9 @@
 
   (metrics [_this table-id]
     (metrics database-id table-id))
+
+  (setting [_this setting-name]
+    (setting/get setting-name))
 
   lib.metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]

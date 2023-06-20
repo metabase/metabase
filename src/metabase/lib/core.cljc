@@ -11,6 +11,7 @@
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
    [metabase.lib.database :as lib.database]
+   [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
@@ -97,6 +98,11 @@
   external-op]
  [lib.database
   database-id]
+ [lib.drill-thru
+  available-drill-thrus
+  drill-thru
+  pivot-columns-for-type
+  pivot-types]
  [lib.expression
   expression
   expressions

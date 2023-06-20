@@ -80,6 +80,7 @@
   (tables   [_this]            (get-in-cache-or-fetch cache [::database-tables]             #(tables metadata-provider cache)))
   (fields   [_this table-id]   (get-in-cache-or-fetch cache [::table-fields table-id]       #(fields metadata-provider cache table-id)))
   (metrics  [_this table-id]   (get-in-cache-or-fetch cache [::table-metrics table-id]      #(metrics metadata-provider cache table-id)))
+  (setting  [_this setting]    (lib.metadata.protocols/setting metadata-provider setting))
 
   lib.metadata.protocols/CachedMetadataProvider
   (cached-database [_this]                           (get-in-cache    cache [:metadata/database]))

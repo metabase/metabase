@@ -730,3 +730,29 @@
    Fields that do not support the provided option will be ignored."
   [a-query stage-number join-condition bucketing-option]
   (lib.core/join-condition-update-temporal-bucketing a-query stage-number join-condition bucketing-option))
+
+(defn ^:export available-drill-thrus
+  "Return an array (possibly empty) of drill-thrus for a given column and optional value.
+
+  `stage-number` is required to avoid ambiguous arities."
+  ([a-query stage-number column]
+   (available-drill-thrus query stage-number column nil))
+  ([a-query stage-number column value]
+   (to-array (lib.core/available-drill-thrus query stage-number column value))))
+
+(defn ^:export drill-thru
+  "Applies the given `drill-thru` to the specified query and stage. Returns the updated query.
+
+  Each type of drill-thru has a different effect on the query."
+  [a-query stage-number drill-thru]
+  (lib.core/drill-thru query stage-number drill-thru))
+
+(defn ^:export pivot-types
+  "Returns an array of pivot types that are available in this drill-thru, which must be a pivot drill-thru."
+  [drill-thru]
+  (to-array (lib.core/pivot-types drill-thru)))
+
+(defn ^:export pivot-columns-for-type
+  "Returns an array of "
+  [drill-thru]
+  (lib.core/pivot-types drill-thru))
