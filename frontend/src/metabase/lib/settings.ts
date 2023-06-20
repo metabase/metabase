@@ -219,7 +219,7 @@ class MetabaseSettings {
 
   /**
    * @deprecated use getSetting(state, "anon-tracking-enabled")
-   */
+   *a
   uploadsEnabled() {
     return !!(this.get("uploads-enabled") && this.get("uploads-database-id"));
   }
@@ -438,5 +438,11 @@ function makeRegexTest(property: string, regex: RegExp) {
 const initValues =
   typeof window !== "undefined" ? _.clone(window.MetabaseBootstrap) : null;
 
+const settings = new MetabaseSettings(initValues);
+
+if (typeof window !== "undefined") {
+  window.__metabaseSettings = settings;
+}
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default new MetabaseSettings(initValues);
+export default settings;

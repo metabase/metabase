@@ -218,6 +218,12 @@
    field-id              :- ::lib.schema.id/field]
   (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id))
 
+(mu/defn setting :- any?
+  "Get the value of a Metabase setting for the instance we're querying."
+  ([metadata-providerable :- MetadataProviderable
+    setting-key           :- [:or string? keyword?]]
+   (lib.metadata.protocols/setting (->metadata-provider metadata-providerable) setting-key)))
+
 ;;;; Stage metadata
 
 (def StageMetadata

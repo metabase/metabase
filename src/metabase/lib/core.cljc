@@ -10,6 +10,7 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
@@ -91,6 +92,11 @@
    group-columns]
   [lib.common
    external-op]
+  [lib.drill-thru
+   available-drill-thrus
+   drill-thru
+   pivot-columns-for-type
+   pivot-types]
   [lib.expression
    expression
    expressions

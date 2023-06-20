@@ -9,8 +9,8 @@
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.util.malli.registry :as mr]))
 
-(mr/def ::drill-thru-types
-  [:enum :drill-thru/quick-filter])
+(mr/def ::drill-thru-pivot-types
+  [:enum :category :location :time])
 
 (mr/def ::drill-thru-keyed
   [:map
@@ -21,6 +21,9 @@
 
 (mr/def ::drill-thru
   [:multi {:dispatch :type}
+   [:drill-thru/pk         ::drill-thru-keyed]
+   [:drill-thru/fk-details ::drill-thru-keyed]
+   [:drill-thru/zoom       ::drill-thru-keyed]
    [:drill-thru/quick-filter
     [:map
      [:type      keyword?]
@@ -28,9 +31,6 @@
      [:operators [:sequential [:map
                                [:name   string?]
                                [:filter ::lib.schema.expression/boolean]]]]]]
-   [:drill-thru/pk         ::drill-thru-keyed]
-   [:drill-thru/fk-details ::drill-thru-keyed]
-   [:drill-thru/zoom       ::drill-thru-keyed]
    [:drill-thru/fk-filter
     [:map
      [:type      keyword?]
@@ -45,7 +45,7 @@
     [:map
      [:type      keyword?]
      [:lib/type  [:= :metabase.lib.drill-thru/drill-thru]]
-     [:pivots    [:map-of [:enum :category :location :time] [:sequential lib.metadata/ColumnMetadata]]]]]
+     [:pivots    [:map-of ::drill-thru-pivot-types [:sequential lib.metadata/ColumnMetadata]]]]]
    [:drill-thru/sort
     [:map
      [:type            keyword?]
@@ -56,4 +56,9 @@
      [:type         keyword?]
      [:lib/type     [:= :metabase.lib.drill-thru/drill-thru]]
      [:column       lib.metadata/ColumnMetadata]
-     [:aggregations [:sequential [:enum :avg :distinct :sum]]]]]])
+     [:aggregations [:sequential [:enum :avg :distinct :sum]]]]]
+   [:drill-thru/automatic-insights
+    [:map
+     [:type         keyword?]
+     [:lib/type     [:= :metabase.lib.drill-thru/drill-thru]]
+     [:column       lib.metadata/ColumnMetadata]]]])
