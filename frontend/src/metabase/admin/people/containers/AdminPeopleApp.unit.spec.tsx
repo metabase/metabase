@@ -44,6 +44,12 @@ describe("AdminPeopleApp", () => {
     it("should be visible when user is admin, has 50 active users, and SSO is not available", () => {
       setup(setupOpts);
       expect(screen.getByText(nudgeText)).toBeInTheDocument();
+      const link = screen.getByRole("link", { name: /Learn more/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute(
+        "href",
+        expect.stringMatching(/^https:\/\/www.metabase.com\/upgrade/),
+      );
     });
     it("should not be visible with less than 50 users", () => {
       setup({ ...setupOpts, activeUsersCount: 10 });
