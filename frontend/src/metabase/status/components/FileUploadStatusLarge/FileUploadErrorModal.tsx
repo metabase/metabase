@@ -1,19 +1,19 @@
 import { t } from "ttag";
-import { Box } from "@mantine/core";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
+import { ErrorBox } from "metabase/components/ErrorDetails";
 
 export const FileUploadErrorModal = ({
   onClose,
   children,
 }: {
   onClose: () => void;
-  children: React.ReactNode;
+  children: string;
 }) => {
   return (
     <Modal small>
       <ModalContent title={t`Upload error details`} onClose={onClose}>
-        <Box p="md">{children}</Box>
+        <ErrorBox>{children}</ErrorBox>
       </ModalContent>
     </Modal>
   );

@@ -77,7 +77,7 @@ const FileUploadLarge = ({
       />
       {errorMessage && (
         <FileUploadErrorModal onClose={() => setErrorMessage(undefined)}>
-          {errorMessage}
+          {String(errorMessage)}
         </FileUploadErrorModal>
       )}
     </>

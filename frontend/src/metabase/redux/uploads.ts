@@ -92,7 +92,7 @@ export const uploadFile = createThunkAction(
           uploadError({
             id,
             message: t`There was an error uploading the file`,
-            error: err?.data?.message ?? err?.data?.cause,
+            error: err?.data?.message ?? err?.data,
           }),
         );
       }
