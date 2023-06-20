@@ -36,7 +36,7 @@ export const AdminListItem = styled.a<AdminListItemProps>`
 
   &:hover {
     background-color: white;
-    border-color: color("border");
+    border-color: ${color("border")};
     margin-left: -0.5em;
     margin-right: -0.5em;
     padding-left: 1.5em;
