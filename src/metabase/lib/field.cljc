@@ -438,6 +438,12 @@
     (lib.join/joined-field-desired-alias join-alias (:name field-metadata))
     (:name field-metadata)))
 
+(defn- expression-refs
+  [query stage-number]
+  (for [col (lib.metadata.calculation/metadata query stage-number (lib.util/query-stage query stage-number))
+        :when (= (:lib/source col) :source/expressions)]
+    (lib.ref/ref col)))
+
 (mu/defn with-fields :- ::lib.schema/query
   "Specify the `:fields` for a query. Pass `nil` or an empty sequence to remove `:fields`."
   ([xs]
@@ -450,12 +456,17 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     xs]
-   (let [xs (mapv (fn [x]
-                    (lib.ref/ref (if (fn? x)
-                                   (x query stage-number)
-                                   x)))
-                  xs)]
-     (lib.util/update-query-stage query stage-number u/assoc-dissoc :fields (not-empty xs)))))
+   (let [xs (not-empty
+             (mapv (fn [x]
+                     (lib.ref/ref (if (fn? x)
+                                    (x query stage-number)
+                                    x)))
+                   xs))
+         ;; if any fields are specified, include all expressions not yet included too
+         xs (some-> xs
+                    (into (remove #(lib.equality/find-closest-matching-ref % xs))
+                          (expression-refs query stage-number)))]
+     (lib.util/update-query-stage query stage-number u/assoc-dissoc :fields xs))))
 
 (mu/defn fields :- [:maybe [:ref ::lib.schema/fields]]
   "Fetches the `:fields` for a query. Returns `nil` if there are no `:fields`. `:fields` should never be empty; this is
