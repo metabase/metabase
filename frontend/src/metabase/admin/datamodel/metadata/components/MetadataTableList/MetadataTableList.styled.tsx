@@ -10,7 +10,7 @@ interface AdminListItemProps {
 export const AdminListItem = styled.a<AdminListItemProps>`
   padding: 0.75em 1em 0.75em 1em;
   border: var(--border-size) var(--border-style) transparent;
-  border-radius: var(--default-border-radius);
+  border-radius: 8px;
   margin-bottom: 0.25em;
   display: flex;
   align-items: center;
