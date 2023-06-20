@@ -7,6 +7,7 @@ import { formatNumber, formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 
 import { Icon } from "metabase/core/components/Icon";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { NoBreakoutError } from "metabase/visualizations/lib/errors";
@@ -21,6 +22,9 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+
+import { measureText } from "metabase/lib/measure-text";
+import { space } from "metabase/styled-components/theme";
 import { isDate } from "metabase-lib/types/utils/isa";
 import { ScalarContainer } from "./Scalar.styled";
 
@@ -31,7 +35,51 @@ import {
   Variation,
 } from "./SmartScalar.styled";
 
-const TWO_TITLE_LINES_MIN_HEIGHT = 117;
+const SPACING = parseInt(space(0), 10);
+const ICON_SIZE = 13;
+const ICON_PADDING_RIGHT = 4;
+
+const canShowPreviousValue = (width, height) => {
+  return height + width > 400;
+};
+
+const canShowSeparator = (width, height) => {
+  const isMultiline = false; // TODO
+
+  return canShowPreviousValue(width, height) && !isMultiline;
+};
+
+const getTitleLinesCount = (width, height) => {
+  if (height > 180) {
+    return 2;
+  }
+
+  return 1;
+};
+
+const formatChange = (change, { fontFamily, fontWeight, width }) => {
+  for (let fractionDigits = 2; fractionDigits >= 1; --fractionDigits) {
+    const formatted = formatNumber(Math.abs(change), {
+      number_style: "percent",
+      maximumFractionDigits: fractionDigits,
+    });
+
+    const formattedWidth = measureText(formatted, {
+      size: "1rem",
+      family: fontFamily,
+      weight: fontWeight,
+    });
+
+    if (formattedWidth <= width) {
+      return formatted;
+    }
+  }
+
+  return formatNumber(Math.abs(change), {
+    number_style: "percent",
+    maximumFractionDigits: 0,
+  });
+};
 
 export default class SmartScalar extends Component {
   static uiName = t`Trend`;
@@ -128,6 +176,7 @@ export default class SmartScalar extends Component {
 
     const lastValue = insight["last-value"];
     const formatOptions = settings.column(column);
+    const availableWidth = width - 2 * SPACING;
 
     const { displayValue, fullScalarValue } = compactifyValue(
       lastValue,
@@ -150,17 +199,22 @@ export default class SmartScalar extends Component {
 
     const changeDisplay = (
       <span style={{ fontWeight: 900 }}>
-        {formatNumber(Math.abs(lastChange), { number_style: "percent" })}
+        {formatChange(lastChange, {
+          fontFamily,
+          fontWeight: 900,
+          width: availableWidth - ICON_SIZE - ICON_PADDING_RIGHT,
+        })}
       </span>
     );
-    const separator = (
+    const separator = canShowSeparator(availableWidth, height) ? (
       <PreviousValueSeparator gridSize={gridSize}>•</PreviousValueSeparator>
-    );
+    ) : null;
     const granularityDisplay = <span>{jt`last ${granularity}`}</span>;
     const previousValueDisplay = formatValue(
       previousValue,
       settings.column(column),
     );
+    const previousValueVariationDisplay = jt`${separator} was ${previousValueDisplay} ${granularityDisplay}`;
 
     const clicked = {
       value,
@@ -179,6 +233,12 @@ export default class SmartScalar extends Component {
     };
 
     const isClickable = visualizationIsClickable(clicked);
+
+    // let variationWidth = ICON_SIZE + ICON_PADDING_RIGHT + measureText(text, {
+    //   size: '1rem',
+    //   family: fontFamily,
+    //   weight: fontWeight,
+    // });
 
     return (
       <ScalarWrapper>
@@ -202,7 +262,7 @@ export default class SmartScalar extends Component {
           >
             <ScalarValue
               gridSize={gridSize}
-              width={width}
+              width={availableWidth}
               totalNumGridCols={totalNumGridCols}
               fontFamily={fontFamily}
               value={displayValue}
@@ -211,7 +271,7 @@ export default class SmartScalar extends Component {
         </ScalarContainer>
         {isDashboard && (
           <ScalarTitle
-            lines={height > TWO_TITLE_LINES_MIN_HEIGHT ? 2 : 1}
+            lines={getTitleLinesCount(availableWidth, height)}
             title={settings["card.title"]}
             description={settings["card.description"]}
             onClick={
@@ -230,18 +290,26 @@ export default class SmartScalar extends Component {
             t`No change from last ${granularity}`
           ) : (
             <PreviousValueContainer gridSize={gridSize}>
-              <Variation color={changeColor}>
-                <Icon
-                  size={13}
-                  className="pr1"
-                  name={isNegative ? "arrow_down" : "arrow_up"}
-                />
-                {changeDisplay}
-              </Variation>
+              <Tooltip
+                isEnabled={!canShowPreviousValue(availableWidth, height)}
+                placement="bottom"
+                tooltip={previousValueVariationDisplay}
+              >
+                <Variation color={changeColor}>
+                  <Icon
+                    size={ICON_SIZE}
+                    className="pr1"
+                    name={isNegative ? "arrow_down" : "arrow_up"}
+                  />
+                  {changeDisplay}
+                </Variation>
+              </Tooltip>
 
-              <PreviousValueVariation id="SmartScalar-PreviousValue">
-                {jt`${separator} was ${previousValueDisplay} ${granularityDisplay}`}
-              </PreviousValueVariation>
+              {canShowPreviousValue(availableWidth, height) && (
+                <PreviousValueVariation id="SmartScalar-PreviousValue">
+                  {previousValueVariationDisplay}
+                </PreviousValueVariation>
+              )}
             </PreviousValueContainer>
           )}
         </div>
