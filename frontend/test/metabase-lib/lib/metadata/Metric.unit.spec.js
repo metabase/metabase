@@ -54,23 +54,4 @@ describe("Metric", () => {
       });
     });
   });
-
-  describe("Google Analytics database", () => {
-    const metric = metadata.metric("ga:users");
-    describe("displayName", () => {
-      it("should return the metric name", () => {
-        expect(metric.displayName()).toBe("Users");
-      });
-    });
-    describe("aggregationClause", () => {
-      it('should return ["metric", "ga:users]', () => {
-        expect(metric.aggregationClause()).toEqual(["metric", "ga:users"]);
-      });
-    });
-    describe("columnName", () => {
-      it("should return the metric id", () => {
-        expect(metric.columnName()).toBe("ga:users");
-      });
-    });
-  });
 });

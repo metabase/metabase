@@ -14,7 +14,7 @@ export default function QuestionDataSelector({
       selectedDatabaseId={query.databaseId()}
       selectedTableId={query.tableId()}
       setSourceTableFn={tableId =>
-        updateQuestion(query.setTableId(tableId).setDefaultQuery().question(), {
+        updateQuestion(query.setTableId(tableId), {
           run: true,
         })
       }
