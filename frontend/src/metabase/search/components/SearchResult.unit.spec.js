@@ -50,7 +50,7 @@ const setupTableSearchResult = tableOpts => {
 };
 
 describe("SearchResult > Tables", () => {
-  it("tables with initial_sync_status='complete' are clickable", async () => {
+  it("tables with initial_sync_status='complete' are clickable", () => {
     const { link, onClick } = setupTableSearchResult({
       name: "Complete Table",
       initial_sync_status: "complete",
@@ -59,7 +59,7 @@ describe("SearchResult > Tables", () => {
     expect(onClick).toHaveBeenCalled();
   });
 
-  it("tables with initial_sync_status='incomplete' are not clickable", async () => {
+  it("tables with initial_sync_status='incomplete' are not clickable", () => {
     const { link, onClick } = setupTableSearchResult({
       name: "Incomplete Table",
       initial_sync_status: "incomplete",
@@ -68,7 +68,7 @@ describe("SearchResult > Tables", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it("tables with initial_sync_status='aborted' are not clickable", async () => {
+  it("tables with initial_sync_status='aborted' are not clickable", () => {
     const { link, onClick } = setupTableSearchResult({
       name: "Aborted Table",
       initial_sync_status: "aborted",
