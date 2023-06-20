@@ -88,6 +88,55 @@
                                  :strategy     :left-join
                                  :fk-field-id  (meta/id :venues :category-id)}]}}))))
 
+(deftest ^:parallel ->pMBQL-joins-default-alias-test
+  (let [original {:database (meta/id)
+                  :type     :query
+                  :query    {:source-table (meta/id :categories)
+                             :joins        [{:source-table (meta/id :venues)
+                                             :condition    [:=
+                                                            [:field (meta/id :venues :category-id) nil]
+                                                            [:field (meta/id :categories :id) nil]]
+                                             :strategy     :left-join}
+                                            {:source-table (meta/id :checkins)
+                                             :condition    [:=
+                                                            [:field (meta/id :venues :id) nil]
+                                                            [:field (meta/id :checkins :venue-id) nil]]
+                                             :strategy     :left-join}]}}]
+    (is (=? {:lib/type :mbql/query
+             :database (meta/id)
+             :stages   [{:lib/type :mbql.stage/mbql
+                         :joins    [{:lib/type    :mbql/join
+                                     :lib/options {:lib/uuid string?}
+                                     :alias       "__join"
+                                     :conditions  [[:=
+                                                    {:lib/uuid string?}
+                                                    [:field
+                                                     {:lib/uuid string?}
+                                                     (meta/id :venues :category-id)]
+                                                    [:field
+                                                     {:lib/uuid string?}
+                                                     (meta/id :categories :id)]]]
+                                     :strategy    :left-join
+                                     :stages      [{:lib/type     :mbql.stage/mbql
+                                                    :source-table (meta/id :venues)}]}
+                                    {:lib/type    :mbql/join
+                                     :lib/options {:lib/uuid string?}
+                                     :alias       "__join_2"
+                                     :conditions  [[:=
+                                                    {:lib/uuid string?}
+                                                    [:field
+                                                     {:lib/uuid string?}
+                                                     (meta/id :venues :id)]
+                                                    [:field
+                                                     {:lib/uuid string?}
+                                                     (meta/id :checkins :venue-id)]]]
+                                     :strategy    :left-join
+                                     :stages      [{:lib/type     :mbql.stage/mbql
+                                                    :source-table (meta/id :checkins)}]}]}]}
+            (lib.convert/->pMBQL original)))
+    (is (= original
+           (-> original lib.convert/->pMBQL lib.convert/->legacy-MBQL)))))
+
 (deftest ^:parallel ->pMBQL-join-fields-test
   (testing "#29898"
     (is (=? {:lib/type :mbql/query
