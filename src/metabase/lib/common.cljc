@@ -41,7 +41,7 @@
   [query stage-number xs]
   (mapv #(->op-arg query stage-number %) xs))
 
-(defmethod ->op-arg :metadata/field
+(defmethod ->op-arg :metadata/column
   [_query _stage-number field-metadata]
   (lib.ref/ref field-metadata))
 

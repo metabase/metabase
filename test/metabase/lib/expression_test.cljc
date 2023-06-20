@@ -258,7 +258,7 @@
              (ex-data ex))))))
 
 (deftest ^:parallel literal-expression-test
-  (is (=? [{:lib/type :metadata/field,
+  (is (=? [{:lib/type :metadata/column,
             :base-type :type/Integer,
             :name "expr",
             :display-name "expr",

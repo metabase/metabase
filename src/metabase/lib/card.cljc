@@ -45,7 +45,7 @@
                (when-let [field-id (:id col)]
                  (lib.metadata/field metadata-providerable field-id))
                (update-keys col u/->kebab-case-en)
-               {:lib/type                :metadata/field
+               {:lib/type                :metadata/column
                 :lib/source              :source/card
                 :lib/card-id             (:id card)
                 :lib/source-column-alias (:name col)}))

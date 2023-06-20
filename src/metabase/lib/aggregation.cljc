@@ -20,7 +20,7 @@
    [metabase.util.malli :as mu]))
 
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
-  "Given `:metadata/field` column metadata for an aggregation, construct an `:aggregation` reference."
+  "Given `:metadata/column` column metadata for an aggregation, construct an `:aggregation` reference."
   [metadata :- lib.metadata/ColumnMetadata]
   (let [options {:lib/uuid       (str (random-uuid))
                  :effective-type ((some-fn :effective-type :base-type) metadata)}

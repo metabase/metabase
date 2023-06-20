@@ -22,7 +22,7 @@
                                                    meta/metadata-provider
                                                    meta/saved-question)
                                                   "ID")]
-    (is (=? {:lib/type :metadata/field
+    (is (=? {:lib/type :metadata/column
              :name     "ID"}
             field-metadata))
     (is (=? [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]
@@ -37,16 +37,16 @@
 
 (def ^:private grandparent-parent-child-metadata-provider
   "A MetadataProvider for a Table that nested Fields: grandparent, parent, and child"
-  (let [grandparent {:lib/type  :metadata/field
+  (let [grandparent {:lib/type  :metadata/column
                      :name      "grandparent"
                      :id        (grandparent-parent-child-id :grandparent)
                      :base-type :type/Text}
-        parent      {:lib/type  :metadata/field
+        parent      {:lib/type  :metadata/column
                      :name      "parent"
                      :parent-id (grandparent-parent-child-id :grandparent)
                      :id        (grandparent-parent-child-id :parent)
                      :base-type :type/Text}
-        child       {:lib/type  :metadata/field
+        child       {:lib/type  :metadata/column
                      :name      "child"
                      :parent-id (grandparent-parent-child-id :parent)
                      :id        (grandparent-parent-child-id :child)

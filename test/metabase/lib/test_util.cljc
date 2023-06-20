@@ -54,7 +54,7 @@
                                          (assoc :lib/type :metadata/table)
                                          (dissoc :fields)))
     (field    [_this field-id]   (some-> (m/find-first #(= (:id %) field-id) fields)
-                                         (assoc :lib/type :metadata/field)))
+                                         (assoc :lib/type :metadata/column)))
     (card     [_this card-id]    (some-> (m/find-first #(= (:id %) card-id) cards)
                                          (assoc :lib/type :metadata/card)))
     (metric   [_this metric-id]  (some-> (m/find-first #(= (:id %) metric-id) metrics)
@@ -66,7 +66,7 @@
                                        (dissoc :fields))))
     (fields   [_this table-id]   (for [field fields
                                        :when (= (:table_id field) table-id)]
-                                   (assoc field :lib/type :metadata/field)))
+                                   (assoc field :lib/type :metadata/column)))
 
     clojure.core.protocols/Datafiable
     (datafy [_this]
@@ -172,12 +172,12 @@
    :database     (meta/id)
    :stages       [{:lib/type           :mbql.stage/native
                    :lib/stage-metadata {:lib/type :metadata/results
-                                        :columns  [{:lib/type      :metadata/field
+                                        :columns  [{:lib/type      :metadata/column
                                                     :name          "abc"
                                                     :display-name  "another Field"
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}
-                                                   {:lib/type      :metadata/field
+                                                   {:lib/type      :metadata/column
                                                     :name          "sum"
                                                     :display-name  "sum of User ID"
                                                     :base-type     :type/Integer

@@ -70,7 +70,7 @@
 
 (deftest ^:parallel available-temporal-buckets-test
   (let [column {:description nil
-                :lib/type :metadata/field
+                :lib/type :metadata/column
                 :database-is-auto-increment false
                 :fingerprint-version 5
                 :base-type :type/DateTimeWithLocalTZ

@@ -208,7 +208,7 @@
 (defmethod metadata-method :default
   [query stage-number x]
   (try
-    {:lib/type     :metadata/field
+    {:lib/type     :metadata/column
      ;; TODO -- effective-type
      :base-type    (type-of query stage-number x)
      :name         (column-name query stage-number x)
@@ -227,7 +227,7 @@
 
 (mu/defn metadata
   "Calculate appropriate metadata for something. What this looks like depends on what we're calculating metadata for.
-  If it's a reference or expression of some sort, this should return a single `:metadata/field` map (i.e., something
+  If it's a reference or expression of some sort, this should return a single `:metadata/column` map (i.e., something
   satisfying the [[metabase.lib.metadata/ColumnMetadata]] schema. If it's something like a stage of a query or a join
   definition, it should return a sequence of metadata maps for all the columns 'returned' at that stage of the query,
   and include the `:lib/source` of where they came from."

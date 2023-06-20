@@ -172,7 +172,7 @@
                            (mapv (fn [column]
                                    (-> column
                                        (update-keys u/->kebab-case-en)
-                                       (assoc :lib/type :metadata/field)))
+                                       (assoc :lib/type :metadata/column)))
                                  columns)))
         (assoc :lib/type :metadata/results))))
 
