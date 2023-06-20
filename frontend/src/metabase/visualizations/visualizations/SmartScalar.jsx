@@ -31,6 +31,8 @@ import {
   Variation,
 } from "./SmartScalar.styled";
 
+const TWO_TITLE_LINES_MIN_HEIGHT = 117;
+
 export default class SmartScalar extends Component {
   static uiName = t`Trend`;
   static identifier = "smartscalar";
@@ -105,6 +107,7 @@ export default class SmartScalar extends Component {
       rawSeries,
       gridSize,
       width,
+      height,
       totalNumGridCols,
       fontFamily,
     } = this.props;
@@ -206,6 +209,7 @@ export default class SmartScalar extends Component {
         </ScalarContainer>
         {isDashboard && (
           <ScalarTitle
+            lines={height > TWO_TITLE_LINES_MIN_HEIGHT ? 2 : 1}
             title={settings["card.title"]}
             description={settings["card.description"]}
             onClick={

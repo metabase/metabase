@@ -2,11 +2,7 @@ import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 
-const TITLE_MAX_LINES = 2;
-const TITLE_LINE_HEIGHT_REM = 1.4;
-
 export const ScalarRoot = styled.div`
-  // padding-top: ${((TITLE_MAX_LINES - 1) * TITLE_LINE_HEIGHT_REM) / 2}rem;
   position: relative;
   display: flex;
   flex: 1;
@@ -33,8 +29,7 @@ export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
 `;
 
 export const ScalarTitleContainer = styled.div`
-  line-height: ${TITLE_LINE_HEIGHT_REM}rem;
-  height: ${TITLE_LINE_HEIGHT_REM * TITLE_MAX_LINES}rem;
+  line-height: 1.4rem;
   display: flex;
   justify-content: center;
   padding: 0 1rem;
