@@ -31,7 +31,7 @@ export const AdminListItem = styled.a<AdminListItemProps>`
       margin-right: -0.5em;
       padding-left: 1.5em;
       padding-right: 1.5em;
-      box-shadow: 0 1px 2px var(--color-shadow);
+      box-shadow: 0 1px 2px ${color("shadow")};
     `};
 
   &:hover {
