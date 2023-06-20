@@ -30,7 +30,7 @@
       :lib/type
       (= :mbql.stage/mbql)))
 
-(defn- drill-thru-dispatch [_query _stage-number drill-thru & _more]
+(defn- drill-thru-dispatch [_query _stage-number drill-thru]
   (:type drill-thru))
 
 (defmulti drill-thru-method
