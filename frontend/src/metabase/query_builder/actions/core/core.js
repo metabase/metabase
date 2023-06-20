@@ -185,8 +185,8 @@ export const apiCreateQuestion = question => {
       ? getQuestionWithDefaultVisualizationSettings(question, series)
       : question;
 
-    const isResultDirty = getIsResultDirty(getState());
     const resultsMetadata = getResultsMetadata(getState());
+    const isResultDirty = getIsResultDirty(getState());
     const questionToCreate = questionWithVizSettings
       .setQuery(question.query().clean())
       .setResultsMetadata(isResultDirty ? null : resultsMetadata);
@@ -229,8 +229,8 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
-    const isResultDirty = getIsResultDirty(getState());
     const resultsMetadata = getResultsMetadata(getState());
+    const isResultDirty = getIsResultDirty(getState());
 
     if (question.isDataset()) {
       resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
