@@ -30,7 +30,7 @@ function collection({
 }
 
 describe("SearchResult > Tables", () => {
-  const setup = tableOpts => {
+  const setup = ({ tableOpts }) => {
     const TEST_TABLE = createMockTable(tableOpts);
     const TEST_DATABASE = createMockDatabase();
     setupTableEndpoints(TEST_TABLE);
@@ -52,8 +52,10 @@ describe("SearchResult > Tables", () => {
 
   it("tables with initial_sync_status='complete' are clickable", () => {
     const { link, onClick } = setup({
-      name: "Complete Table",
-      initial_sync_status: "complete",
+      tableOpts: {
+        name: "Complete Table",
+        initial_sync_status: "complete",
+      },
     });
     userEvent.click(link);
     expect(onClick).toHaveBeenCalled();
@@ -61,8 +63,10 @@ describe("SearchResult > Tables", () => {
 
   it("tables with initial_sync_status='incomplete' are not clickable", () => {
     const { link, onClick } = setup({
-      name: "Incomplete Table",
-      initial_sync_status: "incomplete",
+      tableOpts: {
+        name: "Incomplete Table",
+        initial_sync_status: "incomplete",
+      },
     });
     userEvent.click(link);
     expect(onClick).not.toHaveBeenCalled();
@@ -70,8 +74,10 @@ describe("SearchResult > Tables", () => {
 
   it("tables with initial_sync_status='aborted' are not clickable", () => {
     const { link, onClick } = setup({
-      name: "Aborted Table",
-      initial_sync_status: "aborted",
+      tableOpts: {
+        name: "Aborted Table",
+        initial_sync_status: "aborted",
+      },
     });
     userEvent.click(link);
     expect(onClick).not.toHaveBeenCalled();
