@@ -4,7 +4,6 @@
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.dev :as lib.dev]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
@@ -449,8 +448,8 @@
 (deftest ^:parallel breakoutable-columns-new-stage-e2e-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                   (lib/expression "expr" (lib/absolute-datetime "2020" :month))
-                  (lib/with-fields [(meta/field-metadata :venues :id)
-                                    [:expression {:lib/uuid (str (random-uuid))} "expr"]])
+                  (as-> <> (lib/with-fields <> [(meta/field-metadata :venues :id)
+                                                (lib/expression-ref <> "expr")]))
                   (lib/append-stage))]
     (is (=? [{:id (meta/id :venues :id), :name "ID", :display-name "ID", :lib/source :source/previous-stage}
              {:name "expr", :display-name "expr", :lib/source :source/previous-stage}]

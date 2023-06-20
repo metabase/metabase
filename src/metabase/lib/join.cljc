@@ -184,58 +184,53 @@
 
 (defmulti join-clause-method
   "Convert something to a join clause."
-  {:arglists '([query stage-number x])}
-  (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x))
+  {:arglists '([joinable])}
+  lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
 
 ;; TODO -- should the default implementation call [[metabase.lib.query/query]]? That way if we implement a method to
 ;; create an MBQL query from a `Table`, then we'd also get [[join]] support for free?
 
 (defmethod join-clause-method :mbql/join
-  [_query _stage-number a-join-clause]
+  [a-join-clause]
   a-join-clause)
 
 ;;; TODO -- this probably ought to live in [[metabase.lib.query]]
 (defmethod join-clause-method :mbql/query
-  [_query _stage-number another-query]
+  [another-query]
   (-> {:lib/type :mbql/join
        :stages   (:stages (lib.util/pipeline another-query))}
       lib.options/ensure-uuid))
 
 ;;; TODO -- this probably ought to live in [[metabase.lib.stage]]
 (defmethod join-clause-method :mbql.stage/mbql
-  [_query _stage-number mbql-stage]
+  [mbql-stage]
   (-> {:lib/type :mbql/join
        :stages   [mbql-stage]}
       lib.options/ensure-uuid))
 
-;; TODO -- too complicated, why don't we just ask people to use a separate [[with-join-conditions]] instead of having
-;; all these arities.
+(mu/defn with-join-conditions :- PartialJoin
+  "Update the `:conditions` (filters) for a Join clause."
+  {:style/indent [:form]}
+  [a-join     :- PartialJoin
+   conditions :- [:maybe [:sequential ::lib.schema.expression/boolean]]]
+  (u/assoc-dissoc a-join :conditions (not-empty (mapv lib.common/->op-arg conditions))))
+
 (mu/defn join-clause :- PartialJoin
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
   Saved Question? You should be able to join anything, and this should return a sensible MBQL join map."
   ([joinable]
-   (fn [query stage-number]
-     (join-clause query stage-number joinable)))
+   (join-clause-method joinable))
 
   ([joinable conditions]
-   (fn [query stage-number]
-     (join-clause query stage-number joinable conditions)))
-
-  ([query stage-number joinable]
-   (join-clause-method query stage-number joinable))
-
-  ([query stage-number joinable conditions]
-   (cond-> (join-clause query stage-number joinable)
-     conditions (assoc :conditions (mapv #(lib.common/->op-arg query stage-number %) conditions)))))
+   (with-join-conditions (join-clause-method joinable) conditions)))
 
 (mu/defn with-join-fields :- PartialJoin
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
   references."
   [joinable :- PartialJoin
-   fields   :- [:maybe [:sequential ::lib.schema.ref/ref]]]
-  (u/assoc-dissoc joinable :fields (not-empty (vec fields))))
+   fields]
+  (u/assoc-dissoc joinable :fields (not-empty (mapv lib.ref/ref fields))))
 
 (defn- select-home-column
   [home-cols cond-fields]
@@ -588,13 +583,4 @@
    (when-let [pk-col (pk-column query stage-number joinable)]
      (when-let [fk-col (fk-column-for query stage-number pk-col)]
        (lib.common/->op-arg
-        query
-        stage-number
         (lib.filter/filter-clause (equals-join-condition-operator-definition) fk-col pk-col))))))
-
-(mu/defn with-join-conditions :- PartialJoin
-  "Update the `:conditions` (filters) for a Join clause."
-  {:style/indent [:form]}
-  [a-join     :- PartialJoin
-   conditions :- [:maybe [:sequential ::lib.schema.expression/boolean]]]
-  (u/assoc-dissoc a-join :conditions (not-empty (vec conditions))))

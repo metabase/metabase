@@ -95,6 +95,7 @@
    expressions
    expressions-metadata
    expressionable-columns
+   expression-ref
    +
    -
    *

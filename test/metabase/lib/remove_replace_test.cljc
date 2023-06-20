@@ -4,7 +4,6 @@
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.dev :as lib.dev]
    [metabase.lib.test-metadata :as meta]))
 
 (deftest ^:parallel remove-clause-order-bys-test

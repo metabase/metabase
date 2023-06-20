@@ -16,19 +16,14 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(defn- is-fn? [op tag args expected-args]
-  (let [f (apply op args)]
-    (is (fn? f))
-    (is (=? {:operator tag, :args expected-args}
-            (f {:lib/metadata meta/metadata} -1)))))
-
 (deftest ^:parallel aggregation-test
-  (let [q1 (lib/query meta/metadata-provider (meta/table-metadata :categories))
-        venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
+  (let [venues-category-id-metadata (meta/field-metadata :venues :category-id)
         venue-field-check [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]
     (testing "count"
-      (is-fn? lib/count :count [] [])
-      (is-fn? lib/count :count [venues-category-id-metadata] [venue-field-check]))
+      (is (=? [:count {:lib/uuid string?}]
+              (lib/count)))
+      (is (=? [:count {:lib/uuid string?} venue-field-check]
+              (lib/count venues-category-id-metadata))))
     (testing "single arg aggregations"
       (doseq [[op tag] [[lib/avg :avg]
                         [lib/max :max]
@@ -38,7 +33,8 @@
                         [lib/stddev :stddev]
                         [lib/distinct :distinct]
                         [lib/var :var]]]
-        (is-fn? op tag [venues-category-id-metadata] [venue-field-check])))))
+        (is (=? [tag {:lib/uuid string?} venue-field-check]
+                (op venues-category-id-metadata)))))))
 
 (defn- aggregation-display-name [aggregation-clause]
   (lib.metadata.calculation/display-name lib.tu/venues-query -1 aggregation-clause))
@@ -648,10 +644,10 @@
                   (lib/order-by (meta/field-metadata :venues :price))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
                                                  [(lib/=
-                                                    (meta/field-metadata :venues :category-id)
-                                                    (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
+                                                   (meta/field-metadata :venues :category-id)
+                                                   (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
                                 (lib/with-join-fields [(meta/field-metadata :categories :id)])))
-                  (lib/append-stage)
+                  lib/append-stage
                   (lib/with-fields [(meta/field-metadata :venues :price)])
                   (lib/aggregate 0 (lib/sum (meta/field-metadata :venues :category-id))))
         first-stage (lib.util/query-stage query 0)
@@ -742,11 +738,17 @@
   (testing "Maintain the column names in refs from the QP/MLv1 (#31266)"
     (let [query         (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
                             (lib/expression "Half Price" (lib// (meta/field-metadata :products :price) 2))
-                            (lib/aggregate (lib/avg [:expression {} "Half Price"]))
+                            (as-> <> (lib/aggregate <> (lib/avg (lib/expression-ref <> "Half Price"))))
                             (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :products :created-at) :month))
                             lib/append-stage)
           ag-op         (m/find-first #(= (:short %) :max)
                                       (lib/available-aggregation-operators query))
           expr-metadata (last (lib/aggregation-operator-columns ag-op))]
+      (is (=? {:stages [{:lib/type    :mbql.stage/mbql
+                         :aggregation [[:avg {} [:expression
+                                                 {:base-type :type/Float, :effective-type :type/Float}
+                                                 "Half Price"]]]}
+                        {:lib/type :mbql.stage/mbql}]}
+              query))
       (is (=? [:field {:lib/uuid string?, :base-type :type/Float} "avg"]
               (lib/ref expr-metadata))))))

@@ -261,6 +261,11 @@
          {:table {:name (:name card), :display-name (:name card)}})))))
 
 ;;; ---------------------------------- Temporal Bucketing ----------------------------------------
+
+;;; TODO -- it's a little silly to make this a multimethod I think since there are exactly two implementations of it,
+;;; right? Or can expression and aggregation references potentially be temporally bucketed as well? Think about
+;;; whether just making this a plain function like we did for [[metabase.lib.join/with-join-alias]] makes sense or not.
+
 (defmethod lib.temporal-bucket/temporal-bucket-method :field
   [[_tag opts _id-or-name]]
   (:temporal-unit opts))

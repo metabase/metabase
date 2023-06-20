@@ -33,16 +33,19 @@
 (mu/defn resolve-expression :- ::lib.schema.expression/expression
   "Find the expression with `expression-name` in a given stage of a `query`, or throw an Exception if it doesn't
   exist."
-  [query           :- ::lib.schema/query
-   stage-number    :- :int
-   expression-name :- ::lib.schema.common/non-blank-string]
-  (let [stage (lib.util/query-stage query stage-number)]
-    (or (m/find-first (comp #{expression-name} lib.util/expression-name)
-                      (:expressions stage))
-        (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
-                        {:expression-name expression-name
-                         :query           query
-                         :stage-number    stage-number})))))
+  ([query expression-name]
+   (resolve-expression query -1 expression-name))
+
+  ([query           :- ::lib.schema/query
+    stage-number    :- :int
+    expression-name :- ::lib.schema.common/non-blank-string]
+   (let [stage (lib.util/query-stage query stage-number)]
+     (or (m/find-first (comp #{expression-name} lib.util/expression-name)
+                       (:expressions stage))
+         (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
+                         {:expression-name expression-name
+                          :query           query
+                          :stage-number    stage-number}))))))
 
 (defmethod lib.metadata.calculation/type-of-method :expression
   [query stage-number [_expression _opts expression-name, :as _expression-ref]]
@@ -50,12 +53,12 @@
     (lib.metadata.calculation/type-of query stage-number expression)))
 
 (defmethod lib.metadata.calculation/metadata-method :expression
-  [query stage-number [_expression opts expression-name, :as expression-ref]]
+  [query stage-number [_expression opts expression-name, :as expression-ref-clause]]
   {:lib/type        :metadata/field
    :lib/source-uuid (:lib/uuid opts)
    :name            expression-name
-   :display-name    (lib.metadata.calculation/display-name query stage-number expression-ref)
-   :base-type       (lib.metadata.calculation/type-of query stage-number expression-ref)
+   :display-name    (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
+   :base-type       (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
    :lib/source      :source/expressions})
 
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/integer
@@ -186,7 +189,11 @@
   "Adds an expression to query."
   ([query expression-name an-expression-clause]
    (expression query -1 expression-name an-expression-clause))
-  ([query stage-number expression-name an-expression-clause]
+
+  ([query                :- ::lib.schema/query
+    stage-number         :- [:maybe :int]
+    expression-name      :- ::lib.schema.common/non-blank-string
+    an-expression-clause :- [:or ::lib.schema.expression/expression ::lib.schema.common/external-op]]
    (let [stage-number (or stage-number -1)]
      (when (conflicting-name? query stage-number expression-name)
        (throw (ex-info "Expression name conflicts with a column in the same query stage"
@@ -195,7 +202,7 @@
        query stage-number
        update :expressions
        (fnil conj [])
-       (-> (lib.common/->op-arg query stage-number an-expression-clause)
+       (-> (lib.common/->op-arg an-expression-clause)
            (lib.util/named-expression-clause expression-name))))))
 
 (lib.common/defop + [x y & more])
@@ -241,6 +248,16 @@
 (lib.common/defop upper [s])
 (lib.common/defop lower [s])
 
+(mu/defn ^:private expression-metadata :- lib.metadata/ColumnMetadata
+  [query                 :- ::lib.schema/query
+   stage-number          :- :int
+   expression-definition :- ::lib.schema.expression/expression]
+  (let [expression-name (lib.util/expression-name expression-definition)]
+    (-> (lib.metadata.calculation/metadata query stage-number expression-definition)
+        (assoc :lib/source   :source/expressions
+               :name         expression-name
+               :display-name expression-name))))
+
 (mu/defn expressions-metadata :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Get metadata about the expressions in a given stage of a `query`."
   ([query]
@@ -249,12 +266,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int]
    (some->> (not-empty (:expressions (lib.util/query-stage query stage-number)))
-            (mapv (fn [expression-definition]
-                    (let [expression-name (lib.util/expression-name expression-definition)]
-                      (-> (lib.metadata.calculation/metadata query stage-number expression-definition)
-                          (assoc :lib/source   :source/expressions
-                                 :name         expression-name
-                                 :display-name expression-name))))))))
+            (mapv (partial expression-metadata query stage-number)))))
 
 (mu/defn expressions :- [:maybe ::lib.schema.expression/expressions]
   "Get the expressions map from a given stage of a `query`."
@@ -304,3 +316,21 @@
      (->> columns
           (filterv unavailable-expressions)
           not-empty))))
+
+(mu/defn expression-ref :- :mbql.clause/expression
+  "Find the expression with `expression-name` using [[resolve-expression]], then create a ref for it. Intended for use
+  when creating queries using threading macros e.g.
+
+    (as-> (lib/query ...) <>
+      (lib/expression <> \"My Expression\" ...)
+      (lib/aggregate <> (lib/avg (lib/expression-ref <> \"My Expression\"))))"
+  ([query expression-name]
+   (expression-ref query -1 expression-name))
+
+  ([query           :- ::lib.schema/query
+    stage-number    :- :int
+    expression-name :- ::lib.schema.common/non-blank-string]
+   (->> expression-name
+        (resolve-expression query stage-number)
+        (expression-metadata query stage-number)
+        lib.ref/ref)))
