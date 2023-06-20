@@ -17,6 +17,10 @@ import ScalarValue, {
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
 import * as Lib from "metabase-lib";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import { isDate } from "metabase-lib/types/utils/isa";
 import { ScalarContainer } from "./Scalar.styled";
 
@@ -33,7 +37,8 @@ export default class Smart extends Component {
   static iconName = "smartscalar";
   static canSavePng = false;
 
-  static minSize = { width: 3, height: 3 };
+  static minSize = getMinSize("smartscalar");
+  static defaultSize = getDefaultSize("smartscalar");
 
   static noHeader = true;
 
@@ -222,7 +227,7 @@ export default class Smart extends Component {
               <Variation color={changeColor}>
                 <Icon
                   size={13}
-                  pr={1}
+                  className="pr1"
                   name={isNegative ? "arrow_down" : "arrow_up"}
                 />
                 {changeDisplay}

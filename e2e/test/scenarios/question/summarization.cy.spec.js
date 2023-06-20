@@ -10,8 +10,11 @@ import {
   openOrdersTable,
   enterCustomColumnDetails,
   visualize,
+  getNotebookStep,
+  checkExpressionEditorHelperPopoverPosition,
 } from "e2e/support/helpers";
 
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -23,7 +26,7 @@ describe("scenarios > question > summarize sidebar", () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     summarize();
   });
 
@@ -145,23 +148,29 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
-    cy.visit("/question/1/notebook");
+    visitQuestion(ORDERS_QUESTION_ID);
+    cy.icon("notebook").click();
+
     summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count of rows").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At")
-      .closest(".List-item")
+    popover().findByText("Count of rows").click();
+
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    popover()
+      .findByRole("option", { name: "Created At" })
+      .realHover()
+      .findByLabelText("Temporal bucket")
       .findByText("by month")
-      .click({ force: true });
-    // First a reality check - "Minute" is the only string visible in UI and this should pass
-    cy.findAllByText("Minute")
-      .first() // TODO: cy.findAllByText(string).first() is necessary workaround that will be needed ONLY until (metabase#15570) gets fixed
-      .isVisibleInPopover();
-    // The actual check that will fail until this issue gets fixed
-    cy.findAllByText("Week").first().isVisibleInPopover();
+      .click();
+
+    cy.findByRole("tooltip").within(() => {
+      cy.findByText("Minute").should("be.visible");
+      cy.findByText("Week").should("be.visible");
+
+      // Ensure the option is there, but not visible (have to scroll the list to see it)
+      cy.findByText("Quarter of year").should("exist").should("not.be.visible");
+    });
   });
 
   it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
@@ -297,6 +306,19 @@ describe("scenarios > question > summarize sidebar", () => {
 
     popover().contains("Title");
     popover().contains("199 distinct values");
+  });
+
+  it("should render custom expression helper near the custom expression field", async () => {
+    openReviewsTable({ mode: "notebook" });
+    summarize({ mode: "notebook" });
+
+    popover().within(() => {
+      cy.findByText("Custom Expression").click();
+
+      enterCustomColumnDetails({ formula: "floor" });
+
+      checkExpressionEditorHelperPopoverPosition();
+    });
   });
 });
 

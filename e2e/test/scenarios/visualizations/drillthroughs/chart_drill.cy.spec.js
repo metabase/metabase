@@ -148,7 +148,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               card_id: Q1_ID,
               dashboard_id: DASHBOARD_ID,
               card: {
-                size_x: 16,
+                size_x: 21,
                 size_y: 12,
                 // Add additional series combining it with the second question
                 series: [
@@ -217,7 +217,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               card_id: Q1_ID,
               dashboard_id: DASHBOARD_ID,
               card: {
-                size_x: 16,
+                size_x: 21,
                 size_y: 12,
                 // Add additional series combining it with the second question
                 series: [
@@ -580,7 +580,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           card_id: QUESTION_ID,
           dashboard_id: DASHBOARD_ID,
           card: {
-            size_x: 16,
+            size_x: 21,
             size_y: 10,
             visualization_settings: {
               click_behavior: {

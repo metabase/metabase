@@ -15,7 +15,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -36,11 +35,11 @@
                                                          :description description
                                                          :definition  definition)))]
     (-> (events/publish-event! :segment-create segment)
-        (hydrate :creator))))
+        (t2/hydrate :creator))))
 
 (s/defn ^:private hydrated-segment [id :- su/IntGreaterThanZero]
   (-> (api/read-check (t2/select-one Segment :id id))
-      (hydrate :creator)))
+      (t2/hydrate :creator)))
 
 (api/defendpoint GET "/:id"
   "Fetch `Segment` with ID."
@@ -53,7 +52,7 @@
   []
   (as-> (t2/select Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
     (filter mi/can-read? segments)
-    (hydrate segments :creator :definition_description)))
+    (t2/hydrate segments :creator :definition_description)))
 
 (defn- write-check-and-update-segment!
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate

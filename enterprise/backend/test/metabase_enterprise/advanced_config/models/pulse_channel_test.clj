@@ -6,7 +6,6 @@
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -37,7 +36,7 @@
             (let [thunk (case operation
                           :create
                           #(first (t2/insert-returning-instances! PulseChannel
-                                                                  (merge (tt/with-temp-defaults PulseChannel)
+                                                                  (merge (t2.with-temp/with-temp-defaults PulseChannel)
                                                                          {:pulse_id pulse-id, :details {:emails emails}})))
 
                           :update

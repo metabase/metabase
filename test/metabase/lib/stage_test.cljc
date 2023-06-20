@@ -123,14 +123,14 @@
                  {:id                       (meta/id :categories :id)
                   :name                     "ID"
                   :lib/source               :source/joins
-                  :source_alias             "Cat"
+                  :source-alias             "Cat"
                   :display-name             "ID"
                   :lib/source-column-alias  "ID"
                   :lib/desired-column-alias "Cat__ID"}
                  {:id                       (meta/id :categories :name)
                   :name                     "NAME"
                   :lib/source               :source/joins
-                  :source_alias             "Cat"
+                  :source-alias             "Cat"
                   :display-name             "Name"
                   :lib/source-column-alias  "NAME"
                   :lib/desired-column-alias "Cat__NAME"}]
@@ -144,36 +144,9 @@
                   "Price"
                   "ID + 1"
                   "ID + 2"
-                  "Categories → ID"
-                  "Categories → Name"]
+                  "Cat → ID"
+                  "Cat → Name"]
                  (mapv #(lib.metadata.calculation/display-name query -1 % :long) metadata))))))))
-
-(deftest ^:parallel metadata-with-fields-only-include-expressions-in-fields-test
-  (testing "If query includes :fields, only return expressions that are in :fields"
-    (let [query     (query-with-expressions)
-          id-plus-1 (first (lib/expressions-metadata query))]
-      (is (=? {:lib/type     :metadata/field
-               :base-type    :type/Integer
-               :name         "ID + 1"
-               :display-name "ID + 1"
-               :lib/source   :source/expressions}
-              id-plus-1))
-      (let [query' (-> query
-                       (lib/with-fields [id-plus-1]))]
-        (is (=? {:stages [{:expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} (meta/id :venues :id)] 1]
-                                         [:+ {:lib/expression-name "ID + 2"} [:field {} (meta/id :venues :id)] 2]]
-                           :fields      [[:expression {} "ID + 1"]]}]}
-                query'))
-        (testing "If `:fields` is specified, expressions should only come back if they are in `:fields`"
-          (is (=? [{:name       "ID + 1"
-                    ;; TODO -- I'm not really sure whether the source should be `:source/expressions` here, or
-                    ;; `:source/fields`, since it's present in BOTH...
-                    :lib/source :source/expressions}]
-                  (lib.metadata.calculation/metadata query')))
-          (testing "Should be able to convert the metadata back into a reference"
-            (let [[id-plus-1] (lib.metadata.calculation/metadata query')]
-              (is (=? [:expression {:base-type :type/Integer, :effective-type :type/Integer} "ID + 1"]
-                      (lib/ref id-plus-1))))))))))
 
 (deftest ^:parallel query-with-source-card-include-implicit-columns-test
   (testing "visible-columns should include implicitly joinable columns when the query has a source Card (#30046)"
@@ -264,3 +237,13 @@
               :lib/desired-column-alias "Cat__NAME",
               :display-name "Name"}]
             (lib.metadata.calculation/visible-columns query)))))
+
+(deftest ^:parallel expression-breakout-visible-column
+  (testing "expression breakouts are handled by visible-columns"
+    (let [expr-name "ID + 1"
+          query (-> (query-with-expressions)
+                    (lib/breakout [:expression {:lib/uuid (str (random-uuid))} expr-name]))]
+      (is (=? [{:lib/type :metadata/field
+                :lib/source :source/expressions}]
+              (filter #(= (:name %) expr-name)
+                      (lib.metadata.calculation/visible-columns query)))))))

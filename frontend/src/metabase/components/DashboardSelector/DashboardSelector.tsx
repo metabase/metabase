@@ -10,7 +10,7 @@ import {
 } from "./DashboardSelector.styled";
 
 interface DashboardSelectorProps {
-  onChange: (value?: number | null | string) => void;
+  onChange: (value?: DashboardId) => void;
   value?: DashboardId;
   collectionFilter?: (collection: Collection) => boolean;
 }

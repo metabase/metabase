@@ -633,7 +633,7 @@ const getFieldSection = fieldName => {
 };
 
 const moveField = (fieldIndex, deltaY) => {
-  cy.get(".Grabber").eq(fieldIndex).trigger("mousedown", 0, 0);
+  cy.get(".Grabber").eq(fieldIndex).trigger("mousedown", 0, 0, { force: true });
   cy.get("#ColumnsList")
     .trigger("mousemove", 10, deltaY)
     .trigger("mouseup", 10, deltaY);

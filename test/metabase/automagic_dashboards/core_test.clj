@@ -217,9 +217,6 @@
                       {:table table :column column}))))
 
 (deftest field-matching-predicates-test
-  (testing "A Google Analytics dimension will match on field name."
-    (let [fa-fieldspec "ga:name"]
-      (is (= fa-fieldspec ((#'magic/fieldspec-matcher fa-fieldspec) {:name fa-fieldspec})))))
   (testing "The fieldspec-matcher does not match on ID columns."
     (mt/dataset sample-dataset
       (let [id-field (field! :products :id)]

@@ -1,9 +1,10 @@
 (ns metabase.models.dashboard-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.core :as magic]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries
+   [metabase.models :refer [Action Card Collection Dashboard DashboardCard DashboardCardSeries
                             Database Field Pulse PulseCard Revision Table]]
    [metabase.models.collection :as collection]
    [metabase.models.dashboard :as dashboard]
@@ -19,10 +20,10 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
+   (java.util UUID)
    (java.time LocalDateTime)))
 
 (set! *warn-on-reflection* true)
@@ -38,20 +39,29 @@
                              DashboardCard       {dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}
                              DashboardCardSeries _                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}
                              DashboardCardSeries _                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
-      (is (= {:name               "Test Dashboard"
-              :auto_apply_filters true
-              :collection_id      nil
-              :description        nil
-              :cache_ttl          nil
-              :cards              [{:size_x           4
-                                    :size_y           4
-                                    :row              0
-                                    :col              0
-                                    :id               true
-                                    :card_id          true
-                                    :series           true
-                                    :dashboard_tab_id nil}]
-              :tabs               []}
+      (is (= {:name                "Test Dashboard"
+              :auto_apply_filters  true
+              :collection_id       nil
+              :description         nil
+              :cache_ttl           nil
+              :cards               [{:size_x                 4
+                                     :size_y                 4
+                                     :row                    0
+                                     :col                    0
+                                     :id                     true
+                                     :card_id                true
+                                     :series                 true
+                                     :dashboard_tab_id       nil
+                                     :action_id              nil
+                                     :parameter_mappings     []
+                                     :visualization_settings {}
+                                     :dashboard_id           dashboard-id}]
+              :tabs                []
+              :archived            false
+              :collection_position nil
+              :enable_embedding    false
+              :embedding_params    nil
+              :parameters          []}
              (update (revision/serialize-instance Dashboard (:id dashboard) dashboard)
                      :cards
                      (fn [[{:keys [id card_id series], :as card}]]
@@ -140,7 +150,7 @@
                       :id      2
                       :card_id 2
                       :series  [3 4 5]}]}
-      (str "changed the cache ttl from \"333\" to \"1,227\", rearranged the cards, modified the series on card 1 and "
+      (str "changed the cache ttl from \"333\" to \"1,227\", modified the cards, modified the series on card 1 and "
            "added some series to card 2."))))
 
 (deftest ^:parallel diff-dashboards-str-update-cards-test
@@ -165,6 +175,14 @@
 
 (deftest diff-dashboards-str-update-collection-test
   (testing "update collection ---"
+    (is (= "moved this Dashboard to Our analytics."
+           (build-sentence
+             (revision/diff-strings
+               Dashboard
+               {:name "Apple"}
+               {:name          "Apple"
+                :collection_id nil}))))
+
     (t2.with-temp/with-temp
       [Collection {coll-id :id} {:name "New collection"}]
       (is (= "moved this Dashboard to New collection."
@@ -213,6 +231,116 @@
               {:id 0 :name "Tab A new name and position" :position 1}]}
       "modified the tabs.")))
 
+(declare create-dashboard-revision!)
+
+(deftest record-revision-and-description-completeness-test
+  (let [clean-revisions-for-dashboard (fn [dashboard-id]
+                                        ;; we'll automatically delete old revisions if we have more than [[revision/max-revisions]]
+                                        ;; revisions for an instance, so let's clear everything to make it easier to test
+                                        (t2/delete! Revision :model "Dashboard" :model_id dashboard-id)
+                                        ;; create one before the update
+                                        (create-dashboard-revision! dashboard-id true))]
+
+
+    (testing "dashboard ---"
+      (t2.with-temp/with-temp
+        [:model/Dashboard dashboard {:name               "A Dashboard"
+                                     :description        "An insightful Dashboard"
+                                     :collection_position 0
+                                     :position            10
+                                     :cache_ttl           1000
+                                     :parameters          [{:name       "Category Name"
+                                                            :slug       "category_name"
+                                                            :id         "_CATEGORY_NAME_"
+                                                            :type       "category"}]}
+         Collection       coll      {:name "A collection"}]
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (let [columns    (set/difference (set (keys dashboard)) (set @#'dashboard/excluded-columns-for-dashboard-revision))
+                update-col (fn [col value]
+                             (cond
+                               (= col :collection_id)     (:id coll)
+                               (= col :parameters)        (cons {:name "Category ID"
+                                                                 :slug "category_id"
+                                                                 :id   "_CATEGORY_ID_"
+                                                                 :type "number"}
+                                                                value)
+                               (= col :made_public_by_id) (mt/user->id :crowberto)
+                               (= col :embedding_params)  {:category_name "locked"}
+                               (= col :public_uuid)       (str (UUID/randomUUID))
+                               (int? value)               (inc value)
+                               (boolean? value)           (not value)
+                               (string? value)            (str value "_changed")))]
+            (doseq [col columns]
+              (let [before  (select-keys dashboard [col])
+                    changes {col (update-col col (get dashboard col))}]
+                (clean-revisions-for-dashboard (:id dashboard))
+                ;; do the update
+                (t2/update! Dashboard (:id dashboard) changes)
+                (create-dashboard-revision! (:id dashboard) false)
+
+                (testing (format "we should track when %s changes" col)
+                  (is (= 2 (t2/count Revision :model "Dashboard" :model_id (:id dashboard)))))
+
+                ;; we don't need a description for made_public_by_id because whenever this field changes
+                ;; public_uuid will changes and we had a description for it.
+                (when-not (#{:made_public_by_id} col)
+                  (testing (format "we should have a revision description for %s" col)
+                    (is (some? (build-sentence
+                                 (revision/diff-strings
+                                   Dashboard
+                                   before
+                                   changes))))))))))))
+
+   (testing "dashboardcard ---"
+     (t2.with-temp/with-temp
+       [:model/Dashboard     dashboard {:name "A Dashboard"}
+        :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)}
+        :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}
+        :model/Card          card      {:name "A Card" :dataset true}
+        Action               action    {:model_id (:id card)
+                                        :type     :implicit
+                                        :name     "An action"}]
+       (let [columns    (disj (set/difference (set (keys dashcard)) (set @#'dashboard/excluded-columns-for-dashcard-revision))
+                              :dashboard_id :id)
+             update-col (fn [col value]
+                          (cond
+                            (= col :action_id)          (:id action)
+                            (= col :card_id)            (:id card)
+                            (= col :dashboard_tab_id)   (:id dashtab)
+                            (= col :parameter_mappings) [{:parameter_id "_CATEGORY_NAME_"
+                                                          :target       [:dimension (mt/$ids $categories.name)]}]
+                            (= col :visualization_settings) {:text "now it's a text card"}
+                            (int? value)                (inc value)
+                            (boolean? value)            (not value)
+                            (string? value)             (str value "_changed")))]
+         (doseq [col columns]
+           (clean-revisions-for-dashboard (:id dashboard))
+           ;; do the update
+           (t2/update! :model/DashboardCard (:id dashcard) {col (update-col col (get dashcard col))})
+           (create-dashboard-revision! (:id dashboard) false)
+
+           (testing (format "we should track when %s changes" col)
+             (is (= 2 (t2/count Revision :model "Dashboard" :model_id (:id dashboard)))))))))
+
+   (testing "dashboardtab ---"
+     (t2.with-temp/with-temp
+       [:model/Dashboard     dashboard {:name "A Dashboard"}
+        :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}]
+       (let [columns    (disj (set/difference (set (keys dashtab)) (set @#'dashboard/excluded-columns-for-dashboard-tab-revision))
+                              :dashboard_id :id)
+             update-col (fn [_col value]
+                          (cond
+                            (int? value)                (inc value)
+                            (string? value)             (str value "_changed")))]
+         (doseq [col columns]
+           (clean-revisions-for-dashboard (:id dashboard))
+           ;; do the update
+           (t2/update! :model/DashboardTab (:id dashtab) {col (update-col col (get dashtab col))})
+           (create-dashboard-revision! (:id dashboard) false)
+
+           (testing (format "we should track when %s changes" col)
+             (is (= 2 (t2/count Revision :model "Dashboard" :model_id (:id dashboard)))))))))))
+
 (deftest revert-dashboard!-test
   (t2.with-temp/with-temp [Dashboard           {dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}
                            Card                {card-id :id}                        {}
@@ -226,29 +354,43 @@
                                          :id      (= dashcard-id id)
                                          :card_id (= card-id card_id)
                                          :series  (= [series-id-1 series-id-2] series))])
-          empty-dashboard      {:name               "Revert Test"
-                                :description        "something"
-                                :auto_apply_filters true
-                                :collection_id      nil
-                                :cache_ttl          nil
-                                :cards              []
-                                :tabs               []}
+          empty-dashboard      {:name                "Revert Test"
+                                :description         "something"
+                                :auto_apply_filters  true
+                                :collection_id       nil
+                                :cache_ttl           nil
+                                :cards               []
+                                :tabs                []
+                                :archived            false
+                                :collection_position nil
+                                :enable_embedding    false
+                                :embedding_params    nil
+                                :parameters          []}
           serialized-dashboard (revision/serialize-instance Dashboard (:id dashboard) dashboard)]
       (testing "original state"
-        (is (= {:name               "Test Dashboard"
-                :description        nil
-                :cache_ttl          nil
-                :auto_apply_filters true
-                :collection_id      nil
-                :cards              [{:size_x           4
-                                      :size_y           4
-                                      :row              0
-                                      :col              0
-                                      :id               true
-                                      :card_id          true
-                                      :series           true
-                                      :dashboard_tab_id nil}]
-                :tabs               []}
+        (is (= {:name                "Test Dashboard"
+                :description         nil
+                :cache_ttl           nil
+                :auto_apply_filters  true
+                :collection_id       nil
+                :cards               [{:size_x                 4
+                                       :size_y                 4
+                                       :row                    0
+                                       :col                    0
+                                       :id                     true
+                                       :card_id                true
+                                       :series                 true
+                                       :dashboard_tab_id       nil
+                                       :action_id              nil
+                                       :parameter_mappings     []
+                                       :visualization_settings {}
+                                       :dashboard_id           dashboard-id}]
+                :tabs                []
+                :archived            false
+                :collection_position nil
+                :enable_embedding    false
+                :embedding_params    nil
+                :parameters          []}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
         (dashboard-card/delete-dashboard-cards! [(:id dashboard-card)])
@@ -262,20 +404,29 @@
                    (revision/serialize-instance Dashboard (:id dashboard) dashboard))))))
       (testing "now do the reversion; state should return to original"
         (revision/revert-to-revision! Dashboard dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
-        (is (= {:name               "Test Dashboard"
-                :description        nil
-                :cache_ttl          nil
-                :auto_apply_filters true
-                :collection_id      nil
-                :cards              [{:size_x           4
-                                      :size_y           4
-                                      :row              0
-                                      :col              0
-                                      :id               false
-                                      :card_id          true
-                                      :series           true
-                                      :dashboard_tab_id nil}]
-                :tabs               []}
+        (is (= {:name                "Test Dashboard"
+                :description         nil
+                :cache_ttl           nil
+                :auto_apply_filters  true
+                :collection_id       nil
+                :cards               [{:size_x                 4
+                                       :size_y                 4
+                                       :row                    0
+                                       :col                    0
+                                       :id                     false
+                                       :card_id                true
+                                       :series                 true
+                                       :dashboard_tab_id       nil
+                                       :action_id              nil
+                                       :parameter_mappings     []
+                                       :visualization_settings {}
+                                       :dashboard_id           dashboard-id}]
+                :tabs                []
+                :archived            false
+                :collection_position nil
+                :enable_embedding    false
+                :embedding_params    nil
+                :parameters          []}
                (update (revision/serialize-instance Dashboard dashboard-id (t2/select-one Dashboard :id dashboard-id))
                        :cards check-ids))))
       (testing "revert back to the empty state"
@@ -301,7 +452,7 @@
   To revert 1 action, you should have n=2."
   [model model-id n]
   (assert (> n 1), "n = 1 means revert to the current revision, which is a no-op.")
-  (let [ids (t2/select-pks-vec Revision :model (name model) :model_id model-id {:order-by [[:timestamp :desc]]
+  (let [ids (t2/select-pks-vec Revision :model (name model) :model_id model-id {:order-by [[:id :desc]]
                                                                                 :limit    n})]
    (assert (= n (count ids)), "There are less revisions than required to revert")
    (revision/revert! :entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids))))
@@ -623,7 +774,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Dashboard can only go in Collections in the \"default\" namespace"
-               (t2/insert! Dashboard (assoc (tt/with-temp-defaults Dashboard) :collection_id collection-id, :name dashboard-name))))
+               (t2/insert! Dashboard (assoc (t2.with-temp/with-temp-defaults Dashboard) :collection_id collection-id, :name dashboard-name))))
           (finally
             (t2/delete! Dashboard :name dashboard-name)))))
 

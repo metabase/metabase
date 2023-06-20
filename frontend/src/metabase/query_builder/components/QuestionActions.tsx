@@ -19,6 +19,7 @@ import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { getSetting } from "metabase/selectors/settings";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import Question from "metabase-lib/Question";
 
 import {
@@ -107,6 +108,7 @@ const QuestionActions = ({
     const modal = checkCanBeModel(question)
       ? MODAL_TYPES.TURN_INTO_DATASET
       : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
+    trackTurnIntoModelClicked(question);
     onOpenModal(modal);
   }, [onOpenModal, question]);
 
