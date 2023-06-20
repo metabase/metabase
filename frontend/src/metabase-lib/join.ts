@@ -21,12 +21,10 @@ export function joins(query: Query, stageIndex: number): Join[] {
 }
 
 export function joinClause(
-  query: Query,
-  stageIndex: number,
   joinable: Joinable,
   conditions: FilterClause[] | ExternalOp[],
 ): Join {
-  return ML.join_clause(query, stageIndex, joinable, conditions);
+  return ML.join_clause(joinable, conditions);
 }
 
 export function join(query: Query, stageIndex: number, join: Join): Query {

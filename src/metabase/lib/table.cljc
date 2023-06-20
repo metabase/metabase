@@ -70,10 +70,8 @@
                        :lib/desired-column-alias (unique-name-fn (or (:name col) ""))))))))
 
 (defmethod lib.join/join-clause-method :metadata/table
-  [query stage-number {::keys [join-alias join-fields], :as table-metadata}]
-  (cond-> (lib.join/join-clause query
-                                stage-number
-                                {:lib/type     :mbql.stage/mbql
+  [{::keys [join-alias join-fields], :as table-metadata}]
+  (cond-> (lib.join/join-clause {:lib/type     :mbql.stage/mbql
                                  :lib/options  {:lib/uuid (str (random-uuid))}
                                  :source-table (:id table-metadata)})
     join-alias  (lib.join/with-join-alias join-alias)
