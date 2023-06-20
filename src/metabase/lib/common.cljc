@@ -53,10 +53,6 @@
 (defn defop-create
   "Impl for [[defop]]."
   [op-name args]
-  ;; NOCOMMIT
-  #_{:lib/type :lib/external-op
-     :operator op-name
-     :args     (mapv ->op-arg args)}
   (into [op-name {:lib/uuid (str (random-uuid))}]
         (map ->op-arg)
         args))
@@ -69,7 +65,7 @@
      {:pre [(symbol? op-name)
             (every? vector? argvecs) (every? #(every? symbol? %) argvecs)
             (every? #(not-any? #{'query 'stage-number} %) argvecs)]}
-     `(mu/defn ~op-name :- #_:metabase.lib.schema.common/external-op ~(keyword "mbql.clause" (name op-name)) ; NOCOMMIT
+     `(mu/defn ~op-name :- ~(keyword "mbql.clause" (name op-name))
         ~(format "Create a standalone clause of type `%s`." (name op-name))
         ~@(for [argvec argvecs
                 :let [arglist-expr (if (contains? (set argvec) '&)

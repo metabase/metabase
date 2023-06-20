@@ -15,14 +15,12 @@
 
 (deftest ^:parallel resolve-join-test
   (let [query       lib.tu/venues-query
-        join-clause (-> ((lib/join-clause
-                          (meta/table-metadata :categories)
-                          [(lib/=
-                             (meta/field-metadata :venues :category-id)
-                             (lib/with-join-alias (meta/field-metadata :categories :id) "CATEGORIES__via__CATEGORY_ID"))])
-                         query -1)
-                        ;; TODO -- need a nice way to set the alias of a join.
-                        (assoc :alias "CATEGORIES__via__CATEGORY_ID"))
+        join-clause (-> (lib/join-clause
+                         (meta/table-metadata :categories)
+                         [(lib/=
+                           (meta/field-metadata :venues :category-id)
+                           (lib/with-join-alias (meta/field-metadata :categories :id) "CATEGORIES__via__CATEGORY_ID"))])
+                        (lib/with-join-alias "CATEGORIES__via__CATEGORY_ID"))
         query       (lib/join query join-clause)]
     (is (= join-clause
            (lib.join/resolve-join query -1 "CATEGORIES__via__CATEGORY_ID")))))
@@ -52,7 +50,7 @@
             (lib/join q (lib/join-clause j [{:lib/type :lib/external-op
                                              :operator :=
                                              :args     [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))
-                                                    (lib/ref (lib.metadata/field j nil "CATEGORIES" "ID"))]}]))))))
+                                                        (lib/ref (lib.metadata/field j nil "CATEGORIES" "ID"))]}]))))))
 
 (deftest ^:parallel join-saved-question-test
   (is (=? {:lib/type :mbql/query
@@ -87,18 +85,16 @@
           q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
           venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
           categories-id-metadata      (lib.metadata/stage-column q2 "ID")]
-      (testing "lib/join-clause: return a function that can be resolved later"
-        (let [f (lib/join-clause q2 [(lib/= categories-id-metadata venues-category-id-metadata)])]
-          (is (fn? f))
-          (is (=? {:lib/type    :mbql/join
-                   :lib/options {:lib/uuid string?}
-                   :stages      [{:lib/type     :mbql.stage/mbql
-                                  :source-table (meta/id :venues)}]
-                   :conditions  [[:=
-                                  {:lib/uuid string?}
-                                  [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]
-                                  [:field {:lib/uuid string?} (meta/id :venues :category-id)]]]}
-                  (f {:lib/metadata meta/metadata} -1)))))
+      (let [clause (lib/join-clause q2 [(lib/= categories-id-metadata venues-category-id-metadata)])]
+        (is (=? {:lib/type    :mbql/join
+                 :lib/options {:lib/uuid string?}
+                 :stages      [{:lib/type     :mbql.stage/mbql
+                                :source-table (meta/id :venues)}]
+                 :conditions  [[:=
+                                {:lib/uuid string?}
+                                [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]
+                                [:field {:lib/uuid string?} (meta/id :venues :category-id)]]]}
+                clause)))
       (is (=? {:database (meta/id)
                :stages   [{:source-table (meta/id :categories)
                            :joins        [{:lib/type    :mbql/join
@@ -348,8 +344,7 @@
                                 :strategy :right-join,
                                 :alias "Categories"}]}]}
             (-> lib.tu/venues-query
-                (lib/join (-> (lib/join-clause (fn [_query _stage-number]
-                                                 (meta/table-metadata :categories))
+                (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
                                                [(lib/=
                                                  (meta/field-metadata :venues :category-id)
                                                  (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])

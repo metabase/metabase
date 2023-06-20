@@ -65,15 +65,14 @@
 
 (deftest ^:parallel order-by-field-metadata-test
   (testing "Should be able to create an order by using raw Field metadata"
-    (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))]
-      (is (=? [:asc
-               {:lib/uuid string?}
-               [:field {:lib/uuid string?} (meta/id :venues :id)]]
-              (lib/order-by-clause query -1 (lib.metadata/field meta/metadata-provider nil "VENUES" "ID"))))
-      (is (=? [:desc
-               {:lib/uuid string?}
-               [:field {:lib/uuid string?} (meta/id :venues :id)]]
-              (lib/order-by-clause query -1 (lib.metadata/field meta/metadata-provider nil "VENUES" "ID") :desc))))))
+    (is (=? [:asc
+             {:lib/uuid string?}
+             [:field {:lib/uuid string?} (meta/id :venues :id)]]
+            (lib/order-by-clause (meta/field-metadata :venues :id))))
+    (is (=? [:desc
+             {:lib/uuid string?}
+             [:field {:lib/uuid string?} (meta/id :venues :id)]]
+            (lib/order-by-clause (meta/field-metadata :venues :id) :desc)))))
 
 (deftest ^:parallel append-order-by-field-metadata-test
   (testing "Should be able to add an order by using raw Field metadata"

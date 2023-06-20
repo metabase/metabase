@@ -213,7 +213,7 @@
   "Update the `:conditions` (filters) for a Join clause."
   {:style/indent [:form]}
   [a-join     :- PartialJoin
-   conditions :- [:maybe [:sequential ::lib.schema.expression/boolean]]]
+   conditions :- [:maybe [:sequential [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]]]]
   (u/assoc-dissoc a-join :conditions (not-empty (mapv lib.common/->op-arg conditions))))
 
 (mu/defn join-clause :- PartialJoin
@@ -229,8 +229,10 @@
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
   references."
   [joinable :- PartialJoin
-   fields]
-  (u/assoc-dissoc joinable :fields (not-empty (mapv lib.ref/ref fields))))
+   fields   :- [:maybe [:or [:enum :all :none] [:sequential some?]]]]
+  (u/assoc-dissoc joinable :fields (if (keyword? fields)
+                                     fields
+                                     (not-empty (mapv lib.ref/ref fields)))))
 
 (defn- select-home-column
   [home-cols cond-fields]

@@ -207,19 +207,17 @@
                           (m/find-first #(= (:id %) (meta/id :products :category))
                                         (lib/breakoutable-columns query')))))))))))))
 
-(deftest ^:parallel unresolved-lib-field-with-temporal-bucket-test
+(deftest ^:parallel field-with-temporal-bucket-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :checkins))
-        f (lib/with-temporal-bucket (meta/field-metadata :checkins :date) :day-of-month)]
-    (is (fn? f))
-    (let [field (f query -1)]
-      (is (=? [:field {:temporal-unit :day-of-month} (meta/id :checkins :date)]
-              field))
-      (testing "(lib/temporal-bucket <field-ref>)"
-        (is (= {:lib/type :type/temporal-bucketing-option
-                :unit :day-of-month}
-               (lib/temporal-bucket field))))
-      (is (= "Date: Day of month"
-             (lib.metadata.calculation/display-name query -1 field))))))
+        field (lib/ref (lib/with-temporal-bucket (meta/field-metadata :checkins :date) :day-of-month))]
+    (is (=? [:field {:temporal-unit :day-of-month} (meta/id :checkins :date)]
+            field))
+    (testing "(lib/temporal-bucket <field-ref>)"
+      (is (= {:lib/type :type/temporal-bucketing-option
+              :unit     :day-of-month}
+             (lib/temporal-bucket field))))
+    (is (= "Date: Day of month"
+           (lib.metadata.calculation/display-name query -1 field)))))
 
 (def ^:private temporal-bucketing-mock-metadata
   "Mock metadata for testing temporal bucketing stuff.
@@ -324,28 +322,26 @@
                        (for [option options]
                          (:selected (lib/display-info query2 option)))))))))))))
 
-(deftest ^:parallel unresolved-lib-field-with-binning-test
+(deftest ^:parallel field-with-binning-test
   (let [query         (lib/query meta/metadata-provider (meta/table-metadata :orders))
         binning       {:strategy :num-bins
                        :num-bins 10}
         binning-typed (assoc binning
                              :lib/type    ::lib.binning/binning
                              :metadata-fn fn?)
-        f             (lib/with-binning (meta/field-metadata :orders :subtotal) binning)]
-    (is (fn? f))
-    (let [field (f query -1)]
-      (is (=? [:field {:binning binning} (meta/id :orders :subtotal)]
-              field))
-      (testing "(lib/binning <column-metadata>)"
-        (is (=? binning-typed
-                (lib/binning (lib.metadata.calculation/metadata query -1 field)))))
-      (testing "(lib/binning <field-ref>)"
-        (is (=? binning-typed
-                (lib/binning field))))
-      #?(:clj
-         ;; i18n/trun doesn't work in the CLJS tests, only in proper FE, so this test is JVM-only.
-         (is (= "Subtotal: 10 bins"
-                (lib.metadata.calculation/display-name query -1 field)))))))
+        field         (lib/ref (lib/with-binning (meta/field-metadata :orders :subtotal) binning))]
+    (is (=? [:field {:binning binning} (meta/id :orders :subtotal)]
+            field))
+    (testing "(lib/binning <column-metadata>)"
+      (is (=? binning-typed
+              (lib/binning (lib.metadata.calculation/metadata query -1 field)))))
+    (testing "(lib/binning <field-ref>)"
+      (is (=? binning-typed
+              (lib/binning field))))
+    #?(:clj
+       ;; i18n/trun doesn't work in the CLJS tests, only in proper FE, so this test is JVM-only.
+       (is (= "Subtotal: 10 bins"
+              (lib.metadata.calculation/display-name query -1 field))))))
 
 (deftest ^:parallel with-binning-test
   (doseq [[binning1 binning2] (partition 2 1 [{:strategy :default}

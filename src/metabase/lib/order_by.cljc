@@ -41,19 +41,18 @@
   (assoc (lib.metadata.calculation/display-info query stage-number expr)
          :direction tag))
 
-(defmulti ^:private ->order-by-clause
-  {:arglists '([query stage-number x])}
-  (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x))
+(defmulti ^:private order-by-clause-method
+  {:arglists '([orderable])}
+  lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod ->order-by-clause ::order-by-clause
-  [_query _stage-number clause]
+(defmethod order-by-clause-method ::order-by-clause
+  [clause]
   (lib.options/ensure-uuid clause))
 
 ;;; by default, try to convert `x` to a ref and then order by `:asc`
-(defmethod ->order-by-clause :default
-  [_query _stage-number x]
+(defmethod order-by-clause-method :default
+  [x]
   (when (nil? x)
     (throw (ex-info (i18n/tru "Can''t order by nil") {})))
   (lib.options/ensure-uuid [:asc (lib.ref/ref x)]))
@@ -66,22 +65,12 @@
 
 (mu/defn order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
-  ([x]
-   (fn [query stage-number]
-     (order-by-clause query stage-number x nil)))
-  ([x
+  ([orderable]
+   (order-by-clause orderable :asc))
+
+  ([orderable :- some?
     direction :- [:maybe [:enum :asc :desc]]]
-   (fn [query stage-number]
-     (order-by-clause query stage-number x direction)))
-  ([query :- ::lib.schema/query
-    stage-number :- [:maybe :int]
-    x]
-   (order-by-clause query stage-number x nil))
-  ([query :- ::lib.schema/query
-    stage-number :- [:maybe :int]
-    x
-    direction :- [:maybe [:enum :asc :desc]]]
-   (-> (->order-by-clause query (or stage-number -1) x)
+   (-> (order-by-clause-method orderable)
        (with-direction (or direction :asc)))))
 
 (mu/defn order-by
@@ -89,19 +78,19 @@
   Field, or `:field` clause, or expression of some sort, etc.
 
   You can teach Metabase lib how to generate order by clauses for different things by implementing the
-  underlying [[->order-by-clause]] multimethod."
-  ([query x]
-   (order-by query -1 x nil))
+  underlying [[order-by-clause-method]] multimethod."
+  ([query orderable]
+   (order-by query -1 orderable nil))
 
-  ([query x direction]
-   (order-by query -1 x direction))
+  ([query orderable direction]
+   (order-by query -1 orderable direction))
 
   ([query
     stage-number :- [:maybe :int]
-    x            :- some?
+    orderable    :- some?
     direction    :- [:maybe [:enum :asc :desc]]]
    (let [stage-number (or stage-number -1)
-         new-order-by (cond-> (->order-by-clause query stage-number x)
+         new-order-by (cond-> (order-by-clause-method orderable)
                         direction (with-direction direction))]
      (lib.util/update-query-stage query stage-number update :order-by (fn [order-bys]
                                                                         (conj (vec order-bys) new-order-by))))))

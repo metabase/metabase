@@ -187,13 +187,13 @@
 
 (mu/defn expression :- ::lib.schema/query
   "Adds an expression to query."
-  ([query expression-name an-expression-clause]
-   (expression query -1 expression-name an-expression-clause))
+  ([query expression-name expressionable]
+   (expression query -1 expression-name expressionable))
 
   ([query                :- ::lib.schema/query
     stage-number         :- [:maybe :int]
     expression-name      :- ::lib.schema.common/non-blank-string
-    an-expression-clause :- [:or ::lib.schema.expression/expression ::lib.schema.common/external-op]]
+    expressionable]
    (let [stage-number (or stage-number -1)]
      (when (conflicting-name? query stage-number expression-name)
        (throw (ex-info "Expression name conflicts with a column in the same query stage"
@@ -202,7 +202,7 @@
        query stage-number
        update :expressions
        (fnil conj [])
-       (-> (lib.common/->op-arg an-expression-clause)
+       (-> (lib.common/->op-arg expressionable)
            (lib.util/named-expression-clause expression-name))))))
 
 (lib.common/defop + [x y & more])
@@ -321,9 +321,9 @@
   "Find the expression with `expression-name` using [[resolve-expression]], then create a ref for it. Intended for use
   when creating queries using threading macros e.g.
 
-    (as-> (lib/query ...) <>
-      (lib/expression <> \"My Expression\" ...)
-      (lib/aggregate <> (lib/avg (lib/expression-ref <> \"My Expression\"))))"
+    (-> (lib/query ...)
+        (lib/expression \"My Expression\" ...)
+        (as-> <> (lib/aggregate <> (lib/avg (lib/expression-ref <> \"My Expression\")))))"
   ([query expression-name]
    (expression-ref query -1 expression-name))
 

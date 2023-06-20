@@ -56,6 +56,7 @@
   [lib.aggregation
    aggregate
    aggregation-clause
+   aggregation-ref
    aggregation-operator-columns
    aggregations
    aggregations-metadata
