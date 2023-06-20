@@ -60,10 +60,8 @@
               :archived            false
               :collection_position nil
               :enable_embedding    false
-              :made_public_by_id   nil
               :embedding_params    nil
-              :parameters          []
-              :public_uuid         nil}
+              :parameters          []}
              (update (revision/serialize-instance Dashboard (:id dashboard) dashboard)
                      :cards
                      (fn [[{:keys [id card_id series], :as card}]]
@@ -366,10 +364,8 @@
                                 :archived            false
                                 :collection_position nil
                                 :enable_embedding    false
-                                :made_public_by_id   nil
                                 :embedding_params    nil
-                                :parameters          []
-                                :public_uuid         nil}
+                                :parameters          []}
           serialized-dashboard (revision/serialize-instance Dashboard (:id dashboard) dashboard)]
       (testing "original state"
         (is (= {:name                "Test Dashboard"
@@ -393,10 +389,8 @@
                 :archived            false
                 :collection_position nil
                 :enable_embedding    false
-                :made_public_by_id   nil
                 :embedding_params    nil
-                :parameters          []
-                :public_uuid         nil}
+                :parameters          []}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
         (dashboard-card/delete-dashboard-cards! [(:id dashboard-card)])
@@ -431,10 +425,8 @@
                 :archived            false
                 :collection_position nil
                 :enable_embedding    false
-                :made_public_by_id   nil
                 :embedding_params    nil
-                :parameters          []
-                :public_uuid         nil}
+                :parameters          []}
                (update (revision/serialize-instance Dashboard dashboard-id (t2/select-one Dashboard :id dashboard-id))
                        :cards check-ids))))
       (testing "revert back to the empty state"

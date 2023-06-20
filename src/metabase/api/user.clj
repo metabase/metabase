@@ -26,6 +26,7 @@
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as s]
@@ -137,15 +138,17 @@
   - with a status,
   - with a query,
   - with a group_id,
-  - with include_deactivatved"
+  - with include_deactivated"
   [status query group_ids include_deactivated]
   (cond-> {}
-    true                               (sql.helpers/where (status-clause status include_deactivated))
-    (premium-features/segmented-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
-    (some? query)                      (sql.helpers/where (query-clause query))
-    (some? group_ids)                   (sql.helpers/right-join :permissions_group_membership
-                                             [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group_ids)                   (sql.helpers/where [:in :permissions_group_membership.group_id group_ids])))
+    true                                               (sql.helpers/where (status-clause status include_deactivated))
+    (premium-features/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
+    (some? query)                                      (sql.helpers/where (query-clause query))
+    (some? group_ids)                                  (sql.helpers/right-join
+                                                        :permissions_group_membership
+                                                        [:= :core_user.id :permissions_group_membership.user_id])
+    (some? group_ids)                                  (sql.helpers/where
+                                                        [:in :permissions_group_membership.group_id group_ids])))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
@@ -207,7 +210,7 @@
      :total  (t2/count User (user-clauses nil nil nil nil))
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}
-    (and (= :group (user-visibility)) (not (premium-features/segmented-user?)))
+    (and (= :group (user-visibility)) (not (premium-features/sandboxed-or-impersonated-user?)))
     (let [user_group_ids (map :id (:user_group_memberships
                                    (-> (fetch-user :id api/*current-user-id*)
                                        (t2/hydrate :user_group_memberships))))
@@ -272,11 +275,12 @@
         id       (public-settings/custom-homepage-dashboard)
         dash     (t2/select-one Dashboard :id id)
         valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
-    (assoc user :custom_homepage (when valid?
-                                   {:dashboard_id id}))))
+    (assoc user
+           :custom_homepage (when valid? {:dashboard_id id}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/current"
+
+
+(api/defendpoint GET "/current"
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
@@ -490,10 +494,10 @@
     (api/check-500 (pos? (t2/update! User id {k false}))))
   {:success true})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/send_invite"
+(api/defendpoint POST "/:id/send_invite"
   "Resend the user invite email for a given user."
   [id]
+  {id ms/PositiveInt}
   (api/check-superuser)
   (when-let [user (t2/select-one User :id id, :is_active true)]
     (let [reset-token (user/set-password-reset-token! id)

@@ -681,6 +681,10 @@
           (log/warn (trs "Setting {0} is deprecated as of Metabase {1} and may be removed in a future version."
                          setting-name
                          deprecated)))
+        (when (and
+               (= :only (:user-local setting))
+               (not (should-set-user-local-value? setting)))
+          (log/warn (trs "Setting {0} can only be set in a user-local way, but there are no *user-local-values*." setting-name)))
         (if (should-set-user-local-value? setting)
           ;; If this is user-local and this is being set in the context of an API call, we don't want to update the
           ;; site-wide value or write or read from the cache
@@ -1067,9 +1071,8 @@
 (defn set-many!
   "Set the value of several Settings at once.
 
-    (set-all {:mandrill-api-key \"xyz123\", :another-setting \"ABC\"})"
+    (set-many! {:mandrill-api-key \"xyz123\", :another-setting \"ABC\"})"
   [settings]
-  {:pre [(map? settings)]}
   ;; if setting any of the settings fails, roll back the entire DB transaction and the restore the cache from the DB
   ;; to revert any changes in the cache
   (try

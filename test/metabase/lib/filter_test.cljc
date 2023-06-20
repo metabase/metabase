@@ -33,6 +33,7 @@
                       [:>= lib/>=]]]
         (test-clause
          {:operator op
+          :lib/type :lib/external-op
           :args [[:field {:lib/uuid string?} (meta/id :venues :category-id)]
                  [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]}
          f
@@ -42,6 +43,7 @@
     (testing "between"
       (test-clause
        {:operator :between
+        :lib/type :lib/external-op
         :args [[:field {:lib/uuid string?} (meta/id :venues :category-id)]
                42
                [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]}
@@ -53,6 +55,7 @@
     (testing "inside"
       (test-clause
        {:operator :inside
+        :lib/type :lib/external-op
         :args [[:field {:base-type :type/Float, :lib/uuid string?} (meta/id :venues :latitude)]
                [:field {:base-type :type/Float, :lib/uuid string?} (meta/id :venues :longitude)]
                42.7 13 4 27.3]}
@@ -68,6 +71,7 @@
                       [:not-empty lib/not-empty]]]
         (test-clause
          {:operator op
+          :lib/type :lib/external-op
           :args [[:field {:lib/uuid string?} (meta/id :venues :name)]]}
          f
          venues-name-metadata)))
@@ -79,6 +83,7 @@
                       [:does-not-contain lib/does-not-contain]]]
         (test-clause
          {:operator op
+          :lib/type :lib/external-op
           :args [[:field {:lib/uuid string?} (meta/id :venues :name)]
                  "part"]}
          f
@@ -88,6 +93,7 @@
     (testing "time-interval"
       (test-clause
        {:operator :time-interval
+        :lib/type :lib/external-op
         :args [[:field {:base-type :type/Date, :lib/uuid string?} (meta/id :checkins :date)]
                3
                :day]}
@@ -100,6 +106,7 @@
       (doseq [id [7 "6"]]
         (test-clause
          {:operator :segment
+          :lib/type :lib/external-op
           :args [id]}
          lib/segment
          id)))))
@@ -137,6 +144,7 @@
       (is (=? simple-filtered-query
               (-> q1
                   (lib/filter {:operator :between
+                               :lib/type :lib/external-op
                                :args [(lib/ref venues-category-id-metadata) 42 100]})
                   (dissoc :lib/metadata)))))))
 
@@ -168,11 +176,13 @@
                                            100))
         filtered-query       (assoc-in simple-query [:stages 0 :filters] [first-filter])
         second-add           (lib/filter first-add {:operator "starts-with"
+                                                    :lib/type :lib/external-op
                                                     :args [(lib/ref venues-name-metadata) "prefix"]})
         and-query            (assoc-in filtered-query
                                        [:stages 0 :filters]
                                        [first-filter second-filter])
         third-add            (lib/filter second-add {:operator :contains
+                                                     :lib/type :lib/external-op
                                                      :args [(lib/ref venues-name-metadata) "part"]})
         extended-and-query   (assoc-in filtered-query
                                        [:stages 0 :filters]
@@ -272,3 +282,27 @@
             (-> query
                 (lib/filter new-filter)
                 lib/filters)))))
+
+(deftest ^:parallel replace-filter-clause-test
+  (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
+    (let [query           (lib/query-for-table-name meta/metadata-provider "USERS")
+          [first-col]     (lib/filterable-columns query)
+          query           (lib/filter query (lib/filter-clause
+                                             (first (lib/filterable-column-operators first-col))
+                                             first-col
+                                             515))
+          [filter-clause] (lib/filters query)
+          external-op     (lib/external-op filter-clause)]
+      (is (=? {:stages [{:filters [[:= {} [:field {} (meta/id :users :id)] 515]]}]}
+              query))
+      (is (=? [:= {} [:field {} (meta/id :users :id)] 515]
+              filter-clause))
+      (is (=? {:operator "="
+               :lib/type :lib/external-op
+               :args     [[:field {} (meta/id :users :id)]
+                          515]}
+              external-op))
+      (let [external-op' (assoc external-op :operator "!=")
+            query'       (lib/replace-clause query filter-clause external-op')]
+        (is (=? {:stages [{:filters [[:!= {} [:field {} (meta/id :users :id)] 515]]}]}
+                query'))))))

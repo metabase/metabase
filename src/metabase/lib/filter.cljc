@@ -9,6 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -315,7 +316,10 @@
              (keep with-operators)
              columns)))))
 
-(mu/defn filter-clause
+;;; TODO -- this should return a plain MBQL clause rather than an external op form; people can convert to external op
+;;; as needed using [[metabase.lib.common/external-op]]. See
+;;; https://metaboat.slack.com/archives/C04CYTEL9N2/p1686941960566759
+(mu/defn filter-clause :- ::lib.schema.common/external-op
   "Returns a standalone filter clause for a `filter-operator`,
   a `column`, and arguments."
   [filter-operator :- ::lib.schema.filter/operator

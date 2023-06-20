@@ -344,3 +344,82 @@
       (is (= "DEF" (mt/with-current-user (mt/user->id :rasta)
                      (models.setting-test/test-user-local-only-setting))))
       (is (= "ABC" (models.setting-test/test-setting-1))))))
+
+(deftest user-local-settings-underscored-test
+  (testing "GET /api/setting/"
+    (testing "admins can list all settings and see user-local values included"
+      (set-initial-user-local-values)
+      (is (= [{:key "test-user-local-allowed-setting"
+               :value "ABC" ,
+               :is_env_setting false,
+               :env_name "MB_TEST_USER_LOCAL_ALLOWED_SETTING",
+               :description "test Setting",
+               :default nil}
+              {:key "test-user-local-only-setting",
+               :value "ABC" ,
+               :is_env_setting false,
+               :env_name "MB_TEST_USER_LOCAL_ONLY_SETTING",
+               :description "test Setting",
+               :default nil}]
+             (fetch-user-local-test-settings :crowberto)))
+      (clear-user-local-values)))
+
+  (testing "GET /api/setting/:key"
+    (testing "should return the user-local value of a user-local setting"
+      (set-initial-user-local-values)
+      (is (= "ABC"
+             (mt/user-http-request :crowberto :get 200 "setting/test_user_local_only_setting")))
+      (is (= "ABC"
+             (mt/user-http-request :crowberto :get 200 "setting/test_user_local_allowed_setting")))
+
+      (is (= "DEF"
+             (mt/user-http-request :rasta :get 200 "setting/test_user_local_only_setting")))
+      (is (= "DEF"
+             (mt/user-http-request :rasta :get 200 "setting/test_user_local_allowed_setting")))
+      (clear-user-local-values)))
+
+  (testing "PUT /api/setting/:key"
+    (testing "should update the user-local value of a user-local setting"
+      (set-initial-user-local-values)
+      (mt/user-http-request :crowberto :put 204 "setting/test_user_local_only_setting" {:value "GHI"})
+      (is (= "GHI"
+             (mt/user-http-request :crowberto :get 200 "setting/test_user_local_only_setting")))
+      (mt/user-http-request :crowberto :put 204 "setting/test_user_local_allowed_setting" {:value "JKL"})
+      (is (= "JKL"
+             (mt/user-http-request :crowberto :get 200 "setting/test_user_local_allowed_setting")))
+
+      (mt/user-http-request :rasta :put 204 "setting/test_user_local_only_setting" {:value "MNO"})
+      (is (= "MNO"
+             (mt/user-http-request :rasta :get 200 "setting/test_user_local_only_setting")))
+      (mt/user-http-request :rasta :put 204 "setting/test_user_local_allowed_setting" {:value "PQR"})
+      (is (= "PQR"
+             (mt/user-http-request :rasta :get 200 "setting/test_user_local_allowed_setting")))
+      (clear-user-local-values)))
+
+  (testing "PUT /api/setting"
+    (testing "can update multiple user-local settings at once"
+      (set-initial-user-local-values)
+      (mt/user-http-request :crowberto :put 204 "setting" {:test_user_local_only_setting    "GHI"
+                                                           :test_user_local_allowed_setting "JKL"})
+
+      (is (= (mt/user-http-request :crowberto :get 200 "setting/test-user-local-only-setting")
+             (mt/user-http-request :crowberto :get 200 "setting/test_user_local_only_setting")))
+      (is (= (mt/user-http-request :crowberto :get 200 "setting/test-user-local-allowed-setting")
+             (mt/user-http-request :crowberto :get 200 "setting/test_user_local_allowed_setting")))
+
+      (mt/user-http-request :rasta :put 204 "setting" {:test_user_local_only_setting    "MNO"
+                                                       :test_user_local_allowed_setting "PQR"})
+      (is (= "MNO"
+             (mt/user-http-request :rasta :get 200 "setting/test_user_local_only_setting")))
+      (is (= "PQR"
+             (mt/user-http-request :rasta :get 200 "setting/test_user_local_allowed_setting")))
+      (clear-user-local-values))
+
+    (testing "if a non-admin tries to set multiple settings and any aren't user-local, none are updated"
+      (set-initial-user-local-values)
+      (models.setting-test/test-setting-1! "ABC")
+      (mt/user-http-request :rasta :put 403 "setting" {:test_user_local_only_setting "MNO"
+                                                       :test_setting_1               "PQR"})
+      (is (= "DEF" (mt/with-current-user (mt/user->id :rasta)
+                     (models.setting-test/test-user-local-only-setting))))
+      (is (= "ABC" (models.setting-test/test-setting-1))))))
