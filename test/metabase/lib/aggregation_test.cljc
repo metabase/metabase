@@ -199,6 +199,7 @@
       (is (=? result-query
               (-> q
                   (lib/aggregate {:operator :sum
+                                  :lib/type :lib/external-op
                                   :args [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))]})
                   (dissoc :lib/metadata)))))))
 
