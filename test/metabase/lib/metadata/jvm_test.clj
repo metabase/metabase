@@ -70,7 +70,7 @@
                 :id (mt/id :products :id)
                 :lib/desired-column-alias "ID"
                 :display-name "ID"}
-               {:metabase.lib.field/join-alias "Orders"
+               {:metabase.lib.join/join-alias "Orders"
                 :base-type :type/Integer
                 :semantic-type :type/FK
                 :table-id (mt/id :orders)
@@ -82,7 +82,7 @@
                 :lib/desired-column-alias "Orders__PRODUCT_ID"
                 :display-name "Product ID"
                 :source-alias "Orders"}
-               {:metabase.lib.field/join-alias "Orders"
+               {:metabase.lib.join/join-alias "Orders"
                 :lib/type :metadata/column
                 :base-type :type/Integer
                 :name "sum"

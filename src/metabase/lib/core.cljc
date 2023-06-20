@@ -181,7 +181,8 @@
    suggested-join-condition
    with-join-alias
    with-join-fields
-   with-join-strategy]
+   with-join-strategy
+   with-join-conditions]
   [lib.limit
    current-limit
    limit]

@@ -39,9 +39,9 @@
 
 (deftest ^:parallel remove-clause-join-conditions-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                  (lib/join (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
-                            [(lib/= (lib/field "VENUES" "PRICE") 4)
-                             (lib/= (lib/field "VENUES" "NAME") "x")]))
+                  (lib/join (lib/join-clause (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+                                             [(lib/= (lib/field "VENUES" "PRICE") 4)
+                                              (lib/= (lib/field "VENUES" "NAME") "x")])))
         conditions (lib/join-conditions (first (lib/joins query)))]
     (is (= 2 (count conditions)))
     (is (= [(second conditions)]
@@ -250,8 +250,8 @@
 
 (deftest ^:parallel replace-clause-join-conditions-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                  (lib/join (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
-                            [(lib/= (lib/field "VENUES" "PRICE") 4)]))
+                  (lib/join (lib/join-clause (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+                                             [(lib/= (lib/field "VENUES" "PRICE") 4)])))
         conditions (lib/join-conditions (first (lib/joins query)))]
     (is (= 1 (count conditions)))
     (let [replaced (-> query
