@@ -102,10 +102,10 @@ export type ExpressionArg =
 // ExternalOp is a special representation of a filter clause or aggregation clause.
 declare const ExternalOp: unique symbol;
 export type ExternalOp = {
-    _opaque: typeof ExternalOp;
-    operator: string;
-    options: {};
-    args: ExpressionArg[];
+  _opaque: typeof ExternalOp;
+  operator: string;
+  options: Record<string, unknown>;
+  args: ExpressionArg[];
 };
 
 declare const Join: unique symbol;
