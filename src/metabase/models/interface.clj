@@ -63,19 +63,8 @@
          :fn-tail       (s/alt :arity-1 :clojure.core.specs.alpha/params+body
                                :arity-n (s/+ (s/spec :clojure.core.specs.alpha/params+body)))))
 
-(defonce ^:private defined-hydration-methods
-  (atom {}))
-
 (defn- define-hydration-method [hydration-type fn-name hydration-key fn-tail]
   {:pre [(#{:hydrate :batched-hydrate} hydration-type)]}
-  ;; Let's be EXTRA nice and make sure there are no duplicate hydration keys!
-  (let [fn-symb (symbol (str (ns-name *ns*)) (name fn-name))]
-    (when-let [existing-fn-symb (get @defined-hydration-methods hydration-key)]
-      (when (not= fn-symb existing-fn-symb)
-        (throw (ex-info (format "Hydration key %s already exists at %s" hydration-key existing-fn-symb)
-                        {:hydration-key       hydration-key
-                         :existing-definition existing-fn-symb}))))
-    (swap! defined-hydration-methods assoc hydration-key fn-symb))
   `(do
      (defn ~fn-name
        ~@fn-tail)
@@ -211,9 +200,6 @@
   {:in  json-in
    :out result-metadata-out})
 
-;; Toucan ships with a Keyword type, but on columns that are marked 'TEXT' it doesn't work properly since the values
-;; might need to get de-CLOB-bered first. So replace the default Toucan `:keyword` implementation with one that
-;; handles those cases.
 (def transform-keyword
   "Transform for keywords."
   {:in  u/qualified-name

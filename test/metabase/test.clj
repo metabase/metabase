@@ -322,7 +322,7 @@
     (try
       (thunk temp-admin)
       (finally
-        (t2/delete! User :id (:id temp-admin))
+        (t2/delete! User (:id temp-admin))
         (when (seq existing-admin-ids)
           (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser true}))
         (t2/insert! PermissionsGroupMembership existing-admin-memberships)))))
