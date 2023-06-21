@@ -84,12 +84,4 @@ export const PreviousValueSeparator = styled(Separator)`
   ${breakpointMaxSmall} {
     display: none;
   }
-
-  ${breakpointMaxLarge} {
-    ${props =>
-      props.gridSize?.width <= 3 &&
-      css`
-        display: none;
-      `}
-  }
 `;

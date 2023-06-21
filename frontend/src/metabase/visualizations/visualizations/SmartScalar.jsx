@@ -43,26 +43,10 @@ const SPACING = parseInt(space(1), 10);
 const ICON_SIZE = 13;
 const TOOLTIP_ICON_SIZE = 11;
 const ICON_PADDING_RIGHT = SPACING;
-const MIN_SCALAR_TITLE_SIZE = 23;
+const SCALAR_TITLE_LINE_HEIGHT = 23;
 const MIN_PREVIOUS_VALUE_SIZE = 27;
 
-const canShowPreviousValue = (width, height) => {
-  return height + width > 400;
-};
-
-const canShowSeparator = (width, height) => {
-  const isMultiline = false; // TODO
-
-  return canShowPreviousValue(width, height) && !isMultiline;
-};
-
-const getTitleLinesCount = (width, height) => {
-  if (height > 180) {
-    return 2;
-  }
-
-  return 1;
-};
+const getTitleLinesCount = height => (height > 180 ? 2 : 1);
 
 const formatChange = (change, { maximumFractionDigits = 2 } = {}) => {
   return formatNumber(Math.abs(change), {
@@ -188,9 +172,15 @@ export default class SmartScalar extends Component {
 
     const lastValue = insight["last-value"];
     const formatOptions = settings.column(column);
+    const titleLinesCount = getTitleLinesCount(height);
     const availableWidth = width - 2 * SPACING;
     const availableValueHeight =
-      height - MIN_SCALAR_TITLE_SIZE - MIN_PREVIOUS_VALUE_SIZE - 4 * SPACING;
+      height -
+      titleLinesCount * SCALAR_TITLE_LINE_HEIGHT -
+      MIN_PREVIOUS_VALUE_SIZE -
+      4 * SPACING;
+    const canShowPreviousValue = true;
+    const canShowSeparator = true;
 
     const { displayValue, fullScalarValue } = compactifyValue(
       lastValue,
@@ -217,9 +207,10 @@ export default class SmartScalar extends Component {
       width: availableWidth - ICON_SIZE - ICON_PADDING_RIGHT,
     });
     const tooltipSeparator = <Separator>•</Separator>;
-    const separator = canShowSeparator(availableWidth, height) ? (
-      <PreviousValueSeparator gridSize={gridSize}>•</PreviousValueSeparator>
+    const separator = canShowSeparator ? (
+      <PreviousValueSeparator>•</PreviousValueSeparator>
     ) : null;
+
     const granularityDisplay = <span>{jt`last ${granularity}`}</span>;
     const previousValueDisplay = formatValue(
       previousValue,
@@ -277,7 +268,7 @@ export default class SmartScalar extends Component {
         </ScalarContainer>
         {isDashboard && (
           <ScalarTitle
-            lines={getTitleLinesCount(availableWidth, height)}
+            lines={titleLinesCount}
             title={settings["card.title"]}
             description={settings["card.description"]}
             onClick={

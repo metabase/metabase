@@ -169,6 +169,7 @@ export default class Scalar extends Component {
       settings,
       visualizationIsClickable,
       onVisualizationClick,
+      height,
       width,
       gridSize,
       totalNumGridCols,
@@ -228,6 +229,7 @@ export default class Scalar extends Component {
             <ScalarValue
               value={displayValue}
               width={width - HORIZONTAL_PADDING}
+              height={height}
               gridSize={gridSize}
               totalNumGridCols={totalNumGridCols}
               fontFamily={fontFamily}
