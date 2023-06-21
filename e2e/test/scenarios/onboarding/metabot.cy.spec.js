@@ -8,6 +8,7 @@ import {
   openQuestionActions,
   resetSnowplow,
   restore,
+  sidebar,
   visitModel,
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -66,7 +67,7 @@ describe("scenarios > metabot", () => {
 
   it("should not show metabot if it is disabled", () => {
     cy.visit("/admin");
-    cy.get("aside").findByText("Metabot").should("not.exist");
+    sidebar().findByText("Metabot").should("not.exist");
 
     cy.visit("/metabot/database/1");
     cy.url().should("eq", `${location.origin}/`);
