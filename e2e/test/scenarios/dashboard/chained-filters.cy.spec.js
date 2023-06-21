@@ -33,7 +33,7 @@ describe("scenarios > dashboard > chained filter", () => {
       // connect that to people.state
       getDashboardCard().within(() => {
         cy.findByText("Column to filter on");
-        cy.findByText("Select…");
+        cy.findByText("Select…").click();
       });
 
       popover().within(() => {
@@ -53,7 +53,7 @@ describe("scenarios > dashboard > chained filter", () => {
       // connect that to person.city
       getDashboardCard().within(() => {
         cy.findByText("Column to filter on");
-        cy.findByText("Select…");
+        cy.findByText("Select…").click();
       });
       popover().within(() => {
         cy.findByText("City").click();
