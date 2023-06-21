@@ -21,7 +21,7 @@ import Dashboards from "metabase/entities/dashboards";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 
-import type { CollectionId, Dashboard } from "metabase-types/api";
+import type { Collection, CollectionId, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 const DASHBOARD_SCHEMA = Yup.object({
@@ -41,6 +41,7 @@ interface CreateDashboardProperties {
 
 export interface CreateDashboardFormOwnProps {
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
+  setOnCreateColl: any;
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
 }
@@ -75,6 +76,7 @@ const mapDispatchToProps = {
 function CreateDashboardForm({
   initialCollectionId,
   handleCreateDashboard,
+  setOnCreateColl,
   onCreate,
   onCancel,
 }: Props) {
@@ -101,7 +103,7 @@ function CreateDashboardForm({
       validationSchema={DASHBOARD_SCHEMA}
       onSubmit={handleCreate}
     >
-      {({ dirty, isValid }) => (
+      {({ dirty, isValid, values }) => (
         <Form>
           <FormInput
             name="name"
@@ -120,7 +122,11 @@ function CreateDashboardForm({
             title={t`Which collection should this go in?`}
             newCollButton={{
               disabled: !isValid,
-              onClick: () => null,
+              onClick: () => {
+                setOnCreateColl(() => (collection: Collection) => {
+                  handleCreate({ ...values, collection_id: collection.id });
+                });
+              },
             }}
           />
           <FormFooter>

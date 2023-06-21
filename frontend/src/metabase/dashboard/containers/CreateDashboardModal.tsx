@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -11,6 +11,7 @@ import * as Urls from "metabase/lib/urls";
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import CreateDashboardForm, {
   CreateDashboardFormOwnProps,
 } from "./CreateDashboardForm";
@@ -48,10 +49,21 @@ function CreateDashboardModal({
     [onCreate, onChangeLocation, onClose],
   );
 
+  const [onCreateColl, setOnCreateColl] = useState(null);
+  if (onCreateColl) {
+    return (
+      <CreateCollectionModal
+        onCreate={onCreateColl}
+        onClose={() => setOnCreateColl(null)}
+      />
+    );
+  }
+
   return (
     <ModalContent title={t`New dashboard`} onClose={onClose}>
       <CreateDashboardForm
         {...props}
+        setOnCreateColl={setOnCreateColl}
         onCreate={handleCreate}
         onCancel={onClose}
       />
