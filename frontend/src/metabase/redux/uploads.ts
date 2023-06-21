@@ -25,7 +25,7 @@ export const UPLOAD_FILE_TO_COLLECTION_CLEAR =
   "metabase/collection/UPLOAD_FILE_CLEAR";
 
 const MAX_UPLOAD_SIZE = 50 * 1024 * 1024;
-export const MAX_UPLOAD_STRING = "50mb";
+export const MAX_UPLOAD_STRING = "50";
 
 const CLEAR_AFTER_MS = 8000;
 
@@ -62,7 +62,7 @@ export const uploadFile = createThunkAction(
         dispatch(
           uploadError({
             id,
-            message: t`You cannot upload files larger than ${MAX_UPLOAD_STRING}`,
+            message: t`You cannot upload files larger than ${MAX_UPLOAD_STRING}mb`,
           }),
         );
         clear();
