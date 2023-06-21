@@ -179,13 +179,15 @@
 
 (deftest create-dashboard-validation-test
   (testing "POST /api/dashboard"
-    (is (= {:errors {:name "value must be a non-blank string."}}
-           (mt/user-http-request :rasta :post 400 "dashboard" {})))
+    (mt/with-fake-events-collector [{:keys [events]}]
+      (is (= {:errors {:name "value must be a non-blank string."}}
+             (mt/user-http-request :rasta :post 400 "dashboard" {})))
 
-    (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                      "Each parameter must be a map with :id and :type keys")}}
-           (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
-                                                                   :parameters "abc"})))))
+      (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
+                                        "Each parameter must be a map with :id and :type keys")}}
+             (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
+                                                                     :parameters "abc"})))
+      (is (empty? (events))))))
 
 (def ^:private dashboard-defaults
   {:archived                false
@@ -903,88 +905,92 @@
 
   (testing "Deep copy: POST /api/dashboard/:id/copy"
     (mt/dataset sample-dataset
-      (mt/with-temp* [Collection [source-coll {:name "Source collection"}]
-                      Collection [dest-coll   {:name "Destination collection"}]
-                      Dashboard  [dashboard {:name          "Dashboard to be Copied"
-                                             :description   "A description"
-                                             :collection_id (u/the-id source-coll)
-                                             :creator_id    (mt/user->id :rasta)}]
-                      Card       [total-card  {:name "Total orders per month"
+      (mt/with-fake-events-collector [{:keys [topic->count]}]
+        (mt/with-temp* [Collection [source-coll {:name "Source collection"}]
+                        Collection [dest-coll   {:name "Destination collection"}]
+                        Dashboard  [dashboard {:name          "Dashboard to be Copied"
+                                               :description   "A description"
                                                :collection_id (u/the-id source-coll)
-                                               :display :line
-                                               :visualization_settings
-                                               {:graph.dimensions ["CREATED_AT"]
-                                                :graph.metrics ["sum"]}
-                                               :dataset_query
-                                               (mt/$ids
-                                                 {:database (mt/id)
-                                                  :type     :query
-                                                  :query    {:source-table $$orders
-                                                             :aggregation  [[:sum $orders.total]]
-                                                             :breakout     [!month.orders.created_at]}})}]
-                      Card      [avg-card  {:name "Average orders per month"
-                                            :collection_id (u/the-id source-coll)
-                                            :display :line
-                                            :visualization_settings
-                                            {:graph.dimensions ["CREATED_AT"]
-                                             :graph.metrics ["sum"]}
-                                            :dataset_query
-                                            (mt/$ids
-                                              {:database (mt/id)
-                                               :type     :query
-                                               :query    {:source-table $$orders
-                                                          :aggregation  [[:avg $orders.total]]
-                                                          :breakout     [!month.orders.created_at]}})}]
-                      Card          [model {:name "A model"
-                                            :collection_id (u/the-id source-coll)
-                                            :dataset true
-                                            :dataset_query
-                                            (mt/$ids
-                                              {:database (mt/id)
-                                               :type :query
-                                               :query {:source-table $$orders
-                                                       :limit 4}})}]
-                      DashboardCard [dashcard {:dashboard_id (u/the-id dashboard)
-                                               :card_id    (u/the-id total-card)
-                                               :size_x 6, :size_y 6}]
-                      DashboardCard [_textcard {:dashboard_id (u/the-id dashboard)
-                                                :visualization_settings
-                                                {:virtual_card
-                                                 {:display :text}
-                                                 :text "here is some text"}}]
-                      DashboardCard [_        {:dashboard_id (u/the-id dashboard)
-                                               :card_id    (u/the-id model)
-                                               :size_x 6, :size_y 6}]
-                      DashboardCardSeries [_ {:dashboardcard_id (u/the-id dashcard)
-                                              :card_id (u/the-id avg-card)
-                                              :position 0}]]
-        (mt/with-model-cleanup [Card Dashboard DashboardCard DashboardCardSeries]
-          (let [resp (mt/user-http-request :crowberto :post 200
-                                           (format "dashboard/%d/copy" (:id dashboard))
-                                           {:name        "New dashboard"
-                                            :description "A new description"
-                                            :is_deep_copy true
-                                            :collection_id (u/the-id dest-coll)})]
-            (is (= (:collection_id resp) (u/the-id dest-coll))
-                "Dashboard should go into the destination collection")
-            (is (= 3 (count (t2/select 'Card :collection_id (u/the-id source-coll)))))
-            (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
-                  copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))
-                  source-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id dashboard))]
-              (testing "Copies all of the questions on the dashboard"
-                (is (= 2 (count copied-cards))))
-              (testing "Copies all of the dashboard cards"
-                (is (= (count copied-db-cards) (count source-db-cards)))
-                (testing "Including text cards"
-                  (is (some (comp nil? :card_id) copied-db-cards))
-                  (is (some (comp :text :visualization_settings) copied-db-cards))))
-              (testing "Should copy cards"
-                (is (= #{"Total orders per month" "Average orders per month"}
-                       (into #{} (map :name) copied-cards))
-                    "Should preserve the titles of the original cards"))
-              (testing "Should not deep-copy models"
-                (is (every? (comp false? :dataset) copied-cards)
-                    "Copied a model"))))))
+                                               :creator_id    (mt/user->id :rasta)}]
+                        Card       [total-card  {:name "Total orders per month"
+                                                 :collection_id (u/the-id source-coll)
+                                                 :display :line
+                                                 :visualization_settings
+                                                 {:graph.dimensions ["CREATED_AT"]
+                                                  :graph.metrics ["sum"]}
+                                                 :dataset_query
+                                                 (mt/$ids
+                                                   {:database (mt/id)
+                                                    :type     :query
+                                                    :query    {:source-table $$orders
+                                                               :aggregation  [[:sum $orders.total]]
+                                                               :breakout     [!month.orders.created_at]}})}]
+                        Card      [avg-card  {:name "Average orders per month"
+                                              :collection_id (u/the-id source-coll)
+                                              :display :line
+                                              :visualization_settings
+                                              {:graph.dimensions ["CREATED_AT"]
+                                               :graph.metrics ["sum"]}
+                                              :dataset_query
+                                              (mt/$ids
+                                                {:database (mt/id)
+                                                 :type     :query
+                                                 :query    {:source-table $$orders
+                                                            :aggregation  [[:avg $orders.total]]
+                                                            :breakout     [!month.orders.created_at]}})}]
+                        Card          [model {:name "A model"
+                                              :collection_id (u/the-id source-coll)
+                                              :dataset true
+                                              :dataset_query
+                                              (mt/$ids
+                                                {:database (mt/id)
+                                                 :type :query
+                                                 :query {:source-table $$orders
+                                                         :limit 4}})}]
+                        DashboardCard [dashcard {:dashboard_id (u/the-id dashboard)
+                                                 :card_id    (u/the-id total-card)
+                                                 :size_x 6, :size_y 6}]
+                        DashboardCard [_textcard {:dashboard_id (u/the-id dashboard)
+                                                  :visualization_settings
+                                                  {:virtual_card
+                                                   {:display :text}
+                                                   :text "here is some text"}}]
+                        DashboardCard [_        {:dashboard_id (u/the-id dashboard)
+                                                 :card_id    (u/the-id model)
+                                                 :size_x 6, :size_y 6}]
+                        DashboardCardSeries [_ {:dashboardcard_id (u/the-id dashcard)
+                                                :card_id (u/the-id avg-card)
+                                                :position 0}]]
+         (mt/with-model-cleanup [Card Dashboard DashboardCard DashboardCardSeries]
+           (let [resp (mt/user-http-request :crowberto :post 200
+                                            (format "dashboard/%d/copy" (:id dashboard))
+                                            {:name        "New dashboard"
+                                             :description "A new description"
+                                             :is_deep_copy true
+                                             :collection_id (u/the-id dest-coll)})]
+             (is (= (:collection_id resp) (u/the-id dest-coll))
+                 "Dashboard should go into the destination collection")
+             (is (= 3 (count (t2/select 'Card :collection_id (u/the-id source-coll)))))
+             (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
+                   copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))
+                   source-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id dashboard))]
+               (testing "Copies all of the questions on the dashboard"
+                 (is (= 2 (count copied-cards))))
+               (testing "Copies all of the dashboard cards"
+                 (is (= (count copied-db-cards) (count source-db-cards)))
+                 (testing "Including text cards"
+                   (is (some (comp nil? :card_id) copied-db-cards))
+                   (is (some (comp :text :visualization_settings) copied-db-cards))))
+               (testing "Should copy cards"
+                 (is (= #{"Total orders per month" "Average orders per month"}
+                        (into #{} (map :name) copied-cards))
+                     "Should preserve the titles of the original cards"))
+               (testing "Should not deep-copy models"
+                 (is (every? (comp false? :dataset) copied-cards)
+                     "Copied a model"))
+               (testing "should publish dashboard create and card create events"
+                 (is (= {:card-create 3 :dashboard-create 1}
+                        (topic->count)))))))))
       (testing "When there are cards the user lacks write perms for"
         (mt/with-temp* [Collection [source-coll {:name "Source collection"}]
                         Collection [no-read-coll {:name "Crowberto lacks write coll"}]
@@ -1392,16 +1398,17 @@
 
 (deftest e2e-update-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
-       (t2.with-temp/with-temp
-         [Dashboard               {dashboard-id :id}  {}
-          Card                    {card-id-1 :id}     {}
-          Card                    {card-id-2 :id}     {}
-          :model/DashboardTab     {dashtab-id-1 :id}  {:name "Tab 1" :dashboard_id dashboard-id :position 0}
-          :model/DashboardTab     {dashtab-id-2 :id}  {:name "Tab 2" :dashboard_id dashboard-id :position 1}
-          :model/DashboardTab     {dashtab-id-3 :id}  {:name "Tab 3" :dashboard_id dashboard-id :position 2}
-          DashboardCard           {dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-1}
-          DashboardCard           {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}
-          DashboardCard           {dashcard-id-3 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}]
+    (mt/with-fake-events-collector [{:keys [topic->count]}]
+      (t2.with-temp/with-temp
+        [Dashboard               {dashboard-id :id}  {}
+         Card                    {card-id-1 :id}     {}
+         Card                    {card-id-2 :id}     {}
+         :model/DashboardTab     {dashtab-id-1 :id}  {:name "Tab 1" :dashboard_id dashboard-id :position 0}
+         :model/DashboardTab     {dashtab-id-2 :id}  {:name "Tab 2" :dashboard_id dashboard-id :position 1}
+         :model/DashboardTab     {dashtab-id-3 :id}  {:name "Tab 3" :dashboard_id dashboard-id :position 2}
+         DashboardCard           {dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-1}
+         DashboardCard           {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}
+         DashboardCard           {dashcard-id-3 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}]
         (let [resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
                                                          {:ordered_tabs  [{:id   dashtab-id-1
                                                                            :name "Tab 1 edited"}
@@ -1473,7 +1480,15 @@
                         :card_id           card-id-2}]
                       (:cards resp))))
             (testing "dashcard 3 got deleted"
-             (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))))))))
+              (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))))
+         (testing "events fired correctly"
+           (is (= {:dashboard-remove-cards     1
+                   :dashboard-add-cards        1
+                   :dashboard-reposition-cards 1
+                   :dashboard-remove-tabs      1
+                   :dashboard-add-tabs         1
+                   :dashboard-update-tabs      1}
+                  (topic->count)))))))))
 
 (deftest e2e-update-cards-only-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"

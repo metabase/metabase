@@ -10,6 +10,8 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
+(set! *warn-on-reflection* true)
+
 (defn- card-properties
   "Some default properties for `Cards` for use in tests in this namespace."
   []

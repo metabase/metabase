@@ -602,6 +602,7 @@
    metabase.test/with-temp*                                                                                                  hooks.toucan.util.test/with-temp*
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
+   metabase.test/with-fake-events-collector                                                                                  hooks.common/with-one-binding
    toucan.util.test/with-temp*                                                                                               hooks.toucan.util.test/with-temp*}
 
   :macroexpand

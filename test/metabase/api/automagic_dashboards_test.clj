@@ -61,12 +61,16 @@
           (is (=? {:description "Some metrics we found about transactions."}
                   generated-dashboard))
           (testing "Save the generated Dashboard"
-            (let [saved-dashboard (mt/user-http-request :crowberto :post 200 "dashboard/save" generated-dashboard)]
-              (is (=? {:name "A look at Orders"}
-                      saved-dashboard))
-              (testing "Fetch the saved Dashboard"
-                (is (=? {:id (u/the-id saved-dashboard)}
-                        (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id saved-dashboard)))))))))))))
+            (mt/with-fake-events-collector [{:keys [topic->count]}]
+             (let [saved-dashboard (mt/user-http-request :crowberto :post 200 "dashboard/save" generated-dashboard)]
+               (is (=? {:name "A look at Orders"}
+                       saved-dashboard))
+               (is (= {:dashboard-create 1
+                       :card-create      8}
+                      (topic->count)))
+               (testing "Fetch the saved Dashboard"
+                 (is (=? {:id (u/the-id saved-dashboard)}
+                         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id saved-dashboard))))))))))))))
 
 (deftest metric-xray-test
   (testing "GET /api/automagic-dashboards/metric/:id"

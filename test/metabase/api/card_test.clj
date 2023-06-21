@@ -2301,8 +2301,8 @@
         (t2.with-temp/with-temp [:model/Card card (shared-card)]
           (is (= (:public_uuid card)
                  (:uuid (mt/user-http-request :crowberto :post 200 (format
-                                                                    "card/%d/public_link"
-                                                                    (u/the-id card)))))))))))
+                                                                     "card/%d/public_link"
+                                                                     (u/the-id card)))))))))))
 
 (deftest unshare-card-test
   (testing "DELETE /api/card/:id/public_link"
