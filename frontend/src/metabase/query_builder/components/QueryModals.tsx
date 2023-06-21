@@ -284,10 +284,12 @@ class QueryModals extends Component<QueryModalsProps> {
               }}
               copy={async formValues => {
                 const object = await this.props.onCreate(
-                  question
-                    .setDisplayName(formValues.name)
-                    .setCollectionId(formValues.collection_id)
-                    .setDescription(formValues.description || null),
+                  new Question({
+                    ...this.props.card,
+                    name: formValues.name,
+                    collection_id: formValues.collection_id,
+                    description: formValues.description || null,
+                  }),
                 );
                 return { payload: { object } };
               }}
