@@ -42,7 +42,7 @@ import {
 const SPACING = parseInt(space(1), 10);
 const ICON_SIZE = 13;
 const TOOLTIP_ICON_SIZE = 11;
-const ICON_PADDING_RIGHT = SPACING;
+const ICON_MARGIN_RIGHT = SPACING;
 const SCALAR_TITLE_LINE_HEIGHT = 23;
 const MIN_PREVIOUS_VALUE_SIZE = 27;
 
@@ -172,15 +172,6 @@ export default class SmartScalar extends Component {
 
     const lastValue = insight["last-value"];
     const formatOptions = settings.column(column);
-    const titleLinesCount = getTitleLinesCount(height);
-    const availableWidth = width - 2 * SPACING;
-    const availableValueHeight =
-      height -
-      titleLinesCount * SCALAR_TITLE_LINE_HEIGHT -
-      MIN_PREVIOUS_VALUE_SIZE -
-      4 * SPACING;
-    const canShowPreviousValue = true;
-    const canShowSeparator = true;
 
     const { displayValue, fullScalarValue } = compactifyValue(
       lastValue,
@@ -201,21 +192,50 @@ export default class SmartScalar extends Component {
       ? color("error")
       : color("success");
 
+    const titleLinesCount = getTitleLinesCount(height);
+    const availableWidth = width - 2 * SPACING;
+    const availableChangeWidth = availableWidth - ICON_SIZE - ICON_MARGIN_RIGHT;
+    const availableValueHeight =
+      height -
+      titleLinesCount * SCALAR_TITLE_LINE_HEIGHT -
+      MIN_PREVIOUS_VALUE_SIZE -
+      4 * SPACING;
+    const tooltipSeparator = <Separator>•</Separator>;
+
     const changeDisplay = formatChangeSmart(lastChange, {
       fontFamily,
       fontWeight: 900,
-      width: availableWidth - ICON_SIZE - ICON_PADDING_RIGHT,
+      width: availableChangeWidth,
     });
-    const tooltipSeparator = <Separator>•</Separator>;
-    const separator = canShowSeparator ? (
-      <PreviousValueSeparator gridSize={gridSize}>•</PreviousValueSeparator>
-    ) : null;
 
-    const granularityDisplay = <span>{jt`last ${granularity}`}</span>;
+    const changeWidth = measureText(changeDisplay, {
+      size: "1rem",
+      family: fontFamily,
+      weight: 900,
+    }).width;
+
+    const granularityDisplay = jt`last ${granularity}`;
     const previousValueDisplay = formatValue(
       previousValue,
       settings.column(column),
     );
+    const previousValueContent = jt`${""} was ${previousValueDisplay} ${granularityDisplay}`;
+    const previousValueContentText = previousValueContent
+      .flat(Number.MAX_SAFE_INTEGER)
+      .join("");
+    const previousValueContentWidth = measureText(previousValueContentText, {
+      size: "0.875rem",
+      family: fontFamily,
+      weight: 700,
+    }).width;
+    const canShowPreviousValue =
+      availableWidth -
+        changeWidth -
+        2 * SPACING -
+        ICON_SIZE -
+        ICON_MARGIN_RIGHT >=
+      previousValueContentWidth;
+
     const iconName = isNegative ? "arrow_down" : "arrow_up";
 
     const clicked = {
@@ -315,7 +335,11 @@ export default class SmartScalar extends Component {
 
               {canShowPreviousValue && (
                 <PreviousValue id="SmartScalar-PreviousValue" responsive>
-                  {jt`${separator} was ${previousValueDisplay} ${granularityDisplay}`}
+                  <PreviousValueSeparator gridSize={gridSize}>
+                    •
+                  </PreviousValueSeparator>
+
+                  {previousValueContent}
                 </PreviousValue>
               )}
             </PreviousValueContainer>
