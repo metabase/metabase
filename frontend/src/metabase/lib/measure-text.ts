@@ -14,5 +14,12 @@ export const measureText: TextMeasurer = (text: string, style: FontStyle) => {
   }
 
   context.font = `${style.weight} ${style.size} ${style.family}`;
-  return context.measureText(text);
+  const textMetrics = context.measureText(text);
+
+  return {
+    width: textMetrics.width,
+    height:
+      textMetrics.actualBoundingBoxAscent +
+      textMetrics.actualBoundingBoxDescent,
+  };
 };
