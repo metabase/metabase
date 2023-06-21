@@ -50,9 +50,7 @@ describe("issue 31309", () => {
     );
 
     openQuestionActions();
-    popover().within(() => {
-      cy.findByText("Duplicate").click();
-    });
+    popover().findByText("Duplicate").click();
 
     modal().within(() => {
       cy.findByText("Duplicate").click();
