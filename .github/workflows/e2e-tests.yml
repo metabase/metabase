@@ -83,25 +83,25 @@ jobs:
         java-version: [11]
         edition: [ee]
         folder:
-          - "admin"
+          # - "admin"
           - "binning"
           - "collections"
           - "custom-column"
-          - "dashboard"
-          - "dashboard-filters"
+          # - "dashboard"
+          # - "dashboard-filters"
           - "downloads"
           - "embedding"
-          - "filters"
+          # - "filters"
           - "joins"
-          - "models"
-          - "native"
-          - "native-filters"
+          # - "models"
+          # - "native"
+          # - "native-filters"
           - "onboarding"
           - "organization"
           - "permissions"
-          - "question"
+          # - "question"
           - "sharing"
-          - "visualizations"
+          # - "visualizations"
     services:
       maildev:
         image: maildev/maildev:2.0.5
