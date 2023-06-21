@@ -2,6 +2,7 @@ import { combineReducers } from "@reduxjs/toolkit";
 import { waitForElementToBeRemoved } from "@testing-library/react";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { ImpersonationModal } from "metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModal";
 import { shared } from "metabase-enterprise/shared/reducer";
@@ -28,8 +29,17 @@ const setup = async ({
   userAttributes = defaultUserAttributes,
   hasImpersonation = true,
 } = {}) => {
-  setupDatabaseEndpoints(
-    createMockDatabase({ id: databaseId, tables: [createMockTable()] }),
+  const database = createMockDatabase({
+    id: databaseId,
+    tables: [createMockTable()],
+  });
+  setupDatabaseEndpoints(database);
+  fetchMock.get(
+    {
+      url: `path:/api/database/${databaseId}/metadata`,
+      query: { include_hidden: true },
+    },
+    database,
   );
   setupUserAttributesEndpoint(userAttributes);
 
