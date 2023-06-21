@@ -90,7 +90,7 @@
 (defn- delete-gtaps-for-group-database! [{:keys [group-id database-id], :as context} changes]
   (log/debugf "Deleting unneeded GTAPs for Group %d for Database %d. Graph changes: %s"
               group-id database-id (pr-str changes))
-  (if (#{:none :all :block} changes)
+  (if (#{:none :all :block :impersonated} changes)
     (do
       (log/debugf "Group %d %s for Database %d, deleting all GTAPs for this DB"
                   group-id

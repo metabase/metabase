@@ -3,7 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-database
     :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
@@ -25,7 +25,7 @@
 
 (use-fixtures :once (fixtures/initialize :plugins))
 
-(deftest simple-select-probe-query-test
+(deftest ^:parallel simple-select-probe-query-test
   (testing "honey-sql-version produces the same query"
     (are [version] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
                       (binding [hx/*honey-sql-version* version]
@@ -55,22 +55,28 @@
     (descendants driver/hierarchy :sql-jdbc))))
 
 (deftest fast-active-tables-test
-  (let [spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-    (with-open [conn (jdbc/get-connection spec)]
-      ;; We have to mock this to make it work with all DBs
-      (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
-        (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
-               (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
-                    (map :name)
-                    sort)))))))
+  (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
+         (sql-jdbc.execute/do-with-connection-with-options
+          (or driver/*driver* :h2)
+          (mt/db)
+          nil
+          (fn [^java.sql.Connection conn]
+            ;; We have to mock this to make it work with all DBs
+            (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
+              (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
+                   (map :name)
+                   sort)))))))
 
 (deftest post-filtered-active-tables-test
-  (let [spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-    (with-open [conn (jdbc/get-connection spec)]
-      (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
-             (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 conn nil nil))
-                  (map :name)
-                  sort))))))
+  (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
+         (sql-jdbc.execute/do-with-connection-with-options
+          :h2
+          (mt/db)
+          nil
+          (fn [^java.sql.Connection conn]
+            (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 conn nil nil))
+                 (map :name)
+                 sort))))))
 
 (deftest describe-database-test
   (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil}
@@ -94,10 +100,14 @@
       ;; taking advantage of the fact that `sql-jdbc.describe-database/describe-database` can accept JBDC connections
       ;; instead of databases; by doing this we can keep the connection open and check whether resultsets are still
       ;; open before they would normally get closed
-      (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec db)]
-        (sql-jdbc.describe-database/describe-database driver conn)
-        (reduce + (for [^ResultSet rs @resultsets]
-                    (if (.isClosed rs) 0 1)))))))
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       db
+       nil
+       (fn [conn]
+         (sql-jdbc.describe-database/describe-database driver {:connection conn})
+         (reduce + (for [^ResultSet rs @resultsets]
+                     (if (.isClosed rs) 0 1))))))))
 
 (defn- count-active-tables-in-db
   [db-id]

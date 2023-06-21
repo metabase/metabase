@@ -21,7 +21,8 @@
 (mu/defn ^:private infer-results-metadata
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card-query            :- :map]
-  (lib.metadata.calculation/metadata (lib.query/query metadata-providerable (lib.convert/->pMBQL card-query))))
+  (when (some? card-query)
+    (lib.metadata.calculation/metadata (lib.query/query metadata-providerable (lib.convert/->pMBQL card-query)))))
 
 (def ^:private Card
   [:map
@@ -41,8 +42,12 @@
                                  (sequential? result-metadata) result-metadata))]
       (mapv (fn [col]
               (merge
+               {:base-type :type/*, :lib/type :metadata/field}
                (when-let [field-id (:id col)]
-                 (lib.metadata/field metadata-providerable field-id))
+                 (try
+                   (lib.metadata/field metadata-providerable field-id)
+                   (catch #?(:clj Throwable :cljs :default) _
+                     nil)))
                (update-keys col u/->kebab-case-en)
                {:lib/type                :metadata/field
                 :lib/source              :source/card

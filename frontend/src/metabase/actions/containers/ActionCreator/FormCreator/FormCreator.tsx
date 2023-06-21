@@ -28,7 +28,6 @@ import {
   getForm,
   getFormValidationSchema,
   getDefaultFormSettings,
-  sortActionParams,
 } from "../../../utils";
 import { syncFieldsWithParameters } from "../utils";
 import { reorderFields } from "./utils";
@@ -92,11 +91,6 @@ export function FormCreator({
     [validationSchema],
   );
 
-  const sortedParams = useMemo(
-    () => parameters.sort(sortActionParams(formSettings)),
-    [parameters, formSettings],
-  );
-
   const handleDragEnd = useCallback(
     ({ source, destination }: DropResult) => {
       if (!formSettings.fields) {
@@ -136,7 +130,7 @@ export function FormCreator({
     [formSettings],
   );
 
-  if (!sortedParams.length) {
+  if (!parameters.length) {
     return (
       <SidebarContent>
         <FormContainer>

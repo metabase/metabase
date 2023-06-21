@@ -6,6 +6,7 @@ import { delay } from "metabase/lib/promise";
 // redux
 import { AdHocQuestionLoader } from "metabase/containers/AdHocQuestionLoader";
 import Question from "metabase-lib/Question";
+import * as ML_Urls from "metabase-lib/urls";
 
 describe("AdHocQuestionLoader", () => {
   let loadQuestionSpy, loadMetadataSpy, mockChild;
@@ -22,7 +23,7 @@ describe("AdHocQuestionLoader", () => {
 
   it("should load a question given a questionHash", async () => {
     const q = Question.create({ databaseId: 1, tableId: 2 });
-    const questionHash = q.getUrl().match(/(#.*)/)[1];
+    const questionHash = ML_Urls.getUrl(q).match(/(#.*)/)[1];
 
     render(
       <AdHocQuestionLoader

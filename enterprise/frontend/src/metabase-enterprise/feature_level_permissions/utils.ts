@@ -28,7 +28,7 @@ export const getDataColumns = (subject: PermissionSubject) => {
       hint: t`Downloads of native queries are only allowed if a group has download permissions for the entire database.`,
     },
     {
-      name: t`Manage data model`,
+      name: t`Manage table metadata`,
     },
   ];
 

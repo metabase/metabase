@@ -7,6 +7,7 @@ import Tables from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
+import * as ML_Urls from "metabase-lib/urls";
 import { RELOAD_INTERVAL } from "../../constants";
 import TableBrowser from "../../components/TableBrowser";
 
@@ -30,12 +31,8 @@ const getSchemaName = props => {
   return props.schemaName || props.params.schemaName;
 };
 
-const getReloadInterval = (state, { database }, tables = []) => {
-  if (
-    database &&
-    isSyncInProgress(database) &&
-    tables.some(t => isSyncInProgress(t))
-  ) {
+const getReloadInterval = (state, _props, tables = []) => {
+  if (tables.some(t => isSyncInProgress(t))) {
     return RELOAD_INTERVAL;
   } else {
     return 0;
@@ -44,7 +41,7 @@ const getReloadInterval = (state, { database }, tables = []) => {
 
 const getTableUrl = (table, metadata) => {
   const metadataTable = metadata?.table(table.id);
-  return metadataTable?.newQuestion().getUrl({ clean: false });
+  return ML_Urls.getUrl(metadataTable?.newQuestion(), { clean: false });
 };
 
 export default _.compose(

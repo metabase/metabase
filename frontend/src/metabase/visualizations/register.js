@@ -9,7 +9,7 @@ import Scalar from "./visualizations/Scalar";
 import SmartScalar from "./visualizations/SmartScalar";
 import Progress from "./visualizations/Progress";
 import Table from "./visualizations/Table";
-import Text from "./visualizations/Text";
+import { Text } from "./visualizations/Text";
 import LinkViz from "./visualizations/LinkViz";
 import LineChart from "./visualizations/LineChart";
 import BarChart from "./visualizations/BarChart";
@@ -24,6 +24,7 @@ import Funnel from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
 import ObjectDetail from "./visualizations/ObjectDetail";
 import PivotTable from "./visualizations/PivotTable";
+import { Heading } from "./visualizations/Heading";
 
 export default function () {
   registerVisualization(Scalar);
@@ -46,5 +47,6 @@ export default function () {
   registerVisualization(ObjectDetail);
   registerVisualization(PivotTable);
   registerVisualization(ActionViz);
+  registerVisualization(Heading);
   setDefaultVisualization(Table);
 }

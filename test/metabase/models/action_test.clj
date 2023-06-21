@@ -10,7 +10,6 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (deftest hydrate-query-action-test
@@ -115,13 +114,13 @@
                        :creator_id (mt/user->id :crowberto)
                        :creator {:common_name "Crowberto Corv"}
                        :parameters [{:id "id" :type :number}]}
-                      (hydrate (action/select-action :id action-id) :creator)))))))
+                      (t2/hydrate (action/select-action :id action-id) :creator)))))))
 
 (deftest hydrate-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-actions [{:keys [model-id action-id] :as _context} {}]
-        (let [action (hydrate (action/select-action :id action-id) :model)]
+        (let [action (t2/hydrate (action/select-action :id action-id) :model)]
           (is (some? (:model action)))
           (is (= (:id (:model action)) model-id)))))))
 

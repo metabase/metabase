@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 

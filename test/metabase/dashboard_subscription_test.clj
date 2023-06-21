@@ -236,6 +236,15 @@
                        :result   (s/pred map?)
                        :type     (s/eq :card)}]
                      result)))))
+  (testing "hides empty card when card.hide_empty is true"
+    (mt/with-temp* [Card          [{card-id-1 :id}]
+                    Card          [{card-id-2 :id}]
+                    Dashboard     [{dashboard-id :id, :as dashboard} {:name "Birdfeed Usage"}]
+                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-1}]
+                    DashboardCard [_ {:dashboard_id dashboard-id :card_id card-id-2 :visualization_settings {:card.hide_empty true}}]
+                    User [{user-id :id}]]
+      (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
+        (is (= (count result) 1)))))
   (testing "dashboard cards are ordered correctly -- by rows, and then by columns (#17419)"
     (mt/with-temp* [Card          [{card-id-1 :id}]
                     Card          [{card-id-2 :id}]

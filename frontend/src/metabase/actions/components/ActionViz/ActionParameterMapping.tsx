@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useMemo } from "react";
 import { t } from "ttag";
 
 import Select, { SelectChangeEvent } from "metabase/core/components/Select";
@@ -16,6 +16,7 @@ import type {
   ParameterTarget,
 } from "metabase-types/api";
 import { useDispatch } from "metabase/lib/redux";
+import { sortActionParams } from "metabase/actions/utils";
 import type Question from "metabase-lib/Question";
 
 import {
@@ -48,8 +49,17 @@ export const ActionParameterMappingForm = ({
   currentMappings,
 }: ActionParameterMappingProps) => {
   const dispatch = useDispatch();
-  const actionParameters = action.parameters;
   const dashboardParameters = dashboard.parameters ?? [];
+
+  const sortedParameters = useMemo(() => {
+    const actionParameters = action?.parameters ?? [];
+
+    return actionParameters && action?.visualization_settings?.fields
+      ? [...actionParameters].sort(
+          sortActionParams(action?.visualization_settings),
+        )
+      : actionParameters || [];
+  }, [action]);
 
   const handleParameterChange = useCallback(
     (dashboardParameterId, target) => {
@@ -67,7 +77,7 @@ export const ActionParameterMappingForm = ({
 
   return (
     <div>
-      {actionParameters.map((actionParameter: WritebackParameter) => {
+      {sortedParameters.map((actionParameter: WritebackParameter) => {
         const mappedValue = currentMappings[getTargetKey(actionParameter)];
 
         return (
@@ -81,7 +91,7 @@ export const ActionParameterMappingForm = ({
           />
         );
       })}
-      {actionParameters.length === 0 && (
+      {sortedParameters.length === 0 && (
         <EmptyState message={t`This action has no parameters to map`} />
       )}
     </div>

@@ -87,7 +87,7 @@ describe("scenarios > admin > datamodel > segments", () => {
     it("should update that segment", () => {
       cy.visit("/admin");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Data Model").click();
+      cy.contains("Table Metadata").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Segments").click();
 

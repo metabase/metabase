@@ -23,19 +23,16 @@ describe("Admin > UploadSettings > utils", () => {
     databases: [
       createMockDatabase({
         id: 100,
-        settings: { "database-enable-actions": true },
         engine: "postgres",
         features: ["schemas"],
       }),
       createMockDatabase({
         id: 200,
-        settings: { "database-enable-actions": false },
         engine: "h2",
         features: ["schemas"],
       }),
       createMockDatabase({
         id: 300,
-        settings: { "database-enable-actions": true },
         engine: "mysql",
       }),
     ],
@@ -47,13 +44,14 @@ describe("Admin > UploadSettings > utils", () => {
   });
 
   describe("getDatabaseOptions", () => {
-    it("should return an array of actions-enabled databases", () => {
+    it("should return an array of databases", () => {
       expect(getDatabaseOptions(databases)).toEqual([
         { name: "Database", value: 100 },
+        { name: "Database", value: 200 },
         { name: "Database", value: 300 },
       ]);
     });
-    it("should return an empty array if no actions-enabled databases", () => {
+    it("should return an empty array if there are no databases", () => {
       expect(getDatabaseOptions([])).toEqual([]);
     });
   });

@@ -2,7 +2,6 @@
   "moduleNameMapper": {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/frontend/test/__mocks__/fileMock.js",
-    "^promise-loader\\?global\\!metabase-lib\\/metadata\\/utils\\/ga-metadata$": "<rootDir>/frontend/src/metabase-lib/metadata/utils/ga-metadata.js",
     "ace/ext-searchbox": "<rootDir>/frontend/test/__mocks__/aceSearchBoxExtMock.js",
     "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "react-markdown": "<rootDir>/node_modules/react-markdown/react-markdown.min.js",
@@ -36,8 +35,7 @@
   "globalSetup": "<rootDir>/frontend/test/global-setup.js",
   "globals": {
     "ace": {},
-    "ga": {},
-    "document": {}
+    "ga": {}
   },
   "coverageDirectory": "./coverage",
   "coverageReporters": ["html", "lcov"],

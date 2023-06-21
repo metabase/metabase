@@ -1,12 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { Clause, ColumnMetadata, Query } from "./types";
 
-const DEFAULT_STAGE_INDEX = -1;
-
-export function fields(
-  query: Query,
-  stageIndex = DEFAULT_STAGE_INDEX,
-): Clause[] {
+export function fields(query: Query, stageIndex: number): Clause[] {
   return ML.fields(query, stageIndex);
 }
 

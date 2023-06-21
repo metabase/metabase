@@ -18,7 +18,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (defn- execute-query-action!
@@ -65,7 +64,7 @@
   [card_id]
   (let [card (t2/select-one Card :id card_id)
         {:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
-    (hydrate (t2/select-one Table :id table-id) :fields)))
+    (t2/hydrate (t2/select-one Table :id table-id) :fields)))
 
 (defn- execute-custom-action [action request-parameters]
   (let [{action-type :type} action]

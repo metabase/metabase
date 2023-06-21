@@ -42,9 +42,7 @@ export function DashboardTabs({ isEditing = false }: DashboardTabsProps) {
         handleDragEnd={moveTab}
       >
         {showPlaceholder ? (
-          <PlaceholderTab
-            label={tabs.length === 1 ? tabs[0].name : t`Page 1`}
-          />
+          <PlaceholderTab label={tabs.length === 1 ? tabs[0].name : t`Tab 1`} />
         ) : (
           tabs.map(tab => (
             <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
