@@ -8,7 +8,7 @@ import ModalContent from "metabase/components/ModalContent";
 import CollectionPicker from "metabase/containers/CollectionPicker";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import { Collection } from "metabase-types/api";
-import { ButtonContainer, LightButton } from "./CollectionMoveModal.styled";
+import { ButtonContainer } from "./CollectionMoveModal.styled";
 
 interface CollectionMoveModalProps {
   title: string;
@@ -59,13 +59,13 @@ export const CollectionMoveModal = ({
         onChange={setSelectedCollectionId}
       />
       <ButtonContainer>
-        <LightButton
-          onlyText
+        <Button
+          light
           icon="add"
           onClick={() => setShouldCreateCollection(true)}
         >
           {t`New collection`}
-        </LightButton>
+        </Button>
         <Button
           primary
           className="ml-auto"

@@ -131,7 +131,7 @@ function CreateDashboardForm({
             title={t`Which collection should this go in?`}
             newCollButton={
               <NewCollectionButton
-                onlyText
+                light
                 icon="add"
                 disabled={!isValid}
                 onClick={() => saveToNewCollection?.({ values, handleCreate })}
