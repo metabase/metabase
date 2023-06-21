@@ -46,8 +46,10 @@ describe("issue 31697", () => {
     popover().findByText("Automatic insights…").click();
     popover().findByText("X-ray").click();
     cy.wait("@xrayDashboard");
-    cy.findByRole("main")
-      .findByText("A look at the number of Orders")
-      .should("be.visible");
+
+    cy.findByRole("main").within(() => {
+      cy.findByText(/A closer look at number of Orders/).should("be.visible");
+      cy.findByText("Orders segment").should("be.visible");
+    });
   });
 });
