@@ -43,7 +43,8 @@ const SPACING = parseInt(space(1), 10);
 const ICON_SIZE = 13;
 const TOOLTIP_ICON_SIZE = 11;
 const ICON_PADDING_RIGHT = SPACING;
-const MIN_VERTICAL_SPACE = 50;
+const MIN_SCALAR_TITLE_SIZE = 23;
+const MIN_PREVIOUS_VALUE_SIZE = 27;
 
 const canShowPreviousValue = (width, height) => {
   return height + width > 400;
@@ -188,7 +189,8 @@ export default class SmartScalar extends Component {
     const lastValue = insight["last-value"];
     const formatOptions = settings.column(column);
     const availableWidth = width - 2 * SPACING;
-    const availableValueHeight = height - MIN_VERTICAL_SPACE - 2 * SPACING;
+    const availableValueHeight =
+      height - MIN_SCALAR_TITLE_SIZE - MIN_PREVIOUS_VALUE_SIZE - 4 * SPACING;
 
     const { displayValue, fullScalarValue } = compactifyValue(
       lastValue,
