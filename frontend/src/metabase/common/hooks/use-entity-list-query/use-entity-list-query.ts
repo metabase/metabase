@@ -17,8 +17,14 @@ export interface UseEntityListOwnProps<TItem, TQuery = never> {
     state: State,
     options: EntityQueryOptions<TQuery>,
   ) => TItem[] | undefined;
-  getLoading: (state: State, options: EntityQueryOptions<TQuery>) => boolean;
-  getLoaded: (state: State, options: EntityQueryOptions<TQuery>) => boolean;
+  getLoading: (
+    state: State,
+    options: EntityQueryOptions<TQuery>,
+  ) => boolean | undefined;
+  getLoaded: (
+    state: State,
+    options: EntityQueryOptions<TQuery>,
+  ) => boolean | undefined;
   getError: (state: State, options: EntityQueryOptions<TQuery>) => unknown;
 }
 
