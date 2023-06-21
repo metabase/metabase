@@ -301,3 +301,10 @@
             query'       (lib/replace-clause query filter-clause external-op')]
         (is (=? {:stages [{:filters [[:!= {} [:field {} (meta/id :users :id)] 515]]}]}
                 query'))))))
+
+(deftest ^:parallel filter-clause-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        [id-col] (lib/filterable-columns query)
+        [eq-op] (lib/filterable-column-operators id-col)]
+    (is (=? [:= {} [:field {} (meta/id :venues :id)] 123]
+            (lib/filter-clause eq-op id-col 123)))))
