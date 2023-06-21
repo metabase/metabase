@@ -146,7 +146,10 @@ export const USERS = {
     login_attributes: {
       role: ORDERS_PRODUCTS_ACCESS,
     },
-    user_group_memberships: [{ id: ALL_USERS_GROUP, is_group_manager: false }],
+    user_group_memberships: [
+      { id: ALL_USERS_GROUP, is_group_manager: false },
+      { id: COLLECTION_GROUP, is_group_manager: false },
+    ],
   },
 };
 
