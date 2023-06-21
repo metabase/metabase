@@ -35,7 +35,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- format-sql*
-  "Given a sql statement, return a nicely-formatted version of a generic `sql` string.
+  "Return a nicely-formatted version of a generic `sql` string.
   Note that it will not play well with Metabase parameters."
   [^String sql db-type]
   (when sql
