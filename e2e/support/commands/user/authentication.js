@@ -18,6 +18,10 @@ Cypress.Commands.add("signInAsSandboxedUser", () => {
   cy.signIn("sandboxed");
 });
 
+Cypress.Commands.add("signInAsImpersonatedUser", () => {
+  cy.signIn("impersonated");
+});
+
 Cypress.Commands.add("signOut", () => {
   cy.log("Signing out");
   cy.clearCookie("metabase.SESSION");

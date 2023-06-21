@@ -103,7 +103,7 @@ function GroupsPermissionsPage({
   const handlePermissionChange = useCallback(
     async (item, permission, value) => {
       await updateDataPermission({
-        groupId: params.groupId,
+        groupId: parseInt(params.groupId),
         permission,
         value,
         entityId: item.entityId,

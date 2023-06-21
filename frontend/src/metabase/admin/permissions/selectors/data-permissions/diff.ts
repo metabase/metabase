@@ -10,9 +10,10 @@ import Database from "metabase-lib/metadata/Database";
 export const getIsDirty = createSelector(
   (state: State) => state.admin.permissions.dataPermissions,
   (state: State) => state.admin.permissions.originalDataPermissions,
-  PLUGIN_DATA_PERMISSIONS.hasChanges,
-  (permissions, originalPermissions, hasExtraChanges) =>
-    !_.isEqual(permissions, originalPermissions) || hasExtraChanges,
+  (state: State) => state,
+  (permissions, originalPermissions, state) =>
+    !_.isEqual(permissions, originalPermissions) ||
+    PLUGIN_DATA_PERMISSIONS.hasChanges.some(hasChanges => hasChanges(state)),
 );
 
 interface DiffProps {
