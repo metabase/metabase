@@ -90,8 +90,21 @@
                               "created_at" "$_id.created_at"
                               "sum" true}}]
           formatted-query (mdb.query/format-sql query :mongo)]
+
       (testing "Formatting a non-sql query returns the same query"
-        (is (= query formatted-query))))))
+        (is (= query formatted-query)))
+
+      ;; TODO(qnkhuat): do we really need to handle case where wrong driver is passed?
+      (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
+            ;; This is a corner case since the system should always be using the right driver
+            weird-formatted-query (mdb.query/format-sql (json/generate-string query) :postgres)]
+        (testing "The wrong formatter will change the format..."
+          (is (not= query weird-formatted-query)))
+        (testing "...but the resulting data is still the same"
+          ;; Bottom line - Use the right driver, but if you use the wrong
+          ;; one it should be harmless but annoying
+          (is (= query
+                 (json/parse-string weird-formatted-query))))))))
 
 (deftest ^:parallel format-sql-with-params-test
   (testing "Baseline: format-sql expands metabase params, which is not desired."
