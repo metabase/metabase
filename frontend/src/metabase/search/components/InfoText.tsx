@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -17,19 +16,6 @@ import type TableType from "metabase-lib/metadata/Table";
 
 import { CollectionBadge } from "./CollectionBadge";
 import type { WrappedResult } from "./types";
-
-const searchResultPropTypes = {
-  database_id: PropTypes.number,
-  table_id: PropTypes.number,
-  model: PropTypes.string,
-  getCollection: PropTypes.func,
-  collection: PropTypes.object,
-  table_schema: PropTypes.string,
-};
-
-const infoTextPropTypes = {
-  result: PropTypes.shape(searchResultPropTypes),
-};
 
 function getInfoText(result: WrappedResult) {
   switch (result.model) {
@@ -65,8 +51,6 @@ function getInfoText(result: WrappedResult) {
 export function InfoText({ result }: { result: WrappedResult }) {
   return <>{getInfoText(result)}</>;
 }
-
-InfoText.propTypes = infoTextPropTypes;
 
 function formatCollection(
   result: WrappedResult,
@@ -125,10 +109,6 @@ function TablePath({ result }: { result: WrappedResult }) {
   );
 }
 
-TablePath.propTypes = {
-  result: PropTypes.shape(searchResultPropTypes),
-};
-
 function TableLink({ result }: { result: WrappedResult }) {
   return (
     <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
@@ -140,7 +120,3 @@ function TableLink({ result }: { result: WrappedResult }) {
     </Link>
   );
 }
-
-TableLink.propTypes = {
-  result: PropTypes.shape(searchResultPropTypes),
-};
