@@ -10,7 +10,23 @@
             [metabase.util.log :as log]
             [toucan2.core :as t2]))
 
-(def ^:private default-audit-db-id 13371337)
+(defenterprise default-audit-db-id
+  "Default audit db id."
+  :feature :none
+  []
+  13371337)
+
+(defenterprise default-audit-collection-entity-ids
+  "Default audit collection entity ids."
+  :feature :none
+  []
+  ["vG58R8k-QddHWA7_47umn" "BIuewteY-F31QpFe_Agu0" "C0bd1kiOY1oCdmaORjNy6" "jlpssXoda_EbXFIKNA-lF"])
+
+(defenterprise default-audit-collection-report-entity-ids
+  "Default audit collection report entity ids."
+  :feature :none
+  []
+  ["okNLSZKdSxaoG58JSQY54" "yz5XFcuy-eGq95SYiR9d5" "AHFm6v0B-cb4IfMsshL4h" "UifX7veCwucQN1gC_dtmw"])
 
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
@@ -20,7 +36,7 @@
 
   - In the unlikely case that a user has many many databases in Metabase, and ensure there can Never be a collision, we
   do a quick check here and pick a new ID if it would have collided. Similar to finding an open port number."
-  ([engine] (install-database! engine default-audit-db-id))
+  ([engine] (install-database! engine (default-audit-db-id)))
   ([engine id]
    (if (t2/select-one Database :id id)
      (install-database! engine (inc id))
@@ -28,7 +44,7 @@
        ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
        (t2/delete! :permissions {:where [:like :object (str "%/db/" id "/%")]})
        (t2/insert! Database {:is_audit         true
-                             :id               default-audit-db-id
+                             :id               (default-audit-db-id)
                              :name             "Internal Metabase Database"
                              :description      "Internal Audit DB used to power metabase analytics."
                              :engine           engine
