@@ -2,11 +2,11 @@ import fetchMock from "fetch-mock";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { TableListQuery } from "metabase-types/api";
+import { DatabaseId, TableId } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import {
-  setupDatabasesEndpoints,
-  setupTablesEndpoints,
+  setupDatabaseEndpoints,
+  setupTableEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -15,38 +15,35 @@ import {
 } from "__support__/ui";
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
-import { useEntityListQuery } from "./use-entity-list-query";
+import { useEntityQuery } from "./use-entity-query";
 
 const TEST_DB = createMockDatabase();
 const TEST_TABLE = createMockTable();
 
 const TestComponent = () => {
   const {
-    data = [],
+    data: database,
     isLoading,
     error,
-  } = useEntityListQuery<Database>(
-    {},
+  } = useEntityQuery<DatabaseId, Database>(
     {
-      fetchList: Databases.actions.fetchList,
-      getList: Databases.selectors.getList,
+      id: TEST_DB.id,
+    },
+    {
+      fetch: Databases.actions.fetch,
+      getObject: Databases.selectors.getObject,
       getLoading: Databases.selectors.getLoading,
-      getLoaded: Databases.selectors.getLoaded,
       getError: Databases.selectors.getError,
     },
   );
 
-  if (isLoading || error) {
+  if (isLoading || error || !database) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
     <div>
-      <div>
-        {data.map(database => (
-          <div key={database.id}>{database.name}</div>
-        ))}
-      </div>
+      <div>{database.name}</div>
       <TestInnerComponent />
     </div>
   );
@@ -54,42 +51,36 @@ const TestComponent = () => {
 
 const TestInnerComponent = () => {
   const {
-    data = [],
+    data: table,
     isLoading,
     error,
-  } = useEntityListQuery<Table, TableListQuery>(
+  } = useEntityQuery<TableId, Table>(
     {
+      id: TEST_TABLE.id,
       reload: true,
     },
     {
-      fetchList: Tables.actions.fetchList,
-      getList: Tables.selectors.getList,
+      fetch: Tables.actions.fetch,
+      getObject: Tables.selectors.getObject,
       getLoading: Tables.selectors.getLoading,
-      getLoaded: Tables.selectors.getLoaded,
       getError: Tables.selectors.getError,
     },
   );
 
-  if (isLoading || error) {
+  if (isLoading || error || !table) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return (
-    <div>
-      {data.map(table => (
-        <div key={table.id}>{table.name}</div>
-      ))}
-    </div>
-  );
+  return <div>{table.name}</div>;
 };
 
 const setup = () => {
-  setupDatabasesEndpoints([TEST_DB]);
-  setupTablesEndpoints([TEST_TABLE]);
+  setupDatabaseEndpoints(TEST_DB);
+  setupTableEndpoints(TEST_TABLE);
   return renderWithProviders(<TestComponent />);
 };
 
-describe("useEntityListQuery", () => {
+describe("useEntityQuery", () => {
   it("should be initially loading", () => {
     setup();
 
@@ -103,8 +94,8 @@ describe("useEntityListQuery", () => {
 
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
-    expect(fetchMock.calls("path:/api/database")).toHaveLength(1);
-    expect(fetchMock.calls("path:/api/table")).toHaveLength(1);
+    expect(fetchMock.calls(`path:/api/database/${TEST_DB.id}`)).toHaveLength(1);
+    expect(fetchMock.calls(`path:/api/table/${TEST_TABLE.id}`)).toHaveLength(1);
   });
 
   it("should not reload data when re-rendered", async () => {
@@ -115,8 +106,8 @@ describe("useEntityListQuery", () => {
 
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
-    expect(fetchMock.calls("path:/api/database")).toHaveLength(1);
-    expect(fetchMock.calls("path:/api/table")).toHaveLength(1);
+    expect(fetchMock.calls(`path:/api/database/${TEST_DB.id}`)).toHaveLength(1);
+    expect(fetchMock.calls(`path:/api/table/${TEST_TABLE.id}`)).toHaveLength(1);
   });
 
   it("should reload data only for calls with the reload flag when re-mounted", async () => {
@@ -129,7 +120,7 @@ describe("useEntityListQuery", () => {
 
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
-    expect(fetchMock.calls("path:/api/database")).toHaveLength(1);
-    expect(fetchMock.calls("path:/api/table")).toHaveLength(2);
+    expect(fetchMock.calls(`path:/api/database/${TEST_DB.id}`)).toHaveLength(1);
+    expect(fetchMock.calls(`path:/api/table/${TEST_TABLE.id}`)).toHaveLength(2);
   });
 });
