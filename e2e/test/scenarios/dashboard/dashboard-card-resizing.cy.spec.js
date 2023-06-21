@@ -301,7 +301,8 @@ describe("scenarios > dashboard card resizing", () => {
 
         it("should not allow links to overflow when editing dashboard", () => {
           createLinkDashboard();
-          const { entityCard, customCard } = getLinkCards();
+          const entityCard = getDashboardCard(0);
+          const customCard = getDashboardCard(1);
 
           const editLinkContainer = cy.findByTestId("entity-edit-display-link");
           const linkContainer = cy.findByTestId("custom-edit-text-link");
@@ -313,7 +314,8 @@ describe("scenarios > dashboard card resizing", () => {
         it("should not allow links to overflow when viewing saved dashboard", () => {
           createLinkDashboard();
           saveDashboard();
-          const { entityCard, customCard } = getLinkCards();
+          const entityCard = getDashboardCard(0);
+          const customCard = getDashboardCard(1);
 
           const editLinkContainer = cy.findByTestId("entity-view-display-link");
           const linkContainer = cy.findByTestId("custom-view-text-link");
@@ -344,7 +346,8 @@ const createLinkDashboard = () => {
   createLinkCard();
   createLinkCard();
 
-  const { entityCard, customCard } = getLinkCards();
+  const entityCard = getDashboardCard(0);
+  const customCard = getDashboardCard(1);
 
   entityCard.click().type(TEST_QUESTION_NAME);
   popover().within(() => {
@@ -355,12 +358,6 @@ const createLinkDashboard = () => {
   closeLinkSearchDropdown();
 };
 
-const getLinkCards = () => {
-  return {
-    entityCard: getDashboardCard(0),
-    customCard: getDashboardCard(1),
-  };
-};
 const assertLinkCardOverflow = (card1, card2) => {
   card1.then(linkElem => {
     card2.then(dashCardElem => {
