@@ -100,7 +100,9 @@ export const getRoutes = store => (
         done();
       }}
       onChange={(prevState, nextState) => {
-        trackPageView(nextState.location.pathname);
+        if (nextState.location.pathname !== prevState.location.pathname) {
+          trackPageView(nextState.location.pathname);
+        }
       }}
     >
       {/* AUTH */}
