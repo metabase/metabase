@@ -28,12 +28,10 @@ export function orderBy(
 }
 
 export function orderByClause(
-  query: Query,
-  stageNumber: number,
   column: ColumnMetadata,
   direction?: OrderByDirection,
 ): OrderByClause {
-  return ML.order_by_clause(query, stageNumber, column, direction);
+  return ML.order_by_clause(column, direction);
 }
 
 export function changeDirection(query: Query, clause: OrderByClause): Query {

@@ -34,7 +34,7 @@
    {:aggregation (partial mapv lib.normalize/normalize)
     :filters     (partial mapv lib.normalize/normalize)}))
 
-(mu/defn ^:private ensure-previous-stages-have-metadata :- ::lib.schema/query
+(mu/defn ensure-previous-stages-have-metadata :- ::lib.schema/query
   "Recursively calculate the metadata for the previous stages and add it to them, we'll need it for metadata
   calculations for `stage-number` and we don't want to have to calculate it more than once..."
   [query        :- ::lib.schema/query
@@ -53,11 +53,11 @@
   we can recalculate the correct metadata anyway."
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  (let [{stage-type :lib/type, :keys [source-table] :as stage} (lib.util/query-stage query stage-number)]
+  (let [{stage-type :lib/type, :keys [source-card] :as stage} (lib.util/query-stage query stage-number)]
     (or (::cached-metadata stage)
         (when-let [metadata (:lib/stage-metadata stage)]
           (when (or (= stage-type :mbql.stage/native)
-                    (lib.util/string-table-id->card-id source-table))
+                    source-card)
             (let [source-type (case stage-type
                                 :mbql.stage/native :source/native
                                 :mbql.stage/mbql   :source/card)]
@@ -142,12 +142,12 @@
            (dissoc ::lib.field/temporal-unit))))))
 
 (mu/defn ^:private saved-question-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
-  "Metadata associated with a Saved Question, if `:source-table` is a `card__<id>` string."
-  [query           :- ::lib.schema/query
-   stage-number    :- :int
-   source-table-id :- [:or ::lib.schema.id/table ::lib.schema.id/table-card-id-string]
-   unique-name-fn  :- fn?]
-  (when-let [card-id (lib.util/string-table-id->card-id source-table-id)]
+  "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"
+  [query          :- ::lib.schema/query
+   stage-number   :- :int
+   card-id        :- [:maybe ::lib.schema.id/card]
+   unique-name-fn :- fn?]
+  (when card-id
     (when-let [card (lib.metadata/card query card-id)]
       (lib.metadata.calculation/visible-columns query stage-number card {:unique-name-fn               unique-name-fn
                                                                          :include-implicitly-joinable? false}))))
@@ -208,7 +208,8 @@
 ;;;
 ;;; 1b. Default 'visible' Fields for our `:source-table`, OR
 ;;;
-;;; 1c. Metadata associated with a Saved Question, if `:source-table` is a `card__<id>` string, OR
+;;; 1c. Metadata associated with a Saved Question, if we have `:source-card` (`:source-table` is a `card__<id>` string
+;;;     in legacy MBQL), OR
 ;;;
 ;;; 1d. `:lib/stage-metadata` if this is a `:mbql.stage/native` stage
 ;;;
@@ -229,15 +230,16 @@
    ;; 1a. columns returned by previous stage
    (previous-stage-metadata query stage-number unique-name-fn)
    ;; 1b or 1c
-   (let [{:keys [source-table], :as this-stage} (lib.util/query-stage query stage-number)]
+   (let [{:keys [source-table source-card], :as this-stage} (lib.util/query-stage query stage-number)]
      (or
       ;; 1b: default visible Fields for the source Table
-      (when (integer? source-table)
+      (when source-table
+        (assert (integer? source-table))
         (let [table-metadata (lib.metadata/table query source-table)]
           (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
       ;; 1c. Metadata associated with a saved Question
-      (when (string? source-table)
-        (saved-question-metadata query stage-number source-table unique-name-fn))
+      (when source-card
+        (saved-question-metadata query stage-number source-card unique-name-fn))
       ;; 1d: `:lib/stage-metadata` for the (presumably native) query
       (for [col (:columns (:lib/stage-metadata this-stage))]
         (assoc col
@@ -263,11 +265,12 @@
 
 (defn- ref-to? [[tag _opts pointer :as clause] column]
   (case tag
-    :field (if (number? pointer)
+    :field (if (or (number? pointer) (string? pointer))
              (= pointer (:id column))
              (throw (ex-info "unknown type of :field ref in lib.stage/ref-to?"
                              {:clause clause
                               :column column})))
+    :expression (= pointer (:name column))
     (throw (ex-info "unknown clause in lib.stage/ref-to?"
                     {:clause clause
                      :column column}))))
@@ -275,7 +278,7 @@
 (defn- mark-selected-breakouts [query stage-number columns]
   (if-let [breakouts (:breakout (lib.util/query-stage query stage-number))]
     (for [column columns]
-      (if-let [match (first (filter #(ref-to? % column) breakouts))]
+      (if-let [match (m/find-first #(ref-to? % column) breakouts)]
         (let [binning        (lib.binning/binning match)
               {:keys [unit]} (lib.temporal-bucket/temporal-bucket match)]
           (cond-> column
@@ -287,6 +290,7 @@
 (defmethod lib.metadata.calculation/visible-columns-method ::stage
   [query stage-number _stage {:keys [unique-name-fn include-implicitly-joinable?], :as options}]
   (let [;; query   (lib.util/update-query-stage query stage-number dissoc :fields :breakout :aggregation)
+        query            (ensure-previous-stages-have-metadata query stage-number)
         existing-columns (existing-visible-columns query stage-number options)]
     (->> (concat
            existing-columns
@@ -344,6 +348,7 @@
 
 (def ^:private display-name-parts
   [:source-table
+   :source-card
    :aggregation
    :breakout
    :filters
@@ -352,16 +357,17 @@
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/mbql
   [query stage-number _stage style]
-  (or
-   (not-empty
-    (let [descriptions (for [k display-name-parts]
-                         (lib.metadata.calculation/describe-top-level-key query stage-number k))]
-      (str/join ", " (remove str/blank? descriptions))))
-   (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-     (lib.metadata.calculation/display-name query
-                                            previous-stage-number
-                                            (lib.util/query-stage query previous-stage-number)
-                                            style))))
+  (let [query (ensure-previous-stages-have-metadata query stage-number)]
+    (or
+     (not-empty
+      (let [descriptions (for [k display-name-parts]
+                           (lib.metadata.calculation/describe-top-level-key query stage-number k))]
+        (str/join ", " (remove str/blank? descriptions))))
+     (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+       (lib.metadata.calculation/display-name query
+                                              previous-stage-number
+                                              (lib.util/query-stage query previous-stage-number)
+                                              style)))))
 
 (mu/defn append-stage :- ::lib.schema/query
   "Adds a new blank stage to the end of the pipeline"

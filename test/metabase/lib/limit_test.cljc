@@ -7,7 +7,7 @@
 (deftest ^:parallel limit-test
   (letfn [(limit [query]
             (get-in query [:stages 0 :limit] ::not-found))]
-    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                     (lib/limit 100))]
       (is (= 100
              (limit query)))
@@ -21,7 +21,7 @@
 
 (deftest ^:parallel current-limit-test
   (testing "Last stage"
-    (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")]
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))]
       (is (nil? (lib/current-limit query)))
       (is (nil? (lib/current-limit query -1)))
       (is (= 100 (lib/current-limit (lib/limit query 100))))

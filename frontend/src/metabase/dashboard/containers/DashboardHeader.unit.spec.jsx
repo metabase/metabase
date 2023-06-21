@@ -24,7 +24,6 @@ const setup = async ({ dashboard = TEST_DASHBOARD }) => {
 
   const dashboardHeaderProps = {
     dashboard,
-    isEditable: true,
     isEditing: false,
     isFullscreen: false,
     isNavBarOpen: false,
@@ -49,11 +48,14 @@ const setup = async ({ dashboard = TEST_DASHBOARD }) => {
       name: "",
       props: {},
     },
-    location: {},
+    location: {
+      query: {},
+    },
     setSidebar: jest.fn(),
     closeSidebar: jest.fn(),
     addActionToDashboard: jest.fn(),
     databases: {},
+    params: { tabSlug: undefined },
   };
 
   renderWithProviders(<DashboardHeader {...dashboardHeaderProps} />, {

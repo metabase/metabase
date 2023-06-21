@@ -183,15 +183,20 @@
   [metadata-providerable :- MetadataProviderable]
   (lib.metadata.protocols/tables (->metadata-provider metadata-providerable)))
 
-(mu/defn table :- [:or TableMetadata CardMetadata]
-  "Find metadata for a specific Table, either by string `table-name`, and optionally `schema`, or by ID."
+(mu/defn table :- TableMetadata
+  "Find metadata for a specific Table, either by string `table-name`, and optionally `schema`, or by ID.
+
+  This supports legacy `card__<id>` style strings only for the benefit of legacy metadata: some column metadata comes
+  back like
+
+    {:table-id \"card__100\"}
+
+  and it is easier to work around that situation here than it is to update all of the various MetadataProviders to fix
+  things or to update all the places that call this function. Maybe in the future we can get rid of this icky
+  workaround."
   ([metadata-providerable :- MetadataProviderable
-    table-id :- [:or
-                 ::lib.schema.id/table
-                 ::lib.schema.id/table-card-id-string]]
-   (if-let [card-id (lib.util/string-table-id->card-id table-id)]
-     (lib.metadata.protocols/card  (->metadata-provider metadata-providerable) card-id)
-     (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id)))
+    table-id              :- ::lib.schema.id/table]
+   (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id))
 
   ([metadata-providerable :- MetadataProviderable
     table-schema          :- [:maybe ::lib.schema.common/non-blank-string]

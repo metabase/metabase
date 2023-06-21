@@ -5,6 +5,8 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]))
@@ -18,10 +20,20 @@
   (cond-> card-metadata
     (not display-name) (assoc :display-name (u.humanization/name->human-readable-name :simple card-name))))
 
+(defmethod lib.metadata.calculation/describe-top-level-key-method :source-card
+  [query stage-number _k]
+  (let [{:keys [source-card]} (lib.util/query-stage query stage-number)]
+    (when source-card
+      (or (when-let [card-metadata (lib.metadata/card query source-card)]
+            (lib.metadata.calculation/display-name query stage-number card-metadata :long))
+          ;; If for some reason the metadata is unavailable. This is better than returning nothing I guess
+          (i18n/tru "Saved Question {0}" (pr-str source-card))))))
+
 (mu/defn ^:private infer-results-metadata
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card-query            :- :map]
-  (lib.metadata.calculation/metadata (lib.query/query metadata-providerable (lib.convert/->pMBQL card-query))))
+  (when (some? card-query)
+    (lib.metadata.calculation/metadata (lib.query/query metadata-providerable (lib.convert/->pMBQL card-query)))))
 
 (def ^:private Card
   [:map
@@ -41,8 +53,12 @@
                                  (sequential? result-metadata) result-metadata))]
       (mapv (fn [col]
               (merge
+               {:base-type :type/*, :lib/type :metadata/field}
                (when-let [field-id (:id col)]
-                 (lib.metadata/field metadata-providerable field-id))
+                 (try
+                   (lib.metadata/field metadata-providerable field-id)
+                   (catch #?(:clj Throwable :cljs :default) _
+                     nil)))
                (update-keys col u/->kebab-case-en)
                {:lib/type                :metadata/field
                 :lib/source              :source/card

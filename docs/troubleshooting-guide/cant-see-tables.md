@@ -6,7 +6,7 @@ title: I can't see my tables
 
 You've connected Metabase to a database, but:
 
-- you don't see the tables in the [Data Model](../data-modeling/metadata-editing.md) section of the Admin Panel,
+- you don't see the tables in the [Table Metadata](../data-modeling/metadata-editing.md) section of the Admin Panel,
 - the tables don't appear in the [Data Browser](https://www.metabase.com/learn/getting-started/data-browser),
 - the tables don't show up as possible data sources when you create a query using the Notebook Editor, or
 - you can no longer see tables that you used to be able to see.

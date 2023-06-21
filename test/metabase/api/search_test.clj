@@ -134,7 +134,7 @@
                                                   (assoc action-model-params :collection_id (u/the-id coll)))]
                     Action      [{action-id :id
                                   :as action}   (merge (data-map "action %s action")
-                                  {:type :query, :model_id (u/the-id action-model)})]
+                                                 {:type :query, :model_id (u/the-id action-model)})]
                     QueryAction [_qa (query-action action-id)]
                     Card        [card           (coll-data-map "card %s card" coll)]
                     Card        [dataset        (assoc (coll-data-map "dataset %s dataset" coll)
@@ -486,7 +486,7 @@
                    (into #{} (comp relevant (map :name)) (search! "fort"))))
 
             (testing "Sandboxed users do not see indexed entities in search"
-              (with-redefs [premium-features/segmented-user? (constantly true)]
+              (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
                 (is (= #{}
                        (into #{} (comp relevant (map :name)) (search! "fort"))))))
 
@@ -510,7 +510,7 @@
              (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
                                                                          :search-string "foo"
                                                                          :current-user-perms #{"/"}})))
-      (with-redefs [premium-features/segmented-user? (constantly true)]
+      (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
         (is (= [:and [:inline [:= 1 1]] [:or [:= 0 1]]]
                (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
                                                                            :search-string "foo"
@@ -592,7 +592,7 @@
     :model               "table"
     :database_id         true
     :pk_ref              nil
-    :initial_sync_status "incomplete"}))
+    :initial_sync_status "complete"}))
 
 (defmacro ^:private do-test-users {:style/indent 1} [[user-binding users] & body]
   `(doseq [user# ~users
@@ -718,7 +718,7 @@
                                :name     "segment count test 2"}
      Segment   _              {:table_id table-id
                                :name     "segment count test 3"}]
-    (with-redefs [premium-features/segmented-user? (constantly false)]
+    (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
       (toucan2.execute/with-call-count [call-count]
         (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
         ;; the call count number here are expected to change if we change the search api

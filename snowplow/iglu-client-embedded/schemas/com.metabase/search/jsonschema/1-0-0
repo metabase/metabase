@@ -17,11 +17,14 @@
     },
     "runtime_milliseconds": {
       "description": "Number of milliseconds it took to successfully run the search query",
-      "type": "integer",
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 0,
       "maximum": 2147483647
     }
   },
-  "required": ["runtime"],
+  "required": ["event"],
   "additionalProperties": true
 }

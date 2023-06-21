@@ -109,8 +109,10 @@ class SettingsEditorApp extends Component {
         await reloadSettings();
       }
 
-      if (setting.postUpdateAction) {
-        await dispatch(setting.postUpdateAction());
+      if (setting.postUpdateActions) {
+        for (const action of setting.postUpdateActions) {
+          await dispatch(action());
+        }
       }
 
       this.saveStatusRef.current.setSaved();
@@ -246,11 +248,11 @@ class SettingsEditorApp extends Component {
     );
 
     return (
-      <div className="MetadataEditor-table-list AdminList flex-no-shrink">
+      <aside className="MetadataEditor-table-list AdminList flex-no-shrink">
         <ul className="AdminList-items pt1">
           <ErrorBoundary>{renderedSections}</ErrorBoundary>
         </ul>
-      </div>
+      </aside>
     );
   }
 

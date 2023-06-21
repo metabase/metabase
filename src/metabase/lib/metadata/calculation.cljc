@@ -130,7 +130,7 @@
 
 (def ^:private TopLevelKey
   "In the interest of making this easy to use in JS-land we'll accept either strings or keywords."
-  [:enum :aggregation :breakout :filters :limit :order-by :source-table])
+  [:enum :aggregation :breakout :filters :limit :order-by :source-table :source-card])
 
 (mu/defn describe-top-level-key :- [:maybe ::lib.schema.common/non-blank-string]
   "'top-level' here means the top level of an individual stage. Generate a human-friendly string describing a specific
@@ -179,10 +179,6 @@
 (defmethod type-of-method :default
   [_query _stage-number expr]
   (lib.schema.expresssion/type-of expr))
-
-(defmethod type-of-method :dispatch-type/fn
-  [query stage-number f]
-  (type-of query stage-number (f query stage-number)))
 
 ;;; for MBQL clauses whose type is the same as the type of the first arg. Also used
 ;;; for [[metabase.lib.schema.expression/type-of]].
@@ -337,7 +333,15 @@
      (when-let [effective-type ((some-fn :effective-type :base-type) x-metadata)]
        {:effective-type effective-type})
      (when-let [table-id (:table-id x-metadata)]
-       {:table (display-info query stage-number (lib.metadata/table query table-id))})
+       {:table (display-info
+                query
+                stage-number
+                ;; TODO: only ColumnMetadatas should possibly have legacy `card__<id>` `:table-id`s... we should
+                ;; probably move this special casing into [[metabase.lib.field]] instead of having it be part of the
+                ;; `:default` method.
+                (cond
+                  (integer? table-id) (lib.metadata/table query table-id)
+                  (string? table-id)  (lib.metadata/card query (lib.util/legacy-string-table-id->card-id table-id))))})
      (when-let [source (:lib/source x-metadata)]
        {:is-from-previous-stage (= source :source/previous-stage)
         :is-from-join           (= source :source/joins)
@@ -410,6 +414,10 @@
   (fn [_query _stage-number x _options]
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod visible-columns-method :dispatch-type/nil
+  [_query _stage-number _x _options]
+  [])
 
 (mu/defn visible-columns :- ColumnsWithUniqueAliases
   "Return a sequence of columns that should be visible *within* a given stage of something, e.g. a query stage or a

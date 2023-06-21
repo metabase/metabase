@@ -24,7 +24,7 @@ const getAdminPaths: () => AdminPath[] = () => {
       key: "databases",
     },
     {
-      name: t`Data Model`,
+      name: t`Table Metadata`,
       path: "/admin/datamodel",
       key: "data-model",
     },

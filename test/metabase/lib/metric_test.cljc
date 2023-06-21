@@ -1,6 +1,6 @@
 (ns metabase.lib.metric-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
@@ -22,24 +22,14 @@
 
 (deftest ^:parallel metric-display-name-test
   (let [metadata (mock-metadata-provider)
-        query    (-> (lib/query-for-table-name metadata "VENUES")
+        query    (-> (lib/query metadata (meta/table-metadata :venues))
                      (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} 100]))]
     (is (= "Venues, My Metric"
            (lib.metadata.calculation/suggested-name query)))))
 
 (deftest ^:parallel metric-type-of-test
   (let [metadata (mock-metadata-provider)
-        query    (-> (lib/query-for-table-name metadata "VENUES")
+        query    (-> (lib/query metadata (meta/table-metadata :venues))
                      (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} 100]))]
     (is (= :type/Integer
            (lib.metadata.calculation/type-of query [:metric {:lib/uuid (str (random-uuid))} 100])))))
-
-(deftest ^:parallel ga-metric-metadata-test
-  (testing "Make sure we can calculate metadata for FAKE Google Analytics metric clauses"
-    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                    (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} "ga:totalEvents"]))]
-      (is (=? [{:lib/type     :metadata/field
-                :name         "metric"
-                :display-name "[Unknown Metric]"
-                :base-type    :type/*}]
-              (lib.metadata.calculation/metadata query -1 query))))))
