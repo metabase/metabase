@@ -70,7 +70,7 @@ describe("scenarios > search", () => {
   });
 });
 
-describeWithSnowplow.only("scenarios > search", () => {
+describeWithSnowplow("scenarios > search", () => {
   const PAGE_VIEW_EVENT = 1;
 
   beforeEach(() => {
