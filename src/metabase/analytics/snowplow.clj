@@ -202,8 +202,8 @@
    ::index-model-entities-enabled   ::model
    ::dashboard-created              ::dashboard
    ::question-added-to-dashboard    ::dashboard
-   ::dashboard-tabs-created         ::dashboard
-   ::dashboard-tabs-deleted         ::dashboard
+   ::dashboard-tab-created          ::dashboard
+   ::dashboard-tab-deleted          ::dashboard
    ::database-connection-successful ::database
    ::database-connection-failed     ::database
    ::new-event-created              ::timeline
