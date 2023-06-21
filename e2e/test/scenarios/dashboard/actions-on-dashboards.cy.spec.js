@@ -870,14 +870,6 @@ describe(
           cy.findByText("New Score: required");
           cy.findByRole("button", { name: "Done" }).should("be.disabled");
         });
-
-        popover().within(() => {
-          cy.findByLabelText("Required").uncheck();
-        });
-
-        cy.findByRole("dialog").within(() => {
-          cy.findByText("Update").click();
-        });
       });
     });
   },
