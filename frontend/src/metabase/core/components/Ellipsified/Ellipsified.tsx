@@ -1,5 +1,10 @@
-import { useLayoutEffect, useRef, useState } from "react";
-import * as React from "react";
+import {
+  CSSProperties,
+  ReactNode,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 // eslint-disable-next-line import/named
 import { Placement } from "tippy.js";
 
@@ -8,13 +13,13 @@ import resizeObserver from "metabase/lib/resize-observer";
 import { EllipsifiedRoot } from "./Ellipsified.styled";
 
 interface EllipsifiedProps {
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   className?: string;
   showTooltip?: boolean;
   alwaysShowTooltip?: boolean;
-  tooltip?: string;
-  children?: React.ReactNode;
-  tooltipMaxWidth?: React.CSSProperties["maxWidth"];
+  tooltip?: ReactNode;
+  children?: ReactNode;
+  tooltipMaxWidth?: CSSProperties["maxWidth"];
   lines?: number;
   placement?: Placement;
   "data-testid"?: string;

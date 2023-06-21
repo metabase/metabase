@@ -1,4 +1,5 @@
 import { HTMLAttributes } from "react";
+import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
 import { VisualizationSkeletonProps } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
 import {
@@ -34,10 +35,21 @@ const SkeletonCaption = ({
       )}
       <LegendRightContent>
         {description && (
-          <Tooltip tooltip={description} maxWidth="22em">
-            <LegendDescriptionIcon name="info" />
+          <Tooltip
+            maxWidth="22em"
+            tooltip={
+              <Markdown disallowHeading unstyleLinks>
+                {description}
+              </Markdown>
+            }
+          >
+            <LegendDescriptionIcon
+              data-testid="skeleton-description-icon"
+              name="info"
+            />
           </Tooltip>
         )}
+
         {actionMenu}
       </LegendRightContent>
     </SkeletonCaptionRoot>

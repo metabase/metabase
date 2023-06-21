@@ -62,7 +62,7 @@ By default, Metabase attempts to make field and table names more readable by cha
 
 If you re-enable this setting, Metabase will run a [scan](../databases/sync-scan.md#how-database-scans-work) against your database to review your table and column names again.
 
-To manually label field or table names in Metabase, check out the [Data Model](../data-modeling/metadata-editing.md) section in your admin settings. Metadata in the Data Model can be further curated in [models](../data-modeling/models.md).
+To manually label field or table names in Metabase, check out the [Table Metadata](../data-modeling/metadata-editing.md) section in your admin settings. Metadata in the Table Metadata can be further curated in [models](../data-modeling/models.md).
 
 ## Enable nested queries
 

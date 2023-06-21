@@ -96,7 +96,7 @@
            and creation timestamp"
     (with-fake-snowplow-collector
       (snowplow/track-event! ::snowplow/new-instance-created)
-      (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-1-0",
+      (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-1-1",
               :data {:id                           (snowplow/analytics-uuid)
                      :version                      {:tag (:tag (public-settings/version))},
                      :token_features               (public-settings/token-features)

@@ -156,7 +156,7 @@
     stage-number :- [:maybe :int]
     boolean-expression]
    (let [stage-number (clojure.core/or stage-number -1)
-         new-filter (lib.common/->op-arg query stage-number boolean-expression)]
+         new-filter (lib.common/->op-arg boolean-expression)]
      (lib.util/update-query-stage query stage-number update :filters (fnil conj []) new-filter))))
 
 (mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
