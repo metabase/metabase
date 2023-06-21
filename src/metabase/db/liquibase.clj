@@ -194,7 +194,7 @@
   [db-type :- s/Keyword
    conn    :- java.sql.Connection]
   (let [liquibase-table-name (changelog-table-name db-type)
-        fresh-install?       (jdbc/with-db-metadata [meta {:connection conn}] ; don't migrate on fresh install
+        fresh-install?       (let [meta (.getMetaData conn)] ; don't migrate on fresh install
                                (empty? (jdbc/metadata-query
                                         (.getTables meta nil nil liquibase-table-name (u/varargs String ["TABLE"])))))
         statement            (format "UPDATE %s SET FILENAME = ?" liquibase-table-name)]

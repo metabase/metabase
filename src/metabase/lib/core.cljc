@@ -83,7 +83,8 @@
   [lib.breakout
    breakout
    breakoutable-columns
-   breakouts]
+   breakouts
+   breakouts-metadata]
   [lib.column-group
    columns-group-columns
    group-columns]
@@ -163,19 +164,20 @@
    time-interval
    segment]
   [lib.join
+   available-join-strategies
    join
    join-clause
+   join-condition-lhs-columns
+   join-condition-operators
+   join-condition-rhs-columns
    join-conditions
    join-fields
+   join-strategy
    joins
+   suggested-join-condition
    with-join-alias
    with-join-fields
-   join-strategy
-   with-join-strategy
-   available-join-strategies
-   join-condition-lhs-columns
-   join-condition-rhs-columns
-   join-condition-operators]
+   with-join-strategy]
   [lib.limit
    current-limit
    limit]

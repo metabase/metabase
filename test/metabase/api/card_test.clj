@@ -2879,14 +2879,20 @@
                                              uploads-database-id  db-id
                                              uploads-schema-name  nil
                                              uploads-table-prefix "uploaded_magic_"]
-            (let [new-model (upload-example-csv! nil)
-                  new-table (t2/select-one Table :db_id db-id)]
-              (is (= "Example Csv File" (:name new-model)))
-              (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
-                      new-table))
-              (if (= driver/*driver* :mysql)
-                (is (nil? (:schema new-table)))
-                (is (=? {:schema #"(?i)public"} new-table))))))))))
+            (if (= driver/*driver* :mysql)
+              (let [new-model (upload-example-csv! nil)
+                    new-table (t2/select-one Table :db_id db-id)]
+                (is (= "Example Csv File" (:name new-model)))
+                (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
+                        new-table))
+                (if (= driver/*driver* :mysql)
+                  (is (nil? (:schema new-table)))
+                  (is (=? {:schema #"(?i)public"} new-table))))
+              ;; Else, for drivers that support schemas
+              (is (thrown-with-msg?
+                   java.lang.Exception
+                   #"^A schema has not been set."
+                   (upload-example-csv! nil))))))))))
 
 (deftest upload-csv!-failure-test
   ;; Just test with postgres because failure should be independent of the driver
@@ -2994,8 +3000,8 @@
                             "event"           "csv_upload_successful"}
                      :user-id (str (mt/user->id :rasta))}
                     (last (snowplow-test/pop-event-data-and-user-id!))))
-            (with-redefs [upload/load-from-csv (fn [_ _ _ _]
-                                                 (throw (Exception.)))]
+            (with-redefs [upload/load-from-csv! (fn [_ _ _ _]
+                                                  (throw (Exception.)))]
               (try (upload-example-csv! nil)
                    (catch Throwable _
                      nil))
