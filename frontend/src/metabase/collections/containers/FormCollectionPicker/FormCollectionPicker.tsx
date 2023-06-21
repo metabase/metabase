@@ -24,16 +24,12 @@ import { isValidCollectionId } from "metabase/collections/utils";
 
 import type { CollectionId } from "metabase-types/api";
 
+import { ButtonProps } from "metabase/core/components/Button";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
   NewCollectionButton,
 } from "./FormCollectionPicker.styled";
-
-interface NewCollectionProps {
-  isDisabled: boolean;
-  onClick: () => void;
-}
 
 export interface FormCollectionPickerProps
   extends HTMLAttributes<HTMLDivElement> {
@@ -41,7 +37,7 @@ export interface FormCollectionPickerProps
   title?: string;
   placeholder?: string;
   type?: "collections" | "snippet-collections";
-  newColl?: NewCollectionProps;
+  newCollButton?: ButtonProps;
 }
 
 function ItemName({
@@ -65,7 +61,7 @@ function FormCollectionPicker({
   title,
   placeholder = t`Select a collection`,
   type = "collections",
-  newColl,
+  newCollButton,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -122,20 +118,15 @@ function FormCollectionPicker({
             showSearch={hasSearch}
             width={width}
           />
-          {newColl && type === "collections" && (
-            <NewCollectionButton
-              onlyText
-              icon="add"
-              onClick={newColl.onClick}
-              disabled={newColl.isDisabled}
-            >
+          {newCollButton && type === "collections" && (
+            <NewCollectionButton onlyText icon="add" {...newCollButton}>
               {t`New collection`}
             </NewCollectionButton>
           )}
         </div>
       );
     },
-    [value, type, width, setValue, newColl],
+    [value, type, width, setValue, newCollButton],
   );
 
   return (
