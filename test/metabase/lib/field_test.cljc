@@ -660,7 +660,7 @@
                                         :database 1
                                         :stages   [{:lib/type     :mbql.stage/mbql
                                                     :source-table "card__3"}]})]
-      (is (= [{:lib/type                 :metadata/field
+      (is (= [{:lib/type                 :metadata/column
                :base-type                :type/*
                :id                       4
                :name                     "Field 4"
@@ -669,7 +669,7 @@
                :lib/source-column-alias  "Field 4"
                :lib/desired-column-alias "Field 4"}]
              (lib.metadata.calculation/metadata query)))
-      (is (= {:lib/type                :metadata/field
+      (is (= {:lib/type                :metadata/column
               :base-type               :type/Text
               :effective-type          :type/Text
               :id                      4

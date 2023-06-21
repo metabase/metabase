@@ -42,7 +42,7 @@
                                  (sequential? result-metadata) result-metadata))]
       (mapv (fn [col]
               (merge
-               {:base-type :type/*, :lib/type :metadata/field}
+               {:base-type :type/*, :lib/type :metadata/column}
                (when-let [field-id (:id col)]
                  (try
                    (lib.metadata/field metadata-providerable field-id)
