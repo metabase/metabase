@@ -1,5 +1,10 @@
 name: E2E Tests (aggregate)
 
+# env:
+# RECORD_REPLAY_CHROMIUM_DOWNLOAD_FILE: linux-chromium-20230619-5c885a9fbef7-c3586eaaeb1d.tar.xz
+# RECORD_REPLAY_DISABLE_FEATURES: "[\"record-replay\"]"
+# RECORD_REPLAY_DRIVER: /tmp/not-here
+
 on:
   # We'll record runs using Replay.io and their browser on a schedule as an experiment
   schedule:
