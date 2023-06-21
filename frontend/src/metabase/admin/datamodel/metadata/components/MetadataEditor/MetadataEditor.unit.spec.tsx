@@ -256,9 +256,11 @@ describe("MetadataEditor", () => {
           "Select any table to see its schema and add or edit metadata.",
         ),
       ).toBeInTheDocument();
-      userEvent.click(
-        screen.getByText(ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name),
-      );
+      expect(() =>
+        userEvent.click(
+          screen.getByText(ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name),
+        ),
+      ).toThrow();
       expect(
         await screen.findByText(
           "Select any table to see its schema and add or edit metadata.",
