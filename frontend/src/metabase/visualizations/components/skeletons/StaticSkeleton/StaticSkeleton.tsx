@@ -28,6 +28,8 @@ const StaticSkeleton = ({
   tooltip,
   ...props
 }: StaticSkeletonProps): JSX.Element => {
+  const defaultedDescription = description || "";
+
   return (
     <SkeletonRoot {...props}>
       {icon && (
@@ -43,7 +45,7 @@ const StaticSkeleton = ({
         </Tooltip>
       )}
       <SkeletonTitle>{name}</SkeletonTitle>
-      {description && <SkeletonDescription>{description}</SkeletonDescription>}
+      <SkeletonDescription>{defaultedDescription}</SkeletonDescription>
     </SkeletonRoot>
   );
 };
