@@ -175,7 +175,7 @@ Field Filters ONLY work with the following field types:
 - State
 - ZIP or Postal Code
 
-The field can also be a date or timestamp, which can be left as "No semantic type" in the data model.
+The field can also be a date or timestamp, which can be left as "No semantic type" in the Table Metadata.
 
 When you set the **Variable type** to "Field Filter", Metabase will present an option to set the **Field to map to**, as well as the **Filter widget type**. The options available for the Filter widget type depend on the field's type. For example, if you map to a field of type Category, you'll see options for either "Category" or None. If you map to a Date Field, you'll see options for None, Month and year, Quarter and year, Single date, Date range, or Date filter.
 
@@ -217,7 +217,7 @@ The kind of filter widget that Metabase displays when you create a Field Filter 
 
 Date fields will either have a simple date filter (for Date variables) or a dynamic date picker (for Field Filters mapped to a date field).
 
-If you want to change the filter widget for a particular field, you'll need to ask an Admin to update that field in [the data model](../../data-modeling/metadata-editing.md) and set the desired "Filtering on this field" option.
+If you want to change the filter widget for a particular field, you'll need to ask an Admin to update that field in [the Table Metadata](../../data-modeling/metadata-editing.md) and set the desired "Filtering on this field" option.
 
 ### Filter widget with plain input box
 

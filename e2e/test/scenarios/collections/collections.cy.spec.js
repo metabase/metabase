@@ -189,7 +189,7 @@ describe("scenarios > collection defaults", () => {
   });
 
   it("should support markdown in collection description", () => {
-    cy.request("PUT", "/api/collection/9", {
+    cy.request("PUT", "/api/collection/10", {
       description: "[link](https://metabase.com)",
     });
 

@@ -27,8 +27,8 @@ Metabase only includes some artifacts in its exports.
 - Actions
 - Models
 - SQL Snippets
-- Data model settings
-- Segments and Metrics defined in the Data Model
+- Table Metadata settings
+- Segments and Metrics defined in the Table Metadata
 - Public sharing settings for questions and dashboards
 - [General Metabase settings](#the-general-settings-that-metabase-exports)
 - Database connection settings
@@ -170,7 +170,7 @@ The `--no-settings` flag (alias `-S`) tells Metabase to exclude the `settings.ya
 
 ### `--no-data-model`
 
-The `--no-data-model` flag (alias `-D`) tells Metabase to exclude the data model settings from the export. Admins define the data model settings in the [Data model](../data-modeling/metadata-editing.md) tab of the Admin settings.
+The `--no-data-model` flag (alias `-D`) tells Metabase to exclude the Table Metadata settings from the export. Admins define the metadata settings in the [Table Metadata](../data-modeling/metadata-editing.md) tab of the Admin settings.
 
 ### `--include-field-values`
 

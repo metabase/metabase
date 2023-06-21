@@ -270,9 +270,9 @@
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users)))
         [first-col] (lib/filterable-columns query)
         new-filter (lib/filter-clause
-                     (first (lib/filterable-column-operators first-col))
-                     first-col
-                     515)]
+                    (first (lib/filterable-column-operators first-col))
+                    first-col
+                    515)]
     (is (=? [[:= {} [:field {} (meta/id :users :id)] 515]]
             (-> query
                 (lib/filter new-filter)

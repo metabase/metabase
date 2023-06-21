@@ -36,7 +36,7 @@ export interface WritebackActionBase {
 
 export type PublicWritebackAction = Pick<
   WritebackActionBase,
-  "id" | "name" | "parameters" | "visualization_settings"
+  "id" | "name" | "parameters" | "visualization_settings" | "database_id"
 >;
 
 export interface QueryAction {

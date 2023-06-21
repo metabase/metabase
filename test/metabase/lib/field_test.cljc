@@ -167,7 +167,7 @@
                                    meta/metadata-provider)
                 legacy-query      {:database (meta/id)
                                    :type     :query
-                                   :query    {:source-table "card__1"}}
+                                   :query    {:source-card 1}}
                 query             (lib/query metadata-provider legacy-query)
                 breakoutable-cols (lib/breakoutable-columns query)
                 breakout-col      (m/find-first (fn [col]
@@ -180,9 +180,9 @@
                       (lib/display-info query breakout-col)))
               (let [query' (lib/breakout query breakout-col)]
                 (is (=? {:stages
-                         [{:lib/type     :mbql.stage/mbql
-                           :source-table "card__1"
-                           :breakout     [[:field {:join-alias "Products"} "CATEGORY"]]}]}
+                         [{:lib/type    :mbql.stage/mbql
+                           :source-card 1
+                           :breakout    [[:field {:join-alias "Products"} "CATEGORY"]]}]}
                         query'))
                 (is (=? [{:name              "CATEGORY"
                           :display-name      "Category"
@@ -510,6 +510,8 @@
             :default "Distinct values of Name"))))))
 
 (deftest ^:parallel source-card-table-display-info-test
+  ;; this uses a legacy `card__<id>` `:table-id` intentionally; we don't currently have logic that parses this to
+  ;; something like `:card-id` for Column Metadata yet. Make sure it works correctly.
   (let [query (assoc lib.tu/venues-query :lib/metadata lib.tu/metadata-provider-with-card)
         field (lib.metadata.calculation/metadata query (assoc (lib.metadata/field query (meta/id :venues :name))
                                                               :table-id "card__1"))]
@@ -540,8 +542,8 @@
                                              :source-table (meta/id :checkins)
                                              :joins        [{:lib/type    :mbql/join
                                                              :lib/options {:lib/uuid "d7ebb6bd-e7ac-411a-9d09-d8b18329ad46"}
-                                                             :stages      [{:lib/type     :mbql.stage/mbql
-                                                                            :source-table "card__1"}]
+                                                             :stages      [{:lib/type    :mbql.stage/mbql
+                                                                            :source-card 1}]
                                                              :alias       "checkins_by_user"
                                                              :conditions  [[:=
                                                                             {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
@@ -640,3 +642,45 @@
                 (lib/with-fields [(meta/field-metadata :venues :id)
                                   (meta/field-metadata :venues :name)])
                 lib/fieldable-columns)))))
+
+(deftest ^:parallel fallback-metadata-from-saved-question-when-missing-from-metadata-provider-test
+  (testing "Handle missing column metadata from the metadata provider; should still work if in Card result metadata (#31624)"
+    (let [provider (lib.tu/mock-metadata-provider
+                    {:database {:id   1
+                                :name "My Database"}
+                     :tables   [{:id   2
+                                 :name "My Table"}]
+                     :cards    [{:id              3
+                                 :name            "Card 3"
+                                 :dataset-query   {:lib/type :mbql/query
+                                                   :database 1
+                                                   :stages   [{:lib/type     :mbql.stage/mbql
+                                                               :source-table 2}]}
+                                 :result-metadata [{:id   4
+                                                    :name "Field 4"}]}]})
+          query    (lib/query provider {:lib/type :mbql/query
+                                        :database 1
+                                        :stages   [{:lib/type    :mbql.stage/mbql
+                                                    :source-card 3}]})]
+      (is (= [{:lib/type                 :metadata/field
+               :base-type                :type/*
+               :id                       4
+               :name                     "Field 4"
+               :lib/source               :source/card
+               :lib/card-id              3
+               :lib/source-column-alias  "Field 4"
+               :lib/desired-column-alias "Field 4"}]
+             (lib.metadata.calculation/metadata query)))
+      (is (= {:lib/type                :metadata/field
+              :base-type               :type/Text
+              :effective-type          :type/Text
+              :id                      4
+              :name                    "Field 4"
+              :display-name            "Field 4"
+              :lib/card-id             3
+              :lib/source              :source/card
+              :lib/source-column-alias "Field 4"
+              :lib/source-uuid         "aa0e13af-29b3-4c27-a880-a10c33e55a3e"}
+             (lib.metadata.calculation/metadata
+              query
+              [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
