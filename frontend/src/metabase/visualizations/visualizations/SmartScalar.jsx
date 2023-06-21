@@ -208,7 +208,7 @@ export default class SmartScalar extends Component {
     });
     const tooltipSeparator = <Separator>•</Separator>;
     const separator = canShowSeparator ? (
-      <PreviousValueSeparator>•</PreviousValueSeparator>
+      <PreviousValueSeparator gridSize={gridSize}>•</PreviousValueSeparator>
     ) : null;
 
     const granularityDisplay = <span>{jt`last ${granularity}`}</span>;
@@ -288,7 +288,7 @@ export default class SmartScalar extends Component {
           ) : (
             <PreviousValueContainer gridSize={gridSize}>
               <Tooltip
-                isEnabled={!canShowPreviousValue(availableWidth, height)}
+                isEnabled={!canShowPreviousValue}
                 placement="bottom"
                 tooltip={
                   <VariationTooltip>
@@ -313,7 +313,7 @@ export default class SmartScalar extends Component {
                 </Variation>
               </Tooltip>
 
-              {canShowPreviousValue(availableWidth, height) && (
+              {canShowPreviousValue && (
                 <PreviousValue id="SmartScalar-PreviousValue" responsive>
                   {jt`${separator} was ${previousValueDisplay} ${granularityDisplay}`}
                 </PreviousValue>
