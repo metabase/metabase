@@ -106,7 +106,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
 
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
-        <Route title={t`Data Model`} component={DataModelApp}>
+        <Route title={t`Table Metadata`} component={DataModelApp}>
           {getMetadataRoutes()}
           <Route path="metrics" component={MetricListApp} />
           <Route path="metric/create" component={MetricApp} />

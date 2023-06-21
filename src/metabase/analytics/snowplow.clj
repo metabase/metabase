@@ -135,14 +135,13 @@
 (def ^:private schema->version
   "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
   to SnowcatCloud, at the same time that the data sent to the collector is updated."
-  {::account      "1-0-0"
+  {::account      "1-0-1"
    ::invite       "1-0-1"
    ::csvupload    "1-0-0"
-   ::dashboard    "1-0-0"
-   ::dashboardtab "1-0-0"
+   ::dashboard    "1-1-0"
    ::database     "1-0-0"
-   ::instance     "1-1-0"
-   ::metabot      "1-0-0"
+   ::instance     "1-1-1"
+   ::metabot      "1-0-1"
    ::search       "1-0-0"
    ::model        "1-0-0"
    ::timeline     "1-0-0"
@@ -203,6 +202,8 @@
    ::index-model-entities-enabled   ::model
    ::dashboard-created              ::dashboard
    ::question-added-to-dashboard    ::dashboard
+   ::dashboard-tab-created          ::dashboard
+   ::dashboard-tab-deleted          ::dashboard
    ::database-connection-successful ::database
    ::database-connection-failed     ::database
    ::new-event-created              ::timeline
@@ -212,8 +213,6 @@
    ::action-updated                 ::action
    ::action-deleted                 ::action
    ::action-executed                ::action
-   ::dashboard-tabs-created         ::dashboardtab
-   ::dashboard-tabs-deleted         ::dashboardtab
    ::csv-upload-successful          ::csvupload
    ::csv-upload-failed              ::csvupload
    ::metabot-feedback-received      ::metabot})

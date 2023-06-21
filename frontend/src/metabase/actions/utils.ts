@@ -211,10 +211,7 @@ const getFormField = (
   parameter: Parameter,
   fieldSettings: LocalFieldSettings,
 ) => {
-  if (
-    fieldSettings.field &&
-    !isEditableField(fieldSettings.field, parameter as Parameter)
-  ) {
+  if (fieldSettings.field && !isEditableField(fieldSettings.field, parameter)) {
     return undefined;
   }
 
@@ -229,7 +226,9 @@ const getFormField = (
       parameter.id,
     description: fieldSettings.description ?? "",
     placeholder: fieldSettings?.placeholder,
-    optional: !fieldSettings.required,
+    // fieldSettings for implicit actions contain only `hidden` and `id`
+    // in this case we rely on required settings of parameter
+    optional: fieldSettings.required === false || parameter.required === false,
     field: fieldSettings.field,
   };
 
@@ -251,7 +250,7 @@ export const getForm = (
   );
   return {
     fields: sortedParams
-      ?.map(param => getFormField(param, fieldSettings[param.id] ?? {}))
+      .map(param => getFormField(param, fieldSettings[param.id] ?? {}))
       .filter(Boolean) as ActionFormFieldProps[],
   };
 };
@@ -330,4 +329,8 @@ export const getSubmitButtonLabel = (action: WritebackAction): string => {
   }
 
   return action.name;
+};
+
+export const isActionPublic = (action: Partial<WritebackAction>) => {
+  return action.public_uuid != null;
 };
