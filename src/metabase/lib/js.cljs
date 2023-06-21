@@ -131,13 +131,16 @@
 
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
-  [a-query stage-number x direction]
-  (lib.core/order-by-clause a-query stage-number (lib.core/normalize (js->clj x :keywordize-keys true)) direction))
+  ([orderable]
+   (order-by-clause orderable :asc))
+
+  ([orderable direction]
+   (lib.core/order-by-clause (lib.core/normalize (js->clj orderable :keywordize-keys true)) (keyword direction))))
 
 (defn ^:export order-by
   "Add an `order-by` clause to `a-query`. Returns updated query."
-  [a-query stage-number x direction]
-  (lib.core/order-by a-query stage-number x (keyword direction)))
+  [a-query stage-number orderable direction]
+  (lib.core/order-by a-query stage-number orderable (keyword direction)))
 
 (defn ^:export order-bys
   "Get the order-by clauses (as an array of opaque objects) in `a-query` at a given `stage-number`.
@@ -312,7 +315,7 @@
 (defn ^:export aggregate
   "Adds an aggregation to query."
   [a-query stage-number an-aggregate-clause]
-  (lib.core/aggregate a-query stage-number an-aggregate-clause))
+  (lib.core/aggregate a-query stage-number (js->clj an-aggregate-clause :keywordize-keys true)))
 
 (defn ^:export aggregations
   "Get the aggregations in a given stage of a query."
@@ -482,20 +485,33 @@
   "Create a join clause (an `:mbql/join` map) against something `joinable` (Table metadata, a Saved Question, another
   query, etc.) with `conditions`, which should be an array of filter clauses. You can then manipulate this join clause
   with stuff like [[with-join-fields]], or add it to a query with [[join]]."
-  [a-query stage-number joinable conditions]
-  (lib.core/join-clause a-query stage-number joinable conditions))
+  [joinable conditions]
+  (lib.core/join-clause joinable conditions))
 
 (defn ^:export join
   "Add a join clause (as created by [[join-clause]]) to a stage of a query."
   [a-query stage-number a-join]
-  (lib.core/join a-query stage-number a-join nil))
+  (lib.core/join a-query stage-number a-join))
 
 (defn ^:export join-conditions
   "Get the conditions (filter clauses) associated with a join."
   [a-join]
   (to-array (lib.core/join-conditions a-join)))
 
+(defn ^:export with-join-conditions
+  "Set the `:conditions` (filter clauses) for a join."
+  [a-join conditions]
+  (lib.core/with-join-conditions a-join (js->clj conditions :keywordize-keys true)))
+
 (defn ^:export joins
   "Get the joins associated with a particular query stage."
   [a-query stage-number]
   (to-array (lib.core/joins a-query stage-number)))
+
+(defn ^:export external-op
+  "Convert the internal operator `clause` to the external format."
+  [clause]
+  (let [{:keys [operator options args]} (lib.core/external-op clause)]
+    #js {:operator operator
+         :options (clj->js options)
+         :args (to-array args)}))

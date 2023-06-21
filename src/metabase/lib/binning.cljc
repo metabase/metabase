@@ -16,12 +16,6 @@
   (fn [x _binning]
     (lib.dispatch/dispatch-value x)) :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod with-binning-method :dispatch-type/fn
-  [f binning]
-  (fn [query stage-number]
-    (let [x (f query stage-number)]
-      (with-binning-method x binning))))
-
 (mu/defn with-binning
   "Add binning to an MBQL clause or something that can be converted to an MBQL clause.
   Eg. for a Field or Field metadata or `:field` clause, this might do something like this:

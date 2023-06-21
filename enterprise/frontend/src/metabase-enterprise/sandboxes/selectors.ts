@@ -23,10 +23,6 @@ export const getGroupTableAccessPolicy = (
   );
 };
 
-export const getAttributes = (state: SandboxesState) => {
-  return state.plugins.sandboxingPlugin.attributes;
-};
-
 export const getDraftPolicies = (state: SandboxesState) => {
   return Object.values(state.plugins.sandboxingPlugin.groupTableAccessPolicies);
 };

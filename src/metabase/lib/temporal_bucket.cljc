@@ -111,12 +111,6 @@
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod with-temporal-bucket-method :dispatch-type/fn
-  [f unit]
-  (fn [query stage-number]
-    (let [x (f query stage-number)]
-      (with-temporal-bucket-method x unit))))
-
 (mu/defn with-temporal-bucket
   "Add a temporal bucketing unit, e.g. `:day` or `:day-of-year`, to an MBQL clause or something that can be converted to
   an MBQL clause. E.g. for a Field or Field metadata or `:field` clause, this might do something like this:

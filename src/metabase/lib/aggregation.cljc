@@ -367,3 +367,23 @@
                                  refs cols)
                            cols)))))))
             agg-operators))))
+
+(mu/defn aggregation-ref :- :mbql.clause/aggregation
+  "Find the aggregation at `ag-index` and create an `:aggregation` ref for it. Intended for use
+  when creating queries using threading macros e.g.
+
+    (-> (lib/query ...)
+        (lib/aggregate (lib/avg ...))
+        (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0))))"
+  ([query ag-index]
+   (aggregation-ref query -1 ag-index))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    ag-index     :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
+   (if-let [[_ {ag-uuid :lib/uuid}] (get (:aggregation (lib.util/query-stage query stage-number)) ag-index)]
+     (lib.options/ensure-uuid [:aggregation {} ag-uuid])
+     (throw (ex-info (str "Undefined aggregation " ag-index)
+                     {:aggregation-index ag-index
+                      :query             query
+                      :stage-number      stage-number})))))
