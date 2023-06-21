@@ -857,10 +857,9 @@ describe(
         cy.findAllByRole("dialog")
           .filter(":visible")
           .within(() => {
-            cy.findByLabelText("New Score")
-              .closest("[data-testid=preview-container]")
-              .findByText("Show field")
-              .click();
+            formFieldContainer("New Score").within(() => {
+              toggleFieldVisibility();
+            });
 
             cy.findByRole("button", { name: "Update" }).click();
           });
@@ -929,10 +928,9 @@ function createDashboardWithActionButton({
     cy.findAllByRole("dialog")
       .filter(":visible")
       .within(() => {
-        cy.findByLabelText(hideField)
-          .closest("[data-testid=preview-container]")
-          .findByText("Show field")
-          .click();
+        formFieldContainer(hideField).within(() => {
+          toggleFieldVisibility();
+        });
 
         cy.findByRole("button", { name: "Update" }).click();
 
