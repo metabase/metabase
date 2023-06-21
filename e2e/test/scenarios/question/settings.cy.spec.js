@@ -70,6 +70,26 @@ describe("scenarios > question > settings", () => {
       cy.get("@table").contains("Total").should("not.exist");
     });
 
+    it("should allow you to re-order columns even when one has been removed (metabase29287)", () => {
+      cy.viewport(1600, 800);
+
+      openOrdersTable();
+      cy.findByTestId("viz-settings-button").click();
+
+      cy.findByTestId("Subtotal-hide-button").click();
+      cy.findByTestId("Tax-hide-button").click();
+
+      getSidebarColumns().eq("3").as("total").contains("Total");
+
+      cy.get("@total")
+        .trigger("mousedown", 0, 0, { force: true })
+        .trigger("mousemove", 5, 5, { force: true })
+        .trigger("mousemove", 0, -100, { force: true })
+        .trigger("mouseup", 0, -100, { force: true });
+
+      getSidebarColumns().eq("1").should("contain.text", "Total");
+    });
+
     it.skip("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
       cy.viewport(2000, 1200);
       // Orders join Products
