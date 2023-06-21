@@ -87,7 +87,7 @@ export const limitDatabasePermission = createThunkAction(
   },
 );
 
-const UPDATE_DATA_PERMISSION =
+export const UPDATE_DATA_PERMISSION =
   "metabase/admin/permissions/UPDATE_DATA_PERMISSION";
 export const updateDataPermission = createThunkAction(
   UPDATE_DATA_PERMISSION,
@@ -136,10 +136,21 @@ export const saveDataPermissions = createThunkAction(
     const { dataPermissions, dataPermissionsRevision } =
       getState().admin.permissions;
 
+    const extraData =
+      PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.reduce(
+        (data, selector) => {
+          return {
+            ...data,
+            ...selector(getState()),
+          };
+        },
+        {},
+      );
+
     const permissionsGraph = {
       groups: dataPermissions,
       revision: dataPermissionsRevision,
-      ...PLUGIN_DATA_PERMISSIONS.getPermissionsPayloadExtraData(getState()),
+      ...extraData,
     };
 
     return await PermissionsApi.updateGraph(permissionsGraph);
@@ -231,7 +242,11 @@ const dataPermissions = handleActions(
         }
 
         if (permissionInfo.type === "native") {
-          return updateNativePermission(
+          const updateFn =
+            PLUGIN_DATA_PERMISSIONS.updateNativePermission ??
+            updateNativePermission;
+
+          return updateFn(
             state,
             groupId,
             entityId,

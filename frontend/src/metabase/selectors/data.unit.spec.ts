@@ -75,7 +75,7 @@ describe("metabase/selectors/data", () => {
     it("user does not have permissions to write to at least one database", () => {
       const databases = setup([
         createMockDatabase({
-          native_permissions: "read",
+          native_permissions: "none",
         }),
       ]);
 

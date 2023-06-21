@@ -1,12 +1,12 @@
 import * as ML from "cljs/metabase.lib.js";
 
 import type {
-  BooleanExpression,
   ColumnMetadata,
   ColumnWithOperators,
   ExpressionArg,
   ExternalOp,
   FilterOperator,
+  FilterClause,
   Query,
 } from "./types";
 
@@ -39,6 +39,6 @@ export function filter(
   return ML.filter(query, stageIndex, booleanExpression);
 }
 
-export function filters(query: Query, stageIndex: number): BooleanExpression[] {
+export function filters(query: Query, stageIndex: number): FilterClause[] {
   return ML.filters(query, stageIndex);
 }

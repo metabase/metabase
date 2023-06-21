@@ -112,7 +112,9 @@ export function getRawQueryWarningModal(
   if (
     value === "write" &&
     getNativePermission(permissions, groupId, entityId) !== "write" &&
-    getSchemasPermission(permissions, groupId, entityId, "data") !== "all"
+    !["all", "impersonated"].includes(
+      getSchemasPermission(permissions, groupId, entityId, "data"),
+    )
   ) {
     return {
       title: t`Allow native query editing?`,
