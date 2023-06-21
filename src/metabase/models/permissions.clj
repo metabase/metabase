@@ -1076,17 +1076,17 @@
     [:not= :object (adhoc-native-query-path database-or-id)]))
 
 (defenterprise ^:private default-audit-db-id
-  "OSS implementation of `audit-db/ensure-db-installed!`, which is an enterprise feature, so does nothing in the OSS
+  "OSS implementation of `audit-db/default-audit-db-id`, which is an enterprise feature, so does nothing in the OSS
   version."
   metabase-enterprise.audit-db [] ::noop)
 
 (defenterprise ^:private default-audit-collection-entity-ids
-  "OSS implementation of `audit-db/ensure-db-installed!`, which is an enterprise feature, so does nothing in the OSS
+  "OSS implementation of `audit-db/default-audit-collection-entity-ids`, which is an enterprise feature, so does nothing in the OSS
   version."
   metabase-enterprise.audit-db [] ::noop)
 
 (defenterprise ^:private default-audit-collection-report-entity-ids
-  "OSS implementation of `audit-db/ensure-db-installed!`, which is an enterprise feature, so does nothing in the OSS
+  "OSS implementation of `audit-db/default-audit-collection-report-entity-ids`, which is an enterprise feature, so does nothing in the OSS
   version."
   metabase-enterprise.audit-db [] ::noop)
 

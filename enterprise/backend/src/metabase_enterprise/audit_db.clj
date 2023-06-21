@@ -14,7 +14,11 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private default-audit-db-id 13371337)
+(defenterprise default-audit-db-id
+  "Default audit db id."
+  :feature :none
+  []
+  13371337)
 
 (defenterprise default-audit-collection-entity-ids
   "Default audit collection entity ids."
