@@ -26,6 +26,7 @@ export const ScalarWrapper = ({ children }) => (
 
 const ScalarValue = ({
   value,
+  height,
   width,
   gridSize,
   totalNumGridCols,
@@ -35,6 +36,7 @@ const ScalarValue = ({
     () =>
       findSize({
         text: value,
+        targetHeight: height,
         targetWidth: width,
         fontFamily: fontFamily ?? "Lato",
         fontWeight: 900,
@@ -43,7 +45,7 @@ const ScalarValue = ({
         min: 1,
         max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
       }),
-    [fontFamily, gridSize, totalNumGridCols, value, width],
+    [fontFamily, gridSize, height, totalNumGridCols, value, width],
   );
 
   return (

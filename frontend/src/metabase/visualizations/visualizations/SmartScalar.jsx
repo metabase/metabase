@@ -28,9 +28,9 @@ import { isDate } from "metabase-lib/types/utils/isa";
 import { ScalarContainer } from "./Scalar.styled";
 
 import {
+  PreviousValue,
   PreviousValueContainer,
   PreviousValueSeparator,
-  PreviousValue,
   PreviousValueWrapper,
   Separator,
   Variation,
@@ -43,6 +43,7 @@ const SPACING = parseInt(space(1), 10);
 const ICON_SIZE = 13;
 const TOOLTIP_ICON_SIZE = 11;
 const ICON_PADDING_RIGHT = SPACING;
+const MIN_VERTICAL_SPACE = 50;
 
 const canShowPreviousValue = (width, height) => {
   return height + width > 400;
@@ -187,6 +188,7 @@ export default class SmartScalar extends Component {
     const lastValue = insight["last-value"];
     const formatOptions = settings.column(column);
     const availableWidth = width - 2 * SPACING;
+    const availableValueHeight = height - MIN_VERTICAL_SPACE - 2 * SPACING;
 
     const { displayValue, fullScalarValue } = compactifyValue(
       lastValue,
@@ -263,7 +265,8 @@ export default class SmartScalar extends Component {
           >
             <ScalarValue
               gridSize={gridSize}
-              width={width}
+              height={availableValueHeight}
+              width={availableWidth}
               totalNumGridCols={totalNumGridCols}
               fontFamily={fontFamily}
               value={displayValue}
