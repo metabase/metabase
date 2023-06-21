@@ -46,11 +46,19 @@ export const ImpersonationModalView = ({
       (attributes.length === 1 ? attributes[0] : undefined),
   };
 
-  const hasAttributes = attributes.length > 0;
-  const attributeOptions = useMemo(
-    () => attributes.map(attribute => ({ name: attribute, value: attribute })),
-    [attributes],
-  );
+  const attributeOptions = useMemo(() => {
+    const selectableAttributes =
+      selectedAttribute && !attributes.includes(selectedAttribute)
+        ? [selectedAttribute, ...attributes]
+        : attributes;
+
+    return selectableAttributes.map(attribute => ({
+      name: attribute,
+      value: attribute,
+    }));
+  }, [attributes, selectedAttribute]);
+
+  const hasAttributes = attributeOptions.length > 0;
 
   const handleSubmit = ({ attribute }: { attribute?: UserAttribute }) => {
     if (attribute != null) {

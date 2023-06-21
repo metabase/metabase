@@ -8,6 +8,13 @@ import { setupTableEndpoints } from "./table";
 
 export function setupDatabaseEndpoints(db: Database) {
   fetchMock.get(`path:/api/database/${db.id}`, db);
+  fetchMock.get(
+    {
+      url: `path:/api/database/${db.id}/metadata`,
+      query: { include_hidden: true },
+    },
+    db,
+  );
   setupSchemaEndpoints(db);
   setupDatabaseIdFieldsEndpoints(db);
   db.tables?.forEach(table => setupTableEndpoints(table));

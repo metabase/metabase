@@ -9,17 +9,15 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
 import { Group, GroupsPermissions } from "metabase-types/api";
+import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
+import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
 import {
-  NATIVE_PERMISSION_REQUIRES_DATA_ACCESS,
-  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
-} from "../../constants/messages";
-import {
+  getControlledDatabaseWarningModal,
   getPermissionWarning,
   getPermissionWarningModal,
-  getControlledDatabaseWarningModal,
 } from "../confirmations";
-import { SchemaEntityId, PermissionSectionConfig } from "../../types";
+import { PermissionSectionConfig, SchemaEntityId } from "../../types";
 import { getGroupFocusPermissionsUrl } from "../../utils/urls";
 
 const buildAccessPermission = (
@@ -86,14 +84,16 @@ const buildNativePermission = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
+  accessPermissionValue: string,
 ) => {
   return {
     permission: "data",
     type: "native",
     isDisabled: true,
-    disabledTooltip: isAdmin
-      ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
-      : NATIVE_PERMISSION_REQUIRES_DATA_ACCESS,
+    disabledTooltip: getNativePermissionDisabledTooltip(
+      isAdmin,
+      accessPermissionValue,
+    ),
     isHighlighted: isAdmin,
     value: getNativePermission(permissions, groupId, entityId),
     options: [DATA_PERMISSION_OPTIONS.write, DATA_PERMISSION_OPTIONS.none],
@@ -120,6 +120,7 @@ export const buildTablesPermissions = (
     groupId,
     isAdmin,
     permissions,
+    accessPermission.value,
   );
 
   return [

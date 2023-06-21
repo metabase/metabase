@@ -2,6 +2,7 @@ import {
   assertPermissionTable,
   createTestRoles,
   describeEE,
+  isPermissionDisabled,
   modifyPermission,
   openNativeEditor,
   popover,
@@ -14,6 +15,7 @@ const { ALL_USERS_GROUP } = USER_GROUPS;
 
 const PG_DB_ID = 2;
 const DATA_ACCESS_PERMISSION_INDEX = 0;
+const NATIVE_QUERIES_PERMISSION_INDEX = 1;
 
 describeEE("impersonated permission", () => {
   describe("admins", () => {
@@ -58,6 +60,58 @@ describeEE("impersonated permission", () => {
           "No",
         ],
       ]);
+
+      // Checking it shows the right state on the tables level
+      cy.get("main").findByText("QA Postgres12").click();
+
+      assertPermissionTable([
+        ["Orders", "Impersonated", "No", "1 million rows", "No", "No"],
+        [
+          "People",
+          "Impersonated",
+          "No", // FIXME: should be "Yes"
+          "1 million rows",
+          "No",
+          "No",
+        ],
+        [
+          "Products",
+          "Impersonated",
+          "No", // FIXME: should be "Yes"
+          "1 million rows",
+          "No",
+          "No",
+        ],
+        [
+          "Reviews",
+          "Impersonated",
+          "No", // FIXME: should be "Yes"
+          "1 million rows",
+          "No",
+          "No",
+        ],
+      ]);
+
+      cy.get("main")
+        .findByText("Orders")
+        .closest("tr")
+        .within(() => {
+          isPermissionDisabled(
+            DATA_ACCESS_PERMISSION_INDEX,
+            "Impersonated",
+            true,
+          ).click();
+          isPermissionDisabled(NATIVE_QUERIES_PERMISSION_INDEX, "No", true);
+
+          cy.findAllByText("No").eq(0).realHover();
+        });
+
+      // eslint-disable-next-line no-unscoped-text-selectors
+      cy.findByText(
+        "Native query editor access requires full data access.",
+      ).should("not.exist");
+
+      cy.get("main").findByText("All Users group").click();
 
       // Edit impersonated permission
       modifyPermission(

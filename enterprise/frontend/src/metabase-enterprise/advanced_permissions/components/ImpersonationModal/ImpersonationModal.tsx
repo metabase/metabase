@@ -52,9 +52,11 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
     async (
       groupId: number,
       databaseId: number,
-    ): Promise<Impersonation | undefined> => {
-      return ImpersonationApi.get({ db_id: databaseId, group_id: groupId });
-    },
+    ): Promise<Impersonation | undefined> =>
+      ImpersonationApi.get({
+        db_id: databaseId,
+        group_id: groupId,
+      }),
     [],
   );
 
@@ -85,16 +87,16 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
 
   const handleSave = useCallback(
     attribute => {
-      if (attribute !== selectedAttribute) {
-        dispatch(
-          updateDataPermission({
-            groupId,
-            permission: { type: "access", permission: "data" },
-            value: "impersonated",
-            entityId: { databaseId },
-          }),
-        );
+      dispatch(
+        updateDataPermission({
+          groupId,
+          permission: { type: "access", permission: "data" },
+          value: "impersonated",
+          entityId: { databaseId },
+        }),
+      );
 
+      if (attribute !== selectedAttribute) {
         dispatch(
           updateImpersonation({
             attribute,
