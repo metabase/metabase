@@ -31,7 +31,6 @@
                               :standard-deviation-aggregations true
                               :expressions                     true
                               :native-parameters               true
-                              :left-join                       true
                               :expression-aggregations         true
                               :binning                         true
                               :foreign-keys                    true
