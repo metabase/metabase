@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -17,52 +18,55 @@ import type TableType from "metabase-lib/metadata/Table";
 import { CollectionBadge } from "./CollectionBadge";
 import type { WrappedResult } from "./types";
 
-export function InfoText({ result }: { result: WrappedResult }) {
-  let textContent: string | string[] | JSX.Element;
+const searchResultPropTypes = {
+  database_id: PropTypes.number,
+  table_id: PropTypes.number,
+  model: PropTypes.string,
+  getCollection: PropTypes.func,
+  collection: PropTypes.object,
+  table_schema: PropTypes.string,
+};
 
+const infoTextPropTypes = {
+  result: PropTypes.shape(searchResultPropTypes),
+};
+
+function getInfoText(result: WrappedResult) {
   switch (result.model) {
     case "card":
-      textContent = jt`Saved question in ${formatCollection(
+      return jt`Saved question in ${formatCollection(
         result,
         result.getCollection(),
       )}`;
-      break;
     case "dataset":
-      textContent = jt`Model in ${formatCollection(
+      return jt`Model in ${formatCollection(result, result.getCollection())}`;
+    case "collection":
+      return getCollectionInfoText(result.collection);
+    case "database":
+      return t`Database`;
+    case "table":
+      return <TablePath result={result} />;
+    case "segment":
+      return jt`Segment of ${(<TableLink result={result} />)}`;
+    case "metric":
+      return jt`Metric for ${(<TableLink result={result} />)}`;
+    case "action":
+      return jt`for ${result.model_name}`;
+    case "indexed-entity":
+      return jt`in ${result.model_name}`;
+    default:
+      return jt`${getTranslatedEntityName(result.model)} in ${formatCollection(
         result,
         result.getCollection(),
       )}`;
-      break;
-    case "collection":
-      textContent = getCollectionInfoText(result.collection);
-      break;
-    case "database":
-      textContent = t`Database`;
-      break;
-    case "table":
-      textContent = <TablePath result={result} />;
-      break;
-    case "segment":
-      textContent = jt`Segment of ${(<TableLink result={result} />)}`;
-      break;
-    case "metric":
-      textContent = jt`Metric for ${(<TableLink result={result} />)}`;
-      break;
-    case "action":
-      textContent = jt`for ${result.model_name}`;
-      break;
-    case "indexed-entity":
-      textContent = jt`in ${result.model_name}`;
-      break;
-    default:
-      textContent = jt`${getTranslatedEntityName(
-        result.model,
-      )} in ${formatCollection(result, result.getCollection())}`;
-      break;
   }
-
-  return <>{textContent}</>;
 }
+
+export function InfoText({ result }: { result: WrappedResult }) {
+  return <>{getInfoText(result)}</>;
+}
+
+InfoText.propTypes = infoTextPropTypes;
 
 function formatCollection(
   result: WrappedResult,
@@ -121,6 +125,10 @@ function TablePath({ result }: { result: WrappedResult }) {
   );
 }
 
+TablePath.propTypes = {
+  result: PropTypes.shape(searchResultPropTypes),
+};
+
 function TableLink({ result }: { result: WrappedResult }) {
   return (
     <Link to={Urls.tableRowsQuery(result.database_id, result.table_id)}>
@@ -132,3 +140,7 @@ function TableLink({ result }: { result: WrappedResult }) {
     </Link>
   );
 }
+
+TableLink.propTypes = {
+  result: PropTypes.shape(searchResultPropTypes),
+};
