@@ -24,6 +24,8 @@ const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
 const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
 const runWithReplay = process.env["CYPRESS_REPLAYIO_ENABLED"];
+const runWithDeploySentinel = process.env["DEPLOYSENTINEL_ENABLED"];
+const videoEnabled = process.env["CYPRESS_VIDEO_ENABLED"];
 
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
@@ -33,12 +35,15 @@ const createBundler = require("@bahmutov/cypress-esbuild-preprocessor");
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(on, config) {
-    // Cypress analytics and the alternative to Cypress dashboard
-    // Needs to be at the very top in the config!
-    [on, config] = require("@deploysentinel/cypress-debugger/plugin")(
-      on,
-      config,
-    );
+    if (runWithDeploySentinel) {
+      console.log(">>ds enabled 1");
+      // Cypress analytics and the alternative to Cypress dashboard
+      // Needs to be at the very top in the config!
+      [on, config] = require("@deploysentinel/cypress-debugger/plugin")(
+        on,
+        config,
+      );
+    }
 
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
@@ -135,6 +140,7 @@ const mainConfig = {
     runMode: 4,
     openMode: 0,
   },
+  video: videoEnabled ? true : false,
 };
 
 const snapshotsConfig = {
