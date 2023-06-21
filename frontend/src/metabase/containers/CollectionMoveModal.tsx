@@ -39,15 +39,15 @@ export const CollectionMoveModal = ({
   // const [moving, setMoving] = useState(false);
   // const [error, setError] = useState(null);
 
-  const [shouldCreateCollection, setShouldCreateCollection] = useState(false);
+  const [creatingCollection, setCreatingCollection] = useState(false);
 
-  if (shouldCreateCollection) {
+  if (creatingCollection) {
     return (
       <CreateCollectionModal
         onCreate={(collection: Collection) => {
           onMove({ id: collection.id });
         }}
-        onClose={() => setShouldCreateCollection(false)}
+        onClose={() => setCreatingCollection(false)}
       ></CreateCollectionModal>
     );
   }
@@ -59,11 +59,7 @@ export const CollectionMoveModal = ({
         onChange={setSelectedCollectionId}
       />
       <ButtonContainer>
-        <Button
-          light
-          icon="add"
-          onClick={() => setShouldCreateCollection(true)}
-        >
+        <Button light icon="add" onClick={() => setCreatingCollection(true)}>
           {t`New collection`}
         </Button>
         <Button
