@@ -64,6 +64,17 @@ describe("scenarios > metabot", () => {
     });
   });
 
+  it("should not show metabot if it is disabled", () => {
+    cy.visit("/admin");
+    cy.get("aside").findByText("Metabot").should("not.exist");
+
+    cy.visit("/metabot/database/1");
+    cy.url().should("eq", `${location.origin}/`);
+
+    cy.visit("/metabot/model/1");
+    cy.url().should("eq", `${location.origin}/`);
+  });
+
   it("should allow to submit prompts based on the database", () => {
     cy.createQuestion(MODEL_DETAILS);
     enableMetabot();
