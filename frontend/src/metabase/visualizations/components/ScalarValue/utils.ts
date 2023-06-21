@@ -23,7 +23,7 @@ export const findSize = ({
   max,
 }: FindSizeInput) => {
   let size = max;
-  let width = measureText(text, {
+  let { width } = measureText(text, {
     size: `${size}${unit}`,
     family: fontFamily,
     weight: fontWeight,
@@ -37,7 +37,7 @@ export const findSize = ({
         size: `${size}${unit}`,
         family: fontFamily,
         weight: fontWeight,
-      });
+      }).width;
     }
 
     return `${size}${unit}`;

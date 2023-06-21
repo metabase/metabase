@@ -116,7 +116,7 @@ export function getLeftHeaderWidths({
         weight: "bold",
         family: fontFamily,
         size: PIVOT_TABLE_FONT_SIZE,
-      }) + ROW_TOGGLE_ICON_WIDTH,
+      }).width + ROW_TOGGLE_ICON_WIDTH,
     );
 
     const computedCellWidth = Math.ceil(
@@ -128,7 +128,7 @@ export function getLeftHeaderWidths({
               weight: "normal",
               family: fontFamily,
               size: PIVOT_TABLE_FONT_SIZE,
-            }) +
+            }).width +
             (cellValues[rowIndex]?.hasSubtotal ? ROW_TOGGLE_ICON_WIDTH : 0),
         ) ?? [0]),
       ),

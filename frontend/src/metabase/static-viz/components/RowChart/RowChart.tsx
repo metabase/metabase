@@ -1,9 +1,6 @@
 import { Group } from "@visx/group";
 import { RowChart } from "metabase/visualizations/shared/components/RowChart";
-import {
-  FontStyle,
-  TextMeasurer,
-} from "metabase/visualizations/shared/types/measure-text";
+import { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 import { measureText } from "metabase/static-viz/lib/text";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import {
@@ -51,7 +48,7 @@ interface StaticRowChartProps {
   getColor: ColorGetter;
 }
 
-const staticTextMeasurer: TextMeasurer = (text: string, style: FontStyle) =>
+const staticTextMeasurer = (text: string, style: FontStyle): number =>
   measureText(
     text,
     parseInt(style.size.toString(), 10),

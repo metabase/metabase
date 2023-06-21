@@ -14,5 +14,5 @@ export const measureText: TextMeasurer = (text: string, style: FontStyle) => {
   }
 
   context.font = `${style.weight} ${style.size} ${style.family}`;
-  return context.measureText(text).width;
+  return context.measureText(text);
 };

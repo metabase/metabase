@@ -19,12 +19,13 @@ export const getMaxWidth = (
   measureText: TextMeasurer,
 ): number => {
   return Math.max(
-    ...formattedYTicks.map(tick =>
-      measureText(tick, {
-        size: `${ticksFont.size}px`,
-        family: "Lato",
-        weight: String(ticksFont.weight ?? 400),
-      }),
+    ...formattedYTicks.map(
+      tick =>
+        measureText(tick, {
+          size: `${ticksFont.size}px`,
+          family: "Lato",
+          weight: String(ticksFont.weight ?? 400),
+        }).width,
     ),
   );
 };
@@ -90,7 +91,7 @@ export const getRowChartGoal = (
     return null;
   }
 
-  const labelWidth = measureText(goal.label, style.label);
+  const labelWidth = measureText(goal.label, style.label).width;
   const goalX = xScale(goal.value);
   const xMax = xScale.range()[1];
   const availableRightSideSpace = xMax - goalX;

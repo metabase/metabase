@@ -79,7 +79,7 @@ const formatChangeSmart = (change, { fontFamily, fontWeight, width }) => {
       size: "1rem",
       family: fontFamily,
       weight: fontWeight,
-    });
+    }).width;
 
     if (formattedWidth <= width) {
       return formatted;

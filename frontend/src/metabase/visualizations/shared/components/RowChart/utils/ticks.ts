@@ -27,7 +27,10 @@ const omitOverlappingTicks = (
 
   for (let i = ticks.length - 1; i >= 0; i--) {
     const currentTick = ticks[i];
-    const currentTickWidth = measureText(tickFormatter(currentTick), tickFont);
+    const currentTickWidth = measureText(
+      tickFormatter(currentTick),
+      tickFont,
+    ).width;
     const currentTickX = xScale(currentTick);
 
     const currentTickEnd = currentTickX + currentTickWidth / 2;
@@ -54,7 +57,9 @@ const getMaxTickWidth = (
   // Assume border ticks on a continuous scale are the widest
   const borderTicksWidths = scale
     .domain()
-    .map(tick => measureText(tickFormatter(tick), tickFont) + TICK_SPACING);
+    .map(
+      tick => measureText(tickFormatter(tick), tickFont).width + TICK_SPACING,
+    );
 
   return Math.max(...borderTicksWidths);
 };

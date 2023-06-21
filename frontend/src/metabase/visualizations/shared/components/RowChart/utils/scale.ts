@@ -109,7 +109,7 @@ const getTickInfo = (
     value,
     tickX,
     formatted: tickFormatter(value),
-    tickWidth: measureText(tickFormatter(value), tickFont),
+    tickWidth: measureText(tickFormatter(value), tickFont).width,
   };
 };
 
@@ -141,7 +141,7 @@ export const addSideSpacingForTicksAndLabels = (
     const leftLabelOverflow = shouldShowLabels
       ? rangeMin -
         (xScale(domainMin) -
-          measureText(labelFormatter(domainMin), labelFont) -
+          measureText(labelFormatter(domainMin), labelFont).width -
           DATA_LABEL_OFFSET * 2 -
           Y_AXIS_LEFT_PADDING)
       : 0;
@@ -159,7 +159,7 @@ export const addSideSpacingForTicksAndLabels = (
   const maxTickOverflow = maxTick.tickX + maxTick.tickWidth / 2 - rangeMax;
   const rightLabelOverflow = shouldShowLabels
     ? xScale(domainMax) +
-      measureText(labelFormatter(domainMax), labelFont) +
+      measureText(labelFormatter(domainMax), labelFont).width +
       DATA_LABEL_OFFSET -
       rangeMax
     : 0;
