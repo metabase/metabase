@@ -86,26 +86,50 @@ const TestInnerComponent = () => {
 const setup = () => {
   setupDatabasesEndpoints([TEST_DB]);
   setupTablesEndpoints([TEST_TABLE]);
-  renderWithProviders(<TestComponent />);
+  return renderWithProviders(<TestComponent />);
 };
 
 describe("useTableListQuery", () => {
   it("should be initially loading", () => {
     setup();
+
     expect(screen.getByText("Loading...")).toBeInTheDocument();
   });
 
-  it("should show data from the response", async () => {
+  it("should initially load data only once the reload flag", async () => {
     setup();
+
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
+    expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
     expect(fetchMock.calls("path:/api/database")).toHaveLength(1);
+    expect(fetchMock.calls("path:/api/table")).toHaveLength(1);
   });
 
-  it("should reload only once in a nested component tree", async () => {
-    setup();
+  it("should not reload data when re-rendered", async () => {
+    const { rerender } = setup();
+
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    rerender(<TestComponent />);
+
+    expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
+    expect(fetchMock.calls("path:/api/database")).toHaveLength(1);
     expect(fetchMock.calls("path:/api/table")).toHaveLength(1);
+  });
+
+  it("should reload data only for calls with the reload flag when re-mounted", async () => {
+    const { rerender } = setup();
+
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    rerender(<div />);
+    rerender(<TestComponent />);
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+
+    expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
+    expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
+    expect(fetchMock.calls("path:/api/database")).toHaveLength(1);
+    expect(fetchMock.calls("path:/api/table")).toHaveLength(2);
   });
 });
