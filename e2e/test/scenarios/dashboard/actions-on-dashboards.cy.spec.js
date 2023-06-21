@@ -37,6 +37,7 @@ const MODEL_NAME = "Test Action Model";
           "getCardAssociations",
         );
         cy.intercept("GET", "/api/action").as("getActions");
+        cy.intercept("PUT", "/api/action/*").as("updateAction");
         cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
 
         cy.intercept(
@@ -90,7 +91,7 @@ const MODEL_NAME = "Test Action Model";
           });
 
           // can't have this in the .within() because it needs access to document.body
-          dragField(1, 0);
+          reorderFields();
 
           cy.findByRole("dialog").within(() => {
             cy.findAllByText("Number").each(el => {
@@ -246,70 +247,187 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it("add an implicit Update action with hidden fields and runs it", () => {
-          const actionName = "Update";
-          const IMPLICIT_ACTION_FIELD_TO_HIDE = "created_at";
-
-          cy.get("@modelId").then(id => {
-            createImplicitAction({
-              kind: "update",
-              model_id: id,
-            }).then(({ body }) => {
-              cy.wrap(body).as("implicitAction");
+        describe("hidden fields", () => {
+          it("adds an implicit action and runs it", () => {
+            cy.get("@modelId").then(id => {
+              createImplicitAction({
+                kind: "create",
+                model_id: id,
+              });
             });
 
-            cy.get("@implicitAction").then(implicitAction => {
-              const actionPayload = {
-                visualization_settings: {
-                  ...implicitAction.visualization_settings,
-                  fields: {
-                    ...implicitAction.visualization_settings.fields,
-                    [IMPLICIT_ACTION_FIELD_TO_HIDE]: {
-                      ...implicitAction.visualization_settings.fields[
-                        IMPLICIT_ACTION_FIELD_TO_HIDE
-                      ],
-                      hidden: true,
-                    },
-                  },
-                },
-              };
+            createDashboardWithActionButton({
+              actionName: "Create",
+              hideField: "Created At",
+            });
 
-              cy.request(
-                "PUT",
-                `/api/action/${implicitAction.id}`,
-                actionPayload,
+            cy.findByRole("button", { name: "Create" }).click();
+
+            modal().within(() => {
+              cy.findByPlaceholderText("Team Name").type("Zany Zebras");
+              cy.findByPlaceholderText("Score").type("44");
+              cy.findByPlaceholderText("Created At").should("not.exist");
+
+              cy.button("Save").click();
+            });
+
+            cy.wait("@executeAPI");
+
+            queryWritableDB(
+              `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
+              dialect,
+            ).then(result => {
+              expect(result.rows.length).to.equal(1);
+
+              expect(result.rows[0].score).to.equal(44);
+            });
+          });
+
+          it("adds a query action and runs it", () => {
+            const ACTION_NAME = "Update Score";
+
+            queryWritableDB(
+              `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
+              dialect,
+            ).then(result => {
+              expect(result.rows.length).to.equal(1);
+              expect(result.rows[0].score).to.equal(0);
+            });
+
+            cy.get("@modelId").then(id => {
+              cy.visit(`/model/${id}/detail`);
+              cy.wait([
+                "@getModel",
+                "@getModelActions",
+                "@getCardAssociations",
+              ]);
+            });
+
+            cy.findByRole("tab", { name: "Actions" }).click();
+
+            cy.findByTestId("model-actions-header")
+              .findByText("New action")
+              .click();
+
+            cy.findByRole("dialog").within(() => {
+              fillActionQuery(
+                `UPDATE ${TEST_TABLE} SET score = {{ new_score }} WHERE id = {{ id }} [[ and status = {{ current_status }}]]`,
               );
             });
-          });
 
-          createDashboardWithActionButton({
-            actionName,
-            idFilter: true,
-          });
+            reorderFields();
 
-          filterWidget().click();
-          addWidgetStringFilter("5");
+            cy.findByRole("dialog").within(() => {
+              cy.findAllByText("Number").each(el => {
+                cy.wrap(el).click();
+              });
 
-          cy.findByRole("button", { name: actionName }).click();
+              // hide optional field
+              formFieldContainer("Current Status").within(() => {
+                cy.findByText("Text").click();
 
-          cy.wait("@executePrefetch");
+                toggleFieldVisibility();
+                openFieldSettings();
+              });
+            });
 
-          // checking that hidden field "created_at" is actually hidden
-          modal().within(() => {
-            cy.findByPlaceholderText("Team Name").should(
-              "have.value",
-              "Energetic Elephants",
+            popover().within(() => {
+              cy.findByLabelText("Required").uncheck();
+            });
+
+            cy.findByRole("dialog").within(() => {
+              cy.findByText("Save").click();
+            });
+
+            cy.findByPlaceholderText("My new fantastic action").type(
+              ACTION_NAME,
             );
+            cy.findByTestId("create-action-form").button("Create").click();
 
-            cy.findByPlaceholderText("Created At").should("not.exist");
+            createDashboardWithActionButton({
+              actionName: ACTION_NAME,
+            });
 
-            cy.findByRole("button", { name: "Update" }).click();
+            cy.findByRole("button", { name: "Update Score" }).click();
+
+            cy.findByRole("dialog").within(() => {
+              cy.findByLabelText("ID").type("1");
+              cy.findByLabelText("New Score").type("55");
+              // it's hidden
+              cy.findByLabelText("Current Status").should("not.exist");
+
+              cy.button(ACTION_NAME).click();
+            });
+
+            cy.wait("@executeAPI");
+
+            queryWritableDB(
+              `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
+              dialect,
+            ).then(result => {
+              expect(result.rows.length).to.equal(1);
+              expect(result.rows[0].score).to.equal(55);
+            });
+
+            cy.get("@modelId").then(id => {
+              cy.visit(`/model/${id}/detail`);
+              cy.wait([
+                "@getModel",
+                "@getModelActions",
+                "@getCardAssociations",
+              ]);
+            });
+
+            cy.findByRole("tab", { name: "Actions" }).click();
+
+            cy.get("[aria-label='Update Score']").within(() => {
+              cy.icon("ellipsis").click();
+            });
+
+            popover().within(() => {
+              cy.findByText("Edit").click();
+            });
+
+            cy.findByRole("dialog").within(() => {
+              formFieldContainer("Current Status").within(() => {
+                toggleFieldVisibility();
+
+                openFieldSettings();
+              });
+            });
+
+            popover().within(() => {
+              cy.findByLabelText("Required").check();
+            });
+
+            cy.findByRole("dialog").within(() => {
+              cy.findByText("Update").click();
+            });
+
+            cy.get("@dashboardId").then(dashboardId => {
+              visitDashboard(dashboardId);
+            });
+
+            cy.findByRole("button", { name: "Update Score" }).click();
+
+            cy.findByRole("dialog").within(() => {
+              cy.findByLabelText("ID").type("1");
+              cy.findByLabelText("New Score").type("56");
+              cy.findByLabelText("Current Status").type("active");
+
+              cy.button(ACTION_NAME).click();
+            });
+
+            cy.wait("@executeAPI");
+
+            queryWritableDB(
+              `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
+              dialect,
+            ).then(result => {
+              expect(result.rows.length).to.equal(1);
+              expect(result.rows[0].score).to.equal(56);
+            });
           });
-
-          cy.findByTestId("toast-undo").should(
-            "have.text",
-            "Successfully updated",
-          );
         });
       });
 
@@ -753,6 +871,14 @@ describe(
           cy.findByText("New Score: required");
           cy.findByRole("button", { name: "Done" }).should("be.disabled");
         });
+
+        popover().within(() => {
+          cy.findByLabelText("Required").uncheck();
+        });
+
+        cy.findByRole("dialog").within(() => {
+          cy.findByText("Update").click();
+        });
       });
     });
   },
@@ -762,9 +888,11 @@ function createDashboardWithActionButton({
   actionName,
   modelName = MODEL_NAME,
   idFilter = false,
+  hideField,
 }) {
   cy.createDashboard({ name: "action packed dashboard" }).then(
     ({ body: { id: dashboardId } }) => {
+      cy.wrap(dashboardId).as("dashboardId");
       visitDashboard(dashboardId);
     },
   );
@@ -790,6 +918,27 @@ function createDashboardWithActionButton({
     cy.findByText(modelName).click();
     cy.findByText(actionName).click();
   });
+
+  if (hideField) {
+    cy.findByRole("dialog").within(() => {
+      cy.icon("pencil").click();
+
+      cy.wait("@getModel");
+    });
+
+    cy.findAllByRole("dialog")
+      .filter(":visible")
+      .within(() => {
+        cy.findByLabelText(hideField)
+          .closest("[data-testid=preview-container]")
+          .findByText("Show field")
+          .click();
+
+        cy.findByRole("button", { name: "Update" }).click();
+
+        cy.wait("@updateAction");
+      });
+  }
 
   if (idFilter) {
     cy.findByRole("dialog").within(() => {
@@ -818,3 +967,21 @@ const changeValue = ({ fieldName, fieldType, oldValue, newValue }) => {
     .clear()
     .type(newValue);
 };
+
+function formFieldContainer(label) {
+  return cy
+    .findByLabelText(label)
+    .closest("[data-testid=form-field-container]");
+}
+
+function openFieldSettings() {
+  cy.icon("gear").click();
+}
+
+function toggleFieldVisibility() {
+  cy.findByText("Show field").click();
+}
+
+function reorderFields() {
+  dragField(1, 0);
+}
