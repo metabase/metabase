@@ -20,8 +20,6 @@ import {
 
 import { findSize, getMaxFontSize } from "./utils";
 
-const HORIZONTAL_PADDING = 32;
-
 export const ScalarWrapper = ({ children }) => (
   <ScalarRoot>{children}</ScalarRoot>
 );
@@ -37,7 +35,7 @@ const ScalarValue = ({
     () =>
       findSize({
         text: value,
-        targetWidth: width - HORIZONTAL_PADDING,
+        targetWidth: width,
         fontFamily: fontFamily ?? "Lato",
         fontWeight: 900,
         unit: "rem",

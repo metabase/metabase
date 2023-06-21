@@ -263,7 +263,7 @@ export default class SmartScalar extends Component {
           >
             <ScalarValue
               gridSize={gridSize}
-              width={availableWidth}
+              width={width}
               totalNumGridCols={totalNumGridCols}
               fontFamily={fontFamily}
               value={displayValue}
