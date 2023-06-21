@@ -22,7 +22,6 @@
    :upload-uberjar                      uberjar/upload-uberjar!
    :push-git-tags                       git-tags/push-tags!
    :publish-draft-release               draft-release/create-draft-release!
-   :publish-elastic-beanstalk-artifacts eb/publish-elastic-beanstalk-artifacts!
    :update-version-info                 version-info/update-version-info!))
 
 (defn- do-steps! [steps]
@@ -55,4 +54,4 @@
       (c/set-edition! (if (str/starts-with? (c/version) "0") :oss :ee))
       (c/set-branch! "release-x.y.z") ;; FIXME: branch is irrelevant for CD run
       (u/announce (format "Preparing Elastic Beanstalk artifacts for version %s" (c/version)))
-      (do-steps! [:publish-elastic-beanstalk-artifacts]))))
+      (eb/publish-elastic-beanstalk-artifacts!))))

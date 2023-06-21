@@ -1,5 +1,6 @@
 (ns metabase-enterprise.audit-db
   (:require [clojure.java.io :as io]
+            [metabase-enterprise.internal-user :as ee.internal-user]
             [metabase-enterprise.serialization.cmd :as serialization.cmd]
             [metabase.config :as config]
             [metabase.db.env :as mdb.env]
@@ -7,14 +8,13 @@
             [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.util :as u]
+            [metabase.util.files :as u.files]
             [metabase.util.log :as log]
             [toucan2.core :as t2]))
 
-(defenterprise default-audit-db-id
-  "Default audit db id."
-  :feature :none
-  []
-  13371337)
+(set! *warn-on-reflection* true)
+
+(def ^:private default-audit-db-id 13371337)
 
 (defenterprise default-audit-collection-entity-ids
   "Default audit collection entity ids."
@@ -76,7 +76,7 @@
 
 (def analytics-root-dir-resource
   "Where to look for analytics content created by Metabase to load into the app instance on startup."
-  (io/resource "instance_analytics"))
+  (io/resource "instance_analytics.zip"))
 
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
@@ -92,8 +92,13 @@
         (log/warn "Audit DB was not installed correctly!!")))
     ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
     (when analytics-root-dir-resource
-      (log/info (str "Loading Analytics Content from: " analytics-root-dir-resource))
-      (let [report (log/with-no-logs (serialization.cmd/v2-load analytics-root-dir-resource {}))]
+      (ee.internal-user/ensure-internal-user-exists!)
+      (log/info "Loading Analytics Content...")
+      (log/info "Unzipping analytics to plugins...")
+      (u.files/unzip-file analytics-root-dir-resource "plugins")
+      (log/info "Unzipping done.")
+      (log/info "Loading files...")
+      (let [report (log/with-no-logs (serialization.cmd/v2-load "plugins/instance_analytics" {}))]
         (if (not-empty (:errors report))
           (log/info (str "Error Loading Analytics Content: " (pr-str report)))
           (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized.")))))))

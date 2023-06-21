@@ -15,8 +15,8 @@
     :metadata/table    :model/Table
     :metadata/field    :model/Field
     :metadata/card     :model/Card
-    :metadata/metric   :metabase.models.metric/Metric
-    :metadata/segment  :metabase.models.segment/Segment))
+    :metadata/metric   :model/Metric
+    :metadata/segment  :model/Segment))
 
 (defn- instance->metadata [instance metadata-type]
   (some-> instance

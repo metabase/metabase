@@ -37,8 +37,6 @@ export interface FormCollectionPickerProps
   type?: "collections" | "snippet-collections";
 }
 
-const ITEM_PICKER_MODELS = ["collection"];
-
 function ItemName({
   id,
   type = "collections",
@@ -106,9 +104,9 @@ function FormCollectionPicker({
       return (
         <PopoverItemPicker
           value={{ id: value, model: "collection" }}
-          models={ITEM_PICKER_MODELS}
+          models={["collection"]}
           entity={entity}
-          onChange={({ id }: { id: CollectionId }) => {
+          onChange={({ id }) => {
             setValue(id);
             closePopover();
           }}

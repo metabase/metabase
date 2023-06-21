@@ -18,6 +18,7 @@ import Bookmark from "metabase/entities/bookmarks";
 
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 
+import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/TextOptionsButton";
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -78,7 +79,6 @@ class DashboardHeader extends Component {
 
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
-    isEditable: PropTypes.bool.isRequired,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
@@ -90,7 +90,8 @@ class DashboardHeader extends Component {
     setRefreshElapsedHook: PropTypes.func.isRequired,
 
     addCardToDashboard: PropTypes.func.isRequired,
-    addTextDashCardToDashboard: PropTypes.func.isRequired,
+    addHeadingDashCardToDashboard: PropTypes.func.isRequired,
+    addMarkdownDashCardToDashboard: PropTypes.func.isRequired,
     addLinkDashCardToDashboard: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
@@ -102,7 +103,6 @@ class DashboardHeader extends Component {
     onFullscreenChange: PropTypes.func.isRequired,
 
     onSharingClick: PropTypes.func.isRequired,
-
     onChangeLocation: PropTypes.func.isRequired,
 
     toggleSidebar: PropTypes.func.isRequired,
@@ -137,8 +137,15 @@ class DashboardHeader extends Component {
     toggleBookmark(this.props.dashboardId);
   }
 
-  onAddTextBox() {
-    this.props.addTextDashCardToDashboard({
+  onAddMarkdownBox() {
+    this.props.addMarkdownDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
+    });
+  }
+
+  onAddHeading() {
+    this.props.addHeadingDashCardToDashboard({
       dashId: this.props.dashboard.id,
       tabId: this.props.selectedTabId,
     });
@@ -228,7 +235,6 @@ class DashboardHeader extends Component {
       isBookmarked,
       isEditing,
       isFullscreen,
-      isEditable,
       location,
       onFullscreenChange,
       createBookmark,
@@ -242,7 +248,7 @@ class DashboardHeader extends Component {
       collection,
     } = this.props;
 
-    const canEdit = dashboard.can_write && isEditable && !!dashboard;
+    const canEdit = dashboard.can_write;
     const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
     const hasModelActionsEnabled = Object.values(databases).some(
@@ -275,21 +281,21 @@ class DashboardHeader extends Component {
         </Tooltip>,
       );
 
-      // Add text card button
+      // Text/Headers
       buttons.push(
-        <Tooltip key="add-a-text-box" tooltip={t`Add a text box`}>
-          <a
-            data-metabase-event="Dashboard;Add Text Box"
-            key="add-text"
-            aria-label={t`Add a text box`}
-            className="text-brand-hover cursor-pointer"
-            onClick={() => this.onAddTextBox()}
-          >
-            <DashboardHeaderButton>
-              <Icon name="string" size={18} />
-            </DashboardHeaderButton>
-          </a>
+        <Tooltip
+          key="dashboard-add-heading-or-text-button"
+          tooltip={t`Add a heading or text`}
+        >
+          <TextOptionsButton
+            onAddMarkdown={() => this.onAddMarkdownBox()}
+            onAddHeading={() => this.onAddHeading()}
+          />
         </Tooltip>,
+      );
+
+      // Add link card button
+      buttons.push(
         <Tooltip key="add-link-card" tooltip={t`Add link card`}>
           <DashboardHeaderButton
             onClick={() => this.onAddLinkCard()}
@@ -326,6 +332,7 @@ class DashboardHeader extends Component {
                 <DashboardHeaderButton
                   key="parameters"
                   onClick={showAddParameterPopover}
+                  aria-label={t`Add a filter`}
                 >
                   <Icon name="filter" />
                 </DashboardHeaderButton>

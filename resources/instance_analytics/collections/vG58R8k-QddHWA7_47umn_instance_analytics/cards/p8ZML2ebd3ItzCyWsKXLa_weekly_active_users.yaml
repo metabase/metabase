@@ -1,0 +1,81 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_audit_log
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Weekly active users
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  query:
+    aggregation:
+    - - distinct
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - user_id
+        - null
+    breakout:
+    - - field
+      - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: week
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - base-type: type/Text
+        join-alias: Question 34
+    joins:
+    - alias: Question 34
+      fields: all
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - user_id
+        - null
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - join-alias: Question 34
+      source-table: lTp-ATFsCUFEr9I0fMEaO
+    source-table: -lNDM3tJmuL5ltGbX0oyT
+  type: query
+  database: Internal Metabase Database
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: p8ZML2ebd3ItzCyWsKXLa
+  label: weekly_active_users
+display: line
+entity_id: p8ZML2ebd3ItzCyWsKXLa
+collection_preview: true
+visualization_settings:
+  graph.dimensions:
+  - timestamp
+  table.cell_column: model_id
+  table.pivot_column: end_timestamp
+  graph.show_values: true
+  graph.metrics:
+  - count
+  column_settings: null
+parameters: []
+dataset: false
+created_at: '2023-06-14T19:39:07.960966Z'
+public_uuid: null

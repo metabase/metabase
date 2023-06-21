@@ -17,11 +17,17 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [toucan.models :as models]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(models/defmodel PermissionsGroup :permissions_group)
+(def PermissionsGroup
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/PermissionsGroup)
 
+(methodical/defmethod t2/table-name :model/PermissionsGroup [_model] :permissions_group)
+
+(derive :model/PermissionsGroup :metabase/model)
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
@@ -80,32 +86,30 @@
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(defn- pre-insert [{group-name :name, :as group}]
-  (u/prog1 group
-    (check-name-not-already-taken group-name)))
+(t2/define-before-insert :model/PermissionsGroup
+ [{group-name :name, :as group}]
+ (u/prog1 group
+   (check-name-not-already-taken group-name)))
 
-(defn- pre-delete [{id :id, :as group}]
+(t2/define-before-delete :model/PermissionsGroup
+  [{id :id, :as group}]
   (check-not-magic-group group)
   ;; Remove from LDAP mappings
   (classloader/require 'metabase.integrations.ldap)
   (setting/set-value-of-type!
-   :json :ldap-group-mappings
-   (when-let [mappings (setting/get-value-of-type :json :ldap-group-mappings)]
-     (zipmap (keys mappings)
-             (for [val (vals mappings)]
-               (remove (partial = id) val))))))
+    :json :ldap-group-mappings
+    (when-let [mappings (setting/get-value-of-type :json :ldap-group-mappings)]
+      (zipmap (keys mappings)
+              (for [val (vals mappings)]
+                (remove (partial = id) val))))))
 
-(defn- pre-update [{group-name :name, :as group}]
-  (u/prog1 group
-    (check-not-magic-group group)
-    (when group-name
-      (check-name-not-already-taken group-name))))
-
-(mi/define-methods
- PermissionsGroup
- {:pre-delete  pre-delete
-  :pre-insert  pre-insert
-  :pre-update  pre-update})
+(t2/define-before-update :model/PermissionsGroup
+  [group]
+  (let [changes (t2/changes group)]
+   (u/prog1 group
+     (check-not-magic-group group)
+     (when-let [group-name (:name changes)]
+       (check-name-not-already-taken group-name)))))
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 

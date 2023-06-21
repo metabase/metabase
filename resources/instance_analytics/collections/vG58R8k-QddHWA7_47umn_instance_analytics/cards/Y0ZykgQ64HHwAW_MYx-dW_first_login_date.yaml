@@ -1,0 +1,40 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_users
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: First login date
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    source-table: 0wVIfjBJWclD0lKeABYYl
+  type: query
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: Y0ZykgQ64HHwAW_MYx-dW
+  label: first_login_date
+display: scalar
+entity_id: Y0ZykgQ64HHwAW_MYx-dW
+collection_preview: true
+visualization_settings:
+  scalar.field: date_joined
+  column_settings:
+    '["ref",["field",["Internal Metabase Database","public","v_users","date_joined"],null]]':
+      time_enabled: null
+      date_abbreviate: true
+parameters: []
+dataset: false
+created_at: '2023-06-15T01:39:03.628078Z'
+public_uuid: null

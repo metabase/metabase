@@ -160,7 +160,7 @@
 
                                   "Card with result metadata"
                                   (assoc card-def :result-metadata result-metadata)}]
-        (testing message
+        (testing (str \newline message)
           (let [metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
                                    (lib.tu/mock-metadata-provider
                                     {:cards [card-def]})
@@ -189,7 +189,23 @@
                           :long-display-name "Products → Category"
                           :effective-type    :type/Text}]
                         (map (partial lib/display-info query')
-                             (lib/breakouts query'))))))))))))
+                             (lib/breakouts query'))))))
+            (when (:result-metadata card-def)
+              (testing "\nwith broken breakout from broken drill-thru (#31482)"
+                ;; this is a bad field reference, it does not contain a `:join-alias`. For some reason the FE is
+                ;; generating these in drill thrus (in MLv1). We need to figure out how to make stuff work anyway even
+                ;; tho this is technically wrong.
+                (let [query' (lib/breakout query [:field {:lib/uuid (str (random-uuid))} (meta/id :products :category)])]
+                  (is (=? [{:name              "CATEGORY"
+                            :display-name      "Category"
+                            :long-display-name "Products → Category"
+                            :effective-type    :type/Text}]
+                          (map (partial lib/display-info query')
+                               (lib/breakouts query'))))
+                  (is (=? {:display-name      "Products → Category"
+                           :breakout-position 0}
+                          (m/find-first #(= (:id %) (meta/id :products :category))
+                                        (lib/breakoutable-columns query')))))))))))))
 
 (deftest ^:parallel unresolved-lib-field-with-temporal-bucket-test
   (let [query (lib/query-for-table-name meta/metadata-provider "CHECKINS")
@@ -399,6 +415,14 @@
                        (for [option options]
                          (:selected (lib/display-info query2 option)))))))))))))
 
+(deftest ^:parallel available-binning-strategies-expressions-test
+  (testing "There should be no binning strategies for expressions as they are not supported (#31367)"
+    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                    (lib/expression "myadd" (lib/+ 1 (lib/field "VENUES" "CATEGORY_ID"))))]
+      (is (empty? (->> (lib.metadata.calculation/metadata query)
+                       (m/find-first (comp #{"myadd"} :name))
+                       (lib/available-binning-strategies query)))))))
+
 (deftest ^:parallel binning-display-info-test
   (testing "numeric binning"
     (let [query          (lib/query-for-table-name meta/metadata-provider "ORDERS")
@@ -557,18 +581,22 @@
 
 (deftest ^:parallel with-fields-test
   (let [query           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                            (lib/expression "myadd" (lib/+ 1 (lib/field "VENUES" "CATEGORY_ID")))
                             (lib/with-fields [(lib/field "VENUES" "ID") (lib/field "VENUES" "NAME")]))
         fields-metadata (fn [query]
                           (map (partial lib.metadata.calculation/metadata query)
                                (lib/fields query)))
         metadatas       (fields-metadata query)]
-    (is (=? [{:name "ID"}
-             {:name "NAME"}]
-            metadatas))
+    (testing "Expressions should be included in :fields by default (#31236)"
+      (is (=? [{:name "ID"}
+               {:name "NAME"}
+               {:name "myadd"}]
+              metadatas)))
     (testing "Set fields with metadatas"
-      (let [fields' [(last metadatas)]
+      (let [fields' [(second metadatas)]
             query'  (lib/with-fields query fields')]
-        (is (=? [{:name "NAME"}]
+        (is (=? [{:name "NAME"}
+                 {:name "myadd"}]
                 (fields-metadata query')))))
     (testing "remove fields by passing"
       (doseq [new-fields [nil []]]
@@ -580,6 +608,19 @@
               (is (has-fields? query)
                   "sanity check")
               (is (not (has-fields? query'))))))))))
+
+(deftest ^:parallel with-fields-plus-expression-test
+  (let [query           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                            (lib/with-fields [(lib/field "VENUES" "ID")])
+                            (lib/expression "myadd" (lib/+ 1 (lib/field "VENUES" "CATEGORY_ID"))))
+        fields-metadata (fn [query]
+                          (map (partial lib.metadata.calculation/metadata query)
+                               (lib/fields query)))
+        metadatas       (fields-metadata query)]
+    (testing "Expressions should be included in :fields by default (#31236)"
+      (is (=? [{:name "ID"}
+               {:name "myadd"}]
+              metadatas)))))
 
 (deftest ^:parallel fieldable-columns-test
   (testing "query with no :fields"
@@ -602,4 +643,4 @@
             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                 (lib/with-fields [(meta/field-metadata :venues :id)
                                   (meta/field-metadata :venues :name)])
-                lib/fieldable-columns )))))
+                lib/fieldable-columns)))))

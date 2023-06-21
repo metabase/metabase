@@ -1,0 +1,37 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_users
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Is admin?
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    source-table: 0wVIfjBJWclD0lKeABYYl
+  type: query
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: 3CtVT_JDxNvMM5aFLtEHR
+  label: is_admin_
+display: scalar
+entity_id: 3CtVT_JDxNvMM5aFLtEHR
+collection_preview: true
+visualization_settings:
+  scalar.field: is_admin
+  column_settings: null
+parameters: []
+dataset: false
+created_at: '2023-06-15T01:41:47.345244Z'
+public_uuid: null

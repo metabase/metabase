@@ -67,19 +67,7 @@
                 (assoc col
                        :lib/source               :source/table-defaults
                        :lib/source-column-alias  (:name col)
-                       :lib/desired-column-alias (unique-name-fn (:name col))))))))
-
-(defmethod lib.join/with-join-alias-method :metadata/table
-  [table-metadata join-alias]
-  (assoc table-metadata ::join-alias join-alias))
-
-(defmethod lib.join/current-join-alias-method :metadata/table
-  [table-metadata]
-  (::join-alias table-metadata))
-
-(defmethod lib.join/with-join-fields-method :metadata/table
-  [table-metadata fields]
-  (assoc table-metadata ::join-fields fields))
+                       :lib/desired-column-alias (unique-name-fn (or (:name col) ""))))))))
 
 (defmethod lib.join/join-clause-method :metadata/table
   [query stage-number {::keys [join-alias join-fields], :as table-metadata}]

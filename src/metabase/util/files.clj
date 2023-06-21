@@ -12,7 +12,8 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
-   (java.io FileNotFoundException)
+   (java.util.zip ZipInputStream)
+   (java.io File FileNotFoundException)
    (java.net URL)
    (java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path Paths StandardCopyOption)
    (java.nio.file.attribute FileAttribute)
@@ -156,3 +157,18 @@
       (when (exists? file-path)
         (with-open [is (Files/newInputStream file-path (u/varargs OpenOption))]
           (slurp is))))))
+
+(defn unzip-file
+  "Decompress a zip archive from input to output."
+  [input output]
+  (with-open [stream (-> input io/input-stream ZipInputStream.)]
+    (loop [entry (.getNextEntry stream)]
+      (when entry
+        (let [out-path (str output File/separatorChar (.getName entry))
+              out-file (File. out-path)]
+          (if (.isDirectory entry)
+            (when-not (.exists out-file) (.mkdirs out-file))
+            (let [parent-dir (File. (.substring out-path 0 (.lastIndexOf out-path (int File/separatorChar))))]
+              (when-not (.exists parent-dir) (.mkdirs parent-dir))
+              (clojure.java.io/copy stream out-file)))
+          (recur (.getNextEntry stream)))))))
