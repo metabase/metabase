@@ -17,8 +17,14 @@ export interface UseEntityListOwnProps<TItem, TQuery = never> {
     state: State,
     options: EntityQueryOptions<TQuery>,
   ) => TItem[] | undefined;
-  getLoading: (state: State, options: EntityQueryOptions<TQuery>) => boolean;
-  getLoaded: (state: State, options: EntityQueryOptions<TQuery>) => boolean;
+  getLoading: (
+    state: State,
+    options: EntityQueryOptions<TQuery>,
+  ) => boolean | undefined;
+  getLoaded: (
+    state: State,
+    options: EntityQueryOptions<TQuery>,
+  ) => boolean | undefined;
   getError: (state: State, options: EntityQueryOptions<TQuery>) => unknown;
 }
 
@@ -52,17 +58,25 @@ export const useEntityListQuery = <TItem, TQuery = never>(
   const data = useSelector(state => getList(state, options));
   const error = useSelector(state => getError(state, options));
   const isLoading = useSelector(state => getLoading(state, options));
+  const isLoadingOrDefault = isLoading ?? enabled;
   const isLoaded = useSelector(state => getLoaded(state, options));
   const isLoadedPreviously = usePrevious(isLoaded);
   const isInvalidated = !isLoaded && isLoadedPreviously;
-
   const dispatch = useDispatch();
+
   useDeepCompareEffect(() => {
-    if (enabled || (enabled && isInvalidated)) {
+    if (enabled) {
       const action = dispatch(fetchList(entityQuery, { reload }));
+      Promise.resolve(action).catch(() => undefined);
+    }
+  }, [dispatch, fetchList, entityQuery, reload, enabled]);
+
+  useDeepCompareEffect(() => {
+    if (enabled && isInvalidated) {
+      const action = dispatch(fetchList(entityQuery));
       Promise.resolve(action).catch(() => undefined);
     }
   }, [dispatch, fetchList, entityQuery, reload, enabled, isInvalidated]);
 
-  return { data, isLoading, error };
+  return { data, isLoading: isLoadingOrDefault, error };
 };

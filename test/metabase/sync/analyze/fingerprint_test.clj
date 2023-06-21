@@ -251,14 +251,6 @@
       (is (= (fingerprint/empty-stats-map 0)
              (fingerprint/fingerprint-fields! (t2/select-one Table :id (data/id :venues))))))))
 
-(deftest test-fingerprint-skipped-for-ga
-  (testing "Google Analytics doesn't support fingerprinting fields"
-    (let [fake-db (-> (data/db)
-                      (assoc :engine :googleanalytics))]
-      (with-redefs [fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
-        (is (= (fingerprint/empty-stats-map 0)
-               (fingerprint/fingerprint-fields-for-db! fake-db [(t2/select-one Table :id (data/id :venues))] (fn [_ _]))))))))
-
 (deftest fingerprint-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Fingerprints should actually get saved with the correct values"

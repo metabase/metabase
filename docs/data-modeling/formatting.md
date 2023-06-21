@@ -9,12 +9,12 @@ redirect_from:
 There are Metabase users around the world, each with different preferences for how dates, times, numbers, and currencies should be formatted and displayed. Metabase allows you to customize these formatting options at three different levels:
 
 1. **Global**. Set global defaults in the [Localization](../configuring-metabase/localization.md) section in Admin -> Settings -> Localization.
-2. **Field**. Set field (column) defaults in Admin -> Data Model. Field defaults override global defaults.
+2. **Field**. Set field (column) defaults in Admin -> Table Metadata. Field defaults override global defaults.
 3. **Question**. Set formatting defaults for individual questions in the visualization settings of that question. Question defaults override global and field defaults.
 
 ## Field-level formatting
 
-You can override the global defaults for a specific field by going to the `Data Model` section of the Admin Panel, selecting the database and table of the field in question, and clicking the gear icon on the far right of the screen next to that field to go to its options page, then clicking on the `Formatting` tab.
+You can override the global defaults for a specific field by going to the `Table Metadata` section of the Admin Panel, selecting the database and table of the field in question, and clicking the gear icon on the far right of the screen next to that field to go to its options page, then clicking on the `Formatting` tab.
 
 The options you'll see here will depend on the field's type. They're generally the same options as in the global formatting settings, with a few additions:
 
