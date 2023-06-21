@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { color } from "metabase/lib/colors";
 
 import {
   breakpointMinSmall,
@@ -24,4 +25,8 @@ export const DashboardContainer = styled.div`
 
 export const DashboardGridContainer = styled.div`
   margin-top: 1rem;
+`;
+
+export const Separator = styled.div`
+  border-bottom: 1px solid ${color("border")};
 `;
