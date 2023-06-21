@@ -94,8 +94,8 @@
   {:lib/type     :mbql/query
    :lib/metadata metadata-provider-with-card
    :database     (meta/id)
-   :stages       [{:lib/type     :mbql.stage/mbql
-                   :source-table "card__1"}]})
+   :stages       [{:lib/type    :mbql.stage/mbql
+                   :source-card 1}]})
 
 (def metadata-provider-with-card-with-result-metadata
   "[[meta/metadata-provider]], but with a Card with results metadata as ID 1."
@@ -143,8 +143,8 @@
    :lib/metadata metadata-provider-with-card-with-result-metadata
    :type         :pipeline
    :database     (meta/id)
-   :stages       [{:lib/type     :mbql.stage/mbql
-                   :source-table "card__1"}]})
+   :stages       [{:lib/type    :mbql.stage/mbql
+                   :source-card 1}]})
 
 (defn query-with-join
   "A query against `VENUES` with an explicit join against `CATEGORIES`."

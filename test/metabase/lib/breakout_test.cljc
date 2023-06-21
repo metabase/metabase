@@ -410,7 +410,7 @@
                   name-col))
           (let [query' (lib/breakout query name-col)]
             (is (=? {:stages
-                     [{:source-table "card__1"
+                     [{:source-card 1
                        :breakout [[:field {:base-type :type/Integer} "USER_ID"]]}]}
                     query'))
             (is (= "My Card, Grouped by User ID"

@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useCallback } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { push } from "react-router-redux";
@@ -23,8 +23,12 @@ import {
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { IconName } from "metabase/core/components/Icon";
+import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
 import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
-import { clearSaveError as clearPermissionsSaveError } from "../../permissions";
+import {
+  clearSaveError as clearPermissionsSaveError,
+  toggleHelpReference,
+} from "../../permissions";
 import { ToolbarButton } from "../ToolbarButton";
 import { PermissionsTabs } from "./PermissionsTabs";
 
@@ -55,7 +59,7 @@ const CloseSidebarButtonWithDefault = ({
 }: {
   name?: IconName;
   [key: string]: unknown;
-}) => <CloseSidebarButton name={name} {...props} />;
+}) => <CloseSidebarButton aria-label={t`Close`} name={name} {...props} />;
 
 function PermissionsPageLayout({
   children,
@@ -71,6 +75,7 @@ function PermissionsPageLayout({
 }: PermissionsPageLayoutProps) {
   const saveError = useSelector(state => state.admin.permissions.saveError);
 
+  const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
   const dispatch = useDispatch();
 
   const navigateToTab = (tab: PermissionsPageTab) =>
@@ -79,7 +84,9 @@ function PermissionsPageLayout({
     dispatch(push(location.pathname));
   const clearSaveError = () => dispatch(clearPermissionsSaveError());
 
-  const [shouldShowHelp, setShouldShowHelp] = useState(false);
+  const handleToggleHelpReference = useCallback(() => {
+    dispatch(toggleHelpReference());
+  }, [dispatch]);
 
   const beforeLeaveConfirmation = useLeaveConfirmation({
     router,
@@ -120,11 +127,11 @@ function PermissionsPageLayout({
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
           <ToolbarButtonsContainer>
             {toolbarRightContent}
-            {helpContent && !shouldShowHelp && (
+            {helpContent && !isHelpReferenceOpen && (
               <ToolbarButton
                 text={t`Permission help`}
                 icon="info"
-                onClick={() => setShouldShowHelp(prev => !prev)}
+                onClick={handleToggleHelpReference}
               />
             )}
           </ToolbarButtonsContainer>
@@ -133,11 +140,9 @@ function PermissionsPageLayout({
         <FullHeightContainer>{children}</FullHeightContainer>
       </PermissionPageContent>
 
-      {shouldShowHelp && (
-        <PermissionPageSidebar>
-          <CloseSidebarButtonWithDefault
-            onClick={() => setShouldShowHelp(prev => !prev)}
-          />
+      {isHelpReferenceOpen && (
+        <PermissionPageSidebar aria-label={t`Permissions help reference`}>
+          <CloseSidebarButtonWithDefault onClick={handleToggleHelpReference} />
           {helpContent}
         </PermissionPageSidebar>
       )}

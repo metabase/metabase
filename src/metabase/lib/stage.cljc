@@ -53,11 +53,11 @@
   we can recalculate the correct metadata anyway."
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  (let [{stage-type :lib/type, :keys [source-table] :as stage} (lib.util/query-stage query stage-number)]
+  (let [{stage-type :lib/type, :keys [source-card] :as stage} (lib.util/query-stage query stage-number)]
     (or (::cached-metadata stage)
         (when-let [metadata (:lib/stage-metadata stage)]
           (when (or (= stage-type :mbql.stage/native)
-                    (lib.util/string-table-id->card-id source-table))
+                    source-card)
             (let [source-type (case stage-type
                                 :mbql.stage/native :source/native
                                 :mbql.stage/mbql   :source/card)]
@@ -142,12 +142,12 @@
            (dissoc ::lib.field/temporal-unit))))))
 
 (mu/defn ^:private saved-question-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
-  "Metadata associated with a Saved Question, if `:source-table` is a `card__<id>` string."
-  [query           :- ::lib.schema/query
-   stage-number    :- :int
-   source-table-id :- [:or ::lib.schema.id/table ::lib.schema.id/table-card-id-string]
-   unique-name-fn  :- fn?]
-  (when-let [card-id (lib.util/string-table-id->card-id source-table-id)]
+  "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"
+  [query          :- ::lib.schema/query
+   stage-number   :- :int
+   card-id        :- [:maybe ::lib.schema.id/card]
+   unique-name-fn :- fn?]
+  (when card-id
     (when-let [card (lib.metadata/card query card-id)]
       (lib.metadata.calculation/visible-columns query stage-number card {:unique-name-fn               unique-name-fn
                                                                          :include-implicitly-joinable? false}))))
@@ -208,7 +208,8 @@
 ;;;
 ;;; 1b. Default 'visible' Fields for our `:source-table`, OR
 ;;;
-;;; 1c. Metadata associated with a Saved Question, if `:source-table` is a `card__<id>` string, OR
+;;; 1c. Metadata associated with a Saved Question, if we have `:source-card` (`:source-table` is a `card__<id>` string
+;;;     in legacy MBQL), OR
 ;;;
 ;;; 1d. `:lib/stage-metadata` if this is a `:mbql.stage/native` stage
 ;;;
@@ -229,15 +230,16 @@
    ;; 1a. columns returned by previous stage
    (previous-stage-metadata query stage-number unique-name-fn)
    ;; 1b or 1c
-   (let [{:keys [source-table], :as this-stage} (lib.util/query-stage query stage-number)]
+   (let [{:keys [source-table source-card], :as this-stage} (lib.util/query-stage query stage-number)]
      (or
       ;; 1b: default visible Fields for the source Table
-      (when (integer? source-table)
+      (when source-table
+        (assert (integer? source-table))
         (let [table-metadata (lib.metadata/table query source-table)]
           (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
       ;; 1c. Metadata associated with a saved Question
-      (when (string? source-table)
-        (saved-question-metadata query stage-number source-table unique-name-fn))
+      (when source-card
+        (saved-question-metadata query stage-number source-card unique-name-fn))
       ;; 1d: `:lib/stage-metadata` for the (presumably native) query
       (for [col (:columns (:lib/stage-metadata this-stage))]
         (assoc col
@@ -346,6 +348,7 @@
 
 (def ^:private display-name-parts
   [:source-table
+   :source-card
    :aggregation
    :breakout
    :filters

@@ -442,17 +442,24 @@
            truncated (truncate-string-to-byte-count s (- max-bytes truncated-alias-hash-suffix-length))]
        (str truncated \_ checksum)))))
 
-(mu/defn string-table-id->card-id :- [:maybe ::lib.schema.id/card]
-  "If `table-id` is a `card__<id>`-style string, parse the `<id>` part to an integer Card ID."
+(mu/defn legacy-string-table-id->card-id :- [:maybe ::lib.schema.id/card]
+  "If `table-id` is a legacy `card__<id>`-style string, parse the `<id>` part to an integer Card ID. Only for legacy
+  queries! You don't need to use this in pMBQL since this is converted automatically by [[metabase.lib.convert]] to
+  `:source-card`."
   [table-id]
   (when (string? table-id)
     (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" table-id)]
       (parse-long card-id-str))))
 
-(mu/defn source-table :- [:maybe [:or ::lib.schema.id/table ::lib.schema.id/table-card-id-string]]
-  "If this query has a `:source-table`, return it."
+(mu/defn source-table :- [:maybe ::lib.schema.id/table]
+  "If this query has a `:source-table` ID, return it."
   [query]
   (-> query :stages first :source-table))
+
+(mu/defn source-card :- [:maybe ::lib.schema.id/card]
+  "If this query has a `:source-card` ID, return it."
+  [query]
+  (-> query :stages first :source-card))
 
 (mu/defn unique-name-generator :- [:=>
                                    [:cat ::lib.schema.common/non-blank-string]
