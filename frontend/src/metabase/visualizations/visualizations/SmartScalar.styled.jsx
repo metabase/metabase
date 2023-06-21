@@ -46,12 +46,12 @@ export const PreviousValueContainer = styled.div`
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  margin: ${space(0)};
+  margin: ${space(0)} ${space(1)};
   gap: ${space(0)};
   line-height: 1.2rem;
 
   ${breakpointMaxSmall} {
-    margin: ${space(1)} 0;
+    margin: ${space(1)};
     flex-direction: column;
   }
 

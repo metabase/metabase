@@ -42,7 +42,7 @@ import {
 const SPACING = parseInt(space(0), 10);
 const ICON_SIZE = 13;
 const TOOLTIP_ICON_SIZE = 11;
-const ICON_PADDING_RIGHT = 4;
+const ICON_PADDING_RIGHT = 8;
 
 const canShowPreviousValue = (width, height) => {
   return height + width > 400;
