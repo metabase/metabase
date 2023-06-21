@@ -642,3 +642,45 @@
                 (lib/with-fields [(meta/field-metadata :venues :id)
                                   (meta/field-metadata :venues :name)])
                 lib/fieldable-columns)))))
+
+(deftest ^:parallel fallback-metadata-from-saved-question-when-missing-from-metadata-provider-test
+  (testing "Handle missing column metadata from the metadata provider; should still work if in Card result metadata (#31624)"
+    (let [provider (lib.tu/mock-metadata-provider
+                    {:database {:id   1
+                                :name "My Database"}
+                     :tables   [{:id   2
+                                 :name "My Table"}]
+                     :cards    [{:id              3
+                                 :name            "Card 3"
+                                 :dataset-query   {:lib/type :mbql/query
+                                                   :database 1
+                                                   :stages   [{:lib/type     :mbql.stage/mbql
+                                                               :source-table 2}]}
+                                 :result-metadata [{:id   4
+                                                    :name "Field 4"}]}]})
+          query    (lib/query provider {:lib/type :mbql/query
+                                        :database 1
+                                        :stages   [{:lib/type     :mbql.stage/mbql
+                                                    :source-table "card__3"}]})]
+      (is (= [{:lib/type                 :metadata/field
+               :base-type                :type/*
+               :id                       4
+               :name                     "Field 4"
+               :lib/source               :source/card
+               :lib/card-id              3
+               :lib/source-column-alias  "Field 4"
+               :lib/desired-column-alias "Field 4"}]
+             (lib.metadata.calculation/metadata query)))
+      (is (= {:lib/type                :metadata/field
+              :base-type               :type/Text
+              :effective-type          :type/Text
+              :id                      4
+              :name                    "Field 4"
+              :display-name            "Field 4"
+              :lib/card-id             3
+              :lib/source              :source/card
+              :lib/source-column-alias "Field 4"
+              :lib/source-uuid         "aa0e13af-29b3-4c27-a880-a10c33e55a3e"}
+             (lib.metadata.calculation/metadata
+              query
+              [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
