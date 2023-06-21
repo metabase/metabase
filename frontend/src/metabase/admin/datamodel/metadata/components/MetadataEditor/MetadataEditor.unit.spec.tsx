@@ -245,16 +245,25 @@ describe("MetadataEditor", () => {
       ).not.toBeChecked();
     });
 
-    it("should display tables with initial_sync_status='incomplete' as disabled", async () => {
+    it("clicking on tables with initial_sync_status='incomplete' should not navigate to the table", async () => {
       await setup({ databases: [SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE] });
       expect(
         screen.getByText(SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE.name),
       ).toBeInTheDocument();
       expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
-      const computedStyles = window.getComputedStyle(
+      expect(
+        await screen.findByText(
+          "Select any table to see its schema and add or edit metadata.",
+        ),
+      ).toBeInTheDocument();
+      userEvent.click(
         screen.getByText(ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name),
       );
-      expect(computedStyles.pointerEvents).toBe("none");
+      expect(
+        await screen.findByText(
+          "Select any table to see its schema and add or edit metadata.",
+        ),
+      ).toBeInTheDocument();
     });
 
     it("should display sort options", async () => {
