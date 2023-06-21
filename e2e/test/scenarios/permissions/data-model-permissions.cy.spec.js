@@ -50,7 +50,7 @@ describeEE("scenarios > admin > permissions", () => {
 
     // Assert the Data Model page state
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Data Model");
+    cy.findByText("Table Metadata");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1 Queryable Table");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -99,7 +99,7 @@ describeEE("scenarios > admin > permissions", () => {
 
     // Assert the Data Model page state
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Data Model");
+    cy.findByText("Table Metadata");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("4 Queryable Tables");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

@@ -8,7 +8,6 @@
    [metabase.test :as mt]
    [metabase.util.i18n :refer [deferred-tru]]
    [methodical.core :as methodical]
-   [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -60,7 +59,7 @@
                 "normalized")
     (is (= {:model "Card", :object {:dataset_query {:type :query}}}
            (mt/derecordize
-             (models/do-post-select Revision {:model "Card", :object {:dataset_query {:type "query"}}}))))))
+             (mi/do-after-select Revision {:model "Card", :object {:dataset_query {:type "query"}}}))))))
 
 ;;; # Default diff-* implementations
 
