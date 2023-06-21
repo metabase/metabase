@@ -44,11 +44,11 @@ export const CollectionMoveModal = ({
   if (creatingCollection) {
     return (
       <CreateCollectionModal
+        onClose={() => setCreatingCollection(false)}
         onCreate={(collection: Collection) => {
           onMove({ id: collection.id });
         }}
-        onClose={() => setCreatingCollection(false)}
-      ></CreateCollectionModal>
+      />
     );
   }
 
