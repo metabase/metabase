@@ -105,7 +105,7 @@ describe("useEntityListQuery", () => {
     expect(screen.getByText("Loading...")).toBeInTheDocument();
   });
 
-  it("should initially load data only once the reload flag", async () => {
+  it("should initially load data only once the reload flag in a nested component tree", async () => {
     setup();
 
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
