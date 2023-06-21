@@ -20,8 +20,9 @@ import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import { NewCollectionButton } from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker.styled";
 
-import type { Collection, CollectionId, Dashboard } from "metabase-types/api";
+import type { CollectionId, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 const DASHBOARD_SCHEMA = Yup.object({
@@ -33,17 +34,23 @@ const DASHBOARD_SCHEMA = Yup.object({
   collection_id: Yup.number().nullable(),
 });
 
-interface CreateDashboardProperties {
+export interface CreateDashboardProperties {
   name: string;
   description: string | null;
   collection_id: CollectionId;
 }
 
+export interface StagedDashboard {
+  values: CreateDashboardProperties;
+  handleCreate: (values: CreateDashboardProperties) => void;
+}
+
 export interface CreateDashboardFormOwnProps {
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
-  setOnCreateColl: any;
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
+  saveToNewCollection?: (stagedDash: StagedDashboard) => void;
+  initialValues?: CreateDashboardProperties | null;
 }
 
 interface CreateDashboardFormStateProps {
@@ -76,16 +83,18 @@ const mapDispatchToProps = {
 function CreateDashboardForm({
   initialCollectionId,
   handleCreateDashboard,
-  setOnCreateColl,
   onCreate,
   onCancel,
+  saveToNewCollection,
+  initialValues,
 }: Props) {
-  const initialValues = useMemo(
+  const computedInitialValues = useMemo(
     () => ({
       ...DASHBOARD_SCHEMA.getDefault(),
       collection_id: initialCollectionId,
+      ...initialValues,
     }),
-    [initialCollectionId],
+    [initialCollectionId, initialValues],
   );
 
   const handleCreate = useCallback(
@@ -99,7 +108,7 @@ function CreateDashboardForm({
 
   return (
     <FormProvider
-      initialValues={initialValues}
+      initialValues={computedInitialValues}
       validationSchema={DASHBOARD_SCHEMA}
       onSubmit={handleCreate}
     >
@@ -120,14 +129,16 @@ function CreateDashboardForm({
           <FormCollectionPicker
             name="collection_id"
             title={t`Which collection should this go in?`}
-            newCollButton={{
-              disabled: !isValid,
-              onClick: () => {
-                setOnCreateColl(() => (collection: Collection) => {
-                  handleCreate({ ...values, collection_id: collection.id });
-                });
-              },
-            }}
+            newCollButton={
+              <NewCollectionButton
+                onlyText
+                icon="add"
+                disabled={!isValid}
+                onClick={() => saveToNewCollection?.({ values, handleCreate })}
+              >
+                {t`New collection`}
+              </NewCollectionButton>
+            }
           />
           <FormFooter>
             <FormErrorMessage inline />

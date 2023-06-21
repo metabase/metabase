@@ -8,12 +8,13 @@ import ModalContent from "metabase/components/ModalContent";
 
 import * as Urls from "metabase/lib/urls";
 
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import CreateDashboardForm, {
   CreateDashboardFormOwnProps,
+  StagedDashboard,
 } from "./CreateDashboardForm";
 
 interface CreateDashboardModalOwnProps
@@ -49,12 +50,22 @@ function CreateDashboardModal({
     [onCreate, onChangeLocation, onClose],
   );
 
-  const [onCreateColl, setOnCreateColl] = useState(null);
-  if (onCreateColl) {
+  const [creatingNewCollection, setCreatingNewCollection] = useState(false);
+  const [stagedDashboard, setStagedDashboard] =
+    useState<StagedDashboard | null>(null);
+  const saveToNewCollection = (s: StagedDashboard) => {
+    setCreatingNewCollection(true);
+    setStagedDashboard(s);
+  };
+
+  if (creatingNewCollection && stagedDashboard) {
     return (
       <CreateCollectionModal
-        onCreate={onCreateColl}
-        onClose={() => setOnCreateColl(null)}
+        onClose={() => setCreatingNewCollection(false)}
+        onCreate={(collection: Collection) => {
+          const { values, handleCreate } = stagedDashboard;
+          handleCreate({ ...values, collection_id: collection.id });
+        }}
       />
     );
   }
@@ -63,9 +74,10 @@ function CreateDashboardModal({
     <ModalContent title={t`New dashboard`} onClose={onClose}>
       <CreateDashboardForm
         {...props}
-        setOnCreateColl={setOnCreateColl}
         onCreate={handleCreate}
         onCancel={onClose}
+        saveToNewCollection={saveToNewCollection}
+        initialValues={stagedDashboard?.values}
       />
     </ModalContent>
   );

@@ -24,11 +24,9 @@ import { isValidCollectionId } from "metabase/collections/utils";
 
 import type { CollectionId } from "metabase-types/api";
 
-import { ButtonProps } from "metabase/core/components/Button";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
-  NewCollectionButton,
 } from "./FormCollectionPicker.styled";
 
 export interface FormCollectionPickerProps
@@ -37,7 +35,7 @@ export interface FormCollectionPickerProps
   title?: string;
   placeholder?: string;
   type?: "collections" | "snippet-collections";
-  newCollButton?: ButtonProps;
+  newCollButton?: React.ReactNode;
 }
 
 function ItemName({
@@ -118,11 +116,7 @@ function FormCollectionPicker({
             showSearch={hasSearch}
             width={width}
           />
-          {newCollButton && type === "collections" && (
-            <NewCollectionButton onlyText icon="add" {...newCollButton}>
-              {t`New collection`}
-            </NewCollectionButton>
-          )}
+          {type === "collections" && newCollButton}
         </div>
       );
     },
