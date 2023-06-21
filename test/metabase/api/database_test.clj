@@ -224,20 +224,22 @@
 
 (deftest create-db-test
   (testing "POST /api/database"
-    (testing "Check that we can create a Database"
-      (is (schema= (merge
-                    (m/map-vals s/eq (mt/object-defaults Database))
-                    {:metadata_sync_schedule #"0 \d{1,2} \* \* \* \? \*"
-                     :cache_field_values_schedule #"0 \d{1,2} \d{1,2} \* \* \? \*"}
-                    {:created_at java.time.temporal.Temporal
-                     :engine     (s/eq ::test-driver)
-                     :id         su/IntGreaterThanZero
-                     :details    (s/eq {:db "my_db"})
-                     :updated_at java.time.temporal.Temporal
-                     :name       su/NonBlankString
-                     :features   (s/eq (driver.u/features ::test-driver (mt/db)))
-                     :creator_id (s/eq (mt/user->id :crowberto))})
-                   (create-db-via-api!))))
+    (mt/with-fake-events-collector [{:keys [topic->count]}]
+     (testing "Check that we can create a Database"
+       (is (schema= (merge
+                     (m/map-vals s/eq (mt/object-defaults Database))
+                     {:metadata_sync_schedule #"0 \d{1,2} \* \* \* \? \*"
+                      :cache_field_values_schedule #"0 \d{1,2} \d{1,2} \* \* \? \*"}
+                     {:created_at java.time.temporal.Temporal
+                      :engine     (s/eq ::test-driver)
+                      :id         su/IntGreaterThanZero
+                      :details    (s/eq {:db "my_db"})
+                      :updated_at java.time.temporal.Temporal
+                      :name       su/NonBlankString
+                      :features   (s/eq (driver.u/features ::test-driver (mt/db)))
+                      :creator_id (s/eq (mt/user->id :crowberto))})
+                    (create-db-via-api!)))
+       (is (=? {:database-create 1} (topic->count)))))
 
     (testing "can we set `is_full_sync` to `false` when we create the Database?"
       (is (= {:is_full_sync false}
@@ -303,8 +305,10 @@
   (testing "DELETE /api/database/:id"
     (testing "Check that a superuser can delete a Database"
       (t2.with-temp/with-temp [Database db]
-        (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
-        (is (false? (t2/exists? Database :id (u/the-id db))))))
+        (mt/with-fake-events-collector [{:keys [topic->count]}]
+          (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
+          (is (false? (t2/exists? Database :id (u/the-id db))))
+          (is (= {:database-delete 1} (topic->count))))))
 
     (testing "Check that a non-superuser cannot delete a Database"
       (t2.with-temp/with-temp [Database db]
@@ -314,26 +318,30 @@
   (testing "PUT /api/database/:id"
     (testing "Check that we can update fields in a Database"
       (t2.with-temp/with-temp [Database {db-id :id}]
-        (let [updates {:name         "Cam's Awesome Toucan Database"
-                       :engine       "h2"
+        (mt/with-fake-events-collector [{:keys [events topic->count]}]
+          (let [updates {:name         "Cam's Awesome Toucan Database"
+                         :engine       "h2"
+                         :is_full_sync false
+                         :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}}
+                update! (fn [expected-status-code]
+                          (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" db-id) updates))]
+           (testing "Should check that connection details are valid on save"
+             (is (string? (:message (update! 400)))))
+           (testing "should not publish any events"
+             (is (= 0 (count (events)))))
+           (testing "If connection details are valid, we should be able to update the Database"
+             (with-redefs [driver/can-connect? (constantly true)]
+               (is (= nil
+                      (:valid (update! 200))))
+               (let [curr-db (t2/select-one [Database :name :engine :details :is_full_sync], :id db-id)]
+                 (is (=
+                      {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
+                       :engine       :h2
+                       :name         "Cam's Awesome Toucan Database"
                        :is_full_sync false
-                       :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}}
-              update! (fn [expected-status-code]
-                        (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" db-id) updates))]
-          (testing "Should check that connection details are valid on save"
-            (is (string? (:message (update! 400)))))
-          (testing "If connection details are valid, we should be able to update the Database"
-            (with-redefs [driver/can-connect? (constantly true)]
-              (is (= nil
-                     (:valid (update! 200))))
-              (let [curr-db (t2/select-one [Database :name :engine :details :is_full_sync], :id db-id)]
-                (is (=
-                     {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
-                      :engine       :h2
-                      :name         "Cam's Awesome Toucan Database"
-                      :is_full_sync false
-                      :features     (driver.u/features :h2 curr-db)}
-                     (into {} curr-db)))))))))
+                       :features     (driver.u/features :h2 curr-db)}
+                      (into {} curr-db))))
+               (is (= {:database-update 1} (topic->count)))))))))
 
     (testing "should be able to set `auto_run_queries`"
       (testing "when creating a Database"

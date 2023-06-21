@@ -724,9 +724,8 @@
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
   {:uuid (or (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
              (u/prog1 (str (UUID/randomUUID))
-               (t2/update! :model/Dashboard dashboard-id
-                           {:public_uuid       <>
-                            :made_public_by_id api/*current-user-id*})))})
+               (t2/update! :model/Dashboard dashboard-id {:public_uuid       <>
+                                                          :made_public_by_id api/*current-user-id*})))})
 
 (api/defendpoint DELETE "/:dashboard-id/public_link"
   "Delete the publicly-accessible link to this Dashboard."

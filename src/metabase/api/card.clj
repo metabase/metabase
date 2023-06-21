@@ -604,16 +604,16 @@ saved later when it is ready."
 (defn- publish-card-update!
   "Publish an event appropriate for the update(s) done to this CARD (`:card-update`, or archiving/unarchiving
   events)."
-  [card archived?]
+  [card-before-updates card-after-updates]
   (let [event (cond
                 ;; card was archived
-                (and archived?
-                     (not (:archived card))) :card-archive
+                (and (:archived card-after-updates)
+                     (not (:archived card-before-updates))) :card-archive
                 ;; card was unarchived
-                (and (false? archived?)
-                     (:archived card))       :card-unarchive
+                (and (false? (:archived card-after-updates))
+                     (:archived card-before-updates))       :card-unarchive
                 :else                        :card-update)]
-    (events/publish-event! event (assoc card :actor_id api/*current-user-id*))))
+    (events/publish-event! event (assoc card-after-updates :actor_id api/*current-user-id*))))
 
 (defn- card-archived? [old-card new-card]
   (and (not (:archived old-card))
@@ -738,7 +738,7 @@ saved later when it is ready."
 (defn- update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously."
-  [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
+  [{:keys [id], :as card-before-update} card-updates]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
    (api/maybe-reconcile-collection-position! card-before-update card-updates)
@@ -764,7 +764,7 @@ saved later when it is ready."
 
   (let [card (t2/select-one Card :id id)]
     (delete-alerts-if-needed! card-before-update card)
-    (publish-card-update! card archived)
+    (publish-card-update! card-before-update card)
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
     ;; has with returned one -- See #4142
     (-> card
@@ -926,7 +926,6 @@ saved later when it is ready."
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
-
 (api/defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :body}]
@@ -980,10 +979,10 @@ saved later when it is ready."
   (api/check-not-archived (api/read-check Card card-id))
   (let [{existing-public-uuid :public_uuid} (t2/select-one [Card :public_uuid] :id card-id)]
     {:uuid (or existing-public-uuid
-               (u/prog1 (str (UUID/randomUUID))
-                 (t2/update! Card card-id
-                             {:public_uuid       <>
-                              :made_public_by_id api/*current-user-id*})))}))
+                (u/prog1 (str (UUID/randomUUID))
+                  (t2/update! Card card-id
+                              {:public_uuid       <>
+                               :made_public_by_id api/*current-user-id*})))}))
 
 (api/defendpoint DELETE "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
