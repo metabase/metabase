@@ -6,7 +6,6 @@ import _ from "underscore";
 import { formatNumber, formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 
-import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -33,6 +32,8 @@ import {
   PreviousValueSeparator,
   PreviousValueVariation,
   Variation,
+  VariationIcon,
+  VariationValue,
 } from "./SmartScalar.styled";
 
 const SPACING = parseInt(space(0), 10);
@@ -197,15 +198,11 @@ export default class SmartScalar extends Component {
       ? color("error")
       : color("success");
 
-    const changeDisplay = (
-      <span style={{ fontWeight: 900 }}>
-        {formatChange(lastChange, {
-          fontFamily,
-          fontWeight: 900,
-          width: availableWidth - ICON_SIZE - ICON_PADDING_RIGHT,
-        })}
-      </span>
-    );
+    const changeDisplay = formatChange(lastChange, {
+      fontFamily,
+      fontWeight: 900,
+      width: availableWidth - ICON_SIZE - ICON_PADDING_RIGHT,
+    });
     const separator = canShowSeparator(availableWidth, height) ? (
       <PreviousValueSeparator gridSize={gridSize}>•</PreviousValueSeparator>
     ) : null;
@@ -296,12 +293,11 @@ export default class SmartScalar extends Component {
                 tooltip={previousValueVariationDisplay}
               >
                 <Variation color={changeColor}>
-                  <Icon
+                  <VariationIcon
                     size={ICON_SIZE}
-                    className="pr1"
                     name={isNegative ? "arrow_down" : "arrow_up"}
                   />
-                  {changeDisplay}
+                  <VariationValue>{changeDisplay}</VariationValue>
                 </Variation>
               </Tooltip>
 

@@ -1,10 +1,12 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
+import Ellipsified from "metabase/core/components/Ellipsified/Ellipsified";
+import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import {
-  breakpointMaxSmall,
   breakpointMaxLarge,
+  breakpointMaxSmall,
   space,
 } from "metabase/styled-components/theme";
 
@@ -19,12 +21,30 @@ export const Variation = styled.div`
   }
 `;
 
+export const VariationIcon = styled(Icon)`
+  flex: 0 0 auto;
+  margin: ${space(0)};
+  margin-right: ${space(1)};
+  color: ${props => props.color};
+  display: flex;
+  align-items: center;
+
+  ${breakpointMaxSmall} {
+    margin: ${space(1)};
+  }
+`;
+
+export const VariationValue = styled(Ellipsified)`
+  flex: 1;
+  min-width: 0;
+  font-weight: 900;
+`;
+
 export const PreviousValueContainer = styled.div`
   align-items: center;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  margin-top: ${space(0) / 2};
   line-height: 1.2rem;
 
   ${breakpointMaxSmall} {
