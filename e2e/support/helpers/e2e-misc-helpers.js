@@ -171,9 +171,9 @@ export function visitDashboard(dashboard_id, { params = {} } = {}) {
     const canViewDashboard = hasAccess(status);
 
     let validQuestions = dashboardHasQuestions(ordered_cards);
-    if (params.tabId != null) {
+    if (params.tab != null) {
       validQuestions = validQuestions.filter(
-        card => card.dashboard_tab_id === params.tabId,
+        card => card.dashboard_tab_id === params.tab,
       );
     }
 

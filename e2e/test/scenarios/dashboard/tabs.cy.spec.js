@@ -74,19 +74,35 @@ describe("scenarios > dashboard > tabs", () => {
     });
     saveDashboard();
 
-    // Visit first tab and check for dashcard query
-    visitDashboard(1, { params: { tabId: 1 } });
-
-    // Visit second tab and check for dashcard query
-    cy.intercept("POST", `/api/dashboard/1/dashcard/2/card/2/query`).as(
-      "secondTabQuery",
+    cy.intercept(
+      "POST",
+      `/api/dashboard/1/dashcard/1/card/1/query`,
+      cy.spy().as("firstTabQuery"),
     );
-    cy.findByRole("tab", { name: "Page 2" }).click();
-    cy.wait("@secondTabQuery");
+    cy.intercept(
+      "POST",
+      `/api/dashboard/1/dashcard/2/card/2/query`,
+      cy.spy().as("secondTabQuery"),
+    );
+
+    // Visit first tab and confirm only first card was queried
+    visitDashboard(1, { params: { tab: 1 } });
+    cy.get("@firstTabQuery").should("have.been.calledOnce");
+    cy.get("@secondTabQuery").should("not.have.been.called");
+
+    // Visit second tab and confirm only second card was queried
+    cy.findByRole("tab", { name: "Tab 2" }).click();
+    cy.get("@firstTabQuery").should("have.been.calledOnce");
+    cy.get("@secondTabQuery").should("have.been.calledOnce");
+
+    // Go back to first tab, expect no additional queries
+    cy.findByRole("tab", { name: "Tab 1" }).click();
+    cy.get("@firstTabQuery").should("have.been.calledOnce");
+    cy.get("@secondTabQuery").should("have.been.calledOnce");
   });
 });
 
-describeWithSnowplow.only("scenarios > dashboard > tabs", () => {
+describeWithSnowplow("scenarios > dashboard > tabs", () => {
   const PAGE_VIEW_EVENT = 1;
 
   beforeEach(() => {
