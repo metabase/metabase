@@ -101,12 +101,6 @@ class QueryModals extends Component<QueryModalsProps> {
       setQueryBuilderMode,
     } = this.props;
 
-    // for models, we need to use the card's original dataset_query, not the model's dataset_query
-    // since it only refers to a source table rather than anything else
-    const questionCopy = question.isDataset()
-      ? new Question(this.props.card)
-      : question;
-
     switch (modal) {
       case MODAL_TYPES.SAVE:
         return (
@@ -283,14 +277,14 @@ class QueryModals extends Component<QueryModalsProps> {
             <EntityCopyModal
               entityType="questions"
               entityObject={{
-                ...questionCopy.card(),
-                collection_id: questionCopy.canWrite()
-                  ? questionCopy.collectionId()
+                ...this.props.card,
+                collection_id: question.canWrite()
+                  ? question.collectionId()
                   : initialCollectionId,
               }}
               copy={async formValues => {
                 const object = await this.props.onCreate(
-                  questionCopy
+                  question
                     .setDisplayName(formValues.name)
                     .setCollectionId(formValues.collection_id)
                     .setDescription(formValues.description || null),

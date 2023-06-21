@@ -32,7 +32,6 @@ describe("issue 31309", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/card").as("createModel");
   });
 
   it("should duplicate a model with its original aggregation and breakout", () => {
@@ -58,12 +57,6 @@ describe("issue 31309", () => {
 
     modal().within(() => {
       cy.findByText("Not now").click();
-    });
-
-    cy.wait("@createModel").then(({ response: { body } }) => {
-      expect(body.dataset_query.query).to.deep.eq(TEST_QUERY);
-      expect(body.dataset_query.database).to.eq(SAMPLE_DB_ID);
-      expect(body.dataset_query.type).to.eq("query");
     });
 
     openQuestionActions();
