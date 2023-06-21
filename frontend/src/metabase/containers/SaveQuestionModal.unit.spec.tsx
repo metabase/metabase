@@ -11,7 +11,7 @@ import {
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 
-import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
+import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { CollectionId } from "metabase-types/api";
 import {
   createSampleDatabase,
