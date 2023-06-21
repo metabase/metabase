@@ -2,6 +2,7 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
@@ -100,6 +101,29 @@
   [query]
   query)
 
+(def legacy-default-join-alias
+  "In legacy MBQL, join `:alias` was optional, and if unspecified, this was the default alias used. In reality all joins
+  normally had an explicit `:alias` since the QB would generate one and you generally need one to do useful things
+  with the join anyway.
+
+  Since the new pMBQL schema makes `:alias` required, we'll explicitly add the implicit default when we encounter a
+  join without an alias, and remove it so we can round-trip without changes."
+  "__join")
+
+(defn- deduplicate-join-aliases
+  "Join `:alias`es had to be unique in legacy MBQL, but they were optional. Since we add [[legacy-default-join-alias]]
+  to each join that doesn't have an explicit `:alias` for pMBQL compatibility now, we need to deduplicate the aliases
+  if it is used more than once.
+
+  Only deduplicate the default `__join` aliases; we don't want the [[lib.util/unique-name-generator]] to touch other
+  aliases and truncate them or anything like that."
+  [joins]
+  (let [unique-name-fn (lib.util/unique-name-generator)]
+    (mapv (fn [join]
+            (cond-> join
+              (= (:alias join) legacy-default-join-alias) (update :alias unique-name-fn)))
+          joins)))
+
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
   (let [aggregations (->pMBQL (:aggregation stage))
@@ -114,13 +138,15 @@
                                                (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
                                                               [idx ag-uuid]))
                                                aggregations)]
-      (reduce
-        (fn [stage k]
-          (if-not (get stage k)
-            stage
-            (update stage k ->pMBQL)))
-        (m/assoc-some stage :aggregation aggregations :expressions expressions)
-        (disj stage-keys :aggregation :expressions)))))
+      (let [stage (reduce
+                   (fn [stage k]
+                     (if-not (get stage k)
+                       stage
+                       (update stage k ->pMBQL)))
+                   (m/assoc-some stage :aggregation aggregations :expressions expressions)
+                   (disj stage-keys :aggregation :expressions))]
+        (cond-> stage
+          (:joins stage) (update :joins deduplicate-join-aliases))))))
 
 (defmethod ->pMBQL :mbql/join
   [join]
@@ -131,7 +157,8 @@
       (:fields join) (update :fields (fn [fields]
                                        (if (seqable? fields)
                                          (mapv ->pMBQL fields)
-                                         (keyword fields)))))))
+                                         (keyword fields))))
+      (not (:alias join)) (assoc :alias legacy-default-join-alias))))
 
 (defmethod ->pMBQL :dispatch-type/sequential
   [xs]
@@ -359,7 +386,8 @@
     :always (set/rename-keys {pMBQL-key legacy-key})))
 
 (defmethod ->legacy-MBQL :mbql/join [join]
-  (let [base (disqualify join)]
+  (let [base (cond-> (disqualify join)
+               (str/starts-with? (:alias join) legacy-default-join-alias) (dissoc :alias))]
     (merge (-> base
                (dissoc :stages :conditions)
                (update-vals ->legacy-MBQL))

@@ -59,7 +59,9 @@ const buildAccessPermission = (
   return {
     permission: "data",
     type: "access",
-    isDisabled: isAdmin || PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(value),
+    isDisabled:
+      isAdmin ||
+      PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(value, "tables"),
     isHighlighted: isAdmin,
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
     value,

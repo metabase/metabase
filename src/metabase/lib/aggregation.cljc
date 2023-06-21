@@ -7,9 +7,12 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -306,7 +309,10 @@
                   (map #(assoc % :lib/type :mbql.aggregation/operator)))
             lib.schema.aggregation/aggregation-operators)))))
 
-(mu/defn aggregation-clause
+;;; TODO -- this should probably return a plain aggregation clause rather than an external op form; people can convert
+;;; to external op as needed using [[metabase.lib.common/external-op]]. See
+;;; https://metaboat.slack.com/archives/C04CYTEL9N2/p1686941960566759
+(mu/defn aggregation-clause :- ::lib.schema.common/external-op
   "Returns a standalone aggregation clause for an `aggregation-operator` and
   a `column`.
   For aggregations requiring an argument `column` is mandatory, otherwise
@@ -314,7 +320,8 @@
   ([aggregation-operator :- ::lib.schema.aggregation/operator]
    (if-not (:requires-column? aggregation-operator)
      {:lib/type :lib/external-op
-      :operator (:short aggregation-operator)}
+      :operator (:short aggregation-operator)
+      :args     []}
      (throw (ex-info (lib.util/format "aggregation operator %s requires an argument"
                                       (:short aggregation-operator))
                      {:aggregation-operator aggregation-operator}))))
@@ -323,7 +330,7 @@
     column]
    {:lib/type :lib/external-op
     :operator (:short aggregation-operator)
-    :args [column]}))
+    :args     [column]}))
 
 (def ^:private SelectedOperatorWithColumns
   [:merge
@@ -337,7 +344,8 @@
   [agg-operators :- [:maybe [:sequential OperatorWithColumns]]
    agg-clause]
   (when (seq agg-operators)
-    (let [[op _ agg-col] agg-clause]
+    (let [[op _ agg-col] agg-clause
+          agg-temporal-unit (-> agg-col lib.options/options :temporal-unit)]
       (mapv (fn [agg-op]
               (cond-> agg-op
                 (= (:short agg-op) op)
@@ -345,12 +353,37 @@
                     (m/update-existing
                      :columns
                      (fn [cols]
-                       (mapv (fn [col]
-                               (let [a-ref (lib.ref/ref col)]
-                                 ;; FIXME: This should use [[lib.equality/find-closest-matching-ref]] instead.
-                                 #_{:clj-kondo/ignore [:deprecated-var]}
-                                 (cond-> col
-                                   (lib.equality/ref= a-ref agg-col)
-                                   (assoc :selected? true))))
-                             cols))))))
+                       (let [refs (mapv lib.ref/ref cols)
+                             match (lib.equality/find-closest-matching-ref
+                                    (lib.options/update-options agg-col dissoc :temporal-unit)
+                                    refs)]
+                         (if match
+                           (mapv (fn [r c]
+                                   (cond-> c
+                                     (= r match) (assoc :selected? true)
+
+                                     (some? agg-temporal-unit)
+                                     (lib.temporal-bucket/with-temporal-bucket agg-temporal-unit)))
+                                 refs cols)
+                           cols)))))))
             agg-operators))))
+
+(mu/defn aggregation-ref :- :mbql.clause/aggregation
+  "Find the aggregation at `ag-index` and create an `:aggregation` ref for it. Intended for use
+  when creating queries using threading macros e.g.
+
+    (-> (lib/query ...)
+        (lib/aggregate (lib/avg ...))
+        (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0))))"
+  ([query ag-index]
+   (aggregation-ref query -1 ag-index))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    ag-index     :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
+   (if-let [[_ {ag-uuid :lib/uuid}] (get (:aggregation (lib.util/query-stage query stage-number)) ag-index)]
+     (lib.options/ensure-uuid [:aggregation {} ag-uuid])
+     (throw (ex-info (str "Undefined aggregation " ag-index)
+                     {:aggregation-index ag-index
+                      :query             query
+                      :stage-number      stage-number})))))

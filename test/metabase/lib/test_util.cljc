@@ -17,6 +17,7 @@
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def venues-query
+  "A mock query against the `VENUES` test data table."
   (lib/query meta/metadata-provider (meta/table-metadata :venues)))
 
 (defn venues-query-with-last-stage [m]
@@ -148,19 +149,19 @@
 (defn query-with-join
   "A query against `VENUES` with an explicit join against `CATEGORIES`."
   []
-  (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
       (lib/join (-> (lib/join-clause
                      (meta/table-metadata :categories)
                      [(lib/=
-                       (lib/field "VENUES" "CATEGORY_ID")
-                       (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                       (meta/field-metadata :venues :category-id)
+                       (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
                     (lib/with-join-alias "Cat")
                     (lib/with-join-fields :all)))))
 
 (defn query-with-expression
   "A query with an expression."
   []
-  (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
       (lib/expression "expr" (lib/absolute-datetime "2020" :month))))
 
 (defn native-query

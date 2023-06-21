@@ -2,7 +2,7 @@ import type { DatabaseId } from "./database";
 import type { DashboardId, DashCardId } from "./dashboard";
 import type { Field } from "./field";
 import type { Parameter } from "./parameters";
-import type { DatasetQuery, FieldReference } from "./query";
+import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { UserInfo } from "./user";
 
 export interface Card<Q = DatasetQuery> extends UnsavedCard<Q> {
@@ -25,6 +25,16 @@ export interface Card<Q = DatasetQuery> extends UnsavedCard<Q> {
   archived: boolean;
 
   creator?: UserInfo;
+}
+
+export interface PublicCard {
+  id: CardId;
+  name: string;
+  description: string | null;
+  display: CardDisplayType;
+  visualization_settings: VisualizationSettings;
+  parameters?: Parameter[];
+  dataset_query: PublicDatasetQuery;
 }
 
 export type CardDisplayType = string;

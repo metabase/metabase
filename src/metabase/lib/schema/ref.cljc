@@ -43,8 +43,15 @@
     [:= :field]
     ::field.options
     [:or ::id/field ::common/non-blank-string]]
-   [:multi {:dispatch (fn [[_field _opts id-or-name]]
-                        (lib.dispatch/dispatch-value id-or-name))}
+   [:multi {:dispatch      (fn [clause]
+                             ;; apparently it still tries to dispatch when humanizing errors even if the `:tuple`
+                             ;; schema above failed, so we need to check that this is actually a tuple here again.
+                             (when (sequential? clause)
+                               (let [[_field _opts id-or-name] clause]
+                                 (lib.dispatch/dispatch-value id-or-name))))
+            ;; without this it gives us dumb messages like "Invalid dispatch value" if the dispatch function above
+            ;; doesn't return something that matches.
+            :error/message "Invalid :field clause ID or name: must be a string or integer"}
     [:dispatch-type/integer ::field.id]
     [:dispatch-type/string ::field.literal]]])
 
