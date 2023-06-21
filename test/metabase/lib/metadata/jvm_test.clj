@@ -104,7 +104,7 @@
                                                         :alias        "c"}]})}]
     (let [query      {:database (mt/id)
                       :type     :query
-                      :query    {:source-table (str "card__" (u/the-id card))}}
+                      :query    {:source-card (u/the-id card)}}
           mlv2-query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                 (lib.convert/->pMBQL query))
           breakouts  (lib/breakoutable-columns mlv2-query)

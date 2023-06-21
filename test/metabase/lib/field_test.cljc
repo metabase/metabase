@@ -167,7 +167,7 @@
                                    meta/metadata-provider)
                 legacy-query      {:database (meta/id)
                                    :type     :query
-                                   :query    {:source-table "card__1"}}
+                                   :query    {:source-card 1}}
                 query             (lib/query metadata-provider legacy-query)
                 breakoutable-cols (lib/breakoutable-columns query)
                 breakout-col      (m/find-first (fn [col]
@@ -180,9 +180,9 @@
                       (lib/display-info query breakout-col)))
               (let [query' (lib/breakout query breakout-col)]
                 (is (=? {:stages
-                         [{:lib/type     :mbql.stage/mbql
-                           :source-table "card__1"
-                           :breakout     [[:field {:join-alias "Products"} "CATEGORY"]]}]}
+                         [{:lib/type    :mbql.stage/mbql
+                           :source-card 1
+                           :breakout    [[:field {:join-alias "Products"} "CATEGORY"]]}]}
                         query'))
                 (is (=? [{:name              "CATEGORY"
                           :display-name      "Category"
@@ -510,6 +510,8 @@
             :default "Distinct values of Name"))))))
 
 (deftest ^:parallel source-card-table-display-info-test
+  ;; this uses a legacy `card__<id>` `:table-id` intentionally; we don't currently have logic that parses this to
+  ;; something like `:card-id` for Column Metadata yet. Make sure it works correctly.
   (let [query (assoc lib.tu/venues-query :lib/metadata lib.tu/metadata-provider-with-card)
         field (lib.metadata.calculation/metadata query (assoc (lib.metadata/field query (meta/id :venues :name))
                                                               :table-id "card__1"))]
@@ -540,8 +542,8 @@
                                              :source-table (meta/id :checkins)
                                              :joins        [{:lib/type    :mbql/join
                                                              :lib/options {:lib/uuid "d7ebb6bd-e7ac-411a-9d09-d8b18329ad46"}
-                                                             :stages      [{:lib/type     :mbql.stage/mbql
-                                                                            :source-table "card__1"}]
+                                                             :stages      [{:lib/type    :mbql.stage/mbql
+                                                                            :source-card 1}]
                                                              :alias       "checkins_by_user"
                                                              :conditions  [[:=
                                                                             {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
@@ -658,8 +660,8 @@
                                                     :name "Field 4"}]}]})
           query    (lib/query provider {:lib/type :mbql/query
                                         :database 1
-                                        :stages   [{:lib/type     :mbql.stage/mbql
-                                                    :source-table "card__3"}]})]
+                                        :stages   [{:lib/type    :mbql.stage/mbql
+                                                    :source-card 3}]})]
       (is (= [{:lib/type                 :metadata/column
                :base-type                :type/*
                :id                       4

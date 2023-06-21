@@ -64,9 +64,9 @@
                    :lib/metadata (lib.tu/mock-metadata-provider
                                   {:cards [metadata]})
                    :database     (meta/id)
-                   :stages       [{:lib/type     :mbql.stage/mbql
-                                   :lib/options  {:lib/uuid (str (random-uuid))}
-                                   :source-table "card__1"}]}]
+                   :stages       [{:lib/type    :mbql.stage/mbql
+                                   :lib/options {:lib/uuid (str (random-uuid))}
+                                   :source-card 1}]}]
         (is (=? (for [col meta/card-results-metadata]
                   (assoc col :lib/source :source/card))
                 (lib.metadata.calculation/metadata query)))))))
