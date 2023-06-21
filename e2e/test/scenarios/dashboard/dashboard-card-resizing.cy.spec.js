@@ -297,7 +297,6 @@ describe("scenarios > dashboard card resizing", () => {
           cy.signInAsAdmin();
           cy.intercept("GET", "/api/search*").as("search");
           cy.viewport(width, height);
-          console.count("BEFORE EACH");
         });
 
         it("should not allow links to overflow when editing dashboard", () => {
