@@ -37,6 +37,12 @@ driver:
       display-name: Role (optional)
       required: false
       helper-text: Specify a role to override the database user’s default role.
+    - name: secondary-catalog
+      display-name: Secondary Catalog
+      description: Catalog that supports `CREATE TABLE AS` to handle model caching. If empty, will try to use current catalog.
+      placeholder: memory
+      display: Secondary Catalog
+      required: false
     - advanced-options-start
     - merge:
         - additional-options
