@@ -660,8 +660,8 @@
                                                     :name "Field 4"}]}]})
           query    (lib/query provider {:lib/type :mbql/query
                                         :database 1
-                                        :stages   [{:lib/type     :mbql.stage/mbql
-                                                    :source-table "card__3"}]})]
+                                        :stages   [{:lib/type    :mbql.stage/mbql
+                                                    :source-card 3}]})]
       (is (= [{:lib/type                 :metadata/field
                :base-type                :type/*
                :id                       4
