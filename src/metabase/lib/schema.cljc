@@ -46,12 +46,14 @@
   [:sequential {:min 1} [:ref ::expression/boolean]])
 
 (defn- expression-ref-error-for-stage [stage]
+  {:pre [(map? stage)]}
   (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))]
     (mbql.match/match-one (dissoc stage :joins :lib/stage-metadata)
       [:expression _opts (expression-name :guard (complement expression-names))]
       (str "Invalid :expression reference: no expression named " (pr-str expression-name)))))
 
 (defn- aggregation-ref-error-for-stage [stage]
+  {:pre [(map? stage)]}
   (let [uuids (into #{} (map (comp :lib/uuid second)) (:aggregation stage))]
     (mbql.match/match-one (dissoc stage :joins :lib/stage-metadata)
       [:aggregation _opts (ag-uuid :guard (complement uuids))]
@@ -67,8 +69,9 @@
   [:fn
    {:error/message "Valid references for a single query stage"
     :error/fn      (fn [{:keys [value]} _]
-                     (ref-error-for-stage value))}
-   (complement ref-error-for-stage)])
+                     (when (map? value)
+                       (ref-error-for-stage value)))}
+   (every-pred map? (complement ref-error-for-stage))])
 
 (mr/def ::stage.mbql
   [:and
@@ -168,7 +171,9 @@
       (set (join-aliases-in-stage stage)))))
 
 (defn- join-ref-error-for-stages [stages]
+  {:pre [((some-fn nil? sequential?) stages) (every? map? stages)]}
   (loop [visible-join-alias? (constantly false), i 0, [stage & more] stages]
+    (assert (map? stage))
     (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
       (or
        (mbql.match/match-one (dissoc stage :joins :stage/metadata)
@@ -189,8 +194,12 @@
   [:fn
    {:error/message "Valid references for all query stages"
     :error/fn      (fn [{:keys [value]} _]
-                     (ref-error-for-stages value))}
-   (complement ref-error-for-stages)])
+                     (when (and (sequential? value)
+                                (every? map? value))
+                       (ref-error-for-stages value)))}
+   (every-pred sequential?
+               #(every? map? %)
+               (complement ref-error-for-stages))])
 
 (mr/def ::stages
   [:and

@@ -25,15 +25,15 @@
 (defn persisted-info-native-query
   "Returns a native query that selects from the persisted cached table from `persisted-info`. Does not check if
   persistence is appropriate. Use [[can-substitute?]] for that check."
-  [{:keys [database_id table_name] :as _persisted-info}]
-  (let [driver      (or driver/*driver* (driver.u/database->driver database_id))]
+  [{database-id :database_id, table-name :table_name, :as _persisted-info}]
+  (let [driver (or driver/*driver* (driver.u/database->driver database-id))]
     ;; select * because we don't actually know the name of the fields when in the actual query. See #28902
     (format "select * from %s.%s"
             (sql.u/quote-name
              driver
              :table
-             (ddl.i/schema-name {:id database_id} (public-settings/site-uuid)))
+             (ddl.i/schema-name {:id database-id} (public-settings/site-uuid)))
             (sql.u/quote-name
              driver
              :table
-             table_name))))
+             table-name))))

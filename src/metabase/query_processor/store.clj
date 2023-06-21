@@ -355,4 +355,5 @@
   (cached ::metadata-provider
     (lib.metadata.composed-provider/composed-metadata-provider
      (base-metadata-provider)
-     (lib.metadata.jvm/application-database-metadata-provider (:id (database))))))
+     ;; NOCOMMIT FIXME
+     (lib.metadata.jvm/application-database-metadata-provider #_(:id (database))))))

@@ -15,7 +15,7 @@
     (let [query-type (keyword (some #(get query %) [:lib/type "lib/type" :type "type"]))
           normalized (case query-type
                        :mbql/query      ; pMBQL pipeline query
-                       (lib.convert/->legacy-MBQL (lib/normalize query))
+                       (lib/normalize query)
 
                        (:query :native)
                        (mbql.normalize/normalize query))]
@@ -34,3 +34,15 @@
   [qp]
   (fn [query rff context]
     (qp (normalize* query) rff context)))
+
+(defn ->pMBQL
+  "Around middleware to ensure a query is pMBQL."
+  [qp]
+  (fn [query rff context]
+    (qp (lib.convert/->pMBQL query) rff context)))
+
+(defn ->legacy-MBQL
+  "Around middleware to convert a (presumably pMBQL) query to legacy MBQL."
+  [qp]
+  (fn [query rff context]
+    (qp (lib.convert/->legacy-MBQL query) rff context)))

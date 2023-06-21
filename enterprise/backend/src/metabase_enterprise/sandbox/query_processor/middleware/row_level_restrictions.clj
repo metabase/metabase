@@ -147,7 +147,7 @@
 
 (s/defn ^:private card-gtap->source
   [{card-id :card_id, :as gtap}]
-  (update-in (fetch-source-query/card-id->source-query-and-metadata card-id)
+  (update-in (fetch-source-query/card-id->source-query-and-metadata card-id) ; NOCOMMIT FIXME
              [:source-query :parameters]
              concat
              (gtap->parameters gtap)))

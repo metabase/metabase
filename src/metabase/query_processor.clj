@@ -234,12 +234,14 @@
   ;; down any post-processing these around middlewares might do happens in reversed order.
   ;;
   ;; ↓↓↓ POST-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
-  [#'qp.resolve-database-and-driver/resolve-database-and-driver
+  [#'normalize/->legacy-MBQL
+   #'qp.resolve-database-and-driver/resolve-database-and-driver
    #'fetch-source-query/resolve-card-id-source-tables
    #'store/initialize-store
+   #'normalize/->pMBQL
+   (resolve 'metabase.query-processor-test.test-mlv2/around-middleware)
    ;; `normalize` has to be done at the very beginning or `resolve-card-id-source-tables` and the like might not work.
    ;; It doesn't really need to be 'around' middleware tho.
-   (resolve 'metabase.query-processor-test.test-mlv2/around-middleware)
    #'normalize/normalize
    (resolve 'ee.audit/handle-internal-queries)])
 ;; ↑↑↑ PRE-PROCESSING ↑↑↑ happens from BOTTOM TO TOP

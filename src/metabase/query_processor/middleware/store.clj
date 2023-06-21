@@ -9,4 +9,5 @@
   [qp]
   (fn [query rff context]
     (qp.store/with-store
-      (qp query rff context))))
+      (let [query (assoc query :lib/metadata (qp.store/metadata-provider))]
+        (qp query rff context)))))
