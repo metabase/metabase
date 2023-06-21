@@ -30,14 +30,18 @@ import { ScalarContainer } from "./Scalar.styled";
 import {
   PreviousValueContainer,
   PreviousValueSeparator,
-  PreviousValueVariation,
+  PreviousValue,
+  PreviousValueWrapper,
+  Separator,
   Variation,
   VariationIcon,
+  VariationTooltip,
   VariationValue,
 } from "./SmartScalar.styled";
 
 const SPACING = parseInt(space(0), 10);
 const ICON_SIZE = 13;
+const TOOLTIP_ICON_SIZE = 11;
 const ICON_PADDING_RIGHT = 4;
 
 const canShowPreviousValue = (width, height) => {
@@ -58,10 +62,16 @@ const getTitleLinesCount = (width, height) => {
   return 1;
 };
 
-const formatChange = (change, { fontFamily, fontWeight, width }) => {
+const formatChange = (change, { maximumFractionDigits = 2 } = {}) => {
+  return formatNumber(Math.abs(change), {
+    number_style: "percent",
+    maximumFractionDigits,
+  });
+};
+
+const formatChangeSmart = (change, { fontFamily, fontWeight, width }) => {
   for (let fractionDigits = 2; fractionDigits >= 1; --fractionDigits) {
-    const formatted = formatNumber(Math.abs(change), {
-      number_style: "percent",
+    const formatted = formatChange(change, {
       maximumFractionDigits: fractionDigits,
     });
 
@@ -76,8 +86,7 @@ const formatChange = (change, { fontFamily, fontWeight, width }) => {
     }
   }
 
-  return formatNumber(Math.abs(change), {
-    number_style: "percent",
+  return formatChange(change, {
     maximumFractionDigits: 0,
   });
 };
@@ -198,11 +207,12 @@ export default class SmartScalar extends Component {
       ? color("error")
       : color("success");
 
-    const changeDisplay = formatChange(lastChange, {
+    const changeDisplay = formatChangeSmart(lastChange, {
       fontFamily,
       fontWeight: 900,
       width: availableWidth - ICON_SIZE - ICON_PADDING_RIGHT,
     });
+    const tooltipSeparator = <Separator>•</Separator>;
     const separator = canShowSeparator(availableWidth, height) ? (
       <PreviousValueSeparator gridSize={gridSize}>•</PreviousValueSeparator>
     ) : null;
@@ -211,7 +221,7 @@ export default class SmartScalar extends Component {
       previousValue,
       settings.column(column),
     );
-    const previousValueVariationDisplay = jt`${separator} was ${previousValueDisplay} ${granularityDisplay}`;
+    const iconName = isNegative ? "arrow_down" : "arrow_up";
 
     const clicked = {
       value,
@@ -230,12 +240,6 @@ export default class SmartScalar extends Component {
     };
 
     const isClickable = visualizationIsClickable(clicked);
-
-    // let variationWidth = ICON_SIZE + ICON_PADDING_RIGHT + measureText(text, {
-    //   size: '1rem',
-    //   family: fontFamily,
-    //   weight: fontWeight,
-    // });
 
     return (
       <ScalarWrapper>
@@ -277,7 +281,7 @@ export default class SmartScalar extends Component {
             }
           />
         )}
-        <div className="SmartWrapper">
+        <PreviousValueWrapper>
           {lastChange == null || previousValue == null ? (
             <div
               className="text-centered text-bold mt1"
@@ -290,25 +294,37 @@ export default class SmartScalar extends Component {
               <Tooltip
                 isEnabled={!canShowPreviousValue(availableWidth, height)}
                 placement="bottom"
-                tooltip={previousValueVariationDisplay}
+                tooltip={
+                  <VariationTooltip>
+                    <Variation>
+                      <VariationIcon name={iconName} size={TOOLTIP_ICON_SIZE} />
+                      <VariationValue showTooltip={false}>
+                        {formatChange(lastChange)}
+                      </VariationValue>
+                    </Variation>
+
+                    <span>
+                      {jt`${tooltipSeparator} was ${previousValueDisplay} ${granularityDisplay}`}
+                    </span>
+                  </VariationTooltip>
+                }
               >
                 <Variation color={changeColor}>
-                  <VariationIcon
-                    size={ICON_SIZE}
-                    name={isNegative ? "arrow_down" : "arrow_up"}
-                  />
-                  <VariationValue>{changeDisplay}</VariationValue>
+                  <VariationIcon name={iconName} size={ICON_SIZE} />
+                  <VariationValue showTooltip={false}>
+                    {changeDisplay}
+                  </VariationValue>
                 </Variation>
               </Tooltip>
 
               {canShowPreviousValue(availableWidth, height) && (
-                <PreviousValueVariation id="SmartScalar-PreviousValue">
-                  {previousValueVariationDisplay}
-                </PreviousValueVariation>
+                <PreviousValue id="SmartScalar-PreviousValue" responsive>
+                  {jt`${separator} was ${previousValueDisplay} ${granularityDisplay}`}
+                </PreviousValue>
               )}
             </PreviousValueContainer>
           )}
-        </div>
+        </PreviousValueWrapper>
       </ScalarWrapper>
     );
   }

@@ -14,24 +14,15 @@ export const Variation = styled.div`
   color: ${props => props.color};
   display: flex;
   align-items: center;
-  margin: ${space(0)};
-
-  ${breakpointMaxSmall} {
-    margin: ${space(1)} 0;
-  }
+  max-width: 100%;
 `;
 
 export const VariationIcon = styled(Icon)`
   flex: 0 0 auto;
-  margin: ${space(0)};
   margin-right: ${space(1)};
   color: ${props => props.color};
   display: flex;
   align-items: center;
-
-  ${breakpointMaxSmall} {
-    margin: ${space(1)};
-  }
 `;
 
 export const VariationValue = styled(Ellipsified)`
@@ -40,14 +31,27 @@ export const VariationValue = styled(Ellipsified)`
   font-weight: 900;
 `;
 
+export const VariationTooltip = styled(Ellipsified)`
+  display: flex;
+  align-items: center;
+  gap: ${space(0)};
+`;
+
+export const PreviousValueWrapper = styled.div`
+  width: 100%;
+`;
+
 export const PreviousValueContainer = styled.div`
   align-items: center;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+  margin: ${space(0)};
+  gap: ${space(0)};
   line-height: 1.2rem;
 
   ${breakpointMaxSmall} {
+    margin: ${space(1)} 0;
     flex-direction: column;
   }
 
@@ -60,9 +64,8 @@ export const PreviousValueContainer = styled.div`
   }
 `;
 
-export const PreviousValueVariation = styled.h4`
+export const PreviousValue = styled.h4`
   color: ${color("text-light")};
-  margin: ${space(0) / 2};
   text-align: center;
 
   ${breakpointMaxSmall} {
@@ -70,10 +73,13 @@ export const PreviousValueVariation = styled.h4`
   }
 `;
 
-export const PreviousValueSeparator = styled.span`
+export const Separator = styled.span`
   display: inline-block;
-  color: ${color("text-light")};
   transform: scale(0.7);
+`;
+
+export const PreviousValueSeparator = styled(Separator)`
+  color: ${color("text-light")};
 
   ${breakpointMaxSmall} {
     display: none;
