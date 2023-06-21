@@ -137,7 +137,7 @@
 
       (with-temp-public-card [{uuid :public_uuid, card-id :id}]
         (testing "Happy path -- should be able to fetch the Card"
-          (is (= #{:dataset_query :description :display :id :name :visualization_settings :parameters  :param_values :param_fields}
+          (is (= #{:dataset_query :description :display :id :name :visualization_settings :parameters :param_values :param_fields}
                  (set (keys (client/client :get 200 (str "public/card/" uuid)))))))
 
         (testing "Check that we cannot fetch a public Card if public sharing is disabled"
@@ -394,17 +394,72 @@
       (with-temp-public-dashboard-and-card [dash card]
         (is (= {:name true, :ordered_cards 1, :ordered_tabs 0}
                (fetch-public-dashboard dash)))
-
         (testing "We shouldn't see Cards that have been archived"
           (t2/update! Card (u/the-id card) {:archived true})
           (is (= {:name true, :ordered_cards 0, :ordered_tabs 0}
                  (fetch-public-dashboard dash)))))
-
-      (testing "dashboard with tabs should return ordered_tabs"
+            (testing "dashboard with tabs should return ordered_tabs"
         (api.dashboard-test/with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
           (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
           (is (= {:name true, :ordered_cards 2, :ordered_tabs 2}
                  (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
+
+(deftest public-dashboard-with-implicit-action-only-expose-unhidden-fields
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (mt/with-actions-test-data-tables #{"venues" "categories"}
+        (mt/with-actions-test-data-and-actions-enabled
+          (mt/with-actions [{card-id :id} {:dataset true, :dataset_query (mt/mbql-query venues {:fields [$id $name $price]})}
+                            {:keys [action-id]} {:type :implicit
+                                                 :kind "row/update"
+                                                 :visualization_settings {:fields {"id"    {:id     "id"
+                                                                                            :hidden false}
+                                                                                   "name"  {:id     "name"
+                                                                                            :hidden false}
+                                                                                   "price" {:id     "price"
+                                                                                            :hidden true}}}}]
+            (let [dashboard-uuid (str (UUID/randomUUID))]
+              (mt/with-temp* [Dashboard [{dashboard-id :id} {:public_uuid dashboard-uuid}]
+                              DashboardCard [dashcard {:dashboard_id dashboard-id
+                                                       :action_id    action-id
+                                                       :card_id      card-id}]]
+                (testing "Dashcard should only have id and name params"
+                  (is (partial= {:ordered_cards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
+                                (mt/user-http-request :crowberto :get 200 (format "public/dashboard/%s" dashboard-uuid)))))
+                (let [execute-path (format "public/dashboard/%s/dashcard/%s/execute" dashboard-uuid (:id dashcard))]
+                  (testing "Prefetch should only return non-hidden fields"
+                    (is (= {:id 1 :name "Red Medicine"} ; price is hidden
+                           (mt/user-http-request :crowberto :get 200 (str execute-path "?parameters=" (json/encode {:id 1}))))))
+                  (testing "Update should not allow hidden fields to be updated"
+                    (is (= {:rows-updated [1]}
+                           (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
+                    (is (= "An error occurred."
+                           (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))))
+
+(deftest get-public-dashboard-actions-test
+  (testing "GET /api/public/dashboard/:uuid"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-dashboard [dash {:parameters []}]
+          (mt/with-actions [{:keys [action-id model-id]} {:visualization_settings {:fields {"id"   {:id     "id"
+                                                                                                    :hidden true}
+                                                                                            "name" {:id     "name"
+                                                                                                    :hidden false}}}}]
+            (mt/with-temp* [DashboardCard [_ {:dashboard_id (:id dash)
+                                              :action_id action-id
+                                              :card_id model-id}]]
+              (let [public-action (-> (client/client :get 200 (format "public/dashboard/%s" (:public_uuid dash)))
+                                      :ordered_cards first :action)]
+                (testing "hidden action fields should not be included in the response"
+                  (is (partial= [:name] ; id is hidden
+                                (-> public-action :visualization_settings :fields keys))))
+                (testing "the action should only include the columns shown for public actions"
+                  (= #{:name
+                       :id
+                       :database_id
+                       :visualization_settings
+                       :parameters}
+                     (set (keys public-action))))))))))))
 
 ;;; --------------------------------- GET /api/public/dashboard/:uuid/card/:card-id ----------------------------------
 
@@ -864,19 +919,30 @@
         (testing "should return 404 if Action doesn't exist"
           (is (= "Not found."
                  (client/client :get 404 (str "public/action/" (UUID/randomUUID))))))
-        (let [action-opts (shared-obj)
+        (let [action-opts (assoc-in (shared-obj) [:visualization_settings :fields] {"id" {:id "id"
+                                                                                          :hidden true}
+                                                                                    "name" {:id "name"
+                                                                                            :hidden false}})
               uuid        (:public_uuid action-opts)]
           (testing "should return 404 if Action is archived"
             (mt/with-actions [{} (assoc action-opts :archived true)]
               (is (= "Not found."
                      (client/client :get 404 (str "public/action/" uuid))))))
           (mt/with-actions [{} action-opts]
-            (testing "Happy path -- should be able to fetch the Action"
-              (is (= #{:name
-                       :id
-                       :visualization_settings
-                       :parameters}
-                     (set (keys (client/client :get 200 (str "public/action/" uuid)))))))
+            (let [public-action (client/client :get 200 (str "public/action/" uuid))]
+              (testing "Happy path -- should be able to fetch the Action"
+                (is (= #{:name
+                         :id
+                         :database_id
+                         :visualization_settings
+                         :parameters}
+                       (set (keys public-action)))))
+              (testing "parameters should not contain hidden fields"
+                (is (= ["name"] ; "id" is hidden
+                       (map :id (get public-action :parameters)))))
+              (testing "visualization_settings.fields should not contain hidden fields"
+                (is (= [:name] ; these keys are keywordized by client/client
+                       (keys (get-in public-action [:visualization_settings :fields]))))))
             (testing "Check that we cannot fetch a public Action if public sharing is disabled"
               (mt/with-temporary-setting-values [enable-public-sharing false]
                 (is (= "An error occurred."

@@ -13,7 +13,7 @@ import {
   formatInitialValue,
   formatSubmitValues,
   getChangedValues,
-  generateFieldSettingsFromParameters,
+  getOrGenerateFieldSettings,
 } from "./utils";
 
 type Opts = {
@@ -22,12 +22,12 @@ type Opts = {
 };
 
 function useActionForm({ action, initialValues = {} }: Opts) {
-  const fieldSettings = useMemo(
-    () =>
-      action.visualization_settings?.fields ||
-      generateFieldSettingsFromParameters(action.parameters),
-    [action],
-  );
+  const fieldSettings = useMemo(() => {
+    return getOrGenerateFieldSettings(
+      action.parameters,
+      action.visualization_settings?.fields,
+    );
+  }, [action]);
 
   const form = useMemo(
     () => getForm(action.parameters, fieldSettings),
@@ -41,8 +41,10 @@ function useActionForm({ action, initialValues = {} }: Opts) {
 
   const cleanedInitialValues = useMemo(() => {
     const values = validationSchema.cast(initialValues);
+
     return _.mapObject(values, (value, fieldId) => {
       const formField = fieldSettings[fieldId];
+
       return formatInitialValue(value, formField?.inputType);
     });
   }, [initialValues, fieldSettings, validationSchema]);
