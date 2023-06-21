@@ -22,14 +22,14 @@
 
 (deftest ^:parallel metric-display-name-test
   (let [metadata (mock-metadata-provider)
-        query    (-> (lib/query-for-table-name metadata "VENUES")
+        query    (-> (lib/query metadata (meta/table-metadata :venues))
                      (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} 100]))]
     (is (= "Venues, My Metric"
            (lib.metadata.calculation/suggested-name query)))))
 
 (deftest ^:parallel metric-type-of-test
   (let [metadata (mock-metadata-provider)
-        query    (-> (lib/query-for-table-name metadata "VENUES")
+        query    (-> (lib/query metadata (meta/table-metadata :venues))
                      (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} 100]))]
     (is (= :type/Integer
            (lib.metadata.calculation/type-of query [:metric {:lib/uuid (str (random-uuid))} 100])))))

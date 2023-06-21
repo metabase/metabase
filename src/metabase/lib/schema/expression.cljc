@@ -57,7 +57,7 @@
 
 (defmethod type-of-method :default
   [expr]
-  (throw (ex-info (i18n/tru "Don''t know how to determine the type of {0}" (pr-str expr))
+  (throw (ex-info (i18n/tru "{0}: Don''t know how to determine the type of {1}" `type-of (pr-str expr))
                   {:expr expr})))
 
 ;;; for MBQL clauses whose type is the same as the type of the first arg. Also used

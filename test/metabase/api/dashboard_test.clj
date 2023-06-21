@@ -1674,12 +1674,12 @@
         (is (= [{:data {"dashboard_id"   dashboard-id
                         "num_tabs"       1
                         "total_num_tabs" 4
-                        "event"          "dashboard_tabs_deleted"},
+                        "event"          "dashboard_tab_deleted"},
                  :user-id (str (mt/user->id :rasta))}
                 {:data {"dashboard_id"   dashboard-id
                         "num_tabs"       2
                         "total_num_tabs" 4
-                        "event"          "dashboard_tabs_created"}
+                        "event"          "dashboard_tab_created"}
                  :user-id (str (mt/user->id :rasta))}]
                (take-last 2 (snowplow-test/pop-event-data-and-user-id!))))))
 

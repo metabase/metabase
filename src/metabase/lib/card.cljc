@@ -42,8 +42,12 @@
                                  (sequential? result-metadata) result-metadata))]
       (mapv (fn [col]
               (merge
+               {:base-type :type/*, :lib/type :metadata/field}
                (when-let [field-id (:id col)]
-                 (lib.metadata/field metadata-providerable field-id))
+                 (try
+                   (lib.metadata/field metadata-providerable field-id)
+                   (catch #?(:clj Throwable :cljs :default) _
+                     nil)))
                (update-keys col u/->kebab-case-en)
                {:lib/type                :metadata/field
                 :lib/source              :source/card
