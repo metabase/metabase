@@ -30,7 +30,7 @@
 ;; Non-"normal" drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
 (def ^:private abnormal-drivers
   "Drivers that are so weird that we can't run the normal driver tests against them."
-  #{:druid :googleanalytics})
+  #{:druid})
 
 (defn normal-drivers
   "Drivers that are reasonably normal in the sense that they can participate in the shared driver tests."
@@ -64,7 +64,7 @@
 (alter-meta! #'normal-drivers-without-feature assoc :arglists (list (into ['&] (sort driver/driver-features))))
 
 (defn normal-drivers-except
-  "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."
+  "Return the set of all drivers except those in `excluded-drivers`."
   [excluded-drivers]
   (set/difference (normal-drivers) (set excluded-drivers)))
 

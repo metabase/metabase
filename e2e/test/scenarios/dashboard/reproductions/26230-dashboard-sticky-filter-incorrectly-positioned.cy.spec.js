@@ -23,18 +23,12 @@ describe("issue 26230", () => {
     cy.findByTestId("dashboard-parameters-widget-container").should(
       "have.css",
       "position",
-      "fixed",
+      "sticky",
     );
 
     cy.intercept("GET", "/api/dashboard/*").as("loadDashboard");
     cy.findByRole("listitem", { name: "dashboard with a tall card" }).click();
     cy.wait("@loadDashboard");
-
-    cy.findByTestId("dashboard-parameters-widget-container").should(
-      "not.have.css",
-      "position",
-      "fixed",
-    );
   });
 });
 

@@ -325,7 +325,7 @@ describe("Actions > ActionViz > Action", () => {
     it("should NOT allow to edit underlying action if a user does not has edit permissions for this database", async () => {
       const readOnlyDB: Database = {
         ...DATABASE,
-        native_permissions: "read",
+        native_permissions: "none",
       };
 
       await setup({ database: readOnlyDB });

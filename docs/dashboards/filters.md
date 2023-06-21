@@ -152,6 +152,8 @@ A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [S
 
 Once you’ve added a filter to your dashboard, just click on the filter widget to select a value and activate the filter. To stop filtering, just click the blue X.
 
+Your active filter will only apply to your view of the dashboard. If someone else is viewing the same dashboard link at the same time, they won't see your filter.
+
 ![Using a filter](./images/use-filter.png)
 
 You can also set up a dashboard question to [update a filter on click](./interactive.md#use-a-chart-to-filter-a-dashboard).

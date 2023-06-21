@@ -42,7 +42,7 @@ import MetricApp from "metabase/admin/datamodel/containers/MetricApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
-import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp";
+import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
 import {
@@ -106,7 +106,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
 
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
-        <Route title={t`Data Model`} component={DataModelApp}>
+        <Route title={t`Table Metadata`} component={DataModelApp}>
           {getMetadataRoutes()}
           <Route path="metrics" component={MetricListApp} />
           <Route path="metric/create" component={MetricApp} />
