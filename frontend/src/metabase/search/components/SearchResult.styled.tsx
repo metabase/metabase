@@ -6,23 +6,41 @@ import Link from "metabase/core/components/Link";
 import Text from "metabase/components/type/Text";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-function getColorForIconWrapper(props: {
+import type { SearchModelType } from "metabase-types/api";
+
+type SearchEntity = any;
+
+interface ResultStylesProps {
+  compact: boolean;
   active: boolean;
-  type: string;
-  item: { collection_position?: unknown };
+  isSelected: boolean;
+}
+
+function getColorForIconWrapper({
+  item,
+  active,
+  type,
+}: {
+  item: SearchEntity;
+  active: boolean;
+  type: SearchModelType;
 }) {
-  if (!props.active) {
+  if (!active) {
     return color("text-medium");
-  } else if (props.item.collection_position) {
+  } else if (item.collection_position) {
     return color("saturated-yellow");
-  } else if (props.type === "collection") {
+  } else if (type === "collection") {
     return lighten("brand", 0.35);
   } else {
     return color("brand");
   }
 }
 
-export const IconWrapper = styled.div`
+export const IconWrapper = styled.div<{
+  item: SearchEntity;
+  active: boolean;
+  type: SearchModelType;
+}>`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -50,13 +68,7 @@ export const Title = styled("h3")<{ active: boolean }>`
   color: ${props => color(props.active ? "text-dark" : "text-medium")};
 `;
 
-interface ResultButtonProps {
-  isSelected: boolean;
-  compact: boolean;
-  active: boolean;
-}
-
-export const ResultButton = styled.button<ResultButtonProps>`
+export const ResultButton = styled.button<ResultStylesProps>`
   ${props => resultStyles(props)}
   padding-right: 0.5rem;
   text-align: left;
@@ -68,27 +80,25 @@ export const ResultButton = styled.button<ResultButtonProps>`
   }
 `;
 
-export const ResultLink = styled(Link)<ResultButtonProps>`
+export const ResultLink = styled(Link)<ResultStylesProps>`
   ${props => resultStyles(props)}
 `;
 
-const resultStyles = (props: ResultButtonProps) => `
+const resultStyles = ({ compact, active, isSelected }: ResultStylesProps) => `
   display: block;
-  background-color: ${
-    props.isSelected ? lighten("brand", 0.63) : "transparent"
-  };
-  min-height: ${props.compact ? "36px" : "54px"};
+  background-color: ${isSelected ? lighten("brand", 0.63) : "transparent"};
+  min-height: ${compact ? "36px" : "54px"};
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
   padding-left: 14px;
-  padding-right: ${props.compact ? "20px" : space(3)};
-  cursor: ${props.active ? "pointer" : "default"};
+  padding-right: ${compact ? "20px" : space(3)};
+  cursor: ${active ? "pointer" : "default"};
 
   &:hover {
-    background-color: ${props.active ? lighten("brand", 0.63) : ""};
+    background-color: ${active ? lighten("brand", 0.63) : ""};
 
     h3 {
-      color: ${props.active || props.isSelected ? color("brand") : ""};
+      color: ${active || isSelected ? color("brand") : ""};
     }
   }
 
@@ -98,8 +108,8 @@ const resultStyles = (props: ResultButtonProps) => `
     text-decoration-style: dashed;
 
     &:hover {
-      color: ${props.active ? color("brand") : ""};
-      text-decoration-color: ${props.active ? color("brand") : ""};
+      color: ${active ? color("brand") : ""};
+      text-decoration-color: ${active ? color("brand") : ""};
     }
   }
 
@@ -111,11 +121,11 @@ const resultStyles = (props: ResultButtonProps) => `
   }
 
   h3 {
-    font-size: ${props.compact ? "14px" : "16px"};
+    font-size: ${compact ? "14px" : "16px"};
     line-height: 1.2em;
     overflow-wrap: anywhere;
     margin-bottom: 0;
-    color: ${props.active && props.isSelected ? color("brand") : ""};
+    color: ${active && isSelected ? color("brand") : ""};
   }
 
   .Icon-info {
