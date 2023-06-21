@@ -276,7 +276,13 @@
     (is (=? [[:= {} [:field {} (meta/id :users :id)] 515]]
             (-> query
                 (lib/filter new-filter)
-                lib/filters)))))
+                lib/filters))))
+  (testing "standalone clause"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          [id-col] (lib/filterable-columns query)
+          [eq-op] (lib/filterable-column-operators id-col)]
+      (is (=? [:= {} [:field {} (meta/id :venues :id)] 123]
+              (lib/filter-clause eq-op id-col 123))))))
 
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
@@ -301,10 +307,3 @@
             query'       (lib/replace-clause query filter-clause external-op')]
         (is (=? {:stages [{:filters [[:!= {} [:field {} (meta/id :users :id)] 515]]}]}
                 query'))))))
-
-(deftest ^:parallel filter-clause-test
-  (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
-        [id-col] (lib/filterable-columns query)
-        [eq-op] (lib/filterable-column-operators id-col)]
-    (is (=? [:= {} [:field {} (meta/id :venues :id)] 123]
-            (lib/filter-clause eq-op id-col 123)))))
