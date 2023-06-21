@@ -123,7 +123,12 @@ function FormCollectionPicker({
             width={width}
           />
           {newColl && type === "collections" && (
-            <NewCollectionButton onlyText icon="add" onClick={newColl.onClick}>
+            <NewCollectionButton
+              onlyText
+              icon="add"
+              onClick={newColl.onClick}
+              disabled={newColl.isDisabled}
+            >
               {t`New collection`}
             </NewCollectionButton>
           )}

@@ -101,7 +101,7 @@ function CreateDashboardForm({
       validationSchema={DASHBOARD_SCHEMA}
       onSubmit={handleCreate}
     >
-      {({ dirty }) => (
+      {({ dirty, isValid }) => (
         <Form>
           <FormInput
             name="name"
@@ -119,7 +119,7 @@ function CreateDashboardForm({
             name="collection_id"
             title={t`Which collection should this go in?`}
             newColl={{
-              isDisabled: false,
+              isDisabled: !isValid,
               onClick: () => null,
             }}
           />
