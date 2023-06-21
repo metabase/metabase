@@ -1,4 +1,6 @@
 import fetchMock from "fetch-mock";
+import userEvent from "@testing-library/user-event";
+import { useDispatch } from "metabase/lib/redux";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -11,6 +13,7 @@ import {
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
 } from "__support__/ui";
 import Database from "metabase-lib/metadata/Database";
@@ -36,17 +39,19 @@ const TestComponent = () => {
     },
   );
 
+  const dispatch = useDispatch();
+  const handleInvalidate = () => dispatch(Databases.actions.invalidateLists());
+
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
     <div>
-      <div>
-        {data.map(database => (
-          <div key={database.id}>{database.name}</div>
-        ))}
-      </div>
+      <button onClick={handleInvalidate}>Invalidate databases</button>
+      {data.map(database => (
+        <div key={database.id}>{database.name}</div>
+      ))}
       <TestInnerComponent />
     </div>
   );
@@ -70,12 +75,16 @@ const TestInnerComponent = () => {
     },
   );
 
+  const dispatch = useDispatch();
+  const handleInvalidate = () => dispatch(Tables.actions.invalidateLists());
+
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
     <div>
+      <button onClick={handleInvalidate}>Invalidate tables</button>
       {data.map(table => (
         <div key={table.id}>{table.name}</div>
       ))}
@@ -131,5 +140,29 @@ describe("useEntityListQuery", () => {
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
     expect(fetchMock.calls("path:/api/database")).toHaveLength(1);
     expect(fetchMock.calls("path:/api/table")).toHaveLength(2);
+  });
+
+  it("should reload data when the reload flag is off and it is explicitly invalidated", async () => {
+    setup();
+
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    userEvent.click(screen.getByText("Invalidate databases"));
+
+    await waitFor(() => {
+      expect(fetchMock.calls("path:/api/database")).toHaveLength(2);
+    });
+    expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
+  });
+
+  it("should reload data when the reload flag is on and it is explicitly invalidated", async () => {
+    setup();
+
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    userEvent.click(screen.getByText("Invalidate tables"));
+
+    await waitFor(() => {
+      expect(fetchMock.calls("path:/api/table")).toHaveLength(2);
+    });
+    expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
   });
 });
