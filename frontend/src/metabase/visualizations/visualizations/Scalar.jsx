@@ -30,6 +30,7 @@ function legacyScalarSettingsToFormatOptions(settings) {
 }
 
 const HORIZONTAL_PADDING = 32;
+const VERTICAL_PADDING = 32;
 
 // Scalar visualization shows a single number
 // Multiseries Scalar is transformed to a Funnel
@@ -229,7 +230,7 @@ export default class Scalar extends Component {
             <ScalarValue
               value={displayValue}
               width={width - HORIZONTAL_PADDING}
-              height={height}
+              height={height - VERTICAL_PADDING}
               gridSize={gridSize}
               totalNumGridCols={totalNumGridCols}
               fontFamily={fontFamily}
