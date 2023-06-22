@@ -47,14 +47,10 @@ const MIN_PREVIOUS_VALUE_SIZE = 27;
 
 const getTitleLinesCount = height => (height > 180 ? 2 : 1);
 
-const formatChange = (change, { maximumFractionDigits = 2 } = {}) => {
-  return formatNumber(Math.abs(change), {
-    number_style: "percent",
-    maximumFractionDigits,
-  });
-};
-
-const formatChangeSmart = (change, { fontFamily, fontWeight, width }) => {
+const formatChangeAutoPrecision = (
+  change,
+  { fontFamily, fontWeight, width },
+) => {
   for (let fractionDigits = 2; fractionDigits >= 1; --fractionDigits) {
     const formatted = formatChange(change, {
       maximumFractionDigits: fractionDigits,
@@ -75,6 +71,12 @@ const formatChangeSmart = (change, { fontFamily, fontWeight, width }) => {
     maximumFractionDigits: 0,
   });
 };
+
+const formatChange = (change, { maximumFractionDigits = 2 } = {}) =>
+  formatNumber(Math.abs(change), {
+    number_style: "percent",
+    maximumFractionDigits,
+  });
 
 export default class SmartScalar extends Component {
   static uiName = t`Trend`;
@@ -201,7 +203,7 @@ export default class SmartScalar extends Component {
       4 * SPACING;
     const tooltipSeparator = <Separator>•</Separator>;
 
-    const changeDisplay = formatChangeSmart(lastChange, {
+    const changeDisplay = formatChangeAutoPrecision(lastChange, {
       fontFamily,
       fontWeight: 900,
       width: availableChangeWidth,
