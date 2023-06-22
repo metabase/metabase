@@ -2,6 +2,7 @@ import { onlyOn } from "@cypress/skip-test";
 import {
   restore,
   visitQuestion,
+  visitDashboard,
   saveDashboard,
   popover,
   openNavigationSidebar,
@@ -14,6 +15,7 @@ import {
   enableTracking,
   expectNoBadSnowplowEvents,
   expectGoodSnowplowEvents,
+  modal,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
@@ -178,19 +180,35 @@ describe("managing question from the question's details sidebar", () => {
               cy.findByText("This question has been archived");
             });
 
-            it("should be able to add question to dashboard", () => {
-              openQuestionActions();
-              cy.findByTestId("add-to-dashboard-button").click();
+            describe("Add to Dashboard", () => {
+              it("should be able to add question to dashboard", () => {
+                openQuestionActions();
+                cy.findByTestId("add-to-dashboard-button").click();
 
-              cy.get(".Modal")
-                .as("modal")
-                .findByText("Orders in a dashboard")
-                .click();
+                modal().as("modal").findByText("Orders in a dashboard").click();
 
-              cy.get("@modal").should("not.exist");
-              // By default, the dashboard contains one question
-              // After we add a new one, we check there are two questions now
-              cy.get(".DashCard").should("have.length", 2);
+                cy.get("@modal").should("not.exist");
+                // By default, the dashboard contains one question
+                // After we add a new one, we check there are two questions now
+                cy.get(".DashCard").should("have.length", 2);
+              });
+
+              it("should preselect the most recently visited dashboard", () => {
+                openQuestionActions();
+                cy.findByTestId("add-to-dashboard-button").click();
+
+                findSelectedItem().should("not.exist");
+
+                // before visiting the dashboard, we don't have any history
+                visitDashboard(1);
+
+                visitQuestion(ORDERS_QUESTION_ID);
+
+                openQuestionActions();
+                cy.findByTestId("add-to-dashboard-button").click();
+
+                findSelectedItem().should("have.text", "Orders in a dashboard");
+              });
             });
           });
         });
@@ -251,6 +269,24 @@ describe("managing question from the question's details sidebar", () => {
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Revert").should("not.exist");
             });
+
+            it("should not preselect the most recently visited dashboard", () => {
+              openQuestionActions();
+              cy.findByTestId("add-to-dashboard-button").click();
+
+              findSelectedItem().should("not.exist");
+
+              // before visiting the dashboard, we don't have any history
+              visitDashboard(1);
+
+              visitQuestion(ORDERS_QUESTION_ID);
+
+              openQuestionActions();
+              cy.findByTestId("add-to-dashboard-button").click();
+
+              // still no data
+              findSelectedItem().should("not.exist");
+            });
           });
         });
       });
@@ -305,4 +341,8 @@ function turnIntoModel() {
   openQuestionActions();
   cy.findByText("Turn into a model").click();
   cy.findByText("Turn this into a model").click();
+}
+
+function findSelectedItem() {
+  return cy.findByRole("dialog").findByRole("option", { selected: true });
 }
