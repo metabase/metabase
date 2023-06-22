@@ -22,7 +22,7 @@
                                                    meta/metadata-provider
                                                    meta/saved-question)
                                                   "ID")]
-    (is (=? {:lib/type :metadata/field
+    (is (=? {:lib/type :metadata/column
              :name     "ID"}
             field-metadata))
     (is (=? [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]
@@ -37,16 +37,16 @@
 
 (def ^:private grandparent-parent-child-metadata-provider
   "A MetadataProvider for a Table that nested Fields: grandparent, parent, and child"
-  (let [grandparent {:lib/type  :metadata/field
+  (let [grandparent {:lib/type  :metadata/column
                      :name      "grandparent"
                      :id        (grandparent-parent-child-id :grandparent)
                      :base-type :type/Text}
-        parent      {:lib/type  :metadata/field
+        parent      {:lib/type  :metadata/column
                      :name      "parent"
                      :parent-id (grandparent-parent-child-id :grandparent)
                      :id        (grandparent-parent-child-id :parent)
                      :base-type :type/Text}
-        child       {:lib/type  :metadata/field
+        child       {:lib/type  :metadata/column
                      :name      "child"
                      :parent-id (grandparent-parent-child-id :parent)
                      :id        (grandparent-parent-child-id :child)
@@ -662,7 +662,7 @@
                                         :database 1
                                         :stages   [{:lib/type    :mbql.stage/mbql
                                                     :source-card 3}]})]
-      (is (= [{:lib/type                 :metadata/field
+      (is (= [{:lib/type                 :metadata/column
                :base-type                :type/*
                :id                       4
                :name                     "Field 4"
@@ -671,7 +671,7 @@
                :lib/source-column-alias  "Field 4"
                :lib/desired-column-alias "Field 4"}]
              (lib.metadata.calculation/metadata query)))
-      (is (= {:lib/type                :metadata/field
+      (is (= {:lib/type                :metadata/column
               :base-type               :type/Text
               :effective-type          :type/Text
               :id                      4
