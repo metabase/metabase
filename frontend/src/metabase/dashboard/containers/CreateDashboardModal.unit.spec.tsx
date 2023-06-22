@@ -128,14 +128,15 @@ describe("CreateDashboardModal", () => {
     });
     it("should open new collection modal and return to dashboard modal when clicking close", async () => {
       setup();
-      userEvent.type(nameField(), "my dashboard");
+      const name = "my dashboard";
+      userEvent.type(nameField(), name);
       userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeEnabled());
       userEvent.click(newCollBtn());
       await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
       userEvent.click(cancelBtn());
       await waitFor(() => expect(dashModalTitle()).toBeInTheDocument());
-      expect(nameField()).toHaveValue("my dashboard");
+      expect(nameField()).toHaveValue(name);
     });
   });
 });
