@@ -20,8 +20,10 @@
              (mt/formatted-rows :venues
                (mt/run-mbql-query venues
                  {:filter   [:and [:> $id 50] [:>= $price 4]]
-                  :order-by [[:asc $id]]})))))
+                  :order-by [[:asc $id]]})))))))
 
+(deftest and-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing ":and, :<, :>, :!="
       (is (= [[21 "PizzaHacker"          58 37.7441 -122.421 2]
               [23 "Taqueria Los Coyotes" 50 37.765  -122.42  2]]

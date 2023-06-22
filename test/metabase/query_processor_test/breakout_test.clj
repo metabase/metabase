@@ -229,8 +229,10 @@
           (mt/with-native-query-testing-context query
             (is (= [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
                    (mt/formatted-rows [1.0 int]
-                     (qp/process-query query))))))))
+                     (qp/process-query query))))))))))
 
+(deftest default-binning-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
     (testing "should be able to use :default binning in a nested query"
       (mt/with-temporary-setting-values [breakout-bin-width 5.0]
         (is (= [[10.0 1] [30.0 61] [35.0 29] [40.0 9]]
@@ -240,8 +242,10 @@
                     {:source-table $$venues
                      :aggregation  [[:count]]
                      :breakout     [[:field %latitude {:binning {:strategy :default}}]]}
-                    :order-by [[:asc $latitude]]}))))))
+                    :order-by [[:asc $latitude]]}))))))))
 
+(deftest binning-error-when-fingerprint-is-missing-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
     (testing "Binning is not supported when there is no fingerprint to determine boundaries"
       ;; Unfortunately our new `add-source-metadata` middleware is just too good at what it does and will pull in
       ;; metadata from the source query, so disable that for now so we can make sure the `update-binning-strategy`

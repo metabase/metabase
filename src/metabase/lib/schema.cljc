@@ -8,6 +8,7 @@
   future we can deprecate that namespace and eventually do away with it entirely."
   (:require
    [metabase.lib.schema.aggregation :as aggregation]
+   [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]
    [metabase.lib.schema.expression.conditional]
@@ -19,6 +20,7 @@
    [metabase.lib.schema.literal]
    [metabase.lib.schema.order-by :as order-by]
    [metabase.lib.schema.ref :as ref]
+   [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.util.malli.registry :as mr]))
@@ -33,8 +35,19 @@
 (mr/def ::stage.native
   [:map
    [:lib/type [:= :mbql.stage/native]]
-   [:native any?]
-   [:args {:optional true} [:sequential any?]]])
+   ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
+   ;; Only restriction is that it is non-nil.
+   [:native some?]
+   ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
+   ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
+   ;; nil.
+   [:args {:optional true} [:sequential any?]]
+   ;; the Table/Collection/etc. that this query should be executed against; currently only used for MongoDB, where it
+   ;; is required.
+   [:collection {:optional true} ::common/non-blank-string]
+   ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
+   ;; `:native` key), but their definition lives under this key.
+   [:template-tags [:ref ::template-tag/template-tag-map]]])
 
 (mr/def ::breakouts
   [:sequential {:min 1} [:ref ::ref/ref]])
@@ -46,12 +59,14 @@
   [:sequential {:min 1} [:ref ::expression/boolean]])
 
 (defn- expression-ref-error-for-stage [stage]
+  {:pre [(map? stage)]}
   (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))]
     (mbql.match/match-one (dissoc stage :joins :lib/stage-metadata)
       [:expression _opts (expression-name :guard (complement expression-names))]
       (str "Invalid :expression reference: no expression named " (pr-str expression-name)))))
 
 (defn- aggregation-ref-error-for-stage [stage]
+  {:pre [(map? stage)]}
   (let [uuids (into #{} (map (comp :lib/uuid second)) (:aggregation stage))]
     (mbql.match/match-one (dissoc stage :joins :lib/stage-metadata)
       [:aggregation _opts (ag-uuid :guard (complement uuids))]
@@ -67,8 +82,9 @@
   [:fn
    {:error/message "Valid references for a single query stage"
     :error/fn      (fn [{:keys [value]} _]
-                     (ref-error-for-stage value))}
-   (complement ref-error-for-stage)])
+                     (when (map? value)
+                       (ref-error-for-stage value)))}
+   (every-pred map? (complement ref-error-for-stage))])
 
 (mr/def ::stage.mbql
   [:and
@@ -87,8 +103,11 @@
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
    [:fn
-    {:error/message "A query cannot have both a :source-table and a :source-card."}
+    {:error/message "A query stage cannot have both a :source-table and a :source-card."}
     (complement (every-pred :source-table :source-card))]
+   [:fn
+    {:error/message ":collection is not allowed in MBQL stages"}
+    (complement :collection)]
    [:ref ::stage.valid-refs]])
 
 ;;; Schema for an MBQL stage that includes either `:source-table` or `:source-query`.
@@ -168,7 +187,9 @@
       (set (join-aliases-in-stage stage)))))
 
 (defn- join-ref-error-for-stages [stages]
+  {:pre [((some-fn nil? sequential?) stages) (every? map? stages)]}
   (loop [visible-join-alias? (constantly false), i 0, [stage & more] stages]
+    (assert (map? stage))
     (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
       (or
        (mbql.match/match-one (dissoc stage :joins :stage/metadata)
@@ -189,8 +210,12 @@
   [:fn
    {:error/message "Valid references for all query stages"
     :error/fn      (fn [{:keys [value]} _]
-                     (ref-error-for-stages value))}
-   (complement ref-error-for-stages)])
+                     (when (and (sequential? value)
+                                (every? map? value))
+                       (ref-error-for-stages value)))}
+   (every-pred sequential?
+               #(every? map? %)
+               (complement ref-error-for-stages))])
 
 (mr/def ::stages
   [:and
@@ -203,8 +228,22 @@
   [:and
    [:map
     [:lib/type [:= :mbql/query]]
+    ;; TODO -- `:lib/metadata` ?
     [:database [:or
                 ::id/database
                 ::id/saved-questions-virtual-database]]
-    [:stages   [:ref ::stages]]]
+    [:stages   [:ref ::stages]]
+    ;; TODO -- these are all additional top-level keys that can be defined for an MBQL query, we need to port them
+    ;; from the legacy [[metabase.mbql.schema/Query]] schema.
+    ;;
+    ;; * `:parameters`
+    ;;
+    ;; * `:settings`
+    ;;
+    ;; * `:constraints`
+    ;;
+    ;; * `:middleware`
+    ;;
+    ;; * `:info`
+    ]
    lib.schema.util/UniqueUUIDs])

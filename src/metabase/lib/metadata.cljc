@@ -155,7 +155,9 @@
 
 (def MetadataProvider
   "Schema for something that satisfies the [[lib.metadata.protocols/MetadataProvider]] protocol."
-  [:fn lib.metadata.protocols/metadata-provider?])
+  [:fn
+   {:error/message "Valid MetadataProvider"}
+   lib.metadata.protocols/metadata-provider?])
 
 (def MetadataProviderable
   "Something that can be used to get a MetadataProvider. Either a MetadataProvider, or a map with a MetadataProvider in
