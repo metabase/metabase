@@ -40,7 +40,7 @@
   [xs]
   (mapv ->op-arg xs))
 
-(defmethod ->op-arg :metadata/field
+(defmethod ->op-arg :metadata/column
   [field-metadata]
   (lib.ref/ref field-metadata))
 

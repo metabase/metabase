@@ -128,7 +128,7 @@
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
         (is (=? [{:database-type      "INTEGER"
                   :semantic-type      :type/FK
-                  :lib/type           :metadata/field
+                  :lib/type           :metadata/column
                   :table-id           (meta/id :venues)
                   :name               "CATEGORY_ID"
                   :has-field-values   :none
@@ -138,12 +138,12 @@
                   :id                 (meta/id :venues :category-id)
                   :display-name       "Category ID"
                   :base-type          :type/Integer}
-                 {:lib/type     :metadata/field
+                 {:lib/type     :metadata/column
                   :base-type    :type/Integer
                   :name         "sum"
                   :display-name "Sum of Price"
                   :lib/source   :source/aggregations}
-                 {:lib/type     :metadata/field
+                 {:lib/type     :metadata/column
                   :base-type    :type/Float
                   :name         "avg"
                   :display-name "Average of Price + 1"
@@ -156,7 +156,7 @@
                     (lib/expression "Category ID + 1"  (lib/+ (meta/field-metadata :venues :category-id) 1))
                     (lib/breakout [:expression {:lib/uuid (str (random-uuid))} "Category ID + 1"]))]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:lib/type     :metadata/field
+        (is (=? [{:lib/type     :metadata/column
                   :name         "Category ID + 1"
                   :display-name "Category ID + 1"
                   :base-type    :type/Integer
@@ -166,7 +166,7 @@
 (deftest ^:parallel orderable-columns-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))]
     (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-      (is (=? [{:lib/type                 :metadata/field
+      (is (=? [{:lib/type                 :metadata/column
                 :name                     "ID"
                 :display-name             "ID"
                 :id                       (meta/id :venues :id)
@@ -174,7 +174,7 @@
                 :base-type                :type/BigInteger
                 :lib/source-column-alias  "ID"
                 :lib/desired-column-alias "ID"}
-               {:lib/type                 :metadata/field
+               {:lib/type                 :metadata/column
                 :name                     "NAME"
                 :display-name             "Name"
                 :id                       (meta/id :venues :name)
@@ -182,14 +182,14 @@
                 :base-type                :type/Text
                 :lib/source-column-alias  "NAME"
                 :lib/desired-column-alias "NAME"}
-               {:lib/type                 :metadata/field
+               {:lib/type                 :metadata/column
                 :name                     "CATEGORY_ID"
                 :display-name             "Category ID"
                 :id                       (meta/id :venues :category-id)
                 :table-id                 (meta/id :venues)
                 :lib/source-column-alias  "CATEGORY_ID"
                 :lib/desired-column-alias "CATEGORY_ID"}
-               {:lib/type                 :metadata/field
+               {:lib/type                 :metadata/column
                 :name                     "LATITUDE"
                 :display-name             "Latitude"
                 :id                       (meta/id :venues :latitude)
@@ -197,7 +197,7 @@
                 :base-type                :type/Float
                 :lib/source-column-alias  "LATITUDE"
                 :lib/desired-column-alias "LATITUDE"}
-               {:lib/type                 :metadata/field
+               {:lib/type                 :metadata/column
                 :name                     "LONGITUDE"
                 :display-name             "Longitude"
                 :id                       (meta/id :venues :longitude)
@@ -205,7 +205,7 @@
                 :base-type                :type/Float
                 :lib/source-column-alias  "LONGITUDE"
                 :lib/desired-column-alias "LONGITUDE"}
-               {:lib/type                 :metadata/field
+               {:lib/type                 :metadata/column
                 :name                     "PRICE"
                 :display-name             "Price"
                 :id                       (meta/id :venues :price)
@@ -213,7 +213,7 @@
                 :base-type                :type/Integer
                 :lib/source-column-alias  "PRICE"
                 :lib/desired-column-alias "PRICE"}
-               {:lib/type                 :metadata/field
+               {:lib/type                 :metadata/column
                 :name                     "ID"
                 :display-name             "ID"
                 :id                       (meta/id :categories :id)
@@ -221,7 +221,7 @@
                 :base-type                :type/BigInteger
                 :lib/source-column-alias  "ID"
                 :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"}
-               {:lib/type                 :metadata/field
+               {:lib/type                 :metadata/column
                 :name                     "NAME"
                 :display-name             "Name"
                 :id                       (meta/id :categories :name)
@@ -242,7 +242,7 @@
                  {:id (meta/id :venues :latitude) :name "LATITUDE"}
                  {:id (meta/id :venues :longitude) :name "LONGITUDE"}
                  {:id (meta/id :venues :price) :name "PRICE"}
-                 {:lib/type     :metadata/field
+                 {:lib/type     :metadata/column
                   :base-type    :type/Integer
                   :name         "Category ID + 1"
                   :display-name "Category ID + 1"
@@ -283,14 +283,14 @@
                  {:id (meta/id :venues :latitude) :name "LATITUDE"}
                  {:id (meta/id :venues :longitude) :name "LONGITUDE"}
                  {:id (meta/id :venues :price) :name "PRICE"}
-                 {:lib/type     :metadata/field
+                 {:lib/type     :metadata/column
                   :name         "ID"
                   :display-name "ID"
                   :source-alias "Cat"
                   :id           (meta/id :categories :id)
                   :table-id     (meta/id :categories)
                   :base-type    :type/BigInteger}
-                 {:lib/type     :metadata/field
+                 {:lib/type     :metadata/column
                   :name         "NAME"
                   :display-name "Name"
                   :source-alias "Cat"
@@ -456,7 +456,7 @@
     (is (=? [{:id                       (meta/id :venues :id)
               :name                     "ID"
               :lib/source               :source/previous-stage
-              :lib/type                 :metadata/field
+              :lib/type                 :metadata/column
               :base-type                :type/BigInteger
               :effective-type           :type/BigInteger
               :display-name             "ID"
@@ -466,7 +466,7 @@
              {:id                       (meta/id :categories :id)
               :name                     "ID"
               :lib/source               :source/previous-stage
-              :lib/type                 :metadata/field
+              :lib/type                 :metadata/column
               :base-type                :type/BigInteger
               :effective-type           :type/BigInteger
               :display-name             "ID"
@@ -476,7 +476,7 @@
              {:id                       (meta/id :categories :name)
               :name                     "NAME"
               :lib/source               :source/previous-stage
-              :lib/type                 :metadata/field
+              :lib/type                 :metadata/column
               :base-type                :type/Text
               :effective-type           :type/Text
               :display-name             "Name"
@@ -672,7 +672,7 @@
                                 (lib/aggregate (lib/avg (lib/+ (meta/field-metadata :venues :price) 1))))
           {ag-uuid :lib/source-uuid} (first (lib/aggregations-metadata query))
           orderable-columns (lib/orderable-columns query)]
-      (is (=? [{:lib/type         :metadata/field
+      (is (=? [{:lib/type         :metadata/column
                 :base-type        :type/Float
                 :display-name     "Average of Price + 1"
                 :lib/source       :source/aggregations
@@ -718,7 +718,7 @@
              {:id (meta/id :categories :name), :name "NAME", :display-name "Name", :lib/source :source/implicitly-joinable}]
             (lib/orderable-columns query)))
     (let [expr (m/find-first #(= (:name %) "expr") (lib/orderable-columns query))]
-      (is (=? {:lib/type   :metadata/field
+      (is (=? {:lib/type   :metadata/column
                :lib/source :source/expressions
                :name       "expr"}
               expr))
