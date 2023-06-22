@@ -1,5 +1,6 @@
 (ns metabase.lib.drill-thru
   (:require
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.filter :as lib.filter]
@@ -10,11 +11,11 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]
-   [metabase.models.query :as query]))
+   [metabase.util.malli :as mu]))
 
 ;; TODO: Different ways to apply drill-thru to a query.
 ;; So far:
@@ -104,12 +105,12 @@
    :operators (map :name (:operators drill-thru))})
 
 (defmethod drill-thru-method :drill-thru/quick-filter
-  [query stage-number drill-thru operator & _more]
-  (if-let [quick-filter (first (filter #(= (:name %) operator) (:operators drill-thru)))]
+  [query stage-number drill-thru filter-op & _more]
+  (if-let [quick-filter (first (filter #(= (:name %) filter-op) (:operators drill-thru)))]
     (lib.filter/filter query stage-number (:filter quick-filter))
-    (throw (ex-info (str "No matching filter for operator " operator)
+    (throw (ex-info (str "No matching filter for operator " filter-op)
                     {:drill-thru   drill-thru
-                     :operator     operator
+                     :operator     filter-op
                      :query        query
                      :stage-number stage-number}))))
 
@@ -170,7 +171,7 @@
         fk-column        (lib.metadata/field query fk-column-id)
         fk-filter        (lib.options/ensure-uuid [:= {} (lib.ref/ref fk-column) object-id])
         ;; Only filters which specify other PKs of the table are allowed to remain.
-        other-pk?        (fn [[op _opts lhs rhs :as old-filter]]
+        other-pk?        (fn [[op _opts lhs :as _old-filter]]
                            (and lhs
                                 (not= (field-id lhs) fk-column-id)
                                 (= op :=)
@@ -254,7 +255,7 @@
    column       :- lib.metadata/ColumnMetadata
    value
    field-pred   :- [:=> [:cat lib.metadata/ColumnMetadata] boolean?]]
-  (when (and (structued-query? query stage-number)
+  (when (and (structured-query? query stage-number)
              column
              (some? value)
              (= (:lib/source column) :source/aggregations))
@@ -296,7 +297,7 @@
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata
    value]
-  (when (and (structued-query? query stage-number)
+  (when (and (structured-query? query stage-number)
              column
              (some? value)
              (= (:lib/source column) :source/aggregations))
@@ -339,7 +340,7 @@
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata
    value]
-  (when (and (structued-query? query stage-number)
+  (when (and (structured-query? query stage-number)
              column
              (nil? value)
              (not (lib.types.isa/structured? column))
@@ -374,7 +375,7 @@
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata
    value]
-  (when (and (structued-query? query stage-number)
+  (when (and (structured-query? query stage-number)
              column
              (nil? value)
              (not (lib.types.isa/structured? column)))
@@ -407,7 +408,7 @@
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata
    value]
-  (when (and (structued-query? query stage-number)
+  (when (and (structured-query? query stage-number)
              (lib.metadata/setting query :enable-xrays)
              column
              (nil? value)
