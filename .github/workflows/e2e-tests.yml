@@ -1,11 +1,11 @@
 name: E2E Tests
 
-on:
-  push:
-    branches:
-      - "main"
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+on: workflow_dispatch
+  # push:
+  #   branches:
+  #     - "main"
+  # pull_request:
+  #   types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}

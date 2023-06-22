@@ -1,10 +1,10 @@
 name: CLJS
 
-on:
-  push:
-    branches:
-      - 'main'
-  pull_request:
+on: workflow_dispatch
+  # push:
+  #   branches:
+  #     - 'main'
+  # pull_request:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}

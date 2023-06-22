@@ -1,13 +1,12 @@
 name: Fuzzing
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - 'main'
-  pull_request:
-    paths:
-      - 'frontend/src/metabase-lib/expressions/**'
+on: workflow_dispatch
+  # push:
+  #   branches:
+  #     - 'main'
+  # pull_request:
+  #   paths-ignore:
+  #   - 'docs/**'
 
 jobs:
   fe-fuzz-tokenizer:

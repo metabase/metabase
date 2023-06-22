@@ -1,10 +1,10 @@
 name: Migrations
 
-on:
-  push:
-    branches:
-      - 'main'
-  pull_request:
+on: workflow_dispatch
+  # push:
+  #   branches:
+  #     - 'main'
+  # pull_request:
 
 jobs:
 

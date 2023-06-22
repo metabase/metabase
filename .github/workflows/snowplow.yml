@@ -1,9 +1,9 @@
 name: Snowplow
 
-on:
-  pull_request:
-    branches:
-      - '**'
+on: workflow_dispatch
+  # pull_request:
+  #   branches:
+  #     - '**'
 
 jobs:
   files-changed:
