@@ -86,7 +86,9 @@ class PublicDashboard extends Component {
     initialize();
     try {
       await fetchDashboard(uuid || token, location.query);
-      await fetchDashboardCardData({ reload: false, clearCache: true });
+      if (this.props.dashboard.ordered_tabs.length === 0) {
+        await fetchDashboardCardData({ reload: false, clearCache: true });
+      }
     } catch (error) {
       console.error(error);
       setErrorPage(error);

@@ -136,13 +136,13 @@ describe("scenarios > dashboard > tabs", () => {
     );
 
     // Check first tab requests
-    cy.get("@publicFirstTabQuery").should("have.been.called");
+    cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuery").should("not.have.been.called");
 
     // Visit second tab and confirm only second card was queried
     cy.findByRole("tab", { name: "Tab 2" }).click();
-    cy.get("@publicFirstTabQuery").should("have.been.called");
-    cy.get("@publicSecondTabQuery").should("have.been.called");
+    cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
+    cy.get("@publicSecondTabQuery").should("have.been.calledOnce");
   });
 });
 
