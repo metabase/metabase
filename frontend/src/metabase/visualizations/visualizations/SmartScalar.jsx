@@ -45,8 +45,9 @@ const TOOLTIP_ICON_SIZE = 11;
 const ICON_MARGIN_RIGHT = SPACING;
 const SCALAR_TITLE_LINE_HEIGHT = 23;
 const MIN_PREVIOUS_VALUE_SIZE = 27;
+const TITLE_2_LINES_THRESHOLD = 150; // determined empirically
 
-const getTitleLinesCount = height => (height > 180 ? 2 : 1);
+const getTitleLinesCount = height => (height > TITLE_2_LINES_THRESHOLD ? 2 : 1);
 
 const formatChangeAutoPrecision = (
   change,
