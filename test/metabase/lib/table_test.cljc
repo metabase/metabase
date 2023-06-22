@@ -8,14 +8,14 @@
    [metabase.util.malli :as mu]))
 
 (deftest ^:parallel join-table-metadata-test
-  (testing "You should be able to pass :metadata/table to lib/join"
-    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                    (lib/join (-> (lib/table (meta/id :categories))
+  (testing "You should be able to pass :metadata/table to lib/join INDIRECTLY VIA join-clause"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/join (-> (lib/join-clause (meta/table-metadata :categories))
                                   (lib/with-join-alias "Cat")
-                                  (lib/with-join-fields :all))
-                              [(lib/= (lib/field (meta/id :venues :category-id))
-                                      (-> (lib/field (meta/id :categories :id))
-                                          (lib/with-join-alias "Cat")))]))]
+                                  (lib/with-join-fields :all)
+                                  (lib/with-join-conditions [(lib/= (meta/field-metadata :venues :category-id)
+                                                                    (-> (meta/field-metadata :categories :id)
+                                                                        (lib/with-join-alias "Cat")))]))))]
       (is (=? {:stages [{:joins
                          [{:stages     [{}]
                            :alias      "Cat"
@@ -37,6 +37,6 @@
             (tables   [_this]          (metadata.protocols/tables meta/metadata-provider))
             (fields   [_this table-id] (mapv #(assoc % :name nil)
                                              (metadata.protocols/fields meta/metadata-provider table-id))))
-          query (lib/query-for-table-name metadata-provider "VENUES")]
+          query (lib/query metadata-provider (meta/table-metadata :venues))]
       (binding [mu/*enforce* false]
         (is (sequential? (lib.metadata.calculation/visible-columns query)))))))

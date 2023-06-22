@@ -9,7 +9,7 @@
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.card :as lib.card]
    [metabase.lib.column-group :as lib.column-group]
-   [metabase.lib.dev :as lib.dev]
+   [metabase.lib.common :as lib.common]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
@@ -34,7 +34,7 @@
          lib.breakout/keep-me
          lib.card/keep-me
          lib.column-group/keep-me
-         lib.dev/keep-me
+         lib.common/keep-me
          lib.expression/keep-me
          lib.field/keep-me
          lib.filter/keep-me
@@ -56,6 +56,7 @@
   [lib.aggregation
    aggregate
    aggregation-clause
+   aggregation-ref
    aggregation-operator-columns
    aggregations
    aggregations-metadata
@@ -88,17 +89,14 @@
   [lib.column-group
    columns-group-columns
    group-columns]
-  [lib.dev
-   field
-   query-for-table-id
-   query-for-table-name
-   table
-   ref-lookup]
+  [lib.common
+   external-op]
   [lib.expression
    expression
    expressions
    expressions-metadata
    expressionable-columns
+   expression-ref
    +
    -
    *
@@ -177,7 +175,8 @@
    suggested-join-condition
    with-join-alias
    with-join-fields
-   with-join-strategy]
+   with-join-strategy
+   with-join-conditions]
   [lib.limit
    current-limit
    limit]

@@ -109,8 +109,9 @@ describe(
         cy.wait("@getModel");
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Actions").click();
+      cy.findByRole("tablist").within(() => {
+        cy.findByText("Actions").click();
+      });
 
       cy.findByRole("button", { name: /Create basic actions/i }).click();
       cy.findByLabelText("Action list").within(() => {
@@ -162,13 +163,15 @@ describe(
         cy.findByText("Disable basic actions?").should("be.visible");
         cy.button("Disable").click();
       });
-      cy.findByLabelText("Action list").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Create").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Update").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Delete").should("not.exist");
+
+      cy.findAllByRole("tabpanel")
+        .filter(":visible")
+        .within(() => {
+          cy.findByLabelText("Action list").should("not.exist");
+          cy.findByText("Create").should("not.exist");
+          cy.findByText("Update").should("not.exist");
+          cy.findByText("Delete").should("not.exist");
+        });
 
       openNavigationSidebar();
       navigationSidebar().within(() => {
@@ -179,14 +182,21 @@ describe(
       getArchiveListItem("Delete Order").within(() => {
         cy.icon("unarchive").click({ force: true });
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Delete Order").should("not.exist");
+
+      cy.get("main").within(() => {
+        cy.findByText("Delete Order");
+      });
+
       cy.findByRole("button", { name: "Undo" }).click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Delete Order").should("be.visible");
+
+      cy.get("main").within(() => {
+        cy.findByText("Delete Order").should("be.visible");
+      });
+
       getArchiveListItem("Delete Order").within(() => {
         cy.icon("trash").click({ force: true });
       });
+
       cy.findByTestId("Delete Order").should("not.exist");
       cy.findByRole("button", { name: "Undo" }).should("not.exist");
     });
@@ -195,16 +205,19 @@ describe(
       const QUERY = "UPDATE orders SET discount = {{ discount }}";
       cy.visit("/");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New").click();
+      cy.findByTestId("app-bar").findByText("New").click();
       popover().findByText("Action").click();
 
       fillActionQuery(QUERY);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/New Action/)
-        .clear()
-        .type("Discount order");
-      cy.findByRole("button", { name: "Save" }).click();
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText(/New Action/)
+          .clear()
+          .type("Discount order");
+
+        cy.findByRole("button", { name: "Save" }).click();
+      });
+
       modal().within(() => {
         cy.findByText("Select a model").click();
       });
@@ -214,10 +227,13 @@ describe(
       cy.get("@modelId").then(modelId => {
         cy.url().should("include", `/model/${modelId}/detail/actions`);
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Discount order").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(QUERY).should("be.visible");
+
+      cy.findAllByRole("tabpanel")
+        .filter(":visible")
+        .within(() => {
+          cy.findByText("Discount order").should("be.visible");
+          cy.findByText(QUERY).should("be.visible");
+        });
     });
 
     it("should respect permissions", () => {
@@ -285,15 +301,16 @@ describe(
       cy.reload();
 
       // Check can only see the action database
-      cy.findByRole("dialog").findByText("QA Postgres12").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sample Database").should("not.exist");
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("QA Postgres12").click();
+
+        cy.findByText("Sample Database").should("not.exist");
+      });
     });
 
     it("should display parameters for variable template tags only", () => {
       cy.visit("/");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New").click();
+      cy.findByTestId("app-bar").findByText("New").click();
       popover().findByText("Action").click();
 
       fillActionQuery("{{#1-orders-model}}");
@@ -352,10 +369,9 @@ describe(
         cy.button(SAMPLE_QUERY_ACTION.name).click();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`).should(
-        "be.visible",
-      );
+      cy.findByTestId("toast-undo")
+        .findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`)
+        .should("be.visible");
 
       queryWritableDB(
         `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
@@ -467,6 +483,264 @@ describe(
         cy.findByText("Not found").should("be.visible");
       });
     });
+
+    describe("hidden fields", () => {
+      it("should allow query action execution from the model details page", () => {
+        verifyScoreValue(0, dialect);
+
+        cy.get("@writableModelId").then(modelId => {
+          createAction({
+            ...SAMPLE_WRITABLE_QUERY_ACTION,
+            model_id: modelId,
+          });
+          cy.visit(`/model/${modelId}/detail/actions`);
+          cy.wait("@getModel");
+        });
+
+        openActionEditorFor(SAMPLE_QUERY_ACTION.name);
+
+        fillActionQuery(" [[and status = {{ current_status}}]]");
+        cy.findAllByTestId("form-field-container")
+          .filter(":contains('Current Status')")
+          .within(() => {
+            cy.findByLabelText("Show field").click();
+            cy.icon("gear").click();
+          });
+
+        popover().within(() => {
+          cy.findByLabelText("Required").uncheck();
+        });
+
+        cy.findByRole("button", { name: "Update" }).click();
+
+        runActionFor(SAMPLE_QUERY_ACTION.name);
+
+        modal().within(() => {
+          cy.findByLabelText(TEST_PARAMETER.name).type("1");
+          cy.findByLabelText("Current Status").should("not.exist");
+
+          cy.button(SAMPLE_QUERY_ACTION.name).click();
+        });
+
+        cy.findByTestId("toast-undo")
+          .findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`)
+          .should("be.visible");
+
+        verifyScoreValue(22, dialect);
+
+        openActionEditorFor(SAMPLE_QUERY_ACTION.name);
+
+        cy.findAllByTestId("form-field-container")
+          .filter(":contains('Current Status')")
+          .within(() => {
+            cy.icon("gear").click();
+          });
+
+        popover().within(() => {
+          cy.findByLabelText("Required").check();
+        });
+        cy.findByRole("button", { name: "Update" }).click();
+
+        runActionFor(SAMPLE_QUERY_ACTION.name);
+
+        modal().within(() => {
+          cy.findByLabelText(TEST_PARAMETER.name).type("1");
+          cy.findByLabelText("Current Status").should("not.exist");
+
+          cy.button(SAMPLE_QUERY_ACTION.name).should("be.disabled");
+
+          cy.findByRole("button", { name: "Cancel" }).click();
+        });
+
+        openActionEditorFor(SAMPLE_QUERY_ACTION.name);
+
+        // reset score value to 0
+        resetAndVerifyScoreValue(dialect);
+
+        cy.findByRole("dialog").within(() => {
+          cy.findAllByTestId("form-field-container")
+            .filter(":contains('Current Status')")
+            .within(() => {
+              cy.findByLabelText("Show field").click();
+              cy.findByLabelText("Show field").should("be.checked");
+            });
+          cy.findByRole("button", { name: "Update" }).click();
+        });
+
+        runActionFor(SAMPLE_QUERY_ACTION.name);
+
+        modal().within(() => {
+          cy.findByLabelText(TEST_PARAMETER.name).type("1");
+          cy.button(SAMPLE_QUERY_ACTION.name).should("be.disabled");
+
+          cy.findByLabelText("Current Status").type("active");
+
+          cy.button(SAMPLE_QUERY_ACTION.name).click();
+        });
+
+        verifyScoreValue(22, dialect);
+      });
+
+      it("should allow implicit action execution from the model details page", () => {
+        cy.get("@writableModelId").then(id => {
+          cy.visit(`/model/${id}/detail`);
+          cy.wait("@getModel");
+        });
+
+        cy.findByRole("tablist").within(() => {
+          cy.findByText("Actions").click();
+        });
+
+        cy.findByRole("button", { name: /Create basic actions/i }).click();
+
+        openActionEditorFor("Create");
+
+        cy.findAllByTestId("form-field-container")
+          .filter(":contains('Created At')")
+          .within(() => {
+            cy.findByLabelText("Show field").click();
+            cy.findByLabelText("Show field").should("not.be.checked");
+          });
+
+        cy.findByRole("button", { name: "Update" }).click();
+
+        runActionFor("Create");
+
+        modal().within(() => {
+          cy.findByLabelText("Created At").should("not.exist");
+          cy.findByLabelText("Team Name").type("Zebras");
+          cy.findByLabelText("Score").type("1");
+
+          cy.findByRole("button", { name: "Save" }).click();
+        });
+
+        cy.findByTestId("toast-undo")
+          .findByText(`Successfully saved`)
+          .should("be.visible");
+
+        // show toast
+        queryWritableDB(
+          `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE team_name = 'Zebras'`,
+          dialect,
+        ).then(result => {
+          expect(result.rows.length).to.equal(1);
+
+          const row = result.rows[0];
+
+          expect(row.score).to.equal(1);
+        });
+      });
+
+      it("should allow public sharing of query action and execution", () => {
+        cy.get("@writableModelId").then(modelId => {
+          createAction({
+            ...SAMPLE_WRITABLE_QUERY_ACTION,
+            model_id: modelId,
+          });
+
+          cy.visit(`/model/${modelId}/detail/actions`);
+          cy.wait("@getModel");
+        });
+
+        enableSharingFor(SAMPLE_WRITABLE_QUERY_ACTION.name, {
+          publicUrlAlias: "queryActionPublicUrl",
+        });
+
+        openActionEditorFor(SAMPLE_WRITABLE_QUERY_ACTION.name);
+
+        fillActionQuery(" [[ AND status = {{new_status}} ]]");
+
+        cy.findAllByTestId("form-field-container")
+          .filter(":contains('New Status')")
+          .within(() => {
+            cy.findByLabelText("Show field").click();
+            cy.findByLabelText("Show field").should("not.be.checked");
+
+            cy.icon("gear").click();
+          });
+
+        popover().within(() => {
+          cy.findByLabelText("Required").uncheck();
+        });
+
+        cy.findByRole("button", { name: "Update" }).click();
+
+        cy.signOut();
+
+        cy.get("@queryActionPublicUrl").then(url => {
+          cy.visit(url);
+          cy.findByLabelText(TEST_PARAMETER.name).type("1");
+          cy.findByLabelText("New Status").should("not.exist");
+
+          cy.button(SAMPLE_QUERY_ACTION.name).click();
+
+          cy.findByText(
+            `${SAMPLE_WRITABLE_QUERY_ACTION.name} ran successfully`,
+          ).should("be.visible");
+
+          queryWritableDB(
+            `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
+            dialect,
+          ).then(result => {
+            const row = result.rows[0];
+
+            expect(row.score).to.equal(22);
+          });
+        });
+      });
+
+      it("should allow public sharing of implicit action and execution", () => {
+        cy.get("@writableModelId").then(id => {
+          cy.visit(`/model/${id}/detail`);
+          cy.wait("@getModel");
+        });
+
+        cy.findByRole("tablist").within(() => {
+          cy.findByText("Actions").click();
+        });
+
+        cy.findByRole("button", { name: /Create basic actions/i }).click();
+
+        enableSharingFor("Update", { publicUrlAlias: "updatePublicURL" });
+
+        openActionEditorFor("Update");
+
+        cy.findAllByTestId("form-field-container")
+          .filter(":contains('Created At')")
+          .within(() => {
+            cy.findByLabelText("Show field").click();
+            cy.findByLabelText("Show field").should("not.be.checked");
+          });
+
+        cy.findByRole("button", { name: "Update" }).click();
+
+        cy.signOut();
+
+        cy.get("@updatePublicURL").then(url => {
+          cy.visit(url);
+
+          // team 2 has 10 points, let's give them more
+          cy.findByLabelText("ID").type("2");
+          cy.findByLabelText("Score").type("16");
+          cy.findByLabelText("Team Name").type("Bouncy Bears");
+          cy.findByLabelText("Create At").should("not.exist");
+
+          cy.button("Update").click();
+
+          cy.findByText("Update ran successfully").should("be.visible");
+
+          queryWritableDB(
+            `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 2`,
+            dialect,
+          ).then(result => {
+            const row = result.rows[0];
+
+            expect(row.score).to.equal(16);
+            expect(row.team_name).to.equal("Bouncy Bears");
+          });
+        });
+      });
+    });
   });
 });
 
@@ -528,4 +802,26 @@ function disableSharingFor(actionName) {
 
 function getArchiveListItem(itemName) {
   return cy.findByTestId(`archive-item-${itemName}`);
+}
+
+function resetAndVerifyScoreValue(dialect) {
+  const newValue = 0;
+
+  queryWritableDB(
+    `UPDATE ${WRITABLE_TEST_TABLE} SET score = ${newValue} WHERE id = 1`,
+    dialect,
+  );
+
+  verifyScoreValue(newValue, dialect);
+}
+
+function verifyScoreValue(value, dialect) {
+  queryWritableDB(
+    `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
+    dialect,
+  ).then(result => {
+    const row = result.rows[0];
+
+    expect(row.score).to.equal(value);
+  });
 }

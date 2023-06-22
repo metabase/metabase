@@ -60,7 +60,7 @@ function SortStep({
     clause: Lib.OrderByClause,
     column: Lib.ColumnMetadata,
   ) => {
-    const nextClause = Lib.orderByClause(topLevelQuery, stageIndex, column);
+    const nextClause = Lib.orderByClause(column);
     const nextQuery = Lib.replaceClause(
       topLevelQuery,
       stageIndex,
