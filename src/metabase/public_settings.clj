@@ -28,6 +28,24 @@
 ;; These modules register settings but are otherwise unused. They still must be imported.
 (comment metabase.public-settings.premium-features/keep-me)
 
+(defsetting application-name
+  (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
+  :visibility :public
+  :type       :string
+  :enabled?   premium-features/enable-whitelabeling?
+  :default    "Metabase")
+
+(defn application-name-for-setting-descriptions
+  "Returns the value of the [[application-name]] setting so setting docstrings can be generated during the compilation stage.
+   Use this instead of `application-name` in descriptions, otherwise the `application-name` setting's
+   `:enabled?` function will be called during compilation, which will fail because it will attempt to perform i18n, which is
+   not allowed during compilation."
+  []
+  (if *compile-files*
+    "Metabase"
+    (binding [setting/*disable-cache* true]
+      (application-name))))
+
 (defn- google-auth-enabled? []
   (boolean (setting/get :google-auth-enabled)))
 
@@ -74,7 +92,8 @@
   :doc        false)
 
 (defsetting site-name
-  (deferred-tru "The name used for this instance of Metabase.")
+  (deferred-tru "The name used for this instance of {0}."
+                (application-name-for-setting-descriptions))
   :default    "Metabase"
   :visibility :settings-manager)
 
@@ -107,7 +126,7 @@
 
 (defsetting site-uuid
   ;; Don't i18n this docstring because it's not user-facing! :)
-  "Unique identifier used for this instance of Metabase. This is set once and only once the first time it is fetched via
+  "Unique identifier used for this instance of {0}. This is set once and only once the first time it is fetched via
   its magic getter. Nice!"
   :visibility :authenticated
   :setter     :none
@@ -177,8 +196,9 @@
 
 (defsetting site-locale
   (deferred-tru
-    (str "The default language for all users across the Metabase UI, system emails, pulses, and alerts. "
-         "Users can individually override this default language from their own account settings."))
+    (str "The default language for all users across the {0} UI, system emails, pulses, and alerts. "
+         "Users can individually override this default language from their own account settings.")
+    (application-name-for-setting-descriptions))
   :default    "en"
   :visibility :public
   :setter     (fn [new-value]
@@ -192,7 +212,8 @@
   :visibility :authenticated)
 
 (defsetting anon-tracking-enabled
-  (deferred-tru "Enable the collection of anonymous usage data in order to help Metabase improve.")
+  (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
+                (application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
   :visibility :public)
@@ -235,7 +256,8 @@
   :visibility :authenticated)
 
 (defsetting embedding-app-origin
-  (deferred-tru "Allow this origin to embed the full Metabase application")
+  (deferred-tru "Allow this origin to embed the full {0} application"
+                (application-name-for-setting-descriptions))
   :visibility :public)
 
 (defsetting enable-nested-queries
@@ -296,7 +318,8 @@
 
 ;; TODO -- this isn't really a TTL at all. Consider renaming to something like `-min-duration`
 (defsetting query-caching-min-ttl
-  (deferred-tru "Metabase will cache all saved questions with an average query execution time longer than this many seconds:")
+  (deferred-tru "{0} will cache all saved questions with an average query execution time longer than this many seconds:"
+                 (application-name-for-setting-descriptions))
   :type    :double
   :default 60.0)
 
@@ -319,13 +342,6 @@
   :visibility :admin
   :doc        false)
 
-(defsetting application-name
-  (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
-  :visibility :public
-  :type       :string
-  :enabled?   premium-features/enable-whitelabeling?
-  :default    "Metabase")
-
 (defsetting loading-message
   (deferred-tru "Message to show while a query is running.")
   :visibility :public
@@ -335,8 +351,9 @@
 
 (defsetting application-colors
   (deferred-tru
-   (str "These are the primary colors used in charts and throughout Metabase. "
-        "You might need to refresh your browser to see your changes take effect."))
+    (str "These are the primary colors used in charts and throughout {0}. "
+         "You might need to refresh your browser to see your changes take effect.")
+    (application-name-for-setting-descriptions))
   :visibility :public
   :type       :json
   :enabled?   premium-features/enable-whitelabeling?
@@ -573,12 +590,6 @@
                    (assert (#{:monday :tuesday :wednesday :thursday :friday :saturday :sunday} (keyword new-value))
                            (trs "Invalid day of week: {0}" (pr-str new-value))))
                  (setting/set-value-of-type! :keyword :start-of-week new-value)))
-
-(defsetting ssh-heartbeat-interval-sec
-  (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")
-  :visibility :public
-  :type       :integer
-  :default    180)
 
 (defsetting cloud-gateway-ips-url
   "Store URL for fetching the list of Cloud gateway IP addresses"
