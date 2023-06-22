@@ -94,16 +94,16 @@
               series (-> card-right
                          (update :name #(format "%s (%s)" % (comparison-name right)))
                          vector)]
-          (update dashboard :ordered_cards conj {:col                    0
-                                                 :row                    row
-                                                 :size_x                 populate/grid-width
-                                                 :size_y                 height
-                                                 :card                   card
-                                                 :card_id                (:id card)
-                                                 :series                 series
-                                                 :visualization_settings {:graph.y_axis.auto_split false
-                                                                          :graph.series_labels     [(:name card) (:name (first series))]}
-                                                 :id                     (gensym)}))
+          (update dashboard :ordered_cards conj (merge (populate/card-defaults)
+                                                       {:col                    0
+                                                        :row                    row
+                                                        :size_x                 populate/grid-width
+                                                        :size_y                 height
+                                                        :card                   card
+                                                        :card_id                (:id card)
+                                                        :series                 series
+                                                        :visualization_settings {:graph.y_axis.auto_split false
+                                                                                 :graph.series_labels     [(:name card) (:name (first series))]}})))
         (let [width        (/ populate/grid-width 2)
               series-left  (map clone-card (:series card-left))
               series-right (map clone-card (:series card-right))
@@ -114,24 +114,25 @@
                              (not (multiseries? card-right))
                              (assoc-in [:visualization_settings :graph.colors] [color-right]))]
           (-> dashboard
-              (update :ordered_cards conj {:col                    0
-                                           :row                    row
-                                           :size_x                 width
-                                           :size_y                 height
-                                           :card                   card-left
-                                           :card_id                (:id card-left)
-                                           :series                 series-left
-                                           :visualization_settings {}
-                                           :id                     (gensym)})
-              (update :ordered_cards conj {:col                    width
-                                           :row                    row
-                                           :size_x                 width
-                                           :size_y                 height
-                                           :card                   card-right
-                                           :card_id                (:id card-right)
-                                           :series                 series-right
-                                           :visualization_settings {}
-                                           :id                     (gensym)})))))
+              (update :ordered_cards conj (merge (populate/card-defaults)
+                                                 {:col                    0
+                                                  :row                    row
+                                                  :size_x                 width
+                                                  :size_y                 height
+                                                  :card                   card-left
+                                                  :card_id                (:id card-left)
+                                                  :series                 series-left
+                                                  :visualization_settings {}}))
+              (update :ordered_cards conj (merge (populate/card-defaults)
+                                                 {:col                    width
+                                                   :row                    row
+                                                   :size_x                 width
+                                                   :size_y                 height
+                                                   :card                   card-right
+                                                   :card_id                (:id card-right)
+                                                   :series                 series-right
+                                                   :visualization_settings {}}))))))
+
     (populate/add-text-card dashboard {:text                   (:text card)
                                        :width                  (/ populate/grid-width 2)
                                        :height                 (:height card)
