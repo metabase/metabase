@@ -102,4 +102,40 @@ describe("CreateDashboardModal", () => {
       });
     });
   });
+
+  describe("new collection modal", () => {
+    const nameField = () => screen.getByRole("textbox", { name: /name/i });
+    const collDropdown = () => screen.getByTestId("select-button");
+    const newCollBtn = () =>
+      screen.getByRole("button", {
+        name: /new collection/i,
+      });
+    const collModalTitle = () =>
+      screen.getByRole("heading", { name: /new collection/i });
+    const dashModalTitle = () =>
+      screen.getByRole("heading", { name: /new dashboard/i });
+    const cancelBtn = () => screen.getByRole("button", { name: /cancel/i });
+
+    it("should have a new collection button in the collection picker", async () => {
+      setup();
+      userEvent.click(collDropdown());
+      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+    });
+    it("should not be accessible if the dashboard form is invalid", async () => {
+      setup();
+      userEvent.click(collDropdown());
+      await waitFor(() => expect(newCollBtn()).toBeDisabled());
+    });
+    it("should open new collection modal and return to dashboard modal when clicking close", async () => {
+      setup();
+      userEvent.type(nameField(), "my dashboard");
+      userEvent.click(collDropdown());
+      await waitFor(() => expect(newCollBtn()).toBeEnabled());
+      userEvent.click(newCollBtn());
+      await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
+      userEvent.click(cancelBtn());
+      await waitFor(() => expect(dashModalTitle()).toBeInTheDocument());
+      expect(nameField()).toHaveValue("my dashboard");
+    });
+  });
 });
