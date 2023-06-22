@@ -41,6 +41,7 @@ import EmbedFrame from "../components/EmbedFrame";
 import {
   DashboardContainer,
   DashboardGridContainer,
+  Separator,
 } from "./PublicDashboard.styled";
 
 const mapStateToProps = (state, props) => {
@@ -76,7 +77,6 @@ class PublicDashboard extends Component {
       location,
       params: { uuid, token },
     } = this.props;
-
     if (uuid) {
       setPublicDashboardEndpoints();
     } else if (token) {
@@ -126,6 +126,7 @@ class PublicDashboard extends Component {
       isFullscreen,
       isNightMode,
     } = this.props;
+
     const buttons = !isWithinIframe()
       ? getDashboardActions(this, { ...this.props, isPublic: true })
       : [];
@@ -152,7 +153,8 @@ class PublicDashboard extends Component {
         >
           {() => (
             <DashboardContainer>
-              <DashboardTabs />
+              <DashboardTabs location={this.props.location} />
+              <Separator />
               <DashboardGridContainer>
                 <DashboardGrid
                   {...this.props}

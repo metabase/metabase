@@ -1,11 +1,14 @@
 import { t } from "ttag";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { isEmpty } from "metabase/lib/validate";
 
-import { EntityDisplayContainer, LeftContainer } from "./EntityDisplay.styled";
+import {
+  EllipsifiedEntityContainer,
+  EntityDisplayContainer,
+  LeftContainer,
+} from "./EntityDisplay.styled";
 import { WrappedUnrestrictedLinkEntity } from "./types";
 
 export const EntityDisplay = ({
@@ -19,7 +22,7 @@ export const EntityDisplay = ({
     <EntityDisplayContainer>
       <LeftContainer>
         <Icon color={color("brand")} name={getSearchIconName(entity)} />
-        <Ellipsified>{entity?.name}</Ellipsified>
+        <EllipsifiedEntityContainer>{entity?.name}</EllipsifiedEntityContainer>
       </LeftContainer>
       {showDescription && entity?.description && (
         <Icon
@@ -36,7 +39,7 @@ export const RestrictedEntityDisplay = () => (
   <EntityDisplayContainer>
     <LeftContainer>
       <Icon name="key" color={color("text-light")} />
-      <Ellipsified>{t`Sorry, you don't have permission to see this link.`}</Ellipsified>
+      <EllipsifiedEntityContainer>{t`Sorry, you don't have permission to see this link.`}</EllipsifiedEntityContainer>
     </LeftContainer>
   </EntityDisplayContainer>
 );
@@ -49,7 +52,9 @@ export const UrlLinkDisplay = ({ url }: { url?: string }) => {
     <EntityDisplayContainer>
       <LeftContainer>
         <Icon color={color("brand")} name={urlIcon} />
-        <Ellipsified>{!isEmpty(url) ? url : t`Choose a link`}</Ellipsified>
+        <EllipsifiedEntityContainer>
+          {!isEmpty(url) ? url : t`Choose a link`}
+        </EllipsifiedEntityContainer>
       </LeftContainer>
     </EntityDisplayContainer>
   );

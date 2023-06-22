@@ -58,7 +58,7 @@
     :field
     (lib.options/update-options field-or-joinable u/assoc-dissoc :join-alias join-alias)
 
-    :metadata/field
+    :metadata/column
     (u/assoc-dissoc field-or-joinable ::join-alias join-alias)
 
     :mbql/join
@@ -69,7 +69,7 @@
   [field-or-joinable :- FieldOrPartialJoin]
   (case (lib.dispatch/dispatch-value field-or-joinable)
     :field          (:join-alias (lib.options/options field-or-joinable))
-    :metadata/field (::join-alias field-or-joinable)
+    :metadata/column (::join-alias field-or-joinable)
     :mbql/join      (:alias field-or-joinable)))
 
 (mu/defn resolve-join :- ::lib.schema.join/join
@@ -88,14 +88,13 @@
                          :stage-number stage-number})))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/join
-  [query _stage-number {[first-stage] :stages, :as _join} _style]
-  (if-let [source-table (:source-table first-stage)]
-    (if (integer? source-table)
-      (:display-name (lib.metadata/table query source-table))
-      ;; handle card__<id> source tables.
-      (let [card-id (lib.util/string-table-id->card-id source-table)]
-        (i18n/tru "Question {0}" card-id)))
-    (i18n/tru "Native Query")))
+  [query _stage-number {[{:keys [source-table source-card], :as _first-stage}] :stages, :as _join} _style]
+  (or
+   (when source-table
+     (:display-name (lib.metadata/table query source-table)))
+   (when source-card
+     (i18n/tru "Question {0}" source-card))
+   (i18n/tru "Native Query")))
 
 (defmethod lib.metadata.calculation/display-info-method :mbql/join
   [query stage-number join]

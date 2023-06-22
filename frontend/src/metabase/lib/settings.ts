@@ -317,6 +317,10 @@ class MetabaseSettings {
     return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
   }
 
+  pricingUrl() {
+    return "https://www.metabase.com/pricing";
+  }
+
   learnUrl(path = "") {
     return `https://www.metabase.com/learn/${path}`;
   }
