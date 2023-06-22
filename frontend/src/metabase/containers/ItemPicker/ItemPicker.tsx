@@ -38,6 +38,7 @@ interface OwnProps<TId> {
   onChange: (value: PickerValue<TId>) => void;
   initialOpenCollectionId?: CollectionId;
   collectionFilter?: (collection: Collection) => boolean;
+  onOpenCollectionChange?: (collectionId: PickerItem<TId>["id"]) => void;
 }
 
 interface StateProps {
@@ -87,6 +88,7 @@ function ItemPicker<TId>({
   onChange,
   getCollectionIcon,
   initialOpenCollectionId = "root",
+  onOpenCollectionChange,
 }: Props<TId>) {
   const [openCollectionId, setOpenCollectionId] = useState<CollectionId>(
     initialOpenCollectionId,
@@ -207,9 +209,13 @@ function ItemPicker<TId>({
     [onChange],
   );
 
-  const handleCollectionOpen = useCallback(collectionId => {
-    setOpenCollectionId(collectionId);
-  }, []);
+  const handleCollectionOpen = useCallback(
+    collectionId => {
+      setOpenCollectionId(collectionId);
+      onOpenCollectionChange?.(collectionId);
+    },
+    [onOpenCollectionChange],
+  );
 
   return (
     <ScrollAwareLoadingAndErrorWrapper

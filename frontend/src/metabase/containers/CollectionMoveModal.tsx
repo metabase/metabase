@@ -7,7 +7,7 @@ import ModalContent from "metabase/components/ModalContent";
 
 import CollectionPicker from "metabase/containers/CollectionPicker";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
-import { Collection } from "metabase-types/api";
+import { Collection, CollectionId } from "metabase-types/api";
 import { ButtonContainer } from "./CollectionMoveModal.styled";
 
 interface CollectionMoveModalProps {
@@ -40,6 +40,8 @@ export const CollectionMoveModal = ({
   // const [error, setError] = useState(null);
 
   const [creatingCollection, setCreatingCollection] = useState(false);
+  const [openCollectionId, setOpenCollectionId] =
+    useState<CollectionId>("root");
 
   if (creatingCollection) {
     return (
@@ -55,6 +57,8 @@ export const CollectionMoveModal = ({
   return (
     <ModalContent title={title} onClose={onClose}>
       <CollectionPicker
+        initialOpenCollectionId={openCollectionId}
+        onOpenCollectionChange={setOpenCollectionId}
         value={selectedCollectionId}
         onChange={setSelectedCollectionId}
       />
