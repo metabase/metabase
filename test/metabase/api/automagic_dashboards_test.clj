@@ -1,6 +1,5 @@
 (ns metabase.api.automagic-dashboards-test
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.automagic-dashboards.core :as magic]
    [metabase.models :refer [Card Collection Dashboard Metric Segment]]
@@ -16,18 +15,24 @@
    [metabase.transforms.materialize :as tf.materialize]
    [metabase.transforms.specs :as tf.specs]
    [metabase.util :as u]
+   [schema.core :as s]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))
 
-(defn- ordered-cards-shape-check
+(defn- ordered-cards-schema-check
   [ordered_cards]
   (testing "check if all cards in ordered_cards contain the required fields"
-    (is (true?
-          (every? #(set/subset?
-                     #{:id :dashboard_tab_id :row :col :size_x :size_y :visualization_settings}
-                     (set (keys %)))
-                  ordered_cards)))))
+    (doseq [card ordered_cards]
+      (is (schema= {:id                     (s/cond-pre s/Str s/Int)
+                    :dashboard_tab_id       (s/maybe s/Int)
+                    :row                    s/Int
+                    :col                    s/Int
+                    :size_x                 s/Int
+                    :size_y                 s/Int
+                    :visualization_settings (s/maybe (s/named clojure.lang.IPersistentMap "valid map"))
+                    s/Any                   s/Any}
+                   card)))))
 
 (defn- api-call
   ([template args]
@@ -41,7 +46,7 @@
      (with-dashboard-cleanup
        (let [api-endpoint (apply format (str "automagic-dashboards/" template) args)
              resp         (mt/user-http-request :rasta :get 200 api-endpoint)
-             _            (ordered-cards-shape-check (:ordered_cards resp))
+             _            (ordered-cards-schema-check (:ordered_cards resp))
              result       (validation-fn resp)]
          (when (and result
                     (try
@@ -192,20 +197,20 @@
            (api-call "table/%s/compare/segment/%s"
                      [(mt/id :venues) segment-id]))))
 
-    #_(testing "GET /api/automagic-dashboards/table/:id/rule/example/indepth/compare/segment/:segment-id"
-        (is (some?
-             (api-call "table/%s/rule/example/indepth/compare/segment/%s"
-                       [(mt/id :venues) segment-id]))))
+    (testing "GET /api/automagic-dashboards/table/:id/rule/example/indepth/compare/segment/:segment-id"
+      (is (some?
+           (api-call "table/%s/rule/example/indepth/compare/segment/%s"
+                     [(mt/id :venues) segment-id]))))
 
-    #_(testing "GET /api/automagic-dashboards/adhoc/:id/cell/:cell-query/compare/segment/:segment-id"
-        (is (some?
-             (api-call "adhoc/%s/cell/%s/compare/segment/%s"
-                       [(->> (mt/mbql-query venues
-                               {:filter [:> $price 10]})
-                             (#'magic/encode-base64-json))
-                        (->> [:= [:field (mt/id :venues :price) nil] 15]
-                             (#'magic/encode-base64-json))
-                        segment-id]))))))
+    (testing "GET /api/automagic-dashboards/adhoc/:id/cell/:cell-query/compare/segment/:segment-id"
+      (is (some?
+           (api-call "adhoc/%s/cell/%s/compare/segment/%s"
+                     [(->> (mt/mbql-query venues
+                             {:filter [:> $price 10]})
+                           (#'magic/encode-base64-json))
+                      (->> [:= [:field (mt/id :venues :price) nil] 15]
+                           (#'magic/encode-base64-json))
+                      segment-id]))))))
 
 (deftest compare-nested-query-test
   (testing "Ad-hoc X-Rays should work for queries have Card source queries (#15655)"
