@@ -31,12 +31,8 @@ const getSchemaName = props => {
   return props.schemaName || props.params.schemaName;
 };
 
-const getReloadInterval = (state, { database }, tables = []) => {
-  if (
-    database &&
-    isSyncInProgress(database) &&
-    tables.some(t => isSyncInProgress(t))
-  ) {
+const getReloadInterval = (state, _props, tables = []) => {
+  if (tables.some(t => isSyncInProgress(t))) {
     return RELOAD_INTERVAL;
   } else {
     return 0;

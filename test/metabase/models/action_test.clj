@@ -27,19 +27,46 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled
       (let [query (mt/mbql-query categories)]
-        (mt/with-actions [_model {:dataset         true
-                                  :dataset_query   query
-                                  :result_metadata (assoc-in (get-in (qp/process-query query) [:data :results_metadata :columns])
-                                                             [1 :display_name] "Display Name")}
-                          {:keys [action-id] :as _context} {:type :implicit}]
-          (is (partial= {:id          action-id
-                         :name        "Update Example"
-                         :database_id (mt/id)
-                         :parameters  [(if (= driver/*driver* :h2)
-                                         {:type :type/BigInteger}
-                                         {:type :type/Integer})
-                                       {:type :type/Text, :id "name" :display-name "Display Name"}]}
-                        (action/select-action :id action-id)))))))
+        (testing "Implicit actions parameters and visualization_settings should be hydrated from the query"
+          (mt/with-actions [_model {:dataset         true
+                                    :dataset_query   query
+                                    :result_metadata (assoc-in (qp/query->expected-cols (mt/mbql-query categories))
+                                                               [1 :display_name] "Display Name")}
+                            {:keys [action-id] :as _context} {:type :implicit}]
+            (is (partial= {:id                     action-id
+                           :name                   "Update Example"
+                           :database_id            (mt/id)
+                           :parameters             [{:type         (if (= driver/*driver* :h2) :type/BigInteger :type/Integer)
+                                                     :id           "id"
+                                                     :display-name "ID"}
+                                                    {:type         :type/Text
+                                                     :id           "name"
+                                                     :display-name "Display Name"}]
+                           :visualization_settings {:fields {"id"   {:id     "id"
+                                                                     :hidden false}
+                                                             "name" {:id     "name"
+                                                                     :hidden false}}}}
+                          (action/select-action :id action-id)))))
+        (testing "for implicit actions visualization_settings.fields, "
+          (mt/with-actions [_model {:dataset         true
+                                    :dataset_query   query
+                                    :result_metadata (qp/query->expected-cols (mt/mbql-query categories))}
+                            {:keys [action-id] :as _context} {:type :implicit
+                                                              :visualization_settings {:fields {"doesnt_exist" {:id     "doesnt_exist"
+                                                                                                                :hidden false}
+                                                                                                "id"           {:id     "id"
+                                                                                                                :hidden true}}}}]
+            (let [field-settings (get-in (action/select-action :id action-id) [:visualization_settings :fields])]
+              (testing "an existing entry should not update if there's a matching parameter"
+                (is (= {:id     "id"
+                        :hidden true}
+                       (get field-settings "id"))))
+              (testing "an existing entry should be deleted if there's not a matching parameter"
+                (is (not (contains? field-settings "doesnt_exist"))))
+              (testing "a entry with defaults should be created if there is a new matching parameter"
+                (is (= {:id "name"
+                        :hidden false}
+                       (get field-settings "name"))))))))))
   (testing "Implicit actions do not map parameters to json fields (parents or nested)"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom :nested-field-columns)
       (mt/dataset json

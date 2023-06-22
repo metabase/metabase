@@ -248,11 +248,11 @@ class SettingsEditorApp extends Component {
     );
 
     return (
-      <div className="MetadataEditor-table-list AdminList flex-no-shrink">
+      <aside className="MetadataEditor-table-list AdminList flex-no-shrink">
         <ul className="AdminList-items pt1">
           <ErrorBoundary>{renderedSections}</ErrorBoundary>
         </ul>
-      </div>
+      </aside>
     );
   }
 
