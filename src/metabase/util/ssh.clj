@@ -5,7 +5,6 @@
   (:require
    [metabase.driver :as driver]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log])

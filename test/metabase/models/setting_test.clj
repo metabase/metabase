@@ -346,7 +346,7 @@
                   (some (fn [{:keys [key description]}]
                           (when (= :test-dynamic-i18n-setting key)
                             description))
-                        (setting/admin-writable-settings)))]
+                        (setting/admin-writable-site-wide-settings)))]
           (test-i18n-setting! "test-setting-value!")
           (is (= "Test setting - with i18n: test-setting-value!"
                  (description)))
