@@ -46,6 +46,7 @@ export const CollectionMoveModal = ({
   if (creatingCollection) {
     return (
       <CreateCollectionModal
+        collectionId={openCollectionId}
         onClose={() => setCreatingCollection(false)}
         onCreate={(collection: Collection) => {
           onMove({ id: collection.id });
