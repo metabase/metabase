@@ -35,7 +35,8 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.lib.convert :as lib.convert]))
 
 (set! *warn-on-reflection* true)
 
@@ -69,10 +70,15 @@
       (isa? driver/hierarchy driver/*driver* :sql)
       (update :native (partial trim-sql-query card-id)))))
 
-(mu/defn ^:private card-metadata :- lib.metadata/CardMetadata
+(mu/defn ^:private card-metadata :- [:merge
+                                     lib.metadata/CardMetadata
+                                     ;; must have dataset-query !
+                                     [:map
+                                      [:dataset-query :map]]]
   [query   :- ::lib.schema/query
    card-id :- ::lib.schema.id/card]
-  (or (lib.metadata/card query card-id)
+  (or (-> (lib.metadata/card query card-id)
+          (m/update-existing :dataset-query lib.convert/->pMBQL))
       (throw (ex-info (tru "Card {0} does not exist." card-id)
                       {:card-id card-id}))))
 
@@ -183,12 +189,13 @@
   (lib.util/update-query-and-joins
    query
    (fn [query-or-join]
+     (println "query-or-join:" query-or-join) ; NOCOMMIT
      (resolve-one query query-or-join))))
 
 (def ^:private ResolvedQueryAndSourceCardID
   [:map
    [:query ResolvedQueryOrJoin]
-   [:card-id {:optional true} ::lib.schema.id/card]])
+   [:card-id {:optional true} [:maybe ::lib.schema.id/card]]])
 
 (mu/defn ^:private extract-resolved-card-id :- ResolvedQueryAndSourceCardID
   "If the ID of the Card we've resolved (`:source-card-id`) was added by a previous step, add it
@@ -210,23 +217,12 @@
       resolve-all*
       extract-resolved-card-id))
 
-(mu/defn resolve-card-id-source-tables* :- ResolvedQueryAndSourceCardID
-  "Resolve `card__n`-style `:source-tables` in `query`."
-  [{inner-query :query, :as outer-query} :- ::lib.schema/query]
-  (if-not inner-query
-
-    ;; for non-MBQL queries there's nothing to do since they have nested queries
-    {:query outer-query, :card-id nil}
-    ;; Otherwise attempt to expand any source queries as needed. Pull the `:database` key up into the query-or-join if it
-    ;; exists
-    (resolve-all outer-query)))
-
 (defn resolve-card-id-source-tables
   "Middleware that assocs the `:source-query` for this query if it was specified using the shorthand `:source-table`
   `card__n` format."
   [qp]
   (fn [query rff context]
-    (let [{:keys [query card-id]} (resolve-card-id-source-tables* query)]
+    (let [{:keys [query card-id]} (resolve-all query)]
       (if card-id
         (let [dataset? (:dataset (lib.metadata/card query card-id))]
           (binding [qp.perms/*card-id* (or card-id qp.perms/*card-id*)]
