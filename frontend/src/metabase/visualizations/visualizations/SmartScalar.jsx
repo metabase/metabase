@@ -31,7 +31,6 @@ import {
   PreviousValue,
   PreviousValueContainer,
   PreviousValueSeparator,
-  PreviousValueWrapper,
   Separator,
   Variation,
   VariationIcon,
@@ -219,7 +218,8 @@ export default class SmartScalar extends Component {
       previousValue,
       settings.column(column),
     );
-    const previousValueContent = jt`${""} was ${previousValueDisplay} ${granularityDisplay}`;
+    const disabledSeparator = "";
+    const previousValueContent = jt`${disabledSeparator} was ${previousValueDisplay} ${granularityDisplay}`;
     const previousValueContentText = previousValueContent
       .flat(Number.MAX_SAFE_INTEGER)
       .join("");
@@ -297,54 +297,53 @@ export default class SmartScalar extends Component {
             }
           />
         )}
-        <PreviousValueWrapper>
-          {lastChange == null || previousValue == null ? (
-            <div
-              className="text-centered text-bold mt1"
-              style={{ color: color("text-medium") }}
-            >{jt`Nothing to compare for the previous ${granularity}.`}</div>
-          ) : lastChange === 0 ? (
-            t`No change from last ${granularity}`
-          ) : (
-            <PreviousValueContainer gridSize={gridSize}>
-              <Tooltip
-                isEnabled={!canShowPreviousValue}
-                placement="bottom"
-                tooltip={
-                  <VariationTooltip>
-                    <Variation>
-                      <VariationIcon name={iconName} size={TOOLTIP_ICON_SIZE} />
-                      <VariationValue showTooltip={false}>
-                        {formatChange(lastChange)}
-                      </VariationValue>
-                    </Variation>
 
-                    <span>
-                      {jt`${tooltipSeparator} was ${previousValueDisplay} ${granularityDisplay}`}
-                    </span>
-                  </VariationTooltip>
-                }
-              >
-                <Variation color={changeColor}>
-                  <VariationIcon name={iconName} size={ICON_SIZE} />
-                  <VariationValue showTooltip={false}>
-                    {changeDisplay}
-                  </VariationValue>
-                </Variation>
-              </Tooltip>
+        {lastChange == null || previousValue == null ? (
+          <div
+            className="text-centered text-bold mt1"
+            style={{ color: color("text-medium") }}
+          >{jt`Nothing to compare for the previous ${granularity}.`}</div>
+        ) : lastChange === 0 ? (
+          t`No change from last ${granularity}`
+        ) : (
+          <PreviousValueContainer gridSize={gridSize}>
+            <Tooltip
+              isEnabled={!canShowPreviousValue}
+              placement="bottom"
+              tooltip={
+                <VariationTooltip>
+                  <Variation>
+                    <VariationIcon name={iconName} size={TOOLTIP_ICON_SIZE} />
+                    <VariationValue showTooltip={false}>
+                      {formatChange(lastChange)}
+                    </VariationValue>
+                  </Variation>
 
-              {canShowPreviousValue && (
-                <PreviousValue id="SmartScalar-PreviousValue" responsive>
-                  <PreviousValueSeparator gridSize={gridSize}>
-                    •
-                  </PreviousValueSeparator>
+                  <span>
+                    {jt`${tooltipSeparator} was ${previousValueDisplay} ${granularityDisplay}`}
+                  </span>
+                </VariationTooltip>
+              }
+            >
+              <Variation color={changeColor}>
+                <VariationIcon name={iconName} size={ICON_SIZE} />
+                <VariationValue showTooltip={false}>
+                  {changeDisplay}
+                </VariationValue>
+              </Variation>
+            </Tooltip>
 
-                  {previousValueContent}
-                </PreviousValue>
-              )}
-            </PreviousValueContainer>
-          )}
-        </PreviousValueWrapper>
+            {canShowPreviousValue && (
+              <PreviousValue id="SmartScalar-PreviousValue" responsive>
+                <PreviousValueSeparator gridSize={gridSize}>
+                  •
+                </PreviousValueSeparator>
+
+                {previousValueContent}
+              </PreviousValue>
+            )}
+          </PreviousValueContainer>
+        )}
       </ScalarWrapper>
     );
   }

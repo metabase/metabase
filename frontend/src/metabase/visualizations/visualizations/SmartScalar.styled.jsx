@@ -18,16 +18,14 @@ export const Variation = styled.div`
 `;
 
 export const VariationIcon = styled(Icon)`
+  display: flex;
+  align-items: center;
   flex: 0 0 auto;
   margin-right: ${space(1)};
   color: ${props => props.color};
-  display: flex;
-  align-items: center;
 `;
 
 export const VariationValue = styled(Ellipsified)`
-  flex: 1;
-  min-width: 0;
   font-weight: 900;
 `;
 
@@ -35,10 +33,6 @@ export const VariationTooltip = styled(Ellipsified)`
   display: flex;
   align-items: center;
   gap: ${space(0)};
-`;
-
-export const PreviousValueWrapper = styled.div`
-  width: 100%;
 `;
 
 export const PreviousValueContainer = styled.div`

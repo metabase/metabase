@@ -23,13 +23,13 @@ interface ScalarValueWrapperProps {
 
 export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
   display: inline;
+  padding: 0 ${space(1)};
+  font-size: ${props => props.fontSize};
   cursor: pointer;
+
   &:hover {
     color: ${color("brand")};
   }
-  padding: 0 ${space(1)};
-
-  font-size: ${props => props.fontSize};
 `;
 
 interface ScalarTitleContainerProps {
