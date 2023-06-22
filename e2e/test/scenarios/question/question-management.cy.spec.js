@@ -18,7 +18,7 @@ import {
   modal,
 } from "e2e/support/helpers";
 
-import { USERS } from "e2e/support/cypress_data";
+import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
@@ -208,6 +208,71 @@ describe("managing question from the question's details sidebar", () => {
                 cy.findByTestId("add-to-dashboard-button").click();
 
                 findSelectedItem().should("have.text", "Orders in a dashboard");
+              });
+
+              onlyOn(user === "normal", () => {
+                it("should handle lost access", () => {
+                  cy.intercept(
+                    "GET",
+                    "/api/activity/most_recently_viewed_dashboard",
+                  ).as("mostRecentlyViewedDashboard");
+
+                  openQuestionActions();
+                  cy.findByTestId("add-to-dashboard-button").click();
+
+                  cy.wait("@mostRecentlyViewedDashboard").then(
+                    ({ response }) => {
+                      // no recently viewed dashboard
+                      expect(response.statusCode).to.eq(204);
+                    },
+                  );
+
+                  findSelectedItem().should("not.exist");
+
+                  // before visiting the dashboard, we don't have any history
+                  visitDashboard(1);
+                  visitQuestion(ORDERS_QUESTION_ID);
+
+                  openQuestionActions();
+                  cy.findByTestId("add-to-dashboard-button").click();
+
+                  cy.wait("@mostRecentlyViewedDashboard").then(
+                    ({ response }) => {
+                      expect(response.statusCode).to.eq(200);
+                    },
+                  );
+
+                  findSelectedItem().should(
+                    "have.text",
+                    "Orders in a dashboard",
+                  );
+
+                  cy.findByRole("dialog").within(() => {
+                    cy.icon("close").click();
+                  });
+
+                  cy.signInAsAdmin();
+
+                  // Let's revoke access to "Our analytics"
+                  cy.updateCollectionGraph({
+                    [USER_GROUPS.COLLECTION_GROUP]: { root: "none" },
+                  });
+
+                  cy.signIn(user);
+
+                  openQuestionActions();
+                  cy.findByTestId("add-to-dashboard-button").click();
+
+                  cy.wait("@mostRecentlyViewedDashboard").then(
+                    ({ response }) => {
+                      // no access to recently viewed dashboard
+                      expect(response.statusCode).to.eq(204);
+                    },
+                  );
+
+                  // no access - no dashboard
+                  findSelectedItem().should("not.exist");
+                });
               });
             });
           });
