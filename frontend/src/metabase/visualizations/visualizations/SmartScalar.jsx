@@ -198,11 +198,13 @@ export default class SmartScalar extends Component {
     const titleLinesCount = getTitleLinesCount(height);
     const availableWidth = width - 2 * SPACING;
     const availableChangeWidth = availableWidth - ICON_SIZE - ICON_MARGIN_RIGHT;
+
     const availableValueHeight =
       height -
       titleLinesCount * SCALAR_TITLE_LINE_HEIGHT -
       MIN_PREVIOUS_VALUE_SIZE -
       4 * SPACING;
+
     const tooltipSeparator = <Separator>•</Separator>;
 
     const changeDisplay = formatChangeAutoPrecision(lastChange, {
@@ -222,24 +224,21 @@ export default class SmartScalar extends Component {
       previousValue,
       settings.column(column),
     );
-    const disabledSeparator = "";
+    const disabledSeparator = ""; // avoid creating new translation key
     const previousValueContent = jt`${disabledSeparator} was ${previousValueDisplay} ${granularityDisplay}`;
     const previousValueContentText = previousValueContent
       .flat(Number.MAX_SAFE_INTEGER)
       .join("");
-    const previousValueContentWidth = measureText(previousValueContentText, {
+    const previousValueTextWidth = measureText(previousValueContentText, {
       size: "0.875rem",
       family: fontFamily,
       weight: 700,
     }).width;
-    const canShowPreviousValue =
+    const availablePreviousValueWidth =
       availableWidth -
-        changeWidth -
-        2 * SPACING -
-        ICON_SIZE -
-        ICON_MARGIN_RIGHT >=
-      previousValueContentWidth;
-
+      (changeWidth + 2 * SPACING + ICON_SIZE + ICON_MARGIN_RIGHT);
+    const canShowPreviousValue =
+      availablePreviousValueWidth >= previousValueTextWidth;
     const iconName = isNegative ? "arrow_down" : "arrow_up";
 
     const clicked = {
