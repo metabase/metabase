@@ -81,6 +81,7 @@ describe("scenarios > x-rays", () => {
     cy.icon("warning").should("not.exist");
   });
 
+
   ["X-ray", "Compare to the rest"].forEach(action => {
     it(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
