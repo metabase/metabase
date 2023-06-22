@@ -122,7 +122,6 @@ describeEE("impersonated permission", () => {
       );
 
       selectImpersonatedAttribute("attr_uid");
-      cy.pause();
       saveImpersonationSettings();
       savePermissions();
 
