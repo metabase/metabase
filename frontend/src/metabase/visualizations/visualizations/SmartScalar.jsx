@@ -301,7 +301,7 @@ export default class SmartScalar extends Component {
           />
         )}
 
-        <PreviousValueWrapper>
+        <PreviousValueWrapper data-testid="scalar-previous-value">
           {lastChange == null || previousValue == null ? (
             <div
               className="text-centered text-bold mt1"
