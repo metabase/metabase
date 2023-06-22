@@ -55,7 +55,7 @@
   lib.metadata.protocols/MetadataProvider
   (database [_this]            (get-in-cache-or-fetch cache [:metadata/database]            #(lib.metadata.protocols/database metadata-provider)))
   (table    [_this table-id]   (get-in-cache-or-fetch cache [:metadata/table table-id]      #(lib.metadata.protocols/table    metadata-provider table-id)))
-  (field    [_this field-id]   (get-in-cache-or-fetch cache [:metadata/field field-id]      #(lib.metadata.protocols/field    metadata-provider field-id)))
+  (field    [_this field-id]   (get-in-cache-or-fetch cache [:metadata/column field-id]      #(lib.metadata.protocols/field    metadata-provider field-id)))
   (card     [_this card-id]    (get-in-cache-or-fetch cache [:metadata/card card-id]        #(lib.metadata.protocols/card     metadata-provider card-id)))
   (metric   [_this metric-id]  (get-in-cache-or-fetch cache [:metadata/metric metric-id]    #(lib.metadata.protocols/metric   metadata-provider metric-id)))
   (segment  [_this segment-id] (get-in-cache-or-fetch cache [:metadata/segment segment-id]  #(lib.metadata.protocols/segment  metadata-provider segment-id)))

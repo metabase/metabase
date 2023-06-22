@@ -15,7 +15,7 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest ^:parallel fetch-field-test
-  (let [field (#'lib.metadata.jvm/fetch-instance :metadata/field (mt/id :categories :id))]
+  (let [field (#'lib.metadata.jvm/fetch-instance :metadata/column (mt/id :categories :id))]
     (is (not (me/humanize (mc/validate lib.metadata/ColumnMetadata field))))))
 
 (deftest ^:parallel fetch-database-test
@@ -83,7 +83,7 @@
                 :display-name "Product ID"
                 :source-alias "Orders"}
                {:metabase.lib.join/join-alias "Orders"
-                :lib/type :metadata/field
+                :lib/type :metadata/column
                 :base-type :type/Integer
                 :name "sum"
                 :lib/source :source/joins
@@ -104,7 +104,7 @@
                                                         :alias        "c"}]})}]
     (let [query      {:database (mt/id)
                       :type     :query
-                      :query    {:source-table (str "card__" (u/the-id card))}}
+                      :query    {:source-card (u/the-id card)}}
           mlv2-query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                 (lib.convert/->pMBQL query))
           breakouts  (lib/breakoutable-columns mlv2-query)
