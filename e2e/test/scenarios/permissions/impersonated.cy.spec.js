@@ -66,6 +66,10 @@ describeEE("impersonated permission", () => {
       cy.get("main").findByText("QA Postgres12").click();
 
       assertPermissionTable([
+        ["Accounts", "Impersonated", "No", "1 million rows", "No", "No"],
+        ["Analytic Events", "Impersonated", "No", "1 million rows", "No", "No"],
+        ["Feedback", "Impersonated", "No", "1 million rows", "No", "No"],
+        ["Invoices", "Impersonated", "No", "1 million rows", "No", "No"],
         ["Orders", "Impersonated", "No", "1 million rows", "No", "No"],
         [
           "People",
