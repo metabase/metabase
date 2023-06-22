@@ -6,17 +6,31 @@ import {
   addTextBox,
   editDashboard,
   saveDashboard,
+  describeWithSnowplow,
+  enableTracking,
+  resetSnowplow,
+  expectNoBadSnowplowEvents,
+  expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
 
-describe("scenarios > dashboard > text and headings", () => {
+describeWithSnowplow("scenarios > dashboard > text and headings", () => {
   beforeEach(() => {
+    resetSnowplow();
     restore();
     cy.signInAsAdmin();
+    enableTracking();
   });
 
   describe("text", () => {
     beforeEach(() => {
       visitDashboard(1);
+    });
+
+    afterEach(() => {
+      expectNoBadSnowplowEvents();
+      expectGoodSnowplowEvent({
+        event: "new_text_card_created",
+      });
     });
 
     it("should allow creation, editing, and saving of text boxes", () => {
@@ -104,8 +118,8 @@ describe("scenarios > dashboard > text and headings", () => {
 
     it("should have a scroll bar for long text (metabase#8333)", () => {
       addTextBox(
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam ut fermentum erat, nec sagittis justo. Vivamus vitae ipsum semper, consectetur odio at, rutrum nisi. Fusce maximus consequat porta. Mauris libero mi, viverra ac hendrerit quis, rhoncus quis ante. Pellentesque molestie ut felis non congue. Vivamus finibus ligula id fringilla rutrum. Donec quis dignissim ligula, vitae tempor urna.\n\nDonec quis enim porta, porta lacus vel, maximus lacus. Sed iaculis leo tortor, vel tempor velit tempus vitae. Nulla facilisi. Vivamus quis sagittis magna. Aenean eu eros augue. Sed euismod pulvinar laoreet. Morbi commodo, sem sed dictum faucibus, sem ante ultrices libero, nec ornare risus lacus eget velit. Etiam sagittis lectus non erat tristique tempor. Sed in ipsum urna. Sed venenatis turpis at orci feugiat, ut gravida lectus luctus.",
-        { delay: 1 },
+        "Lorem ipsum dolor sit amet,\n\nfoo\n\nbar\n\nbaz\n\nboo\n\nDonec quis enim porta.",
+        { delay: 0.5 },
       );
       cy.findByTestId("edit-bar").findByText("Save").click();
 
@@ -137,6 +151,13 @@ describe("scenarios > dashboard > text and headings", () => {
   describe("heading", () => {
     beforeEach(() => {
       visitDashboard(1);
+    });
+
+    afterEach(() => {
+      expectNoBadSnowplowEvents();
+      expectGoodSnowplowEvent({
+        event: "new_heading_card_created",
+      });
     });
 
     it("should allow creation, editing, and saving of heading component", () => {

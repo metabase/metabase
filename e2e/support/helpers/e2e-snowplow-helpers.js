@@ -18,6 +18,22 @@ export const blockSnowplow = () => {
   blockSnowplowRequest("*/tp2");
 };
 
+/**
+ * Check for the existence of specific snowplow events.
+ *
+ * @param {object} eventData - object of key / value pairs you expect to see in the event
+ * @param {number} count - number of matching events you expect to find. defaults to 1
+ */
+export const expectGoodSnowplowEvent = (eventData, count = 1) => {
+  retrySnowplowRequest(
+    "micro/good",
+    ({ body }) =>
+      body.filter(snowplowEvent =>
+        _.isMatch(snowplowEvent?.event?.unstruct_event?.data?.data, eventData),
+      ).length === count,
+  ).should("be.ok");
+};
+
 export const expectGoodSnowplowEvents = count => {
   retrySnowplowRequest("micro/good", ({ body }) => body.length >= count)
     .its("body")

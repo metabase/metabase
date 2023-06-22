@@ -8,6 +8,7 @@ import {
   getPositionForNewDashCard,
   DEFAULT_CARD_SIZE,
 } from "metabase/lib/dashboard_grid";
+import { trackSchemaEvent } from "metabase/lib/analytics";
 import { createCard } from "metabase/lib/card";
 
 import { getVisualizationRaw } from "metabase/visualizations";
@@ -100,6 +101,11 @@ export const addDashCardToDashboard = function ({
 };
 
 export const addMarkdownDashCardToDashboard = function ({ dashId, tabId }) {
+  trackSchemaEvent("dashboard", "1-2-0", {
+    event: "new_text_card_created",
+    dashboard_id: dashId,
+  });
+
   const virtualTextCard = {
     ...createCard(),
     display: "text",
@@ -120,6 +126,11 @@ export const addMarkdownDashCardToDashboard = function ({ dashId, tabId }) {
 };
 
 export const addHeadingDashCardToDashboard = function ({ dashId, tabId }) {
+  trackSchemaEvent("dashboard", "1-2-0", {
+    event: "new_heading_card_created",
+    dashboard_id: dashId,
+  });
+
   const virtualTextCard = {
     ...createCard(),
     display: "heading",
@@ -141,6 +152,11 @@ export const addHeadingDashCardToDashboard = function ({ dashId, tabId }) {
 };
 
 export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
+  trackSchemaEvent("dashboard", "1-2-0", {
+    event: "new_link_card_created",
+    dashboard_id: dashId,
+  });
+
   const virtualLinkCard = {
     ...createCard(),
     display: "link",
@@ -163,6 +179,11 @@ export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
 export const addActionToDashboard =
   async ({ dashId, tabId, action, displayType }) =>
   dispatch => {
+    trackSchemaEvent("dashboard", "1-2-0", {
+      event: "new_action_card_created",
+      dashboard_id: dashId,
+    });
+
     const virtualActionsCard = {
       ...createCard(),
       id: action.model_id,

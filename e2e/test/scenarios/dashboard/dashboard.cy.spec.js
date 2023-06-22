@@ -14,6 +14,11 @@ import {
   getDashboardCardMenu,
   addOrUpdateDashboardCard,
   openQuestionsSidebar,
+  describeWithSnowplow,
+  resetSnowplow,
+  enableTracking,
+  expectNoBadSnowplowEvents,
+  expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -734,6 +739,33 @@ describe("scenarios > dashboard", () => {
             testMarkdownContent.split("{enter}").length * lineHeight, // num of lines * lineHeight
           );
         });
+    });
+  });
+});
+
+describeWithSnowplow("scenarios > dashboard (snowplow)", () => {
+  beforeEach(() => {
+    resetSnowplow();
+    restore();
+    cy.signInAsAdmin();
+    enableTracking();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should allow users to add link cards to dashboards", () => {
+    visitDashboard(1);
+    editDashboard();
+    cy.findByTestId("dashboard-header").icon("link").click();
+
+    cy.findByTestId("custom-edit-text-link").click().type("Orders");
+
+    saveDashboard();
+
+    expectGoodSnowplowEvent({
+      event: "new_link_card_created",
     });
   });
 });

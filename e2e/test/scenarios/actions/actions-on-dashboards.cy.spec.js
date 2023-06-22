@@ -18,6 +18,11 @@ import {
   createImplicitAction,
   dragField,
   createAction,
+  describeWithSnowplow,
+  enableTracking,
+  resetSnowplow,
+  expectNoBadSnowplowEvents,
+  expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
 
 import { many_data_types_rows } from "e2e/support/test_tables_data";
@@ -31,7 +36,7 @@ const TEST_COLUMNS_TABLE = "many_data_types";
 const MODEL_NAME = "Test Action Model";
 
 ["mysql", "postgres"].forEach(dialect => {
-  describe(
+  describeWithSnowplow(
     `Write Actions on Dashboards (${dialect})`,
     { tags: ["@external", "@actions"] },
     () => {
@@ -56,13 +61,22 @@ const MODEL_NAME = "Test Action Model";
 
       describe("adding and executing actions", () => {
         beforeEach(() => {
+          resetSnowplow();
           resetTestTable({ type: dialect, table: TEST_TABLE });
           restore(`${dialect}-writable`);
           cy.signInAsAdmin();
+          enableTracking();
           resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
           createModelFromTableName({
             tableName: TEST_TABLE,
             modelName: MODEL_NAME,
+          });
+        });
+
+        afterEach(() => {
+          expectNoBadSnowplowEvents();
+          expectGoodSnowplowEvent({
+            event: "new_action_card_created",
           });
         });
 
