@@ -1,8 +1,8 @@
 name: Cleanup caches by a branch
-on:
-  pull_request:
-    types:
-      - closed
+on: workflow_dispatch
+  # pull_request:
+  #   types:
+  #     - closed
 
 jobs:
   cleanup:

@@ -1,7 +1,7 @@
 name: Auto-backport
-on:
-  pull_request:
-    types: [closed, labeled]
+on: workflow_dispatch
+  # pull_request:
+  #   types: [closed, labeled]
 
 jobs:
   create-backport:
