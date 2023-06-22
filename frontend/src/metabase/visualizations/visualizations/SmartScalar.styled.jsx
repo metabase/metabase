@@ -64,7 +64,6 @@ export const PreviousValueContainer = styled.div`
 
 export const PreviousValue = styled.h4`
   color: ${color("text-light")};
-  text-align: center;
 
   ${breakpointMaxSmall} {
     text-transform: capitalize;

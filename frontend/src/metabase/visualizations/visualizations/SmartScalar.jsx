@@ -323,9 +323,7 @@ export default class SmartScalar extends Component {
                       </VariationValue>
                     </Variation>
 
-                    <span>
-                      {jt`${tooltipSeparator} was ${previousValueDisplay} ${granularityDisplay}`}
-                    </span>
+                    {jt`${tooltipSeparator} was ${previousValueDisplay} ${granularityDisplay}`}
                   </VariationTooltip>
                 }
               >
