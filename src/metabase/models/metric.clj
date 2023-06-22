@@ -81,7 +81,7 @@
         field-ids         (mbql.u/referenced-field-ids (into []
                                                              (comp cat (map :definition))
                                                              [metrics segments]))
-        fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/field field-ids)
+        fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/column field-ids)
         table-ids         (into #{}
                                 (comp cat (map :table_id))
                                 [fields segments metrics])]
