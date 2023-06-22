@@ -1,12 +1,13 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
+import { bindActionCreators } from "@reduxjs/toolkit";
 import { connect } from "react-redux";
 import { t } from "ttag";
-
 import _ from "underscore";
 import cx from "classnames";
+
 import title from "metabase/hoc/Title";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
@@ -14,6 +15,7 @@ import AdminLayout from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/containers/ErrorPages";
 
 import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
+import ErrorBoundary from "metabase/ErrorBoundary";
 import SettingsSetting from "../components/SettingsSetting";
 
 import {
@@ -39,11 +41,17 @@ const mapStateToProps = (state, props) => {
   };
 };
 
-const mapDispatchToProps = {
-  initializeSettings,
-  updateSetting,
-  reloadSettings,
-};
+const mapDispatchToProps = dispatch => ({
+  ...bindActionCreators(
+    {
+      initializeSettings,
+      updateSetting,
+      reloadSettings,
+    },
+    dispatch,
+  ),
+  dispatch,
+});
 
 class SettingsEditorApp extends Component {
   layout = null; // the reference to AdminLayout
@@ -57,7 +65,7 @@ class SettingsEditorApp extends Component {
 
   constructor(props) {
     super(props);
-    this.saveStatusRef = React.createRef();
+    this.saveStatusRef = createRef();
   }
 
   componentDidMount() {
@@ -65,7 +73,8 @@ class SettingsEditorApp extends Component {
   }
 
   updateSetting = async (setting, newValue) => {
-    const { settingValues, updateSetting, reloadSettings } = this.props;
+    const { settingValues, updateSetting, reloadSettings, dispatch } =
+      this.props;
 
     this.saveStatusRef.current.setSaving();
 
@@ -98,6 +107,12 @@ class SettingsEditorApp extends Component {
 
       if (setting.disableDefaultUpdate) {
         await reloadSettings();
+      }
+
+      if (setting.postUpdateActions) {
+        for (const action of setting.postUpdateActions) {
+          await dispatch(action());
+        }
       }
 
       this.saveStatusRef.current.setSaved();
@@ -149,6 +164,7 @@ class SettingsEditorApp extends Component {
     if (activeSection.component) {
       return (
         <activeSection.component
+          saveStatusRef={this.saveStatusRef}
           elements={activeSection.settings}
           settingValues={settingValues}
           updateSetting={this.updateSetting}
@@ -232,9 +248,11 @@ class SettingsEditorApp extends Component {
     );
 
     return (
-      <div className="MetadataEditor-table-list AdminList flex-no-shrink">
-        <ul className="AdminList-items pt1">{renderedSections}</ul>
-      </div>
+      <aside className="MetadataEditor-table-list AdminList flex-no-shrink">
+        <ul className="AdminList-items pt1">
+          <ErrorBoundary>{renderedSections}</ErrorBoundary>
+        </ul>
+      </aside>
     );
   }
 
@@ -245,7 +263,7 @@ class SettingsEditorApp extends Component {
         title={t`Settings`}
         sidebar={this.renderSettingsSections()}
       >
-        {this.renderSettingsPane()}
+        <ErrorBoundary>{this.renderSettingsPane()}</ErrorBoundary>
       </AdminLayout>
     );
   }

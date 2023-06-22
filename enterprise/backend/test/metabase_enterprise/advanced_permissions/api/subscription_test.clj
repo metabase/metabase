@@ -12,7 +12,8 @@
    [metabase.pulse-test :as pulse-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defmacro ^:private with-subscription-disabled-for-all-users
   "Temporarily remove `subscription` permission for group `All Users`, execute `body` then re-grant it.
@@ -95,10 +96,10 @@
                                                                 :pulse   {:creator_id (u/the-id user)}
                                                                 :channel :email}]
                       ;; manually add another user as recipient
-                      (mt/with-temp PulseChannelRecipient [_ {:user_id (:id user)
-                                                              :pulse_channel_id
-                                                              (db/select-one-id
-                                                               PulseChannel :channel_type "email" :pulse_id (:id the-pulse))}]
+                      (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id (:id user)
+                                                                        :pulse_channel_id
+                                                                        (t2/select-one-pk
+                                                                         PulseChannel :channel_type "email" :pulse_id (:id the-pulse))}]
                         (let [the-pulse   (pulse/retrieve-pulse (:id the-pulse))
                               channel     (api.alert/email-channel the-pulse)
                               new-channel (update channel :recipients rest)
@@ -156,7 +157,7 @@
                 user-alert   (premium-features-test/with-premium-features #{:advanced-permissions}
                                (perms/grant-application-permissions! group :subscription)
                                (u/prog1 (create-alert 200)
-                                        (perms/revoke-application-permissions! group :subscription)))
+                                 (perms/revoke-application-permissions! group :subscription)))
                 update-alert (fn [status]
                                (testing "update alert"
                                  (mt/user-http-request user :put status (format "alert/%d" (:id user-alert))
@@ -186,7 +187,7 @@
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]
-        (mt/with-temp Card [_]
+        (t2.with-temp/with-temp [Card _]
           (letfn [(add-alert-recipient [req-user status]
                     (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]
                                     Card                  [card]

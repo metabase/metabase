@@ -62,7 +62,9 @@ const serializersByOperatorName: Record<
     const options = operator
       .getOptions()
       .flat()
-      .filter(({ test }) => !!_.find(values, (value: string) => test(value)));
+      .filter(
+        ({ test }) => _.find(values, (value: string) => test(value)) != null,
+      );
     return `exclude-${operator.name}-${options
       .map(({ serialized }) => serialized)
       .join("-")}`;

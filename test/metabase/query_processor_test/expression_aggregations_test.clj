@@ -5,7 +5,8 @@
    [metabase.models.metric :refer [Metric]]
    [metabase.query-processor-test :as qp.test]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest sum-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
@@ -114,6 +115,23 @@
                                  [:* [:count $id] [:sum $price]]]]
                   :breakout    [$price]})))))))
 
+(deftest nested-post-multi-aggregation-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+    (testing "nested post-aggregation math: count + (count * sum)"
+      (is (= [[1   990 22 22 2.0]
+              [2 10502 59 59 2.0]
+              [3   689 13 13 2.0]
+              [4   186  6  6 0.0]]
+             (mt/formatted-rows [int int int int float]
+               (mt/run-mbql-query venues
+                 {:aggregation [[:+
+                                 [:count $id]
+                                 [:* [:count $id] [:sum [:+ $price 1]]]]
+                                [:count $id]
+                                [:count]
+                                [:* 2 [:share [:< $price 4]]]]
+                  :breakout    [$price]})))))))
+
 (deftest math-inside-aggregations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "post aggregation math + math inside aggregations: max(venue_price) + min(venue_price - id)"
@@ -125,6 +143,23 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:+ [:max $price] [:min [:- $price $id]]]]
                   :breakout    [$price]})))))))
+
+(deftest integer-aggregation-division-test
+  (testing "division of two sum aggregations (#30262)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+      (mt/dataset sample-dataset
+        (testing "expression parts not selected"
+          (is (= [[27]]
+                 (mt/formatted-rows [int]
+                   (mt/run-mbql-query orders
+                     {:aggregation [[:/ [:sum $product_id] [:sum $quantity]]]})))))
+        (testing "expression parts also selected"
+         (is (= [[1885900 69540 27]]
+                (mt/formatted-rows [int int int]
+                  (mt/run-mbql-query orders
+                    {:aggregation [[:sum $product_id]
+                                   [:sum $quantity]
+                                   [:/ [:sum $product_id] [:sum $quantity]]]})))))))))
 
 (deftest aggregation-without-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
@@ -191,9 +226,9 @@
 (deftest metrics-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "check that we can handle Metrics inside expression aggregation clauses"
-      (mt/with-temp Metric [metric {:table_id   (mt/id :venues)
-                                    :definition {:aggregation [:sum [:field (mt/id :venues :price) nil]]
-                                                 :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
+      (t2.with-temp/with-temp [Metric metric {:table_id   (mt/id :venues)
+                                              :definition {:aggregation [:sum [:field (mt/id :venues :price) nil]]
+                                                           :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
         (is (= [[2 119]
                 [3  40]
                 [4  25]]
@@ -203,9 +238,9 @@
                     :breakout    [$price]}))))))
 
     (testing "check that we can handle Metrics inside an `:aggregation-options` clause"
-      (mt/with-temp Metric [metric {:table_id   (mt/id :venues)
-                                    :definition {:aggregation [:sum [:field (mt/id :venues :price) nil]]
-                                                 :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
+      (t2.with-temp/with-temp [Metric metric {:table_id   (mt/id :venues)
+                                              :definition {:aggregation [:sum [:field (mt/id :venues :price) nil]]
+                                                           :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
         (is (= {:rows    [[2 118]
                           [3  39]
                           [4  24]]
@@ -213,15 +248,15 @@
                           "auto_generated_name"]}
                (mt/format-rows-by [int int]
                  (mt/rows+column-names
-                   (mt/run-mbql-query venues
-                     {:aggregation [[:aggregation-options [:metric (u/the-id metric)] {:name "auto_generated_name"}]]
-                      :breakout    [$price]})))))))
+                  (mt/run-mbql-query venues
+                    {:aggregation [[:aggregation-options [:metric (u/the-id metric)] {:name "auto_generated_name"}]]
+                     :breakout    [$price]})))))))
 
     (testing "check that Metrics with a nested aggregation still work inside an `:aggregation-options` clause"
-      (mt/with-temp Metric [metric (mt/$ids venues
-                                     {:table_id   $$venues
-                                      :definition {:aggregation [[:sum $price]]
-                                                   :filter      [:> $price 1]}})]
+      (t2.with-temp/with-temp [Metric metric (mt/$ids venues
+                                               {:table_id   $$venues
+                                                :definition {:aggregation [[:sum $price]]
+                                                             :filter      [:> $price 1]}})]
         (is (= {:rows    [[2 118]
                           [3  39]
                           [4  24]]
@@ -229,9 +264,9 @@
                           "auto_generated_name"]}
                (mt/format-rows-by [int int]
                  (mt/rows+column-names
-                   (mt/run-mbql-query venues
-                     {:aggregation [[:aggregation-options [:metric (u/the-id metric)] {:name "auto_generated_name"}]]
-                      :breakout    [$price]})))))))))
+                  (mt/run-mbql-query venues
+                    {:aggregation [[:aggregation-options [:metric (u/the-id metric)] {:name "auto_generated_name"}]]
+                     :breakout    [$price]})))))))))
 
 (deftest named-aggregations-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)

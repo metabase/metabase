@@ -1,4 +1,3 @@
-import React from "react";
 import { jt, t } from "ttag";
 import Settings from "metabase/lib/settings";
 import HelpCard from "metabase/components/HelpCard";
@@ -13,9 +12,7 @@ const DatabaseHelpCard = ({
   className,
   isHosted,
 }: DatabaseHelpCardProps): JSX.Element => {
-  const docsUrl = Settings.docsUrl(
-    "administration-guide/01-managing-databases",
-  );
+  const docsUrl = Settings.docsUrl("databases/connecting");
 
   return (
     <HelpCard
@@ -38,4 +35,5 @@ const DatabaseHelpCard = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseHelpCard;

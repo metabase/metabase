@@ -1,8 +1,11 @@
 (ns metabase.test.data.sqlserver
   "Code for creating / destroying a SQLServer database from a `DatabaseDefinition`."
-  (:require [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]))
+  (:require
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]))
+
+(set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :sqlserver)
 

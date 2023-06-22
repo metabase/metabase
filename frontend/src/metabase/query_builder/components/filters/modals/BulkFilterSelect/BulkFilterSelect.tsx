@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
@@ -125,7 +125,7 @@ export const SegmentFilterSelect = ({
   onClearSegments,
 }: SegmentFilterSelectProps): JSX.Element => {
   const activeSegmentOptions = useMemo(() => {
-    const activeSegmentIds = query.segments().map(s => s.id);
+    const activeSegmentIds = query.segments().map(s => s?.id);
     return segments.filter(segment =>
       activeSegmentIds.includes(segment.filter[1]),
     );

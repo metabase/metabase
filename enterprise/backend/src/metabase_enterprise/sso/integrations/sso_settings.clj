@@ -3,13 +3,17 @@
   the SSO backends and the generic routing code used to determine which SSO backend to use need this
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
-   [clojure.tools.logging :as log]
+   [metabase.integrations.common :as integrations.common]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.setting.multi-setting :refer [define-multi-setting-impl]]
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [saml20-clj.core :as saml]
    [schema.core :as s]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private GroupMappings
   (s/maybe {su/KeywordOrString [su/IntGreaterThanZero]}))
@@ -87,6 +91,7 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   (deferred-tru "JSON containing SAML to {0} group mappings."
                 (public-settings/application-name-for-setting-descriptions))
   :type    :json
+  :cache?  false
   :default {}
   :setter (comp (partial setting/set-value-of-type! :json :saml-group-mappings) validate-group-mappings))
 
@@ -142,6 +147,7 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   (deferred-tru "JSON containing JWT to {0} group mappings."
                 (public-settings/application-name-for-setting-descriptions))
   :type    :json
+  :cache?  false
   :default {}
   :setter  (comp (partial setting/set-value-of-type! :json :jwt-group-mappings) validate-group-mappings))
 
@@ -162,10 +168,9 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
                (setting/get-value-of-type :boolean :jwt-enabled)
                false)))
 
-(defsetting send-new-sso-user-admin-email?
-  (deferred-tru "Should new email notifications be sent to admins, for all new SSO users?")
-  :type :boolean
-  :default true)
+(define-multi-setting-impl integrations.common/send-new-sso-user-admin-email? :ee
+  :getter (fn [] (setting/get-value-of-type :boolean :send-new-sso-user-admin-email?))
+  :setter (fn [send-emails] (setting/set-value-of-type! :boolean :send-new-sso-user-admin-email? send-emails)))
 
 (defsetting other-sso-enabled?
   "Are we using an SSO integration other than LDAP or Google Auth? These integrations use the `/auth/sso` endpoint for

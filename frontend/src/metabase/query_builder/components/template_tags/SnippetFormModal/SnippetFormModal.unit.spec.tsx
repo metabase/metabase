@@ -1,5 +1,4 @@
-import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -34,32 +33,30 @@ async function setup({
   withDefaultFoldersList = true,
   onClose = jest.fn(),
 }: SetupOpts = {}) {
-  nock(location.origin)
-    .get("/api/collection/root?namespace=snippets")
-    .reply(200, TOP_SNIPPETS_FOLDER);
+  fetchMock.get(
+    { url: "path:/api/collection/root", query: { namespace: "snippets" } },
+    TOP_SNIPPETS_FOLDER,
+  );
 
   if (withDefaultFoldersList) {
-    nock(location.origin)
-      .get("/api/collection?namespace=snippets")
-      .reply(200, [TOP_SNIPPETS_FOLDER]);
+    fetchMock.get(
+      { url: "path:/api/collection", query: { namespace: "snippets" } },
+      [TOP_SNIPPETS_FOLDER],
+    );
   }
 
-  nock(location.origin)
-    .post("/api/native-query-snippet")
-    .reply(200, (uri, body) => {
-      if (typeof body === "object") {
-        return createMockNativeQuerySnippet(body);
-      }
-    });
+  fetchMock.post("path:/api/native-query-snippet", async url => {
+    return createMockNativeQuerySnippet(
+      await fetchMock.lastCall(url)?.request?.json(),
+    );
+  });
 
   if (snippet.id) {
-    nock(location.origin)
-      .put(`/api/native-query-snippet/${snippet.id}`)
-      .reply(200, (uri, body) => {
-        if (typeof body === "object") {
-          return createMockNativeQuerySnippet(body);
-        }
-      });
+    fetchMock.put(`path:/api/native-query-snippet/${snippet.id}`, async url => {
+      return createMockNativeQuerySnippet(
+        await fetchMock.lastCall(url)?.request?.json(),
+      );
+    });
   }
 
   renderWithProviders(
@@ -86,10 +83,6 @@ const LABEL = {
 };
 
 describe("SnippetFormModal", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("new snippet", () => {
     it("displays correct blank state", async () => {
       await setup();
@@ -117,9 +110,10 @@ describe("SnippetFormModal", () => {
     });
 
     it("shows folder picker if there are many folders", async () => {
-      nock(location.origin)
-        .get("/api/collection?namespace=snippets")
-        .reply(200, [TOP_SNIPPETS_FOLDER, createMockCollection()]);
+      fetchMock.get(
+        { url: "path:/api/collection", query: { namespace: "snippets" } },
+        [TOP_SNIPPETS_FOLDER, createMockCollection()],
+      );
 
       await setup({ withDefaultFoldersList: false });
 
@@ -216,9 +210,10 @@ describe("SnippetFormModal", () => {
     });
 
     it("shows folder picker if there are many folders", async () => {
-      nock(location.origin)
-        .get("/api/collection?namespace=snippets")
-        .reply(200, [TOP_SNIPPETS_FOLDER, createMockCollection()]);
+      fetchMock.get(
+        { url: "path:/api/collection", query: { namespace: "snippets" } },
+        [TOP_SNIPPETS_FOLDER, createMockCollection()],
+      );
 
       await setupEditing({ withDefaultFoldersList: false });
 

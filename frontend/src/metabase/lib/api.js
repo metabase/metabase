@@ -4,6 +4,7 @@ import EventEmitter from "events";
 
 import { delay } from "metabase/lib/promise";
 import { isWithinIframe } from "metabase/lib/dom";
+import { isTest } from "metabase/env";
 
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
@@ -56,10 +57,10 @@ export class Api extends EventEmitter {
         ...methodOptions,
       };
 
-      return async (data, invocationOptions = {}) => {
+      return async (rawData, invocationOptions = {}) => {
         const options = { ...defaultOptions, ...invocationOptions };
         let url = urlTemplate;
-        data = { ...data };
+        const data = { ...rawData };
         for (const tag of url.match(/:\w+/g) || []) {
           const paramName = tag.slice(1);
           let value = data[paramName];
@@ -84,6 +85,10 @@ export class Api extends EventEmitter {
           ? { Accept: "application/json", "Content-Type": "application/json" }
           : {};
 
+        if (options.formData && options.fetch) {
+          delete headers["Content-Type"];
+        }
+
         if (isWithinIframe()) {
           headers["X-Metabase-Embedded"] = "true";
         }
@@ -94,9 +99,13 @@ export class Api extends EventEmitter {
 
         let body;
         if (options.hasBody) {
-          body = JSON.stringify(
-            options.bodyParamName != null ? data[options.bodyParamName] : data,
-          );
+          body = options.formData
+            ? rawData
+            : JSON.stringify(
+                options.bodyParamName != null
+                  ? data[options.bodyParamName]
+                  : data,
+              );
         } else {
           const qs = querystring.stringify(data);
           if (qs) {
@@ -152,8 +161,18 @@ export class Api extends EventEmitter {
     } while (retryCount < maxAttempts);
   }
 
-  // TODO Atte Keinänen 6/26/17: Replacing this with isomorphic-fetch could simplify the implementation
-  _makeRequest(method, url, headers, body, data, options) {
+  _makeRequest(...args) {
+    const options = args[5];
+    // this is temporary to not deal with failed cypress tests
+    // we should switch to using fetch in all cases (metabase#28489)
+    if (isTest || options.fetch) {
+      return this._makeRequestWithFetch(...args);
+    } else {
+      return this._makeRequestWithXhr(...args);
+    }
+  }
+
+  _makeRequestWithXhr(method, url, headers, body, data, options) {
     return new Promise((resolve, reject) => {
       let isCancelled = false;
       const xhr = new XMLHttpRequest();
@@ -205,6 +224,67 @@ export class Api extends EventEmitter {
         });
       }
     });
+  }
+
+  async _makeRequestWithFetch(
+    method,
+    url,
+    headers,
+    requestBody,
+    data,
+    options,
+  ) {
+    const controller = new AbortController();
+    options.cancelled?.then(() => controller.abort());
+
+    const requestUrl = new URL(this.basename + url, location.origin);
+    const request = new Request(requestUrl.href, {
+      method,
+      headers,
+      body: requestBody,
+      signal: controller.signal,
+    });
+
+    return fetch(request)
+      .then(response => {
+        return response.text().then(body => {
+          if (options.json) {
+            try {
+              body = JSON.parse(body);
+            } catch (e) {}
+          }
+
+          let status = response.status;
+          if (status === 202 && body && body._status > 0) {
+            status = body._status;
+          }
+
+          const token = response.headers.get(ANTI_CSRF_HEADER);
+          if (token) {
+            ANTI_CSRF_TOKEN = token;
+          }
+
+          if (!options.noEvent) {
+            this.emit(status, url);
+          }
+
+          if (status >= 200 && status <= 299) {
+            if (options.transformResponse) {
+              body = options.transformResponse(body, { data });
+            }
+            return body;
+          } else {
+            throw { status: status, data: body };
+          }
+        });
+      })
+      .catch(error => {
+        if (controller.signal.aborted) {
+          throw { isCancelled: true };
+        } else {
+          throw error;
+        }
+      });
   }
 }
 

@@ -3,12 +3,13 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.models.database :refer [Database]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.table :as table :refer [Table]]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest valid-field-order?-test
   (testing "A valid field ordering is a set IDs  of all active fields in a given table"
@@ -66,15 +67,15 @@
                          "my\\/schema"
                          "my\\\\/schema"]]
       (testing (format "Should be able to create/delete Table with schema name %s" (pr-str schema-name))
-        (mt/with-temp Table [{table-id :id} {:schema schema-name}]
+        (t2.with-temp/with-temp [Table {table-id :id} {:schema schema-name}]
           (is (= schema-name
-                 (db/select-one-field :schema Table :id table-id))))))))
+                 (t2/select-one-fn :schema Table :id table-id))))))))
 
 (deftest identity-hash-test
   (testing "Table hashes are composed of the schema name, table name and the database's identity-hash"
     (mt/with-temp* [Database [db    {:name "field-db" :engine :h2}]
                     Table    [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]]
-      (let [db-hash (serdes.hash/identity-hash db)]
+      (let [db-hash (serdes/identity-hash db)]
         (is (= "0395fe49"
-               (serdes.hash/raw-hash ["PUBLIC" "widget" db-hash])
-               (serdes.hash/identity-hash table)))))))
+               (serdes/raw-hash ["PUBLIC" "widget" db-hash])
+               (serdes/identity-hash table)))))))

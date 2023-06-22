@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import { t } from "ttag";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
@@ -30,9 +29,11 @@ const ChartSettingFieldsPicker = ({
     );
   };
 
+  const isDragDisabled = fields?.length <= 1;
+
   return (
     <div>
-      {Array.isArray(fields) ? (
+      {fields?.length >= 0 ? (
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="droppable">
             {provided => (
@@ -43,6 +44,7 @@ const ChartSettingFieldsPicker = ({
                       key={`draggable-${field}`}
                       draggableId={`draggable-${field}`}
                       index={fieldIndex}
+                      isDragDisabled={isDragDisabled}
                     >
                       {provided => (
                         <div

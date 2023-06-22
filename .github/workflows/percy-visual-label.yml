@@ -21,15 +21,17 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: percy-visual-label
       - name: Prepare cypress environment
         uses: ./.github/actions/prepare-cypress
-      - run: ./bin/build
+      - run: ./bin/build.sh
       - name: Get the version info
         run: |
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
       - name: Run maildev
-        run: docker run -d -p 80:80 -p 25:25 maildev/maildev:1.1.0
+        run: docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:2.0.5
       - name: Percy Test
         run: yarn run test-visual-run
         env:

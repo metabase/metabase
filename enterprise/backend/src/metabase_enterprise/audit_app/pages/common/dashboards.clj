@@ -2,7 +2,7 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.audit-app.pages.common :as common]
-   [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.urls :as urls]))
 
 (defn table

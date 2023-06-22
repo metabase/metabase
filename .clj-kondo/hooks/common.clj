@@ -41,16 +41,14 @@
 ;;;; Common hook definitions
 
 (defn do*
-  "This is the same idea as [[clojure.core/do]] but doesn't cause Kondo to complain about redundant dos."
-  ;; This used to use `do` as the token-node, but as of version 2022.10.14 that resulted in warnings about
-  ;; unused variables since Kondo was smart enough to realize that we sometimes were calling pure functions early in
-  ;; the `do` and the value was getting thrown away. `noop` tricks Kondo into thinking everything is used.
-  [{{[_ & args] :children} :node}]
-  (let [noop (constantly nil)
-        node* (hooks/list-node
-               (list*
-                (hooks/token-node noop)
-                args))]
+  "This is the same idea as [[clojure.core/do]] but doesn't cause Kondo to complain about redundant dos or unused values."
+  [{{[_ & args] :children, :as node} :node}]
+  (let [node* (-> (hooks/list-node
+                   (list*
+                    (with-meta (hooks/token-node 'do) {:clj-kondo/ignore [:redundant-do]})
+                    (for [arg args]
+                      (vary-meta arg update :clj-kondo/ignore #(conj (vec %) :unused-value)))))
+                  (with-meta (meta node)))]
     {:node node*}))
 
 (defn with-one-binding
@@ -202,6 +200,36 @@
                 body))]
     {:node node*}))
 
+(defn- let-second-inner [body bindings]
+  (let [binding-infos (for [[model {[binding value] :children}] (partition 2 bindings)]
+                        {:model   model
+                         :binding binding
+                         :value   (or value
+                                      (hooks/token-node 'nil))})]
+    (-> (hooks/vector-node
+         [(hooks/vector-node (map :model binding-infos))
+          (-> (hooks/list-node (list* (hooks/token-node `let)
+                                    (hooks/vector-node (mapcat (juxt :binding :value) binding-infos))
+                                    body))
+              (with-meta (meta body)))])
+        (with-meta (meta body)))))
+
+(defn let-second
+  "Helper for macros that have a shape like
+
+    (my-macro x [y]
+    ...)
+
+    where the let is for second arg.
+
+    =>
+
+    (let [y nil]
+    ...)"
+  [{:keys [node]}]
+  (let [[_ first-arg-ref binding+opts & body] (:children node)]
+    {:node (let-second-inner body [first-arg-ref binding+opts])}))
+
 (defn let-with-optional-value-for-last-binding
   "This is exactly like [[clojure.core/let]] but the right-hand side of the *last* binding, `value`, is optional.
 
@@ -241,4 +269,25 @@
                (list*
                 (hooks/token-node 'do)
                 body))]
+    {:node node*}))
+
+(defn with-used-first-arg
+  "For macros like
+
+    (with-drivers (filter pred? some-drivers)
+      ...)
+
+    =>
+
+    (let [_1234 (filter pred? some-drivers)]
+      ...)
+
+  where the first arg should be linted and appear to be used."
+  [{{[_ arg & body] :children} :node}]
+  (let [node* (hooks/list-node
+                (list*
+                  (hooks/token-node 'let)
+                  (hooks/vector-node [(hooks/token-node (gensym "_"))
+                                      arg])
+                  body))]
     {:node node*}))

@@ -7,6 +7,10 @@ on:
       - 'release-**'
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
 
   verify-i18n-files:
@@ -20,9 +24,14 @@ jobs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: 'i18n'
-    - run: sudo apt install gettext
-
-    - run: ./bin/i18n/update-translation-template
-      name: Check i18n tags/make sure template can be built
-    - run: ./bin/i18n/build-translation-resources
-      name: Verify i18n translations (.po files)
+    - name: Install xgettext if necessary
+      run: |
+        if ! command -v xgettext > /dev/null; then
+          sudo apt install gettext
+        fi
+    - name: Check xgettext version
+      run: xgettext --version
+    - name: Check i18n tags/make sure template can be built
+      run: ./bin/i18n/update-translation-template
+    - name: Verify i18n translations (.po files)
+      run: ./bin/i18n/build-translation-resources

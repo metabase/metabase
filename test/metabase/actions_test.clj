@@ -2,14 +2,22 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions :as actions]
+   [metabase.actions.execution :as actions.execution]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
    [metabase.models :refer [Database Table]]
+   [metabase.models.action :as action]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [toucan2.core :as t2])
+  (:import
+   (org.apache.sshd.server SshServer)
+   (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
+
+(set! *warn-on-reflection* true)
 
 (defmacro with-actions-test-data-and-actions-permissively-enabled
   "Combines [[mt/with-actions-test-data-and-actions-enabled]] with full permissions."
@@ -176,10 +184,14 @@
       (binding [*current-user-permissions-set* (delay #{"/"})]
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]})
                                                       :update_row {(format-field-name :name) "new-name"})
+              query-that-returns-zero-row      (assoc (mt/mbql-query users {:filter [:= $id Integer/MAX_VALUE]})
+                                                      :update_row {(format-field-name :name) "new-name"})
               result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would update [\d|,]+ rows, but you can only act on 1"
                                 (actions/perform-action! :row/update query-that-returns-more-than-one)))
+          (is (thrown-with-msg? Exception #"Sorry, the row you're trying to update doesn't exist"
+                                (actions/perform-action! :row/update query-that-returns-zero-row)))
           (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
               "The result-count after a rollback must remain the same!"))))))
 
@@ -189,10 +201,14 @@
       (binding [*current-user-permissions-set* (delay #{"/"})]
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query checkins {:filter [:>= $id 1]})
                                                       :update_row {(format-field-name :name) "new-name"})
+              query-that-returns-zero-row      (assoc (mt/mbql-query checkins {:filter [:= $id Integer/MAX_VALUE]})
+                                                      :update_row {(format-field-name :name) "new-name"})
               result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would delete [\d|,]+ rows, but you can only act on 1"
                                 (actions/perform-action! :row/delete query-that-returns-more-than-one)))
+          (is (thrown-with-msg? Exception #"Sorry, the row you're trying to delete doesn't exist"
+                                (actions/perform-action! :row/delete query-that-returns-zero-row)))
           (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
               "The result-count after a rollback must remain the same!"))))))
 
@@ -244,7 +260,6 @@
   (testing "bulk/create"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled
-
         (is (= 75
                (categories-row-count)))
         (is (= {:created-rows [{(format-field-name :id) 76, (format-field-name :name) "NEW_A"}
@@ -330,7 +345,7 @@
                 "first error")
                (s/one
                 {:index (s/eq 3)
-                 :error #"Sorry, this would delete 0 rows, but you can only act on 1"}
+                 :error #"Sorry, the row you're trying to delete doesn't exist"}
                 "second error")]
               :status-code (s/eq 400)}
              (actions/perform-action! :bulk/delete
@@ -470,3 +485,96 @@
                     [2 "American"]
                     [3 "Artisan"]]
                    (first-three-categories)))))))))
+
+(defn basic-auth-ssh-server ^java.io.Closeable [username password]
+  (try
+    (let [password-auth    (reify org.apache.sshd.server.auth.password.PasswordAuthenticator
+                             (authenticate [_ auth-username auth-password _session]
+                               (and
+                                (= auth-username username)
+                                (= auth-password password))))
+          keypair-provider (org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider.)
+          sshd             (doto (SshServer/setUpDefaultServer)
+                             (.setPort 0)
+                             (.setKeyPairProvider keypair-provider)
+                             (.setPasswordAuthenticator password-auth)
+                             (.setForwardingFilter AcceptAllForwardingFilter/INSTANCE)
+                             .start)]
+      sshd)
+    (catch Throwable e
+      (throw (ex-info (format "Error starting SSH mock server with password")
+                      {:username username :password password}
+                      e)))))
+
+(deftest actions-on-ssh-tunneled-db
+  ;; testing actions against dbs with ssh tunnels. Use an in-memory ssh server that just forwards to the correct port
+  ;; through localhost. Since it is local, it's possible for the application to ignore the ssh tunnel and just talk to
+  ;; the db on the correct port. So we do the tests twice, once expecting the correct answer, and then again with the
+  ;; wrong password for the ssh tunnel and we expect failures. This ensures that the correct result is actually going
+  ;; through the ssh tunnel
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2)
+    (let [username "username", password "password"]
+      (with-open [ssh-server (basic-auth-ssh-server username password)]
+        (doseq [[correct-password? ssh-password] [[true password] [false "wrong-password"]]]
+          (with-actions-test-data-and-actions-permissively-enabled
+            (let [ssh-port (.getPort ^SshServer ssh-server)]
+              (let [details (t2/select-one-fn :details 'Database :id (mt/id))]
+                (t2/update! 'Database (mt/id)
+                            ;; enable ssh tunnel
+                            {:details (assoc details
+                                             :tunnel-enabled true
+                                             :tunnel-host "localhost"
+                                             :tunnel-auth-option "password"
+                                             :tunnel-port ssh-port
+                                             :tunnel-user username
+                                             :tunnel-pass ssh-password)}))
+              (testing "Can perform implicit actions on ssh-enabled database"
+                (let [response (try (actions/perform-action! :bulk/update
+                                                             {:database (mt/id)
+                                                              :table-id (mt/id :categories)
+                                                              :arg
+                                                              (let [id   (format-field-name :id)
+                                                                    name (format-field-name :name)]
+                                                                [{id 1, name "Seed Bowl"}
+                                                                 {id 2, name "Millet Treat"}])})
+                                    (catch Exception e e))]
+                  (if correct-password?
+                    (is (= {:rows-updated 2} response))
+                    (do
+                      (is (instance? Exception response) "Did not get an error with wrong password")
+                      (is (some (partial instance? org.apache.sshd.common.SshException)
+                                (u/full-exception-chain response))
+                          "None of the errors are from ssh")))))
+              (testing "Can perform custom actions on ssh-enabled database"
+                (let [query (update (mt/native-query
+                                     {:query "update categories set name = 'foo' where id = {{id}}"
+                                      :template-tags {:id {:id "id"
+                                                           :name "id"
+                                                           :type "number"
+                                                           :display-name "Id"}}})
+                                    :type name)]
+                  (mt/with-actions [{card-id :id} {:dataset true
+                                                   :dataset_query (mt/mbql-query categories)}
+                                    {action-id :action-id} {:name                   "Query example"
+                                                            :type                   :query
+                                                            :model_id               card-id
+                                                            :dataset_query          query
+                                                            :database_id            (mt/id)
+                                                            :parameters             [{:id "id"
+                                                                                      :type :number/=
+                                                                                      :target [:variable
+                                                                                               [:template-tag "id"]]
+                                                                                      :name "Id"
+                                                                                      :slug "id"
+                                                                                      :hasVariableTemplateTagTarget true}]
+                                                            :visualization_settings {:position "top"}}]
+                    (let [action (action/select-action :id action-id)]
+                      (if correct-password?
+                        (is (= {:rows-affected 1}
+                               (actions.execution/execute-action! action {"id" 1})))
+                        (let [response (try (actions.execution/execute-action! action {"id" 1})
+                                            (catch Exception e e))]
+                          (is (instance? Exception response) "Did not get an error with wrong password")
+                          (is (some (partial instance? org.apache.sshd.common.SshException)
+                                    (u/full-exception-chain response))
+                              "None of the errors are from ssh"))))))))))))))

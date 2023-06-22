@@ -2,7 +2,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [java-time :as t]
    [metabase.driver.common.parameters :as params]
@@ -17,11 +16,14 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log])
   (:import
    (java.time ZoneOffset)
    (java.time.temporal Temporal)
-   (metabase.driver.common.parameters CommaSeparatedNumbers Date MultipleValues)))
+   (metabase.driver.common.parameters Date)))
+
+(set! *warn-on-reflection* true)
 
 (defn- ->utc-instant [t]
   (t/instant
@@ -36,10 +38,6 @@
     ;; sequences get converted to `$in`
     (sequential? x)
     (format "{$in: [%s]}" (str/join ", " (map (partial param-value->str field) x)))
-
-    ;; MultipleValues get converted as sequences
-    (instance? MultipleValues x)
-    (recur field (:values x))
 
     ;; Date = the Parameters Date type, not an java.util.Date or java.sql.Date type
     ;; convert to a `Temporal` instance and recur
@@ -57,10 +55,6 @@
     ;; convert temporal types to ISODate("2019-12-09T...") (etc.)
     (instance? Temporal x)
     (format "ISODate(\"%s\")" (u.date/format x))
-
-    ;; there's a special record type for sequences of numbers; pull the sequence it wraps out and recur
-    (instance? CommaSeparatedNumbers x)
-    (recur field (:numbers x))
 
     ;; for everything else, splice it in as its string representation
     :else
@@ -99,7 +93,7 @@
 (defn- substitute-one-field-filter [{field :field, {param-type :type, value :value} :value, :as field-filter}]
   ;; convert relative dates to approprate date range representations
   (cond
-    (params.dates/date-range-type? param-type)
+    (params.dates/not-single-date-type? param-type)
     (substitute-one-field-filter-date-range field-filter)
 
     ;; a `date/single` like `2020-01-10`
@@ -207,7 +201,7 @@
 (defn- parse-and-substitute [param->value x]
   (if-not (string? x)
     x
-    (u/prog1 (substitute param->value (params.parse/parse x))
+    (u/prog1 (substitute param->value (params.parse/parse x false))
       (when-not (= x <>)
         (log/debug (tru "Substituted {0} -> {1}" (pr-str x) (pr-str <>)))))))
 

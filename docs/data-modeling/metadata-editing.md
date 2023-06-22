@@ -4,9 +4,9 @@ redirect_from:
   - /docs/latest/administration-guide/03-metadata-editing
 ---
 
-# Data model admin settings
+# Table metadata admin settings
 
-Metabase lets you add and edit metadata to your tables and columns so that you can manage your org's business logic as it changes. Go to the **Data Model** tab in your **Admin settings** to:
+Metabase lets you add and edit metadata to your tables and columns so that you can manage your org's business logic as it changes. Go to the **Table Metadata** tab in your **Admin settings** to:
 
 - [Set display names and descriptions](#table-display-name).
 - [Hide outdated data](#table-visibility).
@@ -14,7 +14,7 @@ Metabase lets you add and edit metadata to your tables and columns so that you c
 - [Change the style of a filter widget](#changing-the-filter-widget).
 - [Link column values to URLs](#linking-a-column-to-a-url).
 
-> The **Data Model** admin settings only affect the way data's displayed and interpreted in Metabase. None of the settings will change the data in your database.
+> The **Table Metadata** admin settings only affect the way data's displayed and interpreted in Metabase. None of the settings will change the data in your database.
 
 ## Table settings
 
@@ -40,7 +40,7 @@ To add a table description, click into the box below the table name. Description
 
 **Queryable** tables are visible across all of Metabase.
 
-**Hidden** tables won't show up in the [query builder](../questions/query-builder/introduction.md) or [data reference](../exploration-and-organization/data-model-reference.md), but hidden tables can still be used in SQL questions if someone writes `SELECT * FROM hidden_table` from the [SQL editor](../questions/native-editor/writing-sql.md). To prevent people from writing queries against specific tables, see [data permissions](../permissions/data.md).
+**Hidden** tables won't show up in the [query builder](../questions/query-builder/introduction.md) or [data reference](../exploration-and-organization/data-model-reference.md). But this is not a security feature: hidden tables can still be used in SQL questions if someone writes `SELECT * FROM hidden_table` from the [SQL editor](../questions/native-editor/writing-sql.md). To prevent people from writing queries against specific tables, see [data permissions](../permissions/data.md).
 
 Tip: To hide all of the tables in a database (say, if you've migrated to a new database), click on the **hidden eye** icon beside "# queryable tables" in the left sidebar.
 
@@ -83,7 +83,8 @@ To add a description, click into the box below the column name. Descriptions are
 
 **Only in detail views** will hide lengthy text from question results. This setting is applied by default if a column's values have an average length of more than 50 characters. For example, you could use this setting on a column like "Customer Comments" if you already have a column for "Customer Rating".
 
-**Do not include** columns won't show up in the query builder or data reference, but these columns are still accessible if someone writes `SELECT hidden_column FROM table` from the [SQL editor](../questions/native-editor/writing-sql.md). You can set "do not include" on sensitive columns (such as PII) or irrelevant columns.
+**Do not include** columns won't show up in the query builder or data reference. You can set "do not include" on sensitive columns (such as PII) or irrelevant columns. But this visibility option is a simple omit/hide option; it's not a security feature. These columns are still accessible for people with native query privileges; they can write `SELECT hidden_column FROM table` or `SELECT * from table` in the [SQL editor](../questions/native-editor/writing-sql.md) and they'll be able to view these fields and their values. To prevent people from viewing certain columns, see [data sandboxing](../permissions/data-sandboxes.md).
+
 
 ### Column order
 
@@ -104,7 +105,7 @@ To change the [field type](../data-modeling/field-types.md) of a column, click o
 
 If you want Metabase to treat a text or number column as a datetime column:
 
-1. Go to **Admin settings** > **Data Model**.
+1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database and table.
 3. Click on the **gear** icon at the right of a column's settings box.
 4. Scroll to **Cast to a specific data type**
@@ -120,6 +121,7 @@ If you want Metabase to treat a text or number column as a datetime column:
 
 - UNIXMicroSeconds->DateTime
 - UNIXMilliSeconds->DateTime
+- UNIXNanoSeconds->DateTime
 - UNIXSeconds->DateTime
 
 Casting is different from setting the [field type](./field-types.md). For example, say you have a "Created At" column with a string [data type](https://www.metabase.com/learn/databases/data-types-overview) in your database. You'll need to cast "Created At" to one of the datetime types above if you want to do things like:
@@ -127,13 +129,13 @@ Casting is different from setting the [field type](./field-types.md). For exampl
 - Create relative date filters, such as "Created At = Last week".
 - Use "Created At" with formulas like [datetimeAdd](../questions/query-builder/expressions/datetimeadd.md).
 
-> Casting data types from the **Data Model** admin settings won't affect the original data types in your database.
+> Casting data types from the **Table Metadata** admin settings won't affect the original data types in your database.
 
 ### Changing the filter widget
 
 To change a column's [filter widget](../dashboards/filters.md):
 
-1. Go to **Admin settings** > **Data Model**.
+1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database and table.
 3. Click on the **gear** icon at the right of a column's settings box.
 4. Scroll to **Filtering on this field**.
@@ -150,9 +152,9 @@ To change a column's [filter widget](../dashboards/filters.md):
 
 ### Changing a search box filter to a dropdown filter
 
-The dropdown filter widget can be finicky, because Metabase needs to run a [scan](../databases/connecting.md#how-database-scans-work) to get the list of values for the dropdown menu.
+The dropdown filter widget can be finicky, because Metabase needs to run a [scan](../databases/sync-scan.md#how-database-scans-work) to get the list of values for the dropdown menu.
 
-1. Go to **Admin settings** > **Data Model**.
+1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database and table.
 3. Scroll to your column.
 4. In the column's settings box, set **Type** to “Category”.
@@ -166,7 +168,7 @@ Say you have a column with the values 1, 2, and 3, and you want to map each numb
 
 #### Remapping numbers
 
-1. Go to **Admin settings** > **Data Model**.
+1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database and table.
 3. Click **gear** icon at the right of a column's settings box.
 4. Scroll to **Display values**.
@@ -175,7 +177,7 @@ Say you have a column with the values 1, 2, and 3, and you want to map each numb
 
 #### Remapping foreign keys
 
-1. Go to **Admin settings** > **Data Model**.
+1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database and table.
 3. Click **gear** icon at the right of a column's settings box.
 4. Scroll to **Display values**.
@@ -184,7 +186,7 @@ Say you have a column with the values 1, 2, and 3, and you want to map each numb
 
 ### Linking a column to a URL
 
-1. Go to **Admin settings** > **Data Model**.
+1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database and table.
 3. Click on the **gear** icon at the right of a column's settings box.
 4. Select **Formatting** from the sidebar.
@@ -209,21 +211,21 @@ https://www.google.com/search?q=askew
 
 To update the values in your filter dropdown menus, refresh or reset the cached values. **Cache actions** include:
 
-- **Re-scan this table or field** to run a manual scan for new or updated column values. If possible, re-scan the table during off-peak hours, as [scans](../databases/connecting.md#how-database-scans-work) can slow down your database.
+- **Re-scan this table or field** to run a manual scan for new or updated column values. If possible, re-scan the table during off-peak hours, as [scans](../databases/sync-scan.md#how-database-scans-work) can slow down your database.
 - **Discard cached field values** to clear cached values and stop them from showing up in your [filter widgets](#changing-the-filter-widget).
 
 ### Table cache actions
 
-1. Go to **Admin settings** > **Data Model**.
+1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database and table.
 3. Click the **gear** icon at the top right (below **Exit admin**).
 4. Select a cache action.
 
 ### Column cache actions
 
-1. Go to **Admin settings** > **Data Model**.
+1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database and table.
-3. Click **gear** icon at the right of a column's settings box.
+3. Click the **gear** icon at the right of a column's settings box.
 4. Scroll to **Cached field values**.
 5. Select a cache action.
 

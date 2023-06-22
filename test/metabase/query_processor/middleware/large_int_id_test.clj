@@ -5,10 +5,12 @@
    [metabase.query-processor.middleware.large-int-id :as large-int-id]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (deftest convert-ids
   (let [query (mt/mbql-query users
-                {:order-by [[:asc $id]]
-                 :limit    5})]
+                             {:order-by [[:asc $id]]
+                              :limit    5})]
     (testing "PKs become strings when middleware enabled"
       (is (= [["1" "Plato Yeshua" "2014-04-01T08:30:00Z"]
               ["2" "Felipinho Asklepios" "2014-12-05T15:15:00Z"]
@@ -16,7 +18,7 @@
               ["4" "Simcha Yan" "2014-01-01T08:30:00Z"]
               ["5" "Quentin Sören" "2014-10-03T17:30:00Z"]]
              (mt/rows
-               (qp/process-query (assoc query :middleware {:js-int-to-string? true}))))))
+              (qp/process-query (assoc query :middleware {:js-int-to-string? true}))))))
 
     (testing "PKs are left alone when middleware disabled (default)"
       (is (= [[1 "Plato Yeshua" "2014-04-01T08:30:00Z"]
@@ -25,12 +27,12 @@
               [4 "Simcha Yan" "2014-01-01T08:30:00Z"]
               [5 "Quentin Sören" "2014-10-03T17:30:00Z"]]
              (mt/rows
-               (qp/process-query (assoc query :middleware {})))))))
+              (qp/process-query (assoc query :middleware {})))))))
 
   (let [query (mt/mbql-query users
-                {:fields   [$name]
-                 :order-by [[:asc $name]]
-                 :limit    5})]
+                             {:fields   [$name]
+                              :order-by [[:asc $name]]
+                              :limit    5})]
     (testing "handle when there are no ID columns in the query but the middleware is enabled"
       (is (= [["Broen Olujimi"]
               ["Conchúr Tihomir"]
@@ -38,11 +40,11 @@
               ["Felipinho Asklepios"]
               ["Frans Hevel"]]
              (mt/rows
-               (qp/process-query (assoc query :middleware {:js-int-to-string? true})))))))
+              (qp/process-query (assoc query :middleware {:js-int-to-string? true})))))))
 
   (let [query (mt/mbql-query venues
-                {:order-by [[:asc $id]]
-                 :limit    5})]
+                             {:order-by [[:asc $id]]
+                              :limit    5})]
     (testing "FKs become strings when middleware enabled"
       (is (= [["1" "Red Medicine" "4" 10.0646 -165.374 3]
               ["2" "Stout Burgers & Beers" "11" 34.0996 -118.329 2]
@@ -50,7 +52,7 @@
               ["4" "Wurstküche" "29" 33.9997 -118.465 2]
               ["5" "Brite Spot Family Restaurant" "20" 34.0778 -118.261 2]]
              (mt/rows
-               (qp/process-query (assoc query :middleware {:js-int-to-string? true}))))))
+              (qp/process-query (assoc query :middleware {:js-int-to-string? true}))))))
 
     (testing "FKs are left alone when middleware disabled (default)"
       (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
@@ -59,12 +61,12 @@
               [4 "Wurstküche" 29 33.9997 -118.465 2]
               [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]]
              (mt/rows
-               (qp/process-query (assoc query :middleware {})))))))
+              (qp/process-query (assoc query :middleware {})))))))
 
   (let [query (mt/mbql-query checkins
-                {:fields   [$id $user_id->users.id $user_id->users.name $venue_id->venues.id $venue_id->venues.name]
-                 :order-by [[:asc $id]]
-                 :limit    5})]
+                             {:fields   [$id $user_id->users.id $user_id->users.name $venue_id->venues.id $venue_id->venues.name]
+                              :order-by [[:asc $id]]
+                              :limit    5})]
     (testing "joins work correctly"
       (is (= [["1" "5" "Quentin Sören" "12" "The Misfit Restaurant + Bar"]
               ["2" "1" "Plato Yeshua" "31" "Bludso's BBQ"]
@@ -72,14 +74,14 @@
               ["4" "5" "Quentin Sören" "4" "Wurstküche"]
               ["5" "3" "Kaneonuskatew Eiran" "49" "Hotel Biron"]]
              (mt/rows
-               (qp/process-query (assoc query :middleware {:js-int-to-string? true})))))))
+              (qp/process-query (assoc query :middleware {:js-int-to-string? true})))))))
 
   (let [query (mt/mbql-query venues
-                {:source-query {:source-table $$venues
-                                :aggregation  [[:aggregation-options
-                                                [:avg $id]
-                                                {:name "some_generated_name", :display-name "My Cool Ag"}]]
-                                :breakout     [$price]}})]
+                             {:source-query {:source-table $$venues
+                                             :aggregation  [[:aggregation-options
+                                                             [:avg $id]
+                                                             {:name "some_generated_name", :display-name "My Cool Ag"}]]
+                                             :breakout     [$price]}})]
     ;; see comment in [[metabase.query-processor.middleware.large-int-id/convert-id-to-string]]
     ;; for why this value does not change
     (testing "aggregations are not converted to strings with middleware enabled"
@@ -88,14 +90,14 @@
               [3 47]
               [4 61]]
              (mt/formatted-rows [int int]
-               (qp/process-query (assoc query :middleware {:js-int-to-string? true}))))))
+                                (qp/process-query (assoc query :middleware {:js-int-to-string? true}))))))
     (testing "aggregation does not convert to strings with middleware disabled (default)"
       (is (= [[1 55]
               [2 48]
               [3 47]
               [4 61]]
              (mt/formatted-rows [int int]
-              (qp/process-query (assoc query :middleware {}))))))))
+                                (qp/process-query (assoc query :middleware {}))))))))
 
 (defn- convert-id-to-string [rows]
   (let [query {:type       :query

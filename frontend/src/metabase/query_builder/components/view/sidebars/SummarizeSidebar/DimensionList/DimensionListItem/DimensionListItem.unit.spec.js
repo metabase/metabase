@@ -1,12 +1,16 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
-import { metadata, ORDERS } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
 
+import { createSampleDatabase, ORDERS } from "metabase-types/api/mocks/presets";
 import Dimension from "metabase-lib/Dimension";
 
 import { DimensionListItem } from "./DimensionListItem";
 
-const mbql = ["field", ORDERS.TOTAL.id, null];
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
+const mbql = ["field", ORDERS.TOTAL, null];
 const dimension = Dimension.parseMBQL(mbql, metadata);
 const dimensions = [dimension];
 

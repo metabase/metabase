@@ -1,5 +1,3 @@
-import React from "react";
-import _ from "underscore";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -9,9 +7,12 @@ import type {
   ParametersForActionExecution,
   WritebackParameter,
 } from "metabase-types/api";
-import { createMockActionParameter } from "metabase-types/api/mocks";
+import {
+  createMockActionParameter,
+  createMockQueryAction,
+} from "metabase-types/api/mocks";
 
-import { ActionForm } from "./ActionForm";
+import ActionForm from "./ActionForm";
 
 const makeFieldSettings = (
   overrides: Partial<FieldSettings> = {},
@@ -44,34 +45,30 @@ type SetupOpts = {
   initialValues?: ParametersForActionExecution;
   parameters: WritebackParameter[];
   formSettings: ActionFormSettings;
-  isSettings?: boolean;
+  onSubmit?: () => Promise<void>;
 };
 
 const setup = ({
   initialValues,
   parameters,
   formSettings,
-  isSettings = false,
+  onSubmit = jest.fn(),
 }: SetupOpts) => {
-  const setFormSettings = jest.fn();
-  const onSubmit = jest.fn();
+  const action = createMockQueryAction({
+    parameters,
+    visualization_settings: formSettings,
+  });
 
   render(
     <ActionForm
+      action={action}
       initialValues={initialValues}
-      parameters={parameters}
-      formSettings={formSettings}
-      setFormSettings={isSettings ? setFormSettings : undefined}
       onSubmit={onSubmit}
     />,
   );
 
-  return { setFormSettings, onSubmit };
+  return { action, onSubmit };
 };
-
-function setupSettings(opts: Omit<SetupOpts, "isSettings">) {
-  return setup({ ...opts, isSettings: true });
-}
 
 describe("Actions > ActionForm", () => {
   describe("Form Display", () => {
@@ -230,7 +227,7 @@ describe("Actions > ActionForm", () => {
     });
 
     it("can submit form field values", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
           makeParameter({ id: "def-456" }),
@@ -254,7 +251,7 @@ describe("Actions > ActionForm", () => {
 
       userEvent.type(screen.getByLabelText(/text input/i), "Murloc");
       userEvent.type(screen.getByLabelText(/number input/i), "12345");
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(
@@ -266,11 +263,47 @@ describe("Actions > ActionForm", () => {
         );
       });
     });
+
+    it("shows an error if submit fails", async () => {
+      const message = "Something went wrong when submitting the form.";
+      const error = { success: false, error: message, message };
+      const { action } = await setup({
+        onSubmit: jest.fn().mockRejectedValue(error),
+        parameters: [
+          makeParameter({ id: "abc-123" }),
+          makeParameter({ id: "def-456" }),
+        ],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({
+              inputType: "string",
+              id: "abc-123",
+              title: "text input",
+            }),
+            "def-456": makeFieldSettings({
+              inputType: "number",
+              id: "def-456",
+              title: "number input",
+            }),
+          },
+        },
+      });
+
+      userEvent.type(screen.getByLabelText(/text input/i), "Murloc");
+      userEvent.type(screen.getByLabelText(/number input/i), "12345");
+      userEvent.click(screen.getByRole("button", { name: action.name }));
+
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: action.name }),
+      ).toHaveTextContent("Failed");
+    });
   });
 
   describe("Form Validation", () => {
     it("allows form submission when required fields are provided", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
           makeParameter({ id: "def-456" }),
@@ -296,16 +329,14 @@ describe("Actions > ActionForm", () => {
 
       userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
       userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
-      expect(
-        screen.queryByText(/this field is required/i),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
     });
 
     it("disables form submission when required fields are not provided", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
           makeParameter({ id: "def-456" }),
@@ -332,19 +363,57 @@ describe("Actions > ActionForm", () => {
       userEvent.click(await screen.findByLabelText(/foo input/i)); // leave empty
       userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
       await waitFor(() =>
-        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled(),
+        expect(
+          screen.getByRole("button", { name: action.name }),
+        ).toBeDisabled(),
       );
 
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
-      expect(
-        await screen.findByText(/this field is required/i),
-      ).toBeInTheDocument();
+      expect(await screen.findByText(/required/i)).toBeInTheDocument();
       expect(onSubmit).not.toHaveBeenCalled();
     });
 
-    it("disables form submission when no fields are changed", async () => {
-      const { onSubmit } = setup({
+    it("allows form submission when all required fields are set", async () => {
+      const { action, onSubmit } = setup({
+        parameters: [
+          makeParameter({ id: "abc-123" }),
+          makeParameter({ id: "def-456" }),
+        ],
+        formSettings: {
+          type: "form",
+          fields: {
+            "abc-123": makeFieldSettings({
+              inputType: "string",
+              id: "abc-123",
+              title: "foo input",
+              required: true,
+            }),
+            "def-456": makeFieldSettings({
+              inputType: "string",
+              id: "def-456",
+              title: "bar input",
+              required: false,
+            }),
+          },
+        },
+      });
+
+      expect(screen.getByRole("button", { name: action.name })).toBeDisabled();
+
+      userEvent.type(screen.getByLabelText(/foo input/i), "baz");
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: action.name })).toBeEnabled();
+      });
+
+      userEvent.click(screen.getByRole("button", { name: action.name }));
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalled();
+      });
+    });
+
+    it("allows form submission when all fields are optional", async () => {
+      const { action, onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
           makeParameter({ id: "def-456" }),
@@ -368,11 +437,11 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: action.name })).toBeEnabled();
 
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
-      await waitFor(() => expect(onSubmit).not.toHaveBeenCalled());
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     });
 
     it("cannot type a string in a numeric field", async () => {
@@ -393,7 +462,7 @@ describe("Actions > ActionForm", () => {
     });
 
     it("allows submission of a null non-required boolean field", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
           makeParameter({ id: "def-456" }),
@@ -419,16 +488,14 @@ describe("Actions > ActionForm", () => {
 
       userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
       userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
-      expect(
-        screen.queryByText(/this field is required/i),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
     });
 
     it("sets a default value for an empty field", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
           makeParameter({ id: "def-456" }),
@@ -441,29 +508,27 @@ describe("Actions > ActionForm", () => {
               id: "abc-123",
               title: "foo input",
               required: true,
+              defaultValue: "foo",
             }),
             "def-456": makeFieldSettings({
               inputType: "boolean",
               id: "def-456",
               title: "bar input",
               required: false,
+              defaultValue: "bar",
             }),
           },
         },
       });
 
-      userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
-      userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
-      expect(
-        screen.queryByText(/this field is required/i),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
     });
 
     it("sets types on form submissions correctly", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         parameters: [
           makeParameter({ id: "abc-123" }),
           makeParameter({ id: "def-456" }),
@@ -497,7 +562,7 @@ describe("Actions > ActionForm", () => {
       userEvent.type(await screen.findByLabelText(/foo input/i), "1");
       userEvent.type(await screen.findByLabelText(/bar input/i), "1");
       userEvent.type(await screen.findByLabelText(/baz input/i), "1");
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(
@@ -517,7 +582,7 @@ describe("Actions > ActionForm", () => {
     const inputTypes = ["string", "number", "text", "date", "datetime", "time"];
     inputTypes.forEach(inputType => {
       it(`casts empty optional ${inputType} field to null`, async () => {
-        const { onSubmit } = setup({
+        const { action, onSubmit } = setup({
           initialValues: { "abc-123": 1 },
           parameters: [makeParameter({ id: "abc-123" })],
           formSettings: {
@@ -537,7 +602,7 @@ describe("Actions > ActionForm", () => {
         fireEvent.change(screen.getByLabelText(/input/i), {
           target: { value: "" },
         });
-        userEvent.click(screen.getByRole("button", { name: "Save" }));
+        userEvent.click(screen.getByRole("button", { name: action.name }));
 
         await waitFor(() => {
           expect(onSubmit).toHaveBeenCalledWith(
@@ -553,14 +618,14 @@ describe("Actions > ActionForm", () => {
     // bug repro: https://github.com/metabase/metabase/issues/27377
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("casts empty optional category fields to null", async () => {
-      const { onSubmit } = setup({
+      const { action, onSubmit } = setup({
         initialValues: { "abc-123": "aaa" },
         parameters: [makeParameter({ id: "abc-123" })],
         formSettings: {
           type: "form",
           fields: {
             "abc-123": makeFieldSettings({
-              inputType: "category",
+              inputType: "string",
               id: "abc-123",
               title: "input",
               required: false,
@@ -570,7 +635,7 @@ describe("Actions > ActionForm", () => {
       });
 
       userEvent.clear(screen.getByLabelText(/input/i));
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
+      userEvent.click(screen.getByRole("button", { name: action.name }));
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalledWith(
@@ -579,166 +644,6 @@ describe("Actions > ActionForm", () => {
           },
           expect.any(Object),
         );
-      });
-    });
-  });
-
-  describe("Form Creation", () => {
-    it("renders the form editor", () => {
-      setupSettings({
-        parameters: [makeParameter()],
-        formSettings: {
-          type: "form",
-          fields: {
-            "abc-123": makeFieldSettings({ inputType: "string" }),
-          },
-        },
-      });
-
-      expect(screen.getByTestId("action-form-editor")).toBeInTheDocument();
-      expect(screen.getByRole("textbox")).toBeInTheDocument();
-    });
-
-    it("can change a string field to a numeric field", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "string" }),
-        },
-      };
-      const { setFormSettings } = setupSettings({
-        parameters: [makeParameter()],
-        formSettings,
-      });
-
-      // click the settings cog then the number input type
-      userEvent.click(await screen.findByLabelText("gear icon"));
-      userEvent.click(await screen.findByText("number"));
-
-      await waitFor(() => {
-        expect(setFormSettings).toHaveBeenCalledWith({
-          ...formSettings,
-          fields: {
-            "abc-123": makeFieldSettings({
-              fieldType: "number",
-              inputType: "number",
-            }),
-          },
-        });
-      });
-    });
-
-    it("can change a string field to a text(area) field", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "string" }),
-        },
-      };
-
-      const { setFormSettings } = setupSettings({
-        parameters: [makeParameter()],
-        formSettings,
-      });
-
-      // click the settings cog then the number input type
-      userEvent.click(await screen.findByLabelText("gear icon"));
-      userEvent.click(await screen.findByText("long text"));
-
-      await waitFor(() => {
-        expect(setFormSettings).toHaveBeenCalledWith({
-          ...formSettings,
-          fields: {
-            "abc-123": makeFieldSettings({
-              fieldType: "string",
-              inputType: "text",
-            }),
-          },
-        });
-      });
-    });
-
-    it("can change a numeric field to a date field", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "number" }),
-        },
-      };
-
-      const { setFormSettings } = setupSettings({
-        parameters: [makeParameter()],
-        formSettings,
-      });
-
-      userEvent.click(await screen.findByLabelText("gear icon"));
-      userEvent.click(await screen.findByText("date"));
-
-      await waitFor(() => {
-        expect(setFormSettings).toHaveBeenCalledWith({
-          ...formSettings,
-          fields: {
-            "abc-123": makeFieldSettings({
-              fieldType: "date",
-              inputType: "date",
-            }),
-          },
-        });
-      });
-    });
-
-    it("can change a date field to a select field", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "date" }),
-        },
-      };
-      const { setFormSettings } = setupSettings({
-        parameters: [makeParameter()],
-        formSettings,
-      });
-
-      userEvent.click(await screen.findByLabelText("gear icon"));
-      userEvent.click(await screen.findByText("category"));
-
-      await waitFor(() => {
-        expect(setFormSettings).toHaveBeenCalledWith({
-          ...formSettings,
-          fields: {
-            "abc-123": makeFieldSettings({
-              fieldType: "category",
-              inputType: "select",
-            }),
-          },
-        });
-      });
-    });
-    it("can toggle required state", async () => {
-      const formSettings: ActionFormSettings = {
-        type: "form",
-        fields: {
-          "abc-123": makeFieldSettings({ inputType: "string" }),
-        },
-      };
-      const { setFormSettings } = setupSettings({
-        parameters: [makeParameter()],
-        formSettings,
-      });
-
-      userEvent.click(await screen.findByLabelText("gear icon"));
-      userEvent.click(await screen.findByRole("switch"));
-
-      await waitFor(() => {
-        expect(setFormSettings).toHaveBeenCalledWith({
-          ...formSettings,
-          fields: {
-            "abc-123": makeFieldSettings({
-              required: true,
-              inputType: "string",
-            }),
-          },
-        });
       });
     });
   });

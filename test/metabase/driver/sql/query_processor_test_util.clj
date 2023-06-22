@@ -2,82 +2,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [honeysql.format :as hformat]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
    [metabase.util :as u]))
 
-;; [[install-pretty-formatters!]] -- tweaks the actual methods HoneySQL uses to generate SQL strings to add indentation
-
-(defonce ^:private ^clojure.lang.MultiFn orig-format-clause hformat/format-clause)
-
-(defn remove-pretty-formatters!
-  "Remove the pretty formatters installed by [[install-pretty-formatters!]]."
-  []
-  (alter-var-root #'hformat/format-clause (constantly orig-format-clause)))
-
-(defmulti ^:private pretty-format
-  "Special version of [[hformat/format-clause]] that indents and pretty-prints the resulting form."
-  {:arglists '([clause sql-map])}
-  (.dispatchFn orig-format-clause))
-
-(defn install-pretty-formatters!
-  "Install code so HoneySQL will pretty-print the SQL it generates."
-  []
-  (alter-var-root #'hformat/format-clause (constantly pretty-format)))
-
-(defn- pretty-formatters-installed?
-  "Whether pretty formatters were installed by [[install-pretty-formatters!]] or not."
-  []
-  (identical? hformat/format-clause pretty-format))
-
-(defn do-with-pretty-formatters
-  "Impl for [[with-pretty-formatters]]."
-  [thunk]
-  (if (pretty-formatters-installed?)
-    (thunk)
-    (try
-      (install-pretty-formatters!)
-      (thunk)
-      (finally
-        (remove-pretty-formatters!)))))
-
-(defmacro with-pretty-formatters
-  "Execute body with the pretty formatters from [[install-pretty-formatters!]] temporarily installed (if they are not
-  already installed)."
-  [& body]
-  `(do-with-pretty-formatters (fn [] ~@body)))
-
-(def ^:private ^:dynamic *indent* 0)
-
-(defn- indent [] (str/join (repeat (* *indent* 2) \space)))
-
-(defn- newline-and-indent []
-  (str \newline (indent)))
-
-(def ^:private ^:dynamic *indent-comma-join* true)
-
-(defn- indent-comma-join [strs]
-  (if *indent-comma-join*
-    (str (newline-and-indent)
-         (str/join (str "," (newline-and-indent))
-                   strs))
-    (str/join ", " strs)))
-
-(defmethod pretty-format :default
-  [clause sql-map]
-  (str
-   (newline-and-indent)
-   (binding [*indent*            (inc *indent*)
-             *indent-comma-join* true]
-     (let [to-sql hformat/to-sql]
-       (with-redefs [hformat/comma-join indent-comma-join
-                     hformat/to-sql     (fn [form]
-                                          (binding [*indent-comma-join* false]
-                                            (to-sql form)))]
-         (orig-format-clause clause sql-map))))))
-
+(set! *warn-on-reflection* true)
 
 ;;;; [[query->sql-map]] and [[sql->sql-map]] -- these parse an actual SQL map into a pseudo-HoneySQL form
 
@@ -183,18 +114,27 @@
 
 (defn pprint-native-query-with-best-strategy
   "Attempt to compile `query` to a native query, and pretty-print it if possible."
-  [query]
-  (with-pretty-formatters
-    (u/ignore-exceptions
-      (let [{native :query, :as query} (query->raw-native-query query)]
-        (str "\nNative Query =\n"
-             (if (string? native)
-               native
-               (u/pprint-to-str native))
-             \newline
-             \newline
-             (u/pprint-to-str (dissoc query :query))
-             \newline)))))
+  ([query]
+   (pprint-native-query-with-best-strategy (or driver/*driver* :h2) query))
+
+  ([driver query]
+   (u/ignore-exceptions
+     (let [{native :query, :as query} (query->raw-native-query query)]
+       (str "\nNative Query =\n"
+            (cond
+              (and (string? native)
+                   (isa? driver/hierarchy driver :sql))
+              (mdb.query/format-sql native driver)
+
+              (string? native)
+              native
+
+              :else
+              (u/pprint-to-str native))
+            \newline
+            \newline
+            (u/pprint-to-str (dissoc query :query))
+            \newline)))))
 
 (defn do-with-native-query-testing-context
   [query thunk]

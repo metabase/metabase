@@ -12,6 +12,8 @@
   (:import
    (org.graalvm.polyglot Context HostAccess Source Value)))
 
+(set! *warn-on-reflection* true)
+
 (defn context
   "Create a new org.graalvm.polyglot.Context suitable to evaluate javascript"
   ^Context []

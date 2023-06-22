@@ -9,11 +9,14 @@
 
     (qp.store/field 10) ;; get Field 10
 
-   Of course, it would be entirely possible to call `(db/select-one Field :id 10)` every time you needed information about that Field,
+   Of course, it would be entirely possible to call `(t2/select-one Field :id 10)` every time you needed information about that Field,
   but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient than fetching
   those Fields potentially dozens of times in a single query execution."
   (:require
-   [metabase.db.query :as mdb.query]
+   [metabase.lib.metadata.composed-provider
+    :as lib.metadata.composed-provider]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
@@ -21,13 +24,19 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
+   [pretty.core :as pretty]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ---------------------------------------------- Setting up the Store ----------------------------------------------
 
 (def ^:private uninitialized-store
-  (delay (throw (Exception. (tru "Error: Query Processor store is not initialized.")))))
+  (reify
+    clojure.lang.IDeref
+    (deref [_this]
+      (throw (ex-info (tru "Error: Query Processor store is not initialized.") {})))))
 
 (def ^:private ^:dynamic *store*
   "Dynamic var used as the QP store for a given query execution."
@@ -60,7 +69,8 @@
    :name
    :dbms_version
    :details
-   :settings])
+   :settings
+   :is_audit])
 
 (def ^:private DatabaseInstanceWithRequiredStoreKeys
   (s/both
@@ -111,6 +121,7 @@
   (s/both
    (mi/InstanceOf Field)
    {:name                               su/NonBlankString
+    :table_id                           su/IntGreaterThanZero
     :display_name                       su/NonBlankString
     :description                        (s/maybe s/Str)
     :database_type                      su/NonBlankString
@@ -168,7 +179,7 @@
                {:existing-id existing-db-id, :attempted-to-fetch database-id})))
     ;; if there's no DB, fetch + save
     (store-database!
-     (or (db/select-one (into [Database] database-columns-to-fetch) :id database-id)
+     (or (t2/select-one (into [Database] database-columns-to-fetch) :id database-id)
          (throw (ex-info (tru "Database {0} does not exist." (str database-id))
                   {:database database-id}))))))
 
@@ -185,7 +196,7 @@
   [table-ids :- IDs]
   ;; remove any IDs for Tables that have already been fetched
   (when-let [ids-to-fetch (seq (remove (set (keys (:tables @*store*))) table-ids))]
-    (let [fetched-tables (db/select (into [Table] table-columns-to-fetch)
+    (let [fetched-tables (t2/select (into [Table] table-columns-to-fetch)
                            :id    [:in (set ids-to-fetch)]
                            :db_id (db-id))
           fetched-ids    (set (map :id fetched-tables))]
@@ -206,16 +217,16 @@
   [field-ids :- IDs]
   ;; remove any IDs for Fields that have already been fetched
   (when-let [ids-to-fetch (seq (remove (set (keys (:fields @*store*))) field-ids))]
-    (let [fetched-fields (db/do-post-select Field
-                           (mdb.query/query
-                            {:select    (for [column-kw field-columns-to-fetch]
-                                          [(keyword (str "field." (name column-kw)))
-                                           column-kw])
-                             :from      [[:metabase_field :field]]
-                             :left-join [[:metabase_table :table] [:= :field.table_id :table.id]]
-                             :where     [:and
-                                         [:in :field.id (set ids-to-fetch)]
-                                         [:= :table.db_id (db-id)]]}))
+    (let [fetched-fields (t2/select
+                          Field
+                          {:select    (for [column-kw field-columns-to-fetch]
+                                        [(keyword (str "field." (name column-kw)))
+                                         column-kw])
+                           :from      [[:metabase_field :field]]
+                           :left-join [[:metabase_table :table] [:= :field.table_id :table.id]]
+                           :where     [:and
+                                       [:in :field.id (set ids-to-fetch)]
+                                       [:= :table.db_id (db-id)]]})
           fetched-ids    (set (map :id fetched-fields))]
       ;; make sure all Fields in field-ids were fetched, or throw an Exception
       (doseq [id ids-to-fetch]
@@ -309,9 +320,39 @@
 
     ;; cache lookups of Card.dataset_query
     (qp.store/cached card-id
-      (db/select-one-field :dataset_query Card :id card-id))"
+      (t2/select-one-fn :dataset_query Card :id card-id))"
   {:style/indent 1}
   [k-or-ks & body]
   ;; for the unique key use a gensym prefixed by the namespace to make for easier store debugging if needed
   (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
     `(cached-fn ~ks (fn [] ~@body))))
+
+(defn- base-metadata-provider []
+  (reify
+    lib.metadata.protocols/MetadataProvider
+    (database [_this]
+      (some-> (database) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/database)))
+
+    (table [_this table-id]
+      (some-> (table table-id) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/table)))
+
+    (field [_this field-id]
+      (some-> (field field-id) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/column)))
+
+    (card [_this _card-id] nil)
+    (metric [_this _metric-id] nil)
+    (segment [_this _segment-id] nil)
+    (tables [_metadata-provider] nil)
+    (fields [_metadata-provider _table-id] nil)
+
+    pretty/PrettyPrintable
+    (pretty [_this]
+      `metadata-provider)))
+
+(defn metadata-provider
+  "Create a new MLv2 metadata provider that uses the QP store."
+  []
+  (cached ::metadata-provider
+    (lib.metadata.composed-provider/composed-metadata-provider
+     (base-metadata-provider)
+     (lib.metadata.jvm/application-database-metadata-provider (:id (database))))))

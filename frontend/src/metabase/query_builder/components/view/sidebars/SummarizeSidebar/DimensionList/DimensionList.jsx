@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
@@ -44,7 +44,9 @@ export const DimensionList = ({
   const isDimensionSelected = dimension =>
     dimensions.some(d => {
       // sometimes `dimension` has a join-alias and `d` doesn't -- with/without is equivalent in this scenario
-      return d.isSameBaseDimension(dimension.withoutJoinAlias());
+      return d
+        .withoutJoinAlias()
+        .isSameBaseDimension(dimension.withoutJoinAlias());
     });
 
   const [filter, setFilter] = useState("");
@@ -101,14 +103,16 @@ export const DimensionList = ({
       {!hasFilter && (
         <ul data-testid="pinned-dimensions">
           {pinnedItems.map(item => {
-            const shouldIncludeTable =
-              item.dimension?.tableId?.() !== queryTableId;
+            const isForeignDimension =
+              item.dimension != null &&
+              item.dimension.tableId?.() !== queryTableId;
+            const name = getItemName(item, isForeignDimension);
 
             return (
               <DimensionListItem
-                key={getItemName(item)}
+                key={name}
                 dimension={item.dimension}
-                name={getItemName(item, shouldIncludeTable)}
+                name={name}
                 iconName={getItemIcon(item)}
                 dimensions={dimensions}
                 onRemoveDimension={handleRemove}

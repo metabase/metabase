@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import Select, { Option } from "metabase/core/components/Select";
@@ -19,6 +19,7 @@ export default class OperatorSelector extends Component {
         value={operator}
         onChange={e => onOperatorChange(e.target.value)}
         className={cx("border-medium text-default", className)}
+        data-testid="operator-select"
       >
         {operators.map(o => (
           <Option key={o.name} value={o.name}>

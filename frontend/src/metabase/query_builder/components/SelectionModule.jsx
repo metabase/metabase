@@ -1,13 +1,12 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 import Popover from "metabase/components/Popover";
-import Icon from "metabase/components/Icon";
-import SearchBar from "./SearchBar";
+import { Icon } from "metabase/core/components/Icon";
 
 export default class SelectionModule extends Component {
   constructor(props, context) {
@@ -19,13 +18,11 @@ export default class SelectionModule extends Component {
     // a selection module can be told to be open on initialization but otherwise is closed
     const isInitiallyOpen = props.isInitiallyOpen || false;
 
-    this.rootRef = React.createRef();
+    this.rootRef = createRef();
 
     this.state = {
       open: isInitiallyOpen,
       expanded: false,
-      searchThreshold: 20,
-      searchEnabled: false,
       filterTerm: null,
     };
   }
@@ -54,18 +51,6 @@ export default class SelectionModule extends Component {
       open: false,
       expanded: false,
     });
-  }
-
-  _enableSearch() {
-    /*
-        not showing search for now
-        if(this.props.items.length > this.state.searchThreshold) {
-            return true
-        } else {
-            return false
-        }
-        */
-    return false;
   }
 
   _toggleOpen() {
@@ -205,11 +190,6 @@ export default class SelectionModule extends Component {
         "SelectionItems--expanded": this.state.expanded,
       });
 
-      let searchBar;
-      if (this._enableSearch()) {
-        searchBar = <SearchBar onFilter={this._filterSelections} />;
-      }
-
       return (
         <Popover
           target={this.rootRef.current}
@@ -217,7 +197,6 @@ export default class SelectionModule extends Component {
           onClose={this.onClose}
         >
           <div className={itemListClasses}>
-            {searchBar}
             <ul className="SelectionList scroll-show scroll-y">
               {this._listItems(selection)}
             </ul>
@@ -251,7 +230,7 @@ export default class SelectionModule extends Component {
           className="text-light no-decoration pr1 flex align-center"
           onClick={this.props.remove.bind(null, this.props.index)}
         >
-          <Icon name="close" size={14} />
+          <Icon name="close" />
         </a>
       );
     }

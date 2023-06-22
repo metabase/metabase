@@ -1,15 +1,23 @@
-import React from "react";
 import { Route } from "react-router";
-import nock from "nock";
+import _ from "underscore";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import {
-  SAMPLE_DATABASE,
-  ORDERS,
-  metadata,
-} from "__support__/sample_database_fixture";
+import { createMockEntitiesState } from "__support__/store";
+
 import MetabaseSettings from "metabase/lib/settings";
+import { getMetadata } from "metabase/selectors/metadata";
+
+import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  SAMPLE_DB_ID,
+  ORDERS,
+  ORDERS_ID,
+} from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 import Question from "metabase-lib/Question";
+
 import { ViewTitleHeader } from "./ViewHeader";
 
 console.warn = jest.fn();
@@ -19,9 +27,9 @@ const BASE_GUI_QUESTION = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     query: {
-      "source-table": ORDERS.id,
+      "source-table": ORDERS_ID,
     },
   },
 };
@@ -34,8 +42,8 @@ const FILTERED_GUI_QUESTION = {
       ...BASE_GUI_QUESTION.dataset_query.query,
       filter: [
         "and",
-        ["<", ["field", ORDERS.TOTAL.id, null], 50],
-        ["not-null", ["field", ORDERS.TAX.id, null]],
+        ["<", ["field", ORDERS.TOTAL, null], 50],
+        ["not-null", ["field", ORDERS.TAX, null]],
       ],
     },
   },
@@ -46,7 +54,7 @@ const BASE_NATIVE_QUESTION = {
   visualization_settings: {},
   dataset_query: {
     type: "native",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     native: {
       query: "select * from orders",
     },
@@ -61,28 +69,24 @@ const SAVED_QUESTION = {
   can_write: true,
 };
 
-function getQuestion(card) {
-  return new Question(card, metadata);
+function getAdHocQuestionCard(overrides) {
+  return { ...BASE_GUI_QUESTION, ...overrides };
 }
 
-function getAdHocQuestion(overrides) {
-  return getQuestion({ ...BASE_GUI_QUESTION, ...overrides });
+function getNativeQuestionCard() {
+  return BASE_NATIVE_QUESTION;
 }
 
-function getNativeQuestion() {
-  return getQuestion(BASE_NATIVE_QUESTION);
+function getSavedGUIQuestionCard(overrides) {
+  return { ...BASE_GUI_QUESTION, ...SAVED_QUESTION, ...overrides };
 }
 
-function getSavedGUIQuestion(overrides) {
-  return getQuestion({ ...BASE_GUI_QUESTION, ...SAVED_QUESTION, ...overrides });
-}
-
-function getSavedNativeQuestion(overrides) {
-  return getQuestion({
+function getSavedNativeQuestionCard(overrides) {
+  return {
     ...BASE_NATIVE_QUESTION,
     ...SAVED_QUESTION,
     ...overrides,
-  });
+  };
 }
 
 function mockSettings({ enableNestedQueries = true } = {}) {
@@ -95,7 +99,8 @@ function mockSettings({ enableNestedQueries = true } = {}) {
 }
 
 function setup({
-  question,
+  card,
+  database = createSampleDatabase(),
   settings,
   isActionListVisible = true,
   isAdditionalInfoVisible = true,
@@ -118,6 +123,19 @@ function setup({
     onSave: jest.fn(),
   };
 
+  const storeInitialState = createMockState({
+    entities: createMockEntitiesState({
+      databases: [database],
+      questions: [card],
+    }),
+  });
+
+  const metadata = getMetadata(storeInitialState);
+  const isSaved = card.id != null;
+  const question = isSaved
+    ? metadata.question(card.id)
+    : new Question(card, metadata);
+
   renderWithProviders(
     <Route
       path="/"
@@ -136,7 +154,7 @@ function setup({
     />,
     {
       withRouter: true,
-      withSampleDatabase: true,
+      storeInitialState,
     },
   );
 
@@ -144,11 +162,11 @@ function setup({
 }
 
 function setupAdHoc(props = {}) {
-  return setup({ question: getAdHocQuestion(), ...props });
+  return setup({ card: getAdHocQuestionCard(), ...props });
 }
 
 function setupNative(props) {
-  return setup({ question: getNativeQuestion(), ...props });
+  return setup({ card: getNativeQuestionCard(), ...props });
 }
 
 function setupSavedNative(props = {}) {
@@ -157,9 +175,9 @@ function setupSavedNative(props = {}) {
     name: "Our analytics",
   };
 
-  nock(location.origin).get("/api/collection/root").reply(200, collection);
+  fetchMock.get("path:/api/collection/root", collection);
 
-  const utils = setup({ question: getSavedNativeQuestion(), ...props });
+  const utils = setup({ card: getSavedNativeQuestionCard(), ...props });
 
   return {
     ...utils,
@@ -170,19 +188,19 @@ function setupSavedNative(props = {}) {
 describe("ViewHeader", () => {
   const TEST_CASE = {
     SAVED_GUI_QUESTION: {
-      question: getSavedGUIQuestion(),
+      card: getSavedGUIQuestionCard(),
       questionType: "saved GUI question",
     },
     AD_HOC_QUESTION: {
-      question: getAdHocQuestion(),
+      card: getAdHocQuestionCard(),
       questionType: "ad-hoc GUI question",
     },
     NATIVE_QUESTION: {
-      question: getNativeQuestion(),
+      card: getNativeQuestionCard(),
       questionType: "not saved native question",
     },
     SAVED_NATIVE_QUESTION: {
-      question: getSavedNativeQuestion(),
+      card: getSavedNativeQuestionCard(),
       questionType: "saved native question",
     },
   };
@@ -203,38 +221,35 @@ describe("ViewHeader", () => {
 
   describe("Common", () => {
     ALL_TEST_CASES.forEach(testCase => {
-      const { question, questionType } = testCase;
+      const { card, questionType } = testCase;
 
       describe(questionType, () => {
         it("offers to save", () => {
-          const { onOpenModal } = setup({ question, isDirty: true });
+          const { onOpenModal } = setup({ card, isDirty: true });
           fireEvent.click(screen.getByText("Save"));
           expect(onOpenModal).toHaveBeenCalledWith("save");
         });
 
         it("does not offer to save if it's not dirty", () => {
-          setup({ question, isDirty: false });
+          setup({ card, isDirty: false });
           expect(screen.queryByText("Save")).not.toBeInTheDocument();
         });
 
         it("offers to refresh query results", () => {
-          const { runQuestionQuery } = setup({ question });
+          const { runQuestionQuery } = setup({ card });
           fireEvent.click(screen.getByLabelText("refresh icon"));
           expect(runQuestionQuery).toHaveBeenCalledWith({ ignoreCache: true });
         });
 
         it("does not offer to refresh query results if question is not runnable", () => {
-          setup({ question, isRunnable: false });
+          setup({ card, isRunnable: false });
           expect(
             screen.queryByLabelText("refresh icon"),
           ).not.toBeInTheDocument();
         });
 
         it("does not offer to modify a query when a user doesn't have data permissions", () => {
-          const originalMethod = question.query().database;
-          question.query().database = () => null;
-
-          setup({ question });
+          setup({ card, database: null });
           expect(screen.queryByText("Filter")).not.toBeInTheDocument();
           expect(
             screen.queryByLabelText("Show more filters"),
@@ -244,8 +259,15 @@ describe("ViewHeader", () => {
             screen.queryByLabelText("notebook icon"),
           ).not.toBeInTheDocument();
           expect(screen.getByLabelText("refresh icon")).toBeInTheDocument();
+        });
 
-          question.query().database = originalMethod;
+        it("displays refresh button tooltip above the refresh button", async () => {
+          setup({ card });
+          const refreshButton = screen.getByLabelText("refresh icon");
+          await userEvent.hover(refreshButton);
+          const tooltip = screen.getByRole("tooltip");
+          expect(tooltip).toHaveAttribute("data-placement", "top");
+          expect(tooltip).toHaveTextContent("Refresh");
         });
       });
     });
@@ -253,21 +275,19 @@ describe("ViewHeader", () => {
 
   describe("GUI", () => {
     GUI_TEST_CASES.forEach(testCase => {
-      const { question, questionType } = testCase;
+      const { card, questionType } = testCase;
 
       describe(questionType, () => {
         it("displays database and table names", () => {
-          setup({ question });
-          const databaseName = question.database().displayName();
-          const tableName = question.table().displayName();
+          setup({ card });
 
-          expect(screen.getByText(databaseName)).toBeInTheDocument();
-          expect(screen.getByText(tableName)).toBeInTheDocument();
+          expect(screen.getByText("Sample Database")).toBeInTheDocument();
+          expect(screen.getByText("Orders")).toBeInTheDocument();
         });
 
         it("offers to filter query results", () => {
           const { onOpenModal } = setup({
-            question,
+            card,
             queryBuilderMode: "view",
           });
           fireEvent.click(screen.getByText("Filter"));
@@ -276,7 +296,7 @@ describe("ViewHeader", () => {
 
         it("offers to summarize query results", () => {
           const { onEditSummary } = setup({
-            question,
+            card,
             queryBuilderMode: "view",
           });
           fireEvent.click(screen.getByText("Summarize"));
@@ -285,16 +305,27 @@ describe("ViewHeader", () => {
 
         it("allows to open notebook editor", () => {
           const { setQueryBuilderMode } = setup({
-            question,
+            card,
             queryBuilderMode: "view",
           });
           fireEvent.click(screen.getByLabelText("notebook icon"));
           expect(setQueryBuilderMode).toHaveBeenCalledWith("notebook");
         });
 
+        it("displays `Show editor` tooltip above notebook icon", async () => {
+          setup({
+            card,
+          });
+          const notebookButton = screen.getByLabelText("notebook icon");
+          await userEvent.hover(notebookButton);
+          const tooltip = screen.getByRole("tooltip");
+          expect(tooltip).toHaveAttribute("data-placement", "top");
+          expect(tooltip).toHaveTextContent("Show editor");
+        });
+
         it("allows to close notebook editor", () => {
           const { setQueryBuilderMode } = setup({
-            question,
+            card,
             queryBuilderMode: "notebook",
           });
           fireEvent.click(screen.getByLabelText("notebook icon"));
@@ -302,22 +333,22 @@ describe("ViewHeader", () => {
         });
 
         it("does not offer to filter query results in notebook mode", () => {
-          setup({ question, queryBuilderMode: "notebook" });
+          setup({ card, queryBuilderMode: "notebook" });
           expect(screen.queryByText("Filter")).not.toBeInTheDocument();
         });
 
         it("does not offer to filter query in detail view", () => {
-          setup({ question, isObjectDetail: true });
+          setup({ card, isObjectDetail: true });
           expect(screen.queryByText("Filter")).not.toBeInTheDocument();
         });
 
         it("does not offer to summarize query results in notebook mode", () => {
-          setup({ question, queryBuilderMode: "notebook" });
+          setup({ card, queryBuilderMode: "notebook" });
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
         });
 
         it("does not offer to summarize query in detail view", () => {
-          setup({ question, isObjectDetail: true });
+          setup({ card, isObjectDetail: true });
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
         });
       });
@@ -326,21 +357,21 @@ describe("ViewHeader", () => {
 
   describe("Native", () => {
     NATIVE_TEST_CASES.forEach(testCase => {
-      const { question, questionType } = testCase;
+      const { card, questionType } = testCase;
 
       describe(questionType, () => {
         it("does not offer to filter query results", () => {
-          setup({ question });
+          setup({ card });
           expect(screen.queryByText("Filter")).not.toBeInTheDocument();
         });
 
         it("does not offer to summarize query results", () => {
-          setup({ question });
+          setup({ card });
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
         });
 
         it("does not offer to refresh query results if native editor is open", () => {
-          setup({ question, isNativeEditorOpen: true });
+          setup({ card, isNativeEditorOpen: true });
           expect(
             screen.queryByLabelText("refresh icon"),
           ).not.toBeInTheDocument();
@@ -351,22 +382,18 @@ describe("ViewHeader", () => {
 
   describe("Saved", () => {
     SAVED_QUESTIONS_TEST_CASES.forEach(testCase => {
-      const { question, questionType } = testCase;
+      const { card, questionType } = testCase;
 
       describe(questionType, () => {
         beforeEach(() => {
-          nock(location.origin).get("/api/collection/root").reply(200, {
+          fetchMock.get("path:/api/collection/root", {
             id: "root",
             name: "Our analytics",
           });
         });
 
-        afterEach(() => {
-          nock.cleanAll();
-        });
-
         it("calls save function on title update", () => {
-          const { onSave } = setup({ question });
+          const { onSave } = setup({ card });
           const title = screen.getByTestId("saved-question-header-title");
           userEvent.clear(title);
           userEvent.type(title, "New Title{enter}");
@@ -376,7 +403,7 @@ describe("ViewHeader", () => {
         });
 
         it("shows bookmark and action buttons", () => {
-          setup({ question });
+          setup({ card });
           expect(
             screen.getByTestId("qb-header-info-button"),
           ).toBeInTheDocument();
@@ -404,16 +431,16 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
   });
 
   describe("filters", () => {
-    const question = getAdHocQuestion(FILTERED_GUI_QUESTION);
+    const card = getAdHocQuestionCard(FILTERED_GUI_QUESTION);
 
     it("shows all filters by default", () => {
-      setup({ question, queryBuilderMode: "view" });
+      setup({ card, queryBuilderMode: "view" });
       expect(screen.getByText("Total is less than 50")).toBeInTheDocument();
       expect(screen.getByText("Tax is not empty")).toBeInTheDocument();
     });
 
-    it("can collapse and expand filters", () => {
-      setup({ question, queryBuilderMode: "view" });
+    it("can collapse and expand filters", async () => {
+      setup({ card, queryBuilderMode: "view" });
 
       fireEvent.click(screen.getByTestId("filters-visibility-control"));
 
@@ -429,7 +456,7 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
     });
 
     it("does not show filters in notebook mode", () => {
-      setup({ question, queryBuilderMode: "notebook" });
+      setup({ card, queryBuilderMode: "notebook" });
 
       expect(
         screen.queryByTestId("filters-visibility-control"),
@@ -444,10 +471,10 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
 
 describe("View Header | Saved GUI question", () => {
   describe("filters", () => {
-    const question = getSavedGUIQuestion(FILTERED_GUI_QUESTION);
+    const card = getSavedGUIQuestionCard(FILTERED_GUI_QUESTION);
 
     it("shows filters collapsed by default", () => {
-      setup({ question, queryBuilderMode: "view" });
+      setup({ card, queryBuilderMode: "view" });
 
       expect(
         screen.getByTestId("filters-visibility-control"),
@@ -459,7 +486,7 @@ describe("View Header | Saved GUI question", () => {
     });
 
     it("can collapse and expand filters", () => {
-      setup({ question, queryBuilderMode: "view" });
+      setup({ card, queryBuilderMode: "view" });
 
       fireEvent.click(screen.getByTestId("filters-visibility-control"));
 
@@ -475,7 +502,7 @@ describe("View Header | Saved GUI question", () => {
     });
 
     it("does not show filters in notebook mode", () => {
-      setup({ question, queryBuilderMode: "notebook" });
+      setup({ card, queryBuilderMode: "notebook" });
 
       expect(
         screen.queryByTestId("filters-visibility-control"),
@@ -489,24 +516,16 @@ describe("View Header | Saved GUI question", () => {
 });
 
 describe("View Header | native question without write permissions on database (eg user without self serve data permissions)", () => {
-  let originalNativePermissions;
-  beforeEach(() => {
-    setupNative();
-    originalNativePermissions = SAMPLE_DATABASE.native_permissions;
-    SAMPLE_DATABASE.native_permissions = "none";
-  });
-
-  afterEach(() => {
-    SAMPLE_DATABASE.native_permissions = originalNativePermissions;
-  });
+  const database = createSampleDatabase({ native_permissions: "none" });
 
   it("does not display question database", () => {
-    const { question } = setupNative();
+    const { question } = setupNative({ database });
     const databaseName = question.database().displayName();
     expect(screen.queryByText(databaseName)).not.toBeInTheDocument();
   });
 
   it("does not offer to explore query results", () => {
+    setupNative({ database });
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
   });
 });
@@ -525,10 +544,6 @@ describe("View Header | Not saved native question", () => {
 });
 
 describe("View Header | Saved native question", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("displays database a question is using", () => {
     const { question } = setupSavedNative();
     const databaseName = question.database().displayName();
@@ -546,20 +561,18 @@ describe("View Header | Saved native question", () => {
   });
 
   it("doesn't offer to explore results if the database doesn't support nested queries (metabase#22822)", () => {
-    const originalDatabaseFeatures = SAMPLE_DATABASE.features;
-    const nestedQueriesExcluded = originalDatabaseFeatures.filter(
-      f => f !== "nested-queries",
-    );
-    SAMPLE_DATABASE.features = nestedQueriesExcluded;
-    setupSavedNative();
+    setupSavedNative({
+      database: createSampleDatabase({
+        features: _.without(COMMON_DATABASE_FEATURES, "nested-queries"),
+      }),
+    });
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
-    SAMPLE_DATABASE.features = originalDatabaseFeatures;
   });
 });
 
 describe("View Header | Read only permissions", () => {
   it("should disable the input field for the question title", () => {
-    setup({ question: getSavedGUIQuestion({ can_write: false }) });
+    setup({ card: getSavedGUIQuestionCard({ can_write: false }) });
     expect(screen.queryByTestId("saved-question-header-title")).toBeDisabled();
   });
 });

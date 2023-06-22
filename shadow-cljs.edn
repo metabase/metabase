@@ -1,38 +1,35 @@
 ;; shadow-cljs configuration
-{:source-paths
- ["shared/src"
-  "shared/test"]
+{:deps {:aliases [:cljs]}
 
- ;; TODO -- share deps with deps.edn -- see https://shadow-cljs.github.io/docs/UsersGuide.html#deps-edn
- :dependencies
- [[org.clojure/core.match "1.0.0"]
-  [medley "1.4.0"]
-  [net.cgrand/macrovich "0.2.1"]
-  [prismatic/schema "1.2.0"]
-
-  ;; new stuff
-  [camel-snake-kebab "0.4.3"]
-  [com.lambdaisland/glogi "1.1.144"]]
  :nrepl
  {:middleware
   [cider.nrepl/cider-middleware
    cider.piggieback/wrap-cljs-repl
-   refactor-nrepl.middleware/wrap-refactor]}
+   refactor-nrepl.middleware/wrap-refactor]
+  :port 50655}
 
  :builds
  {:app
   {:target     :npm-module
-   :output-dir "frontend/src/cljs/"
-   :entries    [metabase.mbql.js
-                metabase.types
+   :output-dir "frontend/src/cljs_release/"
+   :dev        {:output-dir "frontend/src/cljs/"
+                :compiler-options {:reader-features #{:cljs-dev}}}
+   :compiler-options {:reader-features #{:cljs-release}}
+   :entries    [metabase.domain-entities.queries.util
+                metabase.lib.column-group
+                metabase.lib.js
+                metabase.lib.limit
+                metabase.lib.types.isa
+                metabase.mbql.js
                 metabase.shared.formatting.constants
                 metabase.shared.formatting.date
                 metabase.shared.formatting.numbers
                 metabase.shared.formatting.time
-                metabase.shared.util
+                metabase.shared.parameters.parameters
                 metabase.shared.util.currency
                 metabase.shared.util.time
-                metabase.shared.parameters.parameters]}
+                metabase.types
+                metabase.util.devtools]}
 
   :test
   {:target    :node-test

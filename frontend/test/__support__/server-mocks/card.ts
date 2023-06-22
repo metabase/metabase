@@ -1,5 +1,5 @@
-import { Scope } from "nock";
-import { Card } from "metabase-types/api";
+import fetchMock from "fetch-mock";
+import { Card, Dataset } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   getQuestionVirtualTableId,
@@ -7,14 +7,15 @@ import {
 } from "metabase-lib/metadata/utils/saved-questions";
 import { PERMISSION_ERROR } from "./constants";
 
-export function setupCardEndpoints(scope: Scope, card: Card) {
-  scope.get(`/api/card/${card.id}`).reply(200, card);
-  scope
-    .put(`/api/card/${card.id}`)
-    .reply(200, (uri, body) => createMockCard(body as Card));
+export function setupCardEndpoints(card: Card) {
+  fetchMock.get(`path:/api/card/${card.id}`, card);
+  fetchMock.put(`path:/api/card/${card.id}`, async url => {
+    const lastCall = fetchMock.lastCall(url);
+    return createMockCard(await lastCall?.request?.json());
+  });
 
   const virtualTableId = getQuestionVirtualTableId(card.id);
-  scope.get(`/api/table/${virtualTableId}/query_metadata`).reply(200, {
+  fetchMock.get(`path:/api/table/${virtualTableId}/query_metadata`, {
     ...convertSavedQuestionToVirtualTable(card),
     fields: card.result_metadata.map(field => ({
       ...field,
@@ -24,20 +25,32 @@ export function setupCardEndpoints(scope: Scope, card: Card) {
   });
 }
 
-export function setupCardsEndpoints(scope: Scope, cards: Card[]) {
-  scope.get("/api/card").reply(200, cards);
-  cards.forEach(card => setupCardEndpoints(scope, card));
+export function setupCardsEndpoints(cards: Card[]) {
+  fetchMock.get({ url: "path:/api/card", overwriteRoutes: false }, cards);
+  cards.forEach(card => setupCardEndpoints(card));
 }
 
-export function setupUnauthorizedCardEndpoints(scope: Scope, card: Card) {
-  scope.get(`/api/card/${card.id}`).reply(403, PERMISSION_ERROR);
+export function setupUnauthorizedCardEndpoints(card: Card) {
+  fetchMock.get(`path:/api/card/${card.id}`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
 
   const virtualTableId = getQuestionVirtualTableId(card.id);
-  scope
-    .get(`/api/table/${virtualTableId}/query_metadata`)
-    .reply(403, PERMISSION_ERROR);
+  fetchMock.get(`path:/api/table/${virtualTableId}/query_metadata`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
 }
 
-export function setupUnauthorizedCardsEndpoints(scope: Scope, cards: Card[]) {
-  cards.forEach(card => setupUnauthorizedCardEndpoints(scope, card));
+export function setupUnauthorizedCardsEndpoints(cards: Card[]) {
+  cards.forEach(card => setupUnauthorizedCardEndpoints(card));
+}
+
+export function setupCardQueryEndpoints(card: Card, dataset: Dataset) {
+  fetchMock.post(`path:/api/card/${card.id}/query`, dataset);
+}
+
+export function setupCardQueryDownloadEndpoint(card: Card, type: string) {
+  fetchMock.post(`path:/api/card/${card.id}/query/${type}`, {});
 }

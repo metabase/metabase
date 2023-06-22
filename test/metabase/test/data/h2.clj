@@ -4,6 +4,7 @@
    [metabase.db :as mdb]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.h2]
    [metabase.driver.sql.util :as sql.u]
    [metabase.models.database :refer [Database]]
    [metabase.test.data.impl :as data.impl]
@@ -15,7 +16,9 @@
    [metabase.test.data.sql-jdbc.spec :as spec]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
+
+(comment metabase.driver.h2/keep-me)
 
 (sql-jdbc.tx/add-test-extensions! :h2)
 
@@ -30,7 +33,7 @@
     (locking h2-test-dbs-created-by-this-instance
       (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
         (mdb/setup-db!)                 ; if not already setup
-        (db/delete! Database :engine "h2", :name database-name)
+        (t2/delete! Database :engine "h2", :name database-name)
         (swap! h2-test-dbs-created-by-this-instance conj database-name)))))
 
 (defmethod data.impl/get-or-create-database! :h2
@@ -69,7 +72,8 @@
   (str
    ;; Create a non-admin account 'GUEST' which will be used from here on out
    "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';\n"
-
+   ;; Grant permissions for DDL statements
+   "GRANT ALTER ANY SCHEMA TO GUEST;"
    ;; Set DB_CLOSE_DELAY here because only admins are allowed to do it, so we can't set it via the connection string.
    ;; Set it to to -1 (no automatic closing)
    "SET DB_CLOSE_DELAY -1;"))
@@ -94,12 +98,15 @@
 
 (defmethod tx/aggregate-column-info :h2
   ([driver ag-type]
-   ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type)
+    (when (= ag-type :count)
+      {:base_type :type/BigInteger})))
 
   ([driver ag-type field]
    (merge
     ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
-    (when (= ag-type :sum)
+    (when (#{:sum :cum-count} ag-type)
       {:base_type :type/BigInteger}))))
 
 (defmethod execute/execute-sql! :h2

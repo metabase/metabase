@@ -1,16 +1,21 @@
 (ns metabase.driver.mongo.parameters-test
-  (:require [cheshire.core :as json]
-            [cheshire.generate :as json.generate]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver.common.parameters :as params]
-            [metabase.driver.mongo.parameters :as mongo.params]
-            [metabase.models :refer [NativeQuerySnippet]]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt])
-  (:import com.fasterxml.jackson.core.JsonGenerator))
+  (:require
+   [cheshire.core :as json]
+   [cheshire.generate :as json.generate]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.mongo.parameters :as mongo.params]
+   [metabase.models :refer [NativeQuerySnippet]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (com.fasterxml.jackson.core JsonGenerator)))
+
+(set! *warn-on-reflection* true)
 
 (deftest ->utc-instant-test
   (doseq [t [#t "2020-03-14"
@@ -38,12 +43,6 @@
                            base-type
                            (assoc :base_type base-type))
                          {:type value-type, :value value})))
-
-(defn- comma-separated-numbers [nums]
-  (params/->CommaSeparatedNumbers nums))
-
-(defn- multiple-values [& values]
-  (params/->MultipleValues values))
 
 (deftest substitute-test
   (testing "non-parameterized strings should not be substituted"
@@ -95,15 +94,15 @@
                                 (substitute nil params)))))))
   (testing "comma-separated numbers"
     (is (= "{$in: [1, 2, 3]}"
-           (substitute {:id (comma-separated-numbers [1 2 3])}
+           (substitute {:id [1 2 3]}
                        [(param :id)]))))
   (testing "multiple-values single (#22486)"
     (is (= "{$in: [\"33 Taps\"]}"
-           (substitute {:id (multiple-values "33 Taps")}
+           (substitute {:id ["33 Taps"]}
                        [(param :id)]))))
   (testing "multiple-values multi (#22486)"
     (is (= "{$in: [\"33 Taps\", \"Cha Cha Chicken\"]}"
-           (substitute {:id (multiple-values "33 Taps" "Cha Cha Chicken")}
+           (substitute {:id ["33 Taps" "Cha Cha Chicken"]}
                        [(param :id)])))))
 
 (defprotocol ^:private ToBSON
@@ -160,13 +159,10 @@
           (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-11-01T00:00:00Z")}}
                                             {"date" {:$lt  (ISODate "2019-12-01T00:00:00Z")}}]}}])
                  (substitute-date-range "lastmonth")))))))
-  (testing "multiple values"
-    (doseq [[message v] {"values are a vector of numbers" [1 2 3]
-                         "comma-separated numbers"        (comma-separated-numbers [1 2 3])}]
-      (testing message
-        (is (= (to-bson [{:$match {"id" {:$in [1 2 3]}}}])
-               (substitute {:id (field-filter "id" :number v)}
-                           ["[{$match: " (param :id) "}]"]))))))
+  (testing "multiple values (numbers)"
+    (is (= (to-bson [{:$match {"id" {:$in [1 2 3]}}}])
+           (substitute {:id (field-filter "id" :number [1 2 3])}
+                       ["[{$match: " (param :id) "}]"]))))
   (testing "single date"
     (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-08")}}
                                       {"date" {:$lt  (ISODate "2019-12-09")}}]}}])
@@ -408,20 +404,20 @@
 
 (deftest e2e-snippet-test
   (mt/test-driver :mongo
-    (is (= [[1 "African"]
-            [2 "American"]
-            [3 "Artisan"]]
-           (mt/with-temp NativeQuerySnippet [snippet {:name    "first 3 checkins"
-                                                      :content (to-bson {:_id {:$in [1 2 3]}})}]
+    (t2.with-temp/with-temp [NativeQuerySnippet snippet {:name    "first 3 checkins"
+                                                         :content (to-bson {:_id {:$in [1 2 3]}})}]
+      (is (= [[1 "African"]
+              [2 "American"]
+              [3 "Artisan"]]
              (mt/rows
-               (qp/process-query
-                 (mt/query categories
-                           {:type       :native
-                            :native     {:query         (json/generate-string [{:$match (json-raw "{{snippet: first 3 checkins}}")}])
-                                         :collection    "categories"
-                                         :template-tags {"snippet: first 3 checkins" {:name         "snippet: first 3 checkins"
-                                                                                      :display-name "Snippet: First 3 checkins"
-                                                                                      :type         :snippet
-                                                                                      :snippet-name "first 3 checkins"
-                                                                                      :snippet-id   (:id snippet)}}}
-                            :parameters []}))))))))
+              (qp/process-query
+               (mt/query categories
+                 {:type       :native
+                  :native     {:query         (json/generate-string [{:$match (json-raw "{{snippet: first 3 checkins}}")}])
+                               :collection    "categories"
+                               :template-tags {"snippet: first 3 checkins" {:name         "snippet: first 3 checkins"
+                                                                            :display-name "Snippet: First 3 checkins"
+                                                                            :type         :snippet
+                                                                            :snippet-name "first 3 checkins"
+                                                                            :snippet-id   (:id snippet)}}}
+                  :parameters []}))))))))

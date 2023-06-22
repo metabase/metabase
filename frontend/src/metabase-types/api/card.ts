@@ -1,40 +1,56 @@
 import type { DatabaseId } from "./database";
+import type { DashboardId, DashCardId } from "./dashboard";
 import type { Field } from "./field";
-import type {
-  DatasetQuery,
-  FieldReference,
-  AggregationReference,
-} from "./query";
+import type { Parameter } from "./parameters";
+import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
+import type { UserInfo } from "./user";
 
-export interface Card extends UnsavedCard {
+export interface Card<Q = DatasetQuery> extends UnsavedCard<Q> {
   id: CardId;
-  collection_id: number | null;
   name: string;
   description: string | null;
   dataset: boolean;
-  database_id?: DatabaseId;
+  public_uuid: string | null;
   can_write: boolean;
-  cache_ttl: number | null;
+
+  database_id?: DatabaseId;
+  collection_id: number | null;
+
+  result_metadata: Field[];
+
   query_average_duration?: number | null;
   last_query_start: string | null;
-  result_metadata: Field[];
+  cache_ttl: number | null;
+
   archived: boolean;
 
-  creator?: {
-    id: number;
-    common_name: string;
-    first_name: string | null;
-    last_name: string | null;
-    email: string;
-    last_login: string;
-    date_joined: string;
-  };
+  creator?: UserInfo;
 }
 
-export interface UnsavedCard {
-  display: string;
-  dataset_query: DatasetQuery;
+export interface PublicCard {
+  id: CardId;
+  name: string;
+  description: string | null;
+  display: CardDisplayType;
   visualization_settings: VisualizationSettings;
+  parameters?: Parameter[];
+  dataset_query: PublicDatasetQuery;
+}
+
+export type CardDisplayType = string;
+
+export interface UnsavedCard<Q = DatasetQuery> {
+  display: CardDisplayType;
+  dataset_query: Q;
+  parameters?: Parameter[];
+  visualization_settings: VisualizationSettings;
+
+  // If coming from dashboard
+  dashboardId?: DashboardId;
+  dashcardId?: DashCardId;
+
+  // Not part of the card API contract, a field used by query builder for showing lineage
+  original_card_id?: number;
 }
 
 export type SeriesSettings = {
@@ -60,13 +76,26 @@ export type ColumnFormattingSetting = {
 };
 
 export type PivotTableCollapsedRowsSetting = {
-  rows: (FieldReference | AggregationReference)[];
+  rows: FieldReference[];
   value: string[]; // identifiers for collapsed rows
+};
+
+export type TableColumnOrderSetting = {
+  name: string;
+  enabled: boolean;
+
+  // We have some corrupted visualization settings where both names are mixed
+  // We should settle on `fieldRef`, make it required and remove `field_ref`
+  fieldRef?: FieldReference;
+  field_ref?: FieldReference;
 };
 
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: "stacked" | "normalized" | null;
+
+  // Table
+  "table.columns"?: TableColumnOrderSetting[];
 
   // X-axis
   "graph.x_axis.title_text"?: string;
@@ -110,3 +139,23 @@ export interface ModerationReview {
 
 export type CardId = number;
 export type ModerationReviewStatus = "verified";
+
+export type CardFilterOption =
+  | "all"
+  | "mine"
+  | "bookmarked"
+  | "database"
+  | "table"
+  | "recent"
+  | "popular"
+  | "using_model"
+  | "archived";
+
+export interface CardQuery {
+  ignore_view?: boolean;
+}
+
+export interface CardListQuery {
+  f?: CardFilterOption;
+  model_id?: CardId;
+}

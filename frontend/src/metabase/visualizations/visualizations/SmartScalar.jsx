@@ -1,22 +1,28 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
 import { formatNumber, formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { NoBreakoutError } from "metabase/visualizations/lib/errors";
+import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 
 import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
+import * as Lib from "metabase-lib";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import { isDate } from "metabase-lib/types/utils/isa";
-import { formatBucketing } from "metabase-lib/queries/utils/query-time";
+import { ScalarContainer } from "./Scalar.styled";
 
 import {
   PreviousValueContainer,
@@ -25,12 +31,14 @@ import {
   Variation,
 } from "./SmartScalar.styled";
 
-export default class Smart extends React.Component {
+export default class Smart extends Component {
   static uiName = t`Trend`;
   static identifier = "smartscalar";
   static iconName = "smartscalar";
+  static canSavePng = false;
 
-  static minSize = { width: 3, height: 3 };
+  static minSize = getMinSize("smartscalar");
+  static defaultSize = getDefaultSize("smartscalar");
 
   static noHeader = true;
 
@@ -115,7 +123,16 @@ export default class Smart extends React.Component {
       return null;
     }
 
-    const granularity = formatBucketing(insight["unit"]).toLowerCase();
+    const lastValue = insight["last-value"];
+    const formatOptions = settings.column(column);
+
+    const { displayValue, fullScalarValue } = compactifyValue(
+      lastValue,
+      width,
+      formatOptions,
+    );
+
+    const granularity = Lib.describeTemporalUnit(insight["unit"]).toLowerCase();
 
     const lastChange = insight["last-change"];
     const previousValue = insight["previous-value"];
@@ -163,23 +180,30 @@ export default class Smart extends React.Component {
         <div className="Card-title absolute top right p1 px2">
           {actionButtons}
         </div>
-        <span
-          onClick={
-            isClickable &&
-            (() =>
-              this._scalar &&
-              onVisualizationClick({ ...clicked, element: this._scalar }))
-          }
-          ref={scalar => (this._scalar = scalar)}
+        <ScalarContainer
+          className="fullscreen-normal-text fullscreen-night-text"
+          tooltip={fullScalarValue}
+          alwaysShowTooltip={fullScalarValue !== displayValue}
+          isClickable={isClickable}
         >
-          <ScalarValue
-            gridSize={gridSize}
-            width={width}
-            totalNumGridCols={totalNumGridCols}
-            fontFamily={fontFamily}
-            value={formatValue(insight["last-value"], settings.column(column))}
-          />
-        </span>
+          <span
+            onClick={
+              isClickable &&
+              (() =>
+                this._scalar &&
+                onVisualizationClick({ ...clicked, element: this._scalar }))
+            }
+            ref={scalar => (this._scalar = scalar)}
+          >
+            <ScalarValue
+              gridSize={gridSize}
+              width={width}
+              totalNumGridCols={totalNumGridCols}
+              fontFamily={fontFamily}
+              value={displayValue}
+            />
+          </span>
+        </ScalarContainer>
         {isDashboard && (
           <ScalarTitle
             title={settings["card.title"]}
@@ -203,7 +227,7 @@ export default class Smart extends React.Component {
               <Variation color={changeColor}>
                 <Icon
                   size={13}
-                  pr={1}
+                  className="pr1"
                   name={isNegative ? "arrow_down" : "arrow_up"}
                 />
                 {changeDisplay}

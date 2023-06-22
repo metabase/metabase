@@ -1,6 +1,6 @@
 /* eslint "react/prop-types": "error" */
 
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
@@ -57,8 +57,10 @@ const cardsFromDashboard = dashboard => {
   }));
 };
 
-const nonTextCardsFromDashboard = dashboard => {
-  return cardsFromDashboard(dashboard).filter(card => card.display !== "text");
+const getSupportedCardsForSubscriptions = dashboard => {
+  return cardsFromDashboard(dashboard).filter(
+    card => !["text", "heading", "action", "link"].includes(card.display),
+  );
 };
 
 const cardsToPulseCards = (cards, pulseCards) => {
@@ -83,7 +85,7 @@ const getEditingPulseWithDefaults = (state, props) => {
       dashboardWrapper.dashboards[dashboardWrapper.dashboardId].id;
   }
   pulse.cards = cardsToPulseCards(
-    nonTextCardsFromDashboard(props.dashboard),
+    getSupportedCardsForSubscriptions(props.dashboard),
     pulse.cards,
   );
 
@@ -104,7 +106,7 @@ const mapDispatchToProps = {
   testPulse,
 };
 
-class SharingSidebarInner extends React.Component {
+class SharingSidebarInner extends Component {
   state = {
     editingMode: "list-pulses",
     // use this to know where to go "back" to
@@ -149,7 +151,7 @@ class SharingSidebarInner extends React.Component {
     const newPulse = {
       ...NEW_PULSE_TEMPLATE,
       channels: [channel],
-      cards: nonTextCardsFromDashboard(dashboard),
+      cards: getSupportedCardsForSubscriptions(dashboard),
     };
     this.setPulse(newPulse);
   };

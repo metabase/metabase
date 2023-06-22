@@ -1,16 +1,15 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import { color } from "metabase/lib/colors";
 import { isSyncCompleted } from "metabase/lib/syncing";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Text from "metabase/components/type/Text";
 
 import { PLUGIN_COLLECTIONS, PLUGIN_MODERATION } from "metabase/plugins";
 
 import {
   IconWrapper,
+  ResultButton,
   ResultLink,
   Title,
   TitleWrapper,
@@ -91,20 +90,23 @@ function Context({ context }) {
 
 export default function SearchResult({
   result,
-  compact,
+  compact = false,
   hasDescription = true,
-  onClick,
-  isSelected,
+  onClick = undefined,
+  isSelected = false,
 }) {
   const active = isItemActive(result);
   const loading = isItemLoading(result);
 
+  // we want to remove link behavior if we have an onClick handler
+  const ResultContainer = onClick ? ResultButton : ResultLink;
+
   return (
-    <ResultLink
+    <ResultContainer
       isSelected={isSelected}
       active={active}
       compact={compact}
-      to={!onClick ? result.getUrl() : ""}
+      to={!onClick ? result.getUrl() : undefined}
       onClick={onClick ? () => onClick(result) : undefined}
       data-testid="search-result-item"
     >
@@ -131,7 +133,7 @@ export default function SearchResult({
         {loading && <ResultSpinner size={24} borderWidth={3} />}
       </ResultLinkContent>
       {compact || <Context context={result.context} />}
-    </ResultLink>
+    </ResultContainer>
   );
 }
 

@@ -1,29 +1,46 @@
-import React from "react";
 import { t } from "ttag";
 import Modal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
-
+import ModalContent, {
+  ModalContentActionIcon,
+} from "metabase/components/ModalContent";
 import ActionParametersInputForm, {
-  ActionParamatersInputFormProps,
+  ActionParametersInputFormProps,
 } from "./ActionParametersInputForm";
 
 interface ModalProps {
-  onClose: () => void;
   title: string;
   showConfirmMessage?: boolean;
   confirmMessage?: string;
+  onEdit?: () => void;
+  onClose: () => void;
 }
 
-export default function ActionParametersInputModal({
-  onClose,
+export type ActionParametersInputModalProps = ModalProps &
+  ActionParametersInputFormProps;
+
+function ActionParametersInputModal({
   title,
   showConfirmMessage,
   confirmMessage,
+  onEdit,
+  onClose,
   ...formProps
-}: ModalProps & ActionParamatersInputFormProps) {
+}: ActionParametersInputModalProps) {
   return (
-    <Modal onClose={onClose}>
-      <ModalContent title={title} onClose={onClose}>
+    <Modal data-testid="action-parameters-input-modal" onClose={onClose}>
+      <ModalContent
+        title={title}
+        headerActions={
+          onEdit ? (
+            <ModalContentActionIcon
+              name="pencil"
+              tooltip={t`Edit this action`}
+              onClick={onEdit}
+            />
+          ) : undefined
+        }
+        onClose={onClose}
+      >
         <>
           {showConfirmMessage && <ConfirmMessage message={confirmMessage} />}
           <ActionParametersInputForm {...formProps} />
@@ -36,3 +53,6 @@ export default function ActionParametersInputModal({
 const ConfirmMessage = ({ message }: { message?: string }) => (
   <div>{message ?? t`This action cannot be undone.`}</div>
 );
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default ActionParametersInputModal;

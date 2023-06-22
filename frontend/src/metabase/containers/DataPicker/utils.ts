@@ -1,19 +1,22 @@
 import { t } from "ttag";
 
+import { IconName } from "metabase/core/components/Icon";
 import type { DataPickerDataType, DataPickerFilters } from "./types";
 
 export type DataTypeInfoItem = {
   id: DataPickerDataType;
-  icon: string;
+  icon: IconName;
   name: string;
   description: string;
 };
 
 export function getDataTypes({
   hasNestedQueriesEnabled,
+  hasSavedQuestions,
   hasModels,
 }: {
   hasNestedQueriesEnabled: boolean;
+  hasSavedQuestions: boolean;
   hasModels: boolean;
 }): DataTypeInfoItem[] {
   const dataTypes: DataTypeInfoItem[] = [
@@ -35,12 +38,14 @@ export function getDataTypes({
       });
     }
 
-    dataTypes.push({
-      id: "questions",
-      name: t`Saved Questions`,
-      icon: "folder",
-      description: t`Use any question’s results to start a new question.`,
-    });
+    if (hasSavedQuestions) {
+      dataTypes.push({
+        id: "questions",
+        name: t`Saved Questions`,
+        icon: "folder",
+        description: t`Use any question’s results to start a new question.`,
+      });
+    }
   }
 
   return dataTypes;

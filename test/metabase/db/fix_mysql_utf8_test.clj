@@ -6,16 +6,24 @@
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.setup :as mdb.setup]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models :refer [Database]]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (defn- create-test-db! []
-  (jdbc/with-db-connection [server-conn (sql-jdbc.conn/connection-details->spec :mysql
-                                          (mt/dbdef->connection-details :mysql :server nil))]
-    (doseq [statement ["DROP DATABASE IF EXISTS utf8_test;"
-                       "CREATE DATABASE utf8_test;"]]
-      (jdbc/execute! server-conn statement))))
+  (let [spec (sql-jdbc.conn/connection-details->spec
+              :mysql
+              (mt/dbdef->connection-details :mysql :server nil))]
+    (sql-jdbc.execute/do-with-connection-with-options
+     :mysql
+     spec
+     {:write? true}
+     (fn [^java.sql.Connection server-conn]
+       (doseq [statement ["DROP DATABASE IF EXISTS utf8_test;"
+                          "CREATE DATABASE utf8_test;"]]
+         (jdbc/execute! {:connection server-conn} statement))))))
 
 (defn- test-data-source ^javax.sql.DataSource []
   (mdb.data-source/broken-out-details->DataSource
@@ -38,34 +46,34 @@
                                                        (range 107 161))))]))
 
 (defn- db-charset []
-  (first (jdbc/query db/*db-connection*
-                     (str "SELECT default_collation_name AS `collation`, default_character_set_name AS `character-set` "
-                          "FROM information_schema.SCHEMATA "
-                          "WHERE schema_name = 'utf8_test';"))))
+  (t2/query-one
+   (str "SELECT default_collation_name AS `collation`, default_character_set_name AS `character-set` "
+        "FROM information_schema.SCHEMATA "
+        "WHERE schema_name = 'utf8_test';")))
 
 (defn- table-charset []
-  (first (jdbc/query db/*db-connection*
-                     (str "SELECT ccsa.collation_name AS `collation`, ccsa.character_set_name AS `character-set` "
-                          "FROM information_schema.`TABLES` t,"
-                          " information_schema.`COLLATION_CHARACTER_SET_APPLICABILITY` ccsa "
-                          "WHERE ccsa.collation_name = t.table_collation"
-                          "  AND t.table_schema = 'utf8_test' "
-                          "  AND t.table_name = 'metabase_database';"))))
+  (t2/query-one
+   (str "SELECT ccsa.collation_name AS `collation`, ccsa.character_set_name AS `character-set` "
+        "FROM information_schema.`TABLES` t,"
+        " information_schema.`COLLATION_CHARACTER_SET_APPLICABILITY` ccsa "
+        "WHERE ccsa.collation_name = t.table_collation"
+        "  AND t.table_schema = 'utf8_test' "
+        "  AND t.table_name = 'metabase_database';")))
 
 (defn- column-charset []
-  (first (jdbc/query db/*db-connection*
-                     (str "SELECT collation_name AS `collation`, character_set_name AS `character-set` "
-                          "FROM information_schema.`COLUMNS` "
-                          "WHERE table_schema = 'utf8_test'"
-                          "  AND table_name = 'metabase_database'"
-                          "AND column_name = 'name';"))))
+  (t2/query-one
+   (str "SELECT collation_name AS `collation`, character_set_name AS `character-set` "
+        "FROM information_schema.`COLUMNS` "
+        "WHERE table_schema = 'utf8_test'"
+        "  AND table_name = 'metabase_database'"
+        "AND column_name = 'name';")))
 
 (def ^:private test-unicode-str "Cam 𝌆 Saul 💩")
 
 (defn- insert-row! []
-  (jdbc/execute! db/*db-connection* [(str "INSERT INTO metabase_database (engine, name, created_at, updated_at, details) "
-                                          "VALUES ('mysql', ?, current_timestamp, current_timestamp, '{}')")
-                                     test-unicode-str]))
+  (t2/query [(str "INSERT INTO metabase_database (engine, name, created_at, updated_at, details) "
+                  "VALUES ('mysql', ?, current_timestamp, current_timestamp, '{}')")
+             test-unicode-str]))
 
 ;; The basic idea behind this test is:
 ;;
@@ -87,31 +95,31 @@
             ;; Roll back the DB to act as if migrations 107-160 had never been ran
             (convert-to-charset! jdbc-spec charset collation)
             (remove-utf8mb4-migrations! jdbc-spec)
-            (binding [db/*db-connection* jdbc-spec
-                      db/*quoting-style* :mysql]
-              (testing (format "DB without migrations 107-160: UTF-8 shouldn't work when using the '%s' character set" charset)
-                (let [db-cs  (db-charset)
-                      tb-cs  (table-charset)
-                      col-cs (column-charset)]
-                  (is (every? (cond-> #{charset} (= charset "utf8") (conj "utf8mb3"))
-                              (map :character-set [db-cs tb-cs col-cs]))
-                      (format "Make sure we converted the DB to %s correctly" charset))
-                  (is (every? (cond-> #{collation} (= collation "utf8_general_ci") (conj "utf8mb3_general_ci"))
-                              (map :collation [db-cs tb-cs col-cs]))
-                      (format "Make sure we converted the DB to %s correctly" charset)))
-                (is (thrown?
-                     Exception
-                     (insert-row!))
-                    "Shouldn't be able to insert UTF-8 values"))
+            (t2/with-connection [_conn jdbc-spec]
+              (binding [db/*quoting-style* :mysql]
+                (testing (format "DB without migrations 107-160: UTF-8 shouldn't work when using the '%s' character set" charset)
+                  (let [db-cs  (db-charset)
+                        tb-cs  (table-charset)
+                        col-cs (column-charset)]
+                    (is (every? (cond-> #{charset} (= charset "utf8") (conj "utf8mb3"))
+                                (map :character-set [db-cs tb-cs col-cs]))
+                        (format "Make sure we converted the DB to %s correctly" charset))
+                    (is (every? (cond-> #{collation} (= collation "utf8_general_ci") (conj "utf8mb3_general_ci"))
+                                (map :collation [db-cs tb-cs col-cs]))
+                        (format "Make sure we converted the DB to %s correctly" charset)))
+                  (is (thrown?
+                       Exception
+                       (insert-row!))
+                      "Shouldn't be able to insert UTF-8 values"))
 
-              (testing "If we run the migrations 107-160 then the DB should get converted to utf8mb4"
-                (mdb.setup/migrate! :mysql data-source :up)
-                (is (= {:character-set "utf8mb4", :collation "utf8mb4_unicode_ci"}
-                       (db-charset)
-                       (table-charset)
-                       (column-charset))
-                    "DB should be converted back to `utf8mb4` after running migrations")
-                (testing "We should be able to insert UTF-8 values"
-                  (insert-row!)
-                  (is (= test-unicode-str
-                         (db/select-one-field :name Database :name test-unicode-str))))))))))))
+                (testing "If we run the migrations 107-160 then the DB should get converted to utf8mb4"
+                  (mdb.setup/migrate! :mysql data-source :up)
+                  (is (= {:character-set "utf8mb4", :collation "utf8mb4_unicode_ci"}
+                         (db-charset)
+                         (table-charset)
+                         (column-charset))
+                      "DB should be converted back to `utf8mb4` after running migrations")
+                  (testing "We should be able to insert UTF-8 values"
+                    (insert-row!)
+                    (is (= test-unicode-str
+                           (t2/select-one-fn :name Database :name test-unicode-str)))))))))))))

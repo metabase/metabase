@@ -1,5 +1,5 @@
 import cx from "classnames";
-import React, {
+import {
   ButtonHTMLAttributes,
   forwardRef,
   ReactNode,
@@ -7,9 +7,8 @@ import React, {
   ElementType,
 } from "react";
 import styled from "@emotion/styled";
-import { color, space } from "styled-system";
 import _ from "underscore";
-import Icon from "metabase/components/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import {
   ButtonContent,
   ButtonRoot,
@@ -40,10 +39,10 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   tooltip?: string; // available when using as={Link}
   href?: string;
 
-  icon?: string | ReactNode;
+  icon?: IconName | ReactNode;
   iconSize?: number;
   iconColor?: string;
-  iconRight?: string;
+  iconRight?: IconName;
   iconVertical?: boolean;
   labelBreakpoint?: string;
   children?: ReactNode;
@@ -99,7 +98,11 @@ const BaseButton = forwardRef(function BaseButton(
     >
       <ButtonContent iconVertical={iconVertical}>
         {icon && typeof icon === "string" ? (
-          <Icon color={iconColor} name={icon} size={iconSize ? iconSize : 14} />
+          <Icon
+            color={iconColor}
+            name={icon as unknown as IconName}
+            size={iconSize ? iconSize : 16}
+          />
         ) : (
           icon
         )}
@@ -119,7 +122,7 @@ const BaseButton = forwardRef(function BaseButton(
           <Icon
             color={iconColor}
             name={iconRight}
-            size={iconSize ? iconSize : 14}
+            size={iconSize ? iconSize : 16}
           />
         )}
       </ButtonContent>
@@ -127,13 +130,11 @@ const BaseButton = forwardRef(function BaseButton(
   );
 });
 
-const Button = styled(BaseButton)`
-  ${color};
-  ${space};
-`;
+const Button = styled(BaseButton)``;
 
 Button.displayName = "Button";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(Button, {
   Root: ButtonRoot,
   Content: ButtonContent,

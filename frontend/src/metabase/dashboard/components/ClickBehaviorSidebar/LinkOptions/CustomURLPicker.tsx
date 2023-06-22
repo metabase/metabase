@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -84,7 +84,7 @@ function CustomURLPicker({
       {({ onClose }: { onClose: () => void }) => (
         <ModalContent
           title={t`Enter a URL to link to`}
-          onClose={hasLinkTemplate ? onClose : null}
+          onClose={hasLinkTemplate ? onClose : undefined}
         >
           <FormDescription>
             {t`You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}`}
@@ -118,4 +118,5 @@ function CustomURLPicker({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CustomURLPicker;

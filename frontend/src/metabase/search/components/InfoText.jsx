@@ -1,10 +1,9 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
 
 import Schema from "metabase/entities/schemas";
@@ -46,6 +45,10 @@ export function InfoText({ result }) {
       return jt`Segment of ${(<TableLink result={result} />)}`;
     case "metric":
       return jt`Metric for ${(<TableLink result={result} />)}`;
+    case "action":
+      return jt`for ${result.model_name}`;
+    case "indexed-entity":
+      return jt`in ${result.model_name}`;
     default:
       return jt`${getTranslatedEntityName(result.model)} in ${formatCollection(
         result,

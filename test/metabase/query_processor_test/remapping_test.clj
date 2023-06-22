@@ -10,7 +10,8 @@
    [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest basic-internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
@@ -36,7 +37,7 @@
 (deftest basic-external-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (mt/with-column-remappings [venues.category_id categories.name]
-      (let [dimension-id (db/select-one-id Dimension :field_id (mt/id :venues :category_id))]
+      (let [dimension-id (t2/select-one-pk Dimension :field_id (mt/id :venues :category_id))]
         (is (= {:rows [["American" 2 8]
                        ["Artisan"  3 2]
                        ["Asian"    4 2]]
@@ -148,7 +149,7 @@
                                 :fk_field_id   %category_id
                                 :display_name  "Category ID [external remap]"
                                 :options       {::qp.add-dimension-projections/new-field-dimension-id
-                                                (db/select-one-id Dimension :field_id (mt/id :venues :category_id))}
+                                                (t2/select-one-pk Dimension :field_id (mt/id :venues :category_id))}
                                 :name          (mt/format-name "name_2")
                                 :remapped_from (mt/format-name "category_id")
                                 :field_ref     $category_id->categories.name))]}
@@ -193,7 +194,7 @@
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys) :redshift :oracle :vertica)
     (mt/dataset test-data-self-referencing-user
       (mt/with-column-remappings [users.created_by users.name]
-        (db/update! Field (mt/id :users :created_by)
+        (t2/update! Field (mt/id :users :created_by)
           {:fk_target_field_id (mt/id :users :id)})
         (is (= ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
                (->> (mt/run-mbql-query users
@@ -220,22 +221,22 @@
                    (remappings-with-metadata metadata)))))))))
         ;; doesn't currently work with any other metadata.
 
-
 (deftest remappings-with-implicit-joins-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
-    (testing "Queries with implicit joins should still work when FK remaps are used (#13641)"
-      (mt/dataset sample-dataset
-        (mt/with-column-remappings [orders.product_id products.title]
-          (let [query (mt/mbql-query orders
-                        {:source-query {:source-table $$orders
-                                        :filter       [:= $user_id 1]}
-                         :filter       [:= $product_id->products.category "Doohickey"]
-                         :order-by     [[:asc $id] [:asc $product_id->products.category]]
-                         :limit        1})]
-            (mt/with-native-query-testing-context query
-              (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 "Rustic Paper Car"]]
-                     (mt/formatted-rows [int int int 2.0 2.0 2.0 identity str int str]
-                       (qp/process-query query)))))))))))
+  (mt/with-temporary-setting-values [report-timezone "UTC"]
+    (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
+      (testing "Queries with implicit joins should still work when FK remaps are used (#13641)"
+        (mt/dataset sample-dataset
+          (mt/with-column-remappings [orders.product_id products.title]
+            (let [query (mt/mbql-query orders
+                          {:source-query {:source-table $$orders
+                                          :filter       [:= $user_id 1]}
+                           :filter       [:= $product_id->products.category "Doohickey"]
+                           :order-by     [[:asc $id] [:asc $product_id->products.category]]
+                           :limit        1})]
+              (mt/with-native-query-testing-context query
+                (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 "Rustic Paper Car"]]
+                       (mt/formatted-rows [int int int 2.0 2.0 2.0 identity str int str]
+                         (qp/process-query query))))))))))))
 
 (deftest multiple-fk-remaps-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B (#9236)"
@@ -262,7 +263,9 @@
                      (mt/rows results))))))))))
 
 (deftest remapped-columns-in-joined-source-queries-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :left-join)
+                         ;; mongodb doesn't support foreign keys required by this test
+                         :mongo)
     (testing "Remapped columns in joined source queries should work (#15578)"
       (mt/dataset sample-dataset
         (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
@@ -308,13 +311,13 @@
                                                &Products.products.title]}]
                     :order-by [[:asc $id]]
                     :limit    3})]
-          (mt/with-temp Card [{card-1-id :id} {:dataset_query   q1
-                                               :result_metadata (get-in (qp/process-query q1)
-                                                                        [:data :results_metadata :columns])}]
+          (t2.with-temp/with-temp [Card {card-1-id :id} {:dataset_query   q1
+                                                         :result_metadata (get-in (qp/process-query q1)
+                                                                                  [:data :results_metadata :columns])}]
             (let [q2 (mt/mbql-query nil {:source-table (format "card__%d" card-1-id)})]
-              (mt/with-temp Card [{card-2-id :id} {:dataset_query   q2
-                                                   :result_metadata (get-in (qp/process-query q2)
-                                                                            [:data :results_metadata :columns])}]
+              (t2.with-temp/with-temp [Card {card-2-id :id} {:dataset_query   q2
+                                                             :result_metadata (get-in (qp/process-query q2)
+                                                                                      [:data :results_metadata :columns])}]
                 (let [q3 (mt/mbql-query nil {:source-table (format "card__%d" card-2-id)})]
                   (mt/with-native-query-testing-context q3
                     (is (= [[1  14 "Awesome Concrete Shoes" "Awesome Concrete Shoes"]

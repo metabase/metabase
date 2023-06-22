@@ -17,6 +17,8 @@
    (org.graalvm.polyglot Context Value)
    (org.w3c.dom Element Node)))
 
+(set! *warn-on-reflection* true)
+
 (def parse-svg #'js-svg/parse-svg-string)
 
 (use-fixtures :each
@@ -81,7 +83,7 @@
   (letfn [(tree [^Node node]
             (into [(.getNodeName node)]
                   (if (instance? org.apache.batik.dom.GenericText node)
-                    [(.getWholeText node)]
+                    [(.getWholeText ^org.apache.batik.dom.GenericText node)]
                     (map tree
                          (when (instance? Element node)
                            (let [children (.getChildNodes node)]

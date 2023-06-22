@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { Fragment, useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
@@ -12,6 +12,7 @@ import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   ResultLink,
+  ResultButton,
   ResultSpinner,
   Title,
   TitleWrapper,
@@ -41,15 +42,27 @@ const propTypes = {
   ),
   loading: PropTypes.bool,
   onChangeLocation: PropTypes.func,
+  onClick: PropTypes.func,
+  className: PropTypes.string,
 };
 
 const getItemUrl = item => (isItemActive(item) ? Urls.modelToUrl(item) : "");
 
-function RecentsList({ list, loading, onChangeLocation }) {
+function RecentsList({ list, loading, onChangeLocation, onClick, className }) {
+  const handleSelectItem = item => {
+    onClick?.({
+      ...item.model_object,
+      model: item.model,
+      name: item.model_object.display_name ?? item.model_object.name,
+    });
+  };
+
   const { getRef, cursorIndex } = useListKeyboardNavigation({
     list,
-    onEnter: item => onChangeLocation(getItemUrl(item)),
+    onEnter: item =>
+      onClick ? handleSelectItem(item) : onChangeLocation(getItemUrl(item)),
   });
+
   const [canShowLoader, setCanShowLoader] = useState(false);
   const hasRecents = list?.length > 0;
 
@@ -62,11 +75,14 @@ function RecentsList({ list, loading, onChangeLocation }) {
     return null;
   }
 
+  // we want to remove link behavior if we have an onClick handler
+  const ResultContainer = onClick ? ResultButton : ResultLink;
+
   return (
-    <Root>
+    <Root className={className}>
       <Header>{t`Recently viewed`}</Header>
       <LoadingAndErrorWrapper loading={loading} noWrapper>
-        <React.Fragment>
+        <Fragment>
           {hasRecents && (
             <ul>
               {list.map((item, index) => {
@@ -80,11 +96,14 @@ function RecentsList({ list, loading, onChangeLocation }) {
 
                 return (
                   <li key={key} ref={getRef(item)}>
-                    <ResultLink
-                      to={url}
-                      compact={true}
-                      active={active}
+                    <ResultContainer
                       isSelected={cursorIndex === index}
+                      active={active}
+                      compact={true}
+                      to={onClick ? undefined : url}
+                      onClick={
+                        onClick ? () => handleSelectItem(item) : undefined
+                      }
                     >
                       <RecentListItemContent
                         align="start"
@@ -114,7 +133,7 @@ function RecentsList({ list, loading, onChangeLocation }) {
                         </div>
                         {loading && <ResultSpinner size={24} borderWidth={3} />}
                       </RecentListItemContent>
-                    </ResultLink>
+                    </ResultContainer>
                   </li>
                 );
               })}
@@ -126,7 +145,7 @@ function RecentsList({ list, loading, onChangeLocation }) {
               <EmptyState message={t`Nothing here`} icon="folder" />
             </EmptyStateContainer>
           )}
-        </React.Fragment>
+        </Fragment>
       </LoadingAndErrorWrapper>
     </Root>
   );

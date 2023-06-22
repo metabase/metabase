@@ -1,8 +1,11 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
-import { bindActionCreators } from "redux";
+import { bindActionCreators } from "@reduxjs/toolkit";
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export default () => ComposedComponent => {
   const mapStateToProps = (state, props) => ({
     entityDef:
@@ -14,7 +17,7 @@ export default () => ComposedComponent => {
       ],
   });
   return connect(mapStateToProps)(
-    class extends React.Component {
+    class extends Component {
       static displayName = "EntityType";
 
       _boundActionCreators = {};

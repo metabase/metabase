@@ -7,15 +7,22 @@ export const OptionEditorContainer = styled.div`
   display: flex;
   flex-direction: column;
   padding: ${space(2)};
+  gap: ${space(1)};
 `;
 
-export const AddMorePrompt = styled.div`
+export const AddMorePrompt = styled.div<{ isVisible: boolean }>`
   text-align: center;
   font-size: 0.875rem;
-  margin: ${space(1)} 0;
   height: 1.25rem;
   color: ${color("text-light")};
   transition: opacity 0.2s ease-in-out;
+  opacity: ${props => (props.isVisible ? 1 : 0)};
+`;
+
+export const ErrorMessage = styled.div`
+  text-align: center;
+  font-size: 0.875rem;
+  color: ${color("error")};
 `;
 
 export const TextArea = styled.textarea`

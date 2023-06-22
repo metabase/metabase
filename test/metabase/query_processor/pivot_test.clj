@@ -15,7 +15,9 @@
    [metabase.util :as u]
    [schema.core :as s]))
 
-(deftest group-bitmask-test
+(set! *warn-on-reflection* true)
+
+(deftest ^:parallel group-bitmask-test
   (doseq [[indices expected] {[0]     6
                               [0 1]   4
                               [0 1 2] 0
@@ -23,7 +25,7 @@
     (is (= expected
            (#'qp.pivot/group-bitmask 3 indices)))))
 
-(deftest powerset-test
+(deftest ^:parallel powerset-test
   (is (= [[]]
          (#'qp.pivot/powerset [])))
   (is (= [[0] []]
@@ -33,7 +35,7 @@
   (is (= [[0 1 2] [1 2] [0 2] [2] [0 1] [1] [0] []]
          (#'qp.pivot/powerset [0 1 2]))))
 
-(deftest breakout-combinations-test
+(deftest ^:parallel breakout-combinations-test
   (testing "Should return the combos that Paul specified in (#14329)"
     (is (= [[0 1 2]
             [0 1]
@@ -68,7 +70,7 @@
               []]
              (#'qp.pivot/breakout-combinations 3 [] []))))))
 
-(deftest validate-pivot-rows-cols-test
+(deftest ^:parallel validate-pivot-rows-cols-test
   (testing "Should throw an Exception if you pass in invalid pivot-rows"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -319,3 +321,33 @@
                 [nil 1 200]]
                (mt/rows
                 (qp.pivot/run-pivot-query query))))))))
+
+(deftest pivot-with-order-by-metric-test
+  (testing "Pivot queries should allow ordering by aggregation (#22872)"
+    (mt/dataset sample-dataset
+      (let  [query (mt/mbql-query reviews
+                     {:breakout [$rating [:field (mt/id :reviews :created_at) {:temporal-unit :year}]]
+                      :aggregation [[:count]]
+                      :order-by [[:asc [:aggregation 0 nil]]]
+                      :filter [:between $created_at "2019-01-01" "2021-01-01"]})]
+        (mt/with-native-query-testing-context query
+          (is (= [[1 "2020-01-01T00:00:00Z" 0 5]
+                  [2 "2020-01-01T00:00:00Z" 0 13]
+                  [3 "2020-01-01T00:00:00Z" 0 14]
+                  [1 "2019-01-01T00:00:00Z" 0 15]
+                  [3 "2019-01-01T00:00:00Z" 0 29]
+                  [2 "2019-01-01T00:00:00Z" 0 35]
+                  [5 "2020-01-01T00:00:00Z" 0 45]
+                  [4 "2020-01-01T00:00:00Z" 0 78]
+                  [5 "2019-01-01T00:00:00Z" 0 137]
+                  [4 "2019-01-01T00:00:00Z" 0 236]
+                  [nil "2020-01-01T00:00:00Z" 1 155]
+                  [nil "2019-01-01T00:00:00Z" 1 452]
+                  [1 nil 2 20]
+                  [3 nil 2 43]
+                  [2 nil 2 48]
+                  [5 nil 2 182]
+                  [4 nil 2 314]
+                  [nil nil 3 607]]
+                 (mt/rows
+                   (qp.pivot/run-pivot-query query)))))))))

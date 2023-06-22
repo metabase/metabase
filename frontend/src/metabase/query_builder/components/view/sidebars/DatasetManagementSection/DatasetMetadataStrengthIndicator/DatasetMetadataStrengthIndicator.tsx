@@ -1,10 +1,10 @@
-import React from "react";
+import { useRef } from "react";
 import { t } from "ttag";
+import { useHoverDirty } from "react-use";
 
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { color } from "metabase/lib/colors";
-import { useHover } from "metabase/hooks/use-hover";
 import Question from "metabase-lib/Question";
 import { getDatasetMetadataCompletenessPercentage } from "metabase-lib/metadata/utils/models";
 
@@ -56,7 +56,8 @@ type Props = {
 const TOOLTIP_DELAY: [number, null] = [700, null];
 
 function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
-  const [hoverRef, isHovered] = useHover<HTMLDivElement>();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const isHovering = useHoverDirty(rootRef);
   const resultMetadata = dataset.getResultMetadata();
 
   if (!Array.isArray(resultMetadata) || resultMetadata.length === 0) {
@@ -64,10 +65,10 @@ function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
   }
 
   const percentage = getDatasetMetadataCompletenessPercentage(resultMetadata);
-  const indicationColor = getIndicationColor(percentage, isHovered);
+  const indicationColor = getIndicationColor(percentage, isHovering);
 
   return (
-    <Root {...props} ref={hoverRef}>
+    <Root {...props} ref={rootRef}>
       <Tooltip
         tooltip={getTooltipMessage(percentage)}
         delay={TOOLTIP_DELAY}
@@ -84,4 +85,5 @@ function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(DatasetMetadataStrengthIndicator, { Root });

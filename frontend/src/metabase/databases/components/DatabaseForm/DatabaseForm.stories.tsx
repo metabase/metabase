@@ -1,6 +1,4 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
-import { createMockEngine } from "metabase-types/api/mocks";
 import DatabaseForm from "./DatabaseForm";
 
 export default {

@@ -1,6 +1,6 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
+import * as React from "react";
 
-import _ from "underscore";
 import type { NumberValue } from "d3-scale";
 
 import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";

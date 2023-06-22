@@ -1,16 +1,15 @@
 (ns metabase-enterprise.serialization.v2.seed-entity-ids
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.models]
-   [metabase.models.dispatch :as models.dispatch]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,17 +29,21 @@
                                                          (:mysql :postgres) "entity_id"))]
         (into #{} (map (comp u/lower-case-en :table_name)) (resultset-seq rset))))))
 
+(defn toucan-models
+  "Return a list of all toucan models."
+  []
+  (concat (descendants :toucan1/model) (descendants :metabase/model)))
+
 (defn- make-table-name->model
   "Create a map of (lower-cased) application DB table name -> corresponding Toucan model."
   []
-  (into {} (for [^Class klass (extenders toucan.models/IModel)
-                 :let         [model (models.dispatch/model (.newInstance klass))]
-                 :when        (models/model? model)
-                 :let         [table-name (some-> model :table name)]
-                 :when        table-name
-                 ;; ignore any models defined in test namespaces.
-                 :when        (not (str/includes? (namespace model) "test"))]
-             [table-name model])))
+  (into {}
+        (for [model (toucan-models)
+              :let  [table-name (some-> model t2/table-name name)]
+              :when table-name
+              ;; ignore any models defined in test namespaces.
+              :when (not (str/includes? (namespace model) "test"))]
+         [table-name model])))
 
 (defn- entity-id-models
   "Return a set of all Toucan models that have an `entity_id` column."
@@ -49,7 +52,10 @@
         table-name->model           (make-table-name->model)
         entity-id-table-name->model (into {}
                                           (map (fn [table-name]
-                                                 [table-name (table-name->model table-name)]))
+                                                 (if-let [model (table-name->model table-name)]
+                                                  [table-name model]
+                                                  (throw (ex-info (trs "Model not found for table {0}" table-name)
+                                                                  {:table-name table-name})))))
                                           entity-id-table-names)
         entity-id-models            (set (vals entity-id-table-name->model))]
     ;; make sure we've resolved all of the tables that have entity_id to their corresponding models.
@@ -64,16 +70,16 @@
 
 (defn- seed-entity-id-for-instance! [model instance]
   (try
-    (let [primary-key (models/primary-key model)
+    (let [primary-key (first (t2/primary-keys model))
           pk-value    (get instance primary-key)]
       (when-not (some? pk-value)
         (throw (ex-info (format "Missing value for primary key column %s" (pr-str primary-key))
                         {:model       (name model)
                          :instance    instance
                          :primary-key primary-key})))
-      (let [new-hash (serdes.hash/identity-hash instance)]
+      (let [new-hash (serdes/identity-hash instance)]
         (log/infof "Update %s %s entity ID => %s" (name model) (pr-str pk-value) (pr-str new-hash))
-        (db/update! model pk-value :entity_id new-hash))
+        (t2/update! model pk-value {:entity_id new-hash}))
       {:update-count 1})
     (catch Throwable e
       (log/errorf e "Error updating entity ID: %s" (ex-message e))
@@ -100,11 +106,9 @@
   "Create entity IDs for any instances of models that support them but do not have them, i.e. find instances of models
   that have an `entity_id` column whose `entity_id` is `nil` and populate that column.
 
-  `options` are currently ignored but this may change in the future.
-
   Returns truthy if all missing entity IDs were created successfully, and falsey if there were any errors."
-  [options]
-  (log/infof "Seeding Entity IDs with options %s" (pr-str options))
+  []
+  (log/info "Seeding Entity IDs")
   (mdb/setup-db!)
   (let [{:keys [error-count]} (transduce
                                (map seed-entity-ids-for-model!)

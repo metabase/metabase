@@ -44,7 +44,7 @@ describe("deprecated metadata actions", () => {
             result: 0,
             entities: {
               fields: {
-                0: { id: 0, dimensions: { human_readable_field_id: 1 } },
+                0: { id: 0, dimensions: [{ human_readable_field_id: 1 }] },
               },
             },
           },
@@ -58,7 +58,7 @@ describe("deprecated metadata actions", () => {
             result: 1,
             entities: {
               fields: {
-                0: { id: 0, dimensions: { human_readable_field_id: 1 } },
+                0: { id: 0, dimensions: [{ human_readable_field_id: 1 }] },
                 1: { id: 1 },
               },
             },

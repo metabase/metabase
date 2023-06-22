@@ -4,7 +4,7 @@ import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import { Timeline, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import TimelineDetailsModal from "../../components/TimelineDetailsModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
@@ -43,6 +43,7 @@ const mapDispatchToProps = (dispatch: any) => ({
   },
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Timelines.load(timelineProps),
   Timelines.loadList(timelinesProps),

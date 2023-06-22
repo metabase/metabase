@@ -2,7 +2,7 @@
   "Normalization and helper predicates for date formatting options maps."
   (:require
    [metabase.shared.formatting.constants :as constants]
-   [metabase.shared.util :as shared.u]))
+   [metabase.util :as u]))
 
 (def ^:private default-options
   {:date-enabled   true
@@ -31,7 +31,7 @@
   - transforming `:compact true` to `:output-density \"compact\"` (takes precedence over `\"condensed\"`).
   - make `:unit` a keyword"
   [options]
-  (let [options                               (-> (shared.u/normalize-map options)
+  (let [options                               (-> (u/normalize-map options)
                                                   (update :unit keyword))
         {:keys [compact date-abbreviate
                 type unit]

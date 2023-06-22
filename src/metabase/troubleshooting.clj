@@ -1,12 +1,11 @@
 (ns metabase.troubleshooting
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.java.jmx :as jmx]
    [metabase.analytics.stats :as stats]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (javax.management ObjectName)))
 
@@ -32,14 +31,15 @@
 (defn metabase-info
   "Make it easy for the user to tell us what they're using"
   []
-  {:databases                    (->> (db/select 'Database) (map :engine) distinct)
+  {:databases                    (->> (t2/select 'Database) (map :engine) distinct)
    :hosting-env                  (stats/environment-type)
    :application-database         (mdb/db-type)
-   :application-database-details (jdbc/with-db-metadata [metadata (db/connection)]
-                                   {:database    {:name    (.getDatabaseProductName metadata)
-                                                  :version (.getDatabaseProductVersion metadata)}
-                                    :jdbc-driver {:name    (.getDriverName metadata)
-                                                  :version (.getDriverVersion metadata)}})
+   :application-database-details (t2/with-connection [^java.sql.Connection conn]
+                                   (let [metadata (.getMetaData conn)]
+                                     {:database    {:name    (.getDatabaseProductName metadata)
+                                                    :version (.getDatabaseProductVersion metadata)}
+                                      :jdbc-driver {:name    (.getDriverName metadata)
+                                                    :version (.getDriverVersion metadata)}}))
    :run-mode                     (config/config-kw :mb-run-mode)
    :version                      config/mb-version-info
    :settings                     {:report-timezone (driver/report-timezone)}})

@@ -8,8 +8,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2-extensions :as h2x]
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (defn- run-query
   [query-type & {:as additional-query-params}]
@@ -61,9 +60,9 @@
   (testing "add 45 days clause"
     (is (= {:where
             [:>
-             (h2x/with-type-info
+             (h2x/with-database-type-info
                [:cast :bob.dobbs [:raw "date"]]
-               {::hx/database-type "date"})
+               "date")
              nil]}
            (assoc-in (#'common/add-45-days-clause {} :bob.dobbs) [:where 2] nil)))))
 

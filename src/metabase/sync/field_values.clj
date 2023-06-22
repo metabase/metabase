@@ -1,7 +1,6 @@
 (ns metabase.sync.field-values
   "Logic for updating FieldValues for fields in a database."
   (:require
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -11,11 +10,12 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (s/defn ^:private clear-field-values-for-field! [field :- i/FieldInstance]
-  (when (db/exists? FieldValues :field_id (u/the-id field))
+  (when (t2/exists? FieldValues :field_id (u/the-id field))
     (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
                        (sync-util/name-for-logging field))
                "Deleting FieldValues...")
@@ -24,7 +24,7 @@
 
 (s/defn ^:private update-field-values-for-field! [field :- i/FieldInstance]
   (log/debug (u/format-color 'green "Looking into updating FieldValues for %s" (sync-util/name-for-logging field)))
-  (let [field-values (db/select-one FieldValues :field_id (u/the-id field) :type :full)]
+  (let [field-values (t2/select-one FieldValues :field_id (u/the-id field) :type :full)]
     (if (field-values/inactive? field-values)
       (log/debug (trs "Field {0} has not been used since {1}. Skipping..."
                       (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values)))))
@@ -45,7 +45,7 @@
 
 (defn- table->fields-to-scan
   [table]
-  (db/select Field :table_id (u/the-id table), :active true, :visibility_type "normal"))
+  (t2/select Field :table_id (u/the-id table), :active true, :visibility_type "normal"))
 
 (s/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for TABLE."
@@ -74,15 +74,15 @@
 (defn- delete-expired-advanced-field-values-for-field!
   [field]
   (sync-util/with-error-handling (format "Error deleting expired advanced field values for %s" (sync-util/name-for-logging field))
-    (let [conditions [:field_id   (:id field),
-                      :type       [:in field-values/advanced-field-values-types],
+    (let [conditions [:field_id   (:id field)
+                      :type       [:in field-values/advanced-field-values-types]
                       :created_at [:< (sql.qp/add-interval-honeysql-form
-                                        (mdb/db-type)
-                                        :%now
-                                        (- (t/as field-values/advanced-field-values-max-age :days))
-                                        :day)]]
-          rows-count (apply db/count FieldValues conditions)]
-      (apply db/delete! FieldValues conditions)
+                                       (mdb/db-type)
+                                       :%now
+                                       (- (t/as field-values/advanced-field-values-max-age :days))
+                                       :day)]]
+          rows-count (apply t2/count FieldValues conditions)]
+      (apply t2/delete! FieldValues conditions)
       rows-count)))
 
 (s/defn delete-expired-advanced-field-values-for-table!
@@ -96,7 +96,14 @@
 (s/defn ^:private delete-expired-advanced-field-values-for-database!
   [_database :- i/DatabaseInstance
    tables :- [i/TableInstance]]
-  {:deleted (apply + (map delete-expired-advanced-field-values-for-table! tables))})
+  {:deleted (transduce (comp (map delete-expired-advanced-field-values-for-table!)
+                             (map (fn [result]
+                                    (if (instance? Throwable result)
+                                      (throw result)
+                                      result))))
+                       +
+                       0
+                       tables)})
 
 (defn- make-sync-field-values-steps
   [tables]
@@ -109,7 +116,7 @@
 
 (s/defn update-field-values!
   "Update the advanced FieldValues (distinct values for categories and certain other fields that are shown
-   in widgets like filters) for the Tables in DATABASE (as needed)."
+   in widgets like filters) for the Tables in `database` (as needed)."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s"
                                                                  (sync-util/name-for-logging database))

@@ -13,8 +13,11 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
+
+(set! *warn-on-reflection* true)
 
 (deftest annotations-test
   (testing "make sure our annotations are present"
@@ -68,7 +71,7 @@
 (deftest new-db-jobs-scheduled-test
   (is (= [sync-job fv-job]
          (with-scheduler-setup
-           (mt/with-temp Database [database {:engine :postgres}]
+           (t2.with-temp/with-temp [Database database {:engine :postgres}]
              (current-tasks-for-db database))))))
 
 ;; Check that a custom schedule is respected when creating a new Database
@@ -76,29 +79,29 @@
   (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 30 4,16 * * ? *")
           (assoc-in fv-job   [:triggers 0 :cron-schedule] "0 15 10 ? * 6#3")]
          (with-scheduler-setup
-           (mt/with-temp Database [database {:engine                      :postgres
-                                             :metadata_sync_schedule      "0 30 4,16 * * ? *" ; 4:30 AM and PM daily
-                                             :cache_field_values_schedule "0 15 10 ? * 6#3"}] ; 10:15 on the 3rd Friday of the Month
+           (t2.with-temp/with-temp [Database database {:engine                      :postgres
+                                                       :metadata_sync_schedule      "0 30 4,16 * * ? *" ; 4:30 AM and PM daily
+                                                       :cache_field_values_schedule "0 15 10 ? * 6#3"}] ; 10:15 on the 3rd Friday of the Month
              (current-tasks-for-db database))))))
 
 ;; Check that a deleted database gets unscheduled
 (deftest unschedule-deleted-database-test
   (is (= [(update sync-job :triggers empty)
           (update fv-job   :triggers empty)]
-        (with-scheduler-setup
-          (mt/with-temp Database [database {:engine :postgres}]
-            (db/delete! Database :id (u/the-id database))
-            (current-tasks-for-db database))))))
+         (with-scheduler-setup
+           (t2.with-temp/with-temp [Database database {:engine :postgres}]
+             (t2/delete! Database :id (u/the-id database))
+             (current-tasks-for-db database))))))
 
 ;; Check that changing the schedule column(s) for a DB properly updates the scheduled tasks
 (deftest schedule-change-test
   (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
           (assoc-in fv-job   [:triggers 0 :cron-schedule] "0 11 11 11 11 ?")]
          (with-scheduler-setup
-           (mt/with-temp Database [database {:engine :postgres}]
-             (db/update! Database (u/the-id database)
-               :metadata_sync_schedule      "0 15 10 ? * MON-FRI" ; 10:15 AM every weekday
-               :cache_field_values_schedule "0 11 11 11 11 ?")    ; Every November 11th at 11:11 AM
+           (t2.with-temp/with-temp [Database database {:engine :postgres}]
+             (t2/update! Database (u/the-id database)
+                         {:metadata_sync_schedule      "0 15 10 ? * MON-FRI" ; 10:15 AM every weekday
+                          :cache_field_values_schedule "0 11 11 11 11 ?"})   ; Every November 11th at 11:11 AM
              (current-tasks-for-db database))))))
 
 ;; Check that changing one schedule doesn't affect the other
@@ -106,17 +109,17 @@
   (is (= [sync-job
           (assoc-in fv-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")]
          (with-scheduler-setup
-           (mt/with-temp Database [database {:engine :postgres}]
-             (db/update! Database (u/the-id database)
-                         :cache_field_values_schedule "0 15 10 ? * MON-FRI")
+           (t2.with-temp/with-temp [Database database {:engine :postgres}]
+             (t2/update! Database (u/the-id database)
+                         {:cache_field_values_schedule "0 15 10 ? * MON-FRI"})
              (current-tasks-for-db database)))))
 
   (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
           fv-job]
          (with-scheduler-setup
-           (mt/with-temp Database [database {:engine :postgres}]
-             (db/update! Database (u/the-id database)
-                         :metadata_sync_schedule "0 15 10 ? * MON-FRI")
+           (t2.with-temp/with-temp [Database database {:engine :postgres}]
+             (t2/update! Database (u/the-id database)
+                         {:metadata_sync_schedule "0 15 10 ? * MON-FRI"})
              (current-tasks-for-db database))))))
 
 (deftest validate-schedules-test
@@ -125,16 +128,16 @@
       (testing (format "Insert DB with invalid %s" k)
         (is (thrown?
              Exception
-             (db/insert! Database {:engine :postgres, k "0 * ABCD"}))))))
+             (t2/insert! Database {:engine :postgres, k "0 * ABCD"}))))))
 
   (testing "Check that you can't UPDATE a DB's schedule to something invalid"
-    (mt/with-temp Database [database {:engine :postgres}]
+    (t2.with-temp/with-temp [Database database {:engine :postgres}]
       (doseq [k [:metadata_sync_schedule :cache_field_values_schedule]]
         (testing (format "Update %s" k)
           (is (thrown?
                Exception
-               (db/update! Database (u/the-id database)
-                 k "2 CANS PER DAY"))))))))
+               (t2/update! Database (u/the-id database)
+                           {k "2 CANS PER DAY"}))))))))
 
 ;; this is a deftype due to an issue with Clojure. The `org.quartz.JobExecutionContext` interface has a put method and
 ;; defrecord emits a put method and things get
@@ -153,12 +156,12 @@
     (with-scheduler-setup
       (doseq [sync-fn [#'task.sync-databases/update-field-values! #'task.sync-databases/sync-and-analyze-database!]]
         (testing (str sync-fn)
-          (mt/with-temp Database [database {:engine :postgres}]
+          (t2.with-temp/with-temp [Database database {:engine :postgres}]
             (let [db-id (:id database)]
               (is (= [sync-job fv-job]
                      (current-tasks-for-db database)))
 
-              (db/delete! Database :id db-id)
+              (t2/delete! Database :id db-id)
               (let [ctx (MockJobExecutionContext. {"db-id" db-id})]
                 (sync-fn ctx))
 
@@ -171,22 +174,22 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 #_(defn- check-if-sync-processes-ran-for-db {:style/indent 0} [waits db-info]
-   (let [sync-db-metadata-ran?    (promise)
-         analyze-db-ran?          (promise)
-         update-field-values-ran? (promise)]
-     (with-redefs [metabase.sync.sync-metadata/sync-db-metadata!   (fn [& _] (deliver sync-db-metadata-ran? true))
-                   metabase.sync.analyze/analyze-db!               (fn [& _] (deliver analyze-db-ran? true))
-                   metabase.sync.field-values/update-field-values! (fn [& _] (deliver update-field-values-ran? true))]
-       (with-scheduler-setup
-         (mt/with-temp Database [database db-info]
-           ;; deref the promises in parallel so they all get sufficient time to run.
-           (into {} (pmap (fn [[k promis]]
-                            (let [wait-time-ms (or (get waits k)
-                                                   (throw (ex-info (str "Don't know how long to wait for " k) {})))]
-                              [k (deref promis wait-time-ms false)]))
-                          {:ran-sync?                sync-db-metadata-ran?
-                           :ran-analyze?             analyze-db-ran?
-                           :ran-update-field-values? update-field-values-ran?})))))))
+    (let [sync-db-metadata-ran?    (promise)
+          analyze-db-ran?          (promise)
+          update-field-values-ran? (promise)]
+      (with-redefs [metabase.sync.sync-metadata/sync-db-metadata!   (fn [& _] (deliver sync-db-metadata-ran? true))
+                    metabase.sync.analyze/analyze-db!               (fn [& _] (deliver analyze-db-ran? true))
+                    metabase.sync.field-values/update-field-values! (fn [& _] (deliver update-field-values-ran? true))]
+        (with-scheduler-setup
+          (t2.with-temp/with-temp [Database database db-info]
+            ;; deref the promises in parallel so they all get sufficient time to run.
+            (into {} (pmap (fn [[k promis]]
+                             (let [wait-time-ms (or (get waits k)
+                                                    (throw (ex-info (str "Don't know how long to wait for " k) {})))]
+                               [k (deref promis wait-time-ms false)]))
+                           {:ran-sync?                sync-db-metadata-ran?
+                            :ran-analyze?             analyze-db-ran?
+                            :ran-update-field-values? update-field-values-ran?})))))))
 
 #_(defn- cron-schedule-for-next-year []
    (format "0 15 10 * * ? %d" (inc (u.date/extract :year))))
@@ -270,7 +273,7 @@
       (mt/with-temp* [Database [db {:metadata_sync_schedule      sync-default
                                     :cache_field_values_schedule fv-default}]]
         (#'task.sync-databases/randomize-db-schedules-if-needed)
-        (let [after (db/select-one Database :id (u/the-id db))]
+        (let [after (t2/select-one Database :id (u/the-id db))]
           (is (not= sync-default (:metadata_sync_schedule after))
               "Sync schedule not randomized")
           (is (not= fv-default (:cache_field_values_schedule after))
@@ -281,7 +284,7 @@
         (mt/with-temp* [Database [db {:metadata_sync_schedule      custom-sync
                                       :cache_field_values_schedule custom-fv}]]
           (#'task.sync-databases/randomize-db-schedules-if-needed)
-          (let [after (db/select-one Database :id (u/the-id db))]
+          (let [after (t2/select-one Database :id (u/the-id db))]
             (is (= custom-sync (:metadata_sync_schedule after))
                 "Sync schedule was erroneously randomized")
             (is (= custom-fv (:cache_field_values_schedule after))
@@ -290,11 +293,11 @@
     (testing "Does not randomize databases that have default schedules but let users control schedule"
       (mt/with-temp* [Database [db {:metadata_sync_schedule      sync-default
                                     :cache_field_values_schedule fv-default}]]
-        (db/update! Database (u/the-id db) {:details (assoc (:details db)
+        (t2/update! Database (u/the-id db) {:details (assoc (:details db)
                                                             :let-user-control-scheduling true)})
-        (let [before (db/select-one Database :id (u/the-id db))]
+        (let [before (t2/select-one Database :id (u/the-id db))]
           (#'task.sync-databases/randomize-db-schedules-if-needed)
-          (let [after (db/select-one Database :id (u/the-id db))]
+          (let [after (t2/select-one Database :id (u/the-id db))]
             (is (= sync-default (:metadata_sync_schedule after))
                 "Sync schedule erroneously randomized")
             (is (= fv-default (:cache_field_values_schedule after))

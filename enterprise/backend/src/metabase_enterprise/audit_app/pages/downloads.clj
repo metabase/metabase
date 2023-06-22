@@ -6,8 +6,9 @@
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.util.honey-sql-2-extensions :as h2x]
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.util.honey-sql-2 :as h2x]))
+
+(set! *warn-on-reflection* true)
 
 ;; Pairs of count of rows downloaded and date downloaded for the 1000 largest (in terms of row count) queries over the
 ;; past 30 days. Intended to power scatter plot.
@@ -25,8 +26,7 @@
                :from     [[:query_execution :qe]]
                :left-join [[:core_user :u] [:= :qe.executor_id :u.id]]
                :where    [:and
-                          [:> :qe.started_at (binding [hx/*honey-sql-version* 2]
-                                               (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -30 :day))]
+                          [:> :qe.started_at (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -30 :day)]
                           (common/query-execution-is-download :qe)]
                :order-by [[:qe.result_rows :desc]]
                :limit    1000})})

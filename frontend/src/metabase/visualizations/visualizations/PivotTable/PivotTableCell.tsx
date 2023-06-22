@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import cx from "classnames";
 import Draggable, { ControlPosition, DraggableBounds } from "react-draggable";
 
@@ -176,6 +176,7 @@ export const LeftHeaderCell = ({
       icon={
         (isSubtotal || hasSubtotal) && (
           <RowToggleIcon
+            data-testid={`${item.rawValue}-toggle-button`}
             value={path}
             settings={settings}
             updateSettings={onUpdateVisualizationSettings}

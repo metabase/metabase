@@ -1,14 +1,7 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "jsx": "react",
-    "target": "esnext",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowSyntheticDefaultImports": true,
-    "module": "commonjs",
-    "isolatedModules": true,
-    "strict": true,
-    "moduleResolution": "node",
-    "skipLibCheck": true,
+    "outDir": "build",
     "paths": {
       "*": [
         "./frontend/src/*",
@@ -16,22 +9,20 @@
         "./enterprise/frontend/src/*",
         "./enterprise/frontend/test/*"
       ]
-    },
-    "allowJs": true,
-    "esModuleInterop": true,
-    "experimentalDecorators": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    }
   },
   "include": [
-    "frontend/src/**/*.ts",
-    "frontend/src/**/*.tsx",
-    "enterprise/frontend/src/**/*.ts",
-    "enterprise/frontend/src/**/*.tsx",
-    "frontend/test/**/*.ts",
-    "frontend/test/**/*.tsx",
-    "enterprise/frontend/test/**/*.ts",
-    "enterprise/frontend/test/**/*.tsx"
+    "frontend/src/**/*",
+    "enterprise/frontend/src/**/*",
+    "frontend/test/**/*",
+    "enterprise/frontend/test/**/*"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    // The following files will load `frontend/src/metabase/app` which will conflict with
+    // `frontend/src/metabase/App.tsx`, since now we're loading both JS and TS files.
+    "frontend/src/metabase/app-main.js",
+    "frontend/src/metabase/app-public.js",
+    "frontend/src/metabase/app-embed.js"
+  ]
 }

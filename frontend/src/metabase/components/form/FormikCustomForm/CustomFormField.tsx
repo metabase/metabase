@@ -1,12 +1,10 @@
-import React, { useCallback, useMemo } from "react";
+import { forwardRef, useCallback, useMemo } from "react";
 import _ from "underscore";
 
+import { useMount, useUnmount } from "react-use";
 import { isCustomWidget } from "metabase-types/guards";
 import FormField from "metabase/components/form/FormikFormField";
 import FormWidget from "metabase/components/form/FormWidget";
-
-import { useOnMount } from "metabase/hooks/use-on-mount";
-import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 
 import {
   BaseFieldDefinition,
@@ -54,13 +52,13 @@ function RawCustomFormField(
   const field = fields[name];
   const formField = formFieldsByName[name];
 
-  useOnMount(() => {
+  useMount(() => {
     registerFormField?.(
       getFieldDefinition(props as StandardFormFieldDefinition),
     );
   });
 
-  useOnUnmount(() => {
+  useUnmount(() => {
     unregisterFormField?.(
       getFieldDefinition(props as StandardFormFieldDefinition),
     );
@@ -108,11 +106,11 @@ function RawCustomFormField(
 /**
  * @deprecated
  */
-const CustomFormField = React.forwardRef<
-  HTMLInputElement,
-  CustomFormFieldProps
->(function CustomFormField(props, ref) {
-  return <RawCustomFormField {...props} forwardedRef={ref} />;
-});
+const CustomFormField = forwardRef<HTMLInputElement, CustomFormFieldProps>(
+  function CustomFormField(props, ref) {
+    return <RawCustomFormField {...props} forwardedRef={ref} />;
+  },
+);
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CustomFormField;

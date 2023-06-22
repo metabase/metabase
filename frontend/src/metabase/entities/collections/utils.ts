@@ -1,6 +1,4 @@
-import _ from "underscore";
-
-import { IconProps } from "metabase/components/Icon";
+import { IconName, IconProps } from "metabase/core/components/Icon";
 
 import { color } from "metabase/lib/colors";
 
@@ -24,7 +22,11 @@ export function normalizedCollection(collection: Collection) {
 export function getCollectionIcon(
   collection: Collection,
   { tooltip = "default" } = {},
-) {
+): {
+  name: IconName;
+  color?: string;
+  tooltip?: string;
+} {
   if (collection.id === PERSONAL_COLLECTIONS.id) {
     return { name: "group" };
   }
@@ -36,7 +38,7 @@ export function getCollectionIcon(
 
   return authorityLevel
     ? {
-        name: authorityLevel.icon,
+        name: authorityLevel.icon as unknown as IconName,
         color: authorityLevel.color ? color(authorityLevel.color) : undefined,
         tooltip: authorityLevel.tooltips?.[tooltip],
       }
@@ -56,46 +58,41 @@ export function getCollectionType(
   return collectionId !== undefined ? "other" : null;
 }
 
-function hasIntersection(list1: unknown[], list2?: unknown[]) {
-  if (!list2) {
-    return false;
-  }
-  return _.intersection(list1, list2).length > 0;
-}
-
 export interface CollectionTreeItem extends Collection {
-  icon: string | IconProps;
+  icon: IconName | IconProps;
   children: CollectionTreeItem[];
+  schemaName?: string;
 }
 
 export function buildCollectionTree(
-  collections: Collection[],
-  { targetModels }: { targetModels?: CollectionContentModel[] } = {},
+  collections: Collection[] = [],
+  modelFilter?: (model: CollectionContentModel) => boolean,
 ): CollectionTreeItem[] {
-  if (collections == null) {
-    return [];
-  }
-
-  const shouldFilterCollections = Array.isArray(targetModels);
-
   return collections.flatMap(collection => {
-    const hasTargetModels =
-      !shouldFilterCollections ||
-      hasIntersection(targetModels, collection.below) ||
-      hasIntersection(targetModels, collection.here);
+    const isPersonalRoot = collection.id === PERSONAL_COLLECTIONS.id;
+    const isMatchedByFilter =
+      !modelFilter ||
+      collection.here?.some(modelFilter) ||
+      collection.below?.some(modelFilter);
 
-    return hasTargetModels
-      ? {
-          ...collection,
-          schemaName: collection.originalName || collection.name,
-          icon: getCollectionIcon(collection),
-          children: buildCollectionTree(
-            collection.children?.filter(child => !child.archived) || [],
-            {
-              targetModels,
-            },
-          ),
-        }
-      : [];
+    if (!isPersonalRoot && !isMatchedByFilter) {
+      return [];
+    }
+
+    const children = buildCollectionTree(
+      collection.children?.filter(child => !child.archived) || [],
+      modelFilter,
+    );
+
+    if (isPersonalRoot && children.length === 0) {
+      return [];
+    }
+
+    return {
+      ...collection,
+      schemaName: collection.originalName || collection.name,
+      icon: getCollectionIcon(collection),
+      children,
+    };
   });
 }

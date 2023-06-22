@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -9,7 +9,7 @@ import {
 } from "metabase/parameters/utils/ui";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import DateSingleWidget from "metabase/components/DateSingleWidget";
 import DateRangeWidget from "metabase/components/DateRangeWidget";
 import DateRelativeWidget from "metabase/components/DateRelativeWidget";
@@ -66,8 +66,8 @@ class ParameterValueWidget extends Component {
   constructor(props) {
     super(props);
 
-    this.valuePopover = React.createRef();
-    this.trigger = React.createRef();
+    this.valuePopover = createRef();
+    this.trigger = createRef();
   }
 
   onFocusChanged = isFocused => {
@@ -118,7 +118,7 @@ class ParameterValueWidget extends Component {
             <Icon
               name={parameterTypeIcon}
               className="flex-align-left mr1 flex-no-shrink"
-              size={14}
+              size={16}
             />
           )}
           <Widget
@@ -154,12 +154,14 @@ class ParameterValueWidget extends Component {
               className={cx(S.parameter, className, {
                 [S.selected]: hasValue,
               })}
+              role="button"
+              aria-label={placeholder}
             >
               {showTypeIcon && (
                 <Icon
                   name={parameterTypeIcon}
                   className="flex-align-left mr1 flex-no-shrink"
-                  size={14}
+                  size={16}
                 />
               )}
               <div className="mr1 text-nowrap">

@@ -1,12 +1,14 @@
 (ns metabase.models.collection.root
   (:require
-   [metabase.models.dispatch :as models.dispatch]
+   [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.shared.util.i18n :refer [tru]]
    [metabase.util :as u]
    [potemkin.types :as p.types]
-   [toucan.models :as models]))
+   [toucan2.protocols :as t2.protocols]
+   [toucan2.tools.hydrate :refer [hydrate]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Root Collection Special Placeholder Object                                   |
@@ -22,7 +24,7 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
-(extend-protocol models.dispatch/Model
+(extend-protocol t2.protocols/IModel
   RootCollection
   (model [_this]
     RootCollection))
@@ -38,12 +40,6 @@
          :read  perms/collection-read-path
          :write perms/collection-readwrite-path) collection)}))
 
-(extend RootCollection
-  models/IModel
-  (merge
-   models/IModelDefaults
-    {:types {:type :keyword}}))
-
 (def ^RootCollection root-collection
   "Special placeholder object representing the Root Collection, which isn't really a real Collection."
   (map->RootCollection {::is-root? true, :authority_level nil}))
@@ -53,3 +49,24 @@
   [x]
   ;; TODO -- not sure this makes sense because other places we check whether `::is-root?` is present or not.
   (instance? RootCollection x))
+
+(defn root-collection-with-ui-details
+  "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
+  [collection-namespace]
+  (m/assoc-some root-collection
+                :name (case (keyword collection-namespace)
+                        :snippets (tru "Top folder")
+                        (tru "Our analytics"))
+                :namespace collection-namespace
+                :id   "root"))
+
+(defn- hydrated-root-collection
+  []
+  (-> (root-collection-with-ui-details nil)
+      (hydrate :can_write)))
+
+(defn hydrate-root-collection
+  "Hydrate `:collection` onto entity when the id is `nil`."
+  [{:keys [collection_id] :as entity}]
+  (cond-> entity
+    (nil? collection_id) (assoc :collection (hydrated-root-collection))))

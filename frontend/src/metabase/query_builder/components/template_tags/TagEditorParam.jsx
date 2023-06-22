@@ -1,5 +1,4 @@
-/* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
@@ -12,22 +11,25 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/core/components/Select";
 
 import ValuesSourceSettings from "metabase/parameters/components/ValuesSourceSettings";
-import { getParameterOptionsForField } from "metabase/parameters/utils/template-tag-options";
 
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import MetabaseSettings from "metabase/lib/settings";
-
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 
 import {
-  ErrorSpan,
-  TagName,
-  TagContainer,
+  getDefaultParameterOptions,
+  getDefaultParameterWidgetType,
+  getParameterOptionsForField,
+} from "metabase-lib/parameters/utils/template-tag-options";
+import {
   ContainerLabel,
-  InputContainer,
   DefaultParameterValueWidget,
+  ErrorSpan,
+  InputContainer,
+  TagContainer,
+  TagName,
 } from "./TagEditorParam.styled";
 
 const propTypes = {
@@ -36,6 +38,7 @@ const propTypes = {
   database: PropTypes.object,
   databases: PropTypes.array,
   setTemplateTag: PropTypes.func.isRequired,
+  setTemplateTagConfig: PropTypes.func.isRequired,
   setParameterValue: PropTypes.func.isRequired,
   fetchField: PropTypes.func.isRequired,
   metadata: PropTypes.object.isRequired,
@@ -61,7 +64,7 @@ export class TagEditorParam extends Component {
         type: type,
         default: undefined,
         dimension: undefined,
-        "widget-type": undefined,
+        "widget-type": type === "dimension" ? "none" : undefined,
       });
     }
   }
@@ -70,7 +73,16 @@ export class TagEditorParam extends Component {
     const { tag, setTemplateTag, setParameterValue } = this.props;
 
     if (tag["widget-type"] !== widgetType) {
-      setTemplateTag({ ...this.props.tag, "widget-type": widgetType });
+      const newTag = {
+        ...tag,
+        "widget-type": widgetType,
+      };
+
+      setTemplateTag({
+        ...newTag,
+        options: getDefaultParameterOptions(newTag),
+      });
+
       setParameterValue(tag.id, null);
     }
   }
@@ -120,25 +132,21 @@ export class TagEditorParam extends Component {
       if (!field) {
         return;
       }
-      const options = getParameterOptionsForField(field);
-      let widgetType;
-      if (
-        tag["widget-type"] &&
-        _.findWhere(options, { type: tag["widget-type"] })
-      ) {
-        widgetType = tag["widget-type"];
-      } else if (options.length > 0) {
-        widgetType = options[0].type;
-      }
-      setTemplateTag({
+
+      const newTag = {
         ...tag,
         dimension,
-        "widget-type": widgetType,
+        "widget-type": getDefaultParameterWidgetType(tag, field),
+      };
+
+      setTemplateTag({
+        ...newTag,
+        options: getDefaultParameterOptions(newTag),
       });
     }
   }
 
-  getFilterWidgetTypeValue = (tag, widgetOptions) => {
+  getFilterWidgetTypeValue = tag => {
     // avoid `undefined` value because it makes the component "uncontrollable"
     // (see Uncontrollable.jsx, metabase#13825)
     const widgetType = tag["widget-type"] || "none";
@@ -237,11 +245,7 @@ export class TagEditorParam extends Component {
             <Select
               className="block"
               value={this.getFilterWidgetTypeValue(tag, widgetOptions)}
-              onChange={e =>
-                this.setWidgetType(
-                  e.target.value === "none" ? undefined : e.target.value,
-                )
-              }
+              onChange={e => this.setWidgetType(e.target.value)}
               isInitiallyOpen={!tag["widget-type"] && hasWidgetOptions}
               placeholder={t`Select…`}
             >
@@ -279,12 +283,12 @@ export class TagEditorParam extends Component {
               {hasNoWidgetLabel && <ErrorSpan>{t`(required)`}</ErrorSpan>}
             </ContainerLabel>
             <InputBlurChange
+              id="tag-editor-display-name"
               type="text"
               value={tag["display-name"]}
               onBlurChange={e =>
                 this.setParameterAttribute("display-name", e.target.value)
               }
-              data-testid="tag-display-name-input"
             />
           </InputContainer>
         )}
@@ -303,6 +307,7 @@ export class TagEditorParam extends Component {
         <InputContainer lessBottomPadding>
           <ContainerLabel>{t`Required?`}</ContainerLabel>
           <Toggle
+            id="tag-editor-required"
             value={tag.required}
             onChange={value => this.setRequired(value)}
           />
@@ -310,7 +315,7 @@ export class TagEditorParam extends Component {
 
         {((tag.type !== "dimension" && tag.required) ||
           tag.type === "dimension" ||
-          tag["widget-type"]) && (
+          (tag["widget-type"] && tag["widget-type"] !== "none")) && (
           <InputContainer lessBottomPadding>
             <ContainerLabel>{t`Default filter widget value`}</ContainerLabel>
             <DefaultParameterValueWidget

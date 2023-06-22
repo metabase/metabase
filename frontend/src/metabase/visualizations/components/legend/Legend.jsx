@@ -1,6 +1,8 @@
-import React, { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
+
 import Popover from "metabase/components/Popover";
 import {
   LegendLink,
@@ -25,19 +27,21 @@ const propTypes = {
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
   onRemoveSeries: PropTypes.func,
+  isReversed: PropTypes.bool,
 };
 
 const Legend = ({
   className,
-  labels,
-  colors,
+  labels: originalLabels,
+  colors: originalColors,
   hovered,
   visibleIndex = 0,
-  visibleLength = labels.length,
+  visibleLength = originalLabels.length,
   isVertical,
   onHoverChange,
   onSelectSeries,
   onRemoveSeries,
+  isReversed,
 }) => {
   const targetRef = useRef();
   const [isOpened, setIsOpened] = useState(null);
@@ -53,6 +57,13 @@ const Legend = ({
     setMaxWidth(0);
   }, []);
 
+  const labels = isReversed
+    ? _.clone(originalLabels).reverse()
+    : originalLabels;
+  const colors = isReversed
+    ? _.clone(originalColors).reverse()
+    : originalColors;
+
   const overflowIndex = visibleIndex + visibleLength;
   const visibleLabels = labels.slice(visibleIndex, overflowIndex);
   const overflowLength = labels.length - overflowIndex;
@@ -60,16 +71,20 @@ const Legend = ({
   return (
     <LegendRoot className={className} isVertical={isVertical}>
       {visibleLabels.map((label, index) => {
-        const itemIndex = index + visibleIndex;
+        const localIndex = index + visibleIndex;
+        const itemIndex = isReversed
+          ? labels.length - 1 - localIndex
+          : localIndex;
 
         return (
           <LegendItem
             key={itemIndex}
             label={label}
             index={itemIndex}
-            color={colors[itemIndex % colors.length]}
+            color={colors[localIndex % colors.length]}
             isMuted={hovered && itemIndex !== hovered.index}
             isVertical={isVertical}
+            isReversed={isReversed}
             onHoverChange={onHoverChange}
             onSelectSeries={onSelectSeries}
             onRemoveSeries={onRemoveSeries}
@@ -94,8 +109,8 @@ const Legend = ({
         >
           <LegendPopoverContainer style={{ maxWidth }}>
             <Legend
-              labels={labels}
-              colors={colors}
+              labels={originalLabels}
+              colors={originalColors}
               hovered={hovered}
               visibleIndex={overflowIndex}
               visibleLength={overflowLength}
@@ -103,6 +118,7 @@ const Legend = ({
               onHoverChange={onHoverChange}
               onSelectSeries={onSelectSeries}
               onRemoveSeries={onRemoveSeries}
+              isReversed={isReversed}
             />
           </LegendPopoverContainer>
         </Popover>

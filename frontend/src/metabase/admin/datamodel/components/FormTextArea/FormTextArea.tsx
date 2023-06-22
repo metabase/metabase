@@ -1,4 +1,4 @@
-import React, { forwardRef, Ref, TextareaHTMLAttributes } from "react";
+import { forwardRef, Ref, TextareaHTMLAttributes } from "react";
 import cx from "classnames";
 import { FormTextAreaRoot } from "./FormTextArea.styled";
 
@@ -23,4 +23,5 @@ const FormTextArea = forwardRef(function FormTextArea(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormTextArea;

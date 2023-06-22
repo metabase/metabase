@@ -1,7 +1,9 @@
 import { assoc } from "icepick";
 import _ from "underscore";
+import { t } from "ttag";
 
 import { createAction, createThunkAction } from "metabase/lib/redux";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 
 import {
   createParameter,
@@ -12,9 +14,19 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { isActionDashCard } from "metabase/actions/utils";
-import { getDashboard, getParameterValues, getParameters } from "../selectors";
+import { saveDashboardAndCards } from "metabase/dashboard/actions/save";
+import {
+  getDashboard,
+  getDraftParameterValues,
+  getIsAutoApplyFilters,
+  getParameterValues,
+  getParameters,
+  getDashboardId,
+  getAutoApplyFiltersToastId,
+} from "../selectors";
 
 import { isVirtualDashCard } from "../utils";
+import { trackAutoApplyFiltersDisabled } from "../analytics";
 
 import { setDashboardAttributes, setDashCardAttributes } from "./core";
 import { setSidebar, closeSidebar } from "./ui";
@@ -103,7 +115,7 @@ export const setParameterMapping = createThunkAction(
 
     let parameter_mappings = dashcard.parameter_mappings || [];
 
-    // allow mapping the same parameeter to multiple action targets
+    // allow mapping the same parameter to multiple action targets
     if (!isAction) {
       parameter_mappings = parameter_mappings.filter(
         m => m.card_id !== card_id || m.parameter_id !== parameter_id,
@@ -124,10 +136,28 @@ export const setParameterMapping = createThunkAction(
         target,
       });
     }
+
     dispatch(
       setDashCardAttributes({
         id: dashcard_id,
         attributes: { parameter_mappings },
+      }),
+    );
+  },
+);
+
+export const SET_ACTION_FOR_DASHCARD =
+  "metabase/dashboard/SET_ACTION_FOR_DASHCARD";
+export const setActionForDashcard = createThunkAction(
+  SET_PARAMETER_MAPPING,
+  (dashcard, newAction) => dispatch => {
+    dispatch(
+      setDashCardAttributes({
+        id: dashcard.id,
+        attributes: {
+          action_id: newAction.id,
+          action: newAction,
+        },
       }),
     );
   },
@@ -158,13 +188,25 @@ export const setParameterFilteringParameters = createThunkAction(
 export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
-  (parameterId, value) => (dispatch, getState) => {
-    return { id: parameterId, value };
+  (parameterId, value) => (_dispatch, getState) => {
+    const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
+    return { id: parameterId, value, isDraft: isSettingDraftParameterValues };
   },
 );
 
 export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";
 export const setParameterValues = createAction(SET_PARAMETER_VALUES);
+
+// Auto-apply filters
+const APPLY_DRAFT_PARAMETER_VALUES =
+  "metabase/dashboard/APPLY_DRAFT_PARAMETER_VALUES";
+export const applyDraftParameterValues = createThunkAction(
+  APPLY_DRAFT_PARAMETER_VALUES,
+  () => (dispatch, getState) => {
+    const draftParameterValues = getDraftParameterValues(getState());
+    dispatch(setParameterValues(draftParameterValues));
+  },
+);
 
 export const SET_PARAMETER_DEFAULT_VALUE =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
@@ -286,3 +328,61 @@ export const setParameterValuesFromQueryParams =
 
     dispatch(setParameterValues(parameterValues));
   };
+
+export const TOGGLE_AUTO_APPLY_FILTERS =
+  "metabase/dashboard/TOGGLE_AUTO_APPLY_FILTERS";
+export const toggleAutoApplyFilters = createThunkAction(
+  TOGGLE_AUTO_APPLY_FILTERS,
+  isEnabled => (dispatch, getState) => {
+    const dashboardId = getDashboardId(getState());
+
+    if (dashboardId) {
+      dispatch(
+        setDashboardAttributes({
+          id: dashboardId,
+          attributes: { auto_apply_filters: isEnabled },
+        }),
+      );
+      dispatch(saveDashboardAndCards(true));
+      if (!isEnabled) {
+        trackAutoApplyFiltersDisabled(dashboardId);
+      }
+    }
+  },
+);
+
+export const SHOW_AUTO_APPLY_FILTERS_TOAST =
+  "metabase/dashboard/SHOW_AUTO_APPLY_FILTERS_TOAST";
+export const showAutoApplyFiltersToast = createThunkAction(
+  SHOW_AUTO_APPLY_FILTERS_TOAST,
+  () => (dispatch, getState) => {
+    const action = toggleAutoApplyFilters(false);
+    const toastId = _.uniqueId();
+    const dashboardId = getDashboardId(getState());
+
+    dispatch(
+      addUndo({
+        id: toastId,
+        icon: null,
+        timeout: null,
+        message: t`You can make this dashboard snappier by turning off auto-applying filters.`,
+        action,
+        actionLabel: t`Turn off`,
+      }),
+    );
+
+    return { toastId, dashboardId };
+  },
+);
+
+export const CLOSE_AUTO_APPLY_FILTERS_TOAST =
+  "metabase/dashboard/CLOSE_AUTO_APPLY_FILTERS_TOAST";
+export const closeAutoApplyFiltersToast = createThunkAction(
+  CLOSE_AUTO_APPLY_FILTERS_TOAST,
+  () => (dispatch, getState) => {
+    const toastId = getAutoApplyFiltersToastId(getState());
+    if (toastId) {
+      dispatch(dismissUndo(toastId, false));
+    }
+  },
+);

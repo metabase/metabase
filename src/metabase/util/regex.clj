@@ -21,7 +21,7 @@
 (defn re-negate
   "Make regex `pattern` negated."
   [pattern]
-  (str "(?!" (non-capturing-group pattern) "$).*"))
+  (str "(?!" pattern ")"))
 
 (defmulti ^:private rx-dispatch
   {:arglists '([listt])}
@@ -51,6 +51,7 @@
   [x]
   (if (seqable? x) (rx-dispatch x) x))
 
+;;; TODO -- instead of memoizing this, why not just do this as a macro and do it at macroexpansion time? Weird.
 (def ^{:doc
        "A quick-and-dirty port of the Emacs Lisp `rx` macro (`C-h f rx`) implemented as a function but not currently as fully-featured.
        Convenient for building mega-huge regular expressions from a hiccup-like representation.

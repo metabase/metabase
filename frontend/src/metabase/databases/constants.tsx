@@ -1,5 +1,5 @@
-import React from "react";
 import { t } from "ttag";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
 import DatabaseCacheScheduleField from "./components/DatabaseCacheScheduleField";
 import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
@@ -9,6 +9,13 @@ import DatabaseSshDescription from "./components/DatabaseSshDescription";
 import DatabaseSslKeyDescription from "./components/DatabaseSslKeyDescription";
 import DatabaseSyncScheduleField from "./components/DatabaseSyncScheduleField";
 import { EngineFieldOverride } from "./types";
+
+export const SAVED_QUESTIONS_DATABASE = {
+  id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+  name: t`Saved Questions`,
+  is_saved_questions: true,
+  features: ["basic-aggregations"],
+};
 
 export const ELEVATED_ENGINES = [
   "mysql",
@@ -23,7 +30,6 @@ export const ENGINE_LOGO: Record<string, string> = {
   bigquery: "bigquery.svg",
   "bigquery-cloud-sdk": "bigquery.svg",
   druid: "druid.svg",
-  googleanalytics: "googleanalytics.svg",
   h2: "h2.svg",
   mongo: "mongo.svg",
   mysql: "mysql.svg",

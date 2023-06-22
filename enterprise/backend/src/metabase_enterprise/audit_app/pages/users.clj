@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
-   [metabase.util.honey-sql-2-extensions :as h2x]
+   [metabase.util.honey-sql-2 :as h2x]
    [ring.util.codec :as codec]
    [schema.core :as s]))
 
@@ -195,6 +195,14 @@
                                                :id
                                                :date_joined
                                                [[:case
+                                                 [:= "google" :u.sso_source]
+                                                 (h2x/literal "Google Sign-In")
+                                                 [:= "saml" :u.sso_source]
+                                                 (h2x/literal "SAML")
+                                                 [:= "jwt" :u.sso_source]
+                                                 (h2x/literal "JWT")
+                                                 [:= "ldap" :u.sso_source]
+                                                 (h2x/literal "LDAP")
                                                  [:= nil :u.sso_source]
                                                  (h2x/literal "Email")
                                                  :else

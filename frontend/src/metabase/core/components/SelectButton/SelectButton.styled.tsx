@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
+import { ComponentPropsWithRef } from "react";
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { space } from "metabase/styled-components/theme";
 import { inputPadding } from "metabase/core/style/input";
 interface SelectButtonRootProps {
@@ -35,8 +36,8 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   color: ${getColor};
 
   &:focus {
-    border-color: ${() => color("brand")};
-    outline: 2px solid ${() => color("focus")};
+    border-color: ${color("brand")};
+    outline: 2px solid ${color("focus")};
   }
 
   &:not(:focus-visible) {
@@ -55,7 +56,15 @@ interface SelectButtonIconProps {
   highlighted: boolean;
 }
 
-export const SelectButtonIcon = styled(Icon)<SelectButtonIconProps>`
+export const SelectButtonIcon = styled(
+  ({
+    hasValue,
+    highlighted,
+    ...rest
+  }: SelectButtonIconProps & ComponentPropsWithRef<typeof Icon>) => (
+    <Icon {...rest} />
+  ),
+)`
   display: flex;
   margin-left: auto;
   color: ${({ hasValue, highlighted }) =>

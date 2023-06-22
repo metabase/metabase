@@ -18,9 +18,16 @@ For users to unsubscribe themselves from a pulse subscription.
 
 ## `GET /api/pulse/`
 
-Fetch all Pulses. If `dashboard_id` is specified, restricts results to dashboard subscriptions
-  associated with that dashboard. If `user_id` is specified, restricts results to pulses or subscriptions
-  created by the user, or for which the user is a known recipient.
+Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write
+  permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.
+
+  If `dashboard_id` is specified, restricts results to subscriptions for that dashboard.
+
+  If `created_or_receive` is `true`, it specifically returns all subscriptions for which the current user
+  created *or* is a known recipient of. Note that this is a superset of the default items returned for non-admins,
+  and a subset of the default items returned for admins. This is used to power the /account/notifications page.
+  This may include subscriptions which the current user does not have collection permissions for, in which case
+  some sensitive metadata (the list of cards and recipients) is stripped out.
 
 ### PARAMS:
 
@@ -28,11 +35,12 @@ Fetch all Pulses. If `dashboard_id` is specified, restricts results to dashboard
 
 *  **`dashboard_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`user_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`creator_or_recipient`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 ## `GET /api/pulse/:id`
 
-Fetch `Pulse` with ID.
+Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
+  we still return it but with some sensitive metadata removed.
 
 ### PARAMS:
 

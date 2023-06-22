@@ -1,21 +1,20 @@
-import React from "react";
 import _ from "underscore";
-import {
-  render,
-  screen,
-  waitForElementToBeRemoved,
-  within,
-} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
-import type { InitialSyncStatus } from "metabase-types/api";
-
+import { checkNotNull } from "metabase/core/utils/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import type { Database, InitialSyncStatus } from "metabase-types/api";
 import {
   createMockDatabase,
   COMMON_DATABASE_FEATURES,
 } from "metabase-types/api/mocks";
-import Database from "metabase-lib/metadata/Database";
-
+import { createMockState } from "metabase-types/store/mocks";
+import { createMockEntitiesState } from "__support__/store";
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+  within,
+} from "__support__/ui";
 import Sidebar from "./Sidebar";
 
 const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];
@@ -24,11 +23,24 @@ function getModal() {
   return document.querySelector(".Modal") as HTMLElement;
 }
 
+interface SetupOpts {
+  database?: Database;
+  isAdmin?: boolean;
+  isModelPersistenceEnabled?: boolean;
+}
+
 function setup({
   database = createMockDatabase(),
   isAdmin = true,
   isModelPersistenceEnabled = false,
-} = {}) {
+}: SetupOpts = {}) {
+  const state = createMockState({
+    entities: createMockEntitiesState({
+      databases: [database],
+    }),
+  });
+  const metadata = getMetadata(state);
+
   // Using mockResolvedValue since `ActionButton` component
   // the Sidebar is using is expecting these callbacks to be async
   const updateDatabase = jest.fn().mockResolvedValue({});
@@ -38,9 +50,9 @@ function setup({
   const dismissSyncSpinner = jest.fn().mockResolvedValue({});
   const deleteDatabase = jest.fn().mockResolvedValue({});
 
-  const utils = render(
+  const utils = renderWithProviders(
     <Sidebar
-      database={new Database(database)}
+      database={checkNotNull(metadata.database(database.id))}
       isAdmin={isAdmin}
       isModelPersistenceEnabled={isModelPersistenceEnabled}
       updateDatabase={updateDatabase}
@@ -50,6 +62,7 @@ function setup({
       dismissSyncSpinner={dismissSyncSpinner}
       deleteDatabase={deleteDatabase}
     />,
+    { storeInitialState: state },
   );
 
   return {
@@ -184,11 +197,6 @@ describe("DatabaseEditApp/Sidebar", () => {
       expect(screen.queryByText(/Model actions/i)).not.toBeInTheDocument();
     });
 
-    it("isn't shown when adding a new database", () => {
-      setup({ database: createMockDatabase({ id: undefined }) });
-      expect(screen.queryByText(/Model actions/i)).not.toBeInTheDocument();
-    });
-
     it("enables actions", () => {
       const { database, updateDatabase } = setup();
 
@@ -279,7 +287,7 @@ describe("DatabaseEditApp/Sidebar", () => {
       const modal = getModal();
 
       // Fill in database name to confirm deletion
-      userEvent.type(within(modal).getByRole("textbox"), database.name);
+      userEvent.type(await within(modal).findByRole("textbox"), database.name);
       userEvent.click(within(modal).getByRole("button", { name: "Delete" }));
       await waitForElementToBeRemoved(() => getModal());
 
@@ -293,7 +301,9 @@ describe("DatabaseEditApp/Sidebar", () => {
       const modal = getModal();
 
       within(modal).getByText(`Delete the ${database.name} database?`);
-      userEvent.click(within(modal).getByRole("button", { name: "Cancel" }));
+      userEvent.click(
+        await within(modal).findByRole("button", { name: "Cancel" }),
+      );
       await waitForElementToBeRemoved(() => getModal());
 
       expect(getModal()).not.toBeInTheDocument();

@@ -17,7 +17,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.query-processor.util :as qp.util]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (def ^:private ^Long max-best-matches        3)
 (def ^:private ^Long max-serendipity-matches 2)
@@ -93,68 +93,68 @@
   (let [[best rest] (split-at max-best-matches matches)]
     (concat best (->> rest shuffle (take max-serendipity-matches)))))
 
-(def ^:private ^{:arglists '([entities])} filter-visible
-  (partial filter (fn [{:keys [archived visibility_type active] :as entity}]
-                    (and (some? entity)
+(def ^:private ^{:arglists '([instances])} filter-visible
+  (partial filter (fn [{:keys [archived visibility_type active] :as instance}]
+                    (and (some? instance)
                          (or (nil? visibility_type)
                              (= (qp.util/normalize-token visibility_type) :normal))
                          (not archived)
                          (not= active false)
-                         (mi/can-read? entity)))))
+                         (mi/can-read? instance)))))
 
 (defn- metrics-for-table
   [table]
-  (filter-visible (db/select Metric
+  (filter-visible (t2/select Metric
                     :table_id (:id table)
                     :archived false)))
 
 (defn- segments-for-table
   [table]
-  (filter-visible (db/select Segment
+  (filter-visible (t2/select Segment
                     :table_id (:id table)
                     :archived false)))
 
 (defn- linking-to
   [table]
-  (->> (db/select-field :fk_target_field_id Field
+  (->> (t2/select-fn-set :fk_target_field_id Field
          :table_id           (:id table)
          :fk_target_field_id [:not= nil]
          :active             true)
-       (map (comp (partial db/select-one Table :id)
+       (map (comp (partial t2/select-one Table :id)
                   :table_id
-                  (partial db/select-one Field :id)))
+                  (partial t2/select-one Field :id)))
        distinct
        filter-visible
        (take max-matches)))
 
 (defn- linked-from
   [table]
-  (if-let [fields (not-empty (db/select-field :id Field
-                               :table_id (:id table)
-                               :active   true))]
-    (->> (db/select-field :table_id Field
+  (if-let [fields (not-empty (t2/select-fn-set :id Field
+                                               :table_id (:id table)
+                                               :active   true))]
+    (->> (t2/select-fn-set :table_id Field
            :fk_target_field_id [:in fields]
            :active             true)
-         (map (partial db/select-one Table :id))
+         (map (partial t2/select-one Table :id))
          filter-visible
          (take max-matches))
     []))
 
 (defn- cards-sharing-dashboard
   [card]
-  (if-let [dashboards (not-empty (db/select-field :dashboard_id DashboardCard
-                                   :card_id (:id card)))]
-    (->> (db/select-field :card_id DashboardCard
-           :dashboard_id [:in dashboards]
-           :card_id      [:not= (:id card)])
-         (map (partial db/select-one Card :id))
+  (if-let [dashboards (not-empty (t2/select-fn-set :dashboard_id DashboardCard
+                                                   :card_id (:id card)))]
+    (->> (t2/select-fn-set :card_id DashboardCard
+                           :dashboard_id [:in dashboards]
+                           :card_id      [:not= (:id card)])
+         (map (partial t2/select-one Card :id))
          filter-visible
          (take max-matches))
     []))
 
 (defn- similar-questions
   [card]
-  (->> (db/select Card
+  (->> (t2/select Card
          :table_id (:table_id card)
          :archived false)
        filter-visible
@@ -163,7 +163,7 @@
 
 (defn- canonical-metric
   [card]
-  (->> (db/select Metric
+  (->> (t2/select Metric
          :table_id (:table_id card)
          :archived false)
        filter-visible
@@ -173,32 +173,33 @@
 
 (defn- recently-modified-dashboards
   []
-  (->> (db/select-field :model_id 'Revision
-         :model     "Dashboard"
-         :user_id   api/*current-user-id*
-         {:order-by [[:timestamp :desc]]})
-       (map (partial db/select-one Dashboard :id))
-       filter-visible
-       (take max-serendipity-matches)))
+  (when-let [dashboard-ids (not-empty (t2/select-fn-set :model_id 'Revision
+                                                        :model     "Dashboard"
+                                                        :user_id   api/*current-user-id*
+                                                        {:order-by [[:timestamp :desc]]}))]
+    (->> (t2/select Dashboard :id [:in dashboard-ids])
+         filter-visible
+         (take max-serendipity-matches))))
 
 (defn- recommended-dashboards
   [cards]
-  (let [recent           (recently-modified-dashboards)
-        card->dashboards (->> (apply db/select [DashboardCard :card_id :dashboard_id]
-                                     (cond-> []
-                                       (seq cards)
-                                       (concat [:card_id [:in (map :id cards)]])
+  (let [recent                   (recently-modified-dashboards)
+        card-id->dashboard-cards (->> (apply t2/select [DashboardCard :card_id :dashboard_id]
+                                             (cond-> []
+                                               (seq cards)
+                                               (concat [:card_id [:in (map :id cards)]])
 
-                                       (seq recent)
-                                       (concat [:dashboard_id [:not-in recent]])))
-                              (group-by :card_id))
-        best             (->> cards
-                              (mapcat (comp card->dashboards :id))
-                              distinct
-                              ;; TODO -- extremely naughty to be doing a separate select for every single Dashboard ID
-                              (map (partial db/select-one Dashboard :id))
-                              filter-visible
-                              (take max-best-matches))]
+                                               (seq recent)
+                                               (concat [:dashboard_id [:not-in (map :id recent)]])))
+                                      (group-by :card_id))
+        dashboard-ids (->> (map :id cards)
+                           (mapcat card-id->dashboard-cards)
+                           (map :dashboard_id)
+                           distinct)
+        best          (when (seq dashboard-ids)
+                        (->> (t2/select Dashboard :id [:in dashboard-ids])
+                             filter-visible
+                             (take max-best-matches)))]
     (concat best recent)))
 
 (defn- recommended-collections
@@ -206,7 +207,7 @@
   (->> cards
        (m/distinct-by :collection_id)
        interesting-mix
-       (keep (comp (partial db/select-one Collection :id) :collection_id))
+       (keep (comp (partial t2/select-one Collection :id) :collection_id))
        filter-visible))
 
 (defmulti related
@@ -216,7 +217,7 @@
 
 (defmethod related Card
   [card]
-  (let [table             (db/select-one Table :id (:table_id card))
+  (let [table             (t2/select-one Table :id (:table_id card))
         similar-questions (similar-questions card)]
     {:table             table
      :metrics           (->> table
@@ -239,7 +240,7 @@
 
 (defmethod related Metric
   [metric]
-  (let [table (db/select-one Table :id (:table_id metric))]
+  (let [table (t2/select-one Table :id (:table_id metric))]
     {:table    table
      :metrics  (->> table
                     metrics-for-table
@@ -252,7 +253,7 @@
 
 (defmethod related Segment
   [segment]
-  (let [table (db/select-one Table :id (:table_id segment))]
+  (let [table (t2/select-one Table :id (:table_id segment))]
     {:table       table
      :metrics     (->> table
                        metrics-for-table
@@ -272,7 +273,7 @@
      :metrics     (metrics-for-table table)
      :linking-to  linking-to
      :linked-from linked-from
-     :tables      (->> (db/select Table
+     :tables      (->> (t2/select Table
                          :db_id           (:db_id table)
                          :schema          (:schema table)
                          :id              [:not= (:id table)]
@@ -284,7 +285,7 @@
 
 (defmethod related Field
   [field]
-  (let [table (db/select-one Table :id (:table_id field))]
+  (let [table (t2/select-one Table :id (:table_id field))]
     {:table    table
      :segments (->> table
                     segments-for-table
@@ -295,7 +296,7 @@
                     (rank-by-similarity field)
                     (filter (comp pos? :similarity))
                     interesting-mix)
-     :fields   (->> (db/select Field
+     :fields   (->> (t2/select Field
                       :table_id        (:id table)
                       :id              [:not= (:id field)]
                       :visibility_type "normal"
@@ -305,8 +306,8 @@
 
 (defmethod related Dashboard
   [dashboard]
-  (let [cards (map (partial db/select-one Card :id) (db/select-field :card_id DashboardCard
-                                                      :dashboard_id (:id dashboard)))]
+  (let [cards (map (partial t2/select-one Card :id) (t2/select-fn-set :card_id DashboardCard
+                                                                      :dashboard_id (:id dashboard)))]
     {:cards (->> cards
                  (mapcat (comp similar-questions))
                  (remove (set cards))

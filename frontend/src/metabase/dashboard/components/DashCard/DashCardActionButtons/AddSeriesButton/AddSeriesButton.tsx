@@ -1,12 +1,9 @@
-import React from "react";
-import _ from "underscore";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import visualizations from "metabase/visualizations";
-
-import { Series } from "metabase-types/types/Visualization";
+import type { Series } from "metabase-types/api";
 
 import DashCardActionButton from "../DashCardActionButton";
 import {
@@ -48,4 +45,5 @@ function AddSeriesButton({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AddSeriesButton;

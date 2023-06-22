@@ -20,6 +20,8 @@
    (org.apache.poi.ss.util CellRangeAddress)
    (org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook)))
 
+(set! *warn-on-reflection* true)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Format string generation                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+

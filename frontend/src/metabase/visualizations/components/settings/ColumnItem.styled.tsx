@@ -1,8 +1,8 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-import Icon from "metabase/components/Icon";
-import ColorPill from "metabase/core/components/ColorPill";
+import { Icon } from "metabase/core/components/Icon";
+import Button from "metabase/core/components/Button";
 import ChartSettingColorPicker from "./ChartSettingColorPicker";
 
 interface ColumnItemRootProps {
@@ -63,13 +63,12 @@ export const ColumnItemContainer = styled.div`
   align-items: center;
 `;
 
-export const ColumnItemIcon = styled(Icon)`
+export const ColumnItemIcon = styled(Button)`
   margin-left: 1rem;
-  cursor: pointer;
-  color: ${color("text-dark")};
+  padding: 0;
 
   &:hover {
-    color: ${color("text-medium")};
+    background-color: unset;
   }
 `;
 

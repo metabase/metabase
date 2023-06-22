@@ -217,9 +217,9 @@
       ;; know the features are still working correctly because we're actually checking that we get the right result
       ;; from running the query above these tests are more of a sanity check to make sure the SQL generated is sane.)
       (testing "Make sure correct query is generated"
-        (is (= {:query  (str "SELECT count(*) AS \"count\" "
+        (is (= {:query  (str "SELECT COUNT(*) AS \"count\" "
                              "FROM \"PUBLIC\".\"VENUES\" "
-                             "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
+                             "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3) OR (\"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
                 :params nil}
                (qp/compile
                 (mt/query venues
@@ -241,7 +241,7 @@
                  (qp/process-query query)))))
 
       (testing "Make sure correct query is generated"
-        (is (= {:query  (str "SELECT count(*) AS \"count\" "
+        (is (= {:query  (str "SELECT COUNT(*) AS \"count\" "
                              "FROM \"PUBLIC\".\"VENUES\" "
                              "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 3 AND 4")
                 :params nil}
@@ -256,10 +256,10 @@
 ;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
 ;; can't handle it on the backend
 (deftest date-params-test
-  (is (= {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
+  (is (= {:query  (str "SELECT COUNT(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
                        "WHERE ("
-                       "(\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ? AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < ?)"
-                       " OR (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ? AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < ?)"
+                       "(\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ?) AND (\"PUBLIC\".\"CHECKINS\".\"DATE\" < ?))"
+                       " OR ((\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ?) AND (\"PUBLIC\".\"CHECKINS\".\"DATE\" < ?)"
                        ")")
           :params [#t "2014-06-01T00:00Z[UTC]"
                    #t "2014-07-01T00:00Z[UTC]"
@@ -287,37 +287,39 @@
 
 ;;
 (deftest handle-fk-forms-test
-  (mt/test-drivers (filter #(driver/supports? % :foreign-keys) (params-test-drivers))
-    (testing "Make sure we properly handle paramters that have `fk->` forms in `:dimension` targets (#9017)"
-      (is (= [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
-              [32 "Boneyard Bistro" 5 34.1477 -118.428 3]
-              [33 "My Brother's Bar-B-Q" 5 34.167 -118.595 2]
-              [35 "Smoke City Market" 5 34.1661 -118.448 1]
-              [37 "bigmista's barbecue" 5 34.118 -118.26 2]
-              [38 "Zeke's Smokehouse" 5 34.2053 -118.226 2]
-              [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
-             (mt/formatted-rows :venues
-               (qp/process-query
-                (mt/query venues
-                  {:query      {:order-by [[:asc $id]]}
-                   :parameters [{:type   :id
-                                 :target [:dimension $category_id->categories.name]
-                                 :value  ["BBQ"]}]}))))))
-    (testing "Operators work on fk"
-      (is (= [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
-              [32 "Boneyard Bistro" 5 34.1477 -118.428 3]
-              [33 "My Brother's Bar-B-Q" 5 34.167 -118.595 2]
-              [35 "Smoke City Market" 5 34.1661 -118.448 1]
-              [37 "bigmista's barbecue" 5 34.118 -118.26 2]
-              [38 "Zeke's Smokehouse" 5 34.2053 -118.226 2]
-              [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
-             (mt/formatted-rows :venues
-               (qp/process-query
-                (mt/query venues
-                  {:query      {:order-by [[:asc $id]]}
-                   :parameters [{:type   :string/starts-with
-                                 :target [:dimension $category_id->categories.name]
-                                 :value  ["BB"]}]}))))))))
+  (mt/test-drivers (params-test-drivers)
+    (mt/with-everything-store
+      (when (driver/database-supports? driver/*driver* :foreign-keys (mt/db))
+        (testing "Make sure we properly handle paramters that have `fk->` forms in `:dimension` targets (#9017)"
+          (is (= [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
+                  [32 "Boneyard Bistro" 5 34.1477 -118.428 3]
+                  [33 "My Brother's Bar-B-Q" 5 34.167 -118.595 2]
+                  [35 "Smoke City Market" 5 34.1661 -118.448 1]
+                  [37 "bigmista's barbecue" 5 34.118 -118.26 2]
+                  [38 "Zeke's Smokehouse" 5 34.2053 -118.226 2]
+                  [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
+                 (mt/formatted-rows :venues
+                   (qp/process-query
+                    (mt/query venues
+                              {:query      {:order-by [[:asc $id]]}
+                               :parameters [{:type   :id
+                                             :target [:dimension $category_id->categories.name]
+                                             :value  ["BBQ"]}]}))))))
+        (testing "Operators work on fk"
+          (is (= [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
+                  [32 "Boneyard Bistro" 5 34.1477 -118.428 3]
+                  [33 "My Brother's Bar-B-Q" 5 34.167 -118.595 2]
+                  [35 "Smoke City Market" 5 34.1661 -118.448 1]
+                  [37 "bigmista's barbecue" 5 34.118 -118.26 2]
+                  [38 "Zeke's Smokehouse" 5 34.2053 -118.226 2]
+                  [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
+                 (mt/formatted-rows :venues
+                   (qp/process-query
+                    (mt/query venues
+                              {:query      {:order-by [[:asc $id]]}
+                               :parameters [{:type   :string/starts-with
+                                             :target [:dimension $category_id->categories.name]
+                                             :value  ["BB"]}]}))))))))))
 
 (deftest test-mbql-parameters
   (testing "Should be able to pass parameters in to an MBQL query"

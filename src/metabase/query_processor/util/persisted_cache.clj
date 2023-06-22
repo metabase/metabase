@@ -1,18 +1,11 @@
 (ns metabase.query-processor.util.persisted-cache
   (:require
-   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.public-settings :as public-settings]))
-
-(defn- segmented-user?
-  []
-  (if-let [segmented? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-    (segmented?)
-    false))
 
 (defn can-substitute?
   "Taking a card and a persisted-info record (possibly nil), returns whether the card's query can be substituted for a
@@ -27,26 +20,20 @@
        (= (:query_hash persisted-info) (persisted-info/query-hash (:dataset_query card)))
        (= (:definition persisted-info)
           (persisted-info/metadata->definition (:result_metadata card)
-                                               (:table_name persisted-info)))
-       (not (segmented-user?))))
+                                               (:table_name persisted-info)))))
 
 (defn persisted-info-native-query
   "Returns a native query that selects from the persisted cached table from `persisted-info`. Does not check if
   persistence is appropriate. Use [[can-substitute?]] for that check."
-  [persisted-info]
-  (let [database-id (:database_id persisted-info)
-        driver      (or driver/*driver* (driver.u/database->driver database-id))]
-    (format "select %s from %s.%s"
-            (str/join ", " (map #(sql.u/quote-name
-                                  driver
-                                  :field
-                                  (:field-name %))
-                                (get-in persisted-info [:definition :field-definitions])))
+  [{:keys [database_id table_name] :as _persisted-info}]
+  (let [driver      (or driver/*driver* (driver.u/database->driver database_id))]
+    ;; select * because we don't actually know the name of the fields when in the actual query. See #28902
+    (format "select * from %s.%s"
             (sql.u/quote-name
              driver
              :table
-             (ddl.i/schema-name {:id database-id} (public-settings/site-uuid)))
+             (ddl.i/schema-name {:id database_id} (public-settings/site-uuid)))
             (sql.u/quote-name
              driver
              :table
-             (:table_name persisted-info)))))
+             table_name))))

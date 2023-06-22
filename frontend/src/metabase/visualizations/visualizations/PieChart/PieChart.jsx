@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import cx from "classnames";
 import d3 from "d3";
 import _ from "underscore";
@@ -23,6 +23,10 @@ import { formatValue } from "metabase/lib/formatting";
 
 import { color } from "metabase/lib/colors";
 import { getColorsForValues } from "metabase/lib/colors/charts";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import ChartWithLegend from "../../components/ChartWithLegend";
 import styles from "./PieChart.css";
 
@@ -46,16 +50,17 @@ export default class PieChart extends Component {
 
     this.state = { width: 0, height: 0 };
 
-    this.chartContainer = React.createRef();
-    this.chartDetail = React.createRef();
-    this.chartGroup = React.createRef();
+    this.chartContainer = createRef();
+    this.chartDetail = createRef();
+    this.chartGroup = createRef();
   }
 
   static uiName = t`Pie`;
   static identifier = "pie";
   static iconName = "pie";
 
-  static minSize = { width: 4, height: 4 };
+  static minSize = getMinSize("pie");
+  static defaultSize = getDefaultSize("pie");
 
   static isSensible({ cols, rows }) {
     return cols.length === 2;
@@ -118,6 +123,14 @@ export default class PieChart extends Component {
     "pie.show_legend": {
       section: t`Display`,
       title: t`Show legend`,
+      widget: "toggle",
+      default: true,
+      inline: true,
+      marginBottom: "1rem",
+    },
+    "pie.show_total": {
+      section: t`Display`,
+      title: t`Show total`,
       widget: "toggle",
       default: true,
       inline: true,
@@ -258,7 +271,16 @@ export default class PieChart extends Component {
     requestAnimationFrame(() => {
       const groupElement = this.chartGroup.current;
       const detailElement = this.chartDetail.current;
-      if (groupElement.getBoundingClientRect().width < 120) {
+      const { settings } = this.props;
+
+      if (!groupElement || !detailElement) {
+        return;
+      }
+
+      if (
+        groupElement.getBoundingClientRect().width < 120 ||
+        !settings["pie.show_total"]
+      ) {
         detailElement.classList.add("hide");
       } else {
         detailElement.classList.remove("hide");
@@ -365,8 +387,7 @@ export default class PieChart extends Component {
         jsx: true,
         majorWidth: 0,
         number_style: "percent",
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals,
+        decimals,
       });
 
     const legendTitles = slices.map(slice => [

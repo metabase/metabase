@@ -1,8 +1,8 @@
-import React, { MouseEvent, useCallback, useMemo } from "react";
+import { forwardRef, MouseEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 
@@ -14,6 +14,7 @@ import {
 
 interface TableFooterProps {
   className?: string;
+  "data-testid"?: string;
   start: number;
   end: number;
   total: number;
@@ -23,10 +24,11 @@ interface TableFooterProps {
   singleItem?: boolean;
 }
 
-const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
+const TableFooter = forwardRef<HTMLDivElement, TableFooterProps>(
   function TableFooter(
     {
       className,
+      "data-testid": dataTestId = "TableFooter",
       start,
       end,
       limit,
@@ -73,26 +75,30 @@ const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
           className,
           "fullscreen-normal-text fullscreen-night-text",
         )}
+        data-testid={dataTestId}
         ref={ref}
       >
         <PaginationMessage>{paginateMessage}</PaginationMessage>
         <PaginationButton
+          aria-label={t`Previous page`}
           direction="previous"
           onClick={handlePreviousPage}
           disabled={start === 0}
         >
-          <Icon name="triangle_left" size={10} />
+          <Icon name="chevronleft" />
         </PaginationButton>
         <PaginationButton
+          aria-label={t`Next page`}
           direction="next"
           onClick={handleNextPage}
           disabled={end + 1 >= total}
         >
-          <Icon name="triangle_right" size={10} />
+          <Icon name="chevronright" />
         </PaginationButton>
       </TableFooterRoot>
     );
   },
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TableFooter;

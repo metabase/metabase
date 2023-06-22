@@ -1,4 +1,4 @@
-import React, {
+import {
   forwardRef,
   HTMLAttributes,
   Key,
@@ -133,7 +133,7 @@ interface RadioItemProps<TValue> {
   onOptionClick?: (value: TValue) => void;
 }
 
-const RadioItem = <TValue, TOption>({
+const RadioItem = <TValue,>({
   checked,
   name,
   label,
@@ -191,7 +191,7 @@ const getDefaultOptionKey = <TValue, TOption>(option: TOption): Key => {
 };
 
 const getDefaultOptionName = <TValue, TOption>(option: TOption): ReactNode => {
-  if (isDefaultOption(option)) {
+  if (isDefaultOption<TValue>(option)) {
     return option.name;
   } else {
     throw new TypeError();
@@ -212,9 +212,11 @@ function isDefaultOption<TValue>(
   return typeof option === "object";
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(Radio, {
   RadioGroupVariants: [RadioGroupBubble, RadioGroupNormal],
   RadioLabelVariants: [RadioLabelBubble, RadioLabelNormal],
+  RadioLabelText: RadioLabelText,
   RadioContainerVariants: [
     RadioContainerBubble,
     RadioContainerNormal,

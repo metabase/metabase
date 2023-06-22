@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import {
@@ -15,6 +15,7 @@ const propTypes = {
   color: PropTypes.string,
   isMuted: PropTypes.bool,
   isVertical: PropTypes.bool,
+  isReversed: PropTypes.bool,
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
   onRemoveSeries: PropTypes.func,
@@ -26,12 +27,13 @@ const LegendItem = ({
   color,
   isMuted,
   isVertical,
+  isReversed,
   onHoverChange,
   onSelectSeries,
   onRemoveSeries,
 }) => {
   const handleItemClick = event => {
-    onSelectSeries && onSelectSeries(event, index);
+    onSelectSeries && onSelectSeries(event, index, isReversed);
   };
 
   const handleItemMouseEnter = event => {

@@ -1,14 +1,20 @@
 (ns metabase.models.permissions-group-membership
   (:require
    [metabase.db.query :as mdb.query]
-   [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
-(models/defmodel PermissionsGroupMembership :permissions_group_membership)
+(def PermissionsGroupMembership
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/PermissionsGroupMembership)
+
+(methodical/defmethod t2/table-name :model/PermissionsGroupMembership [_model] :permissions_group_membership)
+
+(derive :model/PermissionsGroupMembership :metabase/model)
 
 (def fail-to-remove-last-admin-msg
   "Exception message when try to remove the last admin."
@@ -47,30 +53,25 @@
     (throw (ex-info (str fail-to-remove-last-admin-msg)
                     {:status-code 400}))))
 
-(defn- pre-delete [{:keys [group_id user_id]}]
+(t2/define-before-delete :model/PermissionsGroupMembership
+  [{:keys [group_id user_id]}]
   (check-not-all-users-group group_id)
   ;; Otherwise if this is the Admin group...
   (when (= group_id (:id (perms-group/admin)))
     ;; ...and this is the last membership, throw an exception
     (throw-if-last-admin!)
     ;; ...otherwise we're ok. Unset the `:is_superuser` flag for the user whose membership was revoked
-    (db/update! 'User user_id
-      :is_superuser false)))
+    (t2/update! 'User user_id {:is_superuser false})))
 
-(defn- pre-insert [{:keys [group_id], :as membership}]
+(t2/define-before-insert :model/PermissionsGroupMembership
+  [{:keys [group_id], :as membership}]
   (u/prog1 membership
     (check-not-all-users-group group_id)))
 
-(defn- post-insert [{:keys [group_id user_id], :as membership}]
+(t2/define-after-insert :model/PermissionsGroupMembership
+  [{:keys [group_id user_id], :as membership}]
   (u/prog1 membership
     ;; If we're adding a user to the admin group, set the `:is_superuser` flag for the user to whom membership was
     ;; granted
     (when (= group_id (:id (perms-group/admin)))
-      (db/update! 'User user_id
-        :is_superuser true))))
-
-(mi/define-methods
- PermissionsGroupMembership
- {:pre-delete  pre-delete
-  :pre-insert  pre-insert
-  :post-insert post-insert})
+      (t2/update! :core_user user_id {:is_superuser true}))))

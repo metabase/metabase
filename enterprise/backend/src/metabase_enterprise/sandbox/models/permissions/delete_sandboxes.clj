@@ -1,13 +1,13 @@
 (ns metabase-enterprise.sandbox.models.permissions.delete-sandboxes
   (:require
-   [clojure.tools.logging :as log]
    [metabase-enterprise.sandbox.models.group-table-access-policy
     :refer [GroupTableAccessPolicy]]
    [metabase.db.query :as mdb.query]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [toucan.db :as db]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (defn- delete-gtaps-with-condition! [group-or-id condition]
   (when (seq condition)
@@ -25,7 +25,7 @@
                                                      :where     conditions}))))]
           (do
             (log/debugf "Deleting %d matching GTAPs: %s" (count gtap-ids) (pr-str gtap-ids))
-            (db/delete! GroupTableAccessPolicy :id [:in gtap-ids]))
+            (t2/delete! GroupTableAccessPolicy :id [:in gtap-ids]))
           (log/debug "No matching GTAPs need to be deleted."))
         (catch Throwable e
           (throw (ex-info (tru "Error deleting Sandboxes: {0}" (ex-message e))
@@ -90,7 +90,7 @@
 (defn- delete-gtaps-for-group-database! [{:keys [group-id database-id], :as context} changes]
   (log/debugf "Deleting unneeded GTAPs for Group %d for Database %d. Graph changes: %s"
               group-id database-id (pr-str changes))
-  (if (#{:none :all :block} changes)
+  (if (#{:none :all :block :impersonated} changes)
     (do
       (log/debugf "Group %d %s for Database %d, deleting all GTAPs for this DB"
                   group-id

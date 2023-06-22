@@ -5,6 +5,8 @@
   (:import
    (clojure.lang DynamicClassLoader)))
 
+(set! *warn-on-reflection* true)
+
 (deftest has-shared-context-classloader-as-ancestor?-test
   (testing "make sure we correctly detect when the current thread has the shared dynamic classloader as an ancestor"
     (.setContextClassLoader (Thread/currentThread) (ClassLoader/getSystemClassLoader))

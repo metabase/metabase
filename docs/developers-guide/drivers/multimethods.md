@@ -35,7 +35,7 @@ All core Metabase drivers live in `metabase.driver.<name-goes-here>` namespaces.
 
 ### Many drivers are further broken out into additional namespaces
 
-Especially larger drivers. Commonly, a driver will have a `query-processor` namespace (e.g., `com.mycompany.metabase.driver.foxpro98.query-processor`) that contains the logic for converting MBQL queries (queries built using Metabase's graphical query builder) into native queries (like SQL). The query processor is often the most complicated part of a driver, so keeping that logic separate can help make things easier to work with. Some drivers also have a separate `sync` namespace that has implementations for methods used by Metabase's [database synchronization](../../databases/connecting.md#syncing-and-scanning-databases).
+Especially larger drivers. Commonly, a driver will have a `query-processor` namespace (e.g., `com.mycompany.metabase.driver.foxpro98.query-processor`) that contains the logic for converting MBQL queries (queries built using Metabase's graphical query builder) into native queries (like SQL). The query processor is often the most complicated part of a driver, so keeping that logic separate can help make things easier to work with. Some drivers also have a separate `sync` namespace that has implementations for methods used by Metabase's [database synchronization](../../databases/sync-scan.md).
 
 ## Driver initialization
 
@@ -86,7 +86,6 @@ These parents are kind of a big deal.
   - `:sql-jdbc` implements most of the four main features, but instead you must implement `sql-jdbc` multimethods found in `metabase.driver.sql-jdbc.*` namespaces, as well as some methods in `metabase.driver.sql.*` namespaces.
 - `:sql` is itself the parent of `:sql-jdbc`; it can be used for SQL-based databases that _do not_ have a JDBC driver, such as BigQuery.
   - `:sql` implements a significant chunk of driver functionality, but you must implement some methods found in `metabase.driver.sql.*` namespaces to use it.
-- Drivers that use Google's API, such as BigQuery and Google Analytics, can use the `:google` driver as a parent.
 - Some drivers use other "concrete" drivers as their parent -- for example, `:redshift` uses `:postgres` as a parent, only supplying method implementations to override postgres ones where needed.
 
 ### Calling parent driver implementations

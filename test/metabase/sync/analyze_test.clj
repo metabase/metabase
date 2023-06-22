@@ -1,7 +1,6 @@
 (ns ^:mb/once metabase.sync.analyze-test
   (:require
    [clojure.test :refer :all]
-   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
@@ -9,8 +8,10 @@
    [metabase.sync.analyze :as analyze]
    [metabase.sync.analyze.classifiers.category :as classifiers.category]
    [metabase.sync.analyze.classifiers.name :as classifiers.name]
-   [metabase.sync.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
-   [metabase.sync.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]
+   [metabase.sync.analyze.classifiers.no-preview-display
+    :as classifiers.no-preview-display]
+   [metabase.sync.analyze.classifiers.text-fingerprint
+    :as classifiers.text-fingerprint]
    [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.sync.interface :as i]
@@ -19,32 +20,32 @@
    [metabase.test.data :as data]
    [metabase.test.sync :as test.sync :refer [sync-survives-crash?]]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest skip-analysis-of-fields-with-current-fingerprint-version-test
   (testing "Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current"
     (data/with-temp-copy-of-db
       ;; mark all the Fields as analyzed with so they won't be subject to analysis
-      (db/update-where! Field {:table_id (data/id :venues)}
-        :last_analyzed       #t "2017-08-01T00:00"
-        :semantic_type       nil
-        :fingerprint_version Short/MAX_VALUE)
+      (t2/update! Field {:table_id (data/id :venues)}
+                  {:last_analyzed       #t "2017-08-01T00:00"
+                   :semantic_type       nil
+                   :fingerprint_version Short/MAX_VALUE})
       ;; the type of the value that comes back may differ a bit between different application DBs
-      (let [analysis-date (db/select-one-field :last_analyzed Field :table_id (data/id :venues))]
+      (let [analysis-date (t2/select-one-fn :last_analyzed Field :table_id (data/id :venues))]
         ;; ok, NOW run the analysis process
-        (analyze/analyze-table! (db/select-one Table :id (data/id :venues)))
+        (analyze/analyze-table! (t2/select-one Table :id (data/id :venues)))
         ;; check and make sure all the Fields don't have semantic types and their last_analyzed date didn't change
         ;; PK is ok because it gets marked as part of metadata sync
         (is (= (zipmap ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]
                        (repeat {:semantic_type nil, :last_analyzed analysis-date}))
-               (into {} (for [field (db/select [Field :name :semantic_type :last_analyzed] :table_id (data/id :venues))]
+               (into {} (for [field (t2/select [Field :name :semantic_type :last_analyzed] :table_id (data/id :venues))]
                           [(:name field) (into {} (dissoc field :name))]))))))))
 
 ;; ...but they *SHOULD* get analyzed if they ARE newly created (expcept for PK which we skip)
 (deftest analyze-table-test
-  (tt/with-temp* [Database [db    {:engine "h2", :details (:details (data/db))}]
-                  Table    [table {:name "VENUES", :db_id (u/the-id db)}]]
+  (t2.with-temp/with-temp [Database db    {:engine "h2", :details (:details (data/db))}
+                           Table    table {:name "VENUES", :db_id (u/the-id db)}]
     ;; sync the metadata, but DON't do analysis YET
     (sync-metadata/sync-table-metadata! table)
     ;; ok, NOW run the analysis process
@@ -56,32 +57,32 @@
              {:name "LONGITUDE", :semantic_type :type/Longitude, :last_analyzed true}
              {:name "CATEGORY_ID", :semantic_type :type/Category, :last_analyzed true}
              {:name "NAME", :semantic_type :type/Name, :last_analyzed true}}
-           (set (for [field (db/select [Field :name :semantic_type :last_analyzed] :table_id (u/the-id table))]
+           (set (for [field (t2/select [Field :name :semantic_type :last_analyzed] :table_id (u/the-id table))]
                   (into {} (update field :last_analyzed boolean))))))))
 
 (deftest mark-fields-as-analyzed-test
   (testing "Make sure that only the correct Fields get marked as recently analyzed"
     (with-redefs [i/latest-fingerprint-version Short/MAX_VALUE]
-      (tt/with-temp* [Table [table]
-                      Field [_ {:table_id            (u/the-id table)
-                                :name                "Current fingerprint, not analyzed"
-                                :fingerprint_version Short/MAX_VALUE
-                                :last_analyzed       nil}]
-                      Field [_ {:table_id            (u/the-id table)
-                                :name                "Current fingerprint, already analzed"
-                                :fingerprint_version Short/MAX_VALUE
-                                :last_analyzed       #t "2017-08-09T00:00Z"}]
-                      Field [_ {:table_id            (u/the-id table)
-                                :name                "Old fingerprint, not analyzed"
-                                :fingerprint_version (dec Short/MAX_VALUE)
-                                :last_analyzed       nil}]
-                      Field [_ {:table_id            (u/the-id table)
-                                :name                "Old fingerprint, already analzed"
-                                :fingerprint_version (dec Short/MAX_VALUE)
-                                :last_analyzed       #t "2017-08-09T00:00Z"}]]
+      (t2.with-temp/with-temp [Table table {}
+                               Field _ {:table_id            (u/the-id table)
+                                        :name                "Current fingerprint, not analyzed"
+                                        :fingerprint_version Short/MAX_VALUE
+                                        :last_analyzed       nil}
+                               Field _ {:table_id            (u/the-id table)
+                                        :name                "Current fingerprint, already analzed"
+                                        :fingerprint_version Short/MAX_VALUE
+                                        :last_analyzed       #t "2017-08-09T00:00Z"}
+                               Field _ {:table_id            (u/the-id table)
+                                        :name                "Old fingerprint, not analyzed"
+                                        :fingerprint_version (dec Short/MAX_VALUE)
+                                        :last_analyzed       nil}
+                               Field _ {:table_id            (u/the-id table)
+                                        :name                "Old fingerprint, already analzed"
+                                        :fingerprint_version (dec Short/MAX_VALUE)
+                                        :last_analyzed       #t "2017-08-09T00:00Z"}]
         (#'analyze/update-fields-last-analyzed! table)
         (is (= #{"Current fingerprint, not analyzed"}
-               (db/select-field :name Field :table_id (u/the-id table), :last_analyzed [:> #t "2018-01-01"])))))))
+               (t2/select-fn-set :name Field :table_id (u/the-id table), :last_analyzed [:> #t "2018-01-01"])))))))
 
 (deftest survive-fingerprinting-errors
   (testing "Make sure we survive fingerprinting failing"
@@ -104,7 +105,7 @@
                      field
                      (transduce identity (fingerprinters/fingerprinter field) values)))))
 
-(deftest classify-json-test
+(deftest ^:parallel classify-json-test
   (doseq [[group values->expected] {"When all the values are valid JSON dicts they're valid JSON"
                                     {["{\"this\":\"is\",\"valid\":\"json\"}"
                                       "{\"this\":\"is\",\"valid\":\"json\"}"
@@ -131,7 +132,7 @@
         (is (= (when expected :type/SerializedJSON)
                (classified-semantic-type values)))))))
 
-(deftest classify-emails-test
+(deftest ^:parallel classify-emails-test
   (testing "Check that things that are valid emails are marked as Emails"
     (doseq [[values expected] {["helper@metabase.com"]                                           true
                                ["helper@metabase.com", "someone@here.com", "help@nope.com"]      true
@@ -151,11 +152,11 @@
 (defn- fake-field-was-analyzed? [field]
   ;; don't let ourselves be fooled if the test passes because the table is
   ;; totally broken or has no fields. Make sure we actually test something
-  (assert (db/exists? Field :id (u/the-id field)))
-  (db/exists? Field :id (u/the-id field), :last_analyzed [:not= nil]))
+  (assert (t2/exists? Field :id (u/the-id field)))
+  (t2/exists? Field :id (u/the-id field), :last_analyzed [:not= nil]))
 
 (defn- latest-sync-time [table]
-  (db/select-one-field :last_analyzed Field
+  (t2/select-one-fn :last_analyzed Field
     :last_analyzed [:not= nil]
     :table_id      (u/the-id table)
     {:order-by [[:last_analyzed :desc]]}))
@@ -171,7 +172,7 @@
 (defn- api-sync!
   "Trigger a sync of `table` via the API."
   [table]
-  (mt/user-http-request :crowberto :post 200 (format "database/%d/sync" (:db_id table))))
+  (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (:db_id table))))
 
 ;; use these functions to create fake Tables & Fields that are actually backed by something real in the database.
 ;; Otherwise when we go to resync them the logic will figure out Table/Field doesn't exist and mark it as inactive
@@ -186,7 +187,7 @@
 (defn- analyze-table! [table]
   ;; we're calling `analyze-db!` instead of `analyze-table!` because the latter doesn't care if you try to sync a
   ;; hidden table and will allow that. TODO - Does that behavior make sense?
-  (analyze/analyze-db! (db/select-one Database :id (:db_id table))))
+  (analyze/analyze-db! (t2/select-one Database :id (:db_id table))))
 
 (deftest dont-analyze-hidden-tables-test
   (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"
@@ -255,24 +256,3 @@
         (is (= last-sync-time
                (latest-sync-time table))
             "sync time shouldn't change")))))
-
-(deftest analyze-should-send-a-snowplow-event-test
-  (testing "the recorded event should include db-id and db-engine"
-    (snowplow-test/with-fake-snowplow-collector
-      (mt/with-temp* [Table [table  (fake-table)]
-                      Field [_field (fake-field table)]]
-        (analyze-table! table)
-        (is (= {:data {"task_id"    true
-                       "event"      "new_task_history"
-                       "started_at" true
-                       "ended_at"   true
-                       "duration"   true
-                       "db_engine"  (name (db/select-one-field :engine Database :id (mt/id)))
-                       "db_id"      true
-                       "task_name"  "classify-tables"}
-                :user-id nil}
-               (-> (snowplow-test/pop-event-data-and-user-id!)
-                   last
-                   mt/boolean-ids-and-timestamps
-                   (update :data dissoc "task_details")
-                   (update-in [:data "duration"] some?))))))))

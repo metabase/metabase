@@ -3,7 +3,6 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -11,6 +10,7 @@
    [metabase.query-processor.middleware.parameters.mbql :as qp.mbql]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [schema.core :as s]))
 
 (defn- join? [m]

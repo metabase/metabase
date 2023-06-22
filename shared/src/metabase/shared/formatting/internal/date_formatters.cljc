@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [metabase.shared.formatting.constants :as constants]
    [metabase.shared.formatting.internal.date-builder :as builder]
-   [metabase.shared.util.log :as log]))
+   [metabase.util.log :as log]))
 
 (defn- apply-date-separator [format-list date-separator]
   (if date-separator

@@ -1,4 +1,4 @@
-import React, {
+import {
   useCallback,
   useEffect,
   useState,
@@ -36,8 +36,6 @@ export interface FormCollectionPickerProps
   placeholder?: string;
   type?: "collections" | "snippet-collections";
 }
-
-const ITEM_PICKER_MODELS = ["collection"];
 
 function ItemName({
   id,
@@ -106,9 +104,9 @@ function FormCollectionPicker({
       return (
         <PopoverItemPicker
           value={{ id: value, model: "collection" }}
-          models={ITEM_PICKER_MODELS}
+          models={["collection"]}
           entity={entity}
-          onChange={({ id }: { id: CollectionId }) => {
+          onChange={({ id }) => {
             setValue(id);
             closePopover();
           }}
@@ -122,6 +120,7 @@ function FormCollectionPicker({
 
   return (
     <TippyPopoverWithTrigger
+      sizeToFit
       placement="bottom-start"
       renderTrigger={renderTrigger}
       popoverContent={renderContent}
@@ -130,4 +129,5 @@ function FormCollectionPicker({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormCollectionPicker;

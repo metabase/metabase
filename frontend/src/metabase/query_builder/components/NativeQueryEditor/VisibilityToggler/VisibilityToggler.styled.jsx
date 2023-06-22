@@ -8,7 +8,8 @@ export const Container = styled.div`
   color: ${color("text-medium")};
   display: flex;
   margin-left: auto;
-  padding-right: ${space(1)};
+  padding-right: 4px;
+  min-height: 3rem;
 `;
 
 export const Span = styled.span`

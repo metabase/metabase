@@ -6,6 +6,7 @@
    [metabase.server.handler :as handler]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.server.middleware.security :as mw.security]
+   [metabase.test :as mt]
    [ring.mock.request :as ring.mock]
    [ring.util.response :as response])
   (:import
@@ -47,9 +48,11 @@
                        "paged?" true
                        "params" {"whatever" "true"}}}
             (read-response (handler (ring.mock/request :get "/" {:offset "200", :limit "100", :whatever "true"}))))))
-
-  (testing "invalid params"
-    (is (=? {:status  400
-             :headers (mw.security/security-headers)
-             :body    {"message" #"Error parsing paging parameters.*"}}
-            (read-response (handler (ring.mock/request :get "/" {:offset "abc", :limit "100"})))))))
+  ;; set the system clock here so this doesn't flake if we cross the second boundary between evaluating the expected
+  ;; form and the actual form
+  (mt/with-clock #t "2023-02-20T15:01:00-08:00[US/Pacific]"
+    (testing "invalid params"
+      (is (=? {:status  400
+               :headers (mw.security/security-headers)
+               :body    {"message" #"Error parsing paging parameters.*"}}
+              (read-response (handler (ring.mock/request :get "/" {:offset "abc", :limit "100"}))))))))

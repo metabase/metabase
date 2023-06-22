@@ -6,6 +6,8 @@
   (:import
    java.util.Locale))
 
+(set! *warn-on-reflection* true)
+
 (defn- now [] (t/offset-date-time))
 
 ;;; ----------------------------------------------- predicates -------------------------------------------------------
@@ -194,3 +196,10 @@
   "Parses a time string that has been stripped of any time zone."
   [value]
   (t/local-time value))
+
+;;; ------------------------------------------------ arithmetic ------------------------------------------------------
+
+(defn day-diff
+  "Returns the time elapsed between `before` and `after` in days (an integer)."
+  [before after]
+  (.toDays (t/duration before after)))

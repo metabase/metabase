@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { MIN_SEARCH_LENGTH } from "./constants";
@@ -48,7 +48,6 @@ function DataPickerViewContent({
   if (searchQuery.trim().length > MIN_SEARCH_LENGTH) {
     return (
       <DataSearch
-        value={value}
         searchQuery={searchQuery}
         availableDataTypes={availableDataTypes}
         onChange={onChange}
@@ -83,4 +82,5 @@ function DataPickerView(props: DataPickerViewProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataPickerView;

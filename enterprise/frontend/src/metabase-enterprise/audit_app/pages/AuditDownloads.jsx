@@ -1,6 +1,3 @@
-/* eslint-disable react/prop-types */
-import React from "react";
-
 import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
 import AuditTable from "../containers/AuditTable";

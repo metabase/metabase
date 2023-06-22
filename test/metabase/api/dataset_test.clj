@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.api.dataset :as api.dataset]
    [metabase.api.pivots :as api.pivots]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
@@ -26,7 +27,10 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -53,7 +57,7 @@
   ;; it might take a fraction of a second for the QueryExecution to show up, it's saved asynchronously. So wait a bit
   ;; and retry if it's not there yet.
   (letfn [(thunk []
-            (db/select-one QueryExecution
+            (t2/select-one QueryExecution
                            :hash (qp.util/query-hash query)
                            {:order-by [[:started_at :desc]]}))]
     (loop [retries 3]
@@ -111,7 +115,7 @@
 
 (deftest failure-test
   ;; clear out recent query executions!
-  (db/delete! QueryExecution)
+  (t2/delete! QueryExecution)
   (testing "POST /api/dataset"
     (testing "\nEven if a query fails we still expect a 202 response from the API"
       ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
@@ -187,9 +191,9 @@
 
 (deftest check-that-we-can-export-the-results-of-a-nested-query
   (mt/with-temp-copy-of-db
-    (mt/with-temp Card [card {:dataset_query {:database (mt/id)
-                                              :type     :native
-                                              :native   {:query "SELECT * FROM USERS;"}}}]
+    (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
+                                                        :type     :native
+                                                        :native   {:query "SELECT * FROM USERS;"}}}]
       (letfn [(do-test []
                 (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
                                                    :query (json/generate-string
@@ -276,19 +280,20 @@
                            "LIMIT 1048575")
               :params nil}
              (mt/user-http-request :rasta :post 200 "dataset/native"
-                                   (mt/mbql-query venues
-                                     {:fields [$id $name]}))))
+                                   (assoc (mt/mbql-query venues {:fields [$id $name]})
+                                     :pretty false))))
 
       (testing "\nMake sure parameters are spliced correctly"
         (is (= {:query  (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
-                             "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp with time zone '2015-11-13 00:00:00.000Z'"
-                             " AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp with time zone '2015-11-14 00:00:00.000Z') "
+                             "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp with time zone '2015-11-13 00:00:00.000Z')"
+                             " AND (\"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp with time zone '2015-11-14 00:00:00.000Z') "
                              "LIMIT 1048575")
                 :params nil}
                (mt/user-http-request :rasta :post 200 "dataset/native"
-                                     (mt/mbql-query checkins
-                                       {:fields [$id]
-                                        :filter [:= $date "2015-11-13"]})))))
+                                     (assoc (mt/mbql-query checkins
+                                                           {:fields [$id]
+                                                            :filter [:= $date "2015-11-13"]})
+                                       :pretty false)))))
 
       (testing "\nshould require that the user have ad-hoc native perms for the DB"
         (mt/with-temp-copy-of-db
@@ -300,7 +305,32 @@
                         s/Any               s/Any}
                        (mt/user-http-request :rasta :post "dataset/native"
                                              (mt/mbql-query venues
-                                               {:fields [$id $name]})))))))))
+                                               {:fields [$id $name]})))))))
+    (testing "We should be able to format the resulting SQL query if desired"
+      ;; Note that the following was tested against all driver branches of format-sql and all results were identical.
+      (is (= {:query  (str "SELECT\n"
+                           "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"
+                           "  \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\"\n"
+                           "FROM\n"
+                           "  \"PUBLIC\".\"VENUES\"\n"
+                           "LIMIT\n"
+                           "  1048575")
+              :params nil}
+             (mt/user-http-request :rasta :post 200 "dataset/native"
+                                   (assoc
+                                    (mt/mbql-query venues {:fields [$id $name]})
+                                    :pretty true)))))
+    (testing "The default behavior is to format the SQL"
+      (is (= {:query  (str "SELECT\n"
+                           "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"
+                           "  \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\"\n"
+                           "FROM\n"
+                           "  \"PUBLIC\".\"VENUES\"\n"
+                           "LIMIT\n"
+                           "  1048575")
+              :params nil}
+             (mt/user-http-request :rasta :post 200 "dataset/native"
+                                   (mt/mbql-query venues {:fields [$id $name]})))))))
 
 (deftest report-timezone-test
   (mt/test-driver :postgres
@@ -332,7 +362,7 @@
 
         ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
         ;; the GROUP BY expression
-        (when (#{:mongo :presto :h2 :sqlite} driver/*driver*)
+        (when (#{:mongo :h2 :sqlite} driver/*driver*)
           (testing "with an added expression"
             ;; the added expression is coming back in this query because it is explicitly included in `:fields` -- see
             ;; comments on [[metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test]].
@@ -444,6 +474,7 @@
                                                    {:parameter parameter})
                              :values set)]
               (is (= #{"Gizmo" "Widget" "Gadget"} values)))))))
+
     (testing "nil value (current behavior of field values)"
       (let [parameter {:values_query_type "list",
                        :values_source_type nil,
@@ -480,4 +511,28 @@
                                                   :field_ids [(mt/id :people :source)
                                                               (mt/id :people :source)]})
                            :values)]
-            (is (= [["Twitter"] ["Organic"] ["Affiliate"] ["Google"] ["Facebook"]] values))))))))
+            (is (= [["Twitter"] ["Organic"] ["Affiliate"] ["Google"] ["Facebook"]] values))))))
+
+    (testing "fallback to field-values"
+      (with-redefs [api.dataset/parameter-field-values (constantly "field-values")]
+        (testing "if value-field not found in source card"
+          (t2.with-temp/with-temp [Card {source-card-id :id}]
+            (is (= "field-values"
+                   (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
+                                         {:parameter  {:values_source_type   "card"
+                                                       :values_source_config {:card_id     source-card-id
+                                                                              :value_field (mt/$ids $people.source)}
+                                                       :type                 :string/=,
+                                                       :name                 "Text"
+                                                       :id                   "abc"}})))))
+
+        (testing "if value-field not found in source card"
+          (t2.with-temp/with-temp [Card {source-card-id :id} {:archived true}]
+            (is (= "field-values"
+                   (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
+                                         {:parameter  {:values_source_type   "card"
+                                                       :values_source_config {:card_id     source-card-id
+                                                                              :value_field (mt/$ids $people.source)}
+                                                       :type                 :string/=,
+                                                       :name                 "Text"
+                                                       :id                   "abc"}})))))))))

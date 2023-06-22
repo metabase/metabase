@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { Dispatch, MouseEvent, SetStateAction, useState } from "react";
 import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
@@ -7,12 +7,13 @@ import ActionMenu from "metabase/collections/components/ActionMenu";
 import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-
+import { IconName } from "metabase/core/components/Icon";
+import Database from "metabase-lib/metadata/Database";
 import {
+  ActionsContainer,
   Body,
   Description,
   Header,
-  ActionsContainer,
   ItemCard,
   ItemIcon,
   ItemLink,
@@ -20,6 +21,7 @@ import {
 } from "./PinnedItemCard.styled";
 
 type Props = {
+  databases?: Database[];
   bookmarks?: Bookmark[];
   createBookmark: (id: string, collection: string) => void;
   deleteBookmark: (id: string, collection: string) => void;
@@ -32,15 +34,14 @@ type Props = {
 
 const TOOLTIP_MAX_WIDTH = 450;
 
-function getDefaultDescription(model: string) {
-  return {
-    card: t`A question`,
-    dashboard: t`A dashboard`,
-    dataset: t`A model`,
-  }[model];
-}
+const DEFAULT_DESCRIPTION: Record<string, string> = {
+  card: t`A question`,
+  dashboard: t`A dashboard`,
+  dataset: t`A model`,
+};
 
 function PinnedItemCard({
+  databases,
   bookmarks,
   createBookmark,
   deleteBookmark,
@@ -51,15 +52,13 @@ function PinnedItemCard({
   onMove,
 }: Props) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
-  const [showDescriptionTooltip, setShowDescriptionTooltip] = useState(false);
   const icon = item.getIcon().name;
   const { description, name, model } = item;
-
-  const defaultedDescription = description || getDefaultDescription(model);
+  const defaultedDescription = description || DEFAULT_DESCRIPTION[model] || "";
 
   const maybeEnableTooltip = (
-    event: React.MouseEvent<HTMLDivElement, MouseEvent>,
-    setterFn: React.Dispatch<React.SetStateAction<boolean>>,
+    event: MouseEvent<HTMLDivElement>,
+    setterFn: Dispatch<SetStateAction<boolean>>,
   ) => {
     const target = event.target as HTMLDivElement;
     const isTargetElWiderThanCard = target?.scrollWidth > target?.clientWidth;
@@ -73,12 +72,11 @@ function PinnedItemCard({
       <ItemCard flat>
         <Body>
           <Header>
-            <ItemIcon name={icon} />
+            <ItemIcon name={icon as unknown as IconName} />
             <ActionsContainer>
-              {item.model === "dataset" && (
-                <ModelDetailLink model={item as CollectionItem<"dataset">} />
-              )}
+              {item.model === "dataset" && <ModelDetailLink model={item} />}
               <ActionMenu
+                databases={databases}
                 bookmarks={bookmarks}
                 createBookmark={createBookmark}
                 deleteBookmark={deleteBookmark}
@@ -101,26 +99,15 @@ function PinnedItemCard({
               {name}
             </Title>
           </Tooltip>
-          <Tooltip
-            tooltip={description}
-            placement="bottom"
-            maxWidth={TOOLTIP_MAX_WIDTH}
-            isEnabled={showDescriptionTooltip}
-          >
-            {defaultedDescription && (
-              <Description
-                onMouseEnter={e =>
-                  maybeEnableTooltip(e, setShowDescriptionTooltip)
-                }
-              >
-                {defaultedDescription}
-              </Description>
-            )}
-          </Tooltip>
+
+          <Description tooltipMaxWidth={TOOLTIP_MAX_WIDTH}>
+            {defaultedDescription}
+          </Description>
         </Body>
       </ItemCard>
     </ItemLink>
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default PinnedItemCard;

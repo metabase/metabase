@@ -5,10 +5,9 @@
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.table :as table]
@@ -18,16 +17,26 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan2.core :as t2]))
 
-(models/defmodel GroupTableAccessPolicy :sandboxes)
+(set! *warn-on-reflection* true)
 
-;;; only admins can work with GTAPs
-(derive GroupTableAccessPolicy ::mi/read-policy.superuser)
-(derive GroupTableAccessPolicy ::mi/write-policy.superuser)
+(def GroupTableAccessPolicy
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/GroupTableAccessPolicy)
+
+(methodical/defmethod t2/table-name :model/GroupTableAccessPolicy [_model] :sandboxes)
+
+(doto :model/GroupTableAccessPolicy
+  (derive :metabase/model)
+  ;;; only admins can work with GTAPs
+  (derive ::mi/read-policy.superuser)
+  (derive ::mi/write-policy.superuser))
 
 ;; This guard is to make sure this file doesn't get compiled twice when building the uberjar -- that will totally
 ;; screw things up because Toucan models use Potemkin `defrecord+` under the hood.
@@ -47,10 +56,10 @@
    mbql.normalize/normalize
    attribute-remappings))
 
-;; for GTAPs
-(models/add-type! ::attribute-remappings
-  :in  (comp mi/json-in normalize-attribute-remapping-targets)
-  :out (comp normalize-attribute-remapping-targets mi/json-out-without-keywordization))
+(t2/deftransforms :model/GroupTableAccessPolicy
+  {:attribute_remappings {:in  (comp mi/json-in normalize-attribute-remapping-targets)
+                          :out (comp normalize-attribute-remapping-targets mi/json-out-without-keywordization)}})
+
 
 (defn table-field-names->cols
   "Return a mapping of field names to corresponding cols for given table."
@@ -91,7 +100,7 @@
    ;; not all GTAPs have Cards
    (when card-id
      ;; not all Cards have saved result metadata
-     (when-let [result-metadata (db/select-one-field :result_metadata Card :id card-id)]
+     (when-let [result-metadata (t2/select-one-fn :result_metadata Card :id card-id)]
        (check-columns-match-table table-id result-metadata))))
 
   ([table-id :- su/IntGreaterThanZero result-metadata-columns]
@@ -102,14 +111,14 @@
              :let [table-col (get table-cols (:name col))]]
        (check-column-types-match col table-col)))))
 
-;; TODO -- should we only check these constraints if EE features are enabled??
-(defn update-card-check-gtaps
+(defenterprise pre-update-check-sandbox-constraints
   "If a Card is updated, and its result metadata changes, check that these changes do not violate the constraints placed
   on GTAPs (the Card cannot add fields or change types vs. the original Table)."
+  :feature :sandboxes
   [{new-result-metadata :result_metadata, card-id :id}]
   (when new-result-metadata
-    (when-let [gtaps-using-this-card (not-empty (db/select [GroupTableAccessPolicy :id :table_id] :card_id card-id))]
-      (let [original-result-metadata (db/select-one-field :result_metadata Card :id card-id)]
+    (when-let [gtaps-using-this-card (not-empty (t2/select [GroupTableAccessPolicy :id :table_id] :card_id card-id))]
+      (let [original-result-metadata (t2/select-one-fn :result_metadata Card :id card-id)]
         (when-not (= original-result-metadata new-result-metadata)
           (doseq [{table-id :table_id} gtaps-using-this-card]
             (try
@@ -120,9 +129,6 @@
                                      (.getMessage e))
                                 (ex-data e)
                                 e))))))))))
-
-(log/trace "Installing additional EE pre-update checks for Card")
-(reset! card/pre-update-check-sandbox-constraints update-card-check-gtaps)
 
 (defenterprise upsert-sandboxes!
   "Create new `sandboxes` or update existing ones. If a sandbox has an `:id` it will be updated, otherwise it will be
@@ -136,21 +142,23 @@
       ;; This allows existing values to be "cleared" by being set to nil
       (do
         (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
-          (db/update! GroupTableAccessPolicy
+          (t2/update! GroupTableAccessPolicy
                       id
                       (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-        (db/select-one GroupTableAccessPolicy :id id))
+        (t2/select-one GroupTableAccessPolicy :id id))
       (let [expected-permission-path (perms/table-segmented-query-path (:table_id sandbox))]
-        (when-let [permission-path-id (db/select-one-field :id Permissions :object expected-permission-path)]
-          (db/insert! GroupTableAccessPolicy (assoc sandbox :permission_id permission-path-id)))))))
+        (when-let [permission-path-id (t2/select-one-fn :id Permissions :object expected-permission-path)]
+          (first (t2/insert-returning-instances! GroupTableAccessPolicy (assoc sandbox :permission_id permission-path-id))))))))
 
-(defn- pre-insert [gtap]
+(t2/define-before-insert :model/GroupTableAccessPolicy
+  [gtap]
   (u/prog1 gtap
     (check-columns-match-table gtap)))
 
-(defn- pre-update [{:keys [id], :as updates}]
+(t2/define-before-update :model/GroupTableAccessPolicy
+  [{:keys [id], :as updates}]
   (u/prog1 updates
-    (let [original (db/select-one GroupTableAccessPolicy :id id)
+    (let [original (t2/original updates)
           updated  (merge original updates)]
       (when-not (= (:table_id original) (:table_id updated))
         (throw (ex-info (tru "You cannot change the Table ID of a GTAP once it has been created.")
@@ -158,9 +166,3 @@
                          :status-code 400})))
       (when (:card_id updates)
         (check-columns-match-table updated)))))
-
-(mi/define-methods
- GroupTableAccessPolicy
- {:types      (constantly {:attribute_remappings ::attribute-remappings})
-  :pre-insert pre-insert
-  :pre-update pre-update})

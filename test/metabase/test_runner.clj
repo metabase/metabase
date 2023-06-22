@@ -5,10 +5,11 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
-   [hawk.core :as hawk]
    [humane-are.core :as humane-are]
+   [mb.hawk.core :as hawk]
    [metabase.bootstrap]
    [metabase.config :as config]
+   [metabase.query-processor-test.test-mlv2 :as qp-test.mlv2]
    [metabase.test-runner.assert-exprs]
    [metabase.test.data.env :as tx.env]
    [metabase.util.date-2]
@@ -23,6 +24,9 @@
   metabase.bootstrap/keep-me
   ;; make sure stuff like `schema=` and what not are loaded
   metabase.test-runner.assert-exprs/keep-me
+
+  ;; helpers for mvl2
+  qp-test.mlv2/keep-me
 
   ;; these are necessary so data_readers.clj functions can function
   metabase.util.date-2/keep-me
@@ -86,9 +90,9 @@
 (defn find-and-run-tests-repl
   "Find and run tests from the REPL."
   [options]
-  (hawk.core/find-and-run-tests-repl (merge (default-options) options)))
+  (hawk/find-and-run-tests-repl (merge (default-options) options)))
 
 (defn find-and-run-tests-cli
   "Entrypoint for `clojure -X:test`."
   [options]
-  (hawk.core/find-and-run-tests-cli (merge (default-options) options)))
+  (hawk/find-and-run-tests-cli (merge (default-options) options)))

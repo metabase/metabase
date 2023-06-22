@@ -1,4 +1,5 @@
 import { isa as cljs_isa } from "cljs/metabase.types";
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 
 import {
   TYPE,
@@ -11,6 +12,7 @@ import {
   STRING,
   STRING_LIKE,
   NUMBER,
+  INTEGER,
   BOOLEAN,
   SUMMABLE,
   SCOPE,
@@ -89,10 +91,10 @@ export function getFieldType(field) {
     COORDINATE,
     FOREIGN_KEY,
     PRIMARY_KEY,
+    BOOLEAN,
     STRING,
     STRING_LIKE,
     NUMBER,
-    BOOLEAN,
   ]) {
     if (isFieldType(type, field)) {
       return type;
@@ -102,6 +104,7 @@ export function getFieldType(field) {
 
 export const isDate = isFieldType.bind(null, TEMPORAL);
 export const isNumeric = isFieldType.bind(null, NUMBER);
+export const isInteger = isFieldType.bind(null, INTEGER);
 export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
@@ -149,8 +152,6 @@ export const isNumber = field =>
   isNumericBaseType(field) &&
   (field.semantic_type == null || isa(field.semantic_type, TYPE.Number));
 
-export const isBinnedNumber = field => isNumber(field) && !!field.binning_info;
-
 export const isTime = field => {
   if (!field) {
     return false;
@@ -186,6 +187,9 @@ export const isDescription = field =>
 export const isComment = field =>
   field && isa(field.semantic_type, TYPE.Comment);
 
+export const isLongText = field =>
+  field && (isComment(field) || isDescription(field));
+
 export const isID = field => isFK(field) || isPK(field);
 
 export const isURL = field => field && isa(field.semantic_type, TYPE.URL);
@@ -208,3 +212,13 @@ export function hasLatitudeAndLongitudeColumns(cols) {
   }
   return hasLatitude && hasLongitude;
 }
+
+export const getIsPKFromTablePredicate = tableId => column => {
+  const isPrimaryKey = isPK(column);
+
+  // FIXME: columns of nested questions at this moment miss table_id value
+  // which makes it impossible to match them with their tables that are nested cards
+  return isVirtualCardId(tableId)
+    ? isPrimaryKey
+    : isPrimaryKey && column.table_id === tableId;
+};

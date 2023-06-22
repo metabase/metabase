@@ -1,18 +1,24 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { t } from "ttag";
-import { Aggregation as AggregationObject } from "metabase-types/types/Query";
-import { AggregationOperator } from "metabase-types/types/Metadata";
-import { MetricId } from "metabase-types/types/Metric";
-import { FieldId } from "metabase-types/types/Field";
+import {
+  Aggregation as AggregationObject,
+  FieldId,
+  MetricId,
+} from "metabase-types/api";
 import { TYPE } from "metabase-lib/types/constants";
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import Filter from "metabase-lib/queries/structured/Filter";
 import Metric from "metabase-lib/metadata/Metric";
+import type { AggregationOperator } from "metabase-lib/deprecated-types";
 import StructuredQuery from "../StructuredQuery";
 import Dimension, { AggregationDimension } from "../../Dimension";
 import MBQLClause from "./MBQLClause";
+
 const INTEGER_AGGREGATIONS = new Set(["count", "cum-count", "distinct"]);
+const ORIGINAL_FIELD_TYPE_AGGREGATIONS = new Set(["min", "max"]);
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Aggregation extends MBQLClause {
   /**
    * Replaces the aggregation in the parent query and returns the new StructuredQuery
@@ -134,7 +140,16 @@ export default class Aggregation extends MBQLClause {
 
   baseType() {
     const short = this.short();
-    return INTEGER_AGGREGATIONS.has(short) ? TYPE.Integer : TYPE.Float;
+    if (INTEGER_AGGREGATIONS.has(short)) {
+      return TYPE.Integer;
+    }
+
+    const field = this.dimension()?.field();
+    if (ORIGINAL_FIELD_TYPE_AGGREGATIONS.has(short) && field) {
+      return field.base_type;
+    }
+
+    return TYPE.Float;
   }
 
   /**
@@ -144,10 +159,8 @@ export default class Aggregation extends MBQLClause {
     if (this.hasOptions()) {
       return this.aggregation().isValid();
     } else if (this.isStandard() && this.dimension()) {
-      const dimension = this.dimension();
-      const aggregationOperator = this.query()
-        .table()
-        .aggregationOperator(this[0]);
+      const dimension = this.dimension()?.getMLv1CompatibleDimension();
+      const aggregationOperator = this.query().aggregationOperator(this[0]);
       return (
         aggregationOperator &&
         (!aggregationOperator.requiresField ||

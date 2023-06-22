@@ -3,7 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-database
     :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
@@ -15,20 +15,35 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db])
+   [metabase.util.honeysql-extensions :as hx]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.sql ResultSet)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :plugins))
 
-(deftest simple-select-probe-query-test
+(deftest ^:parallel simple-select-probe-query-test
+  (testing "honey-sql-version produces the same query"
+    (are [version] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
+                      (binding [hx/*honey-sql-version* version]
+                        (sql-jdbc.describe-database/simple-select-probe-query :sql "schema" "wow")))
+      1
+      2))
+  (testing "real drivers produce correct query"
+    (are [driver] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
+                     (sql-jdbc.describe-database/simple-select-probe-query driver "schema" "wow"))
+      :h2
+      :postgres))
   (testing "simple-select-probe-query shouldn't actually return any rows"
-    (let [{:keys [name schema]} (db/select-one Table :id (mt/id :venues))]
+    (let [{:keys [name schema]} (t2/select-one Table :id (mt/id :venues))]
       (is (= []
              (mt/rows
                (qp/process-query
-                (let [[sql] (sql-jdbc.describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
-                  (mt/native-query {:query sql})))))))))
+                 (let [[sql] (sql-jdbc.describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
+                   (mt/native-query {:query sql})))))))))
 
 (defn- sql-jdbc-drivers-with-default-describe-database-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-database`. (As far as I know, this is
@@ -40,22 +55,28 @@
     (descendants driver/hierarchy :sql-jdbc))))
 
 (deftest fast-active-tables-test
-  (let [spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-    (with-open [conn (jdbc/get-connection spec)]
-      ;; We have to mock this to make it work with all DBs
-      (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
-        (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
-               (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
-                    (map :name)
-                    sort)))))))
+  (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
+         (sql-jdbc.execute/do-with-connection-with-options
+          (or driver/*driver* :h2)
+          (mt/db)
+          nil
+          (fn [^java.sql.Connection conn]
+            ;; We have to mock this to make it work with all DBs
+            (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
+              (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
+                   (map :name)
+                   sort)))))))
 
 (deftest post-filtered-active-tables-test
-  (let [spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-    (with-open [conn (jdbc/get-connection spec)]
-      (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
-             (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 conn nil nil))
-                  (map :name)
-                  sort))))))
+  (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
+         (sql-jdbc.execute/do-with-connection-with-options
+          :h2
+          (mt/db)
+          nil
+          (fn [^java.sql.Connection conn]
+            (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 conn nil nil))
+                 (map :name)
+                 sort))))))
 
 (deftest describe-database-test
   (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil}
@@ -79,14 +100,18 @@
       ;; taking advantage of the fact that `sql-jdbc.describe-database/describe-database` can accept JBDC connections
       ;; instead of databases; by doing this we can keep the connection open and check whether resultsets are still
       ;; open before they would normally get closed
-      (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec db)]
-        (sql-jdbc.describe-database/describe-database driver conn)
-        (reduce + (for [^ResultSet rs @resultsets]
-                    (if (.isClosed rs) 0 1)))))))
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       db
+       nil
+       (fn [conn]
+         (sql-jdbc.describe-database/describe-database driver {:connection conn})
+         (reduce + (for [^ResultSet rs @resultsets]
+                     (if (.isClosed rs) 0 1))))))))
 
 (defn- count-active-tables-in-db
   [db-id]
-  (db/count Table
+  (t2/count Table
     :db_id  db-id
     :active true))
 
@@ -112,9 +137,9 @@
              (describe-database-with-open-resultset-count driver/*driver* (mt/db)))))))
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
-  (mt/with-temp Database [db-filtered database]
+  (t2.with-temp/with-temp [Database db-filtered database]
     (sync/sync-database! db-filtered {:scan :schema})
-    (let [tables (db/select Table :db_id (u/the-id db-filtered))]
+    (let [tables (t2/select Table :db_id (u/the-id db-filtered))]
       (doseq [table tables]
         (assert-table-fn table)))))
 
@@ -136,20 +161,24 @@
           patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
       (testing "Filtering connections for schemas works as expected"
         (testing " with an inclusion filter"
-          (sync-and-assert-filtered-tables {:name    (format "Test %s DB with dataset inclusion filters" driver)
-                                            :engine  driver
-                                            :details (-> (mt/db)
-                                                         :details
-                                                         (assoc filter-type-prop "inclusion"
-                                                                patterns-type-prop "s*,v*"))}
-            (fn [{schema-name :schema}]
-              (is (contains? #{\s \v} (first schema-name))))))
+          (sync-and-assert-filtered-tables
+           {:name    (format "Test %s DB with dataset inclusion filters" driver)
+            :engine  driver
+            :details (-> (mt/db)
+                         :details
+                         (assoc filter-type-prop "inclusion"
+                                patterns-type-prop "s*,v*,2*"))}
+           (fn [{schema-name :schema}]
+             (testing (format "schema name = %s" (pr-str schema-name))
+               (is (contains? #{\s \v \2} (first schema-name)))))))
         (testing " with an exclusion filter"
-          (sync-and-assert-filtered-tables {:name    (format "Test %s DB with dataset exclusion filters" driver)
-                                            :engine  driver
-                                            :details (-> (mt/db)
-                                                         :details
-                                                         (assoc filter-type-prop "exclusion"
-                                                                patterns-type-prop "v*"))}
-            (fn [{schema-name :schema}]
-              (is (not= \v (first schema-name))))))))))
+          (sync-and-assert-filtered-tables
+           {:name    (format "Test %s DB with dataset exclusion filters" driver)
+            :engine  driver
+            :details (-> (mt/db)
+                         :details
+                         (assoc filter-type-prop "exclusion"
+                                patterns-type-prop "v*"))}
+           (fn [{schema-name :schema}]
+             (testing (format "schema name = %s" (pr-str schema-name))
+               (is (not= \v (first schema-name)))))))))))

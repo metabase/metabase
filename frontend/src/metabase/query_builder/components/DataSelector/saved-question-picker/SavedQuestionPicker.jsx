@@ -1,10 +1,10 @@
-import React, { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import _ from "underscore";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { Tree } from "metabase/components/tree";
 import Collection, {
   PERSONAL_COLLECTIONS,
@@ -61,7 +61,9 @@ function SavedQuestionPicker({
   rootCollection,
 }) {
   const collectionTree = useMemo(() => {
-    const targetModels = isDatasets ? ["dataset"] : null;
+    const modelFilter = isDatasets
+      ? model => model === "dataset"
+      : model => model === "card";
 
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
@@ -92,7 +94,7 @@ function SavedQuestionPicker({
 
     return [
       ...(rootCollection ? [getOurAnalyticsCollection(rootCollection)] : []),
-      ...buildCollectionTree(preparedCollections, { targetModels }),
+      ...buildCollectionTree(preparedCollections, modelFilter),
     ];
   }, [collections, rootCollection, currentUser, isDatasets]);
 
@@ -150,7 +152,7 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   Collection.loadList({
-    query: () => ({ tree: true }),
+    query: () => ({ tree: true, "exclude-archived": true }),
   }),
   connect(mapStateToProps),
 )(SavedQuestionPicker);

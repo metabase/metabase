@@ -2,7 +2,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.env :as mdb.env]
@@ -10,7 +9,8 @@
    [metabase.models.setting.cache :as setting.cache]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
-   [toucan.db :as db]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (defn rotate-encryption-key!
   "Rotate the current configured db using the current `MB_ENCRYPTION_SECRET_KEY` env var and `to-key` argument."
@@ -32,18 +32,18 @@
         setting-where     (if is-h2
                             "setting.\"KEY\" = ?"
                             "setting.key = ?")]
-    (jdbc/with-db-transaction [t-conn {:datasource (mdb.connection/data-source)}]
-      (doseq [[id details] (db/select-id->field :details Database)]
+    (t2/with-transaction [t-conn {:datasource (mdb.connection/data-source)}]
+      (doseq [[id details] (t2/select-pk->fn :details Database)]
         (when (encryption/possibly-encrypted-string? details)
           (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY") {:database-id id})))
-        (jdbc/update! t-conn
+        (jdbc/update! {:connection t-conn}
                       :metabase_database
                       {:details (encrypt-str-fn (json/encode details))}
                       ["metabase_database.id = ?" id]))
-      (doseq [[key value] (db/select-field->field :key :value Setting)]
+      (doseq [[key value] (t2/select-fn->fn :key :value Setting)]
         (if (= key "settings-last-updated")
           (setting.cache/update-settings-last-updated!)
-          (jdbc/update! t-conn
+          (jdbc/update! {:connection t-conn}
                         :setting
                         {value-column (encrypt-str-fn value)}
                         [setting-where key])))
@@ -51,10 +51,10 @@
       ;; fortunately, we don't need to fetch the latest secret instance per ID, as we would need to in order to update
       ;; a secret value through the regular database save API path; instead, ALL secret values in the app DB (regardless
       ;; of whether they are the "current version" or not), should be updated with the new key
-      (doseq [[id value] (db/select-id->field :value Secret)]
+      (doseq [[id value] (t2/select-pk->fn :value Secret)]
         (when (encryption/possibly-encrypted-string? value)
           (throw (ex-info (trs "Can''t decrypt secret value with MB_ENCRYPTION_SECRET_KEY") {:secret-id id})))
-        (jdbc/update! t-conn
+        (jdbc/update! {:connection t-conn}
                       :secret
                       {value-column (encrypt-bytes-fn value)}
                       ["secret.id = ?" id])))))

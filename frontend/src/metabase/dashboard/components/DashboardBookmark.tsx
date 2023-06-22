@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { Dashboard } from "metabase-types/api";
 
@@ -32,4 +32,5 @@ const DashboardBookmark = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DashboardBookmark;

@@ -4,13 +4,17 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.driver.util :as driver.u]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]))
+   [metabase.test.data :as data]
+   [metabase.test.data.interface :as tx]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest explict-join-with-default-options-test
   (testing "Can we specify an *explicit* JOIN using the default options?"
@@ -25,7 +29,7 @@
                              VENUES.LONGITUDE   AS LONGITUDE
                              VENUES.PRICE       AS PRICE]
                  :from      [VENUES]
-                 :left-join [CATEGORIES __join
+                 :left-join [CATEGORIES AS __join
                              ON VENUES.CATEGORY_ID = 1]
                  :limit     [1048575]}
                (sql.qp-test-util/query->sql-map query)))))))
@@ -260,7 +264,9 @@
                rows))))))
 
 (deftest select-*-source-query-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join)
+                         ;; mongodb doesn't support foreign keys required by this test
+                         :mongo)
     (testing "We should be able to run a query that for whatever reason ends up with a `SELECT *` for the source query"
       (let [{:keys [rows columns]} (mt/format-rows-by [int int]
                                      (mt/rows+column-names
@@ -304,16 +310,16 @@
 
               :columns
               (mapv mt/format-name ["id" "name" "category_id" "latitude" "longitude" "price" "id_2" "name_2"])}
-             (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query (mt/mbql-query categories))]
+             (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query (mt/mbql-query categories))]
                (mt/format-rows-by [int identity int 4.0 4.0 int int identity]
                  (mt/rows+column-names
-                   (mt/run-mbql-query venues
-                     {:joins    [{:alias        "cat"
-                                  :source-table (str "card__" card-id)
-                                  :fields       :all
-                                  :condition    [:= $category_id &cat.*categories.id]}]
-                      :order-by [[:asc $name]]
-                      :limit    3})))))))))
+                  (mt/run-mbql-query venues
+                    {:joins    [{:alias        "cat"
+                                 :source-table (str "card__" card-id)
+                                 :fields       :all
+                                 :condition    [:= $category_id &cat.*categories.id]}]
+                     :order-by [[:asc $name]]
+                     :limit    3})))))))))
 
 (deftest join-on-field-literal-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -324,32 +330,32 @@
               :columns [(mt/format-name "venue_id") "count" (mt/format-name "category_id") "count_2"]}
              (mt/format-rows-by [int int int int]
                (mt/rows+column-names
-                 (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                                    (mt/mbql-query venues
-                                                      {:aggregation [[:count]]
-                                                       :breakout    [$category_id]}))]
-                   (mt/run-mbql-query checkins
-                     {:source-query {:source-table $$checkins
-                                     :aggregation  [[:count]]
-                                     :breakout     [$venue_id]}
-                      :joins
-                      [{:fields       :all
-                        :alias        "venues"
-                        :source-table (str "card__" card-id)
-                        :strategy         :inner-join
-                        :condition    [:=
-                                       [:field "count" {:base-type :type/Number}]
-                                       [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
-                      :order-by     [[:asc $venue_id]]
-                      :limit        3})))))))))
+                (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                                             (mt/mbql-query venues
+                                                               {:aggregation [[:count]]
+                                                                :breakout    [$category_id]}))]
+                  (mt/run-mbql-query checkins
+                    {:source-query {:source-table $$checkins
+                                    :aggregation  [[:count]]
+                                    :breakout     [$venue_id]}
+                     :joins
+                     [{:fields       :all
+                       :alias        "venues"
+                       :source-table (str "card__" card-id)
+                       :strategy         :inner-join
+                       :condition    [:=
+                                      [:field "count" {:base-type :type/Number}]
+                                      [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
+                     :order-by     [[:asc $venue_id]]
+                     :limit        3})))))))))
 
 (deftest aggregate-join-results-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we aggregate on the results of a JOIN?"
-      (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                         (mt/mbql-query checkins
-                                           {:aggregation [[:count]]
-                                            :breakout    [$user_id]}))]
+      (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                                   (mt/mbql-query checkins
+                                                     {:aggregation [[:count]]
+                                                      :breakout    [$user_id]}))]
         (let [query (mt/mbql-query users
                       {:joins       [{:fields       :all
                                       :alias        "checkins_by_user"
@@ -374,30 +380,30 @@
 (deftest get-all-columns-without-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "NEW! Can we still get all of our columns, even if we *DON'T* specify the metadata?"
-      (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                         (mt/mbql-query venues
-                                           {:aggregation [[:count]]
-                                            :breakout    [$category_id]}))]
+      (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                                   (mt/mbql-query venues
+                                                     {:aggregation [[:count]]
+                                                      :breakout    [$category_id]}))]
         (is (= {:rows    [[1 3 46 3] [2 9 40 9] [4 7 5 7]]
                 :columns [(mt/format-name "venue_id") "count" (mt/format-name "category_id") "count_2"]}
                (mt/rows+column-names
-                 (mt/format-rows-by [int int int int]
-                   (mt/run-mbql-query checkins
-                     {:source-query {:source-table $$checkins
-                                     :aggregation  [[:count]]
-                                     :breakout     [$venue_id]}
-                      :joins        [{:source-table (str "card__" card-id)
-                                      :alias        "venues"
-                                      :fields       :all
-                                      :strategy     :inner-join
-                                      :condition    [:=
-                                                     [:field "count" {:base-type :type/Number}]
-                                                     [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
-                      :order-by     [[:asc $venue_id]]
-                      :limit        3})))))))))
+                (mt/format-rows-by [int int int int]
+                  (mt/run-mbql-query checkins
+                    {:source-query {:source-table $$checkins
+                                    :aggregation  [[:count]]
+                                    :breakout     [$venue_id]}
+                     :joins        [{:source-table (str "card__" card-id)
+                                     :alias        "venues"
+                                     :fields       :all
+                                     :strategy     :inner-join
+                                     :condition    [:=
+                                                    [:field "count" {:base-type :type/Number}]
+                                                    [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
+                     :order-by     [[:asc $venue_id]]
+                     :limit        3})))))))))
 
 (deftest joined-field-in-time-interval-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :right-join)
     (testing "Should be able to use a joined field in a `:time-interval` clause"
       (is (= {:rows    []
               :columns (mapv mt/format-name ["id" "name" "category_id" "latitude" "longitude" "price"])}
@@ -444,8 +450,8 @@
                                           :limit        2})))]
         (is (= (mapv
                 mt/format-name
-                ["id"     "date"   "user_id"     "venue_id"                       ; checkins
-                 "id_2"   "name"   "last_login"                                   ; users
+                ["id"   "date"   "user_id"     "venue_id"                       ; checkins
+                 "id_2" "name"   "last_login"                                   ; users
                  "id_3" "name_2" "category_id" "latitude" "longitude" "price"]) ; venues
                columns))
         (is (= [[1 "2014-04-07T00:00:00Z" 5 12
@@ -459,8 +465,8 @@
 (deftest sql-question-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "we should be able to use a SQL question as a source query in a Join"
-      (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                         (mt/native-query (qp/compile (mt/mbql-query venues))))]
+      (t2.with-temp/with-temp [Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                                   (mt/native-query (qp/compile (mt/mbql-query venues))))]
         (is (= [[1 "2014-04-07T00:00:00Z" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
                 [2 "2014-09-18T00:00:00Z" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
                (mt/formatted-rows [int identity int int int identity int 4.0 4.0 int]
@@ -653,6 +659,10 @@
                                                       :aggregation  [[:distinct &Products.products.id]]
                                                       :filter       [:= &Products.products.category "Gizmo"]}
                                        :alias        "Q2"
+                                       ;; yes, `!month.products.created_at` is a so-called 'bad reference' (should
+                                       ;; include the `:join-alias`) but this test is also testing that we detect this
+                                       ;; situation and handle it appropriately.
+                                       ;; See [[metabase.query-processor.middleware.fix-bad-references]]
                                        :condition    [:= !month.products.created_at !month.&Q2.products.created_at]
                                        :fields       :all}]
                        :order-by     [[:asc !month.&Products.products.created_at]]
@@ -775,7 +785,7 @@
                                          int str str str str 2.0 2.0 str]
                        results))))))))))
 
-(deftest double-quotes-in-join-alias-test
+(deftest ^:parallel double-quotes-in-join-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Make sure our we handle (escape) double quotes in join aliases. Make sure we prevent SQL injection (#20307)"
       (let [expected-rows (mt/rows
@@ -815,7 +825,7 @@
   (str/join (for [i (range length)]
               (nth charset (mod i (count charset))))))
 
-(deftest very-long-join-name-test
+(deftest ^:parallel very-long-join-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Drivers should work correctly even if joins have REALLLLLLY long names (#15978)"
       (doseq [[charset-name charset] charsets
@@ -848,7 +858,9 @@
 
 (deftest join-against-implicit-join-test
   (testing "Should be able to explicitly join against an implicit join (#20519)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
+                           ;; mongodb doesn't support foreign keys required by this test
+                           :mongo)
       (mt/with-bigquery-fks #{:bigquery-cloud-sdk}
         (mt/dataset sample-dataset
           (let [query (mt/mbql-query orders
@@ -868,3 +880,62 @@
                       ["Doohickey" 3976 2 2 "Small Marble Shoes"]]
                      (mt/formatted-rows [str int int int str]
                        (qp/process-query query)))))))))))
+
+(deftest ^:parallel join-order-test
+  (testing "Joins should be emitted in the same order as they were specified in MBQL (#15342)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :inner-join)
+      ;; For SQL drivers, this is only fixed for drivers using Honey SQL 2. So skip the test for ones still using Honey
+      ;; SQL 1. Honey SQL 1 support is slated for removal in Metabase 0.49.0.
+      (when (and (or (not (isa? driver/hierarchy driver/*driver* :sql))
+                     (= (sql.qp/honey-sql-version driver/*driver*) 2))
+                 ;; Joins in MongoDB are extremely slow, especially on version 4.2
+                 ;; (version 5 is about two times faster but still very slow) and
+                 ;; this test is flaky on CI. (See #29266.)
+                 (or (not= driver/*driver* :mongo)
+                     (-> (:dbms_version (data/db))
+                         :semantic-version
+                         (driver.u/semantic-version-gte [5]))))
+        (mt/dataset sample-dataset
+          (doseq [[first-join-strategy second-join-strategy] [[:inner-join :left-join]
+                                                              [:left-join :inner-join]]
+                  :let [query (mt/mbql-query people
+                                {:joins    [{:source-table $$orders
+                                             :alias        "Orders"
+                                             :condition    [:= $id &Orders.orders.user_id]
+                                             :strategy     first-join-strategy}
+                                            {:source-table $$products
+                                             :alias        "Products"
+                                             :condition    [:= &Orders.orders.product_id &Products.products.id]
+                                             :strategy     second-join-strategy}]
+                                 :fields   [$id &Orders.orders.id &Products.products.id]
+                                 :order-by [[:asc $id]
+                                            [:asc &Orders.orders.id]
+                                            [:asc &Products.products.id]]
+                                 :limit    1})]]
+            (testing (format "%s before %s" first-join-strategy second-join-strategy)
+              (mt/with-native-query-testing-context query
+                (is (= [[1 1 14]]
+                       (mt/formatted-rows [int int int]
+                         (qp/process-query query))))))))))))
+
+(deftest join-with-brakout-and-aggregation-expression
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (mt/dataset sample-dataset
+      (let [query (mt/mbql-query orders
+                                 {:source-query {:source-table $$orders
+                                                 :joins    [{:source-table $$products
+                                                             :alias        "Products"
+                                                             :condition    [:= $product_id &Products.products.id]}]
+                                                 :filter   [:> $subtotal 100]
+                                                 :breakout [&Products.products.category
+                                                            &Products.products.vendor
+                                                            !month.created_at]
+                                                 :aggregation [[:sum $subtotal]]}
+                                  :expressions {:strange [:/ [:field "sum" {:base-type "type/Float"}] 100]}
+                                  :limit 3})]
+        (mt/with-native-query-testing-context query
+          (is (= [["Doohickey" "Balistreri-Ankunding" "2018-01-01T00:00:00Z" 210.24 2.1024]
+                  ["Doohickey" "Balistreri-Ankunding" "2018-02-01T00:00:00Z" 315.36 3.1536]
+                  ["Doohickey" "Balistreri-Ankunding" "2018-03-01T00:00:00Z" 315.36 3.1536]]
+                 (mt/formatted-rows [str str str 2.0 4.0]
+                   (qp/process-query query)))))))))

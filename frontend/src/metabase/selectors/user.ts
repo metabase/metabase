@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 
 import type { State } from "metabase-types/store";

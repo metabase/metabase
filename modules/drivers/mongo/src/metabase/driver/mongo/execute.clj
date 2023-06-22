@@ -3,20 +3,22 @@
    [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :refer [*mongo-connection*]]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [monger.conversion :as m.conversion]
    [monger.util :as m.util]
    [schema.core :as s])
   (:import
    (com.mongodb AggregationOptions AggregationOptions$OutputMode BasicDBObject Cursor DB DBObject)
    (java.util.concurrent TimeUnit)
-   (org.bson BsonInt32 BsonBoolean)))
+   (org.bson BsonBoolean BsonInt32)))
+
+(set! *warn-on-reflection* true)
 
 ;;; ---------------------------------------------------- Metadata ----------------------------------------------------
 

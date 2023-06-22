@@ -1,5 +1,13 @@
-import React, { useMemo } from "react";
+import { ChangeEvent, useMemo } from "react";
 import { t } from "ttag";
+
+import Input from "metabase/core/components/Input";
+import Radio from "metabase/core/components/Radio";
+import Toggle from "metabase/core/components/Toggle";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+
+import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { getInputTypes } from "metabase/actions/constants";
 
 import type {
   FieldSettings,
@@ -7,35 +15,34 @@ import type {
   InputSettingType,
 } from "metabase-types/api";
 
-import Input from "metabase/core/components/Input";
-import Radio from "metabase/core/components/Radio";
-import Toggle from "metabase/core/components/Toggle";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-
-import { getFieldTypes, getInputTypes } from "./constants";
+import { getDefaultValueInputType } from "./utils";
 import {
   SettingsTriggerIcon,
   ToggleContainer,
   SettingsPopoverBody,
   SectionLabel,
+  RequiredToggleLabel,
   Divider,
 } from "./FieldSettingsPopover.styled";
+
+export interface FieldSettingsPopoverProps {
+  fieldSettings: FieldSettings;
+  onChange: (fieldSettings: FieldSettings) => void;
+}
 
 export function FieldSettingsPopover({
   fieldSettings,
   onChange,
-}: {
-  fieldSettings: FieldSettings;
-  onChange: (fieldSettings: FieldSettings) => void;
-}) {
+}: FieldSettingsPopoverProps) {
   return (
     <TippyPopoverWithTrigger
       placement="bottom-end"
       triggerContent={
         <SettingsTriggerIcon
           name="gear"
-          size={14}
+          size={16}
           tooltip={t`Change field settings`}
+          aria-label={t`Field settings`}
         />
       }
       maxWidth={400}
@@ -56,15 +63,6 @@ export function FormCreatorPopoverBody({
   fieldSettings: FieldSettings;
   onChange: (fieldSettings: FieldSettings) => void;
 }) {
-  const inputTypes = useMemo(getInputTypes, []);
-
-  const handleUpdateFieldType = (newFieldType: FieldType) =>
-    onChange({
-      ...fieldSettings,
-      fieldType: newFieldType,
-      inputType: inputTypes[newFieldType][0].value,
-    });
-
   const handleUpdateInputType = (newInputType: InputSettingType) =>
     onChange({
       ...fieldSettings,
@@ -77,20 +75,19 @@ export function FormCreatorPopoverBody({
       placeholder: newPlaceholder,
     });
 
-  const handleUpdateRequired = ({
-    required,
-    defaultValue,
-  }: {
-    required: boolean;
-    defaultValue?: string | number;
-  }) =>
+  const handleUpdateRequired = (required: boolean) =>
     onChange({
       ...fieldSettings,
       required,
-      defaultValue:
-        fieldSettings.fieldType === "number"
-          ? Number(defaultValue)
-          : defaultValue,
+      defaultValue: undefined,
+    });
+
+  const handleUpdateDefaultValue = (
+    defaultValue: string | number | undefined,
+  ) =>
+    onChange({
+      ...fieldSettings,
+      defaultValue,
     });
 
   const hasPlaceholder =
@@ -98,53 +95,27 @@ export function FormCreatorPopoverBody({
 
   return (
     <SettingsPopoverBody data-testid="field-settings-popover">
-      <FieldTypeSelect
-        value={fieldSettings.fieldType}
-        onChange={handleUpdateFieldType}
-      />
-      <Divider />
       <InputTypeSelect
         value={fieldSettings.inputType}
         fieldType={fieldSettings.fieldType}
         onChange={handleUpdateInputType}
       />
-      <Divider />
+      <Divider data-testid="divider" />
       {hasPlaceholder && (
-        <PlaceholderInput
-          value={fieldSettings.placeholder ?? ""}
-          onChange={handleUpdatePlaceholder}
-        />
+        <>
+          <PlaceholderInput
+            value={fieldSettings.placeholder ?? ""}
+            onChange={handleUpdatePlaceholder}
+          />
+          <Divider data-testid="divider" />
+        </>
       )}
-      <Divider />
       <RequiredInput
-        value={fieldSettings.required}
-        defaultValue={fieldSettings.defaultValue}
-        onChange={handleUpdateRequired}
+        fieldSettings={fieldSettings}
+        onChangeRequired={handleUpdateRequired}
+        onChangeDefaultValue={handleUpdateDefaultValue}
       />
     </SettingsPopoverBody>
-  );
-}
-
-function FieldTypeSelect({
-  value,
-  onChange,
-}: {
-  value: FieldType;
-  onChange: (newFieldType: FieldType) => void;
-}) {
-  const fieldTypes = useMemo(getFieldTypes, []);
-
-  return (
-    <div>
-      <SectionLabel>{t`Field type`}</SectionLabel>
-      <Radio
-        variant="bubble"
-        value={value}
-        options={fieldTypes}
-        aria-label={t`Field type`}
-        onChange={onChange}
-      />
-    </div>
   );
 }
 
@@ -176,12 +147,13 @@ function PlaceholderInput({
   value: string;
   onChange: (newPlaceholder: string) => void;
 }) {
-  const inputTypes = useMemo(getInputTypes, []);
+  const id = useUniqueId();
 
   return (
     <div>
-      <SectionLabel>{t`Placeholder text`}</SectionLabel>
+      <SectionLabel htmlFor={id}>{t`Placeholder text`}</SectionLabel>
       <Input
+        id={id}
         fullWidth
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -191,40 +163,54 @@ function PlaceholderInput({
   );
 }
 
+interface RequiredInputProps {
+  fieldSettings: FieldSettings;
+  onChangeRequired: (required: boolean) => void;
+  onChangeDefaultValue: (defaultValue: string | number | undefined) => void;
+}
+
 function RequiredInput({
-  value,
-  defaultValue,
-  onChange,
-}: {
-  value: boolean;
-  defaultValue?: string | number;
-  onChange: ({
-    required,
-    defaultValue,
-  }: {
-    required: boolean;
-    defaultValue?: string | number;
-  }) => void;
-}) {
+  fieldSettings: { fieldType, inputType, required, defaultValue },
+  onChangeRequired,
+  onChangeDefaultValue,
+}: RequiredInputProps) {
+  const id = useUniqueId();
+
+  const handleDefaultValueChange = ({
+    target: { value },
+  }: ChangeEvent<HTMLInputElement>) => {
+    if (!value) {
+      onChangeDefaultValue(undefined);
+    } else if (fieldType === "number") {
+      onChangeDefaultValue(Number(value));
+    } else {
+      onChangeDefaultValue(value);
+    }
+  };
+
   return (
     <div>
       <ToggleContainer>
-        <strong>{t`Required`}</strong>
+        <RequiredToggleLabel
+          htmlFor={`${id}-required`}
+        >{t`Required`}</RequiredToggleLabel>
         <Toggle
-          value={!!value}
-          onChange={required => onChange({ required, defaultValue })}
+          id={`${id}-required`}
+          value={required}
+          onChange={onChangeRequired}
         />
       </ToggleContainer>
-      {!value && (
+      {required && (
         <>
-          <SectionLabel>{t`Default Value`}</SectionLabel>
+          <SectionLabel htmlFor={`${id}-default`}>
+            {t`Default value`}
+          </SectionLabel>
           <Input
+            id={`${id}-default`}
+            type={getDefaultValueInputType(inputType)}
             fullWidth
             value={defaultValue ?? ""}
-            onChange={e =>
-              onChange({ required: false, defaultValue: e.target.value })
-            }
-            data-testid="placeholder-input"
+            onChange={handleDefaultValueChange}
           />
         </>
       )}

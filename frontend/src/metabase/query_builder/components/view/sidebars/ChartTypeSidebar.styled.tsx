@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
-import { color, lighten, tint, isDark } from "metabase/lib/colors";
+import { color, tint, isDark, lighten } from "metabase/lib/colors";
+import Button from "metabase/core/components/Button";
 
 export interface OptionRootProps {
   isSelected?: boolean;
@@ -24,9 +25,11 @@ export const OptionRoot = styled.div<OptionRootProps>`
     props.isSelected &&
     `
     ${OptionIconContainer} {
+      &, &:hover { 
       background-color: ${color("brand")};
       color: ${getOptionIconColor(props)};
       border: 1px solid transparent;
+      }
     }
 
     ${OptionText} {
@@ -46,7 +49,20 @@ export const OptionText = styled.div`
   font-size: 0.75rem;
 `;
 
+export const SettingsButton = styled(Button)`
+  position: absolute;
+  top: -0.5rem;
+  right: -0.75rem;
+  padding: 0.375rem;
+  border: 1px solid ${color("border")};
+
+  border-radius: 50px;
+  background-color: ${color("white")};
+  opacity: 0;
+`;
+
 export const OptionIconContainer = styled.div<OptionIconContainerProps>`
+  position: relative;
   display: inline-flex;
   flex-direction: column;
   justify-content: center;
@@ -58,9 +74,13 @@ export const OptionIconContainer = styled.div<OptionIconContainerProps>`
   cursor: pointer;
   padding: 0.875rem;
   &:hover {
-    color: ${color("white")};
-    background-color: ${color("brand")};
+    color: ${color("brand")};
+    background-color: ${lighten("brand", 0.55)};
     border: 1px solid transparent;
+
+    ${SettingsButton} {
+      opacity: 1;
+    }
   }
 `;
 

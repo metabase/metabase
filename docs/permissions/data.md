@@ -19,7 +19,7 @@ You can set various levels of permissions on a data source, from querying access
 - [Data access](#data-access)
 - [Native querying](#native-query-editing)
 - [Download results](#download-results)\*
-- [Manage data model](#manage-data-model)\*
+- [Manage table metadata](#manage-table-metadata)\*
 - [Manage database](#manage-database)\*
 
 \* Available on paid plans.
@@ -30,7 +30,9 @@ You can click on any cell in the permissions table to change a group’s access 
 
 ### Unrestricted access
 
-Members of the group can create questions using the graphical query builder on data from all tables (within all namespaces/schemas, if your database uses those), including any tables that might get added to this database in the future. To grant a group the ability to write native/SQL questions, you must additionally set [Native query editing](#native-query-editing) to **Yes**.
+Members of the group can create questions using the graphical query builder on data from all tables (within all namespaces/schemas, if your database uses those), including any tables that might get added to this database in the future.
+
+To grant a group the ability to write native/SQL questions or create [actions](../actions/start.md), you must additionally set [Native query editing](#native-query-editing) to **Yes**.
 
 ### Granular access
 
@@ -80,9 +82,14 @@ Sandboxed access to a table can restrict access to columns and rows of a table. 
 
 ## Native query editing
 
-Members of a group with Native query editing set to Yes can write new SQL/native queries using the [native query editor](../questions/native-editor/writing-sql.md). This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
+Members of a group with Native query editing set to "Yes" can:
 
-People in a group without Native query editing permissions will still be able to view the results of questions created from SQL/native queries (though just the results, not the query), provided they 1) have collection access to the question, and 2) the question doesn't query a database that is [blocked](#block-access) for that group.
+- Write new SQL/native queries using the [native query editor](../questions/native-editor/writing-sql.md).
+- Create and edit [custom actions](../actions/custom.md).
+
+This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
+
+People in a group without Native query editing permissions will still be able to view the results of questions created from SQL/native queries (though just the results, not the query), or run an action, provided they 1) have collection access to the question or model, and 2) it doesn't query a database that is [blocked](#block-access) for that group.
 
 ## Download results
 
@@ -95,11 +102,11 @@ You can set permissions on whether people in a group can download results (and h
 - 10 thousand rows
 - 1 million rows
 
-## Manage data model
+## Manage table metadata
 
 {% include plans-blockquote.html feature="Data model permissions" %}
 
-You can define whether a group can [edit metadata](../data-modeling/metadata-editing.md). Options are:
+You can define whether a group can [edit table metadata](../data-modeling/metadata-editing.md). Options are:
 
 - Yes (meaning, they can edit metadata for that data source).
 - No
@@ -114,10 +121,10 @@ The **Manage database** permission grants access to the settings page for a give
 On the database settings page, you can:
 
 - Edit any of the [connection options](../databases/connecting.md) for the data source,
-- [sync schemas](../databases/connecting.md#manually-syncing-tables-and-columns), and
-- [scan field values](../databases/connecting.md#manually-scanning-column-values).
+- [sync schemas](../databases/sync-scan.md#manually-syncing-tables-and-columns), and
+- [scan field values](../databases/sync-scan.md#manually-scanning-column-values).
 
-Note that only admins can delete database connections in your Metabase, so people with **Manage database** permissions won't see the **Remove database** button. 
+Note that only admins can delete database connections in your Metabase, so people with **Manage database** permissions won't see the **Remove database** button.
 
 ## Further reading
 

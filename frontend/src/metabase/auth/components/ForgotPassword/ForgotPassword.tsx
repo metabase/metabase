@@ -1,8 +1,12 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
+import { Location } from "history";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import Button from "metabase/core/components/Button";
-import AuthLayout from "../../containers/AuthLayout";
-import ForgotPasswordForm from "../ForgotPasswordForm";
+import { forgotPassword } from "../../actions";
+import { getIsEmailConfigured, getIsLdapEnabled } from "../../selectors";
+import { AuthLayout } from "../AuthLayout";
+import { ForgotPasswordForm } from "../ForgotPasswordForm";
 import {
   InfoBody,
   InfoIcon,
@@ -13,27 +17,33 @@ import {
 
 type ViewType = "form" | "disabled" | "success";
 
-export interface ForgotPasswordProps {
-  canResetPassword: boolean;
-  initialEmail?: string;
-  onResetPassword: (email: string) => void;
+interface ForgotPasswordQueryString {
+  email?: string;
 }
 
-const ForgotPassword = ({
-  canResetPassword,
-  initialEmail,
-  onResetPassword,
+interface ForgotPasswordProps {
+  location?: Location<ForgotPasswordQueryString>;
+}
+
+export const ForgotPassword = ({
+  location,
 }: ForgotPasswordProps): JSX.Element => {
+  const isEmailConfigured = useSelector(getIsEmailConfigured);
+  const isLdapEnabled = useSelector(getIsLdapEnabled);
+  const canResetPassword = isEmailConfigured && !isLdapEnabled;
+  const initialEmail = location?.query?.email;
+
   const [view, setView] = useState<ViewType>(
     canResetPassword ? "form" : "disabled",
   );
+  const dispatch = useDispatch();
 
   const handleSubmit = useCallback(
     async (email: string) => {
-      await onResetPassword(email);
+      await dispatch(forgotPassword(email)).unwrap();
       setView("success");
     },
-    [onResetPassword],
+    [dispatch],
   );
 
   return (
@@ -74,5 +84,3 @@ const ForgotPasswordDisabled = (): JSX.Element => {
     </InfoBody>
   );
 };
-
-export default ForgotPassword;

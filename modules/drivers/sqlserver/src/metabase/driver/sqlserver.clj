@@ -4,7 +4,6 @@
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honeysql.helpers :as hh]
    [java-time :as t]
    [metabase.config :as config]
@@ -22,28 +21,24 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
   (:import
    (java.sql Connection ResultSet Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
+(set! *warn-on-reflection* true)
+
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
-(defmethod driver/supports? [:sqlserver :regex] [_ _] false)
-(defmethod driver/supports? [:sqlserver :percentile-aggregations] [_ _] false)
-;; SQLServer LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
-;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
-;; users in the UI
-(defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
-(defmethod driver/supports? [:sqlserver :now] [_ _] true)
-(defmethod driver/supports? [:sqlserver :datetime-diff] [_ _] true)
-
-(defmethod driver/database-supports? [:sqlserver :convert-timezone]
-  [_driver _feature _database]
-  true)
-(defmethod driver/database-supports? [:sqlserver :test/jvm-timezone-setting]
-  [_driver _feature _database]
-  false)
+(doseq [[feature supported?] {:regex                                  false
+                              :percentile-aggregations                false
+                              :case-sensitivity-string-filter-options false
+                              :now                                    true
+                              :datetime-diff                          true
+                              :convert-timezone                       true
+                              :test/jvm-timezone-setting              false}]
+  (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :sqlserver
   [_]

@@ -1,25 +1,24 @@
-import { createSelector } from "reselect";
 import { getEngineNativeType } from "metabase/lib/engine";
-import { State } from "metabase-types/store";
+import Database from "metabase-lib/metadata/Database";
 
-const getDatabaseList = createSelector(
-  (state: State) => state.entities.databases,
-  databases => (databases ? Object.values(databases) : []),
-);
+export const getHasDataAccess = (databases: Database[]) => {
+  return databases.some(d => !d.is_saved_questions);
+};
 
-export const getHasDataAccess = createSelector(getDatabaseList, databases =>
-  databases.some(d => !d.is_saved_questions),
-);
+export const getHasOwnDatabase = (databases: Database[]) => {
+  return databases.some(d => !d.is_sample && !d.is_saved_questions);
+};
 
-export const getHasOwnDatabase = createSelector(getDatabaseList, databases =>
-  databases.some(d => !d.is_sample && !d.is_saved_questions),
-);
+export const getHasNativeWrite = (databases: Database[]) => {
+  return databases.some(d => d.native_permissions === "write");
+};
 
-export const getHasNativeWrite = createSelector(getDatabaseList, databases =>
-  databases.some(d => d.native_permissions === "write"),
-);
+export const getHasDatabaseWithJsonEngine = (databases: Database[]) => {
+  return databases.some(d => getEngineNativeType(d.engine) === "json");
+};
 
-export const getHasDatabaseWithJsonEngine = createSelector(
-  getDatabaseList,
-  databases => databases.some(d => getEngineNativeType(d.engine) === "json"),
-);
+export const getHasDatabaseWithActionsEnabled = (databases: Database[]) => {
+  return databases.some(
+    database => !!database.settings?.["database-enable-actions"],
+  );
+};

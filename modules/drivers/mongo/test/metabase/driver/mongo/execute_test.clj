@@ -7,6 +7,8 @@
   (:import
    (java.util NoSuchElementException)))
 
+(set! *warn-on-reflection* true)
+
 (defn- make-mongo-cursor [rows]
   (let [counter (volatile! 0)]
     (reify com.mongodb.Cursor

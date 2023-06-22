@@ -6,29 +6,31 @@ redirect_from:
 
 # Alerts
 
-Whether you're keeping track of revenue, users, or negative reviews, there are often times when you want to be alerted about something. Metabase has a few different kinds of alerts you can set up, and you can choose to be notified via email or Slack.
+Set up an alert on a question to send the results of questions to people via email or Slack.
 
-## Getting alerts
+## Prerequisite for alerts
 
-To start using alerts, someone on your team who's an administrator will need to make sure that [email integration](../../configuring-metabase/email.md) or Slack is set up first.
+To start using alerts, an administrator will need to make sure that either [email](../../configuring-metabase/email.md) or [Slack](../../configuring-metabase/slack.md) is set up for your Metabase.
+
+## Setting up an alert
+
+Go to a question and click on the **bell** icon in the bottom right of the screen.
 
 ## Types of alerts
 
 There are three kinds of things you can get alerted about in Metabase:
 
-1. When a time series crosses a goal line.
-2. When a progress bar reaches or goes below its goal.
-3. When any other kind of question returns a result.
-
-We'll go through these one by one.
+- [Goal line alerts](#goal-line-alerts) when a time series crosses a goal line.
+- [Progress bar alerts](#progress-bar-alerts): when a progress bar reaches or goes below its goal.
+- [Results alerts](#results-alerts): when a question returns any result.
 
 ## Goal line alerts
 
-This kind of alert is useful when you're doing things like tracking daily active users and you want to know when you reach a certain number of them, or when you're tracking orders per week and you want to know whenever that number ever goes below a certain threshold.
+Goal line alerts are useful when you're doing things like tracking daily active users and you want to know when you reach a certain number of DAU, or when you're tracking orders per week and you want to know whenever the number of orders ever goes below a certain threshold.
 
-To start, you'll need a line, area, or bar chart displaying a number over time. (If you need help with that, check out the page on [asking questions](../query-builder/introduction.md).)
+To start, you'll need a line, area, or bar chart displaying a number over time.
 
-Now we need to set up a goal line. To do that, open up the visualization settings by clicking the Settings button in the bottom-left. Then click on the Display tab, and turn on the "Show goal" setting. Choose a value for your goal and click Done.
+Next, you need to set up a goal line on your chart. Open up the visualization settings by clicking the **gear** icon in the bottom-left. Then click on the **Display** tab, and turn on the **Show goal** setting. Choose a value for your goal (and optionally a label) and click Done.
 
 Save your question, then click on the bell icon in the bottom-right of the screen.
 
@@ -60,31 +62,40 @@ You probably don't want to be alerted about all the bad reviews you've _ever_ go
 
 Save the question, the click on the bell icon in the bottom-right of the screen, and select how often you want Metabase to check this question for results. That's it!
 
-## Adding additional recipients to your alerts
+## Editing and deleting alerts
 
-If you're an administrator of your Metabase instance, you'll be able to see and edit every alert on all saved questions. You'll also see some additional options to add recipients to alerts, which look like this:
+Admins get special privileges with alerts.
 
-![Recipients](../images/recipients.png)
+### Admins
 
-You can add any Metabase user, email address, or even a Slack channel as a recipient of an alert. Admins can add or remove recipients on any alert, even ones that they did not create themselves.
-
-Here's more information about [setting up email integration](../../configuring-metabase/email.md) and [setting up Slack integration](../../configuring-metabase/slack.md).
-
-## Stopping alerts
-
-There are a few ways alerts can be stopped:
-
-- Non-admins can unsubscribe from any alert that they're a recipient of.
 - Admins can edit and delete any alert. This can't be undone, so be careful!
-- Admins on some paid plans can view, edit, and delete all dashboard subscriptions and alerts in the [Audit tab](../../usage-and-performance-tools/audit.md#subscriptions-and-alerts).
-- If a saved question that has an alert gets edited in such a way that the alert doesn't make sense anymore, the alert will get deleted. For example, if a saved question with a goal line alert on it gets edited, and the goal line is removed entirely, that alert will get deleted.
-- If a question gets archived, any alerts on it will be deleted.
+- Admins can add or remove recipients on any alert, even ones that they did not create themselves.
+- Admins on some [paid plans](https://www.metabase.com/pricing) can view, edit, and delete all dashboard subscriptions and alerts in the [Audit tab](../../usage-and-performance-tools/audit.md#subscriptions-and-alerts).
 
-## Viewing existing alerts
+### Everyone
+
+- Everyone can edit alerts that they've set up (but not alerts set up by other people).
+- Everyone can view and unsubscribe from all alerts they receive by clicking on the **gear** icon in the upper right and navigating to **Account settings** > **Notifications**.
+
+## Avoid changing the name of the alerted channel in Slack
+
+Once you set up an alert to a Slack channel, avoid changing the name of that channel in Slack. If you rename the channel in Slack, but you want Metabase to continue to send alerts to that renamed channel, you'll need to update the alert in Metabase to point to the new channel name. 
+
+## Alert expiration
+
+Some circumstances will automatically delete alerts:
+
+- Renaming the alerted channel in Slack. Well, technically the alert won't get deleted, but Metabase will no longer have anywhere to send the alerts to. You'll need to update the alert's target channel in Metabase to the new channel's name.
+- If a saved question that has an alert gets edited in such a way that the alert doesn't make sense anymore, the alert will get deleted. For example, if a saved question with a goal line alert on it gets edited, and the goal line is removed entirely, Metabase will delete the alert.
+- If a question gets archived, Metabase will delete any alerts set up for that question.
+
+Alerts will continue to work even if the person who set up the alert no longer has an active account. For example, if an alert with multiple recipients (or to a Slack channel) was set up by someone whose account has since been deactivated, that alert will continue to work (though Metabase will stop sending the alerts to the deactivated account).
+
+## Admins can audit alerts
 
 {% include plans-blockquote.html feature="Audit logs" %}
 
-To view a list of all alerts and dashboard subscriptions that people have set up in your Metabase, click on the **gear** icon in the upper right and select **Admin settings** > **Audit** > **Subscriptions & Alerts**. See [Audit](../../usage-and-performance-tools/audit.md#subscriptions-and-alerts).
+Admins can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase. Click on the **gear** icon in the upper right and select **Admin settings** > **Audit** > **Subscriptions & Alerts**. See [Audit](../../usage-and-performance-tools/audit.md#subscriptions-and-alerts).
 
 ## How permissions work with alerts
 
@@ -93,7 +104,6 @@ See [Notification permissions](../../permissions/notifications.md).
 ## Further reading
 
 - [Dashboard subscriptions](../../dashboards/subscriptions.md)
-- [Notification permissions](../../permissions/notifications.md)
 - [Setting up email](../../configuring-metabase/email.md)
 - [Setting up Slack](../../configuring-metabase/slack.md)
 - [Auditing Metabase](../../usage-and-performance-tools/audit.md)

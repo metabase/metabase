@@ -9,6 +9,8 @@
   (:import
    (java.io IOException)))
 
+(set! *warn-on-reflection* true)
+
 (deftest new-user-email
   (is (= [{:from    "notifications@metabase.com",
            :to      ["test@test.com"],
@@ -26,7 +28,7 @@
 (deftest password-reset-email
   (testing "password reset email can be sent successfully"
     (et/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" false false "http://localhost/some/url" true)
+      (messages/send-password-reset-email! "test@test.com" nil "http://localhost/some/url" true)
       (is (= [{:from    "notifications@metabase.com",
                :to      ["test@test.com"],
                :subject "[Metabase] Password Reset Request",
@@ -37,19 +39,19 @@
   ;; that the contents changed in the tests below.
   (testing "password reset email tells user if they should log in with Google Sign-In"
     (et/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" true false "http://localhost/some/url" true)
+      (messages/send-password-reset-email! "test@test.com" "google" "http://localhost/some/url" true)
       (is (-> (@et/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "Google")))))
   (testing "password reset email tells user if they should log in with (non-Google) SSO"
     (et/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" false true nil true)
+      (messages/send-password-reset-email! "test@test.com" "SAML" nil true)
       (is (-> (@et/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "SSO")))))
   (testing "password reset email tells user if their account is inactive"
     (et/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" false false "http://localhost/some/url" false)
+      (messages/send-password-reset-email! "test@test.com" nil "http://localhost/some/url" false)
       (is (-> (@et/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "deactivated"))))))
@@ -94,12 +96,13 @@
 (deftest render-pulse-email-test
   (testing "Email with few rows and columns can be rendered when tracing (#21166)"
     (mt/with-log-level [metabase.email :trace]
-      (let [result {:card   {:name "card-name"
-                             :visualization_settings
-                             {:table.column_formatting []}}
-                    :result {:data {:cols [{:name "x"} {:name "y"}]
-                                    :rows [[0 0]
-                                           [1 1]]}}}
-            emails (messages/render-pulse-email "America/Pacific" {} {} [result])]
+      (let [part {:card   {:name "card-name"
+                           :visualization_settings
+                           {:table.column_formatting []}}
+                  :result {:data {:cols [{:name "x"} {:name "y"}]
+                                  :rows [[0 0]
+                                         [1 1]]}}
+                  :type :card}
+            emails (messages/render-pulse-email "America/Pacific" {} {} [part] nil)]
         (is (vector? emails))
         (is (map? (first emails)))))))

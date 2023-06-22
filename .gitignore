@@ -34,6 +34,7 @@
 /deploy/artifacts/*
 /docs/uberdoc.html
 /frontend/test/snapshots/*
+/e2e/snapshots/*
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
@@ -73,7 +74,9 @@ xcuserdata
 dev/src/dev/nocommit/
 *~
 **/cypress_sample_database.json
+**/cypress_sample_instance_data.json
 /frontend/src/cljs
+/frontend/src/cljs_release
 .shadow-cljs
 
 # lsp: ignore all but the config file
@@ -85,4 +88,4 @@ dev/src/dev/nocommit/
 .calva/
 
 # malli + clj-kondo: ignore malli-types
-.clj-kondo/metosin/malli-types
+.clj-kondo/metosin/malli-types-clj

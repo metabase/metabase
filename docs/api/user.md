@@ -57,6 +57,14 @@ Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group M
 
 Fetch the current `User`.
 
+## `GET /api/user/recipients`
+
+Fetch a list of `Users`. Returns only active users. Meant for non-admins unlike GET /api/user.
+
+   - If user-visibility is :all or the user is an admin, include all users.
+   - If user-visibility is :group, include only users in the same group (excluding the all users group).
+   - If user-visibility is :none or the user is sandboxed, include only themselves.
+
 ## `POST /api/user/`
 
 Create a new `User`, return a 400 if the email address is already taken.
@@ -86,7 +94,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `PUT /api/user/:id`
 
@@ -137,7 +145,9 @@ Update a user's password.
 
 *  **`password`** password is too common.
 
-*  **`old_password`**
+*  **`old_password`** 
+
+*  **`request`**
 
 ## `PUT /api/user/:id/reactivate`
 

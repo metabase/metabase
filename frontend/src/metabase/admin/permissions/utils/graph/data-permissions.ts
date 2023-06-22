@@ -45,7 +45,7 @@ export function updatePermission(
   permissions: GroupsPermissions,
   groupId: number,
   path: Array<number | string>,
-  value: string | number,
+  value: string | undefined,
   entityIds?: any[],
 ) {
   const fullPath = [groupId, ...path];
@@ -353,7 +353,7 @@ export function updateTablesPermission(
   downgradeNative?: boolean,
 ) {
   const schema = database.schema(schemaName);
-  const tableIds = schema?.tables.map((t: Table) => t.id);
+  const tableIds = schema?.getTables().map((t: Table) => t.id);
 
   permissions = updateSchemasPermission(
     permissions,

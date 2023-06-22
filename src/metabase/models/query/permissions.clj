@@ -3,7 +3,6 @@
   only thing that is subject to these sorts of checks are *ad-hoc* queries, i.e. queries that have not yet been saved
   as a Card. Saved Cards are subject to the permissions of the Collection to which they belong."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.api.common :as api]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
@@ -13,9 +12,10 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
@@ -82,7 +82,7 @@
            native-perms-fn]} :- PermsOptions]
   (let [table-ids           (filter integer? tables-or-ids)
         table-id->schema    (when (seq table-ids)
-                              (db/select-id->field :schema Table :id [:in table-ids]))
+                              (t2/select-pk->fn :schema Table :id [:in table-ids]))
         table-or-id->schema #(if (integer? %)
                                (table-id->schema %)
                                (:schema %))
@@ -104,7 +104,7 @@
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
   [source-card-id :- su/IntGreaterThanZero]
-  (mi/perms-objects-set (or (db/select-one ['Card :collection_id] :id source-card-id)
+  (mi/perms-objects-set (or (t2/select-one ['Card :collection_id] :id source-card-id)
                            (throw (Exception. (tru "Card {0} does not exist." source-card-id))))
                        :read))
 

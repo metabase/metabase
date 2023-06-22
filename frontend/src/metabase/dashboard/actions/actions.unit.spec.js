@@ -12,6 +12,7 @@ import {
   openAddQuestionSidebar,
   removeParameter,
   SET_DASHBOARD_ATTRIBUTES,
+  saveDashboardAndCards,
 } from "./index";
 
 DashboardApi.parameterSearch = jest.fn();
@@ -149,6 +150,42 @@ describe("dashboard actions", () => {
           },
         },
       });
+    });
+  });
+
+  describe("saveDashboardAndCards", () => {
+    it("should not save anything if the dashboard has not changed", async () => {
+      const dashboard = {
+        id: 1,
+        name: "Foo",
+        parameters: [],
+        ordered_cards: [
+          { id: 1, name: "Foo", card_id: 1 },
+          { id: 2, name: "Bar", card_id: 2 },
+        ],
+      };
+
+      const getState = () => ({
+        dashboard: {
+          isEditing: dashboard,
+          dashboardId: 1,
+          dashboards: {
+            1: {
+              ...dashboard,
+              ordered_cards: [1, 2],
+            },
+          },
+          dashcards: {
+            1: dashboard.ordered_cards[0],
+            2: dashboard.ordered_cards[1],
+          },
+        },
+      });
+
+      await saveDashboardAndCards()(dispatch, getState);
+
+      // if this is called only once, it means that the dashboard was not saved
+      expect(dispatch).toHaveBeenCalledTimes(1);
     });
   });
 });

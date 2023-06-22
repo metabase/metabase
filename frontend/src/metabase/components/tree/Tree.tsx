@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
+import * as React from "react";
 import _ from "underscore";
-import { usePrevious } from "metabase/hooks/use-previous";
+import { usePrevious } from "react-use";
 import { TreeNodeList } from "./TreeNodeList";
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import { getInitialExpandedIds } from "./utils";

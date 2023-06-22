@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { compact_currency_options_js } from "cljs/metabase.shared.formatting.numbers";
+import { COMPACT_CURRENCY_OPTIONS } from "metabase/lib/formatting";
 import { moveToFront } from "metabase/lib/dom";
 import { isHistogramBar, xValueForWaterfallTotal } from "./renderer_utils";
 
@@ -182,9 +182,10 @@ export function onRenderValueLabels(
         // We include compact currency options here for both compact and
         // non-compact formatting. This prevents auto's logic from depending on
         // those settings.
-        minimum_fraction_digits: 2,
-        maximum_fraction_digits: 2,
-        ...compact_currency_options_js,
+        ...COMPACT_CURRENCY_OPTIONS,
+        // We need this to ensure the settings are used. Otherwise, a cached
+        // _numberFormatter would take precedence.
+        _numberFormatter: undefined,
       };
       const lengths = data.map(d => formatYValue(d.y, options).length);
       return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;

@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+/* eslint-disable  react/jsx-key */
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt, ngettext, msgid } from "ttag";
 import _ from "underscore";
@@ -11,7 +12,7 @@ import ModalContent from "metabase/components/ModalContent";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Radio from "metabase/core/components/Radio";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
@@ -101,7 +102,7 @@ class CreateAlertModalContentInner extends Component {
     const { alert } = this.state;
 
     await createAlert(alert);
-    await updateUrl(question.card(), { dirty: false });
+    await updateUrl(question, { dirty: false });
 
     onAlertCreated();
     MetabaseAnalytics.trackStructEvent(
@@ -296,7 +297,7 @@ class UpdateAlertModalContentInner extends Component {
 
     await apiUpdateQuestion();
     await updateAlert(modifiedAlert);
-    await updateUrl(question.card(), { dirty: false });
+    await updateUrl(question, { dirty: false });
     onAlertUpdated();
 
     MetabaseAnalytics.trackStructEvent(

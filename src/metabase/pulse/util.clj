@@ -1,7 +1,6 @@
 (ns metabase.pulse.util
   "Utils for pulses."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard-card
     :as dashboard-card
@@ -11,7 +10,8 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [toucan.db :as db]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 ;; TODO - this should be done async
 (defn execute-card
@@ -21,7 +21,7 @@
   {:pre [(integer? pulse-creator-id)]}
   (let [card-id (u/the-id card-or-id)]
     (try
-      (when-let [{query :dataset_query, :as card} (db/select-one Card :id card-id, :archived false)]
+      (when-let [{query :dataset_query, :as card} (t2/select-one Card :id card-id, :archived false)]
         (let [query         (assoc query :async? false)
               process-query (fn []
                               (binding [qp.perms/*card-id* card-id]
@@ -49,8 +49,8 @@
   [card-or-id dashcard-or-id]
   (let [card-id      (u/the-id card-or-id)
         dashcard-id  (u/the-id dashcard-or-id)
-        card         (db/select-one Card :id card-id, :archived false)
-        dashcard     (db/select-one DashboardCard :id dashcard-id)
+        card         (t2/select-one Card :id card-id, :archived false)
+        dashcard     (t2/select-one DashboardCard :id dashcard-id)
         multi-cards  (dashboard-card/dashcard->multi-cards dashcard)]
     (for [multi-card multi-cards]
       (execute-card {:creator_id (:creator_id card)} (:id multi-card)))))

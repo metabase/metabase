@@ -9,7 +9,9 @@
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (deftest auth-tests
   (testing "Authentication"
@@ -46,7 +48,7 @@
                                                                  :timeline_id  (u/the-id timeline)}))
       ;; check the Timeline to see if the event is there
       (is (= "Rasta Migrates to Florida for the Winter"
-             (-> (db/select-one TimelineEvent :timeline_id (u/the-id timeline)) :name))))))
+             (-> (t2/select-one TimelineEvent :timeline_id (u/the-id timeline)) :name))))))
 
 (deftest update-timeline-event-test
   (testing "PUT /api/timeline-event/:id"

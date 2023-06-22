@@ -9,7 +9,6 @@
      CREATE TABLE ...               -- Bad"
   (:require
    [cheshire.core :as json]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
@@ -17,12 +16,20 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting :refer [Setting]]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; # Migration Helpers
+(def DataMigrations
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all these symbols in our codebase."
+  :model/DataMigrations)
 
-(models/defmodel ^:deprecated DataMigrations :data_migrations)
+(methodical/defmethod t2/table-name :model/DataMigrations [_model] :data_migrations)
+(derive :model/DataMigrations :metabase/model)
 
 (defn- ^:deprecated run-migration-if-needed!
   "Run migration defined by `migration-var` if needed. `ran-migrations` is a set of migrations names that have already
@@ -37,13 +44,13 @@
     (when-not (contains? ran-migrations migration-name)
       (log/info (format "Running data migration '%s'..." migration-name))
       (try
-       (db/transaction
+       (t2/with-transaction [_conn]
         (@migration-var))
        (catch Exception e
          (if catch?
            (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
            (throw e))))
-      (db/insert! DataMigrations
+      (t2/insert! :model/DataMigrations
         :id        migration-name
         :timestamp :%now))))
 
@@ -60,7 +67,7 @@
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")
-  (let [ran-migrations (db/select-ids DataMigrations)]
+  (let [ran-migrations (t2/select-pks-set :model/DataMigrations)]
     (doseq [migration @data-migrations]
       (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))
@@ -164,7 +171,7 @@
                    (filter :visualization_settings))
              (completing
               (fn [_ {:keys [id visualization_settings]}]
-                (db/update! DashboardCard id :visualization_settings visualization_settings)))
+                (t2/update! DashboardCard id {:visualization_settings visualization_settings})))
              nil
              ;; flamber wrote a manual postgres migration that this faithfully recreates: see
              ;; https://github.com/metabase/metabase/issues/15014
@@ -188,7 +195,7 @@
   For some reasons during data-migration [[metabase.models.setting/get]] return the default value defined in
   [[metabase.models.setting/defsetting]] instead of value from Setting table."
   [k]
-  (db/select-one-field :value Setting :key (name k)))
+  (t2/select-one-fn :value Setting :key (name k)))
 
 (defn- remove-admin-group-from-mappings-by-setting-key!
   [mapping-setting-key]
@@ -198,12 +205,12 @@
                         (catch Exception _e
                           {}))]
     (when-not (empty? mapping)
-      (db/update! Setting (name mapping-setting-key)
-                  :value
-                  (->> mapping
-                       (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
-                       (into {})
-                       json/generate-string)))))
+      (t2/update! Setting (name mapping-setting-key)
+                  {:value
+                   (->> mapping
+                        (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
+                        (into {})
+                        json/generate-string)}))))
 
 (defmigration
   ^{:author "qnkhuat"

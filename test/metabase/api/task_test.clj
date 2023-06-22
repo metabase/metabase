@@ -6,7 +6,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def ^:private default-task-history
   {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil})
@@ -68,7 +69,7 @@
 
 (deftest paging-test
   (testing "Check that paging information is applied when provided and included in the response"
-    (db/delete! TaskHistory)
+    (t2/delete! TaskHistory)
     (let [[task-hist-1 task-hist-2 task-hist-3 task-hist-4] (generate-tasks 4)]
       (mt/with-temp* [TaskHistory [_ task-hist-1]
                       TaskHistory [_ task-hist-2]
@@ -94,14 +95,14 @@
 
 (deftest fetch-perms-test
   (testing "Regular users can't query for a specific TaskHistory"
-    (mt/with-temp TaskHistory [task]
+    (t2.with-temp/with-temp [TaskHistory task]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "task/%s" (u/the-id task))))))))
 
 (deftest fetch-test
   (testing "Superusers querying for specific TaskHistory will get that task info"
-    (mt/with-temp TaskHistory [task {:task     "Test Task"
-                                     :duration 100}]
+    (t2.with-temp/with-temp [TaskHistory task {:task     "Test Task"
+                                               :duration 100}]
       (is (= (merge default-task-history {:task "Test Task", :duration 100})
              (mt/boolean-ids-and-timestamps
               (mt/user-http-request :crowberto :get 200 (format "task/%s" (u/the-id task)))))))))

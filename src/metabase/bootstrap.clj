@@ -2,6 +2,7 @@
   (:gen-class)
   (:require [clojure.java.io :as io]))
 
+(set! *warn-on-reflection* true)
 
 ;; athena includes `log4j2.properties` which is the first location checked for config. This takes precedence over our
 ;; own log4j2.xml and dynamically reloads and kills useful logging. Should we move our log4j2.xml into

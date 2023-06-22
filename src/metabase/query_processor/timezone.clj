@@ -1,14 +1,16 @@
 (ns metabase.query-processor.timezone
   "Functions for fetching the timezone for the current query."
   (:require
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log])
   (:import
    (java.time ZonedDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ^:dynamic *report-timezone-id-override* nil)
 
@@ -37,13 +39,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn report-timezone-id-if-supported
-  "Timezone ID for the report timezone, if the current driver supports it. (If the current driver supports it, this is
+  "Timezone ID for the report timezone, if the current driver and database supports it. (If the current driver supports it, this is
   bound by the `bind-effective-timezone` middleware.)"
   (^String []
-   (report-timezone-id-if-supported driver/*driver*))
+   (report-timezone-id-if-supported driver/*driver* (qp.store/database)))
 
-  (^String [driver]
-   (when (driver/supports? driver :set-timezone)
+  (^String [driver database]
+   (when (driver/database-supports? driver :set-timezone database)
      (valid-timezone-id (report-timezone-id*)))))
 
 (defn database-timezone-id
@@ -84,7 +86,7 @@
     (or *results-timezone-id-override*
         (if use-report-timezone-id-if-unsupported?
           (valid-timezone-id (report-timezone-id*))
-          (report-timezone-id-if-supported driver))
+          (report-timezone-id-if-supported driver database))
         ;; don't actually fetch DB from store unless needed — that way if `*results-timezone-id-override*` is set we
         ;; don't need to init a store during tests
         (database-timezone-id database)

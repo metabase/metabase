@@ -3,22 +3,25 @@
   multimethods for SQL JDBC drivers."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.connection-pool :as connection-pool]
+   [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [metabase.util.ssh :as ssh]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 DataSources)
    (javax.sql DataSource)))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Interface                                                    |
@@ -216,14 +219,23 @@
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
           db          (or (when (mi/instance-of? Database db-or-id-or-spec)
                             db-or-id-or-spec) ; passed in
-                          (db/select-one [Database :id :engine :details] :id database-id)     ; look up by ID
+                          (t2/select-one [Database :id :engine :details :is_audit] :id database-id) ; look up by ID
                           (throw (ex-info (tru "Database {0} does not exist." database-id)
-                                   {:status-code 404
-                                    :type        qp.error-type/invalid-query
-                                    :database-id database-id})))
+                                          {:status-code 404
+                                           :type        qp.error-type/invalid-query
+                                           :database-id database-id})))
           get-fn      (fn [db-id log-invalidation?]
-                        (when-let [details (get @database-id->connection-pool db-id)]
+                        (let [details (get @database-id->connection-pool db-id ::not-found)]
                           (cond
+                            ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
+                            ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
+                            ;; not in [[database-id->connection-pool]].
+                            (:is_audit db)
+                            {:datasource (mdb.connection/data-source)}
+
+                            (= ::not-found details)
+                            nil
+
                             ;; details hash changed from what is cached; invalid
                             (let [curr-hash (get @database-id->jdbc-spec-hash db-id)
                                   new-hash  (jdbc-spec-hash db)]
@@ -231,11 +243,10 @@
                                 ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
                                 ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
                                 ;; our app DB, and see if it STILL doesn't match
-                                (not= curr-hash (-> (db/select-one [Database :id :engine :details] :id database-id)
+                                (not= curr-hash (-> (t2/select-one [Database :id :engine :details] :id database-id)
                                                     jdbc-spec-hash))))
-                            (if log-invalidation?
-                              (log-jdbc-spec-hash-change-msg! db-id)
-                              nil)
+                            (when log-invalidation?
+                              (log-jdbc-spec-hash-change-msg! db-id))
 
                             (nil? (:tunnel-session details)) ; no tunnel in use; valid
                             details
@@ -244,9 +255,8 @@
                             details
 
                             :else ; tunnel in use, and not open; invalid
-                            (if log-invalidation?
-                              (log-ssh-tunnel-reconnect-msg! db-id)
-                              nil))))]
+                            (when log-invalidation?
+                              (log-ssh-tunnel-reconnect-msg! db-id)))))]
       (or
        ;; we have an existing pool for this database, so use it
        (get-fn database-id true)

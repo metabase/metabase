@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { defer } from "metabase/lib/promise";
+import { runQuestionQuery } from "metabase/services";
 
 const propTypes = {
   question: PropTypes.object,
@@ -28,7 +29,7 @@ const propTypes = {
  * </QuestionResultLoader>
  *
  */
-export class QuestionResultLoader extends React.Component {
+export class QuestionResultLoader extends Component {
   state = {
     results: null,
     loading: false,
@@ -47,9 +48,6 @@ export class QuestionResultLoader extends React.Component {
     }
   }
 
-  /*
-   * load the result by calling question.apiGetResults
-   */
   async _loadResult(question, onLoad, keepPreviousWhileLoading) {
     const { collectionPreview } = this.props;
 
@@ -66,8 +64,7 @@ export class QuestionResultLoader extends React.Component {
           error: null,
         }));
 
-        // call apiGetResults and pass our cancel to allow for cancelation
-        const results = await question.apiGetResults({
+        const results = await runQuestionQuery(question, {
           cancelDeferred: this._cancelDeferred,
           collectionPreview,
         });

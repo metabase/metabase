@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -24,13 +24,19 @@ import {
 
 interface Props {
   model: Question;
+  hasEditDefinitionLink: boolean;
   onChangeName: (name?: string) => void;
   onChangeCollection: (collection: Collection) => void;
 }
 
 type HeaderModal = "move" | "archive";
 
-function ModelDetailHeader({ model, onChangeName, onChangeCollection }: Props) {
+function ModelDetailHeader({
+  model,
+  hasEditDefinitionLink,
+  onChangeName,
+  onChangeCollection,
+}: Props) {
   const [modal, setModal] = useState<HeaderModal | null>(null);
 
   const modelCard = model.card();
@@ -93,7 +99,7 @@ function ModelDetailHeader({ model, onChangeName, onChangeCollection }: Props) {
           <ModelFootnote>{t`Model`}</ModelFootnote>
         </div>
         <ModelHeaderButtonsContainer>
-          {canWrite && (
+          {hasEditDefinitionLink && canWrite && (
             <Button as={Link} to={queryEditorLink}>{t`Edit definition`}</Button>
           )}
           <Button primary as={Link} to={exploreDataLink}>{t`Explore`}</Button>
@@ -107,4 +113,5 @@ function ModelDetailHeader({ model, onChangeName, onChangeCollection }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelDetailHeader;

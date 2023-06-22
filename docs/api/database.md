@@ -26,13 +26,6 @@ Fetch all `Databases`.
 
   * `saved` means we should include the saved questions virtual database. Default: `false`.
 
-  * `include_tables` is a legacy alias for `include=tables`, but should be considered deprecated as of 0.35.0, and will
-    be removed in a future release.
-
-  * `include_cards` here means we should also include virtual Table entries for saved Questions, e.g. so we can easily
-    use them as source Tables in queries. This is a deprecated alias for `saved=true` + `include=tables` (for the saved
-    questions virtual DB). Prefer using `include` and `saved` instead.
-
   * `include_editable_data_model` will only include DBs for which the current user has data model editing
     permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if
     Enterprise Edition code is available the advanced-permissions feature is enabled.
@@ -40,19 +33,21 @@ Fetch all `Databases`.
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.
 
+  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.
+
 ### PARAMS:
-
-*  **`include_tables`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
-
-*  **`include_cards`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 *  **`include`** include must be either empty or the value tables
 
-*  **`saved`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`saved`** nullable boolean
 
-*  **`include_editable_data_model`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`include_editable_data_model`** nullable boolean
 
-*  **`exclude_uneditable_details`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`exclude_uneditable_details`** nullable boolean
+
+*  **`include_only_uploadable`** nullable boolean
+
+*  **`include_analytics`** nullable boolean
 
 ## `GET /api/database/:id`
 
@@ -150,7 +145,11 @@ Return a list of Tables for a Database whose `schema` is `nil` or an empty strin
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
+
+*  **`include_hidden`** nullable value must be a valid boolean string ('true' or 'false').
+
+*  **`include_editable_data_model`** nullable value must be a valid boolean string ('true' or 'false').
 
 ## `GET /api/database/:id/schema/:schema`
 
@@ -158,17 +157,44 @@ Returns a list of Tables for the given Database `id` and `schema`.
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
+
+*  **`include_hidden`** nullable value must be a valid boolean string ('true' or 'false').
+
+*  **`include_editable_data_model`** nullable value must be a valid boolean string ('true' or 'false').
 
 *  **`schema`**
 
 ## `GET /api/database/:id/schemas`
 
-Returns a list of all the schemas found for the database `id`.
+Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
+
+*  **`include_editable_data_model`** nullable value must be a valid boolean string ('true' or 'false').
+
+*  **`include_hidden`** nullable value must be a valid boolean string ('true' or 'false').
+
+## `GET /api/database/:id/syncable_schemas`
+
+Returns a list of all syncable schemas found for the database `id`.
+
+### PARAMS:
+
+*  **`id`** value must be an integer greater than zero.
+
+## `GET /api/database/:id/usage_info`
+
+Get usage info for a database.
+  Returns a map with keys are models and values are the number of entities that use this database.
+
+You must be a superuser to do this.
+
+### PARAMS:
+
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/database/:virtual-db/datasets`
 
@@ -258,15 +284,7 @@ Trigger a manual scan of the field values for this `Database`.
 
 ### PARAMS:
 
-*  **`id`**
-
-## `POST /api/database/:id/sync`
-
-Update the metadata for this `Database`. This happens asynchronously.
-
-### PARAMS:
-
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/database/:id/sync_schema`
 
@@ -274,7 +292,7 @@ Trigger a manual update of the schema metadata for this `Database`.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/database/:id/unpersist`
 

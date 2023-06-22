@@ -4,6 +4,10 @@ import _ from "underscore";
 import Utils from "metabase/lib/utils";
 
 import TimelineEvents from "metabase/entities/timeline-events";
+import {
+  EDIT_QUESTION,
+  NAVIGATE_TO_NEW_CARD,
+} from "metabase/dashboard/actions";
 
 import {
   RESET_QB,
@@ -63,6 +67,7 @@ import {
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   SET_DOCUMENT_TITLE_TIMEOUT_ID,
+  CLOSE_QB,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -251,11 +256,15 @@ export const uiControls = handleActions(
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
-    [onOpenChartSettings]: (state, { payload: initial }) => ({
+    [onOpenChartSettings]: (
+      state,
+      { payload: { initialChartSettings, showSidebarTitle = false } = {} },
+    ) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       isShowingChartSettingsSidebar: true,
-      initialChartSetting: initial,
+      initialChartSetting: initialChartSettings,
+      showSidebarTitle: showSidebarTitle,
     }),
     [onCloseChartSettings]: state => ({
       ...state,
@@ -535,6 +544,19 @@ export const parameterValues = handleActions(
 export const currentState = handleActions(
   {
     [SET_CURRENT_STATE]: { next: (state, { payload }) => payload },
+  },
+  null,
+);
+
+export const dashboardId = handleActions(
+  {
+    [NAVIGATE_TO_NEW_CARD]: {
+      next: (state, { payload: { dashboardId } }) => dashboardId,
+    },
+    [EDIT_QUESTION]: {
+      next: (state, { payload: { dashboardId } }) => dashboardId,
+    },
+    [CLOSE_QB]: { next: () => null },
   },
   null,
 );

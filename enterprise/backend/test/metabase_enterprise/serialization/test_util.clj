@@ -6,28 +6,28 @@
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
-   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
                             Field Metric NativeQuerySnippet Pulse PulseCard Segment Table User]]
    [metabase.models.collection :as collection]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor.store :as qp.store]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
+
+(set! *warn-on-reflection* true)
 
 (def root-card-name "My Root Card \\ with a/nasty: (*) //n`me ' * ? \" < > | ŠĐž")
 (def temp-db-name "Fingerprint test-data copy")
 
 (defn temp-field [from-field-id table-id]
-  (-> (db/select-one Field :id from-field-id)
+  (-> (t2/select-one Field :id from-field-id)
       (dissoc :id)
       (assoc :table_id table-id)))
 
 (defn temp-table [from-tbl-id db-id]
-  (-> (db/select-one Table :id from-tbl-id)
+  (-> (t2/select-one Table :id from-tbl-id)
       (dissoc :id)
       (update :display_name #(str "Temp " %))
       (assoc :db_id db-id)))
@@ -42,31 +42,18 @@
   "Gets the personal collection ID for :crowberto (needed for tests). Must be public because the `with-world` macro
   is public."
   []
-  (db/select-one-field :id Collection :personal_owner_id (mt/user->id :crowberto)))
+  (t2/select-one-fn :id Collection :personal_owner_id (mt/user->id :crowberto)))
 
 (defmacro with-temp-dpc
   "Wraps with-temp*, but binding `*allow-deleting-personal-collections*` to true so that temporary personal collections
   can still be deleted."
   [model-bindings & body]
+  #_{:clj-kondo/ignore [:discouraged-var]}
   `(binding [collection/*allow-deleting-personal-collections* true]
-     (tt/with-temp* ~model-bindings ~@body)))
-
-(defmacro with-empty-h2-app-db
-  "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been
-  created via Liquibase schema migrations. After `body` is finished, the original app DB bindings are restored.
-
-  Makes use of functionality in the [[metabase.db.schema-migrations-test.impl]] namespace since that already does what
-  we need."
-  [& body]
-  `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
-     (schema-migrations-test.impl/run-migrations-in-range! conn# [0 "v99.00-000"]) ; this should catch all migrations)
-     ;; since the actual group defs are not dynamic, we need with-redefs to change them here
-     (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-group-name)
-                   perms-group/admin     (#'perms-group/magic-group perms-group/admin-group-name)]
-       ~@body)))
+     (mt/with-temp* ~model-bindings ~@body)))
 
 (defn create! [model & {:as properties}]
-  (db/insert! model (merge (tt/with-temp-defaults model) properties)))
+ (first (t2/insert-returning-instances! model (merge (t2.with-temp/with-temp-defaults model) properties))))
 
 (defn- do-with-in-memory-h2-db [db-name-prefix f]
   (let [db-name           (str db-name-prefix (mt/random-name))

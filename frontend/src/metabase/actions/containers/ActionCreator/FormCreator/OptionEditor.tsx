@@ -1,53 +1,110 @@
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
+import * as React from "react";
 import { t } from "ttag";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Button from "metabase/core/components/Button";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
+
+import type { FieldType, FieldValueOptions } from "metabase-types/api";
 
 import {
   OptionEditorContainer,
   AddMorePrompt,
+  ErrorMessage,
   TextArea,
 } from "./OptionEditor.styled";
 
-type ValueOptions = (string | number)[];
-
-const optionsToText = (options: ValueOptions) => options.join("\n");
-const textToOptions = (text: string): ValueOptions =>
+const optionsToText = (options: FieldValueOptions) => options.join("\n");
+const textToOptions = (text: string): FieldValueOptions =>
   text.split("\n").map(option => option.trim());
 
+function cleanOptions(options: FieldValueOptions, fieldType: FieldType) {
+  if (fieldType === "number") {
+    return options.map(option => Number(option));
+  }
+  return options;
+}
+
+function getValidationError(options: FieldValueOptions, fieldType: FieldType) {
+  if (fieldType === "number") {
+    const isValid = options.every(option => !Number.isNaN(option));
+    return isValid ? undefined : t`Invalid number format`;
+  }
+  return;
+}
+
+export interface OptionEditorProps {
+  fieldType: FieldType;
+  options: FieldValueOptions;
+  onChange: (options: FieldValueOptions) => void;
+}
+
 export const OptionPopover = ({
+  fieldType,
   options,
   onChange,
-}: {
-  options: ValueOptions;
-  onChange: (options: ValueOptions) => void;
-}) => {
+}: OptionEditorProps) => {
   const [text, setText] = useState(optionsToText(options));
-  const save = (closePopover: () => void) => {
-    onChange(textToOptions(text));
-    closePopover();
+  const [error, setError] = useState<string | null>(null);
+
+  const hasOptions = text.length > 0;
+  const isDirty = text !== optionsToText(options);
+  const hasError = Boolean(error);
+  const canSave = hasOptions && isDirty && !hasError;
+
+  useEffect(() => {
+    if (optionsToText(options) !== text) {
+      setText(optionsToText(options));
+    }
+    // Ignore text changes caused by user edits,
+    // and only trigger when options change from outside
+    // (e.g. on field type change)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options]);
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setText(e.target.value);
+    if (hasError) {
+      setError(null);
+    }
+  };
+
+  const handleSave = (closePopover: () => void) => {
+    setError(null);
+    const nextOptions = cleanOptions(textToOptions(text), fieldType);
+    const error = getValidationError(nextOptions, fieldType);
+    if (error) {
+      setError(error);
+    } else {
+      onChange(nextOptions);
+      closePopover();
+    }
   };
 
   return (
     <TippyPopoverWithTrigger
       placement="bottom-end"
       triggerContent={
-        <Icon name="list" size={14} tooltip={t`Change options`} />
+        <Icon name="list" size={20} tooltip={t`Change options`} />
       }
       maxWidth={400}
       popoverContent={({ closePopover }) => (
         <OptionEditorContainer>
           <TextArea
             value={text}
-            onChange={e => setText(e.target.value)}
+            onChange={handleTextChange}
             placeholder={t`Enter one option per line`}
           />
-          <AddMorePrompt style={{ opacity: text.length ? 1 : 0 }}>
+          <AddMorePrompt isVisible={hasOptions}>
             {t`Press enter to add another option`}
           </AddMorePrompt>
-          <Button onClick={() => save(closePopover)} small>
+          {hasError && <ErrorMessage>{error}</ErrorMessage>}
+          <Button
+            disabled={!canSave}
+            onClick={() => handleSave(closePopover)}
+            small
+          >
             {t`Save`}
           </Button>
         </OptionEditorContainer>

@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { findColumnForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -57,12 +56,10 @@ export default class ChartSettingOrderedColumns extends Component {
     onChange(columnSettings);
   };
 
-  getColumnName = columnSetting =>
-    getFriendlyName(
-      findColumnForColumnSetting(this.props.columns, columnSetting) || {
-        display_name: "[Unknown]",
-      },
-    );
+  getColumnName = columnSetting => {
+    const { getColumnName } = this.props;
+    return getColumnName(columnSetting) || "[Unknown]";
+  };
 
   render() {
     const { value, question, columns } = this.props;
@@ -105,14 +102,16 @@ export default class ChartSettingOrderedColumns extends Component {
         {disabledColumns.length > 0 || additionalFieldOptions.count > 0 ? (
           <h4 className="mb2 mt4 pt4 border-top">{t`More columns`}</h4>
         ) : null}
-        {disabledColumns.map((columnSetting, index) => (
-          <ColumnItem
-            key={index}
-            title={this.getColumnName(columnSetting)}
-            onAdd={() => this.handleEnable(columnSetting)}
-            onClick={() => this.handleEnable(columnSetting)}
-          />
-        ))}
+        <div data-testid="disabled-columns">
+          {disabledColumns.map((columnSetting, index) => (
+            <ColumnItem
+              key={index}
+              title={this.getColumnName(columnSetting)}
+              onAdd={() => this.handleEnable(columnSetting)}
+              onClick={() => this.handleEnable(columnSetting)}
+            />
+          ))}
+        </div>
         {additionalFieldOptions.count > 0 && (
           <div>
             {additionalFieldOptions.dimensions.map((dimension, index) => (

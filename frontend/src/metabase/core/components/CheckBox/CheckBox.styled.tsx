@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import {
   CheckBoxContainerProps,
@@ -39,7 +39,7 @@ export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
   opacity: ${props => (props.disabled ? "0.4" : "")};
 
   ${CheckBoxInput}:focus + & {
-    outline: 2px solid ${() => color("focus")};
+    outline: 2px solid ${color("focus")};
   }
 
   ${CheckBoxInput}:focus:not(:focus-visible) + & {

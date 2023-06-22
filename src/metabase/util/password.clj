@@ -7,11 +7,13 @@
   (:import
    (org.mindrot.jbcrypt BCrypt)))
 
+(set! *warn-on-reflection* true)
+
 (defn- count-occurrences
   "Return a map of the counts of each class of character for `password`.
 
     (count-occurrences \"GoodPw!!\")
-      -> {:total  8, :lower 4, :upper 2, :letter 6, :digit 0, :special 2}"
+      -> {:total 8, :lower 4, :upper 2, :letter 6, :digit 0, :special 2}"
   [password]
   (loop [[^Character c & more] password, counts {:total 0, :lower 0, :upper 0, :letter 0, :digit 0, :special 0}]
     (if-not c
@@ -44,10 +46,10 @@
   [char-type->min password]
   {:pre [(map? char-type->min)
          (string? password)]}
-  (let [occurances (count-occurrences password)]
+  (let [occurences (count-occurrences password)]
     (boolean (loop [[[char-type min-count] & more] (seq char-type->min)]
                (if-not char-type true
-                 (when (>= (occurances char-type) min-count)
+                 (when (>= (occurences char-type) min-count)
                    (recur more)))))))
 
 (defn active-password-complexity

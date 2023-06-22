@@ -12,6 +12,8 @@
    (java.time.format DateTimeFormatter)
    (java.util Locale)))
 
+(set! *warn-on-reflection* true)
+
 (defn temporal-string?
   "Returns `true` if the string `s` is parseable as a datetime.
 
@@ -19,9 +21,9 @@
   `(temporal-string? \"2020-02-02\")` -> true"
   [s]
   (boolean
-    (try
-      (u.date/parse s)
-      (catch Exception _e false))))
+   (try
+     (u.date/parse s)
+     (catch Exception _e false))))
 
 (defn- reformat-temporal-str [timezone-id s new-format-string]
   (t/format new-format-string (u.date/parse s timezone-id)))
@@ -91,7 +93,7 @@
                                                                      (str/replace #"EEEE" "EEE")
                                                                      (str/replace #"DDD" "D")))]
                                             (-> conditional-changes
-                                                ;; 'D' formats as Day of Year, we want Day of Month, which is  'd' (issue #27469)
+                                                ;; 'D' formats as Day of year, we want Day of month, which is  'd' (issue #27469)
                                                 (str/replace #"D" "d"))))]
        (case (:unit col)
          ;; these types have special formatting

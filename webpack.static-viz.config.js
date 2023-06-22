@@ -1,6 +1,6 @@
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
-const CLJS_SRC_PATH = __dirname + "/frontend/src/cljs";
+const CLJS_SRC_PATH = __dirname + "/frontend/src/cljs_release";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 
 const BABEL_CONFIG = {

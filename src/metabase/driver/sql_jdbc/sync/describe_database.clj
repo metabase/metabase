@@ -1,11 +1,8 @@
 (ns metabase.driver.sql-jdbc.sync.describe-database
   "SQL JDBC impl for `describe-database`."
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
@@ -15,10 +12,14 @@
    [metabase.models :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.util.honeysql-extensions :as hx]
-   [toucan.db :as db])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
 
+(set! *warn-on-reflection* true)
 
 (defmethod sql-jdbc.sync.interface/excluded-schemas :sql-jdbc [_] nil)
 
@@ -39,20 +40,28 @@
             (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
             (all-schemas metadata)))
 
-(defn simple-select-probe-query
+(mu/defn simple-select-probe-query :- [:cat ms/NonBlankString [:* :any]]
   "Simple (ie. cheap) SELECT on a given table to test for access and get column metadata. Doesn't return
   anything useful (only used to check whether we can execute a SELECT query)
 
     (simple-select-probe-query :postgres \"public\" \"my_table\")
     ;; -> [\"SELECT TRUE FROM public.my_table WHERE 1 <> 1 LIMIT 0\"]"
-  [driver schema table]
-  {:pre [(string? table)]}
+  [driver :- :keyword
+   schema :- [:maybe :string] ; I think technically some DBs like SQL Server support empty schema and table names
+   table  :- :string]
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
-  (let [honeysql {:select [[(sql.qp/->honeysql driver true) :_]]
-                  :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]
-                  :where  [:not= 1 1]}
-        honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
-    (sql.qp/format-honeysql driver honeysql)))
+  (sql.qp/with-driver-honey-sql-version driver
+    (let [tru      (sql.qp/->honeysql driver true)
+          table    (sql.qp/->honeysql driver (hx/identifier :table schema table))
+          honeysql (case (long hx/*honey-sql-version*)
+                     1 {:select [[tru :_]]
+                        :from   [table]
+                        :where  [:not= 1 1]}
+                     2 {:select [[tru :_]]
+                        :from   [[table]]
+                        :where  [:inline [:not= 1 1]]})
+          honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
+      (sql.qp/format-honeysql driver honeysql))))
 
 (defn- execute-select-probe-query
   "Execute the simple SELECT query defined above. The main goal here is to check whether we're able to execute a SELECT
@@ -62,6 +71,7 @@
   [driver ^Connection conn [sql & params]]
   {:pre [(string? sql)]}
   (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn sql params)]
+    (log/tracef "[%s] %s" (name driver) sql)
     ;; attempting to execute the SQL statement will throw an Exception if we don't have permissions; otherwise it will
     ;; truthy wheter or not it returns a ResultSet, but we can ignore that since we have enough info to proceed at
     ;; this point.
@@ -81,25 +91,25 @@
       (execute-select-probe-query driver conn sql-args)
       (log/trace "SELECT privileges confirmed")
       true
-      (catch Throwable _
-        (log/trace "No SELECT privileges")
+      (catch Throwable e
+        (log/trace e "Assuming no SELECT privileges: caught exception")
         false))))
 
 (defn- db-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
   schema. Returns a reducible sequence of results."
   [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
-  (sql-jdbc.sync.common/reducible-results
-   #(.getTables metadata db-name-or-nil (some->> schema-or-nil (driver/escape-entity-name-for-metadata driver)) "%"
-                (into-array String ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
-                                    "EXTERNAL TABLE"]))
-   (fn [^ResultSet rs]
-     (fn []
-       {:name        (.getString rs "TABLE_NAME")
-        :schema      (.getString rs "TABLE_SCHEM")
-        :description (when-let [remarks (.getString rs "REMARKS")]
-                       (when-not (str/blank? remarks)
-                         remarks))}))))
+  (with-open [rset (.getTables metadata db-name-or-nil (some->> schema-or-nil (driver/escape-entity-name-for-metadata driver)) "%"
+                               (into-array String ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
+                                                   "EXTERNAL TABLE"]))]
+    (loop [acc []]
+      (if-not (.next rset)
+        acc
+        (recur (conj acc {:name        (.getString rset "TABLE_NAME")
+                          :schema      (.getString rset "TABLE_SCHEM")
+                          :description (when-let [remarks (.getString rset "REMARKS")]
+                                         (when-not (str/blank? remarks)
+                                           remarks))}))))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
@@ -140,28 +150,30 @@
         db-or-id-or-spec
 
         (int? db-or-id-or-spec)
-        (db/select-one Database :id db-or-id-or-spec)
+        (t2/select-one Database :id db-or-id-or-spec)
 
         :else
         nil))
 
-(defn describe-database
-  "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db-or-id-or-spec]
-  {:tables (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec))]
-             ;; try to set the Connection to `READ_UNCOMMITED` if possible, or whatever the next least-locking level
-             ;; is. Not sure how much of a difference that makes since we're not running this inside a transaction,
-             ;; but better safe than sorry
-             (sql-jdbc.execute/set-best-transaction-level! driver conn)
-             (let [schema-filter-prop      (driver.u/find-schema-filters-prop driver)
-                   has-schema-filter-prop? (some? schema-filter-prop)
-                   default-active-tbl-fn   #(into #{} (sql-jdbc.sync.interface/active-tables driver conn nil nil))]
-               (if has-schema-filter-prop?
-                 (if-let [database (db-or-id-or-spec->database db-or-id-or-spec)]
-                   (let [prop-nm                                 (:name schema-filter-prop)
-                         [inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns
-                                                                  prop-nm
-                                                                  database)]
-                     (into #{} (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))
-                   (default-active-tbl-fn))
-                 (default-active-tbl-fn))))})
+(mu/defn describe-database
+  "Default implementation of [[metabase.driver/describe-database]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
+  [driver           :- :keyword
+   db-or-id-or-spec :- [:or :int :map]]
+  {:tables
+   (sql-jdbc.execute/do-with-connection-with-options
+    driver
+    db-or-id-or-spec
+    nil
+    (fn [^Connection conn]
+      (let [schema-filter-prop      (driver.u/find-schema-filters-prop driver)
+            has-schema-filter-prop? (some? schema-filter-prop)
+            default-active-tbl-fn   #(into #{} (sql-jdbc.sync.interface/active-tables driver conn nil nil))]
+        (if has-schema-filter-prop?
+          (if-let [database (db-or-id-or-spec->database db-or-id-or-spec)]
+            (let [prop-nm                                 (:name schema-filter-prop)
+                  [inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns
+                                                           prop-nm
+                                                           database)]
+              (into #{} (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))
+            (default-active-tbl-fn))
+          (default-active-tbl-fn)))))})

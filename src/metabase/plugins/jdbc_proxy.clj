@@ -2,14 +2,16 @@
   "JDBC proxy driver used for drivers added at runtime. DriverManager refuses to recognize drivers that weren't loaded
   by the system classloader, so we need to wrap our drivers loaded at runtime with a proxy class loaded at launch time."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [potemkin.types :as p.types]
    [pretty.core :refer [PrettyPrintable]])
   (:import
    (java.sql Driver DriverManager)))
+
+(set! *warn-on-reflection* true)
 
 ;;; -------------------------------------------------- Proxy Driver --------------------------------------------------
 

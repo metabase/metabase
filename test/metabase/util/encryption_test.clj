@@ -29,7 +29,9 @@
      (testing (format "\nwith secret key %s" (pr-str secret-key#))
        (do-with-secret-key secret-key# (fn [] ~@body)))))
 
-(def ^:private secret   (encryption/secret-key->hash "Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ="))
+(def ^:private secret-string "Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=")
+
+(def ^:private secret   (encryption/secret-key->hash secret-string))
 (def ^:private secret-2 (encryption/secret-key->hash "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="))
 
 (deftest ^:parallel repeatable-hashing-test

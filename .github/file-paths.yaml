@@ -1,0 +1,109 @@
+default: &default
+  - "locales/**"
+  - "bin/**"
+
+ci: &ci
+  - ".github/**/!(*.md)"
+
+shared_sources: &shared_sources
+  - "shared/src/**"
+  - "src/metabase/lib/**"
+
+shared_specs: &shared_specs
+  - "shared/test/**"
+
+frontend_sources: &frontend_sources
+  - *shared_sources
+  - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+  - "frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+  - "yarn.lock"
+  - "**/tsconfig*.json"
+  - "package.json"
+  - "babel.config.json"
+  - "postcss.config.js"
+  - "webpack.config.js"
+  - "webpack.static-viz.config.js"
+
+frontend_specs: &frontend_specs
+  - *shared_specs
+  - "frontend/test/**"
+  - "frontend/**/*.unit.*"
+  - "jest.unit.conf.json"
+  - "jest.tz.unit.conf.json"
+
+frontend_all: &frontend_all
+  - *ci
+  - *frontend_sources
+  - *frontend_specs
+
+backend_presto_kerberos:
+  - "**/presto_jdbc/**"
+  - "**/presto_jdbc.clj"
+
+backend_sources: &backend_sources
+  - *shared_sources
+  - "**deps.edn"
+  - "enterprise/backend/src/**"
+  - "src/**"
+  - "modules/drivers/{*,*/{*,!(test)/**}}"
+  - "resources/**"
+  - ".clj-kondo/**"
+
+backend_specs: &backend_specs
+  - *shared_specs
+  - "test/**"
+  - "enterprise/backend/test/**"
+  - "test_modules/**"
+  - "modules/drivers/*/test/**"
+  - "test_config/**"
+  - "dev/**"
+
+backend_all: &backend_all
+  - *default
+  - *ci
+  - *backend_sources
+  - *backend_specs
+  - *frontend_sources # keep it here until we detect static viz changes
+
+sources: &sources
+  - *shared_sources
+  - *frontend_sources
+  - *backend_sources
+
+e2e_specs: &e2e_specs
+  - "**/*.cy.*.js"
+  - "e2e/runner/**"
+  - "e2e/support/**"
+  - "e2e/snapshot*/**"
+
+e2e_all:
+  - *default
+  - *ci
+  - *e2e_specs
+  - *sources
+
+snowplow:
+  - *ci
+  - "snowplow/**"
+
+documentation:
+  - "docs/**"
+  - "**/*.md"
+
+yaml:
+  - "**/*.yml"
+  - "**/*.yaml"
+
+codeql:
+  - "frontend/src/**"
+  - "enterprise/frontend/src/**"
+
+i18n:
+  - *default
+  - *ci
+  - *sources
+
+visualizations:
+  - "frontend/src/metabase/visualizations/**"
+  - "frontend/src/metabase/static-viz/**"
+  - "src/metabase/pulse/**"

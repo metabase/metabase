@@ -45,10 +45,7 @@ rm "$POT_FRONTEND_NAME.bak"
 # update backend pot #
 ######################
 
-pushd bin/i18n
-clojure -M -m i18n.enumerate "../../$POT_BACKEND_NAME"
-# switch back to project root
-popd
+clojure -X:build i18n.enumerate/enumerate :filename "\"$POT_BACKEND_NAME\""
 
 ########################
 # update auto dash pot #

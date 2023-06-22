@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import type { ScaleContinuousNumeric } from "d3-scale";
 import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import { Margin } from "metabase/visualizations/shared/types/layout";
@@ -9,7 +7,7 @@ import {
 } from "metabase/visualizations/shared/types/style";
 import { ChartGoal } from "metabase/visualizations/shared/types/settings";
 import { LABEL_PADDING } from "../constants";
-import { Series, SeriesData } from "../types";
+import { SeriesData } from "../types";
 
 const CHART_PADDING = 10;
 const TICKS_OFFSET = 10;

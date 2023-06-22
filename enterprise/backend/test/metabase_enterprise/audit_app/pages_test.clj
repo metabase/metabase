@@ -205,3 +205,21 @@
                       (filter #((set (map u/the-id [a b c])) (first %)))
                       (map second)
                       set))))))))
+
+(deftest user-login-method-test
+  (testing "User login method takes into account both the google_auth and sso_source columns"
+    (mt/with-test-user :crowberto
+      (premium-features-test/with-premium-features #{:audit-app}
+        (mt/with-temp* [User [a {:email "a@metabase.com" :sso_source nil}]
+                        User [b {:email "b@metabase.com" :sso_source :google}]
+                        User [c {:email "c@metabase.com" :sso_source :saml}]
+                        User [d {:email "d@metabase.com" :sso_source :jwt}]
+                        User [e {:email "e@metabase.com" :sso_source :ldap}]]
+          (is (= ["Email" "Google Sign-In" "SAML" "JWT" "LDAP"]
+                 (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
+                                                    {:type :internal
+                                                     :fn   "metabase-enterprise.audit-app.pages.users/table"})
+                              [:data :rows])
+                      (sort-by first)
+                      (filter #((set (map u/the-id [a b c d e])) (first %)))
+                      (map #(nth % 6))))))))))

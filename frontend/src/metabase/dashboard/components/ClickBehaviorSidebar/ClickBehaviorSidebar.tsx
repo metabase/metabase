@@ -1,8 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getIn } from "icepick";
 
-import { useOnMount } from "metabase/hooks/use-on-mount";
-import { usePrevious } from "metabase/hooks/use-previous";
+import { useMount, usePrevious } from "react-use";
 
 import Sidebar from "metabase/dashboard/components/Sidebar";
 
@@ -155,7 +154,7 @@ function ClickBehaviorSidebar({
     onReplaceAllDashCardVisualizationSettings,
   ]);
 
-  useOnMount(() => {
+  useMount(() => {
     if (shouldShowTypeSelector(clickBehavior)) {
       setTypeSelectorVisible(true);
     }
@@ -211,4 +210,5 @@ function ClickBehaviorSidebar({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ClickBehaviorSidebar;

@@ -3,19 +3,26 @@
    These are primarily used as the internal implementation of `defendpoint`."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
+   [clojure.walk :as walk]
+   [colorize.core :as colorize]
    [malli.core :as mc]
    [malli.error :as me]
+   [malli.transform :as mtx]
    [metabase.async.streaming-response :as streaming-response]
    [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
    [schema.core :as s])
   (:import
    (metabase.async.streaming_response StreamingResponse)))
+
+(set! *warn-on-reflection* true)
 
 (comment streaming-response/keep-me)
 
@@ -250,6 +257,59 @@
         route
         (apply vector route arg-types)))))
 
+(defn- ->matching-regex
+  "Note: this is called in a macro context, so it can potentially be passed a symbol that evaluates to a schema."
+  [schema]
+  (let [schema-type (try (mc/type schema)
+                         (catch clojure.lang.ExceptionInfo _
+                           (mc/type #_:clj-kondo/ignore (eval schema))))]
+    [schema-type
+     (condp = schema-type
+       ;; can use any regex directly
+       :re (first (try (mc/children schema)
+                       (catch clojure.lang.ExceptionInfo _
+                         (mc/children #_:clj-kondo/ignore (eval schema)))))
+       'pos-int? #"[0-9]+"
+       :int #"-?[0-9]+"
+       'int? #"-?[0-9]+"
+       :uuid u/uuid-regex
+       'uuid? u/uuid-regex
+       nil)]))
+
+(def ^:private no-regex-schemas #{(mc/type ms/NonBlankString)
+                                  (mc/type (mc/schema [:maybe ms/PositiveInt]))
+                                  (mc/type [:enum "a" "b"])})
+
+(defn add-route-param-schema
+  "Expand a `route` string like \"/:id\" into a Compojure route form with regexes to match parameters based on
+  malli schemas given in the `arg->schema` map.
+
+  (add-route-param-schema '{id :int} \"/:id/card\") -> [\"/:id/card\" :id #\"[0-9]+\"]
+  (add-route-param-schema {} \"/:id/card\") -> \"/:id/card\""
+  [arg->schema route]
+  (if (vector? route)
+    route
+    (let [[wildcard & wildcards]
+          (->> "metabase.api.common.internal/no-regex-schemas."
+               (str "Either add " (pr-str schema-type) " to "
+                    "metabase.api.common.internal/->matching-regex or ")
+               colorize/green
+               log/warn
+               (when (and config/is-dev? (not (contains? no-regex-schemas schema-type)))
+                 (log/warn (colorize/red (str "Warning: missing route-param regex for schema: "
+                                              route " " [k schema]))))
+               (if re
+                 [route (keyword k) re])
+               (for [[k schema] arg->schema
+                     :when (re-find (re-pattern (str ":" k)) route)
+                     :let [[schema-type re] (->matching-regex schema)]])
+               (remove nil?))]
+      (cond
+        ;; multiple hits -> tack them onto the original route shape.
+        wildcards (vec (reduce into wildcard (mapv #(drop 1 %) wildcards)))
+        wildcard wildcard
+        :else route))))
+
 ;;; ## ROUTE ARG AUTO PARSING
 
 (defn let-form-for-arg
@@ -274,6 +334,39 @@
        ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          AUTO-COERCION                                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def defendpoint-transformer
+  "Transformer used on values coming over the API via defendpoint."
+  (mtx/transformer
+   (mtx/string-transformer)
+   (mtx/json-transformer)))
+
+(defn- extract-symbols [in]
+  (let [*symbols (atom [])]
+    (walk/postwalk
+     (fn [x] (when (symbol? x) (swap! *symbols conj x)) x)
+     in)
+    @*symbols))
+
+(defn- mauto-let-form [arg->schema arg-symbol]
+  (when arg->schema
+    (when-let [schema (arg->schema arg-symbol)]
+      `[~arg-symbol (mc/decode ~schema ~arg-symbol defendpoint-transformer)])))
+
+(defmacro auto-coerce
+  "Create a `let` form that tries to coerce the value bound to any symbol in `args` that are present in
+  `arg->schema` using [[defendpoint-transformer]]."
+  {:style/indent 1}
+  [args arg->schema & body]
+  (let [let-forms (->> args
+                       extract-symbols
+                       (mapcat #(mauto-let-form arg->schema %))
+                       (remove nil?))]
+    `(let [~@let-forms] ~@body)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                PARAM VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -288,7 +381,7 @@
                                        (-> schema
                                            (mc/explain value)
                                            me/with-spell-checking
-                                           me/humanize)}}))))
+                                           (me/humanize {:wrap mu/humanize-include-value}))}}))))
 
 (defn validate-param
   "Validate a parameter against its respective schema, or throw an Exception."

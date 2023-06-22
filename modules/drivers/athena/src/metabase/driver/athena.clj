@@ -4,8 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   [honeysql.format :as hformat]
+   [honey.sql :as sql]
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -19,31 +18,30 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
   (:import
-   (java.sql DatabaseMetaData)
+   (java.sql Connection DatabaseMetaData)
    (java.time OffsetDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :athena, :parent #{:sql-jdbc})
 
+(defmethod sql.qp/honey-sql-version :athena
+  [_driver]
+  2)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-
-(defmethod driver/supports? [:athena :foreign-keys] [_ _] true)
-
-(defmethod driver/database-supports? [:athena :datetime-diff] [_driver _feature _database] true)
-
-(defmethod driver/supports? [:athena :nested-fields] [_ _] false #_true) ; huh? Not sure why this was `true`. Disabled
-                                                                         ; for now.
-
-(defmethod driver/database-supports? [:athena :test/jvm-timezone-setting]
-  [_driver _feature _database]
-  false)
+(doseq [[feature supported?] {:foreign-keys              true
+                              :datetime-diff             true
+                              :nested-fields             false #_true ; huh? Not sure why this was `true`. Disabled for now.
+                              :test/jvm-timezone-setting false}]
+  (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     metabase.driver.sql-jdbc method impls                                      |
@@ -188,12 +186,7 @@
 ;;; we'll have to have a custom implementation of `:page` here and do our own version of `:offset` that comes before
 ;;; `LIMIT`.
 
-(hformat/register-clause! ::offset (dec (get hformat/default-clause-priorities :limit)))
-
-(defmethod hformat/format-clause ::offset
-  [[_clause n] honeysql-map]
-  ;; this has to be a map entry, otherwise HoneySQL has a fit
-  (hformat/format-clause (java.util.Map/entry :offset n) honeysql-map))
+(sql/register-clause! ::offset :offset :limit)
 
 (defmethod sql.qp/apply-top-level-clause [:athena :page]
   [_driver _top-level-clause honeysql-form {{:keys [items page]} :page}]
@@ -202,7 +195,7 @@
          :limit items
          ::offset (* items (dec page))))
 
-(defn- date-trunc [unit expr] (hx/call :date_trunc (hx/literal unit) expr))
+(defn- date-trunc [unit expr] [:date_trunc (h2x/literal unit) expr])
 
 ;;; Example of handling report timezone
 ;;; (defn- date-trunc
@@ -221,52 +214,52 @@
 
 ;;; If `expr` is a date, we need to cast it to a timestamp before we can truncate to a finer granularity Ideally, we
 ;;; should make this conditional. There's a generic approach above, but different use cases should b tested.
-(defmethod sql.qp/date [:athena :minute]  [_driver _unit expr] (hx/call :date_trunc (hx/literal :minute) expr))
-(defmethod sql.qp/date [:athena :hour]    [_driver _unit expr] (hx/call :date_trunc (hx/literal :hour) expr))
-(defmethod sql.qp/date [:athena :day]     [_driver _unit expr] (hx/call :date_trunc (hx/literal :day) expr))
-(defmethod sql.qp/date [:athena :month]   [_driver _unit expr] (hx/call :date_trunc (hx/literal :month) expr))
-(defmethod sql.qp/date [:athena :quarter] [_driver _unit expr] (hx/call :date_trunc (hx/literal :quarter) expr))
-(defmethod sql.qp/date [:athena :year]    [_driver _unit expr] (hx/call :date_trunc (hx/literal :year) expr))
+(defmethod sql.qp/date [:athena :minute]  [_driver _unit expr] [:date_trunc (h2x/literal :minute) expr])
+(defmethod sql.qp/date [:athena :hour]    [_driver _unit expr] [:date_trunc (h2x/literal :hour) expr])
+(defmethod sql.qp/date [:athena :day]     [_driver _unit expr] [:date_trunc (h2x/literal :day) expr])
+(defmethod sql.qp/date [:athena :month]   [_driver _unit expr] [:date_trunc (h2x/literal :month) expr])
+(defmethod sql.qp/date [:athena :quarter] [_driver _unit expr] [:date_trunc (h2x/literal :quarter) expr])
+(defmethod sql.qp/date [:athena :year]    [_driver _unit expr] [:date_trunc (h2x/literal :year) expr])
 
 (defmethod sql.qp/date [:athena :week]
   [driver _ expr]
-  (sql.qp/adjust-start-of-week driver (partial hx/call :date_trunc (hx/literal :week)) expr))
+  (sql.qp/adjust-start-of-week driver (partial conj [:date_trunc] (h2x/literal :week)) expr))
 
 ;;;; Datetime extraction functions
 
-(defmethod sql.qp/date [:athena :minute-of-hour]  [_driver _unit expr] (hx/call :minute expr))
-(defmethod sql.qp/date [:athena :hour-of-day]     [_driver _unit expr] (hx/call :hour expr))
-(defmethod sql.qp/date [:athena :day-of-month]    [_driver _unit expr] (hx/call :day_of_month expr))
-(defmethod sql.qp/date [:athena :day-of-year]     [_driver _unit expr] (hx/call :day_of_year expr))
-(defmethod sql.qp/date [:athena :month-of-year]   [_driver _unit expr] (hx/call :month expr))
-(defmethod sql.qp/date [:athena :quarter-of-year] [_driver _unit expr] (hx/call :quarter expr))
+(defmethod sql.qp/date [:athena :minute-of-hour]  [_driver _unit expr] [:minute expr])
+(defmethod sql.qp/date [:athena :hour-of-day]     [_driver _unit expr] [:hour expr])
+(defmethod sql.qp/date [:athena :day-of-month]    [_driver _unit expr] [:day_of_month expr])
+(defmethod sql.qp/date [:athena :day-of-year]     [_driver _unit expr] [:day_of_year expr])
+(defmethod sql.qp/date [:athena :month-of-year]   [_driver _unit expr] [:month expr])
+(defmethod sql.qp/date [:athena :quarter-of-year] [_driver _unit expr] [:quarter expr])
 
 (defmethod sql.qp/date [:athena :day-of-week]
   [driver _ expr]
-  (sql.qp/adjust-day-of-week driver (hx/call :day_of_week expr)))
+  (sql.qp/adjust-day-of-week driver [:day_of_week expr]))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:athena :seconds]
   [_driver _seconds-or-milliseconds expr]
-  (hx/call :from_unixtime expr))
+  [:from_unixtime expr])
 
 (defmethod sql.qp/add-interval-honeysql-form :athena
   [_driver hsql-form amount unit]
-  (hx/call :date_add
-           (hx/literal (name unit))
-           (hx/raw (int amount))
-           hsql-form))
+  [:date_add
+   (h2x/literal (name unit))
+   [:raw (int amount)]
+   hsql-form])
 
 (defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->DateTime]
   [_driver _semantic-type expr]
-  (hx/->timestamp expr))
+  (h2x/->timestamp expr))
 
 (defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->Date]
   [_driver _semantic-type expr]
-  (hx/->date expr))
+  (h2x/->date expr))
 
 (defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->Time]
   [_driver _semantic-type expr]
-  (hx/->time expr))
+  (h2x/->time expr))
 
 (defmethod sql.qp/->honeysql [:athena :datetime-diff]
   [driver [_ x y unit]]
@@ -274,27 +267,27 @@
         y (sql.qp/->honeysql driver y)]
     (case unit
       (:year :month :quarter :week :day)
-      (hx/call :date_diff (hx/literal unit) (date-trunc :day x) (date-trunc :day y))
+      [:date_diff (h2x/literal unit) (date-trunc :day x) (date-trunc :day y)]
       (:hour :minute :second)
-      (hx/call :date_diff (hx/literal unit) (hx/->timestamp x) (hx/->timestamp y)))))
+      [:date_diff (h2x/literal unit) (h2x/->timestamp x) (h2x/->timestamp y)])))
 
 ;; fix to allow integer division to be cast as double (float is not supported by athena)
 (defmethod sql.qp/->float :athena
   [_ value]
-  (hx/cast :double value))
+  (h2x/cast :double value))
 
 ;; Support for median/percentile functions
 (defmethod sql.qp/->honeysql [:athena :median]
   [driver [_ arg]]
-  (hx/call :approx_percentile (sql.qp/->honeysql driver arg) 0.5))
+  [:approx_percentile (sql.qp/->honeysql driver arg) 0.5])
 
 (defmethod sql.qp/->honeysql [:athena :percentile]
   [driver [_ arg p]]
-  (hx/call :approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
+  [:approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
 (defmethod sql.qp/->honeysql [:athena :regex-match-first]
   [driver [_ arg pattern]]
-  (hx/call :regexp_extract (sql.qp/->honeysql driver arg) pattern))
+  [:regexp_extract (sql.qp/->honeysql driver arg) pattern])
 
 ;; keyword function converts database-type variable to a symbol, so we use symbols above to map the types
 (defn- database-type->base-type-or-warn
@@ -375,12 +368,17 @@
 
 (defmethod driver/describe-table :athena
   [driver {{:keys [catalog]} :details, :as database} table]
-  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (assoc (select-keys table [:name :schema])
-           :fields (try
-                     (describe-table-fields metadata database driver table catalog)
-                     (catch Throwable _
-                       (set nil))))))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [metadata (.getMetaData conn)]
+       (assoc (select-keys table [:name :schema])
+              :fields (try
+                        (describe-table-fields metadata database driver table catalog)
+                        (catch Throwable _
+                          (set nil))))))))
 
 (defn- get-tables
   "Athena can query EXTERNAL and MANAGED tables."
@@ -431,8 +429,13 @@
 ; If we want to limit the initial connection to a specific database/schema, I think we'd have to do that here...
 (defmethod driver/describe-database :athena
   [driver {details :details, :as database}]
-  {:tables (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-             (fast-active-tables driver metadata details))})
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [metadata (.getMetaData conn)]
+       {:tables (fast-active-tables driver metadata details)}))))
 
 ; Unsure if this is the right way to approach building the parameterized query...but it works
 (defn- prepare-query [driver {query :native, :as outer-query}]

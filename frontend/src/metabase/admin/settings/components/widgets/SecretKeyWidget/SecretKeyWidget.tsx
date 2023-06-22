@@ -1,7 +1,4 @@
-import React from "react";
-
 import { t } from "ttag";
-import Button from "metabase/core/components/Button";
 import Confirm from "metabase/components/Confirm";
 import { UtilApi } from "metabase/services";
 import SettingInput from "../SettingInput";
@@ -44,4 +41,5 @@ const SecretKeyWidget = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SecretKeyWidget;

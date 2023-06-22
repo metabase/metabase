@@ -1,7 +1,31 @@
-import { metadata, makeMetadata } from "__support__/sample_database_fixture";
-
+import { createMockMetadata } from "__support__/metadata";
+import { createMockMetric } from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  ORDERS,
+  ORDERS_ID,
+} from "metabase-types/api/mocks/presets";
 import Metric from "metabase-lib/metadata/Metric";
 import Table from "metabase-lib/metadata/Table";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+  metrics: [
+    createMockMetric({
+      id: 1,
+      table_id: ORDERS_ID,
+      name: "Total Order Value",
+      definition: {
+        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        "source-table": ORDERS_ID,
+      },
+    }),
+    createMockMetric({
+      id: "ga:users",
+      name: "Users",
+    }),
+  ],
+});
 
 describe("Metric", () => {
   describe("Standard database", () => {
@@ -27,28 +51,6 @@ describe("Metric", () => {
     describe("columnName", () => {
       it("should return the underlying metric definition name", () => {
         expect(metric.columnName()).toBe("sum");
-      });
-    });
-  });
-
-  describe("Google Analytics database", () => {
-    const metadata = makeMetadata({
-      metrics: { "ga:users": { name: "Users" } },
-    });
-    const metric = metadata.metric("ga:users");
-    describe("displayName", () => {
-      it("should return the metric name", () => {
-        expect(metric.displayName()).toBe("Users");
-      });
-    });
-    describe("aggregationClause", () => {
-      it('should return ["metric", "ga:users]', () => {
-        expect(metric.aggregationClause()).toEqual(["metric", "ga:users"]);
-      });
-    });
-    describe("columnName", () => {
-      it("should return the metric id", () => {
-        expect(metric.columnName()).toBe("ga:users");
       });
     });
   });

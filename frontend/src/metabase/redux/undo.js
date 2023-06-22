@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { createAction, createThunkAction } from "metabase/lib/redux";
+import { createThunkAction } from "metabase/lib/redux";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 const ADD_UNDO = "metabase/questions/ADD_UNDO";
@@ -11,26 +11,37 @@ let nextUndoId = 0;
 
 export const addUndo = createThunkAction(ADD_UNDO, undo => {
   return (dispatch, getState) => {
-    const id = nextUndoId++;
-    setTimeout(() => dispatch(dismissUndo(id, false)), 5000);
-    return { ...undo, id, _domId: id };
+    const { icon = "check", timeout = 5000, canDismiss = true } = undo;
+    const id = undo.id ?? nextUndoId++;
+    if (timeout) {
+      setTimeout(() => dispatch(dismissUndo(id, false)), timeout);
+    }
+    return { ...undo, id, _domId: id, icon, canDismiss };
   };
 });
 
-export const dismissUndo = createAction(
+function getUndo(state, undoId) {
+  return _.findWhere(state.undo, { id: undoId });
+}
+
+export const dismissUndo = createThunkAction(
   DISMISS_UNDO,
   (undoId, track = true) => {
-    if (track) {
-      MetabaseAnalytics.trackStructEvent("Undo", "Dismiss Undo");
-    }
-    return undoId;
+    return () => {
+      if (track) {
+        MetabaseAnalytics.trackStructEvent("Undo", "Dismiss Undo");
+      }
+      return undoId;
+    };
   },
 );
 
 export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
   return (dispatch, getState) => {
-    MetabaseAnalytics.trackStructEvent("Undo", "Perform Undo");
-    const undo = _.findWhere(getState().undo, { id: undoId });
+    const undo = getUndo(getState(), undoId);
+    if (!undo.actionLabel) {
+      MetabaseAnalytics.trackStructEvent("Undo", "Perform Undo");
+    }
     if (undo) {
       undo.actions.map(action => dispatch(action));
       dispatch(dismissUndo(undoId, false));
@@ -67,7 +78,7 @@ export default function (state = [], { type, payload, error }) {
         subject: previous.subject === undo.subject ? undo.subject : "item",
 
         // merge items
-        actions: [...previous.actions, ...payload.actions],
+        actions: [...previous.actions, ...(payload.actions ?? [])],
 
         _domId: previous._domId, // use original _domId so we don't get funky animations swapping for the new one
       });

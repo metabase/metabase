@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
@@ -6,7 +6,7 @@ import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
 import _ from "underscore";
 import { getIn } from "icepick";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { AccordionListCell } from "./AccordionListCell";
 import { AccordionListRoot } from "./AccordionList.styled";
 import { getNextCursor, getPrevCursor } from "./utils";
@@ -95,6 +95,7 @@ export default class AccordionList extends Component {
     hasInitialFocus: PropTypes.bool,
 
     itemTestId: PropTypes.string,
+    "data-testid": PropTypes.string,
   };
 
   static defaultProps = {
@@ -110,8 +111,7 @@ export default class AccordionList extends Component {
     hideEmptySectionsInSearch: false,
 
     // section getters/render props
-    renderSectionIcon: section =>
-      section.icon && <Icon name={section.icon} size={18} />,
+    renderSectionIcon: section => section.icon && <Icon name={section.icon} />,
     renderSectionExtra: () => null,
 
     // item getters/render props
@@ -120,7 +120,7 @@ export default class AccordionList extends Component {
     renderItemName: item => item.name,
     renderItemDescription: item => item.description,
     renderItemExtra: item => null,
-    renderItemIcon: item => item.icon && <Icon name={item.icon} size={18} />,
+    renderItemIcon: item => item.icon && <Icon name={item.icon} />,
     getItemClassName: item => item.className,
     getItemStyles: item => {},
     hasInitialFocus: true,
@@ -546,7 +546,13 @@ export default class AccordionList extends Component {
   };
 
   render() {
-    const { id, style, className, sections } = this.props;
+    const {
+      id,
+      style,
+      className,
+      sections,
+      "data-testid": testId,
+    } = this.props;
     const { cursor, scrollToAlignment } = this.state;
 
     const rows = this.getRows();
@@ -567,6 +573,7 @@ export default class AccordionList extends Component {
             width: this.props.width,
             ...style,
           }}
+          data-testid={testId}
         >
           {rows.map((row, index) => (
             <AccordionListCell
@@ -627,6 +634,7 @@ export default class AccordionList extends Component {
         scrollToAlignment={scrollToAlignment}
         containerProps={{
           onKeyDown: this.handleKeyDown,
+          "data-testid": testId,
         }}
         rowRenderer={({ key, index, parent, style }) => {
           return (

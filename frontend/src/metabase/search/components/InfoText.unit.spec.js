@@ -1,5 +1,4 @@
-import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import { renderWithProviders, screen } from "__support__/ui";
 
 import { InfoText } from "./InfoText";
@@ -9,18 +8,13 @@ const table = { id: 1, display_name: "Table Name" };
 const database = { id: 1, name: "Database Name" };
 
 async function setup(result) {
-  nock(location.origin).get("/api/table/1").reply(200, table);
-
-  nock(location.origin).get("/api/database/1").reply(200, database);
+  fetchMock.get("path:/api/table/1", table);
+  fetchMock.get("path:/api/database/1", database);
 
   renderWithProviders(<InfoText result={result} />);
 }
 
 describe("InfoText", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("shows collection info for a question", async () => {
     await setup({
       model: "card",

@@ -2,11 +2,13 @@
  * Shared component for Scalar and SmartScalar to make sure our number presentation stays in sync
  */
 /* eslint-disable react/prop-types */
-import React, { useMemo } from "react";
+import { useMemo } from "react";
+import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import Ellipsified from "metabase/core/components/Ellipsified";
+import Markdown from "metabase/core/components/Markdown";
 import {
   ScalarRoot,
   ScalarValueWrapper,
@@ -40,7 +42,7 @@ const ScalarValue = ({
         fontWeight: 900,
         unit: "rem",
         step: 0.2,
-        min: 2.2,
+        min: 1,
         max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
       }),
     [fontFamily, gridSize, totalNumGridCols, value, width],
@@ -52,7 +54,7 @@ const ScalarValue = ({
       fontSize={fontSize}
       data-testid="scalar-value"
     >
-      {value}
+      {value ?? t`null`}
     </ScalarValueWrapper>
   );
 };
@@ -75,7 +77,14 @@ export const ScalarTitle = ({ title, description, onClick }) => (
     </ScalarTitleContent>
     {description && description.length > 0 && (
       <ScalarDescriptionContainer className="hover-child">
-        <Tooltip tooltip={description} maxWidth="22em">
+        <Tooltip
+          tooltip={
+            <Markdown disallowHeading unstyleLinks>
+              {description}
+            </Markdown>
+          }
+          maxWidth="22em"
+        >
           <Icon name="info_outline" />
         </Tooltip>
       </ScalarDescriptionContainer>

@@ -65,7 +65,11 @@
     ":value clauses should keep snake_case keys in the type info arg"
     ;; See https://github.com/metabase/metabase/issues/23354 for details
     {[:value "some value" {:some_key "some key value"}]
-     [:value "some value" {:some_key "some key value"}]}))
+     [:value "some value" {:some_key "some key value"}]}
+
+    "nil options in aggregation and expression references should be removed"
+    {[:aggregation 0 nil]   [:aggregation 0]
+     [:expression "CE" nil] [:expression "CE"]}))
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
@@ -613,6 +617,15 @@
     "We should remove empty options maps"
     {[:field 2 {}]
      [:field 2 nil]}))
+
+(t/deftest ^:parallel canonicalize-substring-test
+  (canonicalize-tests
+   "substring index 0 -> 1"
+   {[:substring "foo" 0 1]
+    [:substring "foo" 1 1]
+
+    [:substring "foo" 0 1 3]
+    [:substring "foo" 1 1 3]}))
 
 
 ;;; ------------------------------------------------ binning strategy ------------------------------------------------
@@ -1434,3 +1447,15 @@
                                  [:field "date_seen" {:base-type :type/Date}]
                                  "2021-05-01T12:30:00"]}}
                (mbql.normalize/normalize query))))))
+
+(t/deftest ^:parallel normalize-aggregation-ref-test
+  (t/are [clause] (= {:database 1
+                      :type     :query
+                      :query    {:order-by [[:asc [:aggregation 0]]]}}
+                     (metabase.mbql.normalize/normalize
+                      {:database 1
+                       :type     :query
+                       :query    {:order-by [[:asc clause]]}}))
+    [:aggregation 0 nil]
+    [:aggregation 0 {}]
+    [:aggregation 0]))

@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import type { NumberValue } from "d3-scale";
 import userEvent from "@testing-library/user-event";

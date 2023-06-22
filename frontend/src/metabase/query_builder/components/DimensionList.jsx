@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/core/components/Tooltip";
 import { FieldDimension } from "metabase-lib/Dimension";
@@ -87,6 +87,8 @@ export default class DimensionList extends Component {
       enableSubDimensions &&
       // Do not display sub dimension if this is an FK (metabase#16787)
       !item.dimension?.field().isFK() &&
+      // Or if this is a custom expression (metabase#11371)
+      !item.dimension?.isExpression() &&
       !surpressSubDimensions &&
       item.dimension.dimensions();
 
@@ -135,7 +137,6 @@ export default class DimensionList extends Component {
           <Tooltip tooltip={t`Add grouping`}>
             <Icon
               name="add"
-              size={14}
               className="mx1 cursor-pointer hover-child faded fade-in-hover"
               onClick={e => {
                 e.stopPropagation();
@@ -194,7 +195,8 @@ export default class DimensionList extends Component {
 
     if (
       shouldExcludeBinning ||
-      (preventNumberSubDimensions && dimension.field().isSummable())
+      (preventNumberSubDimensions && dimension.field().isSummable()) ||
+      dimension?.field().isFK()
     ) {
       // If we don't let user choose the sub-dimension, we don't want to treat the field
       // as a binned field (which would use the default binning)

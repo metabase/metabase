@@ -2,13 +2,13 @@ import _ from "underscore";
 
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import { slugify } from "metabase/lib/formatting";
-import type { ParameterMappingOptions } from "metabase-types/types/Parameter";
 import type {
   Card,
   Dashboard,
   DashboardParameterMapping,
   DashboardOrderedCard,
   Parameter,
+  ParameterMappingOptions,
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
@@ -117,7 +117,7 @@ export function getDashboardUiParameters(
   metadata: Metadata,
 ): UiParameter[] {
   const { parameters, ordered_cards } = dashboard;
-  const mappings = getMappings(ordered_cards);
+  const mappings = getMappings(ordered_cards as DashboardOrderedCard[]);
   const uiParameters: UiParameter[] = (parameters || []).map(parameter => {
     if (isFieldFilterParameter(parameter)) {
       return buildFieldFilterUiParameter(parameter, mappings, metadata);
@@ -200,7 +200,9 @@ export function hasMatchingParameters({
     return false;
   }
 
-  const mappings = getMappings(dashboard.ordered_cards);
+  const mappings = getMappings(
+    dashboard.ordered_cards as DashboardOrderedCard[],
+  );
   const mappingsForDashcard = mappings.filter(
     mapping => mapping.dashcard_id === dashcardId,
   );

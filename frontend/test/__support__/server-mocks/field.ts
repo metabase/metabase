@@ -1,24 +1,26 @@
-import { Scope } from "nock";
+import fetchMock from "fetch-mock";
 import { Field, FieldValues } from "metabase-types/api";
+import { PERMISSION_ERROR } from "./constants";
 
-export function setupFieldEndpoints(scope: Scope, field: Field) {
-  scope.get(`/api/field/${field.id}`).reply(200, field);
+export function setupFieldEndpoints(field: Field) {
+  fetchMock.get(`path:/api/field/${field.id}`, field);
+  fetchMock.post(`path:/api/field/${field.id}/rescan_values`, {});
+  fetchMock.post(`path:/api/field/${field.id}/discard_values`, {});
 }
 
-export function setupFieldValuesEndpoints(
-  scope: Scope,
+export function setupFieldValuesEndpoints(fieldValues: FieldValues) {
+  fetchMock.get(`path:/api/field/${fieldValues.field_id}/values`, fieldValues);
+}
+
+export function setupUnauthorizedFieldValuesEndpoints(
   fieldValues: FieldValues,
 ) {
-  scope
-    .get(`/api/field/${fieldValues.field_id}/values`)
-    .reply(200, fieldValues);
+  fetchMock.get(`path:/api/field/${fieldValues.field_id}/values`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
 }
 
-export function setupFieldsValuesEndpoints(
-  scope: Scope,
-  fieldsValues: FieldValues[],
-) {
-  fieldsValues.forEach(fieldValues => {
-    setupFieldValuesEndpoints(scope, fieldValues);
-  });
+export function setupFieldsValuesEndpoints(fieldsValues: FieldValues[]) {
+  fieldsValues.forEach(fieldValues => setupFieldValuesEndpoints(fieldValues));
 }

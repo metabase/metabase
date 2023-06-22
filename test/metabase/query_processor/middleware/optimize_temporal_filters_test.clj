@@ -12,7 +12,7 @@
 
 (driver/register! ::timezone-driver, :abstract? true)
 
-(defmethod driver/supports? [::timezone-driver :set-timezone] [_ _] true)
+(defmethod driver/database-supports? [::timezone-driver :set-timezone] [_driver _feature _db] true)
 
 (defn- optimize-temporal-filters [filter-clause]
   (let [query {:database 1
@@ -194,7 +194,7 @@
 
 (deftest e2e-test
   (testing :=
-    (is (= {:query  "WHERE (CHECKINS.DATE >= ? AND CHECKINS.DATE < ?)"
+    (is (= {:query  "WHERE (CHECKINS.DATE >= ?) AND (CHECKINS.DATE < ?)"
             :params [(t/zoned-date-time (t/local-date 2019 9 24) (t/local-time 0) "UTC")
                      (t/zoned-date-time (t/local-date 2019 9 25) (t/local-time 0) "UTC")]}
            (mt/$ids checkins
@@ -205,12 +205,12 @@
            (mt/$ids checkins
              (filter->sql [:< !day.date "2019-09-24T12:00:00.000Z"])))))
   (testing :between
-    (is (= {:query  "WHERE (CHECKINS.DATE >= ? AND CHECKINS.DATE < ?)"
+    (is (= {:query  "WHERE (CHECKINS.DATE >= ?) AND (CHECKINS.DATE < ?)"
             :params [(t/zoned-date-time (t/local-date 2019  9 1) (t/local-time 0) "UTC")
                      (t/zoned-date-time (t/local-date 2019 11 1) (t/local-time 0) "UTC")]}
            (mt/$ids checkins
              (filter->sql [:between !month.date "2019-09-02T12:00:00.000Z" "2019-10-05T12:00:00.000Z"]))))
-    (is (= {:query "WHERE (CHECKINS.DATE >= ? AND CHECKINS.DATE < ?)"
+    (is (= {:query "WHERE (CHECKINS.DATE >= ?) AND (CHECKINS.DATE < ?)"
             :params           [(t/zoned-date-time "2019-09-01T00:00Z[UTC]")
                                (t/zoned-date-time "2019-10-02T00:00Z[UTC]")]}
            (mt/$ids checkins
@@ -302,14 +302,14 @@
 (deftest optimize-relative-datetimes-e2e-test
   (testing "Should optimize relative-datetime clauses (#11837)"
     (mt/dataset attempted-murders
-      (is (= (str "SELECT count(*) AS \"count\" "
+      (is (= (str "SELECT COUNT(*) AS \"count\" "
                   "FROM \"PUBLIC\".\"ATTEMPTS\" "
                   "WHERE"
                   " (\"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
-                  " >= date_trunc('month', dateadd('month', CAST(-1 AS long), CAST(now() AS datetime)))"
+                  " >= DATE_TRUNC('month', DATEADD('month', CAST(-1 AS long), CAST(NOW() AS datetime))))"
                   " AND"
-                  " \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
-                  " < date_trunc('month', now()))")
+                  " (\"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
+                  " < DATE_TRUNC('month', NOW()))")
              (:query
               (qp/compile
                (mt/mbql-query attempts
@@ -353,3 +353,27 @@
                 {:source-query
                  {:source-table $$checkins
                   :filter       [:= [:field %date {:temporal-unit :month}] [:relative-datetime -1 :month]]}})))))))
+
+(deftest optimize-filter-with-nested-compatible-field
+  (testing "Should optimize fields when starting n :temporal-unit ago (#25378)"
+    (mt/$ids users
+      (is (= (mt/mbql-query users
+                            {:filter [:and
+                                      [:>=
+                                       [:+ [:field %last_login {:temporal-unit :default}] [:interval 3 :month]]
+                                       [:relative-datetime -12 :month]]
+                                      [:<
+                                       [:+ [:field %last_login {:temporal-unit :default}] [:interval 3 :month]]
+                                       [:relative-datetime 1 :month]]]
+                             :source-query {:source-table $$users
+                                            :aggregation [[:count]]
+                                            :breakout [[:field %last_login {:temporal-unit :month}]]}})
+             (optimize-temporal-filters/optimize-temporal-filters
+               (mt/mbql-query users
+                              {:filter [:between
+                                        [:+ [:field %last_login {:temporal-unit :month}] [:interval 3 :month]]
+                                        [:relative-datetime -12 :month]
+                                        [:relative-datetime 0 :month]]
+                               :source-query {:source-table $$users
+                                              :aggregation [[:count]]
+                                              :breakout [[:field %last_login {:temporal-unit :month}]]}})))))))

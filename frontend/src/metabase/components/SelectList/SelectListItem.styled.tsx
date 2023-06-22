@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 
 import Label from "metabase/components/type/Label";
 import { color } from "metabase/lib/colors";
-import Icon, { IconProps } from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 export const ItemTitle = styled(Label)`
   margin: 0;

@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";
-import { iconPropTypes } from "metabase/components/Icon";
 
 import "./LineAreaBarChart.css";
 
@@ -22,12 +21,8 @@ import {
 } from "metabase/visualizations/lib/settings/validation";
 import { getOrderedSeries } from "metabase/visualizations/lib/series";
 import { getAccentColors } from "metabase/lib/colors/groups";
-import {
-  isNumeric,
-  isDate,
-  isDimension,
-  isMetric,
-} from "metabase-lib/types/utils/isa";
+import { isEmpty } from "metabase/lib/validate";
+import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 
 import {
   LineAreaBarChartRoot,
@@ -80,8 +75,6 @@ export default class LineAreaBarChart extends Component {
   static noHeader = true;
   static supportsSeries = true;
 
-  static minSize = { width: 4, height: 3 };
-
   static isSensible({ cols, rows }) {
     return (
       rows.length > 1 &&
@@ -104,50 +97,6 @@ export default class LineAreaBarChart extends Component {
     validateDatasetRows(series);
     validateChartDataSettings(settings);
     validateStacking(settings);
-  }
-
-  static seriesAreCompatible(initialSeries, newSeries) {
-    const initialSettings = getComputedSettingsForSeries([initialSeries]);
-    const newSettings = getComputedSettingsForSeries([newSeries]);
-
-    const initialDimensions = getColumnsFromNames(
-      initialSeries.data.cols,
-      initialSettings["graph.dimensions"],
-    );
-    const newDimensions = getColumnsFromNames(
-      newSeries.data.cols,
-      newSettings["graph.dimensions"],
-    );
-    const newMetrics = getColumnsFromNames(
-      newSeries.data.cols,
-      newSettings["graph.metrics"],
-    );
-
-    // must have at least one dimension and one metric
-    if (newDimensions.length === 0 || newMetrics.length === 0) {
-      return false;
-    }
-
-    // all metrics must be numeric
-    if (!_.all(newMetrics, isNumeric)) {
-      return false;
-    }
-
-    // both or neither primary dimension must be dates
-    if (isDate(initialDimensions[0]) !== isDate(newDimensions[0])) {
-      return false;
-    }
-
-    // both or neither primary dimension must be numeric
-    // a timestamp field is both date and number so don't enforce the condition if both fields are dates; see #2811
-    if (
-      isNumeric(initialDimensions[0]) !== isNumeric(newDimensions[0]) &&
-      !(isDate(initialDimensions[0]) && isDate(newDimensions[0]))
-    ) {
-      return false;
-    }
-
-    return true;
   }
 
   static placeholderSeries = [
@@ -187,7 +136,7 @@ export default class LineAreaBarChart extends Component {
     actionButtons: PropTypes.node,
     showTitle: PropTypes.bool,
     isDashboard: PropTypes.bool,
-    headerIcon: PropTypes.shape(iconPropTypes),
+    headerIcon: PropTypes.object,
   };
 
   static defaultProps = {};
@@ -274,7 +223,8 @@ export default class LineAreaBarChart extends Component {
     const hasMultipleSeries = series.length > 1;
     const canChangeSeries = onAddSeries || onEditSeries || onRemoveSeries;
     const hasLegendButtons = !hasTitle && actionButtons;
-    const hasLegend = hasMultipleSeries || canChangeSeries || hasLegendButtons;
+    const hasLegend =
+      hasMultipleSeries || canChangeSeries || hasLegendButtons || hasBreakout;
 
     const seriesSettings =
       settings.series && series.map(single => settings.series(single));
@@ -308,7 +258,7 @@ export default class LineAreaBarChart extends Component {
     }
   };
 
-  handleSelectSeries = (event, index) => {
+  handleSelectSeries = (event, index, isReversed) => {
     const {
       card,
       series,
@@ -318,7 +268,9 @@ export default class LineAreaBarChart extends Component {
       onChangeCardAndRun,
     } = this.props;
 
-    const single = series[index];
+    const single = isReversed
+      ? series[series.length - index - 1]
+      : series[index];
     const hasBreakout = card._breakoutColumn != null;
 
     if (onEditSeries && !hasBreakout) {
@@ -349,7 +301,10 @@ export default class LineAreaBarChart extends Component {
       settings,
     } = this.props;
 
-    const orderedSeries = getOrderedSeries(series, settings);
+    // Note (EmmadUsmani): Stacked charts should be reversed so series are stacked
+    // from top to bottom, matching the sidebar (metabase#28772).
+    const isReversed = !isEmpty(settings["stackable.stack_type"]);
+    const orderedSeries = getOrderedSeries(series, settings, isReversed);
 
     const {
       title,
@@ -391,6 +346,7 @@ export default class LineAreaBarChart extends Component {
           onHoverChange={onHoverChange}
           onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}
           onSelectSeries={this.handleSelectSeries}
+          isReversed={isReversed}
         >
           <CardRenderer
             {...this.props}
@@ -404,13 +360,6 @@ export default class LineAreaBarChart extends Component {
       </LineAreaBarChartRoot>
     );
   }
-}
-
-function getColumnsFromNames(cols, names) {
-  if (!names) {
-    return [];
-  }
-  return names.map(name => _.findWhere(cols, { name }));
 }
 
 function transformSingleSeries(s, series, seriesIndex) {

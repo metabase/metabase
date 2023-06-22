@@ -2,11 +2,13 @@
   "Logic for initializing different components that need to be initialized when running tests."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   [hawk.init]
+   [mb.hawk.init]
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (defmulti ^:private do-initialization!
   "Perform component-specific initialization. This is guaranteed to only be called once."
@@ -53,7 +55,7 @@
   ;; `:plugins` initialization is ok when loading test namespaces. Nothing else is tho (e.g. starting up the
   ;; application DB, or starting up the web server).
   (when-not (= steps [:plugins])
-    (hawk.init/assert-tests-are-not-initializing (pr-str (cons 'initialize-if-needed! steps))))
+    (mb.hawk.init/assert-tests-are-not-initializing (pr-str (cons 'initialize-if-needed! steps))))
   (doseq [step steps
           :let [step (keyword step)]]
     (when-not (@initialized step)

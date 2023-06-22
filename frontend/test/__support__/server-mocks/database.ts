@@ -1,27 +1,81 @@
-import { Scope } from "nock";
+import fetchMock from "fetch-mock";
 import _ from "underscore";
+import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { Database } from "metabase-types/api";
+import { isTypeFK } from "metabase-lib/types/utils/isa";
+import { PERMISSION_ERROR } from "./constants";
 import { setupTableEndpoints } from "./table";
 
-export function setupDatabaseEndpoints(scope: Scope, db: Database) {
-  scope.get(`/api/database/${db.id}`).reply(200, db);
-  setupSchemaEndpoints(scope, db);
-  db.tables?.forEach(table => setupTableEndpoints(scope, table));
+export function setupDatabaseEndpoints(db: Database) {
+  fetchMock.get(`path:/api/database/${db.id}`, db);
+  setupSchemaEndpoints(db);
+  setupDatabaseIdFieldsEndpoints(db);
+  db.tables?.forEach(table => setupTableEndpoints(table));
+
+  fetchMock.put(`path:/api/database/${db.id}`, async url => {
+    const call = fetchMock.lastCall(url);
+    const body = await call?.request?.json();
+    return { ...db, ...body };
+  });
 }
 
-export function setupDatabasesEndpoints(scope: Scope, dbs: Database[]) {
-  scope.get("/api/database").reply(200, dbs);
-  dbs.forEach(db => setupDatabaseEndpoints(scope, db));
+export function setupDatabasesEndpoints(
+  dbs: Database[],
+  { hasSavedQuestions = true } = {},
+) {
+  fetchMock.get(
+    {
+      url: "path:/api/database",
+      query: { saved: true },
+      overwriteRoutes: false,
+    },
+    hasSavedQuestions ? [...dbs, SAVED_QUESTIONS_DATABASE] : dbs,
+  );
+  fetchMock.get({ url: "path:/api/database", overwriteRoutes: false }, dbs);
+
+  dbs.forEach(db => setupDatabaseEndpoints(db));
 }
 
-export const setupSchemaEndpoints = (scope: Scope, db: Database) => {
+export const setupSchemaEndpoints = (db: Database) => {
   const schemas = _.groupBy(db.tables ?? [], table => table.schema);
   const schemaNames = Object.keys(schemas);
-  scope.get(`/api/database/${db.id}/schemas`).reply(200, schemaNames);
+  fetchMock.get(`path:/api/database/${db.id}/schemas`, schemaNames);
+  fetchMock.get(`path:/api/database/${db.id}/syncable_schemas`, schemaNames);
 
   schemaNames.forEach(schema => {
-    scope
-      .get(`/api/database/${db.id}/schema/${schema}`)
-      .reply(200, schemas[schema]);
+    fetchMock.get(
+      `path:/api/database/${db.id}/schema/${schema}`,
+      schemas[schema],
+    );
   });
 };
+
+export function setupDatabaseIdFieldsEndpoints({ id, tables = [] }: Database) {
+  const fields = tables.flatMap(table =>
+    (table.fields ?? [])
+      .filter(field => isTypeFK(field.semantic_type))
+      .map(field => ({ ...field, table })),
+  );
+
+  fetchMock.get(`path:/api/database/${id}/idfields`, fields);
+}
+
+export const setupUnauthorizedSchemaEndpoints = (db: Database) => {
+  fetchMock.get(`path:/api/database/${db.id}/schemas`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
+};
+
+export function setupUnauthorizedDatabaseEndpoints(db: Database) {
+  fetchMock.get(`path:/api/database/${db.id}`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
+
+  setupUnauthorizedSchemaEndpoints(db);
+}
+
+export function setupUnauthorizedDatabasesEndpoints(dbs: Database[]) {
+  dbs.forEach(db => setupUnauthorizedDatabaseEndpoints(db));
+}

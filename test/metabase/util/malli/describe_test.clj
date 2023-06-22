@@ -8,8 +8,8 @@
     (is (= "vector of integer" (umd/describe [:vector :int]))))
 
   (testing "string"
-    (is (= "string with length <= 5" (umd/describe [:string {:min 5}])))
-    (is (= "string with length >= 5" (umd/describe [:string {:max 5}])))
+    (is (= "string with length >= 5" (umd/describe [:string {:min 5}])))
+    (is (= "string with length <= 5" (umd/describe [:string {:max 5}])))
     (is (= "string with length between 3 and 5 inclusive" (umd/describe [:string {:min 3 :max 5}]))))
 
   (testing "function"

@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import * as React from "react";
 import _ from "underscore";
+import { usePrevious } from "react-use";
 
 // eslint-disable-next-line import/named
 import { FormikProps } from "formik";
 
 import { CustomFormProps } from "metabase/components/form/FormikCustomForm";
-
-import { usePrevious } from "metabase/hooks/use-previous";
 
 import { BaseFieldValues, FormField } from "metabase-types/forms";
 
@@ -140,4 +140,5 @@ function FormikFormViewAdapter<Values extends BaseFieldValues>({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormikFormViewAdapter;

@@ -25,7 +25,6 @@
   `name` is `:remapped_from` `:category_id`."
   (:require
    [clojure.data :as data]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.mbql.schema :as mbql.s]
@@ -33,10 +32,10 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan2.core :as t2]))
 
 (def ^:private ExternalRemappingDimensionInitialInfo
   "External remapping dimensions when they're first fetched from the app DB. We'll add extra info to this."
@@ -60,7 +59,7 @@
   [fields :- [mbql.s/Field]]
   (when-let [field-ids (not-empty (set (mbql.u/match fields [:field (id :guard integer?) _] id)))]
     (letfn [(thunk []
-              (m/index-by :field_id (db/select [Dimension :id :field_id :name :human_readable_field_id]
+              (m/index-by :field_id (t2/select [Dimension :id :field_id :name :human_readable_field_id]
                                       :field_id [:in field-ids]
                                       :type     "external")))]
       (if (qp.store/initialized?)
@@ -402,7 +401,7 @@
 (s/defn ^:private col->dim-map :- (s/maybe InternalDimensionInfo)
   "Given a `:col` map from the results, return a map of information about the `internal` dimension used for remapping
   it."
-  [idx {{remap-to :name, remap-type :type, field-id :field_id}         :dimensions
+  [idx {[{remap-to :name, remap-type :type, field-id :field_id}]       :dimensions
         {values :values, human-readable-values :human_readable_values} :values
         :as                                                            col}]
   (when (and field-id
@@ -433,7 +432,7 @@
   [cols]
   ;; hydrate Dimensions and FieldValues for all of the columns in the results, then make a map of dimension info for
   ;; each one that is `internal` type
-  (let [internal-only-dims (->> (hydrate cols :values :dimensions)
+  (let [internal-only-dims (->> (t2/hydrate cols :values :dimensions)
                                 (keep-indexed col->dim-map)
                                 (filter identity))]
     {:internal-only-dims internal-only-dims

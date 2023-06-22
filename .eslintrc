@@ -4,43 +4,60 @@
     "no-undef": 2,
     "no-var": 1,
     "no-unused-vars": [
-      1,
-      { "vars": "all", "args": "none", "varsIgnorePattern": "^_.+" }
+      "error",
+      {
+        "vars": "all",
+        "args": "none",
+        "varsIgnorePattern": "^_.+",
+        "ignoreRestSiblings": true
+      }
     ],
     "no-empty": [1, { "allowEmptyCatch": true }],
     "curly": [1, "all"],
     "eqeqeq": [1, "smart"],
+    "import/no-default-export": 2,
     "import/no-commonjs": 1,
-    "import/order": ["error", {
-      "pathGroups": [
-        {
-          "pattern": "react",
-          "group": "builtin",
-          "position": "before"
-        },
-        {
-          "pattern": "metabase/**",
-          "group": "internal"
-        },
-        {
-          "pattern": "metabase/**/components",
-          "group": "internal",
-          "position": "before"
-        },
-        {
-          "pattern": "__**",
-          "group": "internal",
-          "position": "before"
-        },
-        {
-          "pattern": "metabase-lib/**",
-          "group": "internal",
-          "position": "after"
-        }
-      ],
-      "groups": ["builtin", "external", "internal", "parent", "sibling", "index", "object"]
-    }],
-    "no-console": 0,
+    "import/order": [
+      "error",
+      {
+        "pathGroups": [
+          {
+            "pattern": "react",
+            "group": "builtin",
+            "position": "before"
+          },
+          {
+            "pattern": "metabase/**",
+            "group": "internal"
+          },
+          {
+            "pattern": "metabase/**/components",
+            "group": "internal",
+            "position": "before"
+          },
+          {
+            "pattern": "__**",
+            "group": "internal",
+            "position": "before"
+          },
+          {
+            "pattern": "metabase-lib/**",
+            "group": "internal",
+            "position": "after"
+          }
+        ],
+        "groups": [
+          "builtin",
+          "external",
+          "internal",
+          "parent",
+          "sibling",
+          "index",
+          "object"
+        ]
+      }
+    ],
+    "no-console": [2, {"allow": ["warn", "error"]}],
     "react/no-is-mounted": 2,
     "react/prefer-es6-class": 2,
     "react/display-name": 1,
@@ -80,6 +97,7 @@
   "extends": [
     "eslint:recommended",
     "plugin:react/recommended",
+    "plugin:react/jsx-runtime",
     "plugin:react-hooks/recommended",
     "plugin:import/errors",
     "plugin:import/warnings"
@@ -102,9 +120,6 @@
       "extends": ["plugin:@typescript-eslint/recommended"],
       "files": ["*.ts", "*.tsx"],
       "parser": "@typescript-eslint/parser",
-      "parserOptions": {
-        "project": "./tsconfig.json"
-      },
       "plugins": ["@typescript-eslint"],
       "rules": {
         "prefer-rest-params": "off",
@@ -112,7 +127,17 @@
         "@typescript-eslint/no-inferrable-types": "off",
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-this-alias": "off",
-        "@typescript-eslint/no-unused-vars": "off"
+        "no-unused-vars": "off",
+        "@typescript-eslint/no-unused-vars": [
+          "error",
+          {
+            "vars": "all",
+            "args": "none",
+            "varsIgnorePattern": "^_.+",
+            "ignoreRestSiblings": true,
+            "destructuredArrayIgnorePattern": "^_"
+          }
+        ]
       }
     },
     {

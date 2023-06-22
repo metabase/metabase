@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
@@ -165,6 +165,7 @@ function getCollectionId(state: State, props: SnippetCollectionFormOwnProps) {
   return props.collection?.id;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   SnippetCollections.load({ id: getCollectionId }),
   connect(null, mapDispatchToProps),

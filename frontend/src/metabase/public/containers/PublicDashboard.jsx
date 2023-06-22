@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import cx from "classnames";
@@ -25,6 +25,8 @@ import {
   getSlowCards,
   getParameters,
   getParameterValues,
+  getDraftParameterValues,
+  getSelectedTabId,
 } from "metabase/dashboard/selectors";
 
 import * as dashboardActions from "metabase/dashboard/actions";
@@ -33,7 +35,14 @@ import {
   setPublicDashboardEndpoints,
   setEmbedDashboardEndpoints,
 } from "metabase/services";
+import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import EmbedFrame from "../components/EmbedFrame";
+
+import {
+  DashboardContainer,
+  DashboardGridContainer,
+  Separator,
+} from "./PublicDashboard.styled";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -45,6 +54,8 @@ const mapStateToProps = (state, props) => {
     slowCards: getSlowCards(state, props),
     parameters: getParameters(state, props),
     parameterValues: getParameterValues(state, props),
+    draftParameterValues: getDraftParameterValues(state, props),
+    selectedTabId: getSelectedTabId(state),
   };
 };
 
@@ -66,7 +77,6 @@ class PublicDashboard extends Component {
       location,
       params: { uuid, token },
     } = this.props;
-
     if (uuid) {
       setPublicDashboardEndpoints();
     } else if (token) {
@@ -76,7 +86,7 @@ class PublicDashboard extends Component {
     initialize();
     try {
       await fetchDashboard(uuid || token, location.query);
-      await fetchDashboardCardData({ reload: false, clear: true });
+      await fetchDashboardCardData({ reload: false, clearCache: true });
     } catch (error) {
       console.error(error);
       setErrorPage(error);
@@ -97,7 +107,7 @@ class PublicDashboard extends Component {
     }
 
     if (!_.isEqual(this.props.parameterValues, prevProps.parameterValues)) {
-      this.props.fetchDashboardCardData({ reload: false, clear: true });
+      this.props.fetchDashboardCardData({ reload: false, clearCache: true });
     }
   }
 
@@ -106,9 +116,11 @@ class PublicDashboard extends Component {
       dashboard,
       parameters,
       parameterValues,
+      draftParameterValues,
       isFullscreen,
       isNightMode,
     } = this.props;
+
     const buttons = !isWithinIframe()
       ? getDashboardActions(this, { ...this.props, isPublic: true })
       : [];
@@ -120,26 +132,34 @@ class PublicDashboard extends Component {
         dashboard={dashboard}
         parameters={parameters}
         parameterValues={parameterValues}
+        draftParameterValues={draftParameterValues}
         setParameterValue={this.props.setParameterValue}
         actionButtons={
           buttons.length > 0 && <div className="flex">{buttons}</div>
         }
       >
         <LoadingAndErrorWrapper
-          className={cx("Dashboard p1 flex-full", {
+          className={cx({
             "Dashboard--fullscreen": isFullscreen,
             "Dashboard--night": isNightMode,
           })}
           loading={!dashboard}
         >
           {() => (
-            <DashboardGrid
-              {...this.props}
-              className="spread"
-              mode={PublicMode}
-              metadata={this.props.metadata}
-              navigateToNewCardFromDashboard={() => {}}
-            />
+            <DashboardContainer>
+              <DashboardTabs location={this.props.location} />
+              <Separator />
+              <DashboardGridContainer>
+                <DashboardGrid
+                  {...this.props}
+                  isPublic
+                  className="spread"
+                  mode={PublicMode}
+                  metadata={this.props.metadata}
+                  navigateToNewCardFromDashboard={() => {}}
+                />
+              </DashboardGridContainer>
+            </DashboardContainer>
           )}
         </LoadingAndErrorWrapper>
       </EmbedFrame>

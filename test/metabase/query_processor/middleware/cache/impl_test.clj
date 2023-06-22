@@ -7,6 +7,8 @@
   (:import
    (java.io ByteArrayInputStream)))
 
+(set! *warn-on-reflection* true)
+
 ;; `defrecord+` because if this gets redefined it confuses the test runner
 (p.types/defrecord+ ^:private Z [n])
 

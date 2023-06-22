@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import TabContent from "metabase/core/components/TabContent";
@@ -18,7 +17,7 @@ import ModelUsageDetails from "./ModelUsageDetails";
 import {
   RootLayout,
   ModelMain,
-  TabList,
+  TabRow,
   TabPanel,
   TabPanelContent,
 } from "./ModelDetailPage.styled";
@@ -27,7 +26,9 @@ interface Props {
   model: Question;
   mainTable?: Table | null;
   tab: string;
+  hasDataPermissions: boolean;
   hasActionsTab: boolean;
+  canRunActions: boolean;
   onChangeName: (name?: string) => void;
   onChangeDescription: (description?: string | null) => void;
   onChangeCollection: (collection: Collection) => void;
@@ -37,7 +38,9 @@ function ModelDetailPage({
   model,
   tab,
   mainTable,
+  hasDataPermissions,
   hasActionsTab,
+  canRunActions,
   onChangeName,
   onChangeDescription,
   onChangeCollection,
@@ -49,11 +52,12 @@ function ModelDetailPage({
       <ModelMain>
         <ModelDetailHeader
           model={model}
+          hasEditDefinitionLink={hasDataPermissions}
           onChangeName={onChangeName}
           onChangeCollection={onChangeCollection}
         />
         <TabContent value={tab}>
-          <TabList>
+          <TabRow>
             <TabLink
               value="usage"
               to={Urls.modelDetail(modelCard, "usage")}
@@ -68,21 +72,30 @@ function ModelDetailPage({
                 to={Urls.modelDetail(modelCard, "actions")}
               >{t`Actions`}</TabLink>
             )}
-          </TabList>
+          </TabRow>
           <TabPanel value="usage">
             <TabPanelContent>
-              <ModelUsageDetails model={model} />
+              <ModelUsageDetails
+                model={model}
+                hasNewQuestionLink={hasDataPermissions}
+              />
             </TabPanelContent>
           </TabPanel>
           <TabPanel value="schema">
             <TabPanelContent>
-              <ModelSchemaDetails model={model} />
+              <ModelSchemaDetails
+                model={model}
+                hasEditMetadataLink={hasDataPermissions}
+              />
             </TabPanelContent>
           </TabPanel>
           {hasActionsTab && (
             <TabPanel value="actions">
               <TabPanelContent>
-                <ModelActionDetails model={model} />
+                <ModelActionDetails
+                  model={model}
+                  canRunActions={canRunActions}
+                />
               </TabPanelContent>
             </TabPanel>
           )}
@@ -97,4 +110,5 @@ function ModelDetailPage({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelDetailPage;

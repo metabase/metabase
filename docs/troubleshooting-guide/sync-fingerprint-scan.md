@@ -22,12 +22,14 @@ Once you've confirmed that you're looking at a non-cached view of your tables an
 2. Go to **Admin** > **Troubleshooting** > **Logs** to check the status of the sync.
 3. Run a query against your database from the Metabase SQL editor to check for database connection or database privilege errors that aren't listed in the logs:
 
-    ```sql
-    SELECT *
-    FROM "your_schema"."your_table_or_view"
-    LIMIT 1
-    ```
-5. [Manually re-sync](../databases/connecting.md#manually-syncing-tables-and-columns) the table or view if needed.
+   ```sql
+   SELECT
+      *
+   FROM
+       "your_schema"."your_table_or_view"
+   LIMIT 1
+   ```
+4. [Manually re-sync](../databases/sync-scan.md#manually-syncing-tables-and-columns) the table or view if needed.
 
 ### Special cases
 
@@ -35,19 +37,22 @@ If you’ve just set up a new database in Metabase, the initial sync query needs
 
 **Explanation**
 
-A sync query should show up like this in your database's query execution table (using the privileges for the database user in the database connection details):
+A sync query should show up like this in your database's query execution table (using the [privileges](../databases/users-roles-privileges.md) for the database user in the database connection details):
 
 ```sql
-SELECT TRUE
-FROM "your_schema"."your_table_or_view"
-WHERE 1 <> 1
+SELECT
+    TRUE
+FROM 
+    "your_schema"."your_table_or_view"
+WHERE 
+    1 <> 1
 LIMIT 0
 ```
 
 To run the sync query, Metabase must:
 
 - successfully connect to your database, and
-- be [granted privileges](./data-permissions.md#granting-database-privileges) to query that database. 
+- be [granted privileges](../databases/users-roles-privileges.md) to query that database. 
 
 If the [connection is failing](./db-connection.md) or the database privileges are wrong, the sync query won't be able to run. If Metabase can't sync with your database after you first set it up, then the initial scan and fingerprinting queries won't run either.
 
@@ -64,7 +69,7 @@ Metabase will try to unfold JSON and JSONB records during the sync process, whic
 
 ## Scanning
 
-1. Go to **Admin** > **Data Model**.
+1. Go to **Admin** > **Table Metadata**.
 2. Select the database and table.
 3. Go to the column you want to update, and click the **gear** icon.
 4. Click **Discard cached field values**.
@@ -80,16 +85,20 @@ If you're waiting for the initial scan to run after connecting a database, make 
 Scan queries are run against your database to sample column values from the first 1,000 rows in a table or view:
 
 ```sql
-SELECT "your_table_or_view"."column" AS "column"
-FROM "your_schema"."your_table_or_view"
-GROUP BY "your_table_or_view"."column"
-ORDER BY "your_table_or_view"."column" ASC
+SELECT 
+    "your_table_or_view"."column" AS "column"
+FROM 
+    "your_schema"."your_table_or_view"
+GROUP BY 
+    "your_table_or_view"."column"
+ORDER BY 
+    "your_table_or_view"."column" ASC
 LIMIT 1000
 ```
 
 A failed scan is caused by a failed scan query---you can look at the logs to debug the query similar to other queries you'd run directly against your database.
 
-Note that when you [change a search box filter to a dropdown filter](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) from the Data Model, you'll trigger a scan query for that field. If you have a dropdown filter that isn't picking up all the values in a field, remember that Metabase only samples the first 1,000 unique values per field, and stores a maximum of 100 kilobytes of text. If you've got more than 1,000 unique values in a column, or a lot of text-heavy data (like long URLs or survey responses), you can:
+Note that when you [change a search box filter to a dropdown filter](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) from the Table Metadata, you'll trigger a scan query for that field. If you have a dropdown filter that isn't picking up all the values in a field, remember that Metabase only samples the first 1,000 unique values per field, and stores a maximum of 100 kilobytes of text. If you've got more than 1,000 unique values in a column, or a lot of text-heavy data (like long URLs or survey responses), you can:
 
 - Use a search box filter for that field.
 - Clean up the data further in your [ETL or ELT](https://www.metabase.com/learn/analytics/etl-landscape) process.
@@ -100,7 +109,7 @@ To manually re-trigger a fingerprinting query for a given column:
 
 1. Go to **Admin** > **Databases** > **your database** > **Show advanced options**.
 2. Toggle ON **Periodically refingerprint tables** and click **Save changes**.
-3. Go to **Admin** > **Data Model**.
+3. Go to **Admin** > **Table Metadata**.
 4. Select your database and table.
 5. Change the visibility of the table to "Hidden".
 6. Change the visibility back to "Queryable".
@@ -118,8 +127,10 @@ If you're using MongoDB, Metabase fingerprints the first 10,000 documents per co
 The initial fingerprinting query looks at the first 10,000 rows from a given table or view in your database:
 
 ```sql
-SELECT *
-FROM "your_schema"."your_table_or_view"
+SELECT 
+    *
+FROM 
+    "your_schema"."your_table_or_view"
 LIMIT 10000
 ```
 
@@ -134,11 +145,11 @@ Metabase doesn't have a built-in option to trigger manual fingerprinting queries
 
 To speed up **syncs**:
    - Restrict the privileges used to connect to the database so that Metabase only syncs a limited subset of schemas or tables.
-   - [Reduce the frequency of sync queries](../databases/connecting.md#scheduling-database-scans).
+   - [Reduce the frequency of sync queries](../databases/sync-scan.md#scheduling-database-syncs).
 
 To speed up **scans**:
-   - [Reduce the frequency of scans, or disable scans entirely](../databases/connecting.md#scheduling-database-scans).
-   - Reduce the number of columns being scanned by going to **Admin** > **Data Model** and setting **Filtering on this field** to **Search box** or **Plain input box**.
+   - [Reduce the frequency of scans, or disable scans entirely](../databases/sync-scan.md#scheduling-database-scans).
+   - Reduce the number of columns being scanned by going to **Admin** > **Table Metadata** and setting **Filtering on this field** to **Search box** or **Plain input box**.
 
 **Explanation**
 
@@ -148,7 +159,7 @@ Syncs and scans are ultimately just two kinds of queries that are run against yo
 
 - [Troubleshooting database connections](./db-connection.md).
 - [Troubleshooting filters](./filters.md).
-- [How syncs and scans work](../databases/connecting.md#syncing-and-scanning-databases).
+- [How syncs and scans work](../databases/sync-scan.md#how-database-syncs-work).
 
 ## Are you still stuck?
 

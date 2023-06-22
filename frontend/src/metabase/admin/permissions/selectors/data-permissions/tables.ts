@@ -19,7 +19,7 @@ import {
   getPermissionWarningModal,
   getControlledDatabaseWarningModal,
 } from "../confirmations";
-import { SchemaEntityId } from "../../types";
+import { SchemaEntityId, PermissionSectionConfig } from "../../types";
 import { getGroupFocusPermissionsUrl } from "../../utils/urls";
 
 const buildAccessPermission = (
@@ -59,7 +59,9 @@ const buildAccessPermission = (
   return {
     permission: "data",
     type: "access",
-    isDisabled: isAdmin || PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(value),
+    isDisabled:
+      isAdmin ||
+      PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(value, "tables"),
     isHighlighted: isAdmin,
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
     value,
@@ -104,7 +106,7 @@ export const buildTablesPermissions = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   defaultGroup: Group,
-) => {
+): PermissionSectionConfig[] => {
   const accessPermission = buildAccessPermission(
     entityId,
     groupId,

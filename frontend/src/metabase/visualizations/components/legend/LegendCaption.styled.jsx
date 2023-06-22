@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { color, lighten } from "metabase/lib/colors";
+import { Icon } from "metabase/core/components/Icon";
 
 export const LegendCaptionRoot = styled.div`
   display: flex;
@@ -24,8 +24,19 @@ export const LegendLabelIcon = styled(Icon)`
 `;
 
 export const LegendDescriptionIcon = styled(Icon)`
-  color: ${color("text-medium")};
-  margin-left: 0.5rem;
+  color: ${lighten("text-light", 0.1)};
+  margin: 0 0.375rem;
+
+  &:hover {
+    color: ${color("text-medium")};
+  }
+`;
+
+export const LegendRightContent = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-left: auto;
+  align-items: center;
 `;
 
 LegendDescriptionIcon.defaultProps = {

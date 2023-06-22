@@ -12,6 +12,8 @@
    (java.util Base64)
    (javax.net.ssl SSLSocketFactory)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :plugins :test-drivers))
 
 (deftest generate-identity-store-test
@@ -224,7 +226,8 @@
                       :keystore-options        "uploaded"
                       ;; because treat-before-posting is base64 in the config for this property, simulate that happening
                       :keystore-value          (->> (.getBytes ks-val StandardCharsets/UTF_8)
-                                                    (.encodeToString (Base64/getEncoder)))
+                                                    (.encodeToString (Base64/getEncoder))
+                                                    (str "data:application/octet-stream;base64,"))
                       :keystore-password-value "my-keystore-pw"}
           transformed (driver.u/db-details-client->server :secret-test-driver db-details)]
       ;; compare all fields except `:keystore-value` as a single map
@@ -235,6 +238,11 @@
              (select-keys transformed [:host :password-value :keystore-password-value :use-keystore])))
       ;; the keystore-value should have been base64 decoded because of treat-before-posting being base64 (see above)
       (is (mt/secret-value-equals? ks-val (:keystore-value transformed))))))
+
+(deftest decode-uploaded-test
+  (are [expected base64] (= expected (String. (driver.u/decode-uploaded base64) "UTF-8"))
+    "hi" "aGk="
+    "hi" "data:application/octet-stream;base64,aGk="))
 
 (deftest semantic-version-gte-test
   (testing "semantic-version-gte works as expected"

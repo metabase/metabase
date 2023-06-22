@@ -1,6 +1,6 @@
-import React, { useCallback } from "react";
+import { Fragment, useCallback } from "react";
 import PropTypes from "prop-types";
-import { bindActionCreators } from "redux";
+import { bindActionCreators } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -103,7 +103,7 @@ function GroupsPermissionsPage({
   const handlePermissionChange = useCallback(
     async (item, permission, value) => {
       await updateDataPermission({
-        groupId: params.groupId,
+        groupId: parseInt(params.groupId),
         permission,
         value,
         entityId: item.entityId,
@@ -121,7 +121,7 @@ function GroupsPermissionsPage({
 
   const showEmptyState = !permissionEditor && !isEditorLoading && !editorError;
   return (
-    <React.Fragment>
+    <Fragment>
       <PermissionsSidebar
         {...sidebar}
         onSelect={handleSidebarItemSelect}
@@ -148,7 +148,7 @@ function GroupsPermissionsPage({
       )}
 
       {children}
-    </React.Fragment>
+    </Fragment>
   );
 }
 

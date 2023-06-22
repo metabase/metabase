@@ -3,18 +3,22 @@
   (:require
    [clj-time.core :as time]
    [clj-time.predicates :as timepr]
-   [clojure.tools.logging :as log]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
+   [metabase.models :refer [PulseChannel]]
    [metabase.models.pulse :as pulse]
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.task-history :as task-history]
    [metabase.pulse]
    [metabase.task :as task]
    [metabase.util.i18n :refer [trs]]
-   [schema.core :as s]))
+   [metabase.util.log :as log]
+   [schema.core :as s]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
@@ -59,6 +63,19 @@
          (catch Throwable e
            (on-error pulse-id e)))))))
 
+; Clearing pulse channels is not done synchronously in order to support undoing feature.
+(s/defn ^:private clear-pulse-channels!
+  []
+  (when-let [ids-to-delete (seq
+                            (for [channel (t2/select [PulseChannel :id :details]
+                                                     :id [:not-in {:select   [[:pulse_channel_id :id]]
+                                                                   :from     :pulse_channel_recipient
+                                                                   :group-by [:pulse_channel_id]
+                                                                   :having   [:>= :%count.* [:raw 1]]}])]
+                              (when (and (empty? (get-in channel [:details :emails]))
+                                         (not (get-in channel [:details :channel])))
+                                (:id channel))))]
+  (t2/delete! PulseChannel :id [:in ids-to-delete])))
 
 ;;; ------------------------------------------------------ Task ------------------------------------------------------
 
@@ -94,7 +111,8 @@
                                     :id)
             curr-monthday      (monthday now)
             curr-monthweek     (monthweek now)]
-        (send-pulses! curr-hour curr-weekday curr-monthday curr-monthweek)))
+        (send-pulses! curr-hour curr-weekday curr-monthday curr-monthweek))
+      (clear-pulse-channels!))
     (catch Throwable e
       (log/error e (trs "SendPulses task failed")))))
 

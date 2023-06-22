@@ -8,10 +8,10 @@
    [clojure.data]
    [clojure.test :refer :all]
    [environ.core :as env]
-   [hawk.init]
-   [hawk.parallel]
    [humane-are.core :as humane-are]
    [java-time :as t]
+   [mb.hawk.init]
+   [mb.hawk.parallel]
    [medley.core :as m]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
@@ -28,7 +28,6 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.server.middleware.session :as mw.session]
-   [metabase.shared.util.log :as log]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.data :as data]
    [metabase.test.data.datasets :as datasets]
@@ -43,12 +42,17 @@
    [metabase.test.util.async :as tu.async]
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
+   [metabase.test.util.random :as tu.random]
    [metabase.test.util.timezone :as test.tz]
+   [metabase.util.log :as log]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
-   [toucan.db :as db]
-   [toucan.models :as models]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model]
+   [toucan2.tools.with-temp :as t2.with-temp]))
+
+(set! *warn-on-reflection* true)
 
 (humane-are/install!)
 
@@ -78,14 +82,17 @@
   test-runner.assert-exprs/keep-me
   test.users/keep-me
   tt/keep-me
+  t2.with-temp/keepme
   tu/keep-me
   tu.async/keep-me
   tu.log/keep-me
+  tu.random/keep-me
   test.tz/keep-me
   tx/keep-me
   tx.env/keep-me)
 
 ;; Add more stuff here as needed
+#_{:clj-kondo/ignore [:discouraged-var]}
 (p/import-vars
  [actions.test-util
   with-actions
@@ -94,6 +101,7 @@
   with-actions-test-data
   with-actions-test-data-tables
   with-actions-test-data-and-actions-enabled
+  with-empty-db
   with-temp-test-data]
 
  [data
@@ -107,7 +115,8 @@
   query
   run-mbql-query
   with-db
-  with-temp-copy-of-db]
+  with-temp-copy-of-db
+  with-empty-h2-app-db]
 
  [data.impl
   *db-is-temp-copy?*]
@@ -200,8 +209,9 @@
   with-test-user]
 
  [tt
-  with-temp
-  with-temp*
+  with-temp*]
+
+ [t2.with-temp
   with-temp-defaults]
 
  [tu
@@ -213,8 +223,6 @@
   is-uuid-string?
   obj->json->obj
   postwalk-pred
-  random-email
-  random-name
   round-all-decimals
   scheduler-current-tasks
   secret-value-equals?
@@ -247,6 +255,11 @@
   with-log-messages-for-level
   with-log-level]
 
+ [tu.random
+  random-name
+  random-hash
+  random-email]
+
  [test.tz
   with-system-timezone-id]
 
@@ -256,12 +269,12 @@
   dataset-definition
   db-qualified-table-name
   db-test-env-var
+  db-test-env-var!
   db-test-env-var-or-throw
   dbdef->connection-details
   defdataset
   dispatch-on-driver-with-test-extensions
   get-dataset-definition
-  has-questionable-timezone-support?
   has-test-extensions?
   metabase-instance
   sorts-nil-first?
@@ -275,7 +288,7 @@
 ;;; TODO -- move all the stuff below into some other namespace and import it here.
 
 (defn do-with-clock [clock thunk]
-  (hawk.parallel/assert-test-is-not-parallel "with-clock")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-clock")
   (testing (format "\nsystem clock = %s" (pr-str clock))
     (let [clock (cond
                   (t/clock? clock)           clock
@@ -283,6 +296,7 @@
                   :else                      (throw (Exception. (format "Invalid clock: ^%s %s"
                                                                         (.getName (class clock))
                                                                         (pr-str clock)))))]
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (t/with-clock clock
         (thunk)))))
 
@@ -297,22 +311,21 @@
 
 (defn do-with-single-admin-user
   [attributes thunk]
-  (let [existing-admin-memberships (db/select PermissionsGroupMembership :group_id (:id (perms-group/admin)))
-        _                          (db/simple-delete! PermissionsGroupMembership :group_id (:id (perms-group/admin)))
-        existing-admin-ids         (db/select-ids User :is_superuser true)
+  (let [existing-admin-memberships (t2/select PermissionsGroupMembership :group_id (:id (perms-group/admin)))
+        _                          (t2/delete! (t2/table-name PermissionsGroupMembership) :group_id (:id (perms-group/admin)))
+        existing-admin-ids         (t2/select-pks-set User :is_superuser true)
         _                          (when (seq existing-admin-ids)
-                                     (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser false))
-        temp-admin                 (db/insert! User (merge (with-temp-defaults User)
-                                                           attributes
-                                                           {:is_superuser true}))
-        primary-key                (models/primary-key User)]
+                                     (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser false}))
+        temp-admin                 (first (t2/insert-returning-instances! User (merge (with-temp-defaults User)
+                                                                                      attributes
+                                                                                      {:is_superuser true})))]
     (try
       (thunk temp-admin)
       (finally
-        (db/delete! User primary-key (primary-key temp-admin))
+        (t2/delete! User (:id temp-admin))
         (when (seq existing-admin-ids)
-          (db/update-where! User {:id [:in existing-admin-ids]} :is_superuser true))
-        (db/insert-many! PermissionsGroupMembership existing-admin-memberships)))))
+          (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser true}))
+        (t2/insert! PermissionsGroupMembership existing-admin-memberships)))))
 
 (defmacro with-single-admin-user
   "Creates an admin user (with details described in the `options-map`) and (temporarily) removes the administrative
@@ -391,12 +404,12 @@
   application DB. Example usage:
 
     (deftest update-user-first-name-test
-      (mt/with-temp User [user]
+      (t2.with-temp/with-temp [User user]
         (update-user-first-name! user \"Cam\")
         (is (= (merge (mt/object-defaults User)
                       (select-keys user [:id :last_name :created_at :updated_at])
                       {:name \"Cam\"})
-               (mt/decrecordize (db/select-one User :id (:id user)))))))"
+               (mt/decrecordize (t2/select-one User :id (:id user)))))))"
   (comp
    (memoize
     (fn [toucan-model]
@@ -407,16 +420,11 @@
           ;; TIMESTAMP columns (which only have second resolution by default)
           (dissoc things-in-both :created_at :updated_at)))))
    (fn [toucan-model]
-     (hawk.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
+     (mb.hawk.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
      (initialize/initialize-if-needed! :db)
-     (db/resolve-model toucan-model))))
+     (t2.model/resolve-model toucan-model))))
 
-(defmacro disable-flaky-test-when-running-driver-tests-in-ci
-  "Only run `body` when we're not running driver tests in CI (i.e., `DRIVERS` and `CI` are both not set). Perfect for
-  disabling those damn flaky tests that cause CI to fail all the time. You should obviously only do this for things
-  that have nothing to do with drivers but tend to flake anyway."
-  {:style/indent 0}
-  [& body]
-  `(when (and (not (seq (env/env :drivers)))
-              (not (seq (env/env :ci))))
-     ~@body))
+;;; these are deprecated at runtime so Kondo doesn't complain, also because we can't go around deprecating stuff from
+;;; other libaries any other way. They're marked deprecated to encourage you to use the `t2.with-temp` versions.
+#_{:clj-kondo/ignore [:discouraged-var]}
+(alter-meta! #'with-temp* assoc :deprecated true)

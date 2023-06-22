@@ -4,13 +4,14 @@
    [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest delete-subscriptions-test
   (testing "DELETE /api/ee/audit-app/user/:id/subscriptions"
     (testing "Should require a token with `:audit-app`"
       (premium-features-test/with-premium-features #{}
-        (mt/with-temp User [{user-id :id}]
+        (t2.with-temp/with-temp [User {user-id :id}]
           (is (= "This API endpoint is only enabled if you have a premium token with the :audit-app feature."
                  (mt/user-http-request user-id
                                        :delete 402
@@ -44,9 +45,9 @@
                         PulseChannelRecipient [_                      {:user_id          (mt/user->id :rasta)
                                                                        :pulse_channel_id dash-sub-chan-id}]]
           (letfn [(describe-objects []
-                    {:num-subscriptions                (db/count PulseChannelRecipient :user_id user-id)
-                     :alert-archived?                  (db/select-one-field :archived Pulse :id alert-id)
-                     :dashboard-subscription-archived? (db/select-one-field :archived Pulse :id dash-sub-id)})
+                    {:num-subscriptions                (t2/count PulseChannelRecipient :user_id user-id)
+                     :alert-archived?                  (t2/select-one-fn :archived Pulse :id alert-id)
+                     :dashboard-subscription-archived? (t2/select-one-fn :archived Pulse :id dash-sub-id)})
                   (api-delete-subscriptions! [request-user-name-or-id expected-status-code]
                     (mt/user-http-request request-user-name-or-id
                                           :delete expected-status-code

@@ -5,3 +5,7 @@ export function getTabId<T>(idPrefix: string, value: T): string {
 export function getTabPanelId<T>(idPrefix: string, value: T): string {
   return `${idPrefix}-P-${value}`;
 }
+
+export function getTabButtonInputId<T>(idPrefix: string, value: T): string {
+  return `${idPrefix}-B-I-${value}`;
+}

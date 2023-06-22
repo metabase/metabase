@@ -141,7 +141,13 @@ export function compileFormatter(
       [min, max],
       format.colors.map(c => alpha(c, GRADIENT_ALPHA)),
     ).clamp(true);
-    return value => getSafeColor(scale(value));
+    return value => {
+      const colorValue = scale(value);
+      if (!colorValue) {
+        return null;
+      }
+      return getSafeColor(colorValue);
+    };
   } else {
     console.warn("Unknown format type", format.type);
     return () => null;
@@ -150,16 +156,16 @@ export function compileFormatter(
 
 // NOTE: implement `extent` like this rather than using d3.extent since rows may
 // be a Java `List` rather than a JavaScript Array when used in Pulse formatting
-function extent(rows, colIndex) {
+export function extent(rows, colIndex) {
   let min = Infinity;
   let max = -Infinity;
   const length = rows.length;
   for (let i = 0; i < length; i++) {
     const value = rows[i][colIndex];
-    if (value < min) {
+    if (value != null && value < min) {
       min = value;
     }
-    if (value > max) {
+    if (value != null && value > max) {
       max = value;
     }
   }

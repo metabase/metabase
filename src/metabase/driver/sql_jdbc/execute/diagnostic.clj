@@ -3,6 +3,8 @@
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ^:dynamic *diagnostic-info*
   "Atom used to hold diagnostic info for the current query execution, to be made available via a helper macro/fn below."
   nil)
@@ -22,14 +24,14 @@
   ```
   (sql-jdbc.execute.diagnostic/capturing-diagnostic-info [diag-info-fn]
     ;; various body forms
-    ;; fetch the diagnostic info, which should be available if execute code called `record-diagnostic-info-for-pool`
+    ;; fetch the diagnostic info, which should be available if execute code called `record-diagnostic-info-for-pool!`
     (diag-info-fn))
   ```"
   {:style/indent 1}
   [[diagnostic-info-fn-binding] & body]
   `(do-with-diagnostic-info (fn [~diagnostic-info-fn-binding] ~@body)))
 
-(defn record-diagnostic-info-for-pool
+(defn record-diagnostic-info-for-pool!
   "Captures diagnostic info related to the given `driver`, `database-id`, and `datasource` (which are all related).
   The current information that is captured (in a map whose keys are namespaced keywords in this ns) is:
 

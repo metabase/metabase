@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import _ from "underscore";
@@ -106,11 +106,5 @@ class CardRenderer extends Component {
 
 export default ExplicitSize({
   wrapped: true,
-  refreshMode: props => {
-    const { isDashboard, isEditing } = props;
-    if (isDashboard) {
-      return isEditing ? "debounce" : "debounceLeading";
-    }
-    return "throttle";
-  },
+  refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
 })(CardRenderer);

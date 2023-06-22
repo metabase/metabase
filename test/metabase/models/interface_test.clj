@@ -7,21 +7,20 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.test :as mt]
+   [metabase.models.table :refer [Table]]
+   [metabase.util :as u]
    [schema.core :as s]
-   [toucan.models :as models]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
-;; let's make sure the `:metabase-query`/`:metric-segment-definition`/`::dashboard-card/parameter-mappings`
+;; let's make sure the `transform-metabase-query`/`transform-metric-segment-definition`/`transform-parameters-list`
 ;; normalization functions respond gracefully to invalid stuff when pulling them out of the Database. See #8914
-
-(defn type-fn [toucan-type in-or-out]
-  (-> @@#'models/type-fns toucan-type in-or-out))
 
 (deftest ^:parallel handle-bad-template-tags-test
   (testing (str "an malformed template tags map like the one below is invalid. Rather than potentially destroy an entire API "
                 "response because of one malformed Card, dump the error to the logs and return nil.")
     (is (= nil
-           ((type-fn :metabase-query :out)
+           ((:out mi/transform-metabase-query)
             (json/generate-string
              {:database 1
               :type     :native
@@ -32,7 +31,7 @@
     ;; TODO -- we should make sure this returns a good error message so we don't have to dig thru the exception chain.
     (is (thrown?
          Exception
-         ((type-fn :metabase-query :in)
+         ((:in mi/transform-metabase-query)
           {:database 1
            :type     :native
            :native   {:template-tags {100 [:field-id "WOW"]}}})))))
@@ -40,21 +39,21 @@
 (deftest ^:parallel normalize-metric-segment-definition-test
   (testing "Legacy Metric/Segment definitions should get normalized"
     (is (= {:filter [:= [:field 1 nil] [:field 2 {:temporal-unit :month}]]}
-           ((type-fn :metric-segment-definition :out)
+           ((:out mi/transform-metric-segment-definition)
             (json/generate-string
              {:filter [:= [:field-id 1] [:datetime-field [:field-id 2] :month]]}))))))
 
 (deftest ^:parallel dont-explode-on-way-out-from-db-test
   (testing "`metric-segment-definition`s should avoid explosions coming out of the DB..."
     (is (= nil
-           ((type-fn :metric-segment-definition :out)
+           ((:out mi/transform-metric-segment-definition)
             (json/generate-string
              {:filter 1000}))))
 
     (testing "...but should still throw them coming in"
       (is (thrown?
            Exception
-           ((type-fn :metric-segment-definition :in)
+           ((:in mi/transform-metric-segment-definition)
             {:filter 1000}))))))
 
 (deftest handle-errors-gracefully-test
@@ -62,7 +61,7 @@
                 "sure the Toucan type fn handles the error gracefully")
     (with-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
       (is (= nil
-             ((type-fn :parameters-list :out)
+             ((:out mi/transform-parameters-list)
               (json/generate-string
                [{:target [:dimension [:field "ABC" nil]]}])))))))
 
@@ -71,12 +70,24 @@
     (is (thrown?
          Exception
          (with-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
-           ((type-fn :parameters-list :in)
+           ((:in mi/transform-parameters-list)
             [{:target [:dimension [:field "ABC" nil]]}]))))))
+
+(deftest timestamped-property-test
+  (testing "Make sure updated_at gets updated for timestamped models"
+    (t2.with-temp/with-temp [Table table {:updated_at #t "2023-02-02T01:00:00"}]
+      (let [updated-at (:updated_at table)
+            new-name   (u/qualified-name ::a-new-name)]
+        (is (= 1
+               (t2/update! table (u/the-id table) {:name new-name})))
+        (is (=? {:id         (:id table)
+                 :name       new-name
+                 :updated_at (partial not= updated-at)}
+                (t2/select-one [Table :id :name :updated_at] (u/the-id table))))))))
 
 (deftest timestamped-property-do-not-stomp-on-explicit-values-test
   (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"
-    (mt/with-temp Field [field]
+    (t2.with-temp/with-temp [Field field]
       (testing "Nothing specified: use now() for both"
         (is (schema= {:created_at java.time.temporal.Temporal
                       :updated_at java.time.temporal.Temporal
@@ -88,13 +99,13 @@
                            :postgres    (t/offset-date-time "2022-10-13T19:21:00Z")
                            (:h2 :mysql) (t/local-date-time "2022-10-13T19:21:00")))]
       (testing "Explicitly specify :created_at"
-        (mt/with-temp Field [field {:created_at t}]
+        (t2.with-temp/with-temp [Field field {:created_at t}]
           (is (schema= {:created_at t-schema
                         :updated_at java.time.temporal.Temporal
                         s/Keyword   s/Any}
                        field))))
       (testing "Explicitly specify :updated_at"
-        (mt/with-temp Field [field {:updated_at t}]
+        (t2.with-temp/with-temp [Field field {:updated_at t}]
           (is (schema= {:created_at java.time.temporal.Temporal
                         :updated_at t-schema
                         s/Keyword   s/Any}

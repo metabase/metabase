@@ -4,38 +4,44 @@
   `metabase.query-processor.middleware.add-dimension-projections`."
   (:require
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.util.date-2 :as u.date]
-   [toucan.models :as models]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 ;;; Possible values for Dimension.type :
 ;;;
 ;;; :internal
 ;;; :external
 
-(models/defmodel Dimension :dimension)
+(def Dimension
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Dimension)
 
-(mi/define-methods
- Dimension
- {:types      (constantly {:type :keyword})
-  :properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id    true})})
+(methodical/defmethod t2/table-name :model/Dimension [_model] :dimension)
 
-(defmethod serdes.hash/identity-hash-fields Dimension
+(doto :model/Dimension
+  (derive :metabase/model)
+  (derive :hook/entity-id)
+  (derive :hook/timestamped?))
+
+(t2/deftransforms :model/Dimension
+  {:type mi/transform-keyword})
+
+(defmethod serdes/hash-fields :model/Dimension
   [_dimension]
-  [(serdes.hash/hydrated-hash :field "<none>")
-   (serdes.hash/hydrated-hash :human_readable_field "<none>")
+  [(serdes/hydrated-hash :field)
+   (serdes/hydrated-hash :human_readable_field)
    :created_at])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 ;; Dimensions are inlined onto their parent Fields.
-;; We can reuse the [[serdes.base/load-one!]] logic by implementing [[serdes.base/load-xform]] though.
-(defmethod serdes.base/load-xform "Dimension"
+;; We can reuse the [[serdes/load-one!]] logic by implementing [[serdes/load-xform]] though.
+(defmethod serdes/load-xform "Dimension"
   [dim]
   (-> dim
-      serdes.base/load-xform-basics
+      serdes/load-xform-basics
       ;; No need to handle :field_id, it was just added as the raw ID by the caller; see Field's load-one!
-      (update            :human_readable_field_id serdes.util/import-field-fk)
+      (update            :human_readable_field_id serdes/*import-field-fk*)
       (update            :created_at              u.date/parse)))

@@ -10,23 +10,33 @@
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.test :as mt]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.schema :as su]
-   [schema.core :as s])
+   [schema.core :as s]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)))
 
-(deftest move-top-level-params-to-inner-query-test
-  (is (= {:type   :native
-          :native {:query "WOW", :parameters ["My Param"]}
+(use-fixtures :each (fn [thunk]
+                      ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
+                      ;; tests.
+                      (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* 2]
+                        (thunk))))
+
+(deftest ^:parallel move-top-level-params-to-inner-query-test
+  (is (= {:type            :native
+          :native          {:query "WOW", :parameters ["My Param"]}
           :user-parameters ["My Param"]}
          (#'parameters/move-top-level-params-to-inner-query
           {:type :native, :native {:query "WOW"}, :parameters ["My Param"]}))))
 
 (defn- substitute-params [query]
   (driver/with-driver :h2
-    (parameters/substitute-parameters (mbql.normalize/normalize query))))
+    (mt/with-everything-store
+      (parameters/substitute-parameters (mbql.normalize/normalize query)))))
 
-(deftest expand-mbql-top-level-params-test
+(deftest ^:parallel expand-mbql-top-level-params-test
   (testing "can we expand MBQL params if they are specified at the top level?"
     (is (= (mt/mbql-query venues
              {:aggregation [[:count]]
@@ -36,7 +46,7 @@
              {:aggregation [[:count]]
               :parameters  [{:name "price", :type :category, :target $price, :value 1}]}))))))
 
-(deftest expand-native-top-level-params-test
+(deftest ^:parallel expand-native-top-level-params-test
   (testing "can we expand native params if they are specified at the top level?"
     (is (= (mt/query nil
              {:type   :native
@@ -49,7 +59,7 @@
                             :template-tags {"price" {:name "price", :display-name "Price", :type :number}}}
                :parameters [{:type "category", :target [:variable [:template-tag "price"]], :value "1"}]}))))))
 
-(deftest expand-mbql-source-query-params-test
+(deftest ^:parallel expand-mbql-source-query-params-test
   (testing "can we expand MBQL params in a source query?"
     (is (= (mt/mbql-query venues
              {:source-query {:source-table $$venues
@@ -61,7 +71,7 @@
                               :parameters   [{:name "price", :type :category, :target $price, :value 1}]}
                :aggregation  [[:count]]}))))))
 
-(deftest expand-native-source-query-params-test
+(deftest ^:parallel expand-native-source-query-params-test
   (testing "can we expand native params if in a source query?"
     (is (= (mt/mbql-query nil
              {:source-query {:native "SELECT * FROM categories WHERE name = ?;"
@@ -72,7 +82,7 @@
                               :template-tags {"cat" {:name "cat", :display-name "Category", :type :text}}
                               :parameters    [{:type "category", :target [:variable [:template-tag "cat"]], :value "BBQ"}]}}))))))
 
-(deftest expand-mbql-join-params-test
+(deftest ^:parallel expand-mbql-join-params-test
   (testing "can we expand MBQL params in a JOIN?"
     (is (= (mt/mbql-query venues
              {:aggregation [[:count]]
@@ -88,7 +98,7 @@
                               :condition    [:= $category_id &c.categories.id]
                               :parameters   [{:type "category", :target $categories.name, :value "BBQ"}]}]}))))))
 
-(deftest expand-native-join-params-test
+(deftest ^:parallel expand-native-join-params-test
   (testing "can we expand native params in a JOIN?"
     (is (= (mt/mbql-query venues
              {:aggregation [[:count]]
@@ -105,7 +115,7 @@
                               :alias        "c"
                               :condition    [:= $category_id &c.*categories.id]}]}))))))
 
-(deftest expand-multiple-mbql-params-test
+(deftest ^:parallel expand-multiple-mbql-params-test
   (testing "can we expand multiple sets of MBQL params?"
     (is (=
          (mt/mbql-query venues
@@ -126,7 +136,7 @@
                              :condition    [:= $category_id &c.categories.id]
                              :parameters   [{:type "category", :target $categories.name, :value "BBQ"}]}]}))))))
 
-(deftest expand-multiple-mbql-params-in-joins-test
+(deftest ^:parallel expand-multiple-mbql-params-in-joins-test
   ;; (This is dumb. Hopefully no one is creating queries like this.  The `:parameters` should go in the source query
   ;; instead of in the join.)
   (testing "can we expand multiple sets of MBQL params with params in a join and the join's source query?"
@@ -221,29 +231,29 @@
 
 (deftest referencing-cards-with-parameters-test
   (testing "referencing card with parameter and default value substitutes correctly"
-    (mt/with-temp Card [param-card {:dataset_query (mt/native-query
-                                                    {:query "SELECT {{x}}"
-                                                     :template-tags {"x"
-                                                                     {:id "x", :name "x", :display-name "Number x",
-                                                                      :type :number, :default "1", :required true}}})}]
+    (t2.with-temp/with-temp [Card param-card {:dataset_query (mt/native-query
+                                                               {:query "SELECT {{x}}"
+                                                                :template-tags {"x"
+                                                                                {:id "x", :name "x", :display-name "Number x",
+                                                                                 :type :number, :default "1", :required true}}})}]
       (is (= (mt/native-query
-              {:query "SELECT * FROM (SELECT 1) AS x", :params []})
+               {:query "SELECT * FROM (SELECT 1) AS x", :params []})
              (substitute-params
               (mt/native-query
-               {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
-                :template-tags (card-template-tags [(:id param-card)])}))))))
+                {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
+                 :template-tags (card-template-tags [(:id param-card)])}))))))
 
   (testing "referencing card with parameter and NO default value, fails substitution"
-    (mt/with-temp Card [param-card {:dataset_query (mt/native-query
-                                                    {:query "SELECT {{x}}"
-                                                     :template-tags {"x"
-                                                                     {:id "x", :name "x", :display-name "Number x",
-                                                                      :type :number, :required false}}})}]
+    (t2.with-temp/with-temp [Card param-card {:dataset_query (mt/native-query
+                                                               {:query "SELECT {{x}}"
+                                                                :template-tags {"x"
+                                                                                {:id "x", :name "x", :display-name "Number x",
+                                                                                 :type :number, :required false}}})}]
       (is (thrown? ExceptionInfo
-            (substitute-params
-             (mt/native-query
-              {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
-               :template-tags (card-template-tags [(:id param-card)])})))))))
+                   (substitute-params
+                    (mt/native-query
+                      {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
+                       :template-tags (card-template-tags [(:id param-card)])})))))))
 
 (defn- snippet-template-tags
   [snippet-name->id]
@@ -287,13 +297,13 @@
 (deftest include-card-parameters-test
   (testing "Expanding a Card reference should include its parameters (#12236)"
     (mt/dataset sample-dataset
-      (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
-                                                 {:filter      [:between $total 30 60]
-                                                  :aggregation [[:aggregation-options
-                                                                 [:count-where
-                                                                  [:starts-with $product_id->products.category "G"]]
-                                                                 {:name "G Monies", :display-name "G Monies"}]]
-                                                  :breakout    [!month.created_at]})}]
+      (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query orders
+                                                           {:filter      [:between $total 30 60]
+                                                            :aggregation [[:aggregation-options
+                                                                           [:count-where
+                                                                            [:starts-with $product_id->products.category "G"]]
+                                                                           {:name "G Monies", :display-name "G Monies"}]]
+                                                            :breakout    [!month.created_at]})}]
         (let [card-tag (str "#" (u/the-id card))
               query    (mt/native-query
                          {:query         (format "SELECT * FROM {{%s}}" card-tag)

@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import * as React from "react";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import {
   TreeNodeRoot,
@@ -13,7 +13,6 @@ import {
 } from "./TreeNode.styled";
 import { TreeNodeProps } from "./types";
 
-// eslint-disable-next-line react/display-name
 const BaseTreeNode = React.memo(
   React.forwardRef<HTMLLIElement, TreeNodeProps>(function TreeNode(
     {

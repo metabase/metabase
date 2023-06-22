@@ -6,14 +6,16 @@
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.user :refer [User]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time LocalDateTime)))
+
+(set! *warn-on-reflection* true)
 
 ;; Test out our predicate functions
 
@@ -136,27 +138,25 @@
 (defn- create-channel-then-select!
   [channel]
   (when-let [new-channel-id (pulse-channel/create-pulse-channel! channel)]
-    (-> (db/select-one PulseChannel :id new-channel-id)
-        (hydrate :recipients)
+    (-> (t2/select-one PulseChannel :id new-channel-id)
+        (t2/hydrate :recipients)
         (update :recipients #(sort-by :email %))
         (dissoc :id :pulse_id :created_at :updated_at)
         (update :entity_id boolean)
-        (m/dissoc-in [:details :emails])
-        mt/derecordize)))
+        (m/dissoc-in [:details :emails]))))
 
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
   (pulse-channel/update-pulse-channel! channel)
-  (-> (db/select-one PulseChannel :id id)
-      (hydrate :recipients)
+  (-> (t2/select-one PulseChannel :id id)
+      (t2/hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
       (update :entity_id boolean)
-      (m/dissoc-in [:details :emails])
-      mt/derecordize))
+      (m/dissoc-in [:details :emails])))
 
 ;; create-pulse-channel!
 (deftest create-pulse-channel!-test
-  (mt/with-temp Pulse [{:keys [id]}]
+  (t2.with-temp/with-temp [Pulse {:keys [id]}]
     (mt/with-model-cleanup [Pulse]
       (testing "disabled"
         (is (= {:enabled        false
@@ -220,9 +220,9 @@
                                  {:id (mt/user->id :crowberto)}]})))))))
 
 (deftest update-pulse-channel!-test
-  (mt/with-temp Pulse [{pulse-id :id}]
+  (t2.with-temp/with-temp [Pulse {pulse-id :id}]
     (testing "simple starting case where we modify the schedule hour and add a recipient"
-      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
+      (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
                 :entity_id      true
                 :channel_type   :email
@@ -240,7 +240,7 @@
                  :recipients    [{:email "foo@bar.com"}]})))))
 
     (testing "monthly schedules require a schedule_frame and can optionally omit they schedule_day"
-      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
+      (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
                 :entity_id      true
                 :channel_type  :email
@@ -260,7 +260,7 @@
                  :recipients     [{:email "foo@bar.com"} {:id (mt/user->id :rasta)}]})))))
 
     (testing "weekly schedule should have a day in it, show that we can get full users"
-      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
+      (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
                 :entity_id      true
                 :channel_type   :email
@@ -279,7 +279,7 @@
                  :recipients    [{:email "foo@bar.com"} {:id (mt/user->id :rasta)}]})))))
 
     (testing "hourly schedules don't require day/hour settings (should be nil), fully change recipients"
-      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]
+      (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]
         (pulse-channel/update-recipients! channel-id [(mt/user->id :rasta)])
         (is (= {:enabled       true
                 :entity_id     true
@@ -299,7 +299,7 @@
                  :recipients    [{:id (mt/user->id :crowberto)}]})))))
 
     (testing "custom details for channels that need it"
-      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
+      (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled       true
                 :entity_id     true
                 :channel_type  :email
@@ -324,7 +324,7 @@
                   PulseChannel [{channel-id :id} {:pulse_id pulse-id}]]
     (letfn [(upd-recipients! [recipients]
               (pulse-channel/update-recipients! channel-id recipients)
-              (db/select-field :user_id PulseChannelRecipient, :pulse_channel_id channel-id))]
+              (t2/select-fn-set :user_id PulseChannelRecipient, :pulse_channel_id channel-id))]
       (doseq [[new-recipients expected] {[]                  nil
                                          [:rasta]            [:rasta]
                                          [:crowberto]        [:crowberto]
@@ -440,7 +440,7 @@
                  :first_name  "Rasta"
                  :last_name   "Toucan"
                  :common_name "Rasta Toucan"}]))
-             (:recipients (hydrate channel :recipients)))))))
+             (:recipients (t2/hydrate channel :recipients)))))))
 
 (deftest validate-email-domains-check-user-ids-match-emails
   (testing `pulse-channel/validate-email-domains
@@ -475,5 +475,5 @@
                                            :details      {:emails ["cam@test.com"]}
                                            :created_at   now}]]
         (is (= "2f5f0269"
-               (serdes.hash/raw-hash [(serdes.hash/identity-hash pulse) :email {:emails ["cam@test.com"]} now])
-               (serdes.hash/identity-hash chan)))))))
+               (serdes/raw-hash [(serdes/identity-hash pulse) :email {:emails ["cam@test.com"]} now])
+               (serdes/identity-hash chan)))))))

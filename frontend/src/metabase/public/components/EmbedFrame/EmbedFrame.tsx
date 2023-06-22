@@ -1,36 +1,46 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import * as React from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import cx from "classnames";
 import _ from "underscore";
 import type { Location } from "history";
 
+import { useMount } from "react-use";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 
-import { useOnMount } from "metabase/hooks/use-on-mount";
 import { getSetting } from "metabase/selectors/settings";
 import { isWithinIframe, initializeIframeResizer } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
 
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import FilterApplyButton from "metabase/parameters/components/FilterApplyButton";
 
-import type { Dashboard, Parameter, ParameterId } from "metabase-types/api";
-import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
+import type {
+  Dashboard,
+  Parameter,
+  ParameterId,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import Question from "metabase-lib/Question";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import LogoBadge from "./LogoBadge";
+import type { FooterVariant } from "./EmbedFrame.styled";
 import {
   Root,
   ContentContainer,
   Header,
   Body,
+  ParametersWidgetContainer,
   Footer,
   ActionButtonsContainer,
 } from "./EmbedFrame.styled";
 import "./EmbedFrame.css";
+
+type ParameterValues = Record<ParameterId, ParameterValueOrArray>;
 
 interface OwnProps {
   className?: string;
@@ -39,8 +49,10 @@ interface OwnProps {
   question?: Question;
   dashboard?: Dashboard;
   actionButtons?: JSX.Element[];
+  footerVariant?: FooterVariant;
   parameters?: Parameter[];
-  parameterValues?: Record<ParameterId, ParameterValueOrArray>;
+  parameterValues?: ParameterValues;
+  draftParameterValues?: ParameterValues;
   setParameterValue?: (parameterId: ParameterId, value: any) => void;
   children: React.ReactNode;
 }
@@ -76,15 +88,17 @@ function EmbedFrame({
   question,
   dashboard,
   actionButtons,
+  footerVariant = "default",
   location,
   hasEmbedBranding,
   parameters,
   parameterValues,
+  draftParameterValues,
   setParameterValue,
 }: Props) {
   const [hasInnerScroll, setInnerScroll] = useState(true);
 
-  useOnMount(() => {
+  useMount(() => {
     initializeIframeResizer(() => setInnerScroll(false));
   });
 
@@ -125,27 +139,32 @@ function EmbedFrame({
               />
             )}
             {hasParameters && (
-              <div className="flex">
+              <ParametersWidgetContainer>
                 <SyncedParametersList
                   className="mt1"
                   question={question}
                   dashboard={dashboard}
                   parameters={getValuePopulatedParameters(
                     parameters,
-                    parameterValues,
+                    _.isEmpty(draftParameterValues)
+                      ? parameterValues
+                      : draftParameterValues,
                   )}
                   setParameterValue={setParameterValue}
                   hideParameters={hide_parameters}
                 />
-              </div>
+                {dashboard && <FilterApplyButton />}
+              </ParametersWidgetContainer>
             )}
           </Header>
         )}
         <Body>{children}</Body>
       </ContentContainer>
       {showFooter && (
-        <Footer className="EmbedFrame-footer">
-          {hasEmbedBranding && <LogoBadge dark={theme === "night"} />}
+        <Footer className="EmbedFrame-footer" variant={footerVariant}>
+          {hasEmbedBranding && (
+            <LogoBadge variant={footerVariant} dark={theme === "night"} />
+          )}
           {actionButtons && (
             <ActionButtonsContainer>{actionButtons}</ActionButtonsContainer>
           )}
@@ -155,4 +174,5 @@ function EmbedFrame({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(connect(mapStateToProps), withRouter)(EmbedFrame);

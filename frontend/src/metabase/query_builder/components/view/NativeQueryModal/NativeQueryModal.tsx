@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import { ReactNode } from "react";
 import { t } from "ttag";
 import NativeCodePanel from "../NativeCodePanel";
 import {
@@ -57,4 +57,5 @@ const NativeQueryModal = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default NativeQueryModal;

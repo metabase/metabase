@@ -3,7 +3,6 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.async.streaming-response :as streaming-response]
    [metabase.async.streaming-response.thread-pool :as thread-pool]
    [metabase.async.util :as async.u]
@@ -14,12 +13,15 @@
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [toucan.db :as db])
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (metabase.async.streaming_response StreamingResponse)
    (org.eclipse.jetty.util.thread QueuedThreadPool)))
+
+(set! *warn-on-reflection* true)
 
 ;; To simplify passing large amounts of arguments around most functions in this namespace take an "info" map that
 ;; looks like
@@ -192,7 +194,7 @@
   ;; don't log calls to /health or /util/logs because they clutter up the logs (especially the window in admin) with
   ;; useless lines
   (and (request.u/api-call? request)
-       (not (#{"/api/health" "/api/util/logs"} uri))))
+       (not (#{"/api/util/logs"} uri))))
 
 (defn log-api-call
   "Logs info about request such as status code, number of DB calls, and time taken to complete."
@@ -202,7 +204,7 @@
       ;; non-API call or health or logs call, don't log it
       (handler request respond raise)
       ;; API call, log info about it
-      (db/with-call-counting [call-count-fn]
+      (t2/with-call-count [call-count-fn]
         (sql-jdbc.execute.diagnostic/capturing-diagnostic-info [diag-info-fn]
           (let [info           {:request       request
                                 :start-time    (System/nanoTime)

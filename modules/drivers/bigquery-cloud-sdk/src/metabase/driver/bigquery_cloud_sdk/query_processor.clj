@@ -1,7 +1,6 @@
 (ns metabase.driver.bigquery-cloud-sdk.query-processor
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honeysql.format :as hformat]
    [java-time :as t]
    [metabase.driver :as driver]
@@ -23,14 +22,17 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [pretty.core :refer [PrettyPrintable]]
    [schema.core :as s])
   (:import
    (com.google.cloud.bigquery Field$Mode FieldValue)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (metabase.driver.common.parameters FieldFilter)
-   (metabase.util.honey_sql_1_extensions Identifier TypedHoneySQLForm)))
+   (metabase.util.honey_sql_1 Identifier TypedHoneySQLForm)))
+
+(set! *warn-on-reflection* true)
 
 (defn- valid-project-identifier?
   "Is String `s` a valid BigQuery project identifier (a.k.a. project-id)? Identifiers are only allowed to contain
@@ -38,7 +40,7 @@
   [s]
   (boolean (or (nil? s)
                (and (string? s)
-                 (re-matches #"^[a-zA-Z_0-9\.\-]{1,30}$" s)))))
+                    (re-matches #"^[a-zA-Z_0-9\.\-]{1,30}$" s)))))
 
 (def ^:private ProjectIdentifierString
   (s/pred valid-project-identifier? "Valid BigQuery project-id"))
@@ -90,8 +92,7 @@
     (parse-fn v)))
 
 (defmethod parse-result-of-type :default
-  [column-type column-mode _ v]
-  (log/warn (trs "Warning: missing type mapping for parsing BigQuery results of type {0}." column-type))
+  [_column-type column-mode _ v]
   (parse-value column-mode v identity))
 
 (defmethod parse-result-of-type "STRING"
@@ -304,7 +305,7 @@
           (log/tracef "Coercing %s (temporal type = %s) to %s" (binding [*print-meta* true] (pr-str x)) (pr-str (temporal-type x)) bigquery-type)
           (let [expr (sql.qp/->honeysql :bigquery-cloud-sdk x)]
             (if-let [report-zone (when (contains? #{bigquery-type (temporal-type hsql-form)} :timestamp)
-                                   (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk))]
+                                   (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (qp.store/database)))]
               (with-temporal-type (hx/call bigquery-type expr (hx/literal report-zone)) target-type)
               (with-temporal-type (hx/call bigquery-type expr) target-type))))
 
@@ -341,7 +342,7 @@
               :time      :time_trunc
               :datetime  :datetime_trunc
               :timestamp :timestamp_trunc)]
-      (if-let [report-zone (when (= f :timestamp_trunc) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk))]
+      (if-let [report-zone (when (= f :timestamp_trunc) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (qp.store/database)))]
         (hformat/to-sql (hx/call f (->temporal-type t hsql-form) (hx/raw (name unit)) (hx/literal report-zone)))
         (hformat/to-sql (hx/call f (->temporal-type t hsql-form) (hx/raw (name unit))))))))
 
@@ -394,7 +395,7 @@
       (assert (or (valid-date-extract-units unit)
                   (valid-time-extract-units unit))
               (tru "Cannot extract {0} from a DATETIME or TIMESTAMP" unit))
-      (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk)]
+      (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (qp.store/database))]
         (with-temporal-type (hx/call :extract unit (->AtTimeZone expr report-zone)) nil)
         (with-temporal-type (hx/call :extract unit expr) nil)))
 
@@ -800,7 +801,7 @@
               :date      :current_date
               :datetime  :current_datetime
               :timestamp :current_timestamp),
-          report-zone (when (not= f :current_timestamp) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk))]
+          report-zone (when (not= f :current_timestamp) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk (qp.store/database)))]
       (hformat/to-sql
         (if report-zone
           (hx/call f (hx/literal report-zone))

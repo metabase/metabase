@@ -15,12 +15,14 @@
   (:import
    (java.time.temporal Temporal)))
 
+(set! *warn-on-reflection* true)
+
 (s/defn date-type?
   "Is param type `:date` or some subtype like `:date/month-year`?"
   [param-type :- s/Keyword]
   (= (get-in mbql.s/parameter-types [param-type :type]) :date))
 
-(defn date-range-type?
+(defn not-single-date-type?
   "Does date `param-type` represent a range of dates, rather than a single absolute date? (The value may be relative,
   such as `past30days`, or absolute, such as `2020-01`.)"
   [param-type]
@@ -274,6 +276,10 @@
    :month   :month-of-year
    :quarter :quarter-of-year})
 
+(def date-exclude-regex
+  "Regex to match date exclusion values, e.g. exclude-days-Mon, exclude-months-Jan, etc."
+  (re-pattern (str "exclude-" temporal-units-regex #"s-([-\p{Alnum}]+)")))
+
 (def ^:private absolute-date-string-decoders
   ;; year and month
   [{:parser (regex->parser #"([0-9]{4}-[0-9]{2})" [:date])
@@ -314,7 +320,7 @@
     :filter (fn [{:keys [date]} field-clause]
               [:> (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date)])}
    ;; exclusions
-   {:parser (regex->parser (re-pattern (str "exclude-" temporal-units-regex #"s-([-\p{Alnum}]+)")) [:unit :exclusions])
+   {:parser (regex->parser date-exclude-regex [:unit :exclusions])
     :filter (fn [{:keys [unit exclusions]} field-clause]
               (let [unit (keyword unit)
                     exclusions (map (partial excluded-datetime unit (t/local-date))

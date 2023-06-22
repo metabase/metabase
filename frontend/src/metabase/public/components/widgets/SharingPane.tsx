@@ -1,8 +1,8 @@
-import React, { ReactNode, useState } from "react";
+import { ReactNode, useState } from "react";
 import { t, jt } from "ttag";
 import cx from "classnames";
 import Button from "metabase/core/components/Button";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Toggle from "metabase/core/components/Toggle";
 import CopyWidget from "metabase/components/CopyWidget";
 import Confirm from "metabase/components/Confirm";
@@ -40,6 +40,7 @@ interface SharingPaneProps {
   isApplicationEmbeddingEnabled: boolean;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function SharingPane({
   resource,
   resourceType,

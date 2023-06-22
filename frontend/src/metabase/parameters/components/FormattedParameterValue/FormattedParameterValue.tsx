@@ -1,5 +1,3 @@
-import React from "react";
-
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import ParameterFieldWidgetValue from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import { UiParameter } from "metabase-lib/parameters/types";
@@ -30,4 +28,5 @@ function FormattedParameterValue({
   return <span>{formatParameterValue(value, parameter)}</span>;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormattedParameterValue;

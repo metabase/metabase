@@ -3,8 +3,7 @@ import { assocIn } from "icepick";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
 
-import { Dataset } from "metabase-types/api";
-import { Series } from "metabase-types/types/Visualization";
+import { Dataset, Series } from "metabase-types/api";
 import { Dispatch, GetState, QueryBuilderMode } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
@@ -97,7 +96,7 @@ function shouldTemplateTagEditorBeVisible({
   }
 }
 
-type UpdateQuestionOpts = {
+export type UpdateQuestionOpts = {
   run?: boolean | "auto";
   shouldUpdateUrl?: boolean;
   shouldStartAdHocQuestion?: boolean;
@@ -169,12 +168,15 @@ export const updateQuestion = (
       if (isPivot && hasBreakouts) {
         const key = "pivot_table.column_split";
         const rawSeries = getRawSeries(getState()) as Series;
-        const series = assocIn(rawSeries, [0, "card"], newQuestion.card());
-        const setting = getQuestionWithDefaultVisualizationSettings(
-          newQuestion,
-          series,
-        ).setting(key);
-        newQuestion = newQuestion.updateSettings({ [key]: setting });
+
+        if (rawSeries) {
+          const series = assocIn(rawSeries, [0, "card"], newQuestion.card());
+          const setting = getQuestionWithDefaultVisualizationSettings(
+            newQuestion,
+            series,
+          ).setting(key);
+          newQuestion = newQuestion.updateSettings({ [key]: setting });
+        }
       }
 
       run = checkShouldRerunPivotTableQuestion({
@@ -195,9 +197,8 @@ export const updateQuestion = (
       );
     }
 
-    const newDatasetQuery = newQuestion.query().datasetQuery();
     // Sync card's parameters with the template tags;
-    if (newDatasetQuery.type === "native") {
+    if (newQuestion.isNative()) {
       const parameters = getTemplateTagParametersFromCard(newQuestion.card());
       newQuestion = newQuestion.setParameters(parameters);
     }
@@ -237,18 +238,6 @@ export const updateQuestion = (
     try {
       if (!_.isEqual(currentDependencies, nextDependencies)) {
         await dispatch(loadMetadataForCard(newQuestion.card()));
-      }
-
-      // setDefaultQuery requires metadata be loaded, need getQuestion to use new metadata
-      const question = getQuestion(getState()) as Question;
-      const questionWithDefaultQuery = question.setDefaultQuery();
-      if (!questionWithDefaultQuery.isEqual(question)) {
-        await dispatch({
-          type: UPDATE_QUESTION,
-          payload: {
-            card: questionWithDefaultQuery.setDefaultDisplay().card(),
-          },
-        });
       }
     } catch (e) {
       // this will fail if user doesn't have data permissions but thats ok

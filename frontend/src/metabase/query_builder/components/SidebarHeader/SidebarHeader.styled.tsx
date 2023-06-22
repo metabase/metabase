@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 
 export const HeaderRoot = styled.div`
@@ -65,6 +65,6 @@ export const CloseButton = styled.a`
   margin-left: auto;
 
   &:hover {
-    color: ${() => color("brand")};
+    color: ${color("brand")};
   }
 `;

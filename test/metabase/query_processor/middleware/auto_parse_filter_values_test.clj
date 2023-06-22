@@ -5,6 +5,8 @@
     :as auto-parse-filter-values]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (deftest parse-value-for-base-type-test
   (testing "Should throw an Exception with a useful error message if parsing fails"
     (is (thrown-with-msg?

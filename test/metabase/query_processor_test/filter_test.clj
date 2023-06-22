@@ -104,9 +104,9 @@
       ;; test's results
       (when (= :snowflake driver/*driver*)
         (driver/notify-database-updated driver/*driver* (mt/id)))
-      (is (= {:rows [[29]]
-              :cols [(qp.test/aggregate-col :count)]}
-             (qp.test/rows-and-cols
+      (is (=? {:rows [[29]]
+               :cols [(qp.test/aggregate-col :count)]}
+              (qp.test/rows-and-cols
                (mt/format-rows-by [int]
                  (mt/run-mbql-query checkins
                    {:aggregation [[:count]]
@@ -122,66 +122,66 @@
   (testing "Should be able to use temporal arithmetic expressions in filters (#22531)"
     (mt/test-drivers (timezone-arithmetic-drivers)
       (mt/dataset attempted-murders
-        (doseq [offset-unit [:year :day]
-                  interval-unit [:year :day]
-                  compare-op [:between := :< :<= :> :>=]
-                  compare-order (cond-> [:field-first]
-                                  (not= compare-op :between) (conj :value-first))]
-            (let [query (mt/mbql-query attempts
-                          {:aggregation [[:count]]
-                           :filter      (cond-> [compare-op]
-                                          (= compare-order :field-first)
-                                          (conj [:+ !default.datetime_tz [:interval 3 offset-unit]]
-                                                [:relative-datetime -7 interval-unit])
-                                          (= compare-order :value-first)
-                                          (conj [:relative-datetime -7 interval-unit]
-                                                [:+ !default.datetime_tz [:interval 3 offset-unit]])
-                                          (= compare-op :between)
-                                          (conj [:relative-datetime 0 interval-unit]))})]
-              ;; we are not interested in the exact result, just want to check
-              ;; that the query can be compiled and executed
-              (mt/with-native-query-testing-context query
-                (let [[[result]] (mt/formatted-rows [int]
-                                   (qp/process-query query))]
-                  (if (= driver/*driver* :mongo)
-                    (is (or (nil? result)
-                            (pos-int? result)))
-                    (is (nat-int? result)))))))))))
+        (doseq [offset-unit   [:year :day]
+                interval-unit [:year :day]
+                compare-op    [:between := :< :<= :> :>=]
+                compare-order (cond-> [:field-first]
+                                (not= compare-op :between) (conj :value-first))]
+          (let [query (mt/mbql-query attempts
+                        {:aggregation [[:count]]
+                         :filter      (cond-> [compare-op]
+                                        (= compare-order :field-first)
+                                        (conj [:+ !default.datetime_tz [:interval 3 offset-unit]]
+                                              [:relative-datetime -7 interval-unit])
+                                        (= compare-order :value-first)
+                                        (conj [:relative-datetime -7 interval-unit]
+                                              [:+ !default.datetime_tz [:interval 3 offset-unit]])
+                                        (= compare-op :between)
+                                        (conj [:relative-datetime 0 interval-unit]))})]
+            ;; we are not interested in the exact result, just want to check
+            ;; that the query can be compiled and executed
+            (mt/with-native-query-testing-context query
+              (let [[[result]] (mt/formatted-rows [int]
+                                 (qp/process-query query))]
+                (if (= driver/*driver* :mongo)
+                  (is (or (nil? result)
+                          (pos-int? result)))
+                  (is (nat-int? result)))))))))))
 
 (deftest nonstandard-temporal-arithmetic-test
   (testing "Nonstandard temporal arithmetic should also be supported"
     (mt/test-drivers (timezone-arithmetic-drivers)
       (mt/dataset attempted-murders
-        (doseq [offset-unit [:year :day]
-                  interval-unit [:year :day]
-                  compare-op [:between := :< :<= :> :>=]
-                  add-op [:+ #_:-] ; TODO support subtraction like sql.qp/add-interval-honeysql-form (#23423)
-                  compare-order (cond-> [:field-first]
-                                  (not= compare-op :between) (conj :value-first))]
-            (let [add-fn (fn [field interval]
-                           (if (= add-op :-)
-                             [add-op field interval interval]
-                             [add-op interval field interval]))
-                  query (mt/mbql-query attempts
-                          {:aggregation [[:count]]
-                           :filter      (cond-> [compare-op]
-                                          (= compare-order :field-first)
-                                          (conj (add-fn !default.datetime_tz [:interval 3 offset-unit])
-                                                [:relative-datetime -7 interval-unit])
-                                          (= compare-order :value-first)
-                                          (conj [:relative-datetime -7 interval-unit]
-                                                (add-fn !default.datetime_tz [:interval 3 offset-unit]))
-                                          (= compare-op :between)
-                                          (conj [:relative-datetime 0 interval-unit]))})]
-              ;; we are not interested in the exact result, just want to check
-              ;; that the query can be compiled and executed
-              (mt/with-native-query-testing-context query
-                (let [[[result]] (mt/formatted-rows [int]
-                                   (qp/process-query query))]
-                  (if (= driver/*driver* :mongo)
-                    (is (or (nil? result)
-                            (pos-int? result)))
-                    (is (nat-int? result)))))))))))
+        (doseq [offset-unit   [:year :day]
+                interval-unit [:year :day]
+                compare-op    [:between := :< :<= :> :>=]
+                add-op        [:+ #_:-] ; TODO support subtraction like sql.qp/add-interval-honeysql-form (#23423)
+                compare-order (cond-> [:field-first]
+                                (not= compare-op :between) (conj :value-first))]
+          (let [add-fn (fn [field interval]
+                         (if (= add-op :-)
+                           [add-op field interval interval]
+                           [add-op interval field interval]))
+                query  (mt/mbql-query attempts
+                         {:aggregation [[:count]]
+                          :filter      (cond-> [compare-op]
+                                         (= compare-order :field-first)
+                                         (conj (add-fn !default.datetime_tz [:interval 3 offset-unit])
+                                               [:relative-datetime -7 interval-unit])
+                                         (= compare-order :value-first)
+                                         (conj [:relative-datetime -7 interval-unit]
+                                               (add-fn !default.datetime_tz [:interval 3 offset-unit]))
+                                         (= compare-op :between)
+                                         (conj [:relative-datetime 0 interval-unit]))})]
+            ;; we are not interested in the exact result, just want to check
+            ;; that the query can be compiled and executed
+            (mt/with-native-query-testing-context query
+              (let [[[result]] (mt/formatted-rows [int]
+                                 (qp/process-query query))]
+                (if (= driver/*driver* :mongo)
+                  (is (or (nil? result)
+                          (pos-int? result)))
+                  (is (nat-int? result)))))))))))
 
 (deftest or-test
   (mt/test-drivers (mt/normal-drivers)

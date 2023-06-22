@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
@@ -66,4 +65,5 @@ const TimelinePanel = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TimelinePanel;

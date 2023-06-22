@@ -2,6 +2,7 @@ import { t } from "ttag";
 import { push } from "react-router-redux";
 import { assocIn } from "icepick";
 
+import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import {
   createAction,
   createThunkAction,
@@ -37,7 +38,7 @@ export const initializeDataPermissions = createThunkAction(
   },
 );
 
-const LOAD_DATA_PERMISSIONS =
+export const LOAD_DATA_PERMISSIONS =
   "metabase/admin/permissions/LOAD_DATA_PERMISSIONS";
 export const loadDataPermissions = createThunkAction(
   LOAD_DATA_PERMISSIONS,
@@ -86,7 +87,7 @@ export const limitDatabasePermission = createThunkAction(
   },
 );
 
-const UPDATE_DATA_PERMISSION =
+export const UPDATE_DATA_PERMISSION =
   "metabase/admin/permissions/UPDATE_DATA_PERMISSION";
 export const updateDataPermission = createThunkAction(
   UPDATE_DATA_PERMISSION,
@@ -126,7 +127,7 @@ export const updateDataPermission = createThunkAction(
   },
 );
 
-const SAVE_DATA_PERMISSIONS =
+export const SAVE_DATA_PERMISSIONS =
   "metabase/admin/permissions/data/SAVE_DATA_PERMISSIONS";
 export const saveDataPermissions = createThunkAction(
   SAVE_DATA_PERMISSIONS,
@@ -134,12 +135,25 @@ export const saveDataPermissions = createThunkAction(
     MetabaseAnalytics.trackStructEvent("Permissions", "save");
     const { dataPermissions, dataPermissionsRevision } =
       getState().admin.permissions;
-    const result = await PermissionsApi.updateGraph({
+
+    const extraData =
+      PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.reduce(
+        (data, selector) => {
+          return {
+            ...data,
+            ...selector(getState()),
+          };
+        },
+        {},
+      );
+
+    const permissionsGraph = {
       groups: dataPermissions,
       revision: dataPermissionsRevision,
-    });
+      ...extraData,
+    };
 
-    return result;
+    return await PermissionsApi.updateGraph(permissionsGraph);
   },
 );
 
@@ -171,10 +185,13 @@ export const clearSaveError = createAction(CLEAR_SAVE_ERROR);
 
 const savePermission = {
   next: _state => null,
-  throw: (_state, { payload }) =>
-    (payload && typeof payload.data === "string"
-      ? payload.data
-      : payload.data.message) || t`Sorry, an error occurred.`,
+  throw: (_state, { payload }) => {
+    return (
+      (payload && typeof payload.data === "string"
+        ? payload.data
+        : payload.data?.message) || t`Sorry, an error occurred.`
+    );
+  },
 };
 
 const saveError = handleActions(
@@ -225,7 +242,11 @@ const dataPermissions = handleActions(
         }
 
         if (permissionInfo.type === "native") {
-          return updateNativePermission(
+          const updateFn =
+            PLUGIN_DATA_PERMISSIONS.updateNativePermission ??
+            updateNativePermission;
+
+          return updateFn(
             state,
             groupId,
             entityId,
@@ -287,7 +308,9 @@ const originalDataPermissions = handleActions(
     [LOAD_DATA_PERMISSIONS]: {
       next: (_state, { payload }) => payload.groups,
     },
-    [SAVE_DATA_PERMISSIONS]: { next: (_state, { payload }) => payload.groups },
+    [SAVE_DATA_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
+    },
   },
   null,
 );
@@ -357,6 +380,19 @@ const collectionPermissionsRevision = handleActions(
   null,
 );
 
+export const TOGGLE_HELP_REFERENCE =
+  "metabase/admin/permissions/TOGGLE_HELP_REFERENCE";
+export const toggleHelpReference = createAction(TOGGLE_HELP_REFERENCE);
+
+export const isHelpReferenceOpen = handleActions(
+  {
+    [toggleHelpReference]: {
+      next: state => !state,
+    },
+  },
+  false,
+);
+
 export default combineReducers({
   saveError,
   dataPermissions,
@@ -365,4 +401,5 @@ export default combineReducers({
   collectionPermissions,
   originalCollectionPermissions,
   collectionPermissionsRevision,
+  isHelpReferenceOpen,
 });

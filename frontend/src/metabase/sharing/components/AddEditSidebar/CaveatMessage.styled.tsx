@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import { css } from "@emotion/react";
 import { color, alpha } from "metabase/lib/colors";
 import Text from "metabase/components/type/Text";
 

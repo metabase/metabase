@@ -31,11 +31,27 @@ Now existing Metabase users signed into a Google account that matches their Meta
 
 ### Creating Metabase accounts with Google Sign-in
 
-If you’ve added your Google client ID to your Metabase settings, you can also let users sign up on their own without creating accounts for them.
+> On [paid plans](https://www.metabase.com/pricing), you're [charged for each additional account](https://www.metabase.com/docs/latest/cloud/how-billing-works#what-counts-as-a-user-account).
 
-To enable this, go to the Google Sign-In configuration page, and specify the email domain you want to allow. For example, if you work at WidgetCo you could enter "widgetco.com" in the field to let anyone with a company email sign up on their own.
+You can optionally tell Metabase to automatically create an account on someone's first SSO login.
+
+Once you've added your Google Client ID to your Metabase settings, go to the Google Sign-In configuration page, and specify the email domain you want to allow. For example, if you work at WidgetCo you could enter "widgetco.com" in the field to let anyone with a company email sign up on their own.
 
 Note that Metabase accounts created with Google Sign-In do not have passwords and must use Google to sign in to Metabase.
+
+## Required LDAP attributes
+
+Make sure to set up your LDAP directory with these attributes:
+
+- email (defaulting to the `mail` attribute)
+- first name (defaulting to the `givenName` attribute)
+- last name (defaulting to the `sn` attribute).
+
+If your LDAP setup uses other attributes for these, you can edit this under the "Attributes" portion of the form.
+
+![Attributes](./images/ldap-attributes.png)
+
+Your LDAP directory must have the email field populated for each entry that will become a Metabase user, otherwise Metabase won't be able to create the account, nor will that person be able to log in. If either name field is missing, Metabase will use a default of "Unknown," and the person can change their name in their [account settings](./account-settings.md).
 
 ## Enabling LDAP authentication
 
@@ -47,19 +63,7 @@ In the **Admin** > **Authentication** tab, go to the LDAP section and click **Co
 - LDAP admin username
 - LDAP admin password
 
-Then save your changes.
-
-Metabase will pull out three main attributes from your LDAP directory:
-
-- email (defaulting to the `mail` attribute)
-- first name (defaulting to the `givenName` attribute)
-- last name (defaulting to the `sn` attribute).
-
-If your LDAP setup uses other attributes for these, you can edit this under the "Attributes" portion of the form.
-
-![Attributes](./images/ldap-attributes.png)
-
-Your LDAP directory must have the email field populated for each entry that will become a Metabase user, otherwise Metabase won't be able to create the account, nor will that person be able to log in. If either name field is missing, Metabase will use a default of "Unknown," and the person can change their name in their [account settings](./account-settings.md).
+Then save your changes. Metabase will automatically pull the [required attributes](#required-ldap-attributes) from your LDAP directory.
 
 ### LDAP user schema
 
@@ -113,14 +117,13 @@ You can manage [user attributes][user-attributes-def] such as names, emails, and
 
 User attributes can't be synced with regular Google Sign-In. You'll need to set up [Google SAML][google-saml-docs] or [JWT][jwt-docs] instead.
 
-## Changing an account's login method from email to SSO
+## Disabling password logins
 
-Once a person creates an account, you cannot change the authentication method for that account. However, you can:
+{% include plans-blockquote.html feature="Disabling password logins" %}
 
-- Deactivate password authentication for all users from **Admin settings** > **Authentication**. You'll need to ask people to sign in with Google (if they haven't already).
-- Manually update the account's login method in the Metabase application database. This option is not recommended unless you're familiar with making changes to the application database.
+On paid plans, you can require people to log in with SSO by disabling password authentication from **Admin settings** > **Authentication**.
 
-Note that you must have at least one account with email and password login. This account safeguards you from getting locked out of your Metabase if there are any problems with your SSO provider.
+**Avoid locking yourself out of your Metabase!** This setting will apply to all Metabase accounts, _including your Metabase admin account_. We recommend that you keep password authentication **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
 
 ## Troubleshooting login issues
 
@@ -136,5 +139,5 @@ Note that you must have at least one account with email and password login. This
 [google-saml-docs]: ./saml-google.md
 [jwt-docs]: ./authenticating-with-jwt.md
 [saml-docs]: ./authenticating-with-saml.md
-[user-attributes-docs]: ../permissions/data-sandboxes.md#getting-user-attributes
+[user-attributes-docs]: ../permissions/data-sandboxes.md#choosing-user-attributes-for-data-sandboxes
 [user-attributes-def]: https://www.metabase.com/glossary/attribute#user-attributes-in-metabase

@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -25,7 +25,7 @@ function explainClickBehaviorType(
   return {
     action: t`Execute an action`,
     actionMenu: hasActionsMenu(dashcard)
-      ? t`Open the actions menu`
+      ? t`Open the drill-through menu`
       : t`Do nothing`,
     crossfilter: t`Update a dashboard filter`,
     link: t`Go to custom destination`,
@@ -97,4 +97,5 @@ function TableClickBehaviorView({
   return <>{groupedColumns.map(renderColumnGroup)}</>;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TableClickBehaviorView;

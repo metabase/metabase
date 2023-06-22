@@ -2,9 +2,9 @@
   "font loading functionality."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.util :as u]
-   [metabase.util.files :as u.files]))
+   [metabase.util.files :as u.files]
+   [metabase.util.log :as log]))
 
 (defn- normalize-font-dirname
   "Use a font's directory to derive a Display Name by changing underscores to spaces."

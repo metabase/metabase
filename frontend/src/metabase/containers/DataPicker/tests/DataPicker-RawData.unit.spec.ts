@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 
 import { screen, waitForElementToBeRemoved } from "__support__/ui";
 
@@ -19,10 +18,6 @@ import {
 describe("DataPicker — picking raw data", () => {
   beforeAll(() => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
   });
 
   it("opens the picker", async () => {
@@ -48,6 +43,12 @@ describe("DataPicker — picking raw data", () => {
     userEvent.click(screen.getByText(EMPTY_DATABASE.name));
 
     expect(await screen.findByText(/Nothing here/i)).toBeInTheDocument();
+  });
+
+  it("doesn't show saved questions database", async () => {
+    await setup();
+    userEvent.click(screen.getByText("Raw Data"));
+    expect(screen.queryByText(/Saved Questions/i)).not.toBeInTheDocument();
   });
 
   it("allows to pick multiple tables", async () => {

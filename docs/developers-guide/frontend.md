@@ -126,6 +126,7 @@ We use ESLint to enforce additional rules. It is integrated into the Webpack bui
 For the most part we follow the [Airbnb React/JSX Style Guide](https://github.com/airbnb/javascript/tree/master/react). ESLint and Prettier should take care of a majority of the rules in the Airbnb style guide. Exceptions will be noted in this document.
 
 - Prefer React [function components over class components](https://reactjs.org/docs/components-and-props.html#function-and-class-components)
+- Avoid creating new components within the `containers` folder, as this approach has been deprecated. Instead, store both connected and view components in the `components` folder for a more unified and efficient organization. If a connected component grows substantially in size and you need to extract a view component, opt for using the `View` suffix.
 - For control components, typically we use `value` and `onChange`. Controls that have options (e.x. `Radio`, `Select`) usually take an `options` array of objects with `name` and `value` properties.
 - Components named like `FooModal` and `FooPopover` typically refer to the modal/popover _content_ which should be used inside a `Modal`/`ModalWithTrigger` or `Popover`/`PopoverWithTrigger`
 - Components named like `FooWidget` typically include a `FooPopover` inside a `PopoverWithTrigger` with some sort of trigger element, often `FooName`
@@ -403,23 +404,8 @@ const Foo = () => <div className={style.primary} />;
 ```javascript
 import styled from "@emotion/styled";
 
-const FooWrapper = styled.div`
-  color: ${props => props.color};
-`;
-
-const Bar = ({ color }) => <Foo color={color} />;
-```
-
-### Emotion + [styled-system](https://styled-system.com/)
-
-e.x.
-
-```javascript
-import styled from "@emotion/styled";
-import { color } from "styled-system";
-
 const Foo = styled.div`
-  ${color}
+  color: ${props => props.color};
 `;
 
 const Bar = ({ color }) => <Foo color={color} />;
@@ -435,21 +421,19 @@ In Metabase core, they are visually responsive: they appear above or below the e
 
 #### When creating custom questions
 
-1. From home, click on `Ask a question`
-2. Click on `Custom question`
-3. 👀 The option picker next to `Pick your starting data` is a `<Popover />`.
-4. Choose `Sample Database`
-5. Choose any of the tables, for example `People`
+1. From home, click on `New` and then `Question`
+2. 👀 The option picker that automatically opened next to `Pick your starting data` is a `<Popover />`.
+3. Choose `Sample Database` if not already selected
+4. Choose any of the tables, for example `People`
 
 Here, clicking on the following will open `<Popover />` components:
 
-- `Columns` (right-hand side of section labeled `Data`)
+- `Pick columns` (arrow on the right-hand side of a `FieldsPicker` control in the section labeled `Data`)
 - Gray icon of a grid with + below section labeled `Data`
 - `Add filters to narrow your answers`
 - `Pick the metric you want to see`
 - `Pick a column to group by`
 - `Sort` icon with arrows pointing up and down above `Visualize` button
-
 
 ## Unit testing
 
@@ -476,7 +460,7 @@ const setup = ({ collection }: SetupOpts) => {
     <CollectionHeader
       collection={collection}
       onUpdateCollection={onUpdateCollection}
-    />
+    />,
   );
 
   return { onUpdateCollection };
@@ -499,21 +483,22 @@ describe("CollectionHeader", () => {
     expect(onUpdateCollection).toHaveBeenCalledWith({
       ...collection,
       name: "New name",
-    })
+    });
   });
 });
 ```
 
 Key points:
+
 - `setup` function
 - `renderWithProviders` adds providers used by the app, including `redux`
 
 ### Request mocking
 
-We use `nock` to mock requests:
+We use [`fetch-mock`](https://www.npmjs.com/package/fetch-mock) to mock requests:
 
 ```tsx
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import { setupCollectionsEndpoints } from "__support__/server-mocks";
 
 interface SetupOpts {
@@ -521,20 +506,20 @@ interface SetupOpts {
 }
 
 const setup = ({ collections }: SetupOpts) => {
-  const scope = nock(location.origin);
-  setupCollectionsEndpoints(scope, collections);
+  setupCollectionsEndpoints({ collections });
 
   // renderWithProviders and other setup
 };
 
 describe("Component", () => {
-  afterEach(() => {
-    nock.cleanAll();
+  it("renders correctly", async () => {
+    setup();
+    expect(await screen.findByText("Collection")).toBeInTheDocument();
   });
 });
 ```
 
 Key points:
-- Create `scope` in `setup`
+
+- `setup` function
 - Call helpers from `__support__/server-mocks` to setup endpoints for your data
-- Call `nock.clearAll` to remove all mocks

@@ -7,10 +7,11 @@
    [metabase.driver :as driver]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor-test.test-mlv2 :as qp-test.mlv2]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -193,7 +194,7 @@
      (mt/$ids ~'bird-count
               (calculate-bird-scarcity* ~formula ~filter-clause))))
 
-(deftest nulls-and-zeroes-test
+(deftest ^:parallel nulls-and-zeroes-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions)
                          ;; bigquery doesn't let you have hypthens in field, table, etc names
                          ;; therefore a different macro is tested in bigquery driver tests
@@ -298,7 +299,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest expressions+joins-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join :date-arithmetics)
     (testing "Do calculated columns play well with joins"
       (is (= "Simcha Yan"
              (-> (mt/run-mbql-query checkins
@@ -358,18 +359,22 @@
                                        [:field (mt/id :lots-of-fields :a) nil]
                                        [:field (mt/id :lots-of-fields :b) nil]]}
                      :fields      (into [[:expression "c"]]
-                                        (for [{:keys [id]} (db/select [Field :id]
-                                                             :table_id (mt/id :lots-of-fields)
-                                                             :id       [:not-in #{(mt/id :lots-of-fields :a)
-                                                                                  (mt/id :lots-of-fields :b)}]
-                                                             {:order-by [[:name :asc]]})]
+                                        (for [{:keys [id]} (t2/select [Field :id]
+                                                                      :table_id (mt/id :lots-of-fields)
+                                                                      :id       [:not-in #{(mt/id :lots-of-fields :a)
+                                                                                           (mt/id :lots-of-fields :b)}]
+                                                                      {:order-by [[:name :asc]]})]
                                           [:field id nil]))})]
-        (db/with-call-counting [call-count-fn]
-          (mt/with-native-query-testing-context query
-            (is (= 1
-                   (-> (qp/process-query query) mt/rows ffirst))))
-          (testing "# of app DB calls should not be some insane number"
-            (is (< (call-count-fn) 20))))))))
+        ;; skip the MLv2 conversion tests here since they use
+        ;; the [[metabase.lib.metadata.jvm/application-database-metadata-provider]] which makes tons of DB calls
+        ;; that aren't actually done IRL, and we don't want to include that in the DB call count
+        (binding [qp-test.mlv2/*skip-conversion-tests* true]
+          (t2/with-call-count [call-count-fn]
+            (mt/with-native-query-testing-context query
+              (is (= 1
+                     (-> (qp/process-query query) mt/rows ffirst))))
+            (testing "# of app DB calls should not be some insane number"
+              (is (< (call-count-fn) 20)))))))))
 
 (deftest expression-with-slashes
   (mt/test-drivers (disj

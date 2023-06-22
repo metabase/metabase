@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import { SelectChangeEvent } from "metabase/core/components/Select";
 import FormSelect from "metabase/core/components/FormSelect";
@@ -34,4 +34,5 @@ const DatabaseEngineSelect = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseEngineSelect;

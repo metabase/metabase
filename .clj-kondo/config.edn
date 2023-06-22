@@ -3,10 +3,11 @@
  {:unresolved-symbol
   {:exclude
    [instaparse.core/transform
+    (cljs.test/is [=?])
     (clojure.core.logic/fresh)
     (clojure.core.logic/matcha)
     (clojure.core.logic/run)
-    (clojure.test/is [query= sql=])
+    (clojure.test/is [query= sql= =?])
     (clojure.tools.macro/macrolet)
     (metabase.async.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
@@ -40,6 +41,7 @@
   :use                                      {:level :warning}
   :redundant-fn-wrapper                     {:level :warning}
   :invalid-arity                            {:skip-args [metabase.mbql.util.match/match]}
+  :warn-on-reflection                       {:level :warning}
   ;; TODO (cam): here are some more linters we should experiment with enabling -- some might be useful.
   ;; :docstring-no-summary                  {:level :warning}
   ;; :docstring-leading-trailing-whitespace {:level :warning}
@@ -49,6 +51,7 @@
   ;; :keyword-binding                       {:level :warning}
   ;; :main-without-gen-class                {:level :warning}
   ;; :shadowed-var                          {:level :warning}
+
   :deprecated-var
   {:exclude
    {metabase.cmd/dump                                                            {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
@@ -62,44 +65,122 @@
     metabase.driver.common/current-db-time-date-formatters                       {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.common/current-db-time-native-query                          {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.common/first-successful-parse                                {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.execute.old-impl/read-column                        {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sq                    {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql                   {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!                 {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.sync.interface/syncable-schemas                     {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/*field-options*               {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/*source-query*                {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/*table-alias*                 {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/escape-alias                  {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/field->alias                  {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/field->identifier             {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/prefix-field-alias            {:namespaces ["metabase\\.driver.*"]}
     metabase.driver/current-db-time                                              {:namespaces ["metabase.*"]}
     metabase.driver/supports?                                                    {:namespaces ["metabase.*"]}
     metabase.public-settings.premium-features/enable-enhancements?               {:namespaces ["metabase\\.models.*"]}
     metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table {:namespaces ["metabase.*"]}
     metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}
+    metabase.util.honeysql-extensions/*                                          {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/*honey-sql-version*                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/+                                          {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/-                                          {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/->boolean                                  {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/->date                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/->datetime                                 {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/->integer                                  {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/->time                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/->timestamp                                {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/->timestamp-with-time-zone                 {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions//                                          {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/IdentifierType                             {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/abs                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/at-time-zone                               {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/call                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/cast                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/cast-unless-type-in                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/ceil                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/concat                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/database-type                              {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/day                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/dec                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/floor                                      {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/format                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/hour                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/identifier                                 {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/identifier?                                {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/inc                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/is-of-type?                                {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/literal                                    {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/maybe-cast                                 {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/minute                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/mod                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/month                                      {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/quarter                                    {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/quoted-cast                                {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/raw                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/round                                      {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/second                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/type-info                                  {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/type-info->db-type                         {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/unwrap-typed-honeysql-form                 {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/week                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/with-database-type-info                    {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/with-type-info                             {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
+    metabase.util.honeysql-extensions/year                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
     schema.core/both                                                             {:namespaces ["metabase.*"]}
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {clojure.core/print        {:message "Use clojure.tools.logging instead of clojure.core/print"}
-   clojure.core/println      {:message "Use clojure.tools.logging instead of clojure.core/println"}
-   clojure.core/printf       {:message "Use clojure.tools.logging instead of clojure.core/printf"}
-   clojure.core/prn          {:message "Use clojure.tools.logging instead of clojure.core/prn"}
-   clojure.core/pr           {:message "Use clojure.tools.logging instead of clojure.core/pr"}
-   clojure.string/lower-case {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
-   clojure.string/upper-case {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
-   honeysql.core/call        {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
-   honeysql.core/raw         {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
-   toucan.db/query           {:message "Use mdb.query/query instead of toucan.db/query"}
-   toucan.db/reducible-query {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}}
+  {clojure.core/print                   {:message "Use clojure.tools.logging instead of clojure.core/print"}
+   clojure.core/println                 {:message "Use clojure.tools.logging instead of clojure.core/println"}
+   clojure.core/printf                  {:message "Use clojure.tools.logging instead of clojure.core/printf"}
+   clojure.core/prn                     {:message "Use clojure.tools.logging instead of clojure.core/prn"}
+   clojure.core/pr                      {:message "Use clojure.tools.logging instead of clojure.core/pr"}
+   clojure.java.jdbc/get-connection     {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/get-connection"}
+   clojure.java.jdbc/with-db-connection {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/with-db-connection"}
+   clojure.java.jdbc/with-db-metadata   {:message "Use sql-jdbc.execute/do-with-connection-with-options + .getMetaData instead of jdbc/with-db-metadata"}
+   clojure.pprint/pprint                {:message "Use clojure.tools.logging instead of clojure.pprint/pprint"}
+   clojure.string/lower-case            {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
+   clojure.string/upper-case            {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
+   honeysql.core/call                   {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
+   honeysql.core/raw                    {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
+   java-time/with-clock                 {:message "Use mt/with-clock"}
+   metabase.test/with-temp              {:message "Use t2.with-temp/with-temp instead of metabase.test/with-temp"}
+   ;; metabase.test/with-temp*             {:message "Use t2.with-temp/with-temp instead of metabase.test/with-temp*"}
+   toucan.db/select                     {:message "Use t2/select instead of toucan.db/select"}
+   toucan.db/select-one                 {:message "Use t2/select-one instead of toucan.db/select-one"}
+   toucan.db/select-one-id              {:message "Use t2/select-one-pk instead of toucan.db/select-one-id"}
+   toucan.db/select-one-field           {:message "Use t2/select-one-fn instead of toucan.db/select-one-field"}
+   toucan.db/select-ids                 {:message "Use t2/select-pks-set instead of toucan.db/select-ids"}
+   toucan.db/select-field               {:message "Use t2/select-fn instead of toucan.db/select-field"}
+   toucan.db/select-field->field        {:message "Use t2/select-fn->fn instead of toucan.db/select-field->field"}
+   toucan.db/select-field->id           {:message "Use t2/select-fn->pk instead of toucan.db/select-field->id"}
+   toucan.db/select-id->field           {:message "Use t2/select-pk->field instead of toucan.db/select-id->field"}
+   toucan.db/simple-insert!             {:message "Use t2/insert-returning-pks! with table name instead of toucan.db/simple-insert!"}
+   toucan.db/simple-insert-many!        {:message "Use t2/insert-returning-pks! with table name instead of toucan.db/simple-insert-many!"}
+   toucan.db/simple-delete!             {:message "Use t2/delete! with table name instead of toucan.db/simple-delete!"}
+   toucan.db/delete!                    {:message "Use t2/delete! instead of toucan.db/delete!"}
+   toucan.db/insert!                    {:message "Use t2/insert-returning-instances! instead of toucan.db/insert!"}
+   toucan.db/update!                    {:message "Use t2/update! instead of toucan.db/update!"}
+   toucan.db/update-where!              {:message "Use t2/update! instead of toucan.db/update-where!"}
+   toucan.db/query                      {:message "Use mdb.query/query instead of toucan.db/query"}
+   toucan.db/count                      {:message "Use t2/count instead of toucan.db/count"}
+   toucan.db/exists?                    {:message "Use t2/exists? instead of toucan.db/exists?"}
+   toucan.db/transaction                {:message "Use t2/with-transaction instead of toucan.db/transaction"}
+   toucan.db/with-call-counting         {:message "Use t2/with-call-count instead of toucan.db/with-call-counting"}
+   toucan.db/execute!                   {:message "Use t2/query-one instead of toucan.db/execute!"}
+   toucan.db/reducible-query            {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}
+   toucan.db/resolve-model              {:message "Use metabase.db.util/resolve-model instead of toucan.db/resolve-model"}
+   toucan.models/defmodel               {:message "Define a method for t2/table-name instead of toucan.models/defmodel"}
+   toucan.models/primary-key            {:message "Use metabase.db.util/primary-key instead of toucan.models/primary-key"}
+   toucan.models/model?                 {:message "Use mdb.u/toucan-model? instead of toucan.models/model?"}
+   toucan.hydrate/hydrate               {:message "Use t2/hydrate instead of toucan.hydrate/hydrate"}
+   toucan.util.test/with-temp-defaults  {:message "Use t2.with-temp/with-temp-defaults instead of toucan.util.test/with-temp-defaults"}
+   toucan.util.test/with-temp           {:message "Use t2.with-temp/with-temp instead of toucan.util.test/with-temp"}
+   toucan.util.test/with-temp*          {:message "Use t2.with-temp/with-temp instead of toucan.util.test/with-temp*"}}
+
+  :discouraged-namespace
+  {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
+   clojure.tools.logging  {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
+   metabase.util.jvm      {:message "All of metabase.util.jvm is re-exported from metabase.util; prefer that"}}
 
   :unresolved-var
   {:exclude
    [colorize.core]}
 
-  :unsorted-required-namespaces             {:level :warning}
+  :unsorted-required-namespaces {:level :warning}
 
   :consistent-alias
   {:aliases
@@ -174,7 +255,6 @@
     metabase.api.preview-embed                                      api.preview-embed
     metabase.api.public                                             api.public
     metabase.api.pulse                                              api.pulse
-    metabase.api.query-description                                  api.qd
     metabase.api.revision                                           api.revision
     metabase.api.search                                             api.search
     metabase.api.segment                                            api.segment
@@ -213,10 +293,6 @@
     metabase.driver.druid.js                                        druid.js
     metabase.driver.druid.query-processor                           druid.qp
     metabase.driver.druid.sync                                      druid.sync
-    metabase.driver.googleanalytics.client                          ga.client
-    metabase.driver.googleanalytics.execute                         ga.execute
-    metabase.driver.googleanalytics.metadata                        ga.metadata
-    metabase.driver.googleanalytics.query-processor                 ga.qp
     metabase.driver.impl                                            driver.impl
     metabase.driver.mongo.execute                                   mongo.execute
     metabase.driver.mongo.parameters                                mongo.params
@@ -240,6 +316,7 @@
     metabase.email-test                                             et
     metabase.email.messages                                         messages
     metabase.http-client                                            client
+    metabase.lib.util                                               lib.util
     metabase.mbql.normalize                                         mbql.normalize
     metabase.mbql.schema                                            mbql.s
     metabase.mbql.util                                              mbql.u
@@ -341,6 +418,7 @@
     metabase.test.domain-entities                                   test.de
     metabase.test.mock.util                                         mock.util
     metabase.test.sync                                              test.sync
+    metabase.test.util.js                                           test.js
     metabase.test.util.timezone                                     test.tz
     metabase.timeseries-query-processor-test.util                   tqpt
     metabase.transforms.core                                        tf
@@ -354,11 +432,14 @@
     metabase.util.encryption                                        encryption
     metabase.util.encryption-test                                   encryption-test
     metabase.util.files                                             u.files
-    metabase.util.honey-sql-1-extensions                            h1x
-    metabase.util.honey-sql-2-extensions                            h2x
+    metabase.util.honey-sql-1                                       h1x
+    metabase.util.honey-sql-2                                       h2x
     metabase.util.honeysql-extensions                               hx
     metabase.util.i18n                                              i18n
     metabase.util.i18n.impl                                         i18n.impl
+    metabase.util.jvm                                               u.jvm
+    metabase.util.log                                               log
+    metabase.util.macros                                            u.macros
     metabase.util.malli                                             mu
     metabase.util.malli.schema                                      ms
     metabase.util.password                                          u.password
@@ -372,17 +453,14 @@
     ring.mock.request                                               ring.mock
     ring.util.codec                                                 codec
     ring.util.response                                              response
-    ring.util.servlet                                               servlet
+    ring.adapter.jetty9.servlet                                     servlet
     saml20-clj.core                                                 saml
     toucan.db                                                       db
-    toucan.models                                                   models}}
-
-  :metabase/disallow-invoking-model         {:level :warning}
-  :metabase/disallow-class-or-type-on-model {:level :warning}}
+    toucan.models                                                   models}}}
 
  :lint-as
  {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
-  clojure.test.check.clojure-test/defspec                                              clojure.core/def
+  clojure.test.check.clojure-test/defspec                                              clojure.test/deftest
   clojurewerkz.quartzite.jobs/defjob                                                   clojure.core/defn
   honeysql.helpers/defhelper                                                           clj-kondo.lint-as/def-catch-all
   honeysql.util/defalias                                                               clojure.core/def
@@ -393,27 +471,31 @@
   metabase.api.search-test/do-test-users                                               clojure.core/let
   metabase.async.api-response-test/with-response                                       clojure.core/let
   metabase.dashboard-subscription-test/with-dashboard-sub-for-card                     clojure.core/let
+  metabase.db.custom-migrations/define-migration                                       clj-kondo.lint-as/def-catch-all
+  metabase.db.custom-migrations/define-reversible-migration                            clj-kondo.lint-as/def-catch-all
   metabase.db.data-migrations/defmigration                                             clojure.core/def
   metabase.db.liquibase/with-liquibase                                                 clojure.core/let
   metabase.db.schema-migrations-test.impl/with-temp-empty-app-db                       clojure.core/let
+  metabase.domain-entities.malli/defn                                                  schema.core/defn
   metabase.driver.mongo.query-processor/mongo-let                                      clojure.core/let
   metabase.driver.mongo.util/with-mongo-connection                                     clojure.core/let
   metabase.driver.sql-jdbc.actions/with-jdbc-transaction                               clojure.core/let
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection      clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                clojure.core/fn
   metabase.integrations.ldap/with-ldap-connection                                      clojure.core/fn
-  metabase.mbql.schema.macros/defclause                                                clj-kondo.lint-as/def-catch-all
   metabase.models.collection-test/with-collection-in-location                          clojure.core/let
   metabase.models.json-migration/def-json-migration                                    clj-kondo.lint-as/def-catch-all
   metabase.models.setting.multi-setting/define-multi-setting                           clojure.core/def
   metabase.models.setting/defsetting                                                   clj-kondo.lint-as/def-catch-all
-  metabase.public-settings.premium-features/defenterprise                              clj-kondo.lint-as/def-catch-all
   metabase.public-settings.premium-features/defenterprise-schema                       clj-kondo.lint-as/def-catch-all
   metabase.public-settings.premium-features/define-premium-feature                     clojure.core/def
   metabase.pulse-test/with-pulse-for-card                                              clojure.core/let
   metabase.query-processor.error-type/deferror                                         clojure.core/def
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results   clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution clojure.core/let
+  metabase.query-processor-test.pipeline-queries-test/pmbql-query                      clojure.core/->
+  metabase.query-processor-test.pipeline-queries-test/run-pmbql-query                  clojure.core/->
+  metabase.shared.util.namespaces/import-fns                                           potemkin/import-vars
   metabase.sync.util/sum-for                                                           clojure.core/for
   metabase.sync.util/with-emoji-progress-bar                                           clojure.core/let
   metabase.test.data.interface/defdataset                                              clojure.core/def
@@ -426,7 +508,7 @@
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
-  metabase.util.malli/defn                                                             clj-kondo.lint-as/def-catch-all
+  metabase.util.malli/defn                                                             schema.core/defn
   metabase.util.ssh/with-ssh-tunnel                                                    clojure.core/let
   monger.operators/defoperator                                                         clojure.core/def
   potemkin.types/defprotocol+                                                          clojure.core/defprotocol
@@ -435,15 +517,14 @@
   potemkin/defprotocol+                                                                clojure.core/defprotocol
   potemkin/defrecord+                                                                  clojure.core/defrecord
   potemkin/deftype+                                                                    clojure.core/deftype
-  toucan.db/with-call-counting                                                         clojure.core/fn}
+  toucan.db/with-call-counting                                                         clojure.core/fn
+  toucan2.core/with-call-count                                                         clojure.core/fn}
 
  :hooks
  {:analyze-call
-  {clojure.core/class                                                                                                        hooks.metabase.models.disallow-type-or-class/hook
-   clojure.core/type                                                                                                         hooks.metabase.models.disallow-type-or-class/hook
+  {clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
-   metabase-enterprise.sandbox.models.group-table-access-policy/GroupTableAccessPolicy                                       hooks.metabase.models.disallow-invoking-model/hook
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan.util.test/with-temp*
    metabase.analytics.prometheus-test/with-prometheus-system                                                                 hooks.common/with-two-bindings
    metabase.api.alert-test/with-alert-in-collection                                                                          hooks.common/with-four-bindings
@@ -456,6 +537,7 @@
    metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-schema                                                                                    hooks.metabase.api.common/defendpoint
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
+   metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/do-response-formats                                                                               hooks.common/with-two-bindings
    metabase.api.embed-test/with-chain-filter-fixtures                                                                        hooks.common/let-one-with-optional-value
@@ -471,122 +553,25 @@
    metabase.api.user-test/with-temp-user-email                                                                               hooks.common/with-one-binding
    metabase.async.streaming-response-test/with-start-execution-chan                                                          hooks.common/with-one-binding
    metabase.db.schema-migrations-test.impl/test-migrations                                                                   hooks.metabase.db.schema-migrations-test.impl/test-migrations
-   metabase.models.action/Action                                                                                             hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.action/HTTPAction                                                                                         hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.action/QueryAction                                                                                        hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.activity/Activity                                                                                         hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.app/App                                                                                                   hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.application-permissions-revision/ApplicationPermissionsRevision                                           hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.bookmark/BookmarkOrdering                                                                                 hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.bookmark/CardBookmark                                                                                     hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.bookmark/CollectionBookmark                                                                               hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.bookmark/DashboardBookmark                                                                                hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.card/Card                                                                                                 hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.collection-permission-graph-revision/CollectionPermissionGraphRevision                                    hooks.metabase.models.disallow-invoking-model/hook
+   metabase.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                                 hooks.common/let-second
+   metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
+   metabase.mbql.schema.macros/defclause                                                                                     hooks.metabase.mbql.schemas.macros/defclause
    metabase.models.collection-test/with-collection-hierarchy                                                                 hooks.common/let-one-with-optional-value
    metabase.models.collection-test/with-personal-and-impersonal-collections                                                  hooks.common/with-two-bindings
-   metabase.models.collection/Collection                                                                                     hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.dashboard-card-series/DashboardCardSeries                                                                 hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.dashboard-card/DashboardCard                                                                              hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.dashboard-test/with-dash-in-collection                                                                    hooks.common/with-three-bindings
-   metabase.models.dashboard/Dashboard                                                                                       hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.database/Database                                                                                         hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.dimension/Dimension                                                                                       hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.emitter/CardEmitter                                                                                       hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.emitter/DashboardEmitter                                                                                  hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.emitter/Emitter                                                                                           hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.field-values/FieldValues                                                                                  hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.field/Field                                                                                               hooks.metabase.models.disallow-invoking-model/hook
+   metabase.models.dashboard-tab-test/with-dashtab-in-personal-collection                                                    hooks.common/with-one-top-level-binding
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
-   metabase.models.login-history/LoginHistory                                                                                hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.metric-important-field/MetricImportantField                                                               hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.metric/Metric                                                                                             hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.moderation-review/ModerationReview                                                                        hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.native-query-snippet/NativeQuerySnippet                                                                   hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.permissions-group-membership/PermissionsGroupMembership                                                   hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.permissions-group/PermissionsGroup                                                                        hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.permissions-revision/PermissionsRevision                                                                  hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.permissions/Permissions                                                                                   hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.persisted-info/PersistedInfo                                                                              hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.pulse-card/PulseCard                                                                                      hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.pulse-channel-recipient/PulseChannelRecipient                                                             hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.pulse-channel/PulseChannel                                                                                hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.pulse-test/with-dashboard-subscription-in-collection                                                      hooks.common/with-four-bindings
    metabase.models.pulse-test/with-pulse-in-collection                                                                       hooks.common/with-four-bindings
-   metabase.models.pulse/Pulse                                                                                               hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.query-cache/QueryCache                                                                                    hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.query-execution/QueryExecution                                                                            hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.query/Query                                                                                               hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.revision/Revision                                                                                         hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.secret/Secret                                                                                             hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.segment/Segment                                                                                           hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.session/Session                                                                                           hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.setting.multi-setting/define-multi-setting                                                                hooks.metabase.models.setting/defsetting
-   metabase.models.setting/Setting                                                                                           hooks.metabase.models.disallow-invoking-model/hook
    metabase.models.setting/defsetting                                                                                        hooks.metabase.models.setting/defsetting
-   metabase.models.table/Table                                                                                               hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.task-history/TaskHistory                                                                                  hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.timeline-event/TimelineEvent                                                                              hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.timeline/Timeline                                                                                         hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.user/User                                                                                                 hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models.view-log/ViewLog                                                                                          hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Activity                                                                                                  hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/App                                                                                                       hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/ApplicationPermissionsRevision                                                                            hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/BookmarkOrdering                                                                                          hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Card                                                                                                      hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/CardBookmark                                                                                              hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/CardEmitter                                                                                               hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Collection                                                                                                hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/CollectionBookmark                                                                                        hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/CollectionPermissionGraphRevision                                                                         hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Dashboard                                                                                                 hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/DashboardBookmark                                                                                         hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/DashboardCard                                                                                             hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/DashboardCardSeries                                                                                       hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/DashboardEmitter                                                                                          hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Database                                                                                                  hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Dimension                                                                                                 hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Emitter                                                                                                   hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Field                                                                                                     hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/FieldValues                                                                                               hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/HTTPAction                                                                                                hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/LoginHistory                                                                                              hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Metric                                                                                                    hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/MetricImportantField                                                                                      hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/ModerationReview                                                                                          hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/NativeQuerySnippet                                                                                        hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Permissions                                                                                               hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/PermissionsGroup                                                                                          hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/PermissionsGroupMembership                                                                                hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/PermissionsRevision                                                                                       hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/PersistedInfo                                                                                             hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Pulse                                                                                                     hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/PulseCard                                                                                                 hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/PulseChannel                                                                                              hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/PulseChannelRecipient                                                                                     hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Query                                                                                                     hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/QueryAction                                                                                               hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/QueryCache                                                                                                hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/QueryExecution                                                                                            hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Revision                                                                                                  hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Secret                                                                                                    hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Segment                                                                                                   hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Session                                                                                                   hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Setting                                                                                                   hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Table                                                                                                     hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/TaskHistory                                                                                               hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/Timeline                                                                                                  hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/TimelineEvent                                                                                             hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/User                                                                                                      hooks.metabase.models.disallow-invoking-model/hook
-   metabase.models/ViewLog                                                                                                   hooks.metabase.models.disallow-invoking-model/hook
+   metabase.public-settings.premium-features/defenterprise                                                                   hooks.metabase.public-settings.premium-features/defenterprise
    metabase.pulse.test-util/checkins-query-card                                                                              hooks.metabase.test.data/$ids
    metabase.query-processor-test.expressions-test/calculate-bird-scarcity                                                    hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
    metabase.query-processor.middleware.cache-test/with-mock-cache                                                            hooks.common/with-two-bindings
    metabase.sample-data-test/with-temp-sample-database-db                                                                    hooks.common/with-one-binding
-   metabase.test.data.datasets/test-drivers                                                                                  hooks.common/do*
    metabase.test.data.users/with-group                                                                                       hooks.common/let-one-with-optional-value
    metabase.test.data/$ids                                                                                                   hooks.metabase.test.data/$ids
    metabase.test.data/dataset                                                                                                hooks.metabase.test.data/dataset
@@ -605,18 +590,16 @@
    metabase.test/discard-setting-changes                                                                                     hooks.common/with-ignored-first-arg
    metabase.test/mbql-query                                                                                                  hooks.metabase.test.data/mbql-query
    metabase.test/query                                                                                                       hooks.metabase.test.data/mbql-query
-   metabase.test/run-mbql-query                                                                                              hooks.metabase.test.data/mbql-query
    metabase.test/test-drivers                                                                                                hooks.common/do*
+   metabase.test/run-mbql-query                                                                                              hooks.metabase.test.data/mbql-query
    metabase.test/with-column-remappings                                                                                      hooks.common/with-ignored-first-arg
    metabase.test/with-group                                                                                                  hooks.common/let-one-with-optional-value
    metabase.test/with-log-level                                                                                              hooks.common/with-ignored-first-arg
    metabase.test/with-log-messages-for-level                                                                                 hooks.common/with-ignored-first-arg
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
-   metabase.test/with-temp                                                                                                   hooks.toucan.util.test/with-temp
    metabase.test/with-temp*                                                                                                  hooks.toucan.util.test/with-temp*
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
-   toucan.util.test/with-temp                                                                                                hooks.toucan.util.test/with-temp
    toucan.util.test/with-temp*                                                                                               hooks.toucan.util.test/with-temp*}
 
   :macroexpand
@@ -635,6 +618,9 @@
    metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing macros.metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing
    metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing      macros.metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing
    metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing  macros.metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing
+   metabase.domain-entities.malli/define-getters-and-setters                    macros.metabase.domain-entities.malli/define-getters-and-setters
+   metabase.lib.filter/deffilter                                                macros.metabase.lib.filter/deffilter
+   metabase.lib.common/defop                                                    macros.metabase.lib.common/defop
    metabase.models.params.chain-filter-test/chain-filter                        macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.params.chain-filter-test/chain-filter-search                 macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.user-test/with-groups                                        macros.metabase.models.user-test/with-groups
@@ -666,8 +652,39 @@
  ;; fix those namespaces than it is to make this regex super hairy.
  [{:pattern "(?:.*-test(?:\\..*)?$)|(?:.*test-util$)|(?:^metabase\\.test.*)"
    :name    test-namespaces}
+  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util$)(?!^metabase\\.test.*).*$"
+   :name    source-namespaces}
   {:pattern "metabase\\.cmd.*"
-   :name    printable-namespaces}]
+   :name    printable-namespaces}
+  {:pattern "^metabase\\.lib\\.*"
+   :name    metabase-lib}
+  ;; Basically everything except `metabase.driver.` or `metabase.test-data.` except for the drivers explicitly called
+  ;; out below. Remove these drivers from the regex once we switch to Honey SQL 2.
+  ;;
+  ;; This regex is way too big to easily read or write by hand, so use the [[metabase.util.regex/rx]] macro to
+  ;; generate it. It was generated from the following form:
+  ;;
+  ;; (str
+  ;;  (metabase.util.regex/rx
+  ;;   #"^metabase\."
+  ;;   [:not [:and #"util\." [:or "honeysql-extensions" "honey-sql-1"]]]
+  ;;   [:not "query-processor-test"]
+  ;;   [:not [:and
+  ;;          [:or "driver" #"test\.data"]
+  ;;          #"\."
+  ;;          [:or
+  ;;           [:and "sql" [:? "-jdbc"]]
+  ;;           #"(?:sql(?:-jdbc)?)"
+  ;;           "bigquery-cloud-sdk"
+  ;;           [:and "presto" [:? [:or "-common" "-jdbc"]]]
+  ;;           "sqlserver"]
+  ;;          [:? "-test"]
+  ;;          [:or #"\." #"$"]]]
+  ;;   ".*"))
+  ;;
+  ;; Please keep this form updated when you change the generated regex! <3
+  {:pattern "^metabase\\.(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1)))(?!query-processor-test)(?!(?:(?:driver)|(?:test\\.data))\\.(?:(?:sql(?:-jdbc)?)|(?:(?:sql(?:-jdbc)?))|(?:bigquery-cloud-sdk)|(?:presto(?:(?:(?:-common)|(?:-jdbc)))?)|(?:sqlserver))(?:-test)?(?:(?:\\.)|(?:$))).*"
+   :name    honey-sql-2-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -675,9 +692,44 @@
    {:inline-def                                    {:level :off}
     :missing-docstring                             {:level :off}
     :private-call                                  {:level :off}
-
-    ;; custom linters
     :hooks.metabase.test.data/mbql-query-first-arg {:level :error}}}
+
+  source-namespaces
+  {:linters
+   {:discouraged-var
+    {clojure.core/with-redefs {:message "Don't use with-redefs"}
+     clojure.core/eval        {:message "Don't use eval"}}}}
+
   printable-namespaces
   {:linters
-   {:discouraged-var {:level :off}}}}}
+   {:discouraged-var {:level :off}}}
+
+  honey-sql-2-namespaces
+  {:linters
+   {:discouraged-namespace
+    {clj-yaml.core                     {:message "Use metabase.util.yaml"}
+     honeysql.core                     {:message "Use Honey SQL 2"}
+     honeysql.format                   {:message "Use Honey SQL 2"}
+     honeysql.helpers                  {:message "Use Honey SQL 2"}
+     honeysql.types                    {:message "Use Honey SQL 2"}
+     honeysql.util                     {:message "Use Honey SQL 2"}
+     metabase.util.honeysql-extensions {:message "Use h2x"}
+     metabase.util.honey-sql-1         {:message "Use h2x"}}}}
+
+  ;; enable all the extra linters we haven't enabled in the core app yet in MLv2. It's all new code so we can adhere
+  ;; to the new stricter rules from day 1
+  metabase-lib
+  {:linters
+   {:docstring-leading-trailing-whitespace                {:level :warning}
+    :reduce-without-init                                  {:level :warning}
+    :used-underscored-binding                             {:level :warning}
+    :single-key-in                                        {:level :warning}
+    :keyword-binding                                      {:level :warning}
+    :shadowed-var                                         {:level :warning}
+    :metabase/deftest-not-marked-parallel-or-synchronized {:level :warning}
+
+    ;; eventually we should do this for the whole codebase, but the args are in the opposite order so switching them
+    ;; all at once isn't trivial, at least we can stop using it in new code.
+    :discouraged-var
+    {medley.core/map-keys {:message "Use clojure.core/update-keys"}
+     medley.core/map-vals {:message "Use clojure.core/update-vals"}}}}}}

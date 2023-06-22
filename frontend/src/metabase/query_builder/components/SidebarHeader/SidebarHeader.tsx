@@ -1,6 +1,5 @@
-import React from "react";
 import { t } from "ttag";
-import Icon from "metabase/components/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import {
   HeaderRoot,
   HeaderIcon,
@@ -12,7 +11,7 @@ import {
 type Props = {
   className?: string;
   title?: string;
-  icon?: string;
+  icon?: IconName;
   onBack?: () => void;
   onClose?: () => void;
 };
@@ -61,4 +60,5 @@ function SidebarHeader({ className, title, icon, onBack, onClose }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(SidebarHeader, { Root: HeaderRoot });

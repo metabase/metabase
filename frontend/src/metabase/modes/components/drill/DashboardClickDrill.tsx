@@ -1,12 +1,14 @@
-import { push } from "react-router-redux";
 import {
   setOrUnsetParameterValues,
   setParameterValue,
 } from "metabase/dashboard/actions";
-
-import type { ReduxAction } from "metabase-types/store";
+import type {
+  ClickObject,
+  Drill,
+  AlwaysDefaultClickAction,
+  AlwaysDefaultClickActionSubAction,
+} from "metabase/modes/types";
 import type Question from "metabase-lib/Question";
-
 import {
   getDashboardDrillLinkUrl,
   getDashboardDrillParameters,
@@ -14,8 +16,6 @@ import {
   getDashboardDrillType,
   getDashboardDrillUrl,
 } from "metabase-lib/queries/drills/dashboard-click-drill";
-
-import type { ClickAction, ClickObject, Drill } from "../../types";
 
 type DashboardDrillType =
   | "link-url"
@@ -28,7 +28,7 @@ function getAction(
   type: DashboardDrillType,
   question: Question,
   clicked: ClickObject,
-): Partial<ClickAction> {
+): AlwaysDefaultClickActionSubAction {
   switch (type) {
     case "link-url":
       return {
@@ -60,7 +60,10 @@ function getAction(
   }
 }
 
-const DashboardClickDrill: Drill = ({ question, clicked = {} }) => {
+const DashboardClickDrill: Drill = ({
+  question,
+  clicked = {},
+}): AlwaysDefaultClickAction[] => {
   const type = getDashboardDrillType(clicked);
   if (!type) {
     return [];
@@ -75,4 +78,5 @@ const DashboardClickDrill: Drill = ({ question, clicked = {} }) => {
   ];
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DashboardClickDrill;

@@ -1,15 +1,17 @@
 (ns metabase.models.metric-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.database :refer [Database]]
+   [metabase.models :refer [Database Segment Table]]
    [metabase.models.metric :as metric :refer [Metric]]
    [metabase.models.revision :as revision]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.table :refer [Table]]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [toucan.db :as db])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time LocalDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private metric-defaults
   {:description             nil
@@ -23,22 +25,22 @@
 
 (deftest update-test
   (testing "Updating"
-    (mt/with-temp Metric [{:keys [id]} {:creator_id (mt/user->id :rasta)}]
+    (t2.with-temp/with-temp [Metric {:keys [id]} {:creator_id (mt/user->id :rasta)}]
       (testing "you should not be able to change the creator_id of a Metric"
         (is (thrown-with-msg?
              Exception
              #"You cannot update the creator_id of a Metric"
-             (db/update! Metric id {:creator_id (mt/user->id :crowberto)}))))
+             (t2/update! Metric id {:creator_id (mt/user->id :crowberto)}))))
 
       (testing "you shouldn't be able to set it to `nil` either"
         (is (thrown-with-msg?
              Exception
              #"You cannot update the creator_id of a Metric"
-             (db/update! Metric id {:creator_id nil}))))
+             (t2/update! Metric id {:creator_id nil}))))
 
       (testing "However calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
-        (is (= true
-               (db/update! Metric id {:creator_id (mt/user->id :rasta)})))))))
+        (is (= 1
+               (t2/update! Metric id {:creator_id (mt/user->id :rasta)})))))))
 
 
 ;; ## Metric Revisions
@@ -120,5 +122,46 @@
                       Table    [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
                       Metric   [metric {:name "measurement" :table_id (:id table) :created_at now}]]
         (is (= "a2318866"
-               (serdes.hash/raw-hash ["measurement" (serdes.hash/identity-hash table) now])
-               (serdes.hash/identity-hash metric)))))))
+               (serdes/raw-hash ["measurement" (serdes/identity-hash table) now])
+               (serdes/identity-hash metric)))))))
+
+(deftest definition-description-missing-definition-test
+  (testing ":definition_description should hydrate to nil if :definition is missing"
+    (t2.with-temp/with-temp [Metric metric {:name     "Metric A"
+                                            :table_id (mt/id :users)}]
+      (is (= nil
+             (:definition_description (t2/hydrate metric :definition_description)))))))
+
+(deftest definition-description-test
+  (t2.with-temp/with-temp [Segment {segment-id :id} {:name       "Checkins with ID = 1"
+                                                     :table_id   (mt/id :checkins)
+                                                     :definition (:query (mt/mbql-query checkins
+                                                                           {:filter [:= $id 1]}))}
+                           Metric metric {:name       "Metric B"
+                                          :table_id   (mt/id :venues)
+                                          :definition (:query (mt/mbql-query venues
+                                                                {:aggregation [[:sum $category_id->categories.name]]
+                                                                 :filter      [:and
+                                                                               [:= $price 4]
+                                                                               [:segment segment-id]]}))}]
+    (is (= "Venues, Sum of Category → Name, Filtered by Price equals 4 and Checkins with ID = 1"
+           (:definition_description (t2/hydrate metric :definition_description))))))
+
+(deftest definition-description-missing-source-table-test
+  (testing "Should work if `:definition` does not include `:source-table`"
+    (t2.with-temp/with-temp [Metric metric {:name       "Metric B"
+                                            :table_id   (mt/id :venues)
+                                            :definition (mt/$ids venues
+                                                          {:aggregation [[:sum $category_id->categories.name]]
+                                                           :filter      [:= $price 4]})}]
+      (is (= "Venues, Sum of Category → Name, Filtered by Price equals 4"
+             (:definition_description (t2/hydrate metric :definition_description)))))))
+
+(deftest definition-description-invalid-query-test
+  (testing "Should return `nil` if query is invalid"
+    (t2.with-temp/with-temp [Metric metric {:name       "Metric B"
+                                            :table_id   (mt/id :venues)
+                                            :definition (mt/$ids venues
+                                                          {:aggregation [[:sum $category_id->categories.name]]
+                                                           :filter      [:= [:field Integer/MAX_VALUE nil] 4]})}]
+      (is (nil? (:definition_description (t2/hydrate metric :definition_description)))))))

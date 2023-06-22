@@ -14,6 +14,8 @@
   (:import
    (java.security MessageDigest)))
 
+(set! *warn-on-reflection* true)
+
 (defonce ^:private ^:const inline-js-hashes
   (letfn [(file-hash [resource-filename]
             (base64-encode
@@ -58,7 +60,7 @@
                                      "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
                                    (when config/is-dev?
-                                     "*:8080")
+                                     "http://localhost:8080")
                                    ;; for react dev tools to work in Firefox until resolution of
                                    ;; https://github.com/facebook/react/issues/17997
                                    (when config/is-dev?

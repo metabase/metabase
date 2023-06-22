@@ -1,6 +1,5 @@
-import React from "react";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 
 import {
   renderWithProviders,
@@ -27,34 +26,37 @@ type SetupOpts = {
 
 async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
   if (folder.id) {
-    nock(location.origin)
-      .get(`/api/collection/${folder.id}?namespace=snippets`)
-      .reply(200, folder);
+    fetchMock.get(
+      {
+        url: `path:/api/collection/${folder.id}`,
+        query: { namespace: "snippets" },
+      },
+      folder,
+    );
 
-    nock(location.origin)
-      .put(`/api/collection/${folder.id}`)
-      .reply(200, (uri, body) => {
-        if (typeof body === "object") {
-          return createMockCollection(body);
-        }
-      });
+    fetchMock.put(`path:/api/collection/${folder.id}`, async url => {
+      return createMockCollection(
+        await fetchMock.lastCall(url)?.request?.json(),
+      );
+    });
   }
 
-  nock(/./)
-    .get("/api/collection/root?namespace=snippets")
-    .reply(200, TOP_SNIPPETS_FOLDER);
+  fetchMock.get(
+    { url: "path:/api/collection/root", query: { namespace: "snippets" } },
+    TOP_SNIPPETS_FOLDER,
+  );
 
-  nock(location.origin)
-    .get("/api/collection?namespace=snippets")
-    .reply(200, [TOP_SNIPPETS_FOLDER]);
+  fetchMock.get(
+    {
+      url: "path:/api/collection",
+      query: { namespace: "snippets" },
+    },
+    [TOP_SNIPPETS_FOLDER],
+  );
 
-  nock(location.origin)
-    .post("/api/collection")
-    .reply(200, (uri, body) => {
-      if (typeof body === "object") {
-        return createMockCollection(body);
-      }
-    });
+  fetchMock.post("path:/api/collection", async url => {
+    return createMockCollection(await fetchMock.lastCall(url)?.request?.json());
+  });
 
   renderWithProviders(
     <SnippetCollectionFormModal
@@ -84,10 +86,6 @@ const LABEL = {
 };
 
 describe("SnippetCollectionFormModal", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("new folder", () => {
     it("displays correct blank state", async () => {
       await setup();

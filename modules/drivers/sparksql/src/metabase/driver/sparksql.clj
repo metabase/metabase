@@ -2,8 +2,8 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [honeysql.core :as hsql]
-   [honeysql.helpers :as hh]
+   [honey.sql :as sql]
+   [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.connection-pool :as connection-pool]
    [metabase.driver :as driver]
@@ -22,9 +22,11 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.util.honeysql-extensions :as hx])
+   [metabase.util.honey-sql-2 :as h2x])
   (:import
    (java.sql Connection ResultSet)))
+
+(set! *warn-on-reflection* true)
 
 (driver/register! :sparksql, :parent :hive-like)
 
@@ -55,27 +57,36 @@
                                                        :else                   source-table)))]
     (parent-method driver field-clause)))
 
+(defn- format-over
+  "e.g. ROW_NUMBER() OVER (ORDER BY field DESC) AS __rownum__"
+  [_fn [expr partition]]
+  (let [[expr-sql & expr-args]           (sql/format-expr expr      {:nested true})
+        [partition-sql & partition-args] (sql/format-expr partition {:nested true})]
+    (into [(format "%s OVER %s" expr-sql partition-sql)]
+          cat
+          [expr-args
+           partition-args])))
+
+(sql/register-fn! ::over #'format-over)
+
 (defmethod sql.qp/apply-top-level-clause [:sparksql :page]
-  [_ _ honeysql-form {{:keys [items page]} :page}]
+  [_driver _clause honeysql-form {{:keys [items page]} :page}]
   (let [offset (* (dec page) items)]
     (if (zero? offset)
       ;; if there's no offset we can simply use limit
-      (hh/limit honeysql-form items)
+      (sql.helpers/limit honeysql-form items)
       ;; if we need to do an offset we have to do nesting to generate a row number and where on that
-      (let [over-clause (format "row_number() OVER (%s)"
-                                (first (hsql/format (select-keys honeysql-form [:order-by])
-                                                    :allow-dashed-names? true
-                                                    :quoting :mysql)))]
-        (-> (apply hh/select (map last (:select honeysql-form)))
-            (hh/from (hh/merge-select honeysql-form [(hx/raw over-clause) :__rownum__]))
-            (hh/where [:> :__rownum__ offset])
-            (hh/limit items))))))
+      (let [over-clause [::over :%row_number (select-keys honeysql-form [:order-by])]]
+        (-> (apply sql.helpers/select (map last (:select honeysql-form)))
+            (sql.helpers/from (sql.helpers/select honeysql-form [over-clause :__rownum__]))
+            (sql.helpers/where [:> :__rownum__ [:inline offset]])
+            (sql.helpers/limit [:inline items]))))))
 
 (defmethod sql.qp/apply-top-level-clause [:sparksql :source-table]
   [driver _ honeysql-form {source-table-id :source-table}]
   (let [{table-name :name, schema :schema} (qp.store/table source-table-id)]
-    (hh/from honeysql-form [(sql.qp/->honeysql driver (hx/identifier :table schema table-name))
-                            (sql.qp/->honeysql driver (hx/identifier :table-alias source-table-alias))])))
+    (sql.helpers/from honeysql-form [(sql.qp/->honeysql driver (h2x/identifier :table schema table-name))
+                                     [(sql.qp/->honeysql driver (h2x/identifier :table-alias source-table-alias))]])))
 
 
 ;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------
@@ -103,14 +114,18 @@
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-database :sparksql
-  [_ database]
+  [driver database]
   {:tables
-   (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
-     (set
-      (for [{:keys [database tablename tab_name], table-namespace :namespace} (jdbc/query {:connection conn} ["show tables"])]
-        {:name   (or tablename tab_name) ; column name differs depending on server (SparkSQL, hive, Impala)
-         :schema (or (not-empty database)
-                     (not-empty table-namespace))})))})
+   (sql-jdbc.execute/do-with-connection-with-options
+    driver
+    database
+    nil
+    (fn [^Connection conn]
+      (set
+       (for [{:keys [database tablename tab_name], table-namespace :namespace} (jdbc/query {:connection conn} ["show tables"])]
+         {:name   (or tablename tab_name) ; column name differs depending on server (SparkSQL, hive, Impala)
+          :schema (or (not-empty database)
+                      (not-empty table-namespace))}))))})
 
 ;; Hive describe table result has commented rows to distinguish partitions
 (defn- valid-describe-table-row? [{:keys [col_name data_type]}]
@@ -124,19 +139,23 @@
   {:name   table-name
    :schema schema
    :fields
-   (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
-     (let [results (jdbc/query {:connection conn} [(format
-                                                    "describe %s"
-                                                    (sql.u/quote-name driver :table
-                                                      (dash-to-underscore schema)
-                                                      (dash-to-underscore table-name)))])]
-       (set
-        (for [[idx {col-name :col_name, data-type :data_type, :as result}] (m/indexed results)
-              :when (valid-describe-table-row? result)]
-          {:name              col-name
-           :database-type     data-type
-           :base-type         (sql-jdbc.sync/database-type->base-type :hive-like (keyword data-type))
-           :database-position idx}))))})
+   (sql-jdbc.execute/do-with-connection-with-options
+    driver
+    database
+    nil
+    (fn [^Connection conn]
+      (let [results (jdbc/query {:connection conn} [(format
+                                                     "describe %s"
+                                                     (sql.u/quote-name driver :table
+                                                                       (dash-to-underscore schema)
+                                                                       (dash-to-underscore table-name)))])]
+        (set
+         (for [[idx {col-name :col_name, data-type :data_type, :as result}] (m/indexed results)
+               :when (valid-describe-table-row? result)]
+           {:name              col-name
+            :database-type     data-type
+            :base-type         (sql-jdbc.sync/database-type->base-type :hive-like (keyword data-type))
+            :database-position idx})))))})
 
 ;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
 (defmethod driver/execute-reducible-query :sparksql
@@ -156,15 +175,16 @@
 ;; 2.  SparkSQL doesn't support session timezones (at least our driver doesn't support it)
 ;; 3.  SparkSQL doesn't support making connections read-only
 ;; 4.  SparkSQL doesn't support setting the default result set holdability
-(defmethod sql-jdbc.execute/connection-with-timezone :sparksql
-  [driver database _timezone-id]
-  (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
-    (try
-      (.setTransactionIsolation conn Connection/TRANSACTION_READ_UNCOMMITTED)
-      conn
-      (catch Throwable e
-        (.close conn)
-        (throw e)))))
+(defmethod sql-jdbc.execute/do-with-connection-with-options :sparksql
+  [driver db-or-id-or-spec options f]
+  (sql-jdbc.execute/do-with-resolved-connection
+   driver
+   db-or-id-or-spec
+   options
+   (fn [^Connection conn]
+     (when-not (sql-jdbc.execute/recursive-connection?)
+       (.setTransactionIsolation conn Connection/TRANSACTION_READ_UNCOMMITTED))
+     (f conn))))
 
 ;; 1.  SparkSQL doesn't support setting holdability type to `CLOSE_CURSORS_AT_COMMIT`
 (defmethod sql-jdbc.execute/prepared-statement :sparksql
@@ -183,22 +203,21 @@
 ;; the current HiveConnection doesn't support .createStatement
 (defmethod sql-jdbc.execute/statement-supported? :sparksql [_] false)
 
-(doseq [feature [:basic-aggregations
-                 :binning
-                 :expression-aggregations
-                 :expressions
-                 :native-parameters
-                 :nested-queries
-                 :standard-deviation-aggregations]]
-  (defmethod driver/supports? [:sparksql feature] [_ _] true))
+(doseq [[feature supported?] {:basic-aggregations              true
+                              :binning                         true
+                              :expression-aggregations         true
+                              :expressions                     true
+                              :native-parameters               true
+                              :nested-queries                  true
+                              :standard-deviation-aggregations true
+                              :test/jvm-timezone-setting       false}]
+  (defmethod driver/database-supports? [:sparkql feature] [_driver _feature _db] supported?))
 
 ;; only define an implementation for `:foreign-keys` if none exists already. In test extensions we define an alternate
 ;; implementation, and we don't want to stomp over that if it was loaded already
-(when-not (get (methods driver/supports?) [:sparksql :foreign-keys])
-  (defmethod driver/supports? [:sparksql :foreign-keys] [_ _] true))
+(when-not (get (methods driver/database-supports?) [:sparksql :foreign-keys])
+  (defmethod driver/database-supports? [:sparksql :foreign-keys] [_driver _feature _db] true))
 
-(defmethod driver/database-supports? [:sparksql :test/jvm-timezone-setting]
-  [_driver _feature _database]
-  false)
-
-(defmethod sql.qp/quote-style :sparksql [_] :mysql)
+(defmethod sql.qp/quote-style :sparksql
+  [_driver]
+  :mysql)

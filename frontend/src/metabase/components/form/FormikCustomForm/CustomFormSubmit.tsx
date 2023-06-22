@@ -1,6 +1,5 @@
-import React from "react";
+import * as React from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import ActionButton from "metabase/components/ActionButton";
 
@@ -53,4 +52,5 @@ function CustomFormSubmit(props: CustomFormSubmitProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CustomFormSubmit;

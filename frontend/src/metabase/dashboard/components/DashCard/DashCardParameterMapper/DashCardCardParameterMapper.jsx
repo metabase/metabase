@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
@@ -16,17 +16,20 @@ import {
   getNativeDashCardEmptyMappingText,
   isNativeDashCard,
   isVirtualDashCard,
+  getVirtualCardType,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
 
+import { isActionDashCard } from "metabase/actions/utils";
 import Question from "metabase-lib/Question";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 
+import { normalize } from "metabase-lib/queries/utils/normalize";
 import {
   getEditingParameter,
   getParameterTarget,
-  makeGetParameterMappingOptions,
+  getParameterMappingOptions,
 } from "../../../selectors";
 import { setParameterMapping } from "../../../actions";
 
@@ -58,7 +61,7 @@ function formatSelected({ name, sectionName }) {
 const mapStateToProps = (state, props) => ({
   editingParameter: getEditingParameter(state, props),
   target: getParameterTarget(state, props),
-  mappingOptions: makeGetParameterMappingOptions()(state, props),
+  mappingOptions: getParameterMappingOptions(state, props),
   metadata: getMetadata(state),
 });
 
@@ -77,7 +80,7 @@ DashCardCardParameterMapper.propTypes = {
   isMobile: PropTypes.bool,
 };
 
-function DashCardCardParameterMapper({
+export function DashCardCardParameterMapper({
   card,
   dashcard,
   editingParameter,
@@ -92,9 +95,9 @@ function DashCardCardParameterMapper({
   const hasSeries = dashcard.series && dashcard.series.length > 0;
   const onlyAcceptsSingleValue =
     isVariableTarget(target) && !isDateParameter(editingParameter);
-  const isDisabled = mappingOptions.length === 0;
-  const selectedMappingOption = _.find(mappingOptions, o =>
-    _.isEqual(o.target, target),
+  const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
+  const selectedMappingOption = _.find(mappingOptions, option =>
+    _.isEqual(normalize(option.target), normalize(target)),
   );
 
   const handleChangeTarget = useCallback(
@@ -105,6 +108,7 @@ function DashCardCardParameterMapper({
   );
 
   const isVirtual = isVirtualDashCard(dashcard);
+  const virtualCardType = getVirtualCardType(dashcard);
   const isNative = isNativeDashCard(dashcard);
 
   const hasPermissionsToMap = useMemo(() => {
@@ -176,7 +180,12 @@ function DashCardCardParameterMapper({
     }
   }, [dashcard, isVirtual, isNative, isDisabled, isMobile]);
 
-  const mappingInfoText = t`You can connect widgets to {{variables}} in text cards.`;
+  const mappingInfoText =
+    {
+      text: t`You can connect widgets to {{variables}} in text cards.`,
+      link: t`You cannot connect variables to link cards.`,
+      action: t`Open this card's action settings to connect variables`,
+    }[virtualCardType] ?? "";
 
   return (
     <Container>
@@ -188,7 +197,7 @@ function DashCardCardParameterMapper({
             {mappingInfoText}
           </TextCardDefault>
         ) : (
-          <TextCardDefault>
+          <TextCardDefault aria-label={mappingInfoText}>
             <Icon
               name="info"
               size={16}
@@ -230,6 +239,7 @@ function DashCardCardParameterMapper({
             >
               <TargetButton
                 variant={buttonVariant}
+                aria-label={buttonTooltip}
                 aria-haspopup="listbox"
                 aria-expanded={isDropdownVisible}
                 aria-disabled={isDisabled || !hasPermissionsToMap}

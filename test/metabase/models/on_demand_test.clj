@@ -11,7 +11,8 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- do-with-mocked-field-values-updating
   "Run F the function responsible for updating FieldValues bound to a mock function that instead just records the names
@@ -48,8 +49,8 @@
                                          (:field options))]]
     (do-with-mocked-field-values-updating
      (fn [updated-field-names]
-       (mt/with-temp Card [card (merge {:dataset_query (native-query-with-template-tag field)}
-                                       (:card options))]
+       (t2.with-temp/with-temp [Card card (merge {:dataset_query (native-query-with-template-tag field)}
+                                                 (:card options))]
          (when f
            (f {:db db, :table table, :field field, :card card, :updated-field-names updated-field-names})))))))
 
@@ -83,7 +84,7 @@
                 (reset! updated-field-names #{})
                 ;; now update the Card... since param didn't change at all FieldValues
                 ;; should not be updated
-                (db/update! Card (u/the-id card) card))))))
+                (t2/update! Card (u/the-id card) card))))))
 
     (testing "with changed param referencing Field in On-Demand DB should get updated FieldValues"
       (is (= #{"New Field"}
@@ -94,11 +95,11 @@
                 ;; clear out the list of updated field names
                 (reset! updated-field-names #{})
                 ;; now Change the Field that is referenced by the Card's SQL param
-                (mt/with-temp Field [new-field {:table_id         (u/the-id table)
-                                                :has_field_values "list"
-                                                :name             "New Field"}]
-                  (db/update! Card (u/the-id card)
-                              :dataset_query (native-query-with-template-tag new-field))))))))
+                (t2.with-temp/with-temp [Field new-field {:table_id         (u/the-id table)
+                                                          :has_field_values "list"
+                                                          :name             "New Field"}]
+                  (t2/update! Card (u/the-id card)
+                              {:dataset_query (native-query-with-template-tag new-field)})))))))
 
     (testing "with newly added param referencing Field in On-Demand DB should get updated FieldValues"
       (is (= #{"New Field"}
@@ -110,8 +111,8 @@
               (fn [{:keys [field card]}]
                 ;; now change the query to one that references our Field in a
                 ;; on-demand DB. Field should have updated values
-                (db/update! Card (u/the-id card)
-                            :dataset_query (native-query-with-template-tag field)))))))
+                (t2/update! Card (u/the-id card)
+                            {:dataset_query (native-query-with-template-tag field)}))))))
 
     (testing "with unchanged param referencing Field in non-On-Demand DB should *not* get updated FieldValues"
       (is (= #{}
@@ -120,7 +121,7 @@
               {:db {:is_on_demand false}}
               (fn [{:keys [card]}]
                 ;; update the Card. Field should get updated values
-                (db/update! Card (u/the-id card) card))))))
+                (t2/update! Card (u/the-id card) card))))))
 
     (testing "with newly added param referencing Field in non-On-Demand DB should *not* get updated FieldValues"
       (is (= #{}
@@ -131,8 +132,8 @@
               (fn [{:keys [field card]}]
                 ;; now change the query to one that references a Field. Field should
                 ;; not get values since DB is not On-Demand
-                (db/update! Card (u/the-id card)
-                            :dataset_query (native-query-with-template-tag field)))))))
+                (t2/update! Card (u/the-id card)
+                            {:dataset_query (native-query-with-template-tag field)}))))))
 
     (testing "with changed param referencing Field in non-On-Demand DB should *not* get updated FieldValues"
       (is (= #{}
@@ -142,11 +143,11 @@
               (fn [{:keys [table card]}]
                 ;; change the query to one referencing a different Field. Field should
                 ;; not get values since DB is not On-Demand
-                (mt/with-temp Field [new-field {:table_id         (u/the-id table)
-                                                :has_field_values "list"
-                                                :name             "New Field"}]
-                  (db/update! Card (u/the-id card)
-                              :dataset_query (native-query-with-template-tag new-field))))))))))
+                (t2.with-temp/with-temp [Field new-field {:table_id         (u/the-id table)
+                                                          :has_field_values "list"
+                                                          :name             "New Field"}]
+                  (t2/update! Card (u/the-id card)
+                              {:dataset_query (native-query-with-template-tag new-field)})))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -164,23 +165,24 @@
     :target  [:dimension [:field (u/the-id field-or-id) nil]]}])
 
 (defn- add-dashcard-with-parameter-mapping! [dashboard-or-id card-or-id field-or-id]
-  (dashboard/add-dashcard! dashboard-or-id card-or-id
-                           {:row                0
-                            :col                0
-                            :size_x             4
-                            :size_y             4
-                            :parameter_mappings (parameter-mappings-for-card-and-field card-or-id field-or-id)}))
+  (dashboard/add-dashcards! dashboard-or-id
+                            [{:card_id            (u/the-id card-or-id)
+                              :row                0
+                              :col                0
+                              :size_x             4
+                              :size_y             4
+                              :parameter_mappings (parameter-mappings-for-card-and-field card-or-id field-or-id)}]))
 
 (defn- do-with-updated-fields-for-dashboard {:style/indent 1} [options & [f]]
   (do-with-updated-fields-for-card (merge {:card {:dataset_query (basic-mbql-query)}}
                                           options)
                                    (fn [objects]
-                                     (mt/with-temp Dashboard [dash]
+                                     (t2.with-temp/with-temp [Dashboard dash]
                                        (let [dashcard (add-dashcard-with-parameter-mapping! dash (:card objects) (:field objects))]
                                          (when f
                                            (f (assoc objects
                                                      :dash     dash
-                                                     :dashcard dashcard))))))))
+                                                     :dashcard (first dashcard)))))))))
 
 (deftest existing-dashboard-test
   (testing "Existing Dashboard"
@@ -210,14 +212,14 @@
               {:db {:is_on_demand true}}
               (fn [{:keys [table card dash dashcard updated-field-names]}]
                 ;; create a Dashboard and add a DashboardCard with a param mapping
-                (mt/with-temp Field [new-field {:table_id         (u/the-id table)
-                                                :name             "New Field"
-                                                :has_field_values "list"}]
+                (t2.with-temp/with-temp [Field new-field {:table_id         (u/the-id table)
+                                                          :name             "New Field"
+                                                          :has_field_values "list"}]
                   ;; clear out the list of updated Field Names
                   (reset! updated-field-names #{})
                   ;; ok, now update the parameter mapping to the new field. The new Field should get new values
-                  (dashboard/update-dashcards! dash
-                                               [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))
+                  (dashboard/update-dashcards! (t2/hydrate dash [:ordered_cards :series :card])
+                    [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))
 
     (testing "with newly added param referencing Field in non-On-Demand DB should *not* get updated FieldValues"
       (is (= #{}
@@ -236,6 +238,6 @@
              (do-with-updated-fields-for-dashboard
               {:db {:is_on_demand false}}
               (fn [{:keys [table card dash dashcard]}]
-                (mt/with-temp Field [new-field {:table_id (u/the-id table), :has_field_values "list"}]
-                  (dashboard/update-dashcards! dash
-                                               [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))))
+                (t2.with-temp/with-temp [Field new-field {:table_id (u/the-id table), :has_field_values "list"}]
+                  (dashboard/update-dashcards! (t2/hydrate dash [:ordered_cards :series :card])
+                    [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))))

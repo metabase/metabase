@@ -1,17 +1,21 @@
 (ns metabase.test.data.snowflake
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
-            [metabase.test.data.sql-jdbc.execute :as execute]
-            [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+   [metabase.test.data.sql-jdbc.execute :as execute]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :snowflake)
 
@@ -29,13 +33,24 @@
                               :type/Time           "TIME"}]
   (defmethod sql.tx/field-base-type->sql-type [:snowflake base-type] [_ _] sql-type))
 
+(def ^:dynamic *database-prefix-fn*
+  "Function that returns a unique prefix to use for test datasets for this instance. This is dynamic so we can rebind it
+  to something fixed when we're testing the SQL we generate
+  e.g. [[metabase.driver.snowflake-test/report-timezone-test]].
+
+  This is a function because [[unique-prefix]] can't be calculated until the application database is initialized
+  because it relies on [[public-settings/site-uuid]]."
+  #'sql.tu.unique-prefix/unique-prefix)
+
 (defn- qualified-db-name
-  "Prepend `database-name` with a version number so we can create new versions without breaking existing tests."
+  "Prepend `database-name` with the [[*database-prefix-fn*]] so we don't stomp on any other jobs running at the same
+  time."
   [database-name]
-  ;; try not to qualify the database name twice!
-  (if (str/starts-with? database-name "v3_")
-    database-name
-    (str "v3_" database-name)))
+  (let [prefix (*database-prefix-fn*)]
+    ;; try not to qualify the database name twice!
+    (if (str/starts-with? database-name prefix)
+      database-name
+      (str prefix database-name))))
 
 (defmethod tx/dbdef->connection-details :snowflake
   [_ context {:keys [database-name]}]
@@ -70,54 +85,80 @@
   []
   (sql-jdbc.conn/connection-details->spec :snowflake (tx/dbdef->connection-details :snowflake :server nil)))
 
-(defn- existing-dataset-names []
-  (let [db-spec (no-db-connection-spec)]
-    (jdbc/with-db-metadata [metadata db-spec]
-      ;; for whatever dumb reason the Snowflake JDBC driver always returns these as uppercase despite us making them
-      ;; all lower-case
-      (set (map u/lower-case-en (sql-jdbc.sync/get-catalogs metadata))))))
+(defn- old-dataset-names
+  "Return a collection of all dataset names that are old -- prefixed with a date two days ago or older?"
+  []
+  (sql-jdbc.execute/do-with-connection-with-options
+   :snowflake
+   (no-db-connection-spec)
+   {:write? true}
+   (fn [^java.sql.Connection conn]
+     (let [metadata (.getMetaData conn)]
+       (with-open [rset (.getCatalogs metadata)]
+         (loop [acc []]
+           (if-not (.next rset)
+             acc
+             ;; for whatever dumb reason the Snowflake JDBC driver always returns these as uppercase despite us making
+             ;; them all lower-case
+             (let [catalog (u/lower-case-en (.getString rset "TABLE_CAT"))
+                   acc     (cond-> acc
+                             (sql.tu.unique-prefix/old-dataset-name? catalog) (conj catalog))]
+               (recur acc)))))))))
 
-(let [datasets (atom nil)]
-  (defn- existing-datasets []
-    (when-not (seq @datasets)
-      (reset! datasets (existing-dataset-names))
-      (log/infof "These Snowflake datasets have already been loaded:\n%s" (u/pprint-to-str (sort @datasets))))
-    @datasets)
+(defn- delete-old-datasets!
+  "Delete any datasets prefixed by a date that is two days ago or older. See comments above."
+  []
+  ;; the printlns below are on purpose because we want them to show up when running tests, even on CI, to make sure this
+  ;; stuff is working correctly. We can change it to `log` in the future when we're satisfied everything is working as
+  ;; intended -- Cam
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (println "[Snowflake] deleting old datasets...")
+  (when-let [old-datasets (not-empty (old-dataset-names))]
+    (sql-jdbc.execute/do-with-connection-with-options
+     :snowflake
+     (no-db-connection-spec)
+     {:write? true}
+     (fn [^java.sql.Connection conn]
+       (with-open [stmt (.createStatement conn)]
+         (doseq [dataset-name old-datasets]
+           #_{:clj-kondo/ignore [:discouraged-var]}
+           (println "[Snowflake] Deleting old dataset:" dataset-name)
+           (try
+             (.execute stmt (format "DROP DATABASE \"%s\";" dataset-name))
+             ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
+             ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
+             ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
+             (catch Throwable e
+               #_{:clj-kondo/ignore [:discouraged-var]}
+               (println "[Snowflake] Error deleting old dataset:" (ex-message e))))))))))
 
-  (defn- add-existing-dataset! [database-name]
-    (swap! datasets conj database-name))
+(defonce ^:private deleted-old-datasets?
+  (atom false))
 
-  (defn- remove-existing-dataset! [database-name]
-    (swap! datasets disj database-name)))
+(defn- delete-old-datsets-if-needed!
+  "Call [[delete-old-datasets!]], only if we haven't done so already."
+  []
+  (when-not @deleted-old-datasets?
+    (locking deleted-old-datasets?
+      (when-not @deleted-old-datasets?
+        (delete-old-datasets!)
+        (reset! deleted-old-datasets? true)))))
 
 (defmethod tx/create-db! :snowflake
   [driver db-def & options]
-  (let [{:keys [database-name], :as db-def} (update db-def :database-name qualified-db-name)]
-    ;; ok, now check if already created. If already created, no-op
-    (when-not (contains? (existing-datasets) database-name)
-      (log/infof "Creating new Snowflake database %s..." (pr-str database-name))
-      ;; if not created, create the DB...
-      (try
-        ;; call the default impl for SQL JDBC drivers
-        (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)
-        ;; and add it to the set of DBs that have been created
-        (add-existing-dataset! database-name)
-        ;; if creating the DB failed, DROP it so we don't get stuck with a DB full of bad data and skip trying to
-        ;; load it next time around
-        (catch Throwable e
-          (let [drop-db-sql (format "DROP DATABASE \"%s\";" database-name)]
-            (log/errorf "Creating DB failed: %s" e)
-            (log/errorf "[Snowflake] %s" drop-db-sql)
-            (jdbc/execute! (no-db-connection-spec) [drop-db-sql]))
-          (throw e))))))
+  ;; qualify the DB name with the unique prefix
+  (let [db-def (update db-def :database-name qualified-db-name)]
+    ;; clean up any old datasets that should be deleted
+    (delete-old-datsets-if-needed!)
+    ;; now call the default impl for SQL JDBC drivers
+    (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))
 
 (defmethod tx/destroy-db! :snowflake
-  [_ {:keys [database-name]}]
+  [_driver {:keys [database-name]}]
   (let [database-name (qualified-db-name database-name)
         sql           (format "DROP DATABASE \"%s\";" database-name)]
     (log/infof "[Snowflake] %s" sql)
-    (jdbc/execute! (no-db-connection-spec) [sql])
-    (remove-existing-dataset! database-name)))
+    (jdbc/execute! (no-db-connection-spec) [sql])))
 
 ;; For reasons I don't understand the Snowflake JDBC driver doesn't seem to work when trying to use parameterized
 ;; INSERT statements, even though the documentation suggests it should. Just go ahead and deparameterize all the

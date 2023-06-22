@@ -13,7 +13,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server))
 
@@ -101,9 +101,8 @@
             (is (not (realized? full-sync?)))
             (is @smaller-sync))))
       (testing "errors on unrecognized scan options"
-        (is (= {:errors
-                {:scan "value may be nil, or if non-nil, value must be one of: `full`, `schema`."}}
-               (post {:scan :unrecognized} 400)))))))
+        (is (= {:scan "nullable enum of full, schema"}
+               (:errors (post {:scan :unrecognized} 400))))))))
 
 ;; TODO - Consider generalizing this in the future. It was taken from `metabase.driver.postgres-test`
 ;; Perhaps if there's another instance where it is used put it somewhere common.
@@ -131,7 +130,7 @@
         (mt/with-temp* [Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]]
           (let [spec     (sql-jdbc.conn/connection-details->spec :postgres details)
                 exec!    (fn [spec statements] (doseq [statement statements] (jdbc/execute! spec [statement])))
-                tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (db/select 'Table :db_id (:id %))))
+                tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (t2/select 'Table :db_id (:id %))))
                 post     (fn post-api
                            ([payload] (post-api payload 200))
                            ([payload expected-code]

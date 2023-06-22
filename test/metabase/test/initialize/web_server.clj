@@ -1,11 +1,13 @@
 (ns metabase.test.initialize.web-server
   (:require
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.models.setting :as setting]
    [metabase.server :as server]
-   [metabase.server.handler :as handler]))
+   [metabase.server.handler :as handler]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (defn- test-handler
   ([request]

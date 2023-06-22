@@ -1,9 +1,9 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
+import Button from "metabase/core/components/Button";
 import SelectButton from "metabase/core/components/SelectButton";
 import Triggerable from "metabase/components/Triggerable";
-import ColorPill from "metabase/core/components/ColorPill";
 import ChartSettingColorPicker from "./ChartSettingColorPicker";
 
 interface ChartSettingFieldPickerRootProps {
@@ -57,6 +57,15 @@ interface SettingsIconProps {
   noPointer?: boolean;
   noMargin?: boolean;
 }
+
+export const SettingsButton = styled(Button)<SettingsIconProps>`
+  margin-left: ${props => (props.noMargin ? "0" : "0.75rem")};
+  padding: 0;
+
+  &:hover {
+    background-color: unset;
+  }
+`;
 
 export const SettingsIcon = styled(Icon)<SettingsIconProps>`
   margin-left: ${props => (props.noMargin ? "0" : "0.75rem")};

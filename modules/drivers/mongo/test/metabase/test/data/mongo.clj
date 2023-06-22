@@ -1,20 +1,30 @@
 (ns metabase.test.data.mongo
-  (:require [cheshire.core :as json]
-            [cheshire.generate :as json.generate]
-            [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [medley.core :as m]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.mongo.util :refer [with-mongo-connection]]
-            [metabase.test.data.interface :as tx]
-            [monger.collection :as mcoll]
-            [monger.core :as mg])
-  (:import com.fasterxml.jackson.core.JsonGenerator))
+  (:require
+   [cheshire.core :as json]
+   [cheshire.generate :as json.generate]
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [flatland.ordered.map :as ordered-map]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.mongo.util :refer [with-mongo-connection]]
+   [metabase.test.data.interface :as tx]
+   [monger.collection :as mcoll]
+   [monger.core :as mg])
+  (:import
+   (com.fasterxml.jackson.core JsonGenerator)))
+
+(set! *warn-on-reflection* true)
 
 (tx/add-test-extensions! :mongo)
 
 (defmethod tx/supports-time-type? :mongo [_driver] false)
 (defmethod tx/supports-timestamptz-type? :mongo [_driver] false)
+
+;; during unit tests don't treat Mongo as having FK support
+(defmethod driver/supports? [:mongo :foreign-keys] [_ _] (not config/is-test?))
 
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."
@@ -48,7 +58,7 @@
                    {:pass password}))))
 
 (defn- destroy-db! [driver dbdef]
-  (with-mongo-connection [mongo-connection (tx/dbdef->connection-details driver :server dbdef)]
+  (with-mongo-connection [^com.mongodb.DB mongo-connection (tx/dbdef->connection-details driver :server dbdef)]
     (mg/drop-db (.getMongo mongo-connection) (tx/escaped-database-name dbdef))))
 
 (def ^:dynamic *remove-nil?*
@@ -67,7 +77,7 @@
         (doseq [[i row] (map-indexed vector rows)]
           (try
             ;; Insert each row
-            (mcoll/insert mongo-db (name table-name) (into {:_id (inc i)}
+            (mcoll/insert mongo-db (name table-name) (into (ordered-map/ordered-map :_id (inc i))
                                                            (cond->> (zipmap field-names row)
                                                              *remove-nil?* (m/remove-vals nil?))))
             ;; If row already exists then nothing to do
@@ -79,8 +89,8 @@
 
 (defmethod ddl.i/format-name :mongo
   [_ table-or-field-name]
-  (if (= table-or-field-name "id")
-    "_id"
+  (if (re-matches #"id(?:_\d+)?" table-or-field-name)
+    (str "_" table-or-field-name)
     table-or-field-name))
 
 (defn- json-raw
@@ -114,3 +124,14 @@
                   {:$sort {"_id" 1}}
                   {:$project {"_id" false, "count" true}}])
    :collection  (name table-name)})
+
+(defmethod tx/aggregate-column-info :mongo
+  ([driver ag-type]
+   (merge ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type)
+          (when (#{:count :cum-count} ag-type)
+            {:base_type :type/Integer})))
+
+  ([driver ag-type column-metadata]
+   (merge ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type column-metadata)
+          (when (= ag-type :cum-count)
+            {:base_type :type/Integer}))))

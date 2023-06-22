@@ -442,14 +442,6 @@
      (integer? id-or-name))
    "Must be a :field with an integer Field ID."))
 
-(def ^{:clause-name :field, :added "0.39.0"} field:name
-  "Schema for a `:field` clause, with the added constraint that it must use an string Field name."
-  (s/constrained
-   field
-   (fn [[_ id-or-name]]
-     (string? id-or-name))
-   "Must be a :field with a string Field name."))
-
 (def ^:private Field*
   (one-of expression field))
 
@@ -597,11 +589,16 @@
     interval
     NumericExpressionArg))
 
+(def ^:private IntGreaterThanZeroOrNumericExpression
+  (s/if number?
+    helpers/IntGreaterThanZero
+    NumericExpressionArg))
+
 (defclause ^{:requires-features #{:expressions}} coalesce
   a ExpressionArg, b ExpressionArg, more (rest ExpressionArg))
 
 (defclause ^{:requires-features #{:expressions}} substring
-  s StringExpressionArg, start NumericExpressionArg, length (optional NumericExpressionArg))
+  s StringExpressionArg, start IntGreaterThanZeroOrNumericExpression, length (optional NumericExpressionArg))
 
 (defclause ^{:requires-features #{:expressions}} length
   s StringExpressionArg)
@@ -776,7 +773,7 @@
    Field))
 
 (def ^:private EqualityComparable
-  "Schema for things things that make sense in a `=` or `!=` filter, i.e. things that can be compared for equality."
+  "Schema for things that make sense in a `=` or `!=` filter, i.e. things that can be compared for equality."
   (s/maybe
    (s/cond-pre
     s/Bool
@@ -927,7 +924,6 @@
 (def ^:private StringExpression*
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case))
 
-
 (def FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
   `:+` clause or a `:field` clause."
@@ -936,8 +932,8 @@
    (partial is-clause? string-functions)   StringExpression
    (partial is-clause? boolean-functions)  BooleanExpression
    (partial is-clause? datetime-functions) DatetimeExpression
-   (partial is-clause? :case)                        case
-   :else                                             Field))
+   (partial is-clause? :case)              case
+   :else                                   Field))
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
 
@@ -975,7 +971,6 @@
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev
   field-or-expression FieldOrExpressionDef)
 
-(declare ag:var) ;; for clj-kondo
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} [ag:var var]
   field-or-expression FieldOrExpressionDef)
 
@@ -988,10 +983,7 @@
 
 ;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
 ;; expanded to other aggregations/etc. in the expand-macros middleware
-;;
-;; METRICS WITH STRING IDS, e.g. `[:metric "ga:sessions"]`, are Google Analytics metrics, not Metabase metrics! They
-;; pass straight thru to the GA query processor.
-(defclause ^:sugar metric, metric-id (s/cond-pre helpers/IntGreaterThanZero helpers/NonBlankString))
+(defclause ^:sugar metric, metric-id helpers/IntGreaterThanZero)
 
 ;; the following are definitions for expression aggregations, e.g.
 ;;
@@ -1132,7 +1124,7 @@
     ;; whether or not a value for this parameter is required in order to run the query
     (s/optional-key :required) s/Bool}))
 
-(declare ParameterType)
+(declare ParameterType WidgetType)
 
 ;; Example:
 ;;
@@ -1150,7 +1142,9 @@
     :dimension   field
     ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
     ;; are allowed to be specified for it.
-    :widget-type (s/recursive #'ParameterType)}))
+    :widget-type (s/recursive #'WidgetType)
+    ;; optional map to be appended to filter clause
+    (s/optional-key :options) {s/Keyword s/Any}}))
 
 (def raw-value-template-tag-types
   "Set of valid values of `:type` for raw value template tags."
@@ -1520,14 +1514,13 @@
    :string/ends-with        {:type :string, :operator :unary, :allowed-for #{:string/ends-with}}
    :string/starts-with      {:type :string, :operator :unary, :allowed-for #{:string/starts-with}}})
 
-(defn valid-parameter-type?
-  "Whether `param-type` is a valid non-abstract parameter type."
-  [param-type]
-  (get parameter-types param-type))
-
 (def ParameterType
   "Schema for valid values of `:type` for a [[Parameter]]."
   (apply s/enum (keys parameter-types)))
+
+(def WidgetType
+  "Schema for valid values of `:widget-type` for a [[TemplateTag:FieldFilter]]."
+  (apply s/enum (cons :none (keys parameter-types))))
 
 ;; the next few clauses are used for parameter `:target`... this maps the parameter to an actual template tag in a
 ;; native query or Field for MBQL queries.

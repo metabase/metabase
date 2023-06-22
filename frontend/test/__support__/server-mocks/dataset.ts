@@ -1,9 +1,22 @@
-import { Scope } from "nock";
+import fetchMock from "fetch-mock";
 import { ParameterValues } from "metabase-types/api";
+import { createMockDataset, MockDatasetOpts } from "metabase-types/api/mocks";
 
 export function setupParameterValuesEndpoints(
-  scope: Scope,
   parameterValues: ParameterValues,
 ) {
-  scope.post("/api/dataset/parameter/values").reply(200, parameterValues);
+  fetchMock.post("path:/api/dataset/parameter/values", parameterValues);
+}
+
+export function setupErrorParameterValuesEndpoints() {
+  fetchMock.post("path:/api/dataset/parameter/values", 500);
+}
+
+export function setupCardDataset(
+  options: MockDatasetOpts = {},
+  overwriteRoutes = false,
+) {
+  fetchMock.post("path:/api/dataset", createMockDataset(options), {
+    overwriteRoutes,
+  });
 }

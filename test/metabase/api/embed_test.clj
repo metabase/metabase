@@ -27,7 +27,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io ByteArrayInputStream)))
 
@@ -59,7 +60,7 @@
   (let [m (merge (when-not (:dataset_query m)
                    {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})})
                  m)]
-    (mt/with-temp Card [card m]
+    (t2.with-temp/with-temp [Card card m]
       (f card))))
 
 (defmacro with-temp-card {:style/indent 1} [[binding & [card]] & body]
@@ -104,13 +105,13 @@
 (defn ^:deprecated test-query-results
   "DEPRECATED -- you should use `schema=` instead"
   ([actual]
-   (is (= {:data       {:cols             [(mt/obj->json->obj (qp.test/aggregate-col :count))]
-                        :rows             [[100]]
-                        :insights         nil
-                        :results_timezone "UTC"}
-           :json_query {}
-           :status     "completed"}
-          actual)))
+   (is (=? {:data       {:cols             [(mt/obj->json->obj (qp.test/aggregate-col :count))]
+                         :rows             [[100]]
+                         :insights         nil
+                         :results_timezone "UTC"}
+            :json_query {}
+            :status     "completed"}
+           actual)))
 
   ([results-format actual]
    (case results-format
@@ -146,10 +147,12 @@
    :visualization_settings {}
    :dataset_query          {:type "query"}
    :parameters             []
+   :param_values           nil
    :param_fields           nil})
 
 (def successful-dashboard-info
-  {:description nil, :parameters [], :ordered_cards [], :param_fields nil})
+  {:auto_apply_filters true, :description nil, :parameters [], :ordered_cards [], :ordered_tabs [],
+   :param_values nil, :param_fields nil})
 
 (def ^:private yesterday (time/minus (time/now) (time/days 1)))
 
@@ -197,12 +200,12 @@
       (with-temp-card [card {:enable_embedding true
                              :dataset_query    {:database (mt/id)
                                                 :type     :native
-                                                :native   {:template-tags {:a {:type "date", :name "a", :display_name "a"}
-                                                                           :b {:type "date", :name "b", :display_name "b"}
-                                                                           :c {:type "date", :name "c", :display_name "c"}
-                                                                           :d {:type "date", :name "d", :display_name "d"}}}}
+                                                :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a"}
+                                                                           :b {:type "date", :name "b", :display_name "b" :id "b"}
+                                                                           :c {:type "date", :name "c", :display_name "c" :id "c"}
+                                                                           :d {:type "date", :name "d", :display_name "d" :id "d"}}}}
                              :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}}]
-        (is (=? {:parameters [{:id      nil
+        (is (=? {:parameters [{:id      "d"
                                :type    "date/single"
                                :target  ["variable" ["template-tag" "d"]]
                                :name    "d"
@@ -210,6 +213,47 @@
                                :default nil}]}
                 (client/client :get 200 (card-url card {:params {:c 100}}))))))))
 
+(deftest parameters-should-include-template-tags
+  (testing "parameters should get from both template-tags and card.parameters"
+    ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
+    ;; because doing such migration is costly.
+    ;; so there are cards where some parameters in template-tags does not exist in card.parameters
+    ;; that why we need to keep concat both of them then dedupe by id
+    (with-embedding-enabled-and-new-secret-key
+      (with-temp-card [card {:enable_embedding true
+                             :dataset_query    {:database (mt/id)
+                                                :type     :native
+                                                :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a" :default "A TAG"}
+                                                                           :b {:type "date", :name "b", :display_name "b" :id "b" :default "B TAG"}
+                                                                           :c {:type "date", :name "c", :display_name "c" :id "c" :default "C TAG"}
+                                                                           :d {:type "date", :name "d", :display_name "d" :id "d" :default "D TAG"}}}}
+                             :parameters       [{:type "date", :name "a", :display_name "a" :id "a" :default "A param"}
+                                                {:type "date", :name "b", :display_name "b" :id "b" :default "B param"}
+                                                {:type "date", :name "c", :display_name "c" :id "c" :default "C param"
+                                                 :values_source_type "static-list"  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
+                             :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}}]
+        (let [parameters (:parameters (client/client :get 200 (card-url card)))]
+          (is (= [;; the parmeter with id = "c" exists in both card.parameters and tempalte-tags should have info
+                  ;; merge of both places
+                  {:id "c",
+                   :type "date/single",
+                   :display_name "c",
+                   :target ["variable" ["template-tag" "c"]],
+                   :name "c",
+                   :slug "c",
+                   ;; order importance: the default from template-tag is in the final result
+                   :default "C TAG"
+                   :values_source_type    "static-list"
+                   :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}
+                  ;; the parameter id = "d" is in template-tags, but not card.parameters,
+                  ;; when fetching card we should get it returned
+                  {:id "d",
+                   :type "date/single",
+                   :target ["variable" ["template-tag" "d"]],
+                   :name "d",
+                   :slug "d",
+                   :default "D TAG"}]
+                 parameters)))))))
 
 ;;; ------------------------- GET /api/embed/card/:token/query (and JSON/CSV/XLSX variants) --------------------------
 
@@ -371,13 +415,13 @@
 (deftest csv-reports-count
   (testing "make sure CSV (etc.) downloads take editable params into account (#6407)"
     (with-embedding-enabled-and-new-secret-key
-      (mt/with-temp Card [card (card-with-date-field-filter)]
+      (t2.with-temp/with-temp [Card card (card-with-date-field-filter)]
         (is (= "count\n107\n"
                (client/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
 
 (deftest csv-forward-url-test
   (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp Card [card (card-with-date-field-filter)]
+    (t2.with-temp/with-temp [Card card (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
       (binding [client/*url-prefix* (str/replace client/*url-prefix* #"/api/$" "/")]
         (mt/with-temporary-setting-values [site-url client/*url-prefix*]
@@ -392,27 +436,27 @@
 
 (deftest it-should-be-possible-to-call-this-endpoint-successfully
   (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp Dashboard [dash {:enable_embedding true}]
+    (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
       (is (= successful-dashboard-info
              (dissoc-id-and-name
               (client/client :get 200 (dashboard-url dash))))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token-2
   (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp Dashboard [dash {:enable_embedding true}]
+    (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
       (is (re= #"^Token is expired.*"
                (client/client :get 400 (dashboard-url dash {:exp (buddy-util/to-timestamp yesterday)})))))))
 
 (deftest check-that-the-dashboard-endpoint-doesn-t-work-if-embedding-isn-t-enabled
   (mt/with-temporary-setting-values [enable-embedding false]
     (with-new-secret-key
-      (mt/with-temp Dashboard [dash]
+      (t2.with-temp/with-temp [Dashboard dash]
         (is (= "Embedding is not enabled."
                (client/client :get 400 (dashboard-url dash))))))))
 
 (deftest check-that-if-embedding--is--enabled-globally-but-not-for-the-dashboard-the-request-fails
   (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp Dashboard [dash]
+    (t2.with-temp/with-temp [Dashboard dash]
       (is (= "Embedding is not enabled for this object."
              (client/client :get 400 (dashboard-url dash)))))))
 
@@ -420,14 +464,14 @@
   (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are signed "
                 "with the wrong key")
     (with-embedding-enabled-and-new-secret-key
-      (mt/with-temp Dashboard [dash {:enable_embedding true}]
+      (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
         (is (= "Message seems corrupt or manipulated."
                (client/client :get 400 (with-new-secret-key (dashboard-url dash)))))))))
 
 (deftest only-enabled-params-that-are-not-present-in-the-jwt-come-back
   (testing "check that only ENABLED params that ARE NOT PRESENT IN THE JWT come back"
     (with-embedding-enabled-and-new-secret-key
-      (mt/with-temp Dashboard [dash {:enable_embedding true
+      (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true
                                      :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}
                                      :parameters       [{:id "_a", :slug "a", :name "a", :type "date"}
                                                         {:id "_b", :slug "b", :name "b", :type "date"}
@@ -579,11 +623,11 @@
 (deftest make-sure-that-multiline-series-word-as-expected---4768-
   (testing "make sure that multiline series word as expected (#4768)"
     (with-embedding-enabled-and-new-secret-key
-      (mt/with-temp Card [series-card {:dataset_query {:database (mt/id)
+      (t2.with-temp/with-temp [Card series-card {:dataset_query {:database (mt/id)
                                                        :type     :query
                                                        :query    {:source-table (mt/id :venues)}}}]
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
-          (mt/with-temp DashboardCardSeries [_ {:dashboardcard_id (u/the-id dashcard)
+          (t2.with-temp/with-temp [DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
                                                 :card_id          (u/the-id series-card)
                                                 :position         0}]
             (is (= "completed"
@@ -603,7 +647,7 @@
 
 (defn- do-with-embedding-enabled-and-temp-card-referencing {:style/indent 2} [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp Card [card (assoc (public-test/mbql-card-referencing table-kw field-kw)
+    (t2.with-temp/with-temp [Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
                                :enable_embedding true)]
       (f card))))
 
@@ -643,7 +687,7 @@
 (deftest embedding-not-enabled-message
   (is (= "Embedding is not enabled for this object."
          (with-embedding-enabled-and-temp-card-referencing :venues :name [card]
-           (db/update! Card (u/the-id card) :enable_embedding false)
+           (t2/update! Card (u/the-id card) {:enable_embedding false})
            (client/client :get 400 (field-values-url card (mt/id :venues :name)))))))
 
 (deftest card-param-values
@@ -656,11 +700,11 @@
     (mt/with-temporary-setting-values [enable-embedding true]
       (with-new-secret-key
         (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
-          (db/update! Card (:id field-filter-card)
+          (t2/update! Card (:id field-filter-card)
                       {:enable_embedding true
                        :embedding_params (zipmap (map :slug (:parameters field-filter-card))
                                                  (repeat "enabled"))})
-          (db/update! Card (:id card)
+          (t2/update! Card (:id card)
                       {:enable_embedding true
                        :embedding_params (zipmap (map :slug (:parameters card))
                                                  (repeat "enabled"))})
@@ -746,7 +790,7 @@
 (deftest endpoint-should-fail-if-embedding-is-disabled-for-the-dashboard
   (is (= "Embedding is not enabled for this object."
          (with-embedding-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
-           (db/update! Dashboard (u/the-id dashboard) :enable_embedding false)
+           (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding false})
            (client/client :get 400 (field-values-url dashboard (mt/id :venues :name)))))))
 
 
@@ -779,7 +823,7 @@
                                         :value "33 T")))))
 
               (testing "Endpoint should fail if embedding is disabled for the object"
-                (db/update! model (u/the-id object) :enable_embedding false)
+                (t2/update! model (u/the-id object) {:enable_embedding false})
                 (is (= "Embedding is not enabled for this object."
                        (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
                                       :value "33 T")))))]
@@ -822,7 +866,7 @@
                                       :value "10")))))
 
             (testing " ...or if embedding is disabled for the Card/Dashboard"
-              (db/update! model (u/the-id object) :enable_embedding false)
+              (t2/update! model (u/the-id object) {:enable_embedding false})
               (is (= "Embedding is not enabled for this object."
                      (client/client :get 400 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :name))
                                     :value "10")))))]
@@ -852,7 +896,7 @@
 (defn- do-with-chain-filter-fixtures [f]
   (with-embedding-enabled-and-new-secret-key
     (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard], :as m}]
-      (db/update! Dashboard (u/the-id dashboard) :enable_embedding true)
+      (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding true})
       (letfn [(token [params]
                 (dash-token dashboard (when params {:params params})))
               (values-url [& [params param-key]]
@@ -872,7 +916,7 @@
 (deftest chain-filter-embedding-disabled-test
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (testing "without embedding enabled for dashboard"
-      (db/update! Dashboard (u/the-id dashboard) :enable_embedding false)
+      (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding false})
       (testing "GET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= "Embedding is not enabled for this object."
                (client/client :get 400 (values-url)))))
@@ -893,8 +937,8 @@
 (deftest params-with-static-list-test
   (testing "embedding with parameter that has source is a static list"
     (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
-      (db/update! Dashboard (:id dashboard)
-        :embedding_params {"static_category" "enabled", "static_category_label" "enabled"})
+      (t2/update! Dashboard (:id dashboard)
+        {:embedding_params {"static_category" "enabled", "static_category_label" "enabled"}})
       (testing "Should work if the param we're fetching values for is enabled"
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
           (is (= {:values          ["African" "American" "Asian"]
@@ -907,8 +951,8 @@
 
 (deftest chain-filter-enabled-params-test
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
-    (db/update! Dashboard (:id dashboard)
-      :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
+    (t2/update! Dashboard (:id dashboard)
+      {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
     (testing "Should work if the param we're fetching values for is enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= {:values          [2 3 4 5 6]
@@ -951,8 +995,8 @@
     (mt/with-temp-copy-of-db
       (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
       (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
-        (db/update! Dashboard (:id dashboard)
-          :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
+        (t2/update! Dashboard (:id dashboard)
+          {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
         (testing "Should work if the param we're fetching values for is enabled"
           (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
             (is (= {:values          [2 3 4 5 6]
@@ -966,16 +1010,16 @@
 (deftest chain-filter-locked-params-test
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is locked"
-      (db/update! Dashboard (:id dashboard)
-        :embedding_params {"category_id" "locked", "category_name" "locked"})
+      (t2/update! Dashboard (:id dashboard)
+        {:embedding_params {"category_id" "locked", "category_name" "locked"}})
       (doseq [url [(values-url) (search-url)]]
         (testing (str "\n" url)
           (is (re= #"Cannot search for values: \"category_(?:(?:name)|(?:id))\" is not an enabled parameter."
                    (client/client :get 400 url))))))
 
     (testing "Search param enabled\n"
-      (db/update! Dashboard (:id dashboard)
-        :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "locked"})
+      (t2/update! Dashboard (:id dashboard)
+        {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "locked"}})
 
       (testing "Requests should fail if the token is missing a locked parameter"
         (doseq [url [(values-url) (search-url)]]
@@ -1003,16 +1047,16 @@
 (deftest chain-filter-disabled-params-test
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is disabled"
-      (db/update! Dashboard (:id dashboard)
-        :embedding_params {"category_id" "disabled", "category_name" "disabled"})
+      (t2/update! Dashboard (:id dashboard)
+        {:embedding_params {"category_id" "disabled", "category_name" "disabled"}})
       (doseq [url [(values-url) (search-url)]]
         (testing (str "\n" url)
           (is (re= #"Cannot search for values: \"category_(?:(?:name)|(?:id))\" is not an enabled parameter\."
                    (client/client :get 400 url))))))
 
     (testing "Search param enabled\n"
-      (db/update! Dashboard (:id dashboard)
-        :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "disabled"})
+      (t2/update! Dashboard (:id dashboard)
+        {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "disabled"}})
 
       (testing "Requests should fail if the token has a disabled parameter"
         (doseq [url-fn [values-url search-url]
@@ -1215,7 +1259,7 @@
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
     (mt/dataset sample-dataset
       (with-embedding-enabled-and-new-secret-key
-        (mt/with-temp Card [{card-id :id, :as card} {:dataset_query    (mt/native-query
+        (t2.with-temp/with-temp [Card {card-id :id, :as card} {:dataset_query    (mt/native-query
                                                                          {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
                                                                           :template-tags {"NAME"
                                                                                           {:id           "9ddca4ca-3906-83fd-bc6b-8480ae9ab05e"
@@ -1253,7 +1297,7 @@
   (testing "Embedded numeric params should work with numeric (as opposed to string) values in the JWT (#20845)"
     (mt/dataset sample-dataset
       (with-embedding-enabled-and-new-secret-key
-        (mt/with-temp Card [card {:dataset_query    (mt/native-query
+        (t2.with-temp/with-temp [Card card {:dataset_query    (mt/native-query
                                                       {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
                                                        :template-tags {"qty_locked" {:name         "qty_locked"
                                                                                      :display-name "Quantity (Locked)"

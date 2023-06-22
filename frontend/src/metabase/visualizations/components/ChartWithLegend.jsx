@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import cx from "classnames";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import styles from "./ChartWithLegend.css";
@@ -120,7 +120,11 @@ class ChartWithLegend extends Component {
           paddingRight: PADDING,
         }}
       >
-        {legend && <div className={cx(styles.LegendWrapper)}>{legend}</div>}
+        {legend && (
+          <div className={cx(styles.LegendWrapper)} data-testid="chart-legend">
+            {legend}
+          </div>
+        )}
         <div
           className={cx(styles.Chart)}
           style={{ width: chartWidth, height: chartHeight }}

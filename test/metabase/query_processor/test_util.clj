@@ -8,18 +8,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test.data :as data]
-   [metabase.util :as u]
    [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan.db :as db]))
+   [schema.core :as s]))
 
 ;; TODO - I don't think we different QP test util namespaces? We should roll this namespace into
 ;; `metabase.query-processor-test`
@@ -69,22 +63,6 @@
   [{:keys [database]}]
   (qp.store/fetch-and-store-database! database))
 
-(defn store-referenced-tables!
-  "Store any Tables referenced in `query` in the QP Store."
-  [query]
-  (when-let [table-ids (seq
-                        (flatten
-                         (mbql.u/match query
-                           (m :guard (every-pred map? (comp integer? :source-table)))
-                           (cons (:source-table m)  (recur (dissoc m :source-table))))))]
-    (qp.store/fetch-and-store-tables! table-ids)))
-
-(defn store-referenced-fields!
-  "Store any Fields referenced (by ID) in `query` in the QP Store."
-  [query]
-  (when-let [field-ids (seq (mbql.u/match query [:field-id id] id))]
-    (qp.store/fetch-and-store-fields! field-ids)))
-
 (defn store-contents
   "Fetch the names of all the objects currently in the QP Store."
   []
@@ -101,8 +79,8 @@
 (defn card-with-source-metadata-for-query
   "Given an MBQL `query`, return the relevant keys for creating a Card with that query and matching `:result_metadata`.
 
-    (tt/with-temp Card [card (qp.test-util/card-with-source-metadata-for-query
-                              (data/mbql-query venues {:aggregation [[:count]]}))]
+    (t2.with-temp/with-temp [Card card (qp.test-util/card-with-source-metadata-for-query
+                                        (data/mbql-query venues {:aggregation [[:count]]}))]
       ...)"
   [query]
   (let [results  (qp/process-userland-query query)
@@ -110,16 +88,6 @@
                      (throw (ex-info "Missing [:data :results_metadata :columns] from query results" results)))]
     {:dataset_query   query
      :result_metadata metadata}))
-
-(defn fk-table-alias-name
-  "Get the name that will be used for the alias for an implicit join (i.e., a join added as a result of using an `:fk->`
-  clause somewhere in the query.)
-
-    (fk-table-alias-name (data/id :categories) (data/id :venues :category_id)) ;; -> \"CATEGORIES__via__CATEGORY_ID\""
-  [table-or-id field-or-id]
-  (#'qp.add-implicit-joins/join-alias
-   (db/select-one-field :name Table :id (u/the-id table-or-id))
-   (db/select-one-field :name Field :id (u/the-id field-or-id))))
 
 
 ;;; ------------------------------------------------- Timezone Stuff -------------------------------------------------

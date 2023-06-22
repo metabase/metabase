@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { parseTimestamp } from "metabase/lib/time";
 
 export const getAlertId = ({ params: { alertId } }) => {

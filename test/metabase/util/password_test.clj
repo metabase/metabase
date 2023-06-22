@@ -5,6 +5,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util.password :as u.password]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 ;; Password Complexity testing
@@ -79,6 +81,19 @@
           (is (= expected
                  (u.password/is-valid? input))))))))
 
+(deftest passsword-length-test
+  (testing "Password length can be set by the env variable MB_PASSWORD_LENGTH"
+    (mt/with-temp-env-var-value [:mb-password-length 3
+                                 :mb-password-complexity "weak"] ;; Don't confuse the issue with other complexity requirements
+      (doseq [[input expected] {"A"     false
+                                "AB"    false
+                                "ABC"   true
+                                "ABCD"  true
+                                "ABCD1" true}]
+        (testing (pr-str (list 'is-valid? input))
+          (is (= expected
+                 (u.password/is-valid? input))))))))
+
 (deftest ^:parallel hash-bcrypt-tests
   ;; these functions were copied from cemerick/friend and just call out to org.mindrot.jbcrypt.BCrypt so these tests
   ;; are a bit perfunctory
@@ -87,4 +102,4 @@
         hashed   (u.password/hash-bcrypt password)]
     (is (not= password hashed))
     (testing "Can verify our hashed passwords"
-     (is (u.password/bcrypt-verify password hashed) "Password did not verify"))))
+      (is (u.password/bcrypt-verify password hashed) "Password did not verify"))))

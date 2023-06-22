@@ -2,17 +2,20 @@
   (:require
    [clojure.spec.alpha :as s]
    [clojure.test.check.generators :as gen]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models :refer [Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
-                            Dimension Field Metric NativeQuerySnippet PermissionsGroup
-                            PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
+   [metabase.models :refer [Action Activity Card Collection Dashboard
+                            DashboardCard DashboardCardSeries Database Dimension Field
+                            HTTPAction ImplicitAction Metric NativeQuerySnippet PermissionsGroup
+                            PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient QueryAction
                             Segment Table Timeline TimelineEvent User]]
+   [metabase.util.log :as log]
    [reifyhealth.specmonstah.core :as rs]
    [reifyhealth.specmonstah.spec-gen :as rsg]
    [talltale.core :as tt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ^:const product-names
   {:adjective '[Small, Ergonomic, Rustic, Intelligent, Gorgeous, Incredible, Fantastic, Practical, Sleek, Awesome,
@@ -99,7 +102,7 @@
 ;; * card
 (s/def ::display #{:table})
 (s/def ::visualization_settings #{"{}"})
-(s/def ::dataset_query #{""})
+(s/def ::dataset_query #{"{}"})
 
 ;; * dashboardcard_series
 (s/def ::position pos-int?)
@@ -125,6 +128,14 @@
 (s/def ::parameter  (s/keys :req-un [:parameter/id :parameter/type]))
 (s/def ::parameters (s/coll-of ::parameter))
 
+(s/def :action/type #{:query :implicit :http})
+
+;; * implicit_action
+(s/def ::kind #{"row/create" "row/update" "row/delete"})
+
+;; * http_action
+(s/def ::template #{{}})
+
 ;; * pulse
 (s/def ::row pos-int?)
 (s/def ::col pos-int?)
@@ -132,6 +143,11 @@
 (s/def ::size_x pos-int?)
 (s/def ::size_y pos-int?)
 (s/def ::parameter_mappings #{[{}]})
+
+(s/def ::action (s/keys :req-un [::id :action/type ::name]))
+(s/def ::query-action (s/keys :req-un [::dataset_query]))
+(s/def ::implicit-action (s/keys :req-un [::kind]))
+(s/def ::http-action (s/keys :req-un [::template]))
 
 (s/def ::core-user (s/keys :req-un [::id ::first_name ::last_name ::email ::password]))
 (s/def ::collection (s/keys :req-un [::id ::name ::color]))
@@ -181,6 +197,24 @@
    :core-user                    {:prefix  :u
                                   :spec    ::core-user
                                   :insert! {:model User}}
+   :action                       {:prefix    :action
+                                  :spec      ::action
+                                  :insert!   {:model Action}
+                                  :relations {:creator_id [:core-user :id]
+                                              :model_id   [:simple-model :id]}}
+   :query-action                 {:prefix    :query-action
+                                  :spec      ::query-action
+                                  :insert!   {:model QueryAction}
+                                  :relations {:database_id [:database :id]
+                                              :action_id   [:action :id]}}
+   :implicit-action              {:prefix    :implicit-action
+                                  :spec      ::implicit-action
+                                  :insert!   {:model ImplicitAction}
+                                  :relations {:action_id   [:action :id]}}
+   :http-action                  {:prefix    :http-action
+                                  :spec      ::http-action
+                                  :insert!   {:model HTTPAction}
+                                  :relations {:action_id   [:action :id]}}
    :activity                     {:prefix    :ac
                                   :spec      ::activity
                                   :relations {:user_id [:core-user :id]}
@@ -204,6 +238,15 @@
                                               :database_id   [:database :id]
                                               :table_id      [:table :id]
                                               :collection_id [:collection :id]}}
+   ;; like card but is a model and the query is very simple
+   ;; it's used primarily as model for actions
+   :simple-model                  {:prefix    :sm
+                                   :spec      ::card
+                                   :insert!   {:model Card}
+                                   :relations {:creator_id    [:core-user :id]
+                                               :database_id   [:database :id]
+                                               :table_id      [:table :id]
+                                               :collection_id [:collection :id]}}
    :dashboard                    {:prefix    :d
                                   :spec      ::dashboard
                                   :insert!   {:model Dashboard}
@@ -344,10 +387,10 @@
       (rs/visit-ents-once
        :insert! (fn [sm-db {:keys [schema-opts attrs] :as visit-opts}]
                   (try
-                    (db/insert! (:model schema-opts)
-                                (rsg/spec-gen-assoc-relations
-                                 sm-db
-                                 (assoc visit-opts :visit-val (:spec-gen attrs))))
+                    (first (t2/insert-returning-instances! (:model schema-opts)
+                                                           (rsg/spec-gen-assoc-relations
+                                                             sm-db
+                                                             (assoc visit-opts :visit-val (:spec-gen attrs)))))
                     (catch Throwable e
                       (log/error e)))))
       (rs/attr-map :insert!)))

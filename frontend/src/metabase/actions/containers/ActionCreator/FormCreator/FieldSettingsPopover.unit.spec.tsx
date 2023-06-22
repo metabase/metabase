@@ -1,94 +1,131 @@
-import React from "react";
+import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
+import type { FieldSettings } from "metabase-types/api";
 import { getDefaultFieldSettings } from "../../../utils";
-import { FieldSettingsPopover } from "./FieldSettingsPopover";
+import {
+  FieldSettingsPopover,
+  FieldSettingsPopoverProps,
+} from "./FieldSettingsPopover";
+
+function WrappedFieldSettingsPopover({
+  fieldSettings: initialSettings,
+  onChange,
+}: FieldSettingsPopoverProps) {
+  const [settings, setSettings] = useState(initialSettings);
+
+  const handleChange = (nextSettings: FieldSettings) => {
+    setSettings(nextSettings);
+    onChange(nextSettings);
+  };
+
+  return (
+    <FieldSettingsPopover fieldSettings={settings} onChange={handleChange} />
+  );
+}
+
+function setup({ settings = getDefaultFieldSettings() } = {}) {
+  const onChange = jest.fn();
+  render(
+    <WrappedFieldSettingsPopover
+      fieldSettings={settings}
+      onChange={onChange}
+    />,
+  );
+  return { settings, onChange };
+}
 
 describe("actions > FormCreator > FieldSettingsPopover", () => {
-  it("should show the popover", async () => {
-    const changeSpy = jest.fn();
-    const settings = getDefaultFieldSettings();
+  it("should allow to change the input type", async () => {
+    const { settings, onChange } = setup();
 
-    render(
-      <FieldSettingsPopover fieldSettings={settings} onChange={changeSpy} />,
-    );
+    userEvent.click(screen.getByLabelText("Field settings"));
+    userEvent.click(await screen.findByText("Dropdown"));
 
-    await userEvent.click(screen.getByLabelText("gear icon"));
-
-    expect(
-      await screen.findByTestId("field-settings-popover"),
-    ).toBeInTheDocument();
-  });
-
-  it("should fire onChange handler clicking a different field type", async () => {
-    const changeSpy = jest.fn();
-    const settings = getDefaultFieldSettings();
-
-    render(
-      <FieldSettingsPopover fieldSettings={settings} onChange={changeSpy} />,
-    );
-
-    await userEvent.click(screen.getByLabelText("gear icon"));
-
-    expect(
-      await screen.findByTestId("field-settings-popover"),
-    ).toBeInTheDocument();
-
-    await userEvent.click(screen.getByText("date"));
-
-    expect(changeSpy).toHaveBeenCalledTimes(1);
-
-    expect(changeSpy).toHaveBeenCalledWith({
-      ...settings,
-      fieldType: "date",
-      inputType: "date", // should set default input type for new field type
-    });
-  });
-
-  it("should fire onChange handler clicking a different input type", async () => {
-    const changeSpy = jest.fn();
-    const settings = getDefaultFieldSettings();
-
-    render(
-      <FieldSettingsPopover fieldSettings={settings} onChange={changeSpy} />,
-    );
-
-    await userEvent.click(screen.getByLabelText("gear icon"));
-
-    expect(
-      await screen.findByTestId("field-settings-popover"),
-    ).toBeInTheDocument();
-
-    await userEvent.click(screen.getByText("dropdown"));
-
-    expect(changeSpy).toHaveBeenCalledTimes(1);
-
-    expect(changeSpy).toHaveBeenCalledWith({
+    expect(onChange).toHaveBeenCalledWith({
       ...settings,
       inputType: "select",
     });
   });
 
-  it("should fire onChange handler editing placeholder", async () => {
-    const changeSpy = jest.fn();
-    const settings = getDefaultFieldSettings();
+  it("should allow to change the placeholder", async () => {
+    const { settings, onChange } = setup();
 
-    render(
-      <FieldSettingsPopover fieldSettings={settings} onChange={changeSpy} />,
-    );
+    userEvent.click(screen.getByLabelText("Field settings"));
+    userEvent.type(await screen.findByLabelText("Placeholder text"), "$");
 
-    await userEvent.click(screen.getByLabelText("gear icon"));
-
-    expect(
-      await screen.findByTestId("field-settings-popover"),
-    ).toBeInTheDocument();
-
-    await userEvent.type(screen.getByTestId("placeholder-input"), "$");
-
-    expect(changeSpy).toHaveBeenLastCalledWith({
+    expect(onChange).toHaveBeenLastCalledWith({
       ...settings,
       placeholder: "$",
+    });
+  });
+
+  describe("when field has placeholder", () => {
+    it("should render two <Divider />s", async () => {
+      const settings = getDefaultFieldSettings({
+        fieldType: "string",
+      });
+      setup({ settings });
+
+      userEvent.click(screen.getByLabelText("Field settings"));
+      await screen.findByLabelText("Default value");
+
+      expect(screen.getAllByTestId("divider").length).toBe(2);
+    });
+  });
+
+  describe("when field does not have placeholder", () => {
+    it("should render one <Divider />", async () => {
+      const settings = getDefaultFieldSettings({
+        fieldType: "date",
+      });
+      setup({ settings });
+
+      userEvent.click(screen.getByLabelText("Field settings"));
+      await screen.findByLabelText("Default value");
+
+      expect(screen.getAllByTestId("divider").length).toBe(1);
+    });
+  });
+
+  it("should allow to make the field required and optional", async () => {
+    const settings = getDefaultFieldSettings({
+      fieldType: "number",
+      required: true,
+    });
+    const { onChange } = setup({ settings });
+
+    userEvent.click(screen.getByLabelText("Field settings"));
+    userEvent.click(await screen.findByLabelText("Required"));
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...settings,
+      required: false,
+    });
+    expect(screen.queryByLabelText("Default value")).not.toBeInTheDocument();
+
+    userEvent.click(screen.getByLabelText("Required"));
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...settings,
+      required: true,
+    });
+    expect(screen.getByLabelText("Default value")).toBeInTheDocument();
+  });
+
+  it("should allow to set the default value", async () => {
+    const settings = getDefaultFieldSettings({
+      fieldType: "number",
+      required: true,
+    });
+    const { onChange } = setup({ settings });
+    userEvent.click(screen.getByLabelText("Field settings"));
+
+    const input = await screen.findByLabelText("Default value");
+    userEvent.clear(input);
+    userEvent.type(input, "10");
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...settings,
+      defaultValue: 10,
     });
   });
 });

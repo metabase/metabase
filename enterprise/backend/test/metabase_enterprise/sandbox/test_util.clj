@@ -15,8 +15,8 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn do-with-user-attributes [test-user-name-or-user-id attributes-map thunk]
   (let [user-id (test.users/test-user-name-or-user-id->user-id test-user-name-or-user-id)]
@@ -39,16 +39,16 @@
     (f)
     (let [do-with-card (fn [f]
                          (if query
-                           (tt/with-temp Card [{card-id :id} {:dataset_query query}]
+                           (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query query}]
                              (f card-id))
                            (f nil)))]
       (do-with-card
        (fn [card-id]
-         (tt/with-temp GroupTableAccessPolicy [_gtap {:group_id             (u/the-id group)
-                                                      :table_id             (data/id table-kw)
-                                                      :card_id              card-id
-                                                      :attribute_remappings remappings}]
-           (perms/grant-permissions! group (perms/table-segmented-query-path (db/select-one Table :id (data/id table-kw))))
+         (t2.with-temp/with-temp [GroupTableAccessPolicy _gtap {:group_id             (u/the-id group)
+                                                                :table_id             (data/id table-kw)
+                                                                :card_id              card-id
+                                                                :attribute_remappings remappings}]
+           (perms/grant-permissions! group (perms/table-segmented-query-path (t2/select-one Table :id (data/id table-kw))))
            (do-with-gtap-defs group more f)))))))
 
 (def ^:private WithGTAPsArgs
@@ -95,8 +95,8 @@
   `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) ~test-user-name-or-user-id (fn [~'&group] ~@body)))
 
 (defmacro with-gtaps
-  "Execute `body` with `gtaps` and optionally user `attributes` in effect. All underlying objects and permissions are
-  created automatically.
+  "Execute `body` with `gtaps` and optionally user `attributes` in effect, for the :rasta test user. All underlying
+  objects and permissions are created automatically.
 
   `gtaps-and-attributes-map` is a map containing `:gtaps` and optionally `:attributes`; see the `WithGTAPsArgs` schema
   in this namespace.

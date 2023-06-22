@@ -2,7 +2,7 @@
   (:require
    [metabase.shared.formatting.internal.numbers :as internal]
    [metabase.shared.formatting.internal.numbers-core :as core]
-   [metabase.shared.util :as shared.u]))
+   [metabase.util :as u]))
 
 (declare format-number)
 
@@ -103,7 +103,7 @@
       - \"decimal\" (the default) is basic numeric notation.
   - `:scale` number: Gives a factor by which to multiply the value before rendering it."
   [number options]
-  (let [{:keys [compact negative-in-parentheses number-style scale] :as options} (shared.u/normalize-map options)]
+  (let [{:keys [compact negative-in-parentheses number-style scale] :as options} (u/normalize-map options)]
     (cond
       (and scale (not (NaN? scale))) (format-number (* scale number) (dissoc options :scale))
 

@@ -1,17 +1,21 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import * as React from "react";
 import { t } from "ttag";
 
-import { usePrevious } from "metabase/hooks/use-previous";
+import { usePrevious } from "react-use";
 
 import { color } from "metabase/lib/colors";
 
-import Icon from "metabase/components/Icon";
-import ExpressionPopover from "metabase/query_builder/components/ExpressionPopover";
+import { Icon } from "metabase/core/components/Icon";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
+import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
+import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+import type { Expression } from "metabase-types/api";
 import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
 import { FieldDimension } from "metabase-lib/Dimension";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Filter from "metabase-lib/queries/structured/Filter";
+import { isExpression } from "metabase-lib/expressions";
 
 import DatePicker from "../pickers/DatePicker/DatePicker";
 import TimePicker from "../pickers/TimePicker";
@@ -31,7 +35,7 @@ type Props = {
   className?: string;
   style?: React.CSSProperties;
   fieldPickerTitle?: string;
-  filter: Filter;
+  filter?: Filter;
   query: StructuredQuery;
   onChange?: (filter: Filter) => void;
   onChangeFilter: (filter: Filter) => void;
@@ -48,12 +52,7 @@ type Props = {
   checkedColor?: string;
 };
 
-type State = {
-  filter: Filter | null;
-  choosingField: boolean;
-  editingFilter: boolean;
-};
-
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function FilterPopover({
   isNew: isNewProp,
   filter: filterProp,
@@ -152,17 +151,25 @@ export default function FilterPopover({
     onResize?.();
   };
 
+  const handleExpressionChange = (name: string, expression: Expression) => {
+    if (isExpression(expression) && Array.isArray(expression)) {
+      handleUpdateAndCommit(expression);
+    }
+  };
+
+  const handleExpressionWidgetClose = () => {
+    setEditingFilter(false);
+  };
+
   if (editingFilter) {
     return (
-      <ExpressionPopover
-        title={CUSTOM_SECTION_NAME}
+      <ExpressionWidget
         query={query}
-        expression={filter ? filter.raw() : null}
+        expression={filter?.raw() as Expression | undefined}
         startRule="boolean"
-        isValid={filter && filter.isValid()}
-        onChange={handleFilterChange}
-        onDone={handleUpdateAndCommit}
-        onBack={() => setEditingFilter(false)}
+        header={<ExpressionWidgetHeader onBack={handleExpressionWidgetClose} />}
+        onChangeExpression={handleExpressionChange}
+        onClose={handleExpressionWidgetClose}
       />
     );
   }
@@ -251,9 +258,7 @@ export default function FilterPopover({
             data-ui-tag="add-filter"
             primaryColor={primaryColor}
             disabled={!filter.isValid()}
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            ml="auto"
+            className="ml-auto"
             onClick={() => handleCommit()}
           >
             {isNew ? t`Add filter` : t`Update filter`}

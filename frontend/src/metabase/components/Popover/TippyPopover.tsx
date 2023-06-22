@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
 import PropTypes from "prop-types";
 import * as TippyReact from "@tippyjs/react";
 import * as tippy from "tippy.js";
@@ -158,4 +158,5 @@ function TippyPopover({
 
 TippyPopover.propTypes = propTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TippyPopover;

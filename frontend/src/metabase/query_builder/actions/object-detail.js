@@ -71,7 +71,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
   ({ objectId }) => {
     return async (dispatch, getState) => {
-      dispatch.action(CLEAR_OBJECT_DETAIL_FK_REFERENCES);
+      dispatch({ type: CLEAR_OBJECT_DETAIL_FK_REFERENCES });
 
       const state = getState();
       const tableForeignKeys = getTableForeignKeys(state);

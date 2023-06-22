@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { alpha, color } from "metabase/lib/colors";
 
@@ -87,7 +87,7 @@ export const TableHeaderCellContent = styled.button<{
   }
 
   &:hover {
-    color: ${() => color("brand")};
+    color: ${color("brand")};
   }
 `;
 
@@ -113,7 +113,7 @@ export const PaginationButton = styled.button<{
   cursor: pointer;
 
   &:hover {
-    color: ${() => color("brand")};
+    color: ${color("brand")};
   }
 
   ${props =>

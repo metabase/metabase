@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/core/components/Icon";
 
 export interface ScalarContainerProps {
   isClickable: boolean;
@@ -19,4 +20,9 @@ export const ScalarContainer = styled(Ellipsified)<ScalarContainerProps>`
         color: ${color("brand")};
       }
     `}
+`;
+
+export const LabelIcon = styled(Icon)`
+  color: ${color("text-light")};
+  margin-top: 0.2rem;
 `;

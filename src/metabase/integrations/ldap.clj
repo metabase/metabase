@@ -15,6 +15,8 @@
   (:import
    (com.unboundid.ldap.sdk DN LDAPConnectionPool LDAPException)))
 
+(set! *warn-on-reflection* true)
+
 ;; Load the EE namespace up front so that the extra Settings it defines are available immediately.
 ;; Otherwise, this would only happen the first time `find-user` or `fetch-or-create-user!` is called.
 (u/ignore-exceptions (classloader/require ['metabase-enterprise.enhancements.integrations.ldap]))
@@ -78,6 +80,7 @@
   ;; MB groups IDs
   (deferred-tru "JSON containing LDAP to Metabase group mappings.")
   :type    :json
+  :cache?  false
   :default {}
   :getter  (fn []
              (json/parse-string (setting/get-value-of-type :string :ldap-group-mappings) #(DN. (str %))))

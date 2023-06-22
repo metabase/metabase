@@ -1,35 +1,41 @@
-/* eslint-disable react/display-name */
-import React from "react";
 import _ from "underscore";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { t, jt } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
+
 import MetabaseSettings from "metabase/lib/settings";
 import { PersistedModelsApi, UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import { DashboardSelector } from "metabase/components/DashboardSelector";
+import { refreshCurrentUser } from "metabase/redux/user";
+import { updateSetting } from "./settings";
+
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
+import { UploadSettings } from "./components/UploadSettings";
 import SettingsLicense from "./components/SettingsLicense";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
-import { EmbeddingCustomizationInfo } from "./components/widgets/EmbeddingCustomizationInfo";
+import EmbeddingCustomizationInfo from "./components/widgets/EmbeddingCustomizationInfo";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
+  PublicLinksActionListing,
   EmbeddedQuestionListing,
   EmbeddedDashboardListing,
 } from "./components/widgets/PublicLinksListing";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import FormattingWidget from "./components/widgets/FormattingWidget";
-import { PremiumEmbeddingLinkWidget } from "./components/widgets/PremiumEmbeddingLinkWidget";
+import FullAppEmbeddingLinkWidget from "./components/widgets/FullAppEmbeddingLinkWidget";
 import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
+
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
-import SettingsSetupList from "./components/SettingsSetupList";
+import SetupCheckList from "./setup/components/SetupCheckList";
 import SlackSettings from "./slack/containers/SlackSettings";
 import { trackTrackingPermissionChanged } from "./analytics";
 
@@ -61,14 +67,14 @@ function updateSectionsWithPlugins(sections) {
 const SECTIONS = updateSectionsWithPlugins({
   setup: {
     name: t`Setup`,
-    order: 1,
+    order: 10,
     settings: [],
-    component: SettingsSetupList,
+    component: SetupCheckList,
     adminOnly: true,
   },
   general: {
     name: t`General`,
-    order: 2,
+    order: 20,
     settings: [
       {
         key: "site-name",
@@ -81,6 +87,36 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "string",
         widget: SiteUrlWidget,
         warningMessage: t`Only change this if you know what you're doing!`,
+      },
+      {
+        key: "custom-homepage",
+        display_name: t`Custom Homepage`,
+        type: "boolean",
+        postUpdateActions: [refreshCurrentUser],
+        onChanged: (oldVal, newVal, _settings, handleChangeSetting) => {
+          if (!newVal && oldVal) {
+            handleChangeSetting("custom-homepage-dashboard", null);
+          }
+        },
+      },
+      {
+        key: "custom-homepage-dashboard",
+        description: null,
+        getHidden: ({ "custom-homepage": customHomepage }) => !customHomepage,
+        widget: DashboardSelector,
+        postUpdateActions: [
+          () =>
+            updateSetting({
+              key: "dismissed_custom_dashboard_toast",
+              value: true,
+            }),
+          refreshCurrentUser,
+        ],
+        getProps: setting => ({
+          value: setting.value,
+          collectionFilter: collection =>
+            collection.personal_owner_id === null || collection.id === "root",
+        }),
       },
       {
         key: "redirect-all-requests-to-https",
@@ -133,7 +169,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   updates: {
     name: t`Updates`,
-    order: 3,
+    order: 30,
     component: SettingsUpdatesForm,
     settings: [
       {
@@ -146,7 +182,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   email: {
     name: t`Email`,
-    order: 4,
+    order: 40,
     component: SettingsEmailForm,
     settings: [
       {
@@ -220,19 +256,19 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   slack: {
     name: "Slack",
-    order: 5,
+    order: 50,
     component: SlackSettings,
     settings: [],
   },
   authentication: {
     name: t`Authentication`,
-    order: 6,
+    order: 60,
     settings: [], // added by plugins
     adminOnly: true,
   },
   maps: {
     name: t`Maps`,
-    order: 7,
+    order: 70,
     settings: [
       {
         key: "map-tile-server-url",
@@ -251,7 +287,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   localization: {
     name: t`Localization`,
-    order: 8,
+    order: 80,
     settings: [
       {
         display_name: t`Instance language`,
@@ -304,9 +340,46 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
+  uploads: {
+    name: t`Uploads`,
+    order: 85,
+    adminOnly: false,
+    component: UploadSettings,
+    settings: [
+      {
+        key: "uploads-enabled",
+        display_name: t`Data Uploads`,
+        description: t`Enable admins to upload data to new database tables from CSV files.`,
+        type: "boolean",
+      },
+      {
+        key: "uploads-database-id",
+        getHidden: settings => !settings["uploads-enabled"],
+        display_name: t`Database`,
+        description: t`Identify a database where upload tables will be created.`,
+        placeholder: t`Select a database`,
+      },
+      {
+        key: "uploads-schema-name",
+        display_name: t`Schema name`,
+        description: t`Identify a database schema where data upload tables will be created.`,
+        type: "string",
+        placeholder: "uploads",
+      },
+      {
+        key: "uploads-table-prefix",
+        display_name: t`Table prefix`,
+        description: t`Identify a table prefix for tables created by data uploads.`,
+        placeholder: "uploaded_",
+        type: "string",
+        required: false,
+      },
+    ],
+  },
+
   "public-sharing": {
     name: t`Public Sharing`,
-    order: 9,
+    order: 90,
     settings: [
       {
         key: "enable-public-sharing",
@@ -326,11 +399,17 @@ const SECTIONS = updateSectionsWithPlugins({
         widget: PublicLinksQuestionListing,
         getHidden: settings => !settings["enable-public-sharing"],
       },
+      {
+        key: "-public-sharing-actions",
+        display_name: t`Shared Action Forms`,
+        widget: PublicLinksActionListing,
+        getHidden: settings => !settings["enable-public-sharing"],
+      },
     ],
   },
   "embedding-in-other-applications": {
     name: t`Embedding`,
-    order: 10,
+    order: 100,
     settings: [
       {
         key: "enable-embedding",
@@ -466,7 +545,7 @@ const SECTIONS = updateSectionsWithPlugins({
         },
       },
       {
-        widget: PremiumEmbeddingLinkWidget,
+        widget: FullAppEmbeddingLinkWidget,
         getHidden: (_, derivedSettings) =>
           !derivedSettings["enable-embedding"] ||
           MetabaseSettings.isEnterprise(),
@@ -481,13 +560,13 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   license: {
     name: t`License`,
-    order: 11,
+    order: 110,
     component: SettingsLicense,
     settings: [],
   },
   caching: {
     name: t`Caching`,
-    order: 12,
+    order: 120,
     settings: [
       {
         key: "enable-query-caching",
@@ -579,6 +658,42 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
+  metabot: {
+    name: t`Metabot`,
+    order: 130,
+    getHidden: settings => !settings["is-metabot-enabled"],
+    settings: [
+      {
+        key: "openai-api-key",
+        display_name: t`OpenAI API Key`,
+        description: null,
+        type: "string",
+        getHidden: (_, settings) => !settings["is-metabot-enabled"],
+      },
+      {
+        key: "openai-organization",
+        display_name: t`OpenAI Organization ID`,
+        description: null,
+        type: "string",
+        getHidden: (_, settings) => !settings["is-metabot-enabled"],
+      },
+      {
+        key: "openai-model",
+        display_name: t`OpenAI Model`,
+        description: null,
+        type: "select",
+        getProps: (_, settings) => {
+          const models = settings["openai-available-models"] ?? [];
+
+          return {
+            options: models.map(model => ({ name: model.id, value: model.id })),
+            disabled: !models.length,
+          };
+        },
+        getHidden: (_, settings) => !settings["is-metabot-enabled"],
+      },
+    ],
+  },
 });
 
 export const getSettings = createSelector(
@@ -621,7 +736,9 @@ export const getSections = createSelector(
     const settingsByKey = _.groupBy(settings, "key");
     const sectionsWithAPISettings = {};
     for (const [slug, section] of Object.entries(SECTIONS)) {
-      if (section.adminOnly && !isAdmin) {
+      const isHidden = section.getHidden?.(derivedSettingValues);
+
+      if (isHidden || (section.adminOnly && !isAdmin)) {
         continue;
       }
 

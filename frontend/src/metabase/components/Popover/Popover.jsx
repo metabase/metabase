@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { Children, cloneElement, Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
@@ -6,6 +6,7 @@ import Tether from "tether";
 
 import cx from "classnames";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
+import { isCypressActive } from "metabase/env";
 
 import "./Popover.css";
 
@@ -87,16 +88,21 @@ export default class Popover extends Component {
   };
 
   _getPopoverElement(isOpen) {
+    // 3s is an overkill for Cypress, but let's start with it and dial it down
+    // if we see that the flakes don't appear anymore
+    const resizeTimer = isCypressActive ? 3000 : 100;
+
     if (!this._popoverElement && isOpen) {
       this._popoverElement = document.createElement("span");
       this._popoverElement.className = `PopoverContainer ${this.props.containerClassName}`;
+      this._popoverElement.dataset.testid = "popover";
       document.body.appendChild(this._popoverElement);
       this._timer = setInterval(() => {
         const { width, height } = this._popoverElement.getBoundingClientRect();
         if (this.state.width !== width || this.state.height !== height) {
           this.setState({ width, height });
         }
-      }, 100);
+      }, resizeTimer);
     }
     return this._popoverElement;
   }
@@ -235,13 +241,10 @@ export default class Popover extends Component {
       >
         {typeof this.props.children === "function"
           ? this.props.children(childProps)
-          : React.Children.count(this.props.children) === 1 &&
+          : Children.count(this.props.children) === 1 &&
             // NOTE: workaround for https://github.com/facebook/react/issues/12136
             !Array.isArray(this.props.children)
-          ? React.cloneElement(
-              React.Children.only(this.props.children),
-              childProps,
-            )
+          ? cloneElement(Children.only(this.props.children), childProps)
           : this.props.children}
       </div>
     );
@@ -251,7 +254,9 @@ export default class Popover extends Component {
       return (
         <OnClickOutsideWrapper
           handleDismissal={this.handleDismissal}
-          ignoreElement={this.props.ignoreTrigger && this._getTargetElement()}
+          ignoreElement={
+            this.props.ignoreTrigger ? this._getTargetElement() : undefined
+          }
         >
           {content}
         </OnClickOutsideWrapper>

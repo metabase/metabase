@@ -1,4 +1,3 @@
-import React from "react";
 import { IndexRedirect } from "react-router";
 import { t } from "ttag";
 import { Route } from "metabase/hoc/Title";
@@ -7,6 +6,8 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES,
   PLUGIN_APPLICATION_PERMISSIONS,
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES,
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
 } from "metabase/plugins";
 import CollectionPermissionsPage from "./pages/CollectionPermissionsPage/CollectionPermissionsPage";
 import DatabasesPermissionsPage from "./pages/DatabasePermissionsPage/DatabasesPermissionsPage";
@@ -24,6 +25,7 @@ const getRoutes = () => (
         path="database(/:databaseId)(/schema/:schemaName)(/table/:tableId)"
         component={DatabasesPermissionsPage}
       >
+        {PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES}
         {PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES}
       </Route>
 
@@ -31,6 +33,7 @@ const getRoutes = () => (
         path="group(/:groupId)(/database/:databaseId)(/schema/:schemaName)"
         component={GroupsPermissionsPage}
       >
+        {PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES}
         {PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES}
       </Route>
     </Route>

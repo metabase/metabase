@@ -4,18 +4,16 @@
    [clojurewerkz.quartzite.conversion :as qc]
    [java-time :as t]
    [medley.core :as m]
-   [metabase.driver :as driver]
-   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.util :as u]
    [potemkin.types :as p]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import [org.quartz CronScheduleBuilder CronTrigger]))
+
+(set! *warn-on-reflection* true)
 
 (p/defprotocol+ GetSchedule
   (schedule-string [_]))
@@ -26,7 +24,7 @@
   CronTrigger
   (schedule-string [x] (.getCronExpression x)))
 
-(deftest cron-schedule-test
+(deftest ^:parallel cron-schedule-test
   (testing "creates schedule per hour when less than 24 hours"
     (is (= "0 0 0/8 * * ? *"
            (schedule-string (#'task.persist-refresh/cron-schedule "0 0 0/8 * * ? *"))))
@@ -42,35 +40,35 @@
 
 (deftest trigger-job-info-test
   (testing "Database refresh trigger"
-    (let [tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
+    (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
       (is (= {"db-id" 1 "type" "database"}
              (qc/from-job-data (.getJobDataMap tggr))))
       (is (= "0 0 0/5 * * ? *"
              (schedule-string tggr)))
       (is (= "metabase.task.PersistenceRefresh.database.trigger.1"
              (.. tggr getKey getName))))
-    (let [tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0 * * ? *")]
+    (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0 * * ? *")]
       (is (= {"db-id" 1 "type" "database"}
              (qc/from-job-data (.getJobDataMap tggr))))
       (is (= "0 0 0 * * ? *"
              (schedule-string tggr))))
     (testing "in report timezone UTC"
       (mt/with-temporary-setting-values [report-timezone "UTC"]
-        (let [tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
+        (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
           (is (= "UTC"
                  (.. tggr getTimeZone getID))))))
     (testing "in report timezone LA"
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-        (let [tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
+        (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
           (is (= "America/Los_Angeles"
                  (.. tggr getTimeZone getID))))))
     (testing "in system timezone"
       (mt/with-temporary-setting-values [report-timezone nil]
-        (let [tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
+        (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
           (is (= (qp.timezone/system-timezone-id)
                  (.. tggr getTimeZone getID)))))))
   (testing "Individual refresh trigger"
-    (let [tggr (#'task.persist-refresh/individual-trigger {:card_id 5 :id 1})]
+    (let [^org.quartz.CronTrigger tggr (#'task.persist-refresh/individual-trigger {:card_id 5 :id 1})]
       (is (= {"persisted-id" 1 "type" "individual"}
              (qc/from-job-data (.getJobDataMap tggr))))
       (is (= "metabase.task.PersistenceRefresh.individual.trigger.1"
@@ -140,7 +138,7 @@
             (is (= #{(u/the-id model1) (u/the-id model2)} @card-ids)))
           (is (partial= {:task "persist-refresh"
                          :task_details {:success 2 :error 0}}
-                        (db/select-one TaskHistory
+                        (t2/select-one TaskHistory
                                        :db_id (u/the-id db)
                                        :task "persist-refresh"
                                        {:order-by [[:id :desc]]})))))
@@ -158,7 +156,7 @@
           (is (= 2 @call-count))
           (is (partial= {:task "persist-refresh"
                          :task_details {:success 1 :error 1}}
-                        (db/select-one TaskHistory
+                        (t2/select-one TaskHistory
                                        :db_id (u/the-id db)
                                        :task "persist-refresh"
                                        {:order-by [[:id :desc]]}))))))
@@ -190,43 +188,6 @@
             (is (contains? @called-on (u/the-id deletable-persisted))))
           (is (partial= {:task "unpersist-tables"
                          :task_details {:success 3 :error 0, :skipped 0}}
-                        (db/select-one TaskHistory
+                        (t2/select-one TaskHistory
                                        :task "unpersist-tables"
                                        {:order-by [[:id :desc]]}))))))))
-
-(deftest persisted-models-max-rows-test
-  (testing "Persisted models should have the full number of rows of the underlying query,
-            not limited by `absolute-max-results` (#24793)"
-    (with-redefs [qp.i/absolute-max-results 3]
-      (mt/dataset daily-bird-counts
-        (mt/test-driver :postgres
-          (mt/with-persistence-enabled [persist-models!]
-            (mt/with-temp* [Card [model {:dataset       true
-                                         :database_id   (mt/id)
-                                         :query_type    :query
-                                         :dataset_query {:database (mt/id)
-                                                         :type     :query
-                                                         :query    {:source-table (mt/id :bird-count)}}}]]
-              (let [ ;; Get the number of rows before the model is persisted
-                    query-on-top       {:database (mt/id)
-                                        :type     :query
-                                        :query    {:aggregation  [[:count]]
-                                                   :source-table (str "card__" (:id model))}}
-                    [[num-rows-query]] (mt/rows (qp/process-query query-on-top))]
-                ;; Persist the model
-                (persist-models!)
-                ;; Check the number of rows is the same after persisting
-                (let [query-on-top {:database (mt/id)
-                                    :type     :query
-                                    :query    {:aggregation [[:count]]
-                                               :source-table (str "card__" (:id model))}}]
-                  (is (= [[num-rows-query]] (mt/rows (qp/process-query query-on-top)))))))))))))
-
-(deftest can-persist-test
-  (testing "Can each database that allows for persistence actually persist"
-    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
-      (testing (str driver/*driver* " can persist")
-        (mt/dataset test-data
-          (let [[success? error] (ddl.i/check-can-persist (mt/db))]
-            (is success? (str "Not able to persist on " driver/*driver*))
-            (is (= :persist.check/valid error))))))))

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t, ngettext, msgid } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -20,9 +20,10 @@ import {
 
 interface Props {
   model: Question;
+  hasEditMetadataLink: boolean;
 }
 
-function ModelSchemaDetails({ model }: Props) {
+function ModelSchemaDetails({ model, hasEditMetadataLink }: Props) {
   const canWrite = model.canWrite();
 
   const metadataEditorUrl = Urls.modelEditor(model.card(), {
@@ -51,7 +52,7 @@ function ModelSchemaDetails({ model }: Props) {
     <>
       <SchemaHeader>
         <span>{fieldsCount}</span>
-        {canWrite && (
+        {hasEditMetadataLink && canWrite && (
           <Button as={Link} to={metadataEditorUrl}>{t`Edit metadata`}</Button>
         )}
       </SchemaHeader>
@@ -60,4 +61,5 @@ function ModelSchemaDetails({ model }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelSchemaDetails;

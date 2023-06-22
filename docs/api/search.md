@@ -11,7 +11,7 @@ API endpoints for Search.
 ## `GET /api/search/`
 
 Search within a bunch of models for the substring `q`.
-  For the list of models, check `metabase.search.config/all-models.
+  For the list of models, check [[metabase.search.config/all-models]].
 
   To search in archived portions of models, pass in `archived=true`.
   To search for tables, cards, and models of a certain DB, pass in a DB id value
@@ -39,7 +39,7 @@ Get the set of models that a search query will return.
 
 *  **`archived-string`** 
 
-*  **`table-db-id`**
+*  **`table-db-id`** nullable value must be an integer greater than zero.
 
 ---
 

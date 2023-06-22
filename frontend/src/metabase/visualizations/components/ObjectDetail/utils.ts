@@ -1,19 +1,28 @@
 import { t } from "ttag";
-import _ from "underscore";
 
-import { singularize } from "metabase/lib/formatting";
+import { singularize, formatValue } from "metabase/lib/formatting";
 
-import { DatasetData, Column } from "metabase-types/types/Dataset";
-import { isPK, isEntityName } from "metabase-lib/types/utils/isa";
+import type {
+  DatasetColumn,
+  DatasetData,
+  TableId,
+  VisualizationSettings,
+} from "metabase-types/api";
+
+import {
+  getIsPKFromTablePredicate,
+  isEntityName,
+  isPK,
+} from "metabase-lib/types/utils/isa";
 import Question from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
 
 import { ObjectId } from "./types";
 
 export interface GetObjectNameArgs {
-  table: Table | null;
-  question: Question;
-  cols: Column[];
+  table?: Table | null;
+  question?: Question;
+  cols: DatasetColumn[];
   zoomedRow: unknown[] | undefined;
 }
 
@@ -41,27 +50,34 @@ export const getObjectName = ({
 };
 
 export interface GetDisplayIdArgs {
-  cols: Column[];
+  cols: DatasetColumn[];
   zoomedRow: unknown[] | undefined;
+  tableId?: TableId;
+  settings: VisualizationSettings;
 }
 
 export const getDisplayId = ({
   cols,
   zoomedRow,
+  tableId,
+  settings,
 }: GetDisplayIdArgs): ObjectId | null => {
   const hasSinglePk =
-    cols.reduce(
-      (pks: number, col: Column) => (isPK(col) ? pks + 1 : pks),
-      0,
-    ) === 1;
+    cols.filter(getIsPKFromTablePredicate(tableId)).length === 1;
 
   if (!zoomedRow) {
     return null;
   }
 
   if (hasSinglePk) {
-    const pkColumn = cols.findIndex(isPK);
-    return zoomedRow[pkColumn] as ObjectId;
+    const pkColumnIndex = cols.findIndex(getIsPKFromTablePredicate(tableId));
+    const pkColumn = cols[pkColumnIndex];
+    const columnSetting = settings?.column?.(pkColumn) ?? {};
+
+    return formatValue(zoomedRow[pkColumnIndex], {
+      ...columnSetting,
+      column: pkColumn,
+    }) as ObjectId;
   }
 
   const hasEntityName = cols && !!cols?.find(isEntityName);
@@ -71,30 +87,43 @@ export const getDisplayId = ({
   }
 
   // TODO: respect user column reordering
-  return zoomedRow[0] as ObjectId;
+  const defaultColumn = cols[0];
+  const columnSetting = settings?.column?.(defaultColumn) ?? {};
+
+  return formatValue(zoomedRow[0], {
+    ...columnSetting,
+    column: defaultColumn,
+  }) as ObjectId;
 };
 
 export interface GetIdValueArgs {
   data: DatasetData;
-  zoomedRowID?: ObjectId;
+  tableId?: TableId;
 }
 
 export const getIdValue = ({
   data,
-  zoomedRowID,
+  tableId,
 }: GetIdValueArgs): ObjectId | null => {
   if (!data) {
     return null;
   }
-  if (zoomedRowID) {
-    return zoomedRowID;
-  }
 
   const { cols, rows } = data;
-  const columnIndex = _.findIndex(cols, col => isPK(col));
+  const columnIndex = cols.findIndex(getIsPKFromTablePredicate(tableId));
   return rows[0][columnIndex] as number;
 };
 
 export function getSingleResultsRow(data: DatasetData) {
   return data.rows.length === 1 ? data.rows[0] : null;
 }
+
+export const getSinglePKIndex = (cols: DatasetColumn[]) => {
+  const pkCount = cols?.filter(isPK)?.length;
+  if (pkCount !== 1) {
+    return undefined;
+  }
+  const index = cols?.findIndex(isPK);
+
+  return index === -1 ? undefined : index;
+};

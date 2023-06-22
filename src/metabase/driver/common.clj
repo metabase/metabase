@@ -5,7 +5,6 @@
    [clj-time.core :as time]
    [clj-time.format :as time.format]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
@@ -13,11 +12,14 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [schema.core :as s])
   (:import
    (java.text SimpleDateFormat)
    (org.joda.time DateTime)
    (org.joda.time.format DateTimeFormatter)))
+
+(set! *warn-on-reflection* true)
 
 ;; TODO - we should rename these from `default-*-details` to `default-*-connection-property`
 
@@ -172,12 +174,13 @@
 (def json-unfolding
   "Map representing the `json-unfolding` option in a DB connection form"
   {:name         "json-unfolding"
-   :display-name (deferred-tru "Unfold JSON Columns")
+   :display-name (deferred-tru "Allow unfolding of JSON columns")
    :type         :boolean
    :visible-if   {"advanced-options" true}
    :description  (deferred-tru
-                   (str "We unfold JSON columns into component fields."
-                        "This is on by default but you can turn it off if performance is slow."))
+                   (str "This enables unfolding JSON columns into their component fields. "
+                        "Disable unfolding if performance is slow. If enabled, you can still disable unfolding for "
+                        "individual fields in their settings."))
    :default      true})
 
 (def refingerprint
@@ -448,3 +451,14 @@
   Sunday), then the offset should be `-1`, because `:monday` returned by the driver (`2`) minus `1` = `1`."
   [driver]
   (start-of-week-offset-for-day (driver/db-start-of-week driver)))
+
+(defn json-unfolding-default
+  "Returns true if JSON fields should be unfolded by default for this database, and false otherwise."
+  [database]
+  ;; This allows adding support for nested-field-columns for drivers in the future and
+  ;; have json-unfolding enabled by default, without
+  ;; needing a migration to add the `json-unfolding=true` key to the database details.
+  (let [json-unfolding (get-in database [:details :json-unfolding])]
+    (if (nil? json-unfolding)
+      true
+      json-unfolding)))

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
@@ -10,10 +10,10 @@ import { getUser } from "metabase/selectors/user";
 import { deleteAlert, unsubscribeFromAlert } from "metabase/alert/alert";
 import {
   AM_PM_OPTIONS,
-  DAY_OF_WEEK_OPTIONS,
+  getDayOfWeekOptions,
   HOUR_OPTIONS,
-} from "metabase/containers/SchedulePicker";
-import Icon from "metabase/components/Icon";
+} from "metabase/lib/date-time";
+import { Icon } from "metabase/core/components/Icon";
 import Modal from "metabase/components/Modal";
 import {
   CreateAlertModalContent,
@@ -274,8 +274,10 @@ export class AlertScheduleText extends Component {
       return `${verbose ? "daily at " : "Daily, "} ${hour} ${amPm}`;
     } else if (scheduleType === "weekly") {
       const hourOfDay = schedule.schedule_hour;
+      const dayOfWeekOptions = getDayOfWeekOptions();
+
       const day = _.find(
-        DAY_OF_WEEK_OPTIONS,
+        dayOfWeekOptions,
         o => o.value === schedule.schedule_day,
       ).name;
       const hour = _.find(

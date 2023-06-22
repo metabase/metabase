@@ -1,36 +1,40 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import type { LocationDescriptor } from "history";
 
-import { IconProps } from "metabase/components/Icon";
+import { IconName, IconProps } from "metabase/core/components/Icon";
 
 import Visualization from "metabase/visualizations/components/Visualization";
-import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
+import WithVizSettingsData from "metabase/dashboard/hoc/WithVizSettingsData";
+import { getVisualizationRaw } from "metabase/visualizations";
 
-import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-
-import { isVirtualDashCard } from "metabase/dashboard/utils";
+import {
+  getVirtualCardType,
+  isVirtualDashCard,
+} from "metabase/dashboard/utils";
 
 import type {
   Dashboard,
   DashboardOrderedCard,
   DashCardId,
-  VisualizationSettings,
-} from "metabase-types/api";
-import type {
+  Dataset,
+  Series,
   ParameterId,
   ParameterValueOrArray,
-} from "metabase-types/types/Parameter";
-import type { Series } from "metabase-types/types/Visualization";
+  VirtualCardDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
+import Question from "metabase-lib/Question";
 import type Mode from "metabase-lib/Mode";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
 import { CardSlownessStatus, DashCardOnChangeCardAndRunHandler } from "./types";
 import ClickBehaviorSidebarOverlay from "./ClickBehaviorSidebarOverlay";
+import DashCardMenu from "./DashCardMenu";
 import DashCardParameterMapper from "./DashCardParameterMapper";
 import {
   VirtualDashCardOverlayRoot,
@@ -67,8 +71,9 @@ interface DashCardVisualizationProps {
   isFullscreen?: boolean;
   isMobile?: boolean;
   isNightMode?: boolean;
+  isPublic?: boolean;
 
-  error?: { message?: string; icon?: IconProps["name"] };
+  error?: { message?: string; icon?: IconName };
   headerIcon?: IconProps;
 
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
@@ -105,6 +110,7 @@ function DashCardVisualization({
   isSlow,
   isPreviewing,
   isEmbed,
+  isPublic,
   isEditingDashboardLayout,
   isClickBehaviorSidebarOpen,
   isEditingDashCardClickBehavior,
@@ -120,13 +126,24 @@ function DashCardVisualization({
 }: DashCardVisualizationProps) {
   const renderVisualizationOverlay = useCallback(() => {
     if (isClickBehaviorSidebarOpen) {
-      if (isVirtualDashCard(dashcard)) {
-        const isTextCard =
-          dashcard?.visualization_settings?.virtual_card?.display === "text";
+      const { disableClickBehavior } =
+        getVisualizationRaw(series).visualization;
+      if (isVirtualDashCard(dashcard) || disableClickBehavior) {
+        const virtualDashcardType = getVirtualCardType(
+          dashcard,
+        ) as VirtualCardDisplay;
+        const placeholderText =
+          {
+            link: t`Link`,
+            action: t`Action Button`,
+            text: t`Text Card`,
+          }[virtualDashcardType] ??
+          t`This card does not support click mappings`;
+
         return (
           <VirtualDashCardOverlayRoot>
             <VirtualDashCardOverlayText>
-              {isTextCard ? t`Text card` : t`Action button`}
+              {placeholderText}
             </VirtualDashCardOverlayText>
           </VirtualDashCardOverlayRoot>
         );
@@ -156,26 +173,43 @@ function DashCardVisualization({
     isClickBehaviorSidebarOpen,
     isEditingDashCardClickBehavior,
     showClickBehaviorSidebar,
+    series,
   ]);
 
   const renderActionButtons = useCallback(() => {
-    if (isEmbed) {
-      return (
-        <QueryDownloadWidget
-          className="m1 text-brand-hover text-light"
-          classNameClose="hover-child"
-          card={dashcard.card}
-          params={parameterValuesBySlug}
-          dashcardId={dashcard.id}
-          token={dashcard.dashboard_id}
-          icon="download"
-          // Can be removed once QueryDownloadWidget is converted to Typescript
-          visualizationSettings={undefined}
-        />
-      );
+    const question = new Question(dashcard.card, metadata);
+    const mainSeries = series[0] as unknown as Dataset;
+
+    const shouldShowDownloadWidget =
+      isEmbed ||
+      (!isPublic &&
+        !isEditing &&
+        DashCardMenu.shouldRender({ question, result: mainSeries }));
+
+    if (!shouldShowDownloadWidget) {
+      return null;
     }
-    return null;
-  }, [dashcard, parameterValuesBySlug, isEmbed]);
+
+    return (
+      <DashCardMenu
+        question={question}
+        result={mainSeries}
+        dashcardId={dashcard.id}
+        dashboardId={dashboard.id}
+        token={isEmbed ? String(dashcard.dashboard_id) : undefined}
+        params={parameterValuesBySlug}
+      />
+    );
+  }, [
+    series,
+    metadata,
+    isEmbed,
+    isPublic,
+    isEditing,
+    dashcard,
+    parameterValuesBySlug,
+    dashboard,
+  ]);
 
   return (
     <WrappedVisualization
@@ -220,4 +254,5 @@ function DashCardVisualization({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DashCardVisualization;

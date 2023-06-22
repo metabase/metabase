@@ -1,6 +1,6 @@
-import React, { useCallback } from "react";
+import { Fragment, useCallback } from "react";
 import PropTypes from "prop-types";
-import { bindActionCreators } from "redux";
+import { bindActionCreators } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -106,7 +106,7 @@ function DatabasesPermissionsPage({
   const handleBreadcrumbsItemSelect = item => dispatch(push(item.url));
 
   return (
-    <React.Fragment>
+    <Fragment>
       <PermissionsSidebar
         {...sidebar}
         error={sidebarError}
@@ -133,7 +133,7 @@ function DatabasesPermissionsPage({
       )}
 
       {children}
-    </React.Fragment>
+    </Fragment>
   );
 }
 

@@ -2,15 +2,15 @@
   "Classifier that infers the semantic type of a Field based on its name and base type."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.models.database :refer [Database]]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (def ^:private bool-or-int-type #{:type/Boolean :type/Integer})
 (def ^:private float-type       #{:type/Float})
@@ -109,7 +109,9 @@
    [#"description"                 text-type        :type/Description]
    [#"title"                       text-type        :type/Title]
    [#"comment"                     text-type        :type/Comment]
+   [#"birthda(?:te|y)"             date-type        :type/Birthdate]
    [#"birthda(?:te|y)"             timestamp-type   :type/Birthdate]
+   [#"(?:te|y)(?:_?)of(?:_?)birth" date-type        :type/Birthdate]
    [#"(?:te|y)(?:_?)of(?:_?)birth" timestamp-type   :type/Birthdate]])
 
 ;; Check that all the pattern tuples are valid
@@ -188,9 +190,8 @@
                                         entity-types-patterns)
                                   (case (->> table
                                              :db_id
-                                             (db/select-one Database :id)
+                                             (t2/select-one Database :id)
                                              :engine)
-                                    :googleanalytics :entity/GoogleAnalyticsTable
                                     :druid           :entity/EventTable
                                     nil)
                                   :entity/GenericTable))))

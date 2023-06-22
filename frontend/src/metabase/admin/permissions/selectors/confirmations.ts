@@ -112,7 +112,9 @@ export function getRawQueryWarningModal(
   if (
     value === "write" &&
     getNativePermission(permissions, groupId, entityId) !== "write" &&
-    getSchemasPermission(permissions, groupId, entityId, "data") !== "all"
+    !["all", "impersonated"].includes(
+      getSchemasPermission(permissions, groupId, entityId, "data"),
+    )
   ) {
     return {
       title: t`Allow native query editing?`,
@@ -140,7 +142,7 @@ export function getRevokingAccessToAllTablesWarningModal(
     getNativePermission(permissions, groupId, entityId) !== "none"
   ) {
     // allTableEntityIds contains tables from all schemas
-    const allTableEntityIds = database.tables.map(table => ({
+    const allTableEntityIds = database.getTables().map(table => ({
       databaseId: table.db_id,
       schemaName: table.schema_name || "",
       tableId: table.id as ConcreteTableId,

@@ -1,21 +1,34 @@
-import React from "react";
-import { render, screen } from "@testing-library/react";
-
-import { createMockDatabase } from "metabase-types/api/mocks/database";
-
+import { checkNotNull } from "metabase/core/utils/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import { createMockDatabase } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
 import DataSelectorDatabasePicker from "./DataSelectorDatabasePicker";
 
-const database = createMockDatabase();
+const TEST_DATABASE = createMockDatabase();
 
-const props = {
-  onChangeDatabase: jest.fn(),
-  onChangeSchema: jest.fn(),
+const setup = () => {
+  const state = createMockState({
+    entities: createMockEntitiesState({
+      databases: [TEST_DATABASE],
+    }),
+  });
+  const metadata = getMetadata(state);
+  const database = checkNotNull(metadata.database(TEST_DATABASE.id));
+
+  renderWithProviders(
+    <DataSelectorDatabasePicker
+      databases={[database]}
+      onChangeDatabase={jest.fn()}
+      onChangeSchema={jest.fn()}
+    />,
+  );
 };
 
 describe("DataSelectorDatabasePicker", () => {
   it("displays database name", () => {
-    render(<DataSelectorDatabasePicker {...props} databases={[database]} />);
-
-    expect(screen.getByText(database.name)).toBeInTheDocument();
+    setup();
+    expect(screen.getByText(TEST_DATABASE.name)).toBeInTheDocument();
   });
 });

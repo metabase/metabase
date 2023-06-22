@@ -120,7 +120,7 @@ Add these people to a group (or create a new group) that has permissions to view
 
 **Steps to take:**
 
-Go to **Admin** > **Data model** and find the table. Check to make sure that the fields you want to make visible are not hidden.
+Go to **Admin** > **Table Metadata** and find the table. Check to make sure that the fields you want to make visible are not hidden.
 
 ### Is a field remapped to display info from a restricted table?
 
@@ -128,7 +128,7 @@ Go to **Admin** > **Data model** and find the table. Check to make sure that the
 
 **Steps to take:**
 
-1. Go to **Admin Panel** > **Data model** for the fields in question.
+1. Go to **Admin Panel** > **Table Metadata** for the fields in question.
 2. If the value is remapped from a restricted table, change it so that Metabase will use the original value from the table. See [Metadata editing][data-model] for more information.
 
 ### Is the question available via signed embedding?
@@ -176,6 +176,6 @@ The administrator can [create a new group][groups] to capture precisely who's al
 [row-permissions]: https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions
 [sandboxing-your-data]: ../permissions/data-sandboxes.md
 [signed-embedding]: https://www.metabase.com/learn/customer-facing-analytics/embedding-charts-and-dashboards#enable-embedding-in-other-applications
-[sandbox-limitations]: ../enterprise-guide/data-sandboxes.html#current-limitations
+[sandbox-limitations]: ../permissions/data-sandboxes.md#limitations
 [troubleshooting-permissions]: ./permissions.md
-[unsupported-databases]: ../permissions/data-sandboxes.md#data-sandboxes-do-not-support-non-sql-databases
+[unsupported-databases]: ../permissions/data-sandboxes.md#limitations

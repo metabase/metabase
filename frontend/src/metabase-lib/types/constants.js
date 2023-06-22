@@ -4,6 +4,7 @@ export const TYPE = cljs_TYPE;
 
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
+export const INTEGER = "INTEGER";
 export const STRING = "STRING";
 export const STRING_LIKE = "STRING_LIKE";
 export const BOOLEAN = "BOOLEAN";
@@ -14,11 +15,11 @@ export const FOREIGN_KEY = "FOREIGN_KEY";
 export const PRIMARY_KEY = "PRIMARY_KEY";
 
 // other types used for various purposes
-export const ENTITY = "ENTITY";
+const ENTITY = "ENTITY";
 export const SUMMABLE = "SUMMABLE";
 export const SCOPE = "SCOPE";
 export const CATEGORY = "CATEGORY";
-export const DIMENSION = "DIMENSION";
+const DIMENSION = "DIMENSION";
 
 export const UNKNOWN = "UNKNOWN";
 
@@ -33,6 +34,10 @@ export const TYPE_HIERARCHIES = {
     base: [TYPE.Number],
     effective: [TYPE.Number],
     semantic: [TYPE.Number],
+  },
+  [INTEGER]: {
+    base: [TYPE.Integer],
+    effective: [TYPE.Integer],
   },
   [STRING]: {
     base: [TYPE.Text],

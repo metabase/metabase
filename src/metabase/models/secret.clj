@@ -1,10 +1,8 @@
 (ns metabase.models.secret
   (:require
-   [cheshire.generate :refer [add-encoder encode-map]]
    [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -13,26 +11,34 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [toucan.db :as db]
-   [toucan.models :as models])
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]
+   [toucan2.core :as t2])
   (:import
    (java.io File)
    (java.nio.charset StandardCharsets)))
 
+(set! *warn-on-reflection* true)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(models/defmodel Secret :secret)
+(def Secret
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Secret)
+
+(methodical/defmethod t2/table-name :model/Secret [_model] :secret)
 
 (doto Secret
+  (derive :metabase/model)
+  (derive :hook/timestamped?)
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
-(mi/define-methods
- Secret
- {:types      (constantly {:value  :secret-value
-                           :kind   :keyword
-                           :source :keyword})
-  :properties (constantly {::mi/timestamped? true})})
+(t2/deftransforms :model/Secret
+  {:value  mi/transform-secret-value
+   :kind   mi/transform-keyword
+   :source mi/transform-keyword})
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -179,14 +185,14 @@
                              {:invalid-db-details-entry (select-keys details [path-kw])}))))
 
                  (id-kw details)
-                 (:value (db/select-one Secret :id (id-kw details))))
+                 (:value (t2/select-one Secret :id (id-kw details))))
         source (cond
                  ;; set the :source due to the -path suffix (see above))
                  (and (not= "uploaded" (options-kw details)) (path-kw details))
                  :file-path
 
                  (id-kw details)
-                 (:source (db/select-one Secret :id (id-kw details))))]
+                 (:source (t2/select-one Secret :id (id-kw details))))]
     (cond-> {:connection-property-name conn-prop-nm, :subprops [path-kw value-kw id-kw]}
       value
       (assoc :value value
@@ -198,7 +204,7 @@
   (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id} (get-sub-props secret-property)
         id (id-kw details)
         value (if id
-                (String. ^bytes (:value (db/select-one Secret :id id)) "UTF-8")
+                (String. ^bytes (:value (t2/select-one Secret :id id)) "UTF-8")
                 (value-kw details))]
     (case (options-kw details)
       "uploaded" (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
@@ -214,7 +220,7 @@
   "Returns the latest Secret instance for the given `id` (meaning the one with the highest `version`)."
   {:added "0.42.0"}
   [id]
-  (db/select-one Secret :id id {:order-by [[:version :desc]]}))
+  (t2/select-one Secret :id id {:order-by [[:version :desc]]}))
 
 (defn upsert-secret-value!
   "Inserts a new secret value, or updates an existing one, for the given parameters.
@@ -225,23 +231,23 @@
   {:added "0.42.0"}
   [existing-id nm kind src value]
   (let [insert-new     (fn [id v]
-                         (let [inserted (db/insert! Secret (cond-> {:version    v
-                                                                    :name       nm
-                                                                    :kind       kind
-                                                                    :source     src
-                                                                    :value      value
-                                                                    :creator_id api/*current-user-id*}
-                                                             id
-                                                             (assoc :id id)))]
+                         (let [inserted (first (t2/insert-returning-instances! Secret (cond-> {:version    v
+                                                                                               :name       nm
+                                                                                               :kind       kind
+                                                                                               :source     src
+                                                                                               :value      value
+                                                                                               :creator_id api/*current-user-id*}
+                                                                                        id
+                                                                                        (assoc :id id))))]
                            ;; Toucan doesn't support composite primary keys, so adding a new record with incremented
-                           ;; version for an existing ID won't return a result from db/insert!, hence we may need to
+                           ;; version for an existing ID won't return a result from t2/insert!, hence we may need to
                            ;; manually select it here
-                           (db/select-one Secret :id (or id (u/the-id inserted)) :version v)))
+                           (t2/select-one Secret :id (or id (u/the-id inserted)) :version v)))
         latest-version (when existing-id (latest-for-id existing-id))]
     (if latest-version
       (if (= (select-keys latest-version bump-version-keys) [kind src value])
-        (db/update-where! Secret {:id existing-id :version (:version latest-version)}
-                                 :name nm)
+        (pos? (t2/update! Secret {:id existing-id :version (:version latest-version)}
+                        {:name nm}))
         (insert-new (u/the-id latest-version) (inc (:version latest-version))))
       (insert-new nil 1))))
 
@@ -289,7 +295,7 @@
   (let [subprop (fn [prop-nm]
                   (keyword (str conn-prop-nm prop-nm)))
         secret* (cond (int? secret-or-id)
-                      (db/select-one Secret :id secret-or-id)
+                      (t2/select-one Secret :id secret-or-id)
 
                       (mi/instance-of? Secret secret-or-id)
                       secret-or-id
@@ -319,12 +325,9 @@
                                                                  details
                                                                  expand-inferred-secret-values))))
 
-;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
-
-(add-encoder
- #_{:clj-kondo/ignore [:unresolved-symbol]}
- SecretInstance
- (fn [secret json-generator]
-   (encode-map
-    (dissoc secret :value)              ; never include the secret value in JSON
-    json-generator)))
+(methodical/defmethod mi/to-json Secret
+  "Never include the secret value in JSON."
+  [secret json-generator]
+  (next-method
+   (dissoc secret :value)
+   json-generator))

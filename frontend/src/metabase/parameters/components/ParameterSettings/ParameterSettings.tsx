@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useCallback } from "react";
+import { ChangeEvent, useCallback } from "react";
 import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Radio from "metabase/core/components/Radio";
@@ -72,7 +72,7 @@ const ParameterSettings = ({
       </SettingSection>
       {canUseCustomSource(parameter) && (
         <SettingSection>
-          <SettingLabel>{t`How should users filter on this column?`}</SettingLabel>
+          <SettingLabel>{t`How should people filter on this column?`}</SettingLabel>
           <ValuesSourceSettings
             parameter={parameter}
             onChangeQueryType={onChangeQueryType}
@@ -92,7 +92,7 @@ const ParameterSettings = ({
       </SettingSection>
       {isSingleOrMultiSelectable(parameter) && (
         <SettingSection>
-          <SettingLabel>{t`Users can pick`}</SettingLabel>
+          <SettingLabel>{t`People can pick`}</SettingLabel>
           <Radio
             value={getIsMultiSelect(parameter)}
             options={MULTI_SELECT_OPTIONS}
@@ -108,4 +108,5 @@ const ParameterSettings = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ParameterSettings;

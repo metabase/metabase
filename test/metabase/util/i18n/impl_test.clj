@@ -6,6 +6,8 @@
   (:import
    (java.util Locale)))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel normalized-locale-string-test
   (doseq [[s expected] {"en"      "en"
                         "EN"      "en"

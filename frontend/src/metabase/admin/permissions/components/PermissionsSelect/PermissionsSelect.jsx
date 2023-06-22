@@ -1,9 +1,9 @@
-import React, { useState, memo } from "react";
+import { Fragment, useState, memo } from "react";
 import PropTypes from "prop-types";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { lighten } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Toggle from "metabase/core/components/Toggle";
 import Tooltip from "metabase/core/components/Tooltip";
 
@@ -29,6 +29,7 @@ const propTypes = {
   actions: PropTypes.object,
   value: PropTypes.string.isRequired,
   toggleLabel: PropTypes.string,
+  hasChildren: PropTypes.bool,
   onChange: PropTypes.func.isRequired,
   onAction: PropTypes.func,
   isDisabled: PropTypes.bool,
@@ -42,6 +43,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   actions,
   value,
   toggleLabel,
+  hasChildren,
   onChange,
   onAction,
   isDisabled,
@@ -51,7 +53,9 @@ export const PermissionsSelect = memo(function PermissionsSelect({
 }) {
   const [toggleState, setToggleState] = useState(false);
   const selectedOption = options.find(option => option.value === value);
-  const selectableOptions = options.filter(option => option !== selectedOption);
+  const selectableOptions = hasChildren
+    ? options
+    : options.filter(option => option !== selectedOption);
 
   const selectedOptionValue = (
     <PermissionsSelectRoot
@@ -92,11 +96,12 @@ export const PermissionsSelect = memo(function PermissionsSelect({
     <PopoverWithTrigger
       disabled={isDisabled}
       triggerElement={selectedOptionValue}
+      onClose={() => setToggleState(false)}
       targetOffsetX={16}
       targetOffsetY={8}
     >
       {({ onClose }) => (
-        <React.Fragment>
+        <Fragment>
           <OptionsList role="listbox">
             {selectableOptions.map(option => (
               <OptionsListItem
@@ -128,13 +133,13 @@ export const PermissionsSelect = memo(function PermissionsSelect({
             </ActionsList>
           )}
 
-          {toggleLabel && (
+          {hasChildren && (
             <ToggleContainer>
               <ToggleLabel>{toggleLabel}</ToggleLabel>
               <Toggle small value={toggleState} onChange={setToggleState} />
             </ToggleContainer>
           )}
-        </React.Fragment>
+        </Fragment>
       )}
     </PopoverWithTrigger>
   );

@@ -7,7 +7,6 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.test :as t]
-   [clojure.tools.logging :as log]
    [java-time]
    [metabase.config :as config]
    [metabase.server.middleware.session :as mw.session]
@@ -15,9 +14,12 @@
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as schema]))
+
+(set! *warn-on-reflection* true)
 
 ;;; build-url
 
@@ -34,11 +36,15 @@
   (str *url-prefix* url (when (seq query-parameters)
                           (str "?" (str/join \& (letfn [(url-encode [s]
                                                           (cond-> s
-                                                            (keyword? s) u/qualified-name
-                                                            true         codec/url-encode))]
-                                                  (for [[k v] query-parameters]
-                                                    (str (url-encode k) \= (url-encode v)))))))))
-
+                                                            (keyword? s)       u/qualified-name
+                                                            true               codec/url-encode))
+                                                        (encode-key-value [k v]
+                                                          (str (url-encode k) \= (url-encode v)))]
+                                                  (flatten (for [[k value-or-values] query-parameters]
+                                                             (if (sequential? value-or-values)
+                                                               (for [v value-or-values]
+                                                                 (encode-key-value k v))
+                                                               [(encode-key-value k value-or-values)])))))))))
 
 ;;; parse-response
 
@@ -237,8 +243,13 @@
     (cond-> parsed
       ;; un-nest {:request-options {:request-options <my-options>}} => {:request-options <my-options>}
       (:request-options parsed) (update :request-options :request-options)
-      ;; convert query parameters into a flat map [{:k :a, :v 1} {:k :b, :v 2}] => {:a 1, :b 2}
-      (:query-parameters parsed) (update :query-parameters (partial into {} (map (juxt :k :v)))))))
+      ;; convert query parameters into a flat map [{:k :a, :v 1} {:k :b, :v 2} {:k :b, :v 3}] => {:a 1, :b [2 3]}
+      (:query-parameters parsed) (update :query-parameters (fn [query-params]
+                                                             (update-vals (group-by :k query-params)
+                                                                          (fn [values]
+                                                                            (if (> (count values) 1)
+                                                                              (map :v values)
+                                                                              (:v (first values))))))))))
 
 (def ^:private response-timeout-ms (u/seconds->ms 45))
 
@@ -247,7 +258,7 @@
   {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & query-parameters])}
   [& args]
   (let [parsed (parse-http-client-args args)]
-    (log/trace (pr-str (parse-http-client-args args)))
+    (log/trace parsed)
     (u/with-timeout response-timeout-ms
       (-client parsed))))
 

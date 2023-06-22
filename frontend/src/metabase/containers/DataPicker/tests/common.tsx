@@ -1,7 +1,4 @@
 /* istanbul ignore file */
-import React from "react";
-import nock from "nock";
-
 import {
   renderWithProviders,
   screen,
@@ -11,14 +8,16 @@ import {
   setupCollectionsEndpoints,
   setupCollectionVirtualSchemaEndpoints,
   setupDatabasesEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 
+import Input from "metabase/core/components/Input";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 
-import { Collection } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
+  createMockCollectionItem,
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
@@ -26,6 +25,7 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import type { DataPickerValue, DataPickerFiltersProp } from "../types";
 import useDataPickerValue from "../useDataPickerValue";
+import { useDataPicker } from "../../DataPicker";
 import DataPicker from "../DataPickerContainer";
 
 export const SAMPLE_TABLE = createMockTable({
@@ -69,15 +69,18 @@ export const EMPTY_DATABASE = createMockDatabase({
   tables: [],
 });
 
+export const SAMPLE_COLLECTION_ID = 1;
+export const EMPTY_COLLECTION_ID = 2;
+
 export const SAMPLE_COLLECTION = createMockCollection({
-  id: 1,
+  id: SAMPLE_COLLECTION_ID,
   name: "Sample Collection",
   location: "/",
   here: ["card", "dataset"],
 });
 
 export const EMPTY_COLLECTION = createMockCollection({
-  id: 2,
+  id: EMPTY_COLLECTION_ID,
   name: "Empty Collection",
   location: "/",
   here: [],
@@ -88,33 +91,51 @@ export const SAMPLE_MODEL = createMockCard({
   id: 1,
   name: "Sample Model",
   dataset: true,
+  collection_id: SAMPLE_COLLECTION_ID,
 });
 
 export const SAMPLE_MODEL_2 = createMockCard({
   id: 2,
   name: "Sample Model 2",
   dataset: true,
+  collection_id: SAMPLE_COLLECTION_ID,
 });
 
 export const SAMPLE_MODEL_3 = createMockCard({
   id: 3,
   name: "Sample Model 3",
   dataset: true,
+  collection_id: SAMPLE_COLLECTION_ID,
 });
 
 export const SAMPLE_QUESTION = createMockCard({
   id: 4,
   name: "Sample Saved Question",
+  collection_id: SAMPLE_COLLECTION_ID,
 });
 
 export const SAMPLE_QUESTION_2 = createMockCard({
   id: 5,
   name: "Sample Saved Question 2",
+  collection_id: SAMPLE_COLLECTION_ID,
 });
 
 export const SAMPLE_QUESTION_3 = createMockCard({
   id: 6,
   name: "Sample Saved Question 3",
+  collection_id: SAMPLE_COLLECTION_ID,
+});
+
+export const SAMPLE_QUESTION_SEARCH_ITEM = createMockCollectionItem({
+  ...SAMPLE_QUESTION,
+  model: "card",
+  collection: SAMPLE_COLLECTION,
+});
+
+export const SAMPLE_MODEL_SEARCH_ITEM = createMockCollectionItem({
+  ...SAMPLE_MODEL,
+  model: "dataset",
+  collection: SAMPLE_COLLECTION,
 });
 
 function DataPickerWrapper({
@@ -130,16 +151,26 @@ function DataPickerWrapper({
 }) {
   const [value, setValue] = useDataPickerValue(initialValue);
   return (
-    <DataPicker
-      value={value}
-      filters={filters}
-      isMultiSelect={isMultiSelect}
-      onChange={(value: DataPickerValue) => {
-        setValue(value);
-        onChange(value);
-      }}
-    />
+    <DataPicker.Provider>
+      <DataPickerSearchInput />
+      <DataPicker
+        value={value}
+        filters={filters}
+        isMultiSelect={isMultiSelect}
+        onChange={(value: DataPickerValue) => {
+          setValue(value);
+          onChange(value);
+        }}
+      />
+    </DataPicker.Provider>
   );
+}
+
+function DataPickerSearchInput() {
+  const { search } = useDataPicker();
+  const { query, setQuery } = search;
+
+  return <Input value={query} onChange={e => setQuery(e.target.value)} />;
 }
 
 interface SetupOpts {
@@ -149,6 +180,7 @@ interface SetupOpts {
   hasDataAccess?: boolean;
   hasEmptyDatabase?: boolean;
   hasMultiSchemaDatabase?: boolean;
+  hasSavedQuestions?: boolean;
   hasModels?: boolean;
   hasNestedQueriesEnabled?: boolean;
 }
@@ -160,12 +192,11 @@ export async function setup({
   hasDataAccess = true,
   hasEmptyDatabase = false,
   hasMultiSchemaDatabase = false,
+  hasSavedQuestions = true,
   hasModels = true,
   hasNestedQueriesEnabled = true,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
-
-  const scope = nock(location.origin);
 
   if (hasDataAccess) {
     const databases = [SAMPLE_DATABASE];
@@ -178,36 +209,39 @@ export async function setup({
       databases.push(EMPTY_DATABASE);
     }
 
-    setupDatabasesEndpoints(scope, databases);
+    setupDatabasesEndpoints(databases, { hasSavedQuestions });
   } else {
-    setupDatabasesEndpoints(scope, []);
+    setupDatabasesEndpoints([], { hasSavedQuestions: false });
   }
 
-  scope
-    .get("/api/search?models=dataset&limit=1")
-    .reply(200, { data: hasModels ? [SAMPLE_MODEL] : [] });
+  setupCollectionsEndpoints({
+    collections: [SAMPLE_COLLECTION, EMPTY_COLLECTION],
+  });
 
-  setupCollectionsEndpoints(scope, [SAMPLE_COLLECTION, EMPTY_COLLECTION]);
+  setupCollectionVirtualSchemaEndpoints(createMockCollection(ROOT_COLLECTION), [
+    SAMPLE_QUESTION,
+    SAMPLE_QUESTION_2,
+    SAMPLE_QUESTION_3,
+    SAMPLE_MODEL,
+    SAMPLE_MODEL_2,
+    SAMPLE_MODEL_3,
+  ]);
 
-  setupCollectionVirtualSchemaEndpoints(
-    scope,
-    ROOT_COLLECTION as unknown as Collection,
-    [
-      SAMPLE_QUESTION,
-      SAMPLE_QUESTION_2,
-      SAMPLE_QUESTION_3,
-      SAMPLE_MODEL,
-      SAMPLE_MODEL_2,
-      SAMPLE_MODEL_3,
-    ],
-  );
-
-  setupCollectionVirtualSchemaEndpoints(scope, SAMPLE_COLLECTION, [
+  setupCollectionVirtualSchemaEndpoints(SAMPLE_COLLECTION, [
     SAMPLE_QUESTION,
     SAMPLE_MODEL,
   ]);
 
-  setupCollectionVirtualSchemaEndpoints(scope, EMPTY_COLLECTION, []);
+  setupCollectionVirtualSchemaEndpoints(EMPTY_COLLECTION, []);
+
+  if (hasModels) {
+    setupSearchEndpoints([
+      SAMPLE_QUESTION_SEARCH_ITEM,
+      SAMPLE_MODEL_SEARCH_ITEM,
+    ]);
+  } else {
+    setupSearchEndpoints([SAMPLE_QUESTION_SEARCH_ITEM]);
+  }
 
   const settings = createMockSettingsState({
     "enable-nested-queries": hasNestedQueriesEnabled,

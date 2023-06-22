@@ -14,8 +14,10 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
-   [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:dynamic ^:private *actions-test-data-tables*
   #{"categories"})
@@ -86,21 +88,28 @@
       (finally
         (when-let [{driver :engine, db-id :id} @db]
           (tx/destroy-db! driver (tx/get-dataset-definition dataset-definition))
-          (db/delete! Database :id db-id))))))
+          (t2/delete! Database :id db-id))))))
 
 (defmacro with-actions-test-data
   "Sets the current dataset to a freshly-loaded copy of [[defs/test-data]] that only includes the `categories` table
   that gets destroyed at the conclusion of `body`. Use this to test destructive actions that may modify the data."
-  {:style/indent 0}
+  {:style/indent :defn}
   [& body]
   `(do-with-dataset-definition actions-test-data (fn [] ~@body)))
 
 (defmacro with-temp-test-data
   "Sets the current dataset to a freshly created dataset-definition that gets destroyed at the conclusion of `body`.
    Use this to test destructive actions that may modify the data."
-  {:style/indent 0}
+  {:style/indent :defn}
   [dataset-definition & body]
   `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym)) ~dataset-definition) (fn [] ~@body)))
+
+(defmacro with-empty-db
+  "Sets the current dataset to a freshly created db that gets destroyed at the conclusion of `body`.
+   Use this to test destructive actions that may modify the data."
+  {:style/indent :defn}
+  [& body]
+  `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym))) (fn [] ~@body)))
 
 (deftest with-actions-test-data-test
   (datasets/test-drivers (qp.test/normal-drivers-with-feature :actions/custom)
@@ -138,6 +147,8 @@
                                            :required false
                                            :target [:variable [:template-tag "name"]]}]
                              :visualization_settings {:inline true}
+                             :public_uuid (str (java.util.UUID/randomUUID))
+                             :made_public_by_id (test.users/user->id :crowberto)
                              :database_id (data/id)
                              :creator_id (test.users/user->id :crowberto)
                              :dataset_query {:database (data/id)
@@ -160,6 +171,8 @@
                                      {:type :implicit
                                       :name "Update Example"
                                       :kind "row/update"
+                                      :public_uuid (str (java.util.UUID/randomUUID))
+                                      :made_public_by_id (test.users/user->id :crowberto)
                                       :creator_id (test.users/user->id :crowberto)
                                       :model_id model-id}
                                      options-map))]
@@ -180,8 +193,10 @@
                                                     :type "text"
                                                     :target [:template-tag "fail"]}]
                                       :response_handle ".body"
-                                      :creator_id (test.users/user->id :crowberto)
-                                      :model_id model-id}
+                                      :model_id model-id
+                                      :public_uuid (str (java.util.UUID/randomUUID))
+                                      :made_public_by_id (test.users/user->id :crowberto)
+                                      :creator_id (test.users/user->id :crowberto)}
                                      options-map))]
       {:action-id action-id :model-id model-id})))
 
@@ -218,7 +233,7 @@
            binding-forms-and-option-maps])]
     `(do
        (initialize/initialize-if-needed! :web-server)
-       (tt/with-temp Card ~[model model-def]
+       (t2.with-temp/with-temp ~[Card model model-def]
          (tu/with-model-cleanup [Action]
            (let [~custom-binding ~model
                  ~@(mapcat (fn [[binding-form option-map]]

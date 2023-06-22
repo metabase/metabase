@@ -1,14 +1,14 @@
 (ns metabase.driver.sql.parameters.substitute
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.sql.parameters.substitution
     :as sql.params.substitution]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]))
 
 (defn- substitute-field-filter [[sql args missing] in-optional? k {:keys [_field value], :as v}]
   (if (and (= params/no-value value) in-optional?)

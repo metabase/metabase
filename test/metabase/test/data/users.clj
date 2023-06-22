@@ -15,8 +15,8 @@
    [metabase.util :as u]
    [metabase.util.password :as u.password]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.util.test :as tt])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -63,22 +63,24 @@
 
 (defn- fetch-or-create-user!
   "Create User if they don't already exist and return User."
-  [& {:keys [email first last password superuser active]
+  [& {first-name :first
+      last-name  :last
+      :keys [email password superuser active]
       :or   {superuser false
              active    true}}]
-  {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
+  {:pre [(string? email) (string? first-name) (string? last-name) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (initialize/initialize-if-needed! :db)
-  (or (db/select-one User :email email)
+  (or (t2/select-one User :email email)
       (locking create-user-lock
-        (or (db/select-one User :email email)
-            (db/insert! User
-              :email        email
-              :first_name   first
-              :last_name    last
-              :password     password
-              :is_superuser superuser
-              :is_qbnewb    true
-              :is_active    active)))))
+        (or (t2/select-one User :email email)
+            (first (t2/insert-returning-instances! User
+                                                   {:email        email
+                                                    :first_name   first-name
+                                                    :last_name    last-name
+                                                    :password     password
+                                                    :is_superuser superuser
+                                                    :is_qbnewb    true
+                                                    :is_active    active}))))))
 
 (s/defn fetch-user :- (mi/InstanceOf User)
   "Fetch the User object associated with `username`. Creates user if needed.
@@ -120,14 +122,6 @@
   (let [{:keys [email password]} (user->info username)]
     {:username email
      :password password}))
-
-(def ^{:arglists '([id])} id->user
-  "Reverse of `user->id`.
-
-    (id->user 4) -> :rasta"
-  (let [m (delay (zipmap (map user->id usernames) usernames))]
-    (fn [id]
-      (@m id))))
 
 (defonce ^:private tokens (atom {}))
 
@@ -181,21 +175,22 @@
       (fetch-user user)
       (apply client-fn user args))
     (let [user-id             (u/the-id user)
-          user-email          (db/select-one-field :email User :id user-id)
-          [old-password-info] (db/simple-select User {:select [:password :password_salt]
-                                                      :where  [:= :id user-id]})]
+          user-email          (t2/select-one-fn :email User :id user-id)
+          [old-password-info] (t2/query {:select [:password :password_salt]
+                                         :from   [:core_user]
+                                         :where  [:= :id user-id]})]
       (when-not user-email
         (throw (ex-info "User does not exist" {:user user})))
       (try
-        (db/execute! {:update :core_user
-                      :set    {:password      (u.password/hash-bcrypt user-email)
-                               :password_salt ""}
-                      :where  [:= :id user-id]})
+        (t2/query-one {:update :core_user
+                       :set    {:password      (u.password/hash-bcrypt user-email)
+                                :password_salt ""}
+                       :where  [:= :id user-id]})
         (apply client/client {:username user-email, :password user-email} args)
         (finally
-          (db/execute! {:update :core_user
-                        :set    old-password-info
-                        :where  [:= :id user-id]}))))))
+          (t2/query-one {:update :core_user
+                         :set    old-password-info
+                         :where  [:= :id user-id]}))))))
 
 (defn do-with-test-user [user-kwd thunk]
   (t/testing (format "with test user %s\n" user-kwd)
@@ -220,9 +215,9 @@
     (u/the-id test-user-name-or-user-id)))
 
 (defn do-with-group-for-user [group test-user-name-or-user-id f]
-  (tt/with-temp* [PermissionsGroup           [group group]
-                  PermissionsGroupMembership [_ {:group_id (u/the-id group)
-                                                 :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]]
+  (t2.with-temp/with-temp [PermissionsGroup           group group
+                           PermissionsGroupMembership _     {:group_id (u/the-id group)
+                                                             :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]
     (f group)))
 
 (defmacro with-group

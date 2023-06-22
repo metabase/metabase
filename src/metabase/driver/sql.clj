@@ -27,15 +27,15 @@
                  :advanced-math-expressions
                  :percentile-aggregations
                  :regex]]
-  (defmethod driver/supports? [:sql feature] [_ _] true))
+  (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 (doseq [join-feature [:left-join
                       :right-join
                       :inner-join
                       :full-join]]
-  (defmethod driver/supports? [:sql join-feature]
-    [driver _]
-    (driver/supports? driver :foreign-keys)))
+  (defmethod driver/database-supports? [:sql join-feature]
+    [driver _feature db]
+    (driver/database-supports? driver :foreign-keys db)))
 
 (defmethod driver/mbql->native :sql
   [driver query]
@@ -58,6 +58,32 @@
     (seq params)
     (merge {:params nil
             :query  (unprepare/unprepare driver (cons sql params))})))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Connection Impersonation                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmulti set-role-statement
+  "SQL for setting the active role for a connection, such as USE ROLE or equivalent, for the given driver."
+  {:arglists '([driver role])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod set-role-statement :default
+  [_ _ _]
+  nil)
+
+(defmulti default-database-role
+  "The name of the default role for a given database, used for queries that do not have custom user
+  impersonation rules configured for them. This must be implemented for each driver that supports user impersonation."
+  {:arglists '(^String [driver database])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod default-database-role :default
+  [_ _database]
+  nil)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

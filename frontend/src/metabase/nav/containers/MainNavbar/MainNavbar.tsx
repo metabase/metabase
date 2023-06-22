@@ -1,42 +1,55 @@
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { LocationDescriptor } from "history";
+import _ from "underscore";
+import type { LocationDescriptor } from "history";
+
+import * as Urls from "metabase/lib/urls";
 
 import { closeNavbar, openNavbar } from "metabase/redux/app";
+import Questions from "metabase/entities/questions";
 
-import { getQuestion } from "metabase/query_builder/selectors";
 import { getDashboard } from "metabase/dashboard/selectors";
 
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type Question from "metabase-lib/Question";
+import Question from "metabase-lib/Question";
 
 import MainNavbarContainer from "./MainNavbarContainer";
 
 import {
-  MainNavbarProps,
   MainNavbarOwnProps,
   MainNavbarDispatchProps,
   SelectedItem,
 } from "./types";
-import getSelectedItems from "./getSelectedItems";
+import getSelectedItems, {
+  isModelPath,
+  isQuestionPath,
+} from "./getSelectedItems";
 import { NavRoot, Sidebar } from "./MainNavbar.styled";
 
-interface StateProps {
+interface EntityLoaderProps {
   question?: Question;
+}
+
+interface StateProps {
   dashboard?: Dashboard;
 }
 
-interface DispatchProps {
+interface DispatchProps extends MainNavbarDispatchProps {
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
-type Props = MainNavbarProps & StateProps & DispatchProps;
+type Props = MainNavbarOwnProps &
+  EntityLoaderProps &
+  StateProps &
+  DispatchProps;
 
 function mapStateToProps(state: State) {
   return {
-    question: getQuestion(state),
+    // Can't use dashboard entity loader instead.
+    // The dashboard page uses DashboardsApi.get directly,
+    // so we can't re-use data between these components.
     dashboard: getDashboard(state),
   };
 }
@@ -87,7 +100,12 @@ function MainNavbar({
   );
 
   return (
-    <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
+    <Sidebar
+      className="Nav"
+      isOpen={isOpen}
+      aria-hidden={!isOpen}
+      data-testid="main-navbar-root"
+    >
       <NavRoot isOpen={isOpen}>
         <MainNavbarContainer
           isOpen={isOpen}
@@ -104,12 +122,21 @@ function MainNavbar({
   );
 }
 
-export default connect<
-  StateProps,
-  MainNavbarDispatchProps & DispatchProps,
-  MainNavbarOwnProps,
-  State
->(
-  mapStateToProps,
-  mapDispatchToProps,
+function maybeGetQuestionId(
+  state: State,
+  { location, params }: MainNavbarOwnProps,
+) {
+  const { pathname } = location;
+  const canFetchQuestion = isQuestionPath(pathname) || isModelPath(pathname);
+  return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
+}
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  Questions.load({
+    id: maybeGetQuestionId,
+    loadingAndErrorWrapper: false,
+    entityAlias: "question",
+  }),
 )(MainNavbar);

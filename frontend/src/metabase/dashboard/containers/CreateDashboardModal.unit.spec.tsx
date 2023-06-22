@@ -1,14 +1,13 @@
-import React from "react";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
+import { createMockEntitiesState } from "__support__/store";
+
 import { mockSettings } from "__support__/settings";
 
 import type { Collection } from "metabase-types/api";
-import { createMockEntitiesState } from "metabase-types/store/mocks";
-
 import CreateDashboardModal from "./CreateDashboardModal";
 
 const ROOT_COLLECTION = {
@@ -26,17 +25,13 @@ function setup({
   const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
 
   if (mockCreateDashboardResponse) {
-    nock(location.origin)
-      .post(`/api/dashboard`)
-      .reply(200, (url, body) => body);
+    fetchMock.post(`path:/api/dashboard`, (url, options) => options.body);
   }
 
   renderWithProviders(<CreateDashboardModal onClose={onClose} />, {
     storeInitialState: {
       entities: createMockEntitiesState({
-        collections: {
-          root: ROOT_COLLECTION,
-        },
+        collections: [ROOT_COLLECTION],
       }),
       settings,
     },
@@ -49,11 +44,7 @@ function setup({
 
 describe("CreateDashboardModal", () => {
   beforeEach(() => {
-    nock(location.origin).get("/api/collection").reply(200, [ROOT_COLLECTION]);
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
+    fetchMock.get("path:/api/collection", [ROOT_COLLECTION]);
   });
 
   it("displays empty form fields", () => {

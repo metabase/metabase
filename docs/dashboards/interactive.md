@@ -38,19 +38,19 @@ Metabase will slide out the **Click behavior sidebar**:
 
 For questions composed using the query builder, you can select from three options:
 
-- Open the Metabase action menu.
+- Open the Metabase drill-through menu.
 - Go to a custom destination.
 - Update a dashboard filter (if the dashboard has a filter).
 
-SQL questions will only have the option to **Go to a custom destination**, and **Update a dashboard filter**, as the action menu is only available to questions composed with the query builder.
+SQL questions will only have the option to **Go to a custom destination**, and **Update a dashboard filter**, as the drill-through menu is only available to questions composed with the query builder.
 
 If your dashboard has a filter, you'll also see an option to [update the filter](#use-a-chart-to-filter-a-dashboard).
 
-## Open the action menu
+## Open the drill-through menu
 
-For questions composed using the query builder, the default click behavior is to open the **action menu**, which presents people with the option to [drill through the data](https://www.metabase.com/learn/questions/drill-through):
+For questions composed using the query builder, the default click behavior is to open the **drill-through menu**, which presents people with the option to [drill through the data](https://www.metabase.com/learn/questions/drill-through):
 
-![Action menu](./images/action-menu.png)
+![Drill-through menu](./images/drill-through-menu.png)
 
 ## Custom destinations
 

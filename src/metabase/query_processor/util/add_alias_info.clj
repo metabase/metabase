@@ -5,8 +5,9 @@
   columns in the parent level.
 
   This code is currently opt-in, and is currently only used by SQL drivers ([[metabase.driver.sql.query-processor]]
-  manually calls [[add-alias-info]] inside of [[metabase.driver.sql.query-processor/mbql->native]]) but at some point
-  in the future this may become general QP middleware that can't be opted out of.
+  manually calls [[add-alias-info]] inside of [[metabase.driver.sql.query-processor/mbql->native]]
+  and [[metabase.driver.mongo.query-processor/mbql->native]]) but at some point in the future this may
+  become general QP middleware that can't be opted out of.
 
   [[add-alias-info]] adds some or all of the following keys to every `:field` clause, `:expression` reference, and
   `:aggregation` reference:
@@ -257,10 +258,22 @@
   (when-let [[_ _ {::keys [desired-alias]}] (matching-field-in-source-query inner-query field-clause)]
     desired-alias))
 
+(defmulti ^String field-reference
+  "Generate a reference for the field instance `field-inst` appropriate for the driver `driver`.
+  By default this is just the name of the field, but it can be more complicated, e.g., take
+  parent fields into account."
+  {:added "0.46.0", :arglists '([driver field-inst])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod field-reference ::driver/driver
+  [_driver field-inst]
+  (:name field-inst))
+
 (defn- field-name
   "*Actual* name of a `:field` from the database or source query (for Field literals)."
   [_inner-query [_ id-or-name :as field-clause]]
-  (or (:name (field-instance field-clause))
+  (or (some->> field-clause field-instance (field-reference driver/*driver*))
       (when (string? id-or-name)
         id-or-name)))
 

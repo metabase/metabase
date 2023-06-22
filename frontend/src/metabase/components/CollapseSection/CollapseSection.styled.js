@@ -1,8 +1,7 @@
-import React from "react";
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 export const HeaderContainer = styled.div`
   display: flex;

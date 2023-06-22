@@ -1,13 +1,12 @@
-import React from "react";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 
+import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 
 import { Collection, User } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
-import { createMockEntitiesState } from "metabase-types/store/mocks";
 
 import CreateCollectionForm from "./CreateCollectionForm";
 
@@ -26,21 +25,15 @@ function setup({
   user = createMockUser({ is_superuser: true }),
   onCancel = jest.fn(),
 }: SetupOpts = {}) {
-  nock(location.origin)
-    .post("/api/collection")
-    .reply(200, (url, body) => {
-      if (typeof body === "object") {
-        return createMockCollection(body);
-      }
-    });
+  fetchMock.post("path:/api/collection", async url => {
+    return createMockCollection(await fetchMock.lastCall(url)?.request?.json());
+  });
 
   renderWithProviders(<CreateCollectionForm onCancel={onCancel} />, {
     storeInitialState: {
       currentUser: user,
       entities: createMockEntitiesState({
-        collections: {
-          root: ROOT_COLLECTION,
-        },
+        collections: [ROOT_COLLECTION],
       }),
     },
   });
@@ -50,11 +43,7 @@ function setup({
 
 describe("CreateCollectionForm", () => {
   beforeEach(() => {
-    nock(location.origin).get("/api/collection").reply(200, [ROOT_COLLECTION]);
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
+    fetchMock.get("path:/api/collection", [ROOT_COLLECTION]);
   });
 
   it("displays correct blank state", () => {

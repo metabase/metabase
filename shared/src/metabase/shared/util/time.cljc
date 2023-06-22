@@ -3,20 +3,24 @@
   In Java these return [[OffsetDateTime]], in JavaScript they return Moments.
   Most of the implementations are in the split CLJ/CLJS files [[metabase.shared.util.internal.time]]."
   (:require
-   [metabase.shared.util :as shared.u]
    [metabase.shared.util.internal.time :as internal]
    [metabase.shared.util.internal.time-common :as common]
-   [metabase.shared.util.namespaces :as shared.ns]))
+   [metabase.shared.util.namespaces :as shared.ns]
+   [metabase.util :as u]))
 
 ;; Importing and re-exporting some functions defined in each implementation.
-(shared.ns/import-fn common/to-range)
-(shared.ns/import-fn internal/valid?)
-(shared.ns/import-fn internal/same-day?)
-(shared.ns/import-fn internal/same-month?)
-(shared.ns/import-fn internal/same-year?)
+(shared.ns/import-fns
+ [common
+  to-range]
+ [internal
+  valid?
+  same-day?
+  same-month?
+  same-year?
+  day-diff])
 
 (defn- prep-options [options]
-  (merge internal/default-options (shared.u/normalize-map options)))
+  (merge internal/default-options (u/normalize-map options)))
 
 (defn ^:export coerce-to-timestamp
   "Parses a timestamp value into a date object. This can be a straightforward Unix timestamp or ISO format string.

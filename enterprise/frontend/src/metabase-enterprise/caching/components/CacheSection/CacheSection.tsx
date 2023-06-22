@@ -1,11 +1,10 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import NumericInput from "metabase/core/components/NumericInput";
-import { color } from "metabase/lib/colors";
 
 import { normalizeCacheTTL } from "../../utils";
 
@@ -38,7 +37,7 @@ const CacheSection = ({ initialCacheTTL, onSave }: CacheSectionProps) => {
         renderTrigger={({ onClick, visible }) => (
           <Button
             borderless
-            color={color("brand")}
+            className="text-brand"
             onClick={onClick}
             iconRight={visible ? "chevronup" : "chevrondown"}
           >
@@ -68,4 +67,5 @@ const CacheSection = ({ initialCacheTTL, onSave }: CacheSectionProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CacheSection;

@@ -3,12 +3,12 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.db.liquibase.h2 :as liquibase.h2]
    [metabase.db.liquibase.mysql :as liquibase.mysql]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [schema.core :as s])
   (:import
    (java.io StringWriter)
@@ -17,6 +17,8 @@
    (liquibase.database.jvm JdbcConnection)
    (liquibase.exception LockException)
    (liquibase.resource ClassLoaderResourceAccessor)))
+
+(set! *warn-on-reflection* true)
 
 ;; register our custom MySQL SQL generators
 (liquibase.mysql/register-mysql-generators!)
@@ -192,7 +194,7 @@
   [db-type :- s/Keyword
    conn    :- java.sql.Connection]
   (let [liquibase-table-name (changelog-table-name db-type)
-        fresh-install?       (jdbc/with-db-metadata [meta {:connection conn}] ; don't migrate on fresh install
+        fresh-install?       (let [meta (.getMetaData conn)] ; don't migrate on fresh install
                                (empty? (jdbc/metadata-query
                                         (.getTables meta nil nil liquibase-table-name (u/varargs String ["TABLE"])))))
         statement            (format "UPDATE %s SET FILENAME = ?" liquibase-table-name)]

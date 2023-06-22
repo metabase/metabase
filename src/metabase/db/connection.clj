@@ -4,9 +4,13 @@
   (:require
    [metabase.db.connection-pool-setup :as connection-pool-setup]
    [metabase.db.env :as mdb.env]
-   [potemkin :as p])
+   [methodical.core :as methodical]
+   [potemkin :as p]
+   [toucan2.connection :as t2.conn])
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
+
+(set! *warn-on-reflection* true)
 
 (defonce ^{:doc "Counter for [[unique-identifier]] -- this is a simple counter rather that [[java.util.UUID/randomUUID]]
   so we don't waste precious entropy on launch generating something that doesn't need to be random (it just needs to be
@@ -129,3 +133,13 @@
                       (apply f args)))]
     (fn [& args]
       (apply f* (unique-identifier) args))))
+
+(methodical/defmethod t2.conn/do-with-connection :default
+  [_connectable f]
+  (t2.conn/do-with-connection *application-db* f))
+
+(methodical/defmethod t2.conn/do-with-transaction :around java.sql.Connection
+  [connection options f]
+  ;; Do not deadlock if using a Connection in a different thread inside of a transaction -- see
+  ;; https://github.com/seancorfield/next-jdbc/issues/244.
+  (next-method connection (assoc options :nested-transaction-rule :ignore) f))

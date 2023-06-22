@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 export const Description = styled.p`
   color: ${color("text-dark")};
@@ -13,7 +13,7 @@ export const Link = styled(ExternalLink)`
   align-items: center;
   color: ${color("text-white")};
   font-weight: bold;
-  background-color: ${() => color("brand")};
+  background-color: ${color("brand")};
   padding: 12px 18px;
   border-radius: 6px;
 

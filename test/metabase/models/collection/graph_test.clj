@@ -1,6 +1,5 @@
 (ns metabase.models.collection.graph-test
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
@@ -19,8 +18,8 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
@@ -43,7 +42,7 @@
                                                                        collection-id))))))))
 
 (defn- clear-graph-revisions! []
-  (db/delete! CollectionPermissionGraphRevision))
+  (t2/delete! CollectionPermissionGraphRevision))
 
 (defn- only-groups
   "Remove entries for non-'magic' groups from a fetched perms `graph`."
@@ -88,7 +87,7 @@
 (deftest new-collection-perms-test
   (testing "Creating a new Collection shouldn't give perms to anyone but admins"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp Collection [collection]
+      (t2.with-temp/with-temp [Collection collection]
         (is (= {:revision 0
                 :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :none}
                            (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :write}}}
@@ -97,7 +96,7 @@
 (deftest read-perms-test
   (testing "make sure read perms show up correctly"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp Collection [collection]
+      (t2.with-temp/with-temp [Collection collection]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (is (= {:revision 0
                 :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :read}
@@ -107,7 +106,7 @@
 (deftest grant-write-perms-for-new-collections-test
   (testing "make sure we can grant write perms for new collections (!)"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp Collection [collection]
+      (t2.with-temp/with-temp [Collection collection]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (is (=  {:revision 0
                  :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :write}
@@ -116,7 +115,7 @@
 
 (deftest non-magical-groups-test
   (testing "make sure a non-magical group will show up"
-    (mt/with-temp PermissionsGroup [new-group]
+    (t2.with-temp/with-temp [PermissionsGroup new-group]
       (mt/with-non-admin-groups-no-root-collection-perms
         (is (=   {:revision 0
                   :groups   {(u/the-id (perms-group/all-users)) {:root :none}
@@ -126,7 +125,7 @@
 
 (deftest root-collection-read-perms-test
   (testing "How abut *read* permissions for the Root Collection?"
-    (mt/with-temp PermissionsGroup [new-group]
+    (t2.with-temp/with-temp [PermissionsGroup new-group]
       (mt/with-non-admin-groups-no-root-collection-perms
         (perms/grant-collection-read-permissions! new-group collection/root-collection)
         (is (= {:revision 0
@@ -137,7 +136,7 @@
 
 (deftest root-collection-write-perms-test
   (testing "How about granting *write* permissions for the Root Collection?"
-    (mt/with-temp PermissionsGroup [new-group]
+    (t2.with-temp/with-temp [PermissionsGroup new-group]
       (mt/with-non-admin-groups-no-root-collection-perms
         (perms/grant-collection-readwrite-permissions! new-group collection/root-collection)
         (is (= {:revision 0
@@ -163,7 +162,7 @@
   (testing "Can we give someone read perms via the graph?"
     (clear-graph-revisions!)
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp Collection [collection]
+      (t2.with-temp/with-temp [Collection collection]
         (binding [*current-user-id* (mt/user->id :crowberto)]
           (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/the-id (perms-group/all-users)) (u/the-id collection)]
@@ -175,7 +174,7 @@
 
   (testing "can we give them *write* perms?"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp Collection [collection]
+      (t2.with-temp/with-temp [Collection collection]
         (binding [*current-user-id* (mt/user->id :crowberto)]
           (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/the-id (perms-group/all-users)) (u/the-id collection)]
@@ -189,7 +188,7 @@
   (testing "can we *revoke* perms?"
     (clear-graph-revisions!)
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp Collection [collection]
+      (t2.with-temp/with-temp [Collection collection]
         (binding [*current-user-id* (mt/user->id :crowberto)]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
           (graph/update-graph! (assoc-in (graph :clear-revisions? true)
@@ -202,7 +201,7 @@
 
 (deftest grant-root-permissions-test
   (testing "Can we grant *read* permissions for the Root Collection?"
-    (mt/with-temp PermissionsGroup [new-group]
+    (t2.with-temp/with-temp [PermissionsGroup new-group]
       (clear-graph-revisions!)
       (mt/with-non-admin-groups-no-root-collection-perms
         (binding [*current-user-id* (mt/user->id :crowberto)]
@@ -216,7 +215,7 @@
                  (graph :groups [new-group])))))))
 
   (testing "How about granting *write* permissions for the Root Collection?"
-    (mt/with-temp PermissionsGroup [new-group]
+    (t2.with-temp/with-temp [PermissionsGroup new-group]
       (clear-graph-revisions!)
       (mt/with-non-admin-groups-no-root-collection-perms
         (binding [*current-user-id* (mt/user->id :crowberto)]
@@ -231,7 +230,7 @@
 
 (deftest revoke-root-permissions-test
   (testing "can we *revoke* RootCollection perms?"
-    (mt/with-temp PermissionsGroup [new-group]
+    (t2.with-temp/with-temp [PermissionsGroup new-group]
       (clear-graph-revisions!)
       (mt/with-non-admin-groups-no-root-collection-perms
         (binding [*current-user-id* (mt/user->id :crowberto)]
@@ -256,7 +255,7 @@
   (testing "Make sure descendants of Personal Collections do not come back as part of the graph either..."
     (clear-graph-revisions!)
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp Collection [_ {:location (lucky-collection-children-location)}]
+      (t2.with-temp/with-temp [Collection _ {:location (lucky-collection-children-location)}]
         (is (= {:revision 0
                 :groups   {(u/the-id (perms-group/all-users)) {:root :none}
                            (u/the-id (perms-group/admin))     {:root :write}}}
@@ -281,7 +280,7 @@
                  (c-perm-revision/latest-id)))))))
 
   (testing "Make sure you can't be sneaky and edit descendants of Personal Collections either."
-    (mt/with-temp Collection [collection {:location (lucky-collection-children-location)}]
+    (t2.with-temp/with-temp [Collection collection {:location (lucky-collection-children-location)}]
       (let [lucky-personal-collection-id (u/the-id (collection/user->personal-collection (mt/user->id :lucky)))]
         (is (thrown?
              Exception
@@ -345,7 +344,7 @@
                                 :user_id    (s/eq (mt/user->id :crowberto))
                                 :created_at java.time.temporal.Temporal
                                 s/Keyword   s/Any}
-                               (db/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
+                               (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
 
             (testing "Should be able to update the graph for a non-default namespace.\n"
               (let [before (graph/graph :currency)]
@@ -364,7 +363,7 @@
                                 :user_id    (s/eq (mt/user->id :crowberto))
                                 :created_at java.time.temporal.Temporal
                                 s/Keyword   s/Any}
-                               (db/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
+                               (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
 
             (testing "should be able to update permissions for the Root Collection in the default namespace via the graph"
               (graph/update-graph! (assoc (graph/graph) :groups {group-id {:root :read}}))
@@ -383,7 +382,7 @@
                                          s/Keyword  s/Any}
                               :after    {(keyword (str group-id)) {:root (s/eq "read")}}
                               s/Keyword s/Any}
-                             (db/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))
+                             (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))
 
             (testing "should be able to update permissions for Root Collection in non-default namespace"
               (graph/update-graph! :currency (assoc (graph/graph :currency) :groups {group-id {:root :write}}))
@@ -402,31 +401,25 @@
                                          s/Keyword  s/Any}
                               :after    {(keyword (str group-id)) {:root (s/eq "write")}}
                               s/Keyword s/Any}
-                             (db/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))))))))
+                             (t2/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))))))))
 
 (defn- do-with-n-temp-users-with-personal-collections! [num-users thunk]
   (mt/with-model-cleanup [User Collection]
     ;; insert all the users
-    (jdbc/execute!
-     (db/connection)
-     (db/honeysql->sql
-      {:insert-into User
-       :values      (repeatedly num-users #(assoc (tt/with-temp-defaults User) :date_joined :%now))}))
-    (let [max-id   (:max-id (db/select-one [User [:%max.id :max-id]]))
+    (t2/query {:insert-into (t2/table-name User)
+               :values      (repeatedly num-users #(assoc (t2.with-temp/with-temp-defaults User) :date_joined :%now))})
+    (let [max-id   (:max-id (t2/select-one [User [:%max.id :max-id]]))
           ;; determine the range of IDs we inserted -- MySQL doesn't support INSERT INTO ... RETURNING like Postgres
           ;; so this is the fastest way to do this
           user-ids (range (inc (- max-id num-users)) (inc max-id))]
       (assert (= (count user-ids) num-users))
       ;; insert the Collections
-      (jdbc/execute!
-       (db/connection)
-       (db/honeysql->sql
-        {:insert-into Collection
-         :values      (for [user-id user-ids
-                            :let    [collection (tt/with-temp-defaults Collection)]]
-                        (assoc collection
-                               :personal_owner_id user-id
-                               :slug "my_collection"))})))
+      (t2/query {:insert-into (t2/table-name Collection)
+                 :values      (for [user-id user-ids
+                                    :let    [collection (t2.with-temp/with-temp-defaults Collection)]]
+                                (assoc collection
+                                       :personal_owner_id user-id
+                                       :slug "my_collection"))}))
     ;; now run the thunk
     (thunk)))
 
@@ -436,5 +429,5 @@
 (deftest mega-graph-test
   (testing "A truly insane amount of Personal Collections shouldn't cause a Stack Overflow (#13211)"
     (with-n-temp-users-with-personal-collections 2000
-      (is (>= (db/count Collection :personal_owner_id [:not= nil]) 2000))
+      (is (>= (t2/count Collection :personal_owner_id [:not= nil]) 2000))
       (is (map? (graph/graph))))))

@@ -1,14 +1,8 @@
 import _ from "underscore";
+import { unique_expression_name } from "cljs/metabase.domain_entities.queries.util";
 
 export function getExpressions(expressions = {}) {
   return expressions;
-}
-
-export function getExpressionsList(expressions = {}) {
-  return Object.entries(expressions).map(([name, expression]) => ({
-    name,
-    expression,
-  }));
 }
 
 export function addExpression(expressions = {}, name, expression) {
@@ -42,23 +36,5 @@ export function clearExpressions(expressions) {
  * @returns {string}
  */
 export function getUniqueExpressionName(expressions, originalName) {
-  if (!expressions[originalName]) {
-    return originalName;
-  }
-  const expressionNames = Object.keys(expressions);
-  const handledDuplicateNamePattern = new RegExp(
-    `^${originalName} \\([0-9]+\\)$`,
-  );
-  const duplicateNames = expressionNames.filter(
-    name => name === originalName || handledDuplicateNamePattern.test(name),
-  );
-  return getUniqueName(duplicateNames, originalName, duplicateNames.length);
-}
-
-function getUniqueName(expressionNames, originalName, index) {
-  const nameWithIndexAppended = `${originalName} (${index})`;
-  const isUnique = !expressionNames.includes(nameWithIndexAppended);
-  return isUnique
-    ? nameWithIndexAppended
-    : getUniqueName(expressionNames, originalName, index + 1);
+  return unique_expression_name(expressions, originalName);
 }

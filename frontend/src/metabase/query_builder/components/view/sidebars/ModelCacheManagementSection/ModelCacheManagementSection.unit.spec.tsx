@@ -1,15 +1,26 @@
-import React from "react";
 import moment from "moment-timezone";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 
-import PersistedModels from "metabase/entities/persisted-models";
-import { ModelCacheRefreshStatus } from "metabase-types/api";
-import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
-
+import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { ORDERS } from "__support__/sample_database_fixture";
+
+import { checkNotNull } from "metabase/core/utils/types";
+import PersistedModels from "metabase/entities/persisted-models";
+
+import { ModelCacheRefreshStatus } from "metabase-types/api";
+import { getMockModelCacheInfo } from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  ORDERS_ID,
+} from "metabase-types/api/mocks/presets";
 
 import ModelCacheManagementSection from "./ModelCacheManagementSection";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
+const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
 
 type SetupOpts = Partial<ModelCacheRefreshStatus> & {
   waitForSectionAppearance?: boolean;
@@ -19,7 +30,7 @@ async function setup({
   waitForSectionAppearance = true,
   ...cacheInfo
 }: SetupOpts = {}) {
-  const question = ORDERS.question();
+  const question = ordersTable.question();
   const model = question.setCard({
     ...question.card(),
     id: 1,
@@ -37,9 +48,7 @@ async function setup({
     .spyOn(PersistedModels.objectActions, "refreshCache")
     .mockReturnValue({ type: "__MOCK__" });
 
-  nock(location.origin)
-    .get(`/api/persist/card/${model.id()}`)
-    .reply(200, modelCacheInfo);
+  fetchMock.get(`path:/api/persist/card/${model.id()}`, modelCacheInfo);
 
   if (!waitForSectionAppearance) {
     jest.spyOn(PersistedModels, "Loader").mockImplementation(props => {
@@ -62,7 +71,6 @@ async function setup({
 
 describe("ModelCacheManagementSection", () => {
   afterEach(() => {
-    nock.cleanAll();
     jest.restoreAllMocks();
   });
 

@@ -1,12 +1,14 @@
 (ns metabase.task.task-history-cleanup
   (:require
-   [clojure.tools.logging :as log]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.models.task-history :as task-history]
    [metabase.task :as task]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private history-rows-to-keep
   "Maximum number of TaskHistory rows."
@@ -40,5 +42,5 @@
                  (triggers/start-now)
                  (triggers/with-schedule
                    ;; run every day at midnight
-                   (cron/cron-schedule "0 0 * * * ? *")))]
+                   (cron/cron-schedule "0 0 0 * * ? *")))]
       (task/schedule-task! job trigger)))

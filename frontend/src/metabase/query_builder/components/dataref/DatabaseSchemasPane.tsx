@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { ngettext, msgid } from "ttag";
 
 import Search from "metabase/entities/search";
@@ -37,7 +37,7 @@ const DatabaseSchemasPane = ({
     () => models.sort((a, b) => a.name.localeCompare(b.name)),
     [models],
   );
-  const schemas = database.schemas;
+  const schemas = database.getSchemas();
   return (
     <SidebarContent
       title={database.name}
@@ -101,6 +101,7 @@ const DatabaseSchemasPane = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Search.loadList({
   query: (_state: State, props: DatabaseSchemasPaneProps) => ({
     models: "dataset",

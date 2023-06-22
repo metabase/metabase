@@ -3,26 +3,28 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
    [metabase.actions :as actions]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
-   (java.sql Connection)))
+   (java.sql Connection PreparedStatement)))
+
+(set! *warn-on-reflection* true)
 
 (defmulti parse-sql-error
   "Parses the raw error message returned after an error in the driver database occurs, and converts it into a sequence
@@ -73,12 +75,13 @@
         column->field  (actions/cached-value
                         [::cast-values table-id]
                         (fn []
-                          (m/index-by :name (db/select Field :table_id table-id))))]
+                          (m/index-by :name (t2/select Field :table_id table-id))))]
     (m/map-kv-vals (fn [col-name value]
                      (let [col-name                         (u/qualified-name col-name)
                            {base-type :base_type :as field} (get column->field col-name)]
                        (if-let [sql-type (type->sql-type base-type)]
-                         (hx/cast sql-type value)
+                         (sql.qp/with-driver-honey-sql-version driver
+                           (hx/cast sql-type value))
                          (try
                            (sql.qp/->honeysql driver [:value value field])
                            (catch Exception e
@@ -108,36 +111,39 @@
 ;;; 2. [[jdbc/with-db-transaction]] does a lot of magic that we don't necessarily want. Writing raw JDBC code is barely
 ;;;    any more code and lets us have complete control over what happens and lets us see at a glance exactly what's
 ;;;    happening without having to keep [[clojure.java.jdbc]] magic in mind or work around it.
-(defn- do-with-jdbc-transaction [database-id f]
+(defn do-with-jdbc-transaction
+  "Impl function for [[with-jdbc-transaction]]."
+  [database-id f]
   (if *connection*
     (f *connection*)
-    (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)]
-      (with-open [conn (jdbc/get-connection jdbc-spec)]
-        ;; execute inside of a transaction.
-        (.setAutoCommit conn false)
-        (log/tracef "BEGIN transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
-        ;; use the strictest transaction isolation level possible to avoid dirty, non-repeatable, and phantom reads
-        (sql-jdbc.execute/set-best-transaction-level! (driver.u/database->driver database-id) conn)
-        (try
-          (let [result (binding [*connection* conn]
-                         (f conn))]
-            (log/debug "f completed successfully; committing transaction.")
-            (log/tracef "COMMIT transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
-            (.commit conn)
-            result)
-          (catch Throwable e
-            (log/debugf "f threw Exception; rolling back transaction. Error: %s" (ex-message e))
-            (log/tracef "ROLLBACK transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
-            (.rollback conn)
-            (throw e)))))))
+    (let [driver (driver.u/database->driver database-id)]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database-id
+       {:write? true}
+       (fn [^Connection conn]
+         ;; execute inside of a transaction.
+         (.setAutoCommit conn false)
+         (log/tracef "BEGIN transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
+         (try
+           (let [result (binding [*connection* conn]
+                          (f conn))]
+             (log/debug "f completed successfully; committing transaction.")
+             (log/tracef "COMMIT transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
+             (.commit conn)
+             result)
+           (catch Throwable e
+             (log/debugf "f threw Exception; rolling back transaction. Error: %s" (ex-message e))
+             (log/tracef "ROLLBACK transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
+             (.rollback conn)
+             (throw e))))))))
 
-(defmacro ^:private with-jdbc-transaction
+(defmacro with-jdbc-transaction
   "Execute `f` with a JDBC Connection for the Database with `database-id`. Uses [[*connection*]] if already bound,
   otherwise fetches a new Connection from the Database's Connection pool and executes `f` inside of a transaction."
   {:style/indent 1}
   [[connection-binding database-id] & body]
   `(do-with-jdbc-transaction ~database-id (fn [~(vary-meta connection-binding assoc :tag 'Connection)] ~@body)))
-
 
 (defmulti prepare-query*
   "Multimethod for preparing a honeysql query `hsql-query` for a given action type `action`.
@@ -174,7 +180,9 @@
         ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
         (let [rows-deleted (first (jdbc/execute! {:connection conn} sql-args {:transaction? false}))]
           (when-not (= rows-deleted 1)
-            (throw (ex-info (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted)
+            (throw (ex-info (if (zero? rows-deleted)
+                              (tru "Sorry, the row you''re trying to delete doesn''t exist")
+                              (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
                             {::incorrect-number-deleted true
                              :number-deleted            rows-deleted
                              :query                     query
@@ -210,7 +218,9 @@
         ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
         (let [rows-updated (first (jdbc/execute! {:connection conn} sql-args {:transaction? false}))]
           (when-not (= rows-updated 1)
-            (throw (ex-info (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated)
+            (throw (ex-info (if (zero? rows-updated)
+                              (tru "Sorry, the row you''re trying to update doesn''t exist")
+                              (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
                             {::incorrect-number-updated true
                              :number-updated            rows-updated
                              :query                     query
@@ -336,6 +346,21 @@
              successes]))))
      rows)))
 
+(defmethod driver/execute-write-query! :sql-jdbc
+  [driver {{sql :query, :keys [params]} :native}]
+  {:pre [(string? sql)]}
+  (try
+    (let [{db-id :id} (qp.store/database)]
+      (with-jdbc-transaction [conn db-id]
+        (with-open [stmt (sql-jdbc.execute/statement-or-prepared-statement driver conn sql params nil)]
+          {:rows-affected (if (instance? PreparedStatement stmt)
+                            (.executeUpdate ^PreparedStatement stmt)
+                            (.executeUpdate stmt sql))})))
+    (catch Throwable e
+      (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
+                      {:sql sql, :params params, :type qp.error-type/invalid-query}
+                      e)))))
+
 ;;;; `:bulk/create`
 
 (defmethod actions/perform-action!* [:sql-jdbc :bulk/create]
@@ -362,7 +387,7 @@
 (defn- table-id->pk-field-name->id
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
   [table-id]
-  (db/select-field->id :name Field
+  (t2/select-fn->pk :name Field
     {:where [:and
              [:= :table_id table-id]
              (mdb.u/isa :semantic_type :type/PK)]}))

@@ -1,44 +1,46 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
-
 import { DetailsTable } from "metabase/visualizations/components/ObjectDetail/ObjectDetailsTable";
 import testDataset from "__support__/testDataset";
+import {
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 import { TYPE } from "metabase-lib/types/constants";
 
 const objectDetailCard = {
   card: {
     display: "object",
   },
-  data: {
+  data: createMockDatasetData({
     cols: [
-      {
+      createMockColumn({
         name: "details",
         display_name: "Details",
         base_type: TYPE.SerializedJSON,
         semantic_type: TYPE.SerializedJSON,
         effective_type: TYPE.SerializedJSON,
-      },
+      }),
     ],
     rows: [[JSON.stringify({ hey: "yo" })]],
-  },
+  }),
 };
 
 const invalidObjectDetailCard = {
   card: {
     display: "object",
   },
-  data: {
+  data: createMockDatasetData({
     cols: [
-      {
+      createMockColumn({
         name: "details",
         display_name: "Details",
         base_type: TYPE.SerializedJSON,
         semantic_type: TYPE.SerializedJSON,
         effective_type: TYPE.SerializedJSON,
-      },
+      }),
     ],
     rows: [["i am not json"]],
-  },
+  }),
 };
 describe("ObjectDetailsTable", () => {
   it("renders an object details table", () => {

@@ -5,10 +5,10 @@
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.exceptions :as mw.exceptions]))
 
-(def +generic-exceptions
-  "Wrap `routes` so any Exception thrown is just returned as a generic 400, to prevent details from leaking in public
+(def +public-exceptions
+  "Wrap `routes` so any Exception except 404 thrown is just returned as a generic 400, to prevent details from leaking in public
   endpoints."
-  #'mw.exceptions/genericize-exceptions)
+  #'mw.exceptions/public-exceptions)
 
 (def +message-only-exceptions
   "Wrap `routes` so any Exception thrown is just returned as a 400 with only the message from the original

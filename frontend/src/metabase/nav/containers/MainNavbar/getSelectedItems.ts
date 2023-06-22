@@ -3,7 +3,7 @@ import * as Urls from "metabase/lib/urls";
 import { coerceCollectionId } from "metabase/collections/utils";
 
 import type { Dashboard } from "metabase-types/api";
-import type Question from "metabase-lib/Question";
+import Question from "metabase-lib/Question";
 
 import { SelectedItem } from "./types";
 
@@ -17,6 +17,26 @@ type Opts = {
   dashboard?: Dashboard;
 };
 
+function isCollectionPath(pathname: string): boolean {
+  return pathname.startsWith("/collection");
+}
+
+function isUsersCollectionPath(pathname: string): boolean {
+  return pathname.startsWith("/collection/users");
+}
+
+export function isQuestionPath(pathname: string): boolean {
+  return pathname.startsWith("/question");
+}
+
+export function isModelPath(pathname: string): boolean {
+  return pathname.startsWith("/model");
+}
+
+function isDashboardPath(pathname: string): boolean {
+  return pathname.startsWith("/dashboard");
+}
+
 function getSelectedItems({
   pathname,
   params,
@@ -25,22 +45,17 @@ function getSelectedItems({
 }: Opts): SelectedItem[] {
   const { slug } = params;
 
-  const isCollectionPath = pathname.startsWith("/collection");
-  const isUsersCollectionPath = pathname.startsWith("/collection/users");
-  const isQuestionPath = pathname.startsWith("/question");
-  const isModelPath = pathname.startsWith("/model");
-  const isModelDetailPath = isModelPath && pathname.endsWith("/detail");
-  const isDashboardPath = pathname.startsWith("/dashboard");
-
-  if (isCollectionPath) {
+  if (isCollectionPath(pathname)) {
     return [
       {
-        id: isUsersCollectionPath ? "users" : Urls.extractCollectionId(slug),
+        id: isUsersCollectionPath(pathname)
+          ? "users"
+          : Urls.extractCollectionId(slug),
         type: "collection",
       },
     ];
   }
-  if (isDashboardPath && dashboard) {
+  if (isDashboardPath(pathname) && dashboard) {
     return [
       {
         id: dashboard.id,
@@ -52,7 +67,7 @@ function getSelectedItems({
       },
     ];
   }
-  if ((isQuestionPath || isModelPath) && question) {
+  if ((isQuestionPath(pathname) || isModelPath(pathname)) && question) {
     return [
       {
         id: question.id(),
@@ -64,15 +79,8 @@ function getSelectedItems({
       },
     ];
   }
-  if (isModelDetailPath) {
-    return [
-      {
-        id: Urls.extractEntityId(slug),
-        type: "card",
-      },
-    ];
-  }
   return [{ url: pathname, type: "non-entity" }];
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default getSelectedItems;

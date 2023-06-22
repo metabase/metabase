@@ -1,22 +1,12 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
+import Button from "metabase/core/components/Button";
 
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 
-import {
-  DataReferenceContainer,
-  TriggerButton,
-} from "./InlineDataReference.styled";
-
-export const DataReferenceInline = ({
-  onClose,
-  isOpen,
-}: {
-  onClose: () => void;
-  isOpen: boolean;
-}) => {
+export const DataReferenceInline = ({ onClose }: { onClose: () => void }) => {
   const [dataRefStack, setDataRefStack] = useState<any[]>([]);
 
   const pushRefStack = (ref: any) => {
@@ -28,14 +18,12 @@ export const DataReferenceInline = ({
   };
 
   return (
-    <DataReferenceContainer isOpen={isOpen}>
-      <DataReference
-        dataReferenceStack={dataRefStack}
-        popDataReferenceStack={popRefStack}
-        pushDataReferenceStack={pushRefStack}
-        onClose={onClose}
-      />
-    </DataReferenceContainer>
+    <DataReference
+      dataReferenceStack={dataRefStack}
+      popDataReferenceStack={popRefStack}
+      pushDataReferenceStack={pushRefStack}
+      onClose={onClose}
+    />
   );
 };
 
@@ -45,6 +33,6 @@ export const DataReferenceTriggerButton = ({
   onClick: () => void;
 }) => (
   <Tooltip tooltip={t`Data Reference`}>
-    <TriggerButton onlyIcon onClick={onClick} icon="reference" iconSize={16} />
+    <Button onlyIcon onClick={onClick} icon="reference" iconSize={16} />
   </Tooltip>
 );

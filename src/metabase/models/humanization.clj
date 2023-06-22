@@ -10,65 +10,31 @@
   There used to also be `:advanced`, which was the default until enough customers
   complained that we first fixed it and then the fix wasn't good enough so we removed it."
   (:require
-   [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.util :as u]
+   [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (declare humanization-strategy)
 
-(defmulti ^String name->human-readable-name
+(defn name->human-readable-name
   "Convert a name, such as `num_toucans`, to a human-readable name, such as `Num Toucans`. With one arg, this uses the
   strategy defined by the Setting `humanization-strategy`. With two args, you may specify a custom strategy (intended
   mainly for the internal implementation):
 
-     (humanization-strategy! :simple)
-     (name->human-readable-name \"cool_toucans\")                         ;-> \"Cool Toucans\"
-     ;; this is the same as:
-     (name->human-readable-name (humanization-strategy) \"cool_toucans\") ;-> \"Cool Toucans\"
-     ;; specifiy a different strategy:
-     (name->human-readable-name :none \"cool_toucans\")                   ;-> \"cool_toucans\""
-  {:arglists '([s] [strategy s])}
-  (fn
-    ([_] (keyword (humanization-strategy)))
-    ([strategy _] (keyword strategy))))
-
-(def ^:private ^:const acronyms
-  #{"id" "url" "ip" "uid" "uuid" "guid"})
-
-(defn- capitalize-word [word]
-  (if (contains? acronyms (u/lower-case-en word))
-    (u/upper-case-en word)
-    ;; We are assuming that ALL_UPPER_CASE means we should be Title Casing
-    (if (= word (u/upper-case-en word))
-      (str/capitalize word)
-      (str (str/capitalize (subs word 0 1)) (subs word 1)))))
-
-;; simple replaces hyphens and underscores with spaces and capitalizes
-(defmethod name->human-readable-name :simple
-  ([s] (name->human-readable-name :simple s))
-  ([_ ^String s]
-   ;; explode on hyphens, underscores, and spaces
-   (when (seq s)
-     (let [humanized (str/join " " (for [part  (str/split s #"[-_\s]+")
-                                         :when (not (str/blank? part))]
-                                     (capitalize-word part)))]
-       (if (str/blank? humanized)
-         s
-         humanized)))))
-
-;; actual advanced method has been excised. this one just calls out to simple
-(defmethod name->human-readable-name :advanced
-  ([s] (name->human-readable-name :simple s))
-  ([_ ^String s] (name->human-readable-name :simple s)))
-
-;; :none is just an identity implementation
-(defmethod name->human-readable-name :none
-  ([s]   s)
-  ([_ s] s))
+    (humanization-strategy! :simple)
+    (name->human-readable-name \"cool_toucans\")                         ;-> \"Cool Toucans\"
+    ;; this is the same as:
+    (name->human-readable-name (humanization-strategy) \"cool_toucans\") ;-> \"Cool Toucans\"
+    ;; specifiy a different strategy:
+    (name->human-readable-name :none \"cool_toucans\")                   ;-> \"cool_toucans\""
+  ([s]
+   (name->human-readable-name (humanization-strategy) s))
+  ([strategy s]
+   (u.humanization/name->human-readable-name strategy s)))
 
 (defn- re-humanize-names!
   "Update all non-custom display names of all instances of `model` (e.g. Table or Field)."
@@ -81,8 +47,8 @@
                        (not custom-display-name?))
               (log/info (trs "Updating display name for {0} ''{1}'': ''{2}'' -> ''{3}''"
                              (name model) internal-name display-name new-strategy-display-name))
-              (db/update! model id
-                :display_name new-strategy-display-name))))
+              (t2/update! model id
+                {:display_name new-strategy-display-name}))))
         (db/select-reducible [model :id :name :display_name])))
 
 (s/defn ^:private re-humanize-table-and-field-names!
@@ -95,7 +61,7 @@
 (defn- set-humanization-strategy! [new-value]
   (let [new-strategy (keyword (or new-value :simple))]
     ;; check to make sure `new-strategy` is a valid strategy, or throw an Exception it is it not.
-    (when-not (get-method name->human-readable-name new-strategy)
+    (when-not (get-method u.humanization/name->human-readable-name new-strategy)
       (throw (IllegalArgumentException.
                (tru "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
                     new-strategy (keys (methods name->human-readable-name))))))
@@ -115,4 +81,11 @@
   :type       :keyword
   :default    :simple
   :visibility :settings-manager
+  :getter     (fn []
+                (let [strategy (setting/get-value-of-type :keyword :humanization-strategy)]
+                  ;; actual advanced method has been excised. Use `:simple` instead if someone had specified
+                  ;; `:advanced`.
+                  (if (= strategy :advanced)
+                    :simple
+                    strategy)))
   :setter     set-humanization-strategy!)

@@ -21,6 +21,8 @@
   (:import
    (java.text DecimalFormat DecimalFormatSymbols)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private card-error-rendered-info
   "Default rendered-info map when there is an error running a card on the card run.
   Is a delay due to the call to `trs`."
@@ -133,7 +135,7 @@
                     ;; in the output and should be skipped
                     :when              (not (:remapped_from maybe-remapped-col))]
                 (if (isa? ((some-fn :effective_type :base_type) col) :type/Number)
-                  (common/->NumericWrapper col-name)
+                  (common/map->NumericWrapper {:num-str col-name :num-value col-name})
                   col-name))
    :bar-width (when include-bar? 99)})
 
@@ -345,7 +347,9 @@
                       (= (:stackable.stack_type viz-settings) "stacked")
                       (and
                        (= (:display card) :area)
-                       (> (count (:graph.metrics viz-settings)) 1)))]
+                       (or
+                        (> (count (:graph.metrics viz-settings)) 1)
+                        (> (count (:graph.dimensions viz-settings)) 1))))]
     (if stacked
       (assoc viz-settings :stackable.stack_type "stacked")
       viz-settings)))
@@ -459,7 +463,7 @@
         {:keys [rows percentages]}  (donut-info slice-threshold rows)
         legend-colors               (merge (zipmap (map first rows) (cycle colors))
                                            (update-keys (:pie.colors viz-settings) name))
-        settings                    {:percent_visibility (:pie.percent_visibility viz-settings)}
+        settings                    {:percent_visibility (:pie.percent_visibility viz-settings) :show_total (:pie.show_total viz-settings)}
         image-bundle                (image-bundle/make-image-bundle
                                      render-type
                                      (js-svg/categorical-donut rows legend-colors settings))
@@ -511,7 +515,7 @@
              :src   (:image-src image-bundle)}]]}))
 
 (defn- overlap
-  "calculate the overlap, a value between 0 and 1, of the ranges of 2 columns.
+  "calculate the overlap, a value between 0 and 1, of the numerical ranges given by `vals-a` and `vals-b`.
   This overlap value can be checked against `axis-group-threshold` to determine when columns can reasonably share a y-axis.
   Consider two ranges, with min and max values:
 
@@ -545,50 +549,59 @@
      |--------- max-width = (- 59 0) = 59 ---------------------|
 
   overlap = (/ overlap-width max-width) = (/ 35 59) = 0.59"
-  [col-a col-b]
-  (let [[min-a min-b]    (map #(get-in % [:fingerprint :type :type/Number :min]) [col-a col-b])
-        [max-a max-b]    (map #(get-in % [:fingerprint :type :type/Number :max]) [col-a col-b])
-        valid-ranges?    (and min-a min-b max-a max-b
-                              ;; ranges with same min and max won't be considered ranges.
-                              (not= min-a max-a)
-                              (not= min-b max-b))
-        overlapping-and-valid? (and valid-ranges?
-                                    (or (<= min-a min-b max-a)
-                                        (<= min-a max-b max-a)))]
-    (if
-     overlapping-and-valid?
-      (let [[a b c d]     (sort [min-a min-b max-a max-b])
-            max-width     (- d a)
-            overlap-width (- c b)]
-        (/ overlap-width max-width))
-      0)))
+  [vals-a vals-b]
+  (let [[min-a max-a] (-> vals-a sort ((juxt first last)))
+        [min-b max-b] (-> vals-b sort ((juxt first last)))
+        [a b c d]     (sort [min-a min-b max-a max-b])
+        max-width     (- d a)
+        overlap-width (- c b)]
+    (/ (double overlap-width) (double max-width))))
 
-(defn- group-axes
-  [cols-meta group-threshold]
-  (when-let [groupable-cols (->> cols-meta
-                                 (filter #(isa? (:base_type %) :type/Number)) ;; for now we only try grouping number cols
-                                 (remove (comp nil? :fingerprint)) ;; we can't group if there is no fingerprint
-                                 seq)]
-    (let [cols-by-type  (group-by (juxt :base_type :effective_type :semantic_type) groupable-cols)
-          some-grouped? (> (last (sort (map #(count (second %)) cols-by-type))) 1)]
-      (when some-grouped?
-        (let [first-axis       (first groupable-cols)
-              grouped-num-cols (-> (group-by #(> (overlap first-axis %) group-threshold) groupable-cols)
-                                   (update-keys {true :left false :right}))]
-          (merge grouped-num-cols {:bottom-or-not-displayed (remove (set groupable-cols) cols-meta)}))))))
+(defn- nearness
+  "Calculate the 'nearness' score for ranges specified by `vals-a` and `vals-b`.
 
-(defn default-y-pos
-  "Default positions of the y-axes of multiple and combo graphs.
-  You kind of hope there's only two but here's for the eventuality"
-  [{viz-settings :viz-settings metadata :results_metadata} group-threshold]
-  (if (:stackable.stack_type viz-settings)
-    (repeat "left")
-    (let [grouped-axes (-> (group-axes (:columns metadata) group-threshold)
-                           (update-vals count))]
-      (if (seq grouped-axes)
-        (mapcat (fn [k] (repeat (get grouped-axes k 1) (name k))) [:left :right])
-        (conj (repeat "right")
-              "left")))))
+  The nearness score is the percent of the total range that the 'valid range' covers IF,
+  the outer point's distance to the nearest range end covers less of the total range.
+  for visual:  *     *--------------*  <---- the 'pt' on the left is close enough."
+  [vals-a vals-b]
+  (let [[min-a max-a]          (-> vals-a sort ((juxt first last)))
+        [min-b max-b]          (-> vals-b sort ((juxt first last)))]
+    (cond
+      (or (= min-a max-a) (= min-b max-b))
+      (let [pt                (if (= min-a max-a) min-a min-b)
+            [r1 r2]           (if (= min-a max-a) [min-b max-b] [min-a max-a])
+            total-range       (- (max pt r2) (min pt r1))
+            valid-range-score (/ (- r2 r1) total-range)
+            outer-pt-score    (/ (min (abs (- pt r1))
+                                      (abs (- pt r2)))
+                                 total-range)]
+        (if (>= valid-range-score outer-pt-score)
+          (double valid-range-score)
+          0))
+
+      :else 0)))
+
+(defn- axis-group-score
+  "Calculate the axis grouping threshold value for the ranges specified by `vals-a` and `vals-b`.
+  The threshold is defined as 'percent overlap', when the ranges overlap, or 'nearness' otherwise."
+  [vals-a vals-b]
+  (let [[min-a max-a] (-> vals-a sort ((juxt first last)))
+        [min-b max-b] (-> vals-b sort ((juxt first last)))]
+    (cond
+      ;; any nils in the ranges means we can't compare them.
+      (some nil? (concat vals-a vals-b)) 0
+
+      ;; if either range is just a single point, and it's inside the other range,
+      ;; we consider it overlapped. Not likely in practice, but could happen.
+      (and (= min-a max-a) (<= min-b min-a max-b)) 1
+      (and (= min-b max-b) (<= min-a min-b max-a)) 1
+
+      ;; ranges overlap, let's calculate the percent overlap
+      (or (<= min-a min-b max-a)
+          (<= min-a max-b max-a)) (overlap vals-a vals-b)
+
+      ;; no overlap, let's calculate a nearness value to use instead
+      :else (nearness vals-a vals-b))))
 
 (def default-combo-chart-types
   "Default chart type seq of combo graphs (not multiple graphs)."
@@ -638,23 +651,78 @@
 
 (def ^:private axis-group-threshold 0.33)
 
+(defn- group-axes-at-once
+  [joined-rows viz-settings]
+  (let [;; a double-x-axis 'joined-row' looks like:
+        ;; [["val on x-axis"         "grouping-key"] [series-val]] eg:
+        ;; [["2016-01-01T00:00:00Z"  "Doohickey"   ] [9031.5578 ]]
+
+        ;; a single-x-axis 'joined-row' looks like:
+        ;; [[grouping-key] [series-val-1 series-val-2 ...]]
+        joined-rows-map    (if (= (count (ffirst joined-rows)) 2)
+                             ;; double-x-axis
+                             (-> (group-by (fn [[[_ x2] _]] x2) joined-rows)
+                                 (update-vals #(mapcat last %)))
+                             ;; single-x-axis
+                             (->> (:graph.metrics viz-settings)
+                                  (map-indexed (fn [idx k]
+                                                 [k (mapv #(get (second %) idx) joined-rows)]))
+                                  (into {})))
+        ;; map of group-key -> :left :right or nil
+        starting-positions (into {} (for [k (keys joined-rows-map)]
+                                      [k (or (keyword (series-setting viz-settings k :axis)) :unassigned)]))
+        ;; map of position (:left :right or :unassigned) -> vector of assigned groups
+        positions          (-> (group-by second starting-positions)
+                               (update-vals #(mapv first %)))
+        unassigned?        (contains? positions :unassigned)
+        stacked?           (boolean (:stackable.stack_type viz-settings))]
+    (cond
+      ;; if the chart is stacked, splitting the axes doesn't make sense, so we always put every series :left
+      stacked? (into {} (map (fn [k] [k :left]) (keys joined-rows-map)))
+
+      ;; chart is not stacked, and there are some :unassigned series, so we try to group them
+      unassigned?
+      (let [lefts         (or (:left positions) [(first (:unassigned positions))])
+            rights        (or (:right positions) [])
+            to-group      (remove (set (concat lefts rights)) (:unassigned positions))
+            score-fn      (fn [series-vals]
+                            (into {} (map (fn [k]
+                                            [k (axis-group-score (get joined-rows-map k) series-vals)])
+                                          (keys joined-rows-map))))
+            ;; with the first series assigned :left, calculate scores between that series and all other series
+            scores        (score-fn (get joined-rows-map (first lefts)))
+            ;; group the series by comparing the score for that series against the group threshold
+            all-positions (apply (partial merge-with concat)
+                                 (conj
+                                  (for [k to-group]
+                                    (if (> (get scores k) axis-group-threshold)
+                                      {:left [k]}
+                                      {:right [k]}))
+                                  (-> positions (dissoc :unassigned) (assoc :left lefts))))]
+        (into {} (apply concat (for [[pos ks] all-positions]
+                                 (map (fn [k] [k pos]) ks)))))
+
+      ;; all series already have positions assigned
+      ;; This comes from the user explicitly setting left or right on the series in the UI.
+      :else positions)))
+
 (defn- single-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
   for a single x-axis with multiple y-axis."
-  [chart-type joined-rows _x-cols y-cols {:keys [viz-settings] :as data} card-name]
-  (for [[idx y-col] (map-indexed vector y-cols)]
-    (let [y-col-key     (keyword (:name y-col))
-          card-type     (or (series-setting viz-settings y-col-key :display)
-                            chart-type
-                            (nth default-combo-chart-types idx))
-          selected-rows (mapv #(vector (ffirst %) (nth (second %) idx)) joined-rows)
-          y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
-                            (nth (default-y-pos data axis-group-threshold) idx))]
-      {:cardName      card-name
-       :type          card-type
-       :data          selected-rows
-       :yAxisPosition y-axis-pos
-       :column        y-col})))
+  [chart-type joined-rows _x-cols y-cols {:keys [viz-settings] :as _data} card-name]
+  (let [positions (group-axes-at-once joined-rows viz-settings)]
+    (for [[idx y-col] (map-indexed vector y-cols)]
+      (let [y-col-key      (:name y-col)
+            card-type      (or (series-setting viz-settings y-col-key :display)
+                               chart-type
+                               (nth default-combo-chart-types idx))
+            selected-rows  (mapv #(vector (ffirst %) (nth (second %) idx)) joined-rows)
+            y-axis-pos     (get positions y-col-key "left")]
+        {:cardName      card-name
+         :type          card-type
+         :data          selected-rows
+         :yAxisPosition y-axis-pos
+         :column        y-col}))))
 
 (defn- double-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
@@ -662,17 +730,17 @@
 
   This mimics default behavior in JS viz, which is to group by the second dimension and make every group-by-value a series.
   This can have really high cardinality of series but the JS viz will complain about more than 100 already"
-  [chart-type joined-rows x-cols _y-cols {:keys [viz-settings] :as data} card-name]
+  [chart-type joined-rows x-cols _y-cols {:keys [viz-settings] :as _data} card-name]
   (let [grouped-rows (group-by #(second (first %)) joined-rows)
-        groups       (keys grouped-rows)]
+        groups       (keys grouped-rows)
+        positions    (group-axes-at-once joined-rows viz-settings)]
     (for [[idx group-key] (map-indexed vector groups)]
       (let [row-group          (get grouped-rows group-key)
             selected-row-group (mapv #(vector (ffirst %) (first (second %))) row-group)
             card-type          (or (series-setting viz-settings group-key :display)
                                    chart-type
                                    (nth default-combo-chart-types idx))
-            y-axis-pos         (or (series-setting viz-settings group-key :axis)
-                                   (nth (default-y-pos data axis-group-threshold) idx))]
+            y-axis-pos         (get positions group-key)]
         {:cardName      card-name
          :type          card-type
          :data          selected-row-group
@@ -687,7 +755,7 @@
 
 (defn- card-result->series
   "Helper function for `render-multiple-lab-chart` that turns a card query result into a series-settings map in the shape expected by `js-svg/combo chart` (and the combo-chart js code)."
-  [idx result]
+  [result]
   (let [card            (:card result)
         data            (get-in result [:result :data])
         display         (:display card)
@@ -698,9 +766,8 @@
         joined-rows     (map (juxt x-fn y-fn)
                              (common/row-preprocess x-fn y-fn (:rows data)))
         [x-cols y-cols] ((juxt x-fn y-fn) (get-in result [:result :data :cols]))
-        y-axis-position (nth (default-y-pos data axis-group-threshold) idx)]
-    (map #(assoc % :yAxisPosition y-axis-position)
-         ((if (= (count x-cols) 1) single-x-axis-combo-series double-x-axis-combo-series) enforced-type joined-rows x-cols y-cols viz-settings card-name))))
+        combo-series-fn (if (= (count x-cols) 1) single-x-axis-combo-series double-x-axis-combo-series)]
+    (combo-series-fn enforced-type joined-rows x-cols y-cols viz-settings card-name)))
 
 (defn- render-multiple-lab-chart
   "When multiple non-scalar cards are combined, render them as a line, area, or bar chart"
@@ -717,7 +784,7 @@
         [[x-col] [y-col]] ((juxt x-fn y-fn) (first col-seqs))
         labels            (x-and-y-axis-label-info x-col y-col viz-settings)
         settings          (->ts-viz x-col y-col labels viz-settings)
-        series-seqs       (map-indexed card-result->series (cons {:card card :result {:data data}} multi-res))]
+        series-seqs       (map card-result->series (cons {:card card :result {:data data}} multi-res))]
     (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series-seqs settings)))))
 
 (defn- lab-image-bundle
@@ -733,7 +800,6 @@
         joined-rows     (mapv vector x-rows y-rows)
         viz-settings    (set-default-stacked viz-settings card)
         [x-cols y-cols] ((juxt x-axis-rowfn y-axis-rowfn) (vec cols))
-
         enforced-type   (if (= chart-type :combo)
                           nil
                           chart-type)

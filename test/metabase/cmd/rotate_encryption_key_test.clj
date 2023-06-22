@@ -19,26 +19,13 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n]
-   [toucan.db :as db]
-   [toucan.models :as models])
+   [toucan2.core :as t2])
   (:import
    (java.nio.charset StandardCharsets)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
-
-(defn do-with-model-type
-  [mtype in-type-fns f]
-  (let [type-fns        (var-get #'models/type-fns)
-        before-type-fns @type-fns]
-    (swap! type-fns update mtype merge in-type-fns)
-    (try
-      (f)
-      (finally
-        (reset! type-fns before-type-fns)))))
-
-(defmacro with-model-type
-  [mtype type-fns & body]
-  `(do-with-model-type ~mtype ~type-fns (fn [] ~@body)))
 
 (defn- raw-value [keyy]
   (:value (first (jdbc/query {:datasource (mdb.connection/data-source)}
@@ -65,8 +52,12 @@
           secret-id-enc      (atom nil)
           secret-id-unenc    (atom nil)]
       (mt/test-drivers #{:postgres :h2 :mysql}
-        (with-model-type :encrypted-json {:out #'mi/encrypted-json-out}
-          (let [data-source (dump-to-h2-test/persistent-data-source driver/*driver* db-name)]
+        (let [data-source (dump-to-h2-test/persistent-data-source driver/*driver* db-name)]
+          ;; `database.details` use mi/transform-encrypted-json as transformation
+          ;; the original definition of mi/transform-encrypted-json has a cached version of out transform
+          ;; in this test we change they key multiple times and we don't want the value to be cached when key change
+          (with-redefs [mi/transform-encrypted-json {:in  #'mi/encrypted-json-in
+                                                     :out #'mi/encrypted-json-out}]
             (binding [;; EXPLANATION FOR WHY THIS TEST WAS FLAKY
                       ;; at this point, all the state switching craziness that happens for
                       ;; `metabase.util.i18n.impl/site-locale-from-setting` has already taken place, so this function has
@@ -80,6 +71,7 @@
                       ;; hence no error occurs, but for a cache miss, then the error happens
                       ;; this dynamic rebinding will bypass the call to `i18n/site-locale` and hence avoid that whole mess
                       i18n/*site-locale-override*  "en"
+
                       ;; while we're at it, disable the setting cache entirely; we are effectively creating a new app DB
                       ;; so the cache itself is invalid and can only mask the real issues
                       setting/*disable-cache*         true?
@@ -87,27 +79,27 @@
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))
               (load-from-h2/load-from-h2! h2-fixture-db-file)
-              (db/insert! Setting {:key "nocrypt", :value "unencrypted value"})
-              (db/insert! Setting {:key "settings-last-updated", :value original-timestamp})
-              (let [u (db/insert! User {:email        "nobody@nowhere.com"
-                                        :first_name   "No"
-                                        :last_name    "Body"
-                                        :password     "nopassword"
-                                        :is_active    true
-                                        :is_superuser false})]
+              (t2/insert! Setting {:key "nocrypt", :value "unencrypted value"})
+              (t2/insert! Setting {:key "settings-last-updated", :value original-timestamp})
+              (let [u (first (t2/insert-returning-instances! User {:email        "nobody@nowhere.com"
+                                                                   :first_name   "No"
+                                                                   :last_name    "Body"
+                                                                   :password     "nopassword"
+                                                                   :is_active    true
+                                                                   :is_superuser false}))]
                 (reset! user-id (u/the-id u)))
-              (let [secret (db/insert! Secret {:name       "My Secret (plaintext)"
-                                               :kind       "password"
-                                               :value      (.getBytes secret-val StandardCharsets/UTF_8)
-                                               :creator_id @user-id})]
+              (let [secret (first (t2/insert-returning-instances! Secret {:name       "My Secret (plaintext)"
+                                                                          :kind       "password"
+                                                                          :value      (.getBytes secret-val StandardCharsets/UTF_8)
+                                                                          :creator_id @user-id}))]
                 (reset! secret-id-unenc (u/the-id secret)))
               (encryption-test/with-secret-key k1
-                (db/insert! Setting {:key "k1crypted", :value "encrypted with k1"})
-                (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
-                (let [secret (db/insert! Secret {:name       "My Secret (encrypted)"
-                                                 :kind       "password"
-                                                 :value      (.getBytes secret-val StandardCharsets/UTF_8)
-                                                 :creator_id @user-id})]
+                (t2/insert! Setting {:key "k1crypted", :value "encrypted with k1"})
+                (t2/update! Database 1 {:details {:db "/tmp/test.db"}})
+                (let [secret (first (t2/insert-returning-instances! Secret {:name       "My Secret (encrypted)"
+                                                                            :kind       "password"
+                                                                            :value      (.getBytes secret-val StandardCharsets/UTF_8)
+                                                                            :creator_id @user-id}))]
                   (reset! secret-id-enc (u/the-id secret))))
 
               (testing "rotating with the same key is a noop"
@@ -116,59 +108,59 @@
                   ;; plain->newkey
                   (testing "for unencrypted values"
                     (is (not= "unencrypted value" (raw-value "nocrypt")))
-                    (is (= "unencrypted value" (db/select-one-field :value Setting :key "nocrypt")))
-                    (is (mt/secret-value-equals? secret-val (db/select-one-field :value Secret :id @secret-id-unenc))))
+                    (is (= "unencrypted value" (t2/select-one-fn :value Setting :key "nocrypt")))
+                    (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value Secret :id @secret-id-unenc))))
                   ;; samekey->samekey
                   (testing "for values encrypted with the same key"
                     (is (not= "encrypted with k1" (raw-value "k1crypted")))
-                    (is (= "encrypted with k1" (db/select-one-field :value Setting :key "k1crypted")))
-                    (is (mt/secret-value-equals? secret-val (db/select-one-field :value Secret :id @secret-id-enc))))))
+                    (is (= "encrypted with k1" (t2/select-one-fn :value Setting :key "k1crypted")))
+                    (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value Secret :id @secret-id-enc))))))
 
-              (testing "settings-last-updated is updated AND plaintext"
-                (is (not= original-timestamp (raw-value "settings-last-updated")))
-                (is (not (encryption/possibly-encrypted-string? (raw-value "settings-last-updated")))))
+             (testing "settings-last-updated is updated AND plaintext"
+               (is (not= original-timestamp (raw-value "settings-last-updated")))
+               (is (not (encryption/possibly-encrypted-string? (raw-value "settings-last-updated")))))
 
-              (testing "rotating with a new key is recoverable"
-                (encryption-test/with-secret-key k1 (rotate-encryption-key! k2))
-                (testing "with new key"
-                  (encryption-test/with-secret-key k2
-                    (is (= "unencrypted value" (db/select-one-field :value Setting :key "nocrypt")))
-                    (is (= {:db "/tmp/test.db"} (db/select-one-field :details Database :id 1)))
-                    (is (mt/secret-value-equals? secret-val (db/select-one-field :value Secret :id @secret-id-unenc)))))
-                (testing "but not with old key"
-                  (encryption-test/with-secret-key k1
-                    (is (not= "unencrypted value" (db/select-one-field :value Setting :key "nocrypt")))
-                    (is (not= "{\"db\":\"/tmp/test.db\"}" (db/select-one-field :details Database :id 1)))
-                    (is (not (mt/secret-value-equals? secret-val
-                                                      (db/select-one-field :value Secret :id @secret-id-unenc)))))))
+             (testing "rotating with a new key is recoverable"
+               (encryption-test/with-secret-key k1 (rotate-encryption-key! k2))
+               (testing "with new key"
+                 (encryption-test/with-secret-key k2
+                   (is (= "unencrypted value" (t2/select-one-fn :value Setting :key "nocrypt")))
+                   (is (= {:db "/tmp/test.db"} (t2/select-one-fn :details Database :id 1)))
+                   (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value Secret :id @secret-id-unenc)))))
+               (testing "but not with old key"
+                 (encryption-test/with-secret-key k1
+                   (is (not= "unencrypted value" (t2/select-one-fn :value Setting :key "nocrypt")))
+                   (is (not= "{\"db\":\"/tmp/test.db\"}" (t2/select-one-fn :details Database :id 1)))
+                   (is (not (mt/secret-value-equals? secret-val
+                                                     (t2/select-one-fn :value Secret :id @secret-id-unenc)))))))
 
-              (testing "full rollback when a database details looks encrypted with a different key than the current one"
-                (encryption-test/with-secret-key k3
-                  (let [db (db/insert! Database {:name "k3", :engine :mysql, :details "{\"db\":\"/tmp/k3.db\"}"})]
-                    (is (=? {:name "k3"}
-                            db))))
-                (encryption-test/with-secret-key k2
-                  (let [db (db/insert! Database {:name "k2", :engine :mysql, :details "{\"db\":\"/tmp/k2.db\"}"})]
-                    (is (=? {:name "k2"}
-                            db)))
-                  (is (thrown-with-msg?
+             (testing "full rollback when a database details looks encrypted with a different key than the current one"
+               (encryption-test/with-secret-key k3
+                 (let [db (first (t2/insert-returning-instances! Database {:name "k3", :engine :mysql, :details {:db "/tmp/k3.db"}}))]
+                   (is (=? {:name "k3"}
+                           db))))
+               (encryption-test/with-secret-key k2
+                 (let [db (first (t2/insert-returning-instances! Database {:name "k2", :engine :mysql, :details {:db "/tmp/k2.db"}}))]
+                   (is (=? {:name "k2"}
+                           db)))
+                 (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
                        #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
                        (rotate-encryption-key! k3))))
-                (encryption-test/with-secret-key k3
-                  (is (not= {:db "/tmp/k2.db"} (db/select-one-field :details Database :name "k2")))
-                  (is (= {:db "/tmp/k3.db"} (db/select-one-field :details Database :name "k3")))))
+               (encryption-test/with-secret-key k3
+                 (is (not= {:db "/tmp/k2.db"} (t2/select-one-fn :details Database :name "k2")))
+                 (is (= {:db "/tmp/k3.db"} (t2/select-one-fn :details Database :name "k3")))))
 
-              (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
-                (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
-                (db/update-where! Database {:name "k3"} :details "{\"db\":\"/tmp/test.db\"}")
-                (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
-                  (rotate-encryption-key! nil))
-                (is (= "unencrypted value" (raw-value "nocrypt")))
-                ;; at this point, both the originally encrypted, and the originally unencrypted secret instances
-                ;; should be decrypted
-                (is (mt/secret-value-equals? secret-val (db/select-one-field :value Secret :id @secret-id-unenc)))
-                (is (mt/secret-value-equals? secret-val (db/select-one-field :value Secret :id @secret-id-enc))))
+             (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
+               (t2/update! Database 1 {:details {:db "/tmp/test.db"}})
+               (t2/update! Database {:name "k3"} {:details {:db "/tmp/test.db"}})
+               (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
+                 (rotate-encryption-key! nil))
+               (is (= "unencrypted value" (raw-value "nocrypt")))
+               ;; at this point, both the originally encrypted, and the originally unencrypted secret instances
+               ;; should be decrypted
+               (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value Secret :id @secret-id-unenc)))
+               (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value Secret :id @secret-id-enc))))
 
-              (testing "short keys fail to rotate"
-                (is (thrown? Throwable (rotate-encryption-key! "short")))))))))))
+             (testing "short keys fail to rotate"
+               (is (thrown? Throwable (rotate-encryption-key! "short")))))))))))

@@ -6,10 +6,13 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.encryption-test :as encryption-test]
-   [toucan.db :as db])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io DataInputStream File)
    (java.nio.charset StandardCharsets)))
+
+(set! *warn-on-reflection* true)
 
 (defn- value-matches?
   "Returns true iff `expected` value matches the `actual` (bytes) value. If `expected` is a String, then `actual` is
@@ -26,17 +29,17 @@
   (doseq [value ["fourtytwo" (byte-array (range 0 100))]]
     (let [name        "Test Secret"
           kind        ::secret/password]
-      (mt/with-temp Secret [{:keys [id] :as secret} {:name       name
-                                                     :kind       kind
-                                                     :value      value
-                                                     :creator_id (mt/user->id :crowberto)}]
-         (is (= name (:name secret)))
-         (is (= kind (:kind secret)))
-         (is (mt/secret-value-equals? value (:value secret)))
-         (let [loaded (db/select-one Secret :id id)]
-           (is (= name (:name loaded)))
-           (is (= kind (:kind loaded)))
-           (is (mt/secret-value-equals? value (:value loaded))))))))
+      (t2.with-temp/with-temp [Secret {:keys [id] :as secret} {:name       name
+                                                               :kind       kind
+                                                               :value      value
+                                                               :creator_id (mt/user->id :crowberto)}]
+        (is (= name (:name secret)))
+        (is (= kind (:kind secret)))
+        (is (mt/secret-value-equals? value (:value secret)))
+        (let [loaded (t2/select-one Secret :id id)]
+          (is (= name (:name loaded)))
+          (is (= kind (:kind loaded)))
+          (is (mt/secret-value-equals? value (:value loaded))))))))
 
 (deftest secret-retrieval-test
   (testing "A secret value can be retrieved successfully"
@@ -53,21 +56,21 @@
            (secret/get-secret-string {:secret-prop-value "titok"} "secret-prop"))))
 
   (testing "get-secret-string from value only from the database"
-    (mt/with-temp Secret [{id :id} {:name       "private-key"
-                                    :kind       ::secret/pem-cert
-                                    :value      "titok"
-                                    :creator_id (mt/user->id :crowberto)}]
+    (t2.with-temp/with-temp [Secret {id :id} {:name       "private-key"
+                                              :kind       ::secret/pem-cert
+                                              :value      "titok"
+                                              :creator_id (mt/user->id :crowberto)}]
       (is (= "titok"
              (secret/get-secret-string {:secret-prop-id id} "secret-prop")))))
 
   (testing "get-secret-string from uploaded value"
-    (mt/with-temp Secret [{id :id} {:name       "private-key"
-                                    :kind       ::secret/pem-cert
-                                    :value      (let [encoder (java.util.Base64/getEncoder)]
-                                                  (str "data:application/octet-stream;base64,"
-                                                       (.encodeToString encoder
-                                                                        (.getBytes "titok" "UTF-8"))))
-                                    :creator_id (mt/user->id :crowberto)}]
+    (t2.with-temp/with-temp [Secret {id :id} {:name       "private-key"
+                                              :kind       ::secret/pem-cert
+                                              :value      (let [encoder (java.util.Base64/getEncoder)]
+                                                            (str "data:application/octet-stream;base64,"
+                                                                 (.encodeToString encoder
+                                                                                  (.getBytes "titok" "UTF-8"))))
+                                              :creator_id (mt/user->id :crowberto)}]
       (is (= "titok"
              (secret/get-secret-string
               {:secret-prop-id      id
@@ -84,15 +87,15 @@
               "secret-prop"))))
 
     (testing "get-secret-string from local file in the database"
-      (mt/with-temp Secret [{id :id} {:name       "private-key"
-                                      :kind       ::secret/pem-cert
-                                      :value      file
-                                      :creator_id (mt/user->id :crowberto)}]
+      (t2.with-temp/with-temp [Secret {id :id} {:name       "private-key"
+                                                :kind       ::secret/pem-cert
+                                                :value      file
+                                                :creator_id (mt/user->id :crowberto)}]
         (is (= "titok"
-              (secret/get-secret-string
-               {:secret-prop-id      id
-                :secret-prop-options "local"}
-               "secret-prop")))))))
+               (secret/get-secret-string
+                {:secret-prop-id      id
+                 :secret-prop-options "local"}
+                "secret-prop")))))))
 
 (deftest value->file!-test
   (testing "value->file! works for a secret value"
@@ -117,7 +120,7 @@
                                                  :source "file-path"
                                                  :value  (.getAbsolutePath tmp-file)}]]]
         (testing (format " with a %s value" value-kind)
-          (mt/with-temp Secret [{:keys [value] :as secret} (assoc secret-map :creator_id (mt/user->id :crowberto))]
+          (t2.with-temp/with-temp [Secret {:keys [value] :as secret} (assoc secret-map :creator_id (mt/user->id :crowberto))]
             (let [val-file (secret/value->file! secret nil)]
               (is (value-matches? (or exp-val value)
                                   (let [result (byte-array (.length val-file))]
@@ -130,19 +133,19 @@
             ^File tmp-file  (doto (File/createTempFile "value-to-file-test_" ".txt")
                               (.deleteOnExit))]
         (spit tmp-file file-secret-val)
-        (mt/with-temp* [Secret [secret {:name   "file based secret"
-                                        :kind   :perm-cert
-                                        :source "file-path"
-                                        :value  (.getAbsolutePath tmp-file)}]]
+        (t2.with-temp/with-temp [Secret secret {:name   "file based secret"
+                                                :kind   :perm-cert
+                                                :source "file-path"
+                                                :value  (.getAbsolutePath tmp-file)}]
           (is (instance? java.io.File (secret/value->file! secret nil)))
           (is (= (secret/value->file! secret nil)
                  (secret/value->file! secret nil))
               "Secret did not return the same file"))))
     (testing "for upload files (#23034)"
-      (mt/with-temp* [Secret [secret {:name   "file based secret"
-                                      :kind   :perm-cert
-                                      :source nil
-                                      :value  (.getBytes "super secret")}]]
+      (t2.with-temp/with-temp [Secret secret {:name   "file based secret"
+                                              :kind   :perm-cert
+                                              :source nil
+                                              :value  (.getBytes "super secret")}]
         (is (instance? java.io.File (secret/value->file! secret nil)))
         (is (= (secret/value->file! secret nil)
                (secret/value->file! secret nil))
@@ -180,6 +183,6 @@
                 mime-type mime-types]
           (testing (format "property %s with mime-type %s" property mime-type)
             (let [decoded (decode-ssl-db-property content mime-type property)]
-              (is (instance? (Class/forName "[B") decoded))
+              (is (bytes? decoded))
               (is (= content
-                     (String. decoded "UTF-8"))))))))))
+                     (String. ^bytes decoded "UTF-8"))))))))))

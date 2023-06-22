@@ -1,12 +1,15 @@
 (ns metabase-enterprise.serialization.api.serialize-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.models :refer [Card Collection Dashboard DashboardCard]]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util.files :as u.files]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- do-serialize-data-model [f]
   (premium-features-test/with-premium-features #{:serialization}
@@ -19,7 +22,7 @@
       (testing "Sanity Check"
         (is (integer? collection-id))
         (is (= collection-id
-               (db/select-one-field :collection_id Card :id card-id))))
+               (t2/select-one-fn :collection_id Card :id card-id))))
       (mt/with-temp-dir [dir "serdes-dir"]
         (f {:collection-id collection-id
             :collection-filename (if collection-slug
@@ -41,7 +44,7 @@
                  (path-files (apply u.files/get-path dir path-components)))]
          (is (= (map
                  #(.toString (u.files/get-path (System/getProperty "java.io.tmpdir") "serdes-dir" %))
-                 ["collections" "settings.yaml"])
+                 ["collections" "databases" "settings.yaml"])
                 (files)))
          (testing "subdirs"
            (testing "cards"
@@ -49,7 +52,11 @@
                     (count (files "collections" collection-filename "cards")))))
            (testing "collections"
              (is (= 1
-                    (count (remove #{"cards" "dashboards" "timelines"} (files "collections"))))))
+                    (->> (files "collections")
+                         (remove #{"cards" "dashboards" "timelines"})
+                         ;; TODO: use better IA test data
+                         (remove #(str/ends-with? % "instance_analytics"))
+                         count))))
            (testing "dashboards"
              (is (= 1
                     (count (files "collections" collection-filename "dashboards")))))))))))

@@ -1,8 +1,9 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
+import * as React from "react";
 import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import Icon, { IconProps } from "metabase/components/Icon";
+import { Icon, IconProps } from "metabase/core/components/Icon";
 
 import { color } from "metabase/lib/colors";
 
@@ -26,39 +27,40 @@ import {
   SearchToggle,
 } from "./ItemPicker.styled";
 
-interface SearchEntityListLoaderProps {
-  list: PickerItem[];
+interface SearchEntityListLoaderProps<TId> {
+  list: PickerItem<TId>[];
 }
 
-interface Props {
+interface Props<TId> {
   models: PickerModel[];
-  openCollection: Collection;
-  collections: CollectionPickerItem[];
+  collections: CollectionPickerItem<TId>[];
   searchString: string;
   searchQuery: SearchQuery;
   showSearch?: boolean;
+  allowFetch?: boolean;
   crumbs: any[];
   className?: string;
   style?: React.CSSProperties;
-  onChange: (item: PickerItem) => void;
+  onChange: (item: PickerItem<TId>) => void;
   onSearchStringChange: (searchString: string) => void;
-  onOpenCollectionChange: (collectionId: PickerItem["id"]) => void;
+  onOpenCollectionChange: (collectionId: PickerItem<TId>["id"]) => void;
   checkCollectionMaybeHasChildren: (
-    collection: CollectionPickerItem,
+    collection: CollectionPickerItem<TId>,
   ) => boolean;
-  checkIsItemSelected: (item: PickerItem) => boolean;
-  checkHasWritePermissionForItem: (item: PickerItem) => boolean;
+  checkIsItemSelected: (item: PickerItem<TId>) => boolean;
+  checkHasWritePermissionForItem: (item: PickerItem<TId>) => boolean;
   getCollectionIcon: (collection: Collection) => IconProps;
 }
 
 const getDefaultCollectionIconColor = () => color("text-light");
 
-function ItemPickerView({
+function ItemPickerView<TId>({
   collections,
   models,
   searchString,
   searchQuery,
   showSearch = true,
+  allowFetch = true,
   crumbs,
   className,
   style,
@@ -69,10 +71,11 @@ function ItemPickerView({
   checkIsItemSelected,
   checkHasWritePermissionForItem,
   getCollectionIcon,
-}: Props) {
+}: Props<TId>) {
   const [isSearchEnabled, setIsSearchEnabled] = useState(false);
 
   const isPickingNotCollection = models.some(model => model !== "collection");
+  const canFetch = (isPickingNotCollection || searchString) && allowFetch;
 
   const handleSearchInputKeyPress = useCallback(
     e => {
@@ -130,7 +133,7 @@ function ItemPickerView({
   ]);
 
   const renderCollectionListItem = useCallback(
-    (collection: CollectionPickerItem) => {
+    (collection: CollectionPickerItem<TId>) => {
       const hasChildren = checkCollectionMaybeHasChildren(collection);
 
       // NOTE: this assumes the only reason you'd be selecting a collection is to modify it in some way
@@ -170,7 +173,7 @@ function ItemPickerView({
   );
 
   const renderCollectionContentListItem = useCallback(
-    (item: PickerItem) => {
+    (item: PickerItem<TId>) => {
       const hasPermission = checkHasWritePermissionForItem(item);
 
       if (
@@ -179,11 +182,11 @@ function ItemPickerView({
         models.includes(item.model) &&
         // remove collections unless we're searching
         // (so a user can navigate through collections)
-        (item.model !== "collection" || !!searchString)
+        (item.model !== "collection" || searchString)
       ) {
         return (
           <Item
-            key={item.id}
+            key={`${item.id}`}
             item={item}
             name={item.getName()}
             color={item.getColor()}
@@ -211,9 +214,9 @@ function ItemPickerView({
       {renderHeader()}
       <ItemPickerList data-testid="item-picker-list">
         {!searchString && collections.map(renderCollectionListItem)}
-        {(isPickingNotCollection || searchString) && (
+        {canFetch && (
           <Search.ListLoader query={searchQuery} wrapped>
-            {({ list }: SearchEntityListLoaderProps) => (
+            {({ list }: SearchEntityListLoaderProps<TId>) => (
               <div>{list.map(renderCollectionContentListItem)}</div>
             )}
           </Search.ListLoader>
@@ -223,4 +226,5 @@ function ItemPickerView({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ItemPickerView;

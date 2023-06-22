@@ -8,7 +8,9 @@
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [yaml.core :as yaml]))
+   [metabase.util.yaml :as yaml]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :each (fn [thunk]
                       (binding [advanced-config.file/*supported-versions* {:min 1.0, :max 1.999}]

@@ -1,63 +1,65 @@
 (ns metabase.cmd-test
   (:require
-   [clojure.test :as t :refer [deftest is testing]]
+   [clojure.test :as t :refer [deftest is are testing use-fixtures]]
    [metabase.cmd :as cmd]))
 
+(use-fixtures :each
+  (fn [t]
+    (with-redefs [cmd/call-enterprise list]
+      (t))))
+
 (deftest ^:parallel error-message-test
-  (is (= ["No command given."] (#'cmd/cmd->fn nil [])))
-  (is (= ["Unrecognized command: 'a-command-that-does-not-exist'"] (#'cmd/cmd->fn "a-command-that-does-not-exist" [])))
+  (is (= ["Unrecognized command: 'a-command-that-does-not-exist'"
+          "Valid commands: version, help, import, dump, profile, api-documentation, load, seed-entity-ids, dump-to-h2, environment-variables-documentation, migrate, driver-methods, load-from-h2, export, rotate-encryption-key, reset-password"]
+         (#'cmd/validate "a-command-that-does-not-exist" [])))
   (is (= ["The 'rotate-encryption-key' command requires the following arguments: [new-key], but received: []."]
-         (#'cmd/cmd->fn "rotate-encryption-key" [])))
-  (let [[error? the-fxn] (#'cmd/cmd->fn "rotate-encryption-key" [:some-arg])]
-    (is (nil? error?))
-    (is (fn? the-fxn))))
+         (#'cmd/validate "rotate-encryption-key" [])))
+  (is (nil? (#'cmd/validate "rotate-encryption-key" [:some-arg]))))
 
-(deftest import-test
-  (with-redefs [cmd/resolve-enterprise-command (constantly
-                                                (fn [& args]
-                                                  (cons 'f args)))]
-    (testing "load (v1)"
-      (testing "with no options"
-        (is (= '(f "/path/" {:mode :skip, :on-error :continue})
-               (cmd/load "/path/"))))
-      (testing "with options"
-        (is (= '(f "/path/" {:num-cans :2})
-               (cmd/load "/path/" "--num-cans" "2")))
-        (testing "People can still set --v2 true"
-          (is (= '(f "/path/" {:v2 :true})
-                 (cmd/load "/path/" "--v2" "true"))))))
-    (testing "import (v2)"
-      (testing "with no options"
-        (is (= '(f "/path/" {:mode :skip, :on-error :continue, :v2 :true})
-               (cmd/import "/path/"))))
-      (testing "with options"
-        (is (= '(f "/path/" {:num-cans :2, :v2 :true})
-               (cmd/import "/path/" "--num-cans" "2")))
-        (testing "Don't let people override --v2 true"
-          (is (= '(f "/path/" {:v2 :true})
-                 (cmd/import "/path/" "--v2" "false"))))))))
+(deftest load-command-test
+  (testing "with no options"
+    (is (= '(metabase-enterprise.serialization.cmd/v1-load "/path/" {:mode :skip, :on-error :continue})
+           (cmd/load "/path/"))))
+  (testing "with options"
+    (is (= '(metabase-enterprise.serialization.cmd/v1-load "/path/" {:mode :skip, :on-error :abort})
+           (cmd/load "/path/" "--on-error" "abort")))))
 
-(deftest export-test
-  (with-redefs [cmd/resolve-enterprise-command (constantly
-                                                (fn [& args]
-                                                  (cons 'f args)))]
-    (testing "dump (v1)"
-      (testing "with no options"
-        (is (= '(f "/path/" {:state :active})
-               (cmd/dump "/path/"))))
-      (testing "with options"
-        (is (= '(f "/path/" {:num-cans "2"})
-               (cmd/dump "/path/" "--num-cans" "2")))
-        (testing "People can still set --v2 true"
-          (is (= '(f "/path/" {:v2 "true"})
-                 (cmd/dump "/path/" "--v2" "true"))))))
-    (testing "export (v2)"
-      (testing "with no options"
-        (is (= '(f "/path/" {:state :active, :v2 true})
-               (cmd/export "/path/"))))
-      (testing "with options"
-        (is (= '(f "/path/" {:num-cans "2", :v2 true})
-               (cmd/export "/path/" "--num-cans" "2")))
-        (testing "Don't let people override --v2 true"
-          (is (= '(f "/path/" {:v2 true})
-                 (cmd/export "/path/" "--v2" "false"))))))))
+(deftest import-command-test
+  (testing "with no options"
+    (is (= '(metabase-enterprise.serialization.cmd/v2-load "/path/" {})
+           (cmd/import "/path/"))))
+  (testing "with options"
+    (is (= '(metabase-enterprise.serialization.cmd/v2-load "/path/" {:abort-on-error true})
+           (cmd/import "/path/" "--abort-on-error")))))
+
+(deftest dump-command-test
+  (testing "with no options"
+    (is (= '(metabase-enterprise.serialization.cmd/v1-dump "/path/" {:state :all})
+           (cmd/dump "/path/"))))
+  (testing "with options"
+    (is (= '(metabase-enterprise.serialization.cmd/v1-dump "/path/" {:state :active})
+           (cmd/dump "/path/" "--state" "active")))))
+
+(deftest export-command-arg-parsing-test
+  (are [cmd-args v2-dump-args] (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" v2-dump-args)
+                                  (apply cmd/export "/path/" cmd-args))
+    nil
+    {}
+
+    ["--collection" "123"]
+    {:collections [123]}
+
+    ["-c" "123" "-c" "456"]
+    {:collections [123 456]}
+
+    ["--include-field-values"]
+    {:include-field-values true}
+
+    ["--no-collections"]
+    {:no-collections true}
+
+    ["--no-settings"]
+    {:no-settings true}
+
+    ["--no-data-model"]
+    {:no-data-model true}))
