@@ -6,6 +6,7 @@
   (:refer-clojure :exclude [compile])
   (:require
    [humane-are.core :as humane-are]
+   [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
@@ -50,6 +51,7 @@
 ;; Fool the linters into thinking these namespaces are used! See discussion on
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
 (comment
+  actions.test-util/keep-me
   client/keep-me
   data.impl/keep-me
   data/keep-me
