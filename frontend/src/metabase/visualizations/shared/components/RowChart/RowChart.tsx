@@ -3,7 +3,7 @@ import * as React from "react";
 
 import type { NumberValue } from "d3-scale";
 
-import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
 import { HoveredData } from "metabase/visualizations/shared/types/events";
 import RowChartView, { RowChartViewProps } from "../RowChartView/RowChartView";
@@ -48,7 +48,7 @@ export interface RowChartProps<TDatum> {
 
   tickFormatters?: ChartTicksFormatters;
   labelsFormatter?: (value: NumberValue) => string;
-  measureText: TextMeasurer;
+  measureText: TextWidthMeasurer;
 
   xScaleType?: ContinuousScaleType;
 

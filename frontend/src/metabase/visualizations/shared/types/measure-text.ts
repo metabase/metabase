@@ -9,4 +9,9 @@ export interface TextSize {
   height: number;
 }
 
+export type TextWidthMeasurer = (
+  text: string,
+  style: FontStyle,
+) => TextSize["width"];
+
 export type TextMeasurer = (text: string, style: FontStyle) => TextSize;

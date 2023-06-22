@@ -1,5 +1,5 @@
 import type { ScaleContinuousNumeric } from "d3-scale";
-import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import { Margin } from "metabase/visualizations/shared/types/layout";
 import {
   ChartFont,
@@ -16,16 +16,15 @@ const GOAL_LINE_PADDING = 14;
 export const getMaxWidth = (
   formattedYTicks: string[],
   ticksFont: ChartFont,
-  measureText: TextMeasurer,
+  measureText: TextWidthMeasurer,
 ): number => {
   return Math.max(
-    ...formattedYTicks.map(
-      tick =>
-        measureText(tick, {
-          size: `${ticksFont.size}px`,
-          family: "Lato",
-          weight: String(ticksFont.weight ?? 400),
-        }).width,
+    ...formattedYTicks.map(tick =>
+      measureText(tick, {
+        size: `${ticksFont.size}px`,
+        family: "Lato",
+        weight: String(ticksFont.weight ?? 400),
+      }),
     ),
   );
 };
@@ -36,7 +35,7 @@ export const getChartMargin = <TDatum>(
   ticksFont: ChartFont,
   labelFont: ChartFont,
   hasGoalLine: boolean,
-  measureText: TextMeasurer,
+  measureText: TextWidthMeasurer,
   xLabel?: string | null,
   yLabel?: string | null,
   hasXAxis?: boolean,
@@ -84,14 +83,14 @@ export const getMaxYValuesCount = (
 export const getRowChartGoal = (
   goal: ChartGoal | null | undefined,
   style: GoalStyle,
-  measureText: TextMeasurer,
+  measureText: TextWidthMeasurer,
   xScale: ScaleContinuousNumeric<number, number, never>,
 ) => {
   if (!goal) {
     return null;
   }
 
-  const labelWidth = measureText(goal.label, style.label).width;
+  const labelWidth = measureText(goal.label, style.label);
   const goalX = xScale(goal.value);
   const xMax = xScale.range()[1];
   const availableRightSideSpace = xMax - goalX;

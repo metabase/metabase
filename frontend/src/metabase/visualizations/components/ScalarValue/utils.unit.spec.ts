@@ -34,6 +34,7 @@ describe("findSize", () => {
     const size = findSize({
       ...defaults,
       targetWidth: 100,
+      targetHeight: 100,
       step: 0.2,
       min: 2,
       max: 5,
@@ -52,6 +53,7 @@ describe("findSize", () => {
     const size = findSize({
       ...defaults,
       targetWidth: 100,
+      targetHeight: 100,
       step: 0.2,
       min: 2,
       max: 5,
@@ -66,6 +68,7 @@ describe("findSize", () => {
     const size = findSize({
       ...defaults,
       targetWidth: 100,
+      targetHeight: 100,
       step: 0.2,
       min: 2,
       max: 5,

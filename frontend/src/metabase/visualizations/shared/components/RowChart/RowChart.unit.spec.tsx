@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import type { NumberValue } from "d3-scale";
 import userEvent from "@testing-library/user-event";
 import { ChartFont } from "../../types/style";
-import { FontStyle, TextMeasurer } from "../../types/measure-text";
+import { FontStyle, TextWidthMeasurer } from "../../types/measure-text";
 import { RowChart, RowChartProps } from "./RowChart";
 import { RowChartTheme } from "./types";
 
@@ -24,7 +24,7 @@ const theme: RowChartTheme = {
   },
 };
 
-const measureText: TextMeasurer = (text: string, _style: FontStyle) =>
+const measureText: TextWidthMeasurer = (text: string, _style: FontStyle) =>
   text.length * 10;
 
 const series1 = {
