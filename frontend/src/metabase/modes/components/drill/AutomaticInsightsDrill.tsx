@@ -38,6 +38,7 @@ export const AutomaticInsightsDrill = ({
       title: t`X-ray`,
       section: "auto-popover",
       icon: "bolt",
+      forceSameOrigin: true,
       url: () => automaticDashboardDrillUrl({ question, clicked }),
     },
     {
@@ -46,6 +47,7 @@ export const AutomaticInsightsDrill = ({
       title: t`Compare to the rest`,
       section: "auto-popover",
       icon: "segment",
+      forceSameOrigin: true,
       url: () => compareToRestDrillUrl({ question, clicked }) as string,
     },
   ];

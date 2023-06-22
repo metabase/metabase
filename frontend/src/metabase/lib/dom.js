@@ -301,16 +301,17 @@ export function open(
     // custom function for opening in same app instance
     openInSameOrigin = openInSameWindow,
     ignoreSiteUrl = false,
+    forceSameOrigin = false,
     ...options
   } = {},
 ) {
-  const isOriginalUrlAbsolute = isAbsoluteUrl(url);
+  const isOriginalUrlAbsolute = isAbsoluteUrl(url); // this does not check real "absolute" url, but if a url should be resolved from the root URL
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
   if (shouldOpenInBlankWindow(url, options)) {
     openInBlankWindow(url);
   } else if (isSameOrigin(url)) {
-    if (isOriginalUrlAbsolute) {
+    if (isOriginalUrlAbsolute && !forceSameOrigin) {
       clickLink(url, false);
     } else {
       openInSameOrigin(url, getLocation(url));

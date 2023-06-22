@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import { DatasetColumn } from "metabase-types/api";
 import MetabaseSettings from "metabase/lib/settings";
@@ -45,6 +46,28 @@ describe("AutomaticInsightsDrill", () => {
       expect(screen.getByText("Automatic insights…")).toBeInTheDocument();
       expect(screen.getByText("Compare to the rest")).toBeInTheDocument();
       expect(screen.getByText("X-ray")).toBeInTheDocument();
+    });
+
+    it(`should pass "forceSameOrigin" prop on action item click`, () => {
+      const { props } = setup();
+
+      userEvent.click(screen.getByText("Compare to the rest"));
+
+      expect(props.onClick).toHaveBeenCalledTimes(1);
+      expect(props.onClick).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          forceSameOrigin: true,
+        }),
+      );
+
+      userEvent.click(screen.getByText("X-ray"));
+
+      expect(props.onClick).toHaveBeenCalledTimes(2);
+      expect(props.onClick).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          forceSameOrigin: true,
+        }),
+      );
     });
   });
 });
@@ -95,4 +118,6 @@ function setup() {
   };
 
   renderWithProviders(<PopoverComponent {...props} />);
+
+  return { props };
 }

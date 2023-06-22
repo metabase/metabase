@@ -22,6 +22,7 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
           dispatch(setParameterValuesFromQueryParams(location.query));
         },
         ignoreSiteUrl,
+        forceSameOrigin: action.forceSameOrigin || false,
       });
       didPerform = true;
     }
