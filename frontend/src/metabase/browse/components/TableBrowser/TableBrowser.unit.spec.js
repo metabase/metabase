@@ -24,28 +24,31 @@ describe("TableBrowser", () => {
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
   });
 
-  it("should render syncing tables", () => {
-    const database = getDatabase({
-      initial_sync_status: "incomplete",
-    });
+  it.each(["incomplete", "complete"])(
+    "should render syncing tables, regardless of the database's initial_sync_status",
+    initial_sync_status => {
+      const database = getDatabase({ initial_sync_status });
 
-    const tables = [
-      getTable({ id: 1, name: "Orders", initial_sync_status: "incomplete" }),
-    ];
+      const tables = [
+        getTable({ id: 1, name: "Orders", initial_sync_status: "incomplete" }),
+      ];
 
-    render(
-      <TableBrowser
-        database={database}
-        tables={tables}
-        getTableUrl={getTableUrl}
-        xraysEnabled={true}
-      />,
-    );
+      render(
+        <TableBrowser
+          database={database}
+          tables={tables}
+          getTableUrl={getTableUrl}
+          xraysEnabled={true}
+        />,
+      );
 
-    expect(screen.getByText("Orders")).toBeInTheDocument();
-    expect(screen.queryByLabelText("bolt_filled icon")).not.toBeInTheDocument();
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
-  });
+      expect(screen.getByText("Orders")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("bolt_filled icon"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    },
+  );
 
   it("should render tables with a sync error", () => {
     const database = getDatabase({

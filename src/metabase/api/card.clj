@@ -49,7 +49,6 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.sync :as sync]
    [metabase.sync.analyze.query-results :as qr]
-   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.task.persist-refresh :as task.persist-refresh]
@@ -420,6 +419,11 @@
             valid-metadata?)
        ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
        (and (nil? query)
+            valid-metadata?)
+
+       ;; copying card and reusing existing metadata
+       (and (nil? original-query)
+            query
             valid-metadata?))
       (do
         (log/debug (trs "Reusing provided metadata"))
@@ -1168,6 +1172,10 @@ saved later when it is ready."
           _check_perms      (api/check-403 (mi/can-read? database))
           driver            (driver.u/database->driver database)
           schema-name       (public-settings/uploads-schema-name)
+          _check-schema     (when (and (str/blank? schema-name)
+                                       (driver/database-supports? driver :schemas database))
+                              (throw (ex-info (tru "A schema has not been set.")
+                                              {:status-code 422})))
           _check-schema     (when-not (or (nil? schema-name)
                                           (driver.s/include-schema? database schema-name))
                               (throw (ex-info (tru "The schema {0} is not syncable." schema-name)
@@ -1182,16 +1190,9 @@ saved later when it is ready."
           schema+table-name (if (str/blank? schema-name)
                               table-name
                               (str schema-name "." table-name))
-          stats             (upload/load-from-csv driver db-id schema+table-name csv-file)
+          stats             (upload/load-from-csv! driver db-id schema+table-name csv-file)
           ;; Syncs are needed immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-          table-metadata    (first (filter (fn [{:keys [name]}] (= (u/lower-case-en name) table-name))
-                                           (:tables (fetch-metadata/db-metadata database))))
-          actual-schema     (:schema table-metadata)
-          _                 (when (nil? table-metadata)
-                              (driver/drop-table driver db-id table-name)
-                              (throw (ex-info (tru "The CSV file was uploaded to {0}, but the table could not be created or found." schema+table-name)
-                                              {:status-code 422})))
-          table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema actual-schema})
+          table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
           _sync             (scan-and-sync-table! database table)
           card              (create-card!
                              {:collection_id          collection-id,
@@ -1223,11 +1224,17 @@ saved later when it is ready."
 (api/defendpoint ^:multipart POST "/from-csv"
   "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
   [:as {raw-params :params}]
-  ;; parse-long returns nil with "root", which is what we want anyway
-  (let [model-id (:id (upload-csv! (parse-long (get raw-params "collection_id"))
-                                   (get-in raw-params ["file" :filename])
-                                   (get-in raw-params ["file" :tempfile])))]
-    {:status 200
-     :body   model-id}))
+  ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway
+  (try
+    (let [model-id (:id (upload-csv! (parse-long (get raw-params "collection_id"))
+                                     (get-in raw-params ["file" :filename])
+                                     (get-in raw-params ["file" :tempfile])))]
+      {:status 200
+       :body   model-id})
+    (catch Throwable e
+      {:status (or (-> e ex-data :status-code)
+                   500)
+       :body   {:message (or (ex-message e)
+                             (tru "There was an error uploading the file"))}})))
 
 (api/define-routes)

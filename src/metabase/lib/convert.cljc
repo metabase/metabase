@@ -2,6 +2,7 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
@@ -100,27 +101,64 @@
   [query]
   query)
 
+(def legacy-default-join-alias
+  "In legacy MBQL, join `:alias` was optional, and if unspecified, this was the default alias used. In reality all joins
+  normally had an explicit `:alias` since the QB would generate one and you generally need one to do useful things
+  with the join anyway.
+
+  Since the new pMBQL schema makes `:alias` required, we'll explicitly add the implicit default when we encounter a
+  join without an alias, and remove it so we can round-trip without changes."
+  "__join")
+
+(defn- deduplicate-join-aliases
+  "Join `:alias`es had to be unique in legacy MBQL, but they were optional. Since we add [[legacy-default-join-alias]]
+  to each join that doesn't have an explicit `:alias` for pMBQL compatibility now, we need to deduplicate the aliases
+  if it is used more than once.
+
+  Only deduplicate the default `__join` aliases; we don't want the [[lib.util/unique-name-generator]] to touch other
+  aliases and truncate them or anything like that."
+  [joins]
+  (let [unique-name-fn (lib.util/unique-name-generator)]
+    (mapv (fn [join]
+            (cond-> join
+              (= (:alias join) legacy-default-join-alias) (update :alias unique-name-fn)))
+          joins)))
+
+(defn- stage-source-card-id->pMBQL
+  "If a query `stage` has a legacy `card__<id>` `:source-table`, convert it to a pMBQL-style `:source-card`."
+  [stage]
+  (if (string? (:source-table stage))
+    (-> stage
+        (assoc :source-card (lib.util/legacy-string-table-id->card-id (:source-table stage)))
+        (dissoc :source-table))
+    stage))
+
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
   (let [aggregations (->pMBQL (:aggregation stage))
-        expressions (->> stage
-                         :expressions
-                         (mapv (fn [[k v]]
-                                 (-> v
-                                     ->pMBQL
-                                     (lib.util/named-expression-clause k))))
-                         not-empty)]
+        expressions  (->> stage
+                          :expressions
+                          (mapv (fn [[k v]]
+                                  (-> v
+                                      ->pMBQL
+                                      (lib.util/named-expression-clause k))))
+                          not-empty)]
     (binding [*legacy-index->pMBQL-uuid* (into {}
                                                (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
                                                               [idx ag-uuid]))
                                                aggregations)]
-      (reduce
-        (fn [stage k]
-          (if-not (get stage k)
-            stage
-            (update stage k ->pMBQL)))
-        (m/assoc-some stage :aggregation aggregations :expressions expressions)
-        (disj stage-keys :aggregation :expressions)))))
+      (let [stage (-> stage
+                      stage-source-card-id->pMBQL
+                      (m/assoc-some :aggregation aggregations :expressions expressions))
+            stage (reduce
+                   (fn [stage k]
+                     (if-not (get stage k)
+                       stage
+                       (update stage k ->pMBQL)))
+                   stage
+                   (disj stage-keys :aggregation :expressions))]
+        (cond-> stage
+          (:joins stage) (update :joins deduplicate-join-aliases))))))
 
 (defmethod ->pMBQL :mbql/join
   [join]
@@ -131,7 +169,8 @@
       (:fields join) (update :fields (fn [fields]
                                        (if (seqable? fields)
                                          (mapv ->pMBQL fields)
-                                         (keyword fields)))))))
+                                         (keyword fields))))
+      (not (:alias join)) (assoc :alias legacy-default-join-alias))))
 
 (defmethod ->pMBQL :dispatch-type/sequential
   [xs]
@@ -359,7 +398,8 @@
     :always (set/rename-keys {pMBQL-key legacy-key})))
 
 (defmethod ->legacy-MBQL :mbql/join [join]
-  (let [base (disqualify join)]
+  (let [base (cond-> (disqualify join)
+               (str/starts-with? (:alias join) legacy-default-join-alias) (dissoc :alias))]
     (merge (-> base
                (dissoc :stages :conditions)
                (update-vals ->legacy-MBQL))
@@ -368,7 +408,17 @@
                (update-list->legacy-boolean-expression :conditions :condition))
            (chain-stages base))))
 
-(defmethod ->legacy-MBQL :mbql.stage/mbql [stage]
+(defn- source-card->legacy-source-table
+  "If a pMBQL query stage has `:source-card` convert it to legacy-style `:source-table \"card__<id>\"`."
+  [stage]
+  (if-let [source-card-id (:source-card stage)]
+    (-> stage
+        (dissoc :source-card)
+        (assoc :source-table (str "card__" source-card-id)))
+    stage))
+
+(defmethod ->legacy-MBQL :mbql.stage/mbql
+  [stage]
   (binding [*pMBQL-uuid->legacy-index* (into {}
                                              (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
                                                             [ag-uuid idx]))
@@ -376,6 +426,7 @@
     (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
             (-> stage
                 disqualify
+                source-card->legacy-source-table
                 (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
                 (m/update-existing :expressions (fn [expressions]
                                                   (into {}

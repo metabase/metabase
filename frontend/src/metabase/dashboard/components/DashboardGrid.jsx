@@ -49,6 +49,7 @@ class DashboardGrid extends Component {
 
     this.state = {
       visibleCardIds,
+      initialCardSizes: this.getInitialCardSizes(props.dashboard.ordered_cards),
       layouts: this.getLayouts(props.dashboard.ordered_cards),
       addSeriesModalDashCard: null,
       isDragging: false,
@@ -113,11 +114,29 @@ class DashboardGrid extends Component {
       selectedTabId,
     );
 
+    if (!isEditing || !_.isEqual(this.getVisibleCards(), cards)) {
+      this.setState({
+        initialCardSizes: this.getInitialCardSizes(cards),
+      });
+    }
+
     this.setState({
       visibleCardIds,
       layouts: this.getLayouts(cards),
     });
   }
+
+  getInitialCardSizes = cards => {
+    return cards
+      .map(card => this.getLayoutForDashCard(card))
+      .reduce((acc, dashcardLayout) => {
+        const dashcardId = dashcardLayout.i;
+        return {
+          ...acc,
+          [dashcardId]: _.pick(dashcardLayout, ["w", "h"]),
+        };
+      }, {});
+  };
 
   onLayoutChange = ({ layout, breakpoint }) => {
     const { setMultipleDashCardAttributes, isEditing } = this.props;
@@ -161,10 +180,25 @@ class DashboardGrid extends Component {
     }
   };
 
-  getLayoutForDashCard(dashcard) {
+  getLayoutForDashCard = dashcard => {
     const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
     const initialSize = DEFAULT_CARD_SIZE;
     const minSize = visualization.minSize || DEFAULT_CARD_SIZE;
+
+    let minW, minH;
+    if (this.state?.initialCardSizes) {
+      minW = Math.min(
+        this.state?.initialCardSizes[dashcard.id]?.w,
+        minSize.width,
+      );
+      minH = Math.min(
+        this.state?.initialCardSizes[dashcard.id]?.h,
+        minSize.height,
+      );
+    } else {
+      minW = minSize.width;
+      minH = minSize.height;
+    }
     return {
       i: String(dashcard.id),
       x: dashcard.col || 0,
@@ -172,10 +206,10 @@ class DashboardGrid extends Component {
       w: dashcard.size_x || initialSize.width,
       h: dashcard.size_y || initialSize.height,
       dashcard: dashcard,
-      minW: minSize.width,
-      minH: minSize.height,
+      minW,
+      minH,
     };
-  }
+  };
 
   getVisibleCards = (
     cards = this.props.dashboard.ordered_cards,

@@ -59,10 +59,17 @@ function ActionParametersInputForm({
     [prefetchedValues, dashcardParamValues],
   );
 
-  const hiddenFields = useMemo(
-    () => mappedParameters.map(parameter => parameter.id),
-    [mappedParameters],
-  );
+  const hiddenFields = useMemo(() => {
+    const hiddenFieldIds = Object.values(
+      action.visualization_settings?.fields ?? {},
+    )
+      .filter(field => field.hidden)
+      .map(field => field.id);
+
+    return mappedParameters
+      .map(parameter => parameter.id)
+      .concat(hiddenFieldIds);
+  }, [mappedParameters, action.visualization_settings?.fields]);
 
   const fetchInitialValues = useCallback(async () => {
     const prefetchEndpoint =

@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -15,12 +16,12 @@
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
-   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.driver.sql-jdbc.sync.describe-table
+    :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.driver.sync :as driver.s]
-   [metabase.driver.util :as driver.u]
    [metabase.models.secret :as secret]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -34,7 +35,6 @@
    [ring.util.codec :as codec])
   (:import
    (java.io File)
-   (java.nio.charset StandardCharsets)
    (java.sql Connection DatabaseMetaData ResultSet Types)
    (java.time OffsetDateTime ZonedDateTime)))
 
@@ -42,9 +42,10 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:datetime-diff    true
-                              :now              true
-                              :convert-timezone true}]
+(doseq [[feature supported?] {:datetime-diff            true
+                              :now                      true
+                              :convert-timezone         true
+                              :connection-impersonation true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
@@ -76,34 +77,37 @@
                                                           {:user (codec/url-encode user)
                                                            :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))})
         new-conn-uri (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
-    (assoc details :connection-uri new-conn-uri)))
+    (-> details
+        (assoc :connection-uri new-conn-uri)
+        ;; The Snowflake driver uses the :account property, but we need to drop the region from it first
+        (assoc :account (first (str/split account #"\."))))))
 
 (defn- resolve-private-key
   "Convert the private-key secret properties into a private_key_file property in `details`.
   Setting the Snowflake driver property privatekey would be easier, but that doesn't work
   because clojure.java.jdbc (properly) converts the property values into strings while the
   Snowflake driver expects a java.security.PrivateKey instance."
-  [{:keys [user password account private-key-value private-key-path] :as details}]
-  (cond
-    password
-    details
+  [{:keys [user password account private-key-path]
+    :as   details}]
+  (let [base-details (apply dissoc details (vals (secret/get-sub-props "private-key")))]
+    (cond
+      password
+      details
 
-    private-key-path
-    (let [secret-map       (secret/db-details-prop->secret-map details "private-key")
-          private-key-file (when (some? (:value secret-map))
-                             (secret/value->file! secret-map :snowflake))]
-      (cond-> (apply dissoc details (vals (secret/get-sub-props "private-key")))
-        private-key-file (handle-conn-uri user account private-key-file)))
+      private-key-path
+      (let [secret-map       (secret/db-details-prop->secret-map details "private-key")
+            private-key-file (when (some? (:value secret-map))
+                               (secret/value->file! secret-map :snowflake))]
+        (cond-> base-details
+          private-key-file (handle-conn-uri user account private-key-file)))
 
-    private-key-value
-    (let [private-key-str      (if (bytes? private-key-value)
-                                 (String. ^bytes private-key-value StandardCharsets/UTF_8)
-                                 private-key-value)
-          private-key-file-val (cond-> private-key-str
-                                 (re-find driver.u/data-url-pattern private-key-str) driver.u/decode-uploaded)
-          private-key-file     (secret/value->file! {:connection-property-name "private-key-file"
-                                                     :value                    private-key-file-val})]
-      (handle-conn-uri details user account private-key-file))))
+      :else
+      ;; get-secret-string should get the right value (using private-key-value or private-key-id) and decode it automatically
+      (let [decoded (secret/get-secret-string details "private-key")
+            file    (secret/value->file! {:connection-property-name "private-key-file"
+                                          :value                    decoded})]
+        (assoc (handle-conn-uri base-details user account file)
+               :private_key_file file)))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options], :as details}]
@@ -387,42 +391,49 @@
                                                (sql.qp/with-driver-honey-sql-version driver
                                                  (sql.qp/->honeysql driver table)))]]}))
 
-(defmethod driver/describe-database :snowflake [driver database]
+(defmethod driver/describe-database :snowflake
+  [driver database]
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
     (qp.store/with-store
       (qp.store/fetch-and-store-database! (u/the-id database))
-      (let [spec            (sql-jdbc.conn/db->pooled-connection-spec database)
-            sql             (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name)
+      (let [sql             (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name)
             schema-patterns (driver.s/db-details->schema-filter-patterns "schema-filters" database)
             [inclusion-patterns exclusion-patterns] schema-patterns]
         (log/tracef "[Snowflake] %s" sql)
-        (with-open [conn (jdbc/get-connection spec)]
-          {:tables (into
-                    #{}
-                    (comp (filter (fn [{schema :schema_name, table-name :name}]
-                                    (and (not (contains? excluded-schemas schema))
-                                         (driver.s/include-schema? inclusion-patterns
-                                                                   exclusion-patterns
-                                                                   schema)
-                                         (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
-                          (map (fn [{schema :schema_name, table-name :name, remark :comment}]
-                                 {:name        table-name
-                                  :schema      schema
-                                  :description (not-empty remark)})))
-                    (try
-                      (jdbc/reducible-query {:connection conn} sql)
-                      (catch Throwable e
-                        (throw (ex-info (trs "Error executing query: {0}" (ex-message e)) {:sql sql} e)))))})))))
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver
+         database
+         nil
+         (fn [^Connection conn]
+           {:tables (into
+                     #{}
+                     (comp (filter (fn [{schema :schema_name, table-name :name}]
+                                     (and (not (contains? excluded-schemas schema))
+                                          (driver.s/include-schema? inclusion-patterns
+                                                                    exclusion-patterns
+                                                                    schema)
+                                          (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
+                           (map (fn [{schema :schema_name, table-name :name, remark :comment}]
+                                  {:name        table-name
+                                   :schema      schema
+                                   :description (not-empty remark)})))
+                     (try
+                       (jdbc/reducible-query {:connection conn} sql)
+                       (catch Throwable e
+                         (throw (ex-info (trs "Error executing query: {0}" (ex-message e)) {:sql sql} e)))))}))))))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
-  (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (with-open [conn (jdbc/get-connection spec)]
-      (->> (assoc (select-keys table [:name :schema])
-                  :fields (sql-jdbc.sync/describe-table-fields driver conn table (db-name database)))
-           ;; find PKs and mark them
-           (sql-jdbc.sync/add-table-pks driver conn (db-name database))))))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (->> (assoc (select-keys table [:name :schema])
+                 :fields (sql-jdbc.sync/describe-table-fields driver conn table (db-name database)))
+          ;; find PKs and mark them
+          (sql-jdbc.sync/add-table-pks driver conn (db-name database))))))
 
 (defn- escape-name-for-metadata [entity-name]
   (when entity-name
@@ -470,9 +481,12 @@
   [driver db-or-id-or-spec-or-conn table & [db-name-or-nil]]
   (if (instance? Connection db-or-id-or-spec-or-conn)
     (describe-table-fks* driver db-or-id-or-spec-or-conn table db-name-or-nil)
-    (let [spec (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec-or-conn)]
-      (with-open [conn (jdbc/get-connection spec)]
-        (describe-table-fks* driver conn table db-name-or-nil)))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     db-or-id-or-spec-or-conn
+     nil
+     (fn [conn]
+       (describe-table-fks* driver conn table db-name-or-nil)))))
 
 (defmethod driver/describe-table-fks :snowflake
   [driver database table]
@@ -564,3 +578,16 @@
 (defmethod sql-jdbc.execute/set-parameter [:snowflake java.time.ZonedDateTime]
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
+
+
+;;; ------------------------------------------------- User Impersonation --------------------------------------------------
+
+(defmethod driver.sql/set-role-statement :snowflake
+  [_ role]
+  (format "USE ROLE %s;" role))
+
+(defmethod driver.sql/default-database-role :snowflake
+  [_ database]
+  (or
+   (-> database :details :role)
+   "ACCOUNTADMIN"))

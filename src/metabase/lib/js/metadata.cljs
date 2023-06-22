@@ -29,26 +29,29 @@
 
 (defn- obj->clj
   "Convert a JS object of *any* class to a ClojureScript object."
-  [xform obj]
-  (if (map? obj)
-    ;; already a ClojureScript object.
-    (into {} xform obj)
-    ;; has a plain-JavaScript `_plainObject` attached: apply `xform` to it and call it a day
-    (if-let [plain-object (some-> (object-get obj "_plainObject")
-                                  js->clj
-                                  not-empty)]
-      (into {} xform plain-object)
-      ;; otherwise do things the hard way and convert an arbitrary object into a Cljs map. (`js->clj` doesn't work on
-      ;; arbitrary classes other than `Object`)
-      (into {}
-            (comp
-             (map (fn [k]
-                    [k (object-get obj k)]))
-             ;; ignore values that are functions
-             (remove (fn [[_k v]]
-                       (= (goog/typeOf v) "function")))
-             xform)
-            (gobject/getKeys obj)))))
+  ([xform obj]
+   (obj->clj xform obj {}))
+  ([xform obj {:keys [use-plain-object?] :or {use-plain-object? true}}]
+   (if (map? obj)
+     ;; already a ClojureScript object.
+     (into {} xform obj)
+     ;; has a plain-JavaScript `_plainObject` attached: apply `xform` to it and call it a day
+     (if-let [plain-object (when use-plain-object?
+                             (some-> (object-get obj "_plainObject")
+                                     js->clj
+                                     not-empty))]
+       (into {} xform plain-object)
+       ;; otherwise do things the hard way and convert an arbitrary object into a Cljs map. (`js->clj` doesn't work on
+       ;; arbitrary classes other than `Object`)
+       (into {}
+             (comp
+              (map (fn [k]
+                     [k (object-get obj k)]))
+              ;; ignore values that are functions
+              (remove (fn [[_k v]]
+                        (= (goog/typeOf v) "function")))
+              xform)
+             (gobject/getKeys obj))))))
 
 ;;; this intentionally does not use the lib hierarchy since it's not dealing with MBQL/lib keys
 (defmulti ^:private excluded-keys
@@ -97,17 +100,20 @@
        (map (fn [[k v]]
               [k (parse-field k v)]))))))
 
-(defn- parse-object-fn [object-type]
-  (let [xform         (parse-object-xform object-type)
-        lib-type-name (lib-type object-type)]
-    (fn [object]
-      (try
-        (let [parsed (assoc (obj->clj xform object) :lib/type lib-type-name)]
-          (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
-          parsed)
-        (catch js/Error e
-          (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
-          nil)))))
+(defn- parse-object-fn
+  ([object-type]
+   (parse-object-fn object-type {}))
+  ([object-type opts]
+   (let [xform         (parse-object-xform object-type)
+         lib-type-name (lib-type object-type)]
+     (fn [object]
+       (try
+         (let [parsed (assoc (obj->clj xform object opts) :lib/type lib-type-name)]
+           (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
+           parsed)
+         (catch js/Error e
+           (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
+           nil))))))
 
 (defmulti ^:private parse-objects
   {:arglists '([object-type metadata])}
@@ -177,7 +183,7 @@
 
 (defmethod lib-type :field
   [_object-type]
-  :metadata/field)
+  :metadata/column)
 
 (defmethod excluded-keys :field
   [_object-type]
@@ -189,6 +195,13 @@
     :metrics
     :table})
 
+(defn- parse-field-id
+  [id]
+  (cond-> id
+    ;; sometimes instead of an ID we get a field reference
+    ;; with the name of the column in the second position
+    (vector? id) second))
+
 (defmethod parse-field-fn :field
   [_object-type]
   (fn [k v]
@@ -196,10 +209,13 @@
       :base-type         (keyword v)
       :coercion-strategy (keyword v)
       :effective-type    (keyword v)
-      :fingerprint       (walk/keywordize-keys v)
+      :fingerprint       (if (map? v)
+                           (walk/keywordize-keys v)
+                           (js->clj v :keywordize-keys true))
       :has-field-values  (keyword v)
       :semantic-type     (keyword v)
       :visibility-type   (keyword v)
+      :id                (parse-field-id v)
       v)))
 
 (defmethod parse-objects-default-key :field
@@ -213,7 +229,15 @@
 (defmethod excluded-keys :card
   [_object-type]
   #{:database
-    :dimension_options
+    :db
+    :dimension-options
+    :fks
+    :metadata
+    :metrics
+    :plain-object
+    :segments
+    :schema
+    :schema-name
     :table})
 
 (defn- parse-fields [fields]
@@ -239,19 +263,37 @@
   (or (object-get obj "_card")
       obj))
 
-(defmethod parse-objects :card
-  [object-type metadata]
-  (let [parse-card (comp (parse-object-fn object-type) unwrap-card)]
+(defn- assamble-card
+  [metadata id]
+  (let [parse-card-ignoring-plain-object (parse-object-fn :card {:use-plain-object? false})
+        parse-card (parse-object-fn :card)]
+    ;; The question objects might not contain the fields so we merge them
+    ;; in from the table matadata.
     (merge
-     (obj->clj (comp (filter (fn [[k _v]]
-                               (str/starts-with? k "card__")))
-                     (map (fn [[s v]]
-                            (when-let [id (lib.util/string-table-id->card-id s)]
-                              [id (delay (assoc (parse-card v) :id id))]))))
-               (object-get metadata "tables"))
-     (obj->clj (comp (map (fn [[k v]]
-                            [(parse-long k) (delay (parse-card v))])))
-               (object-get metadata "questions")))))
+     (-> metadata
+         (object-get "tables")
+         (object-get (str "card__" id))
+         ;; _plainObject can contain field names in the field property
+         ;; instead of the field objects themselves.  Ignoring this
+         ;; property makes sure we parse the real fields.
+         parse-card-ignoring-plain-object
+         (assoc :id id))
+     (-> metadata
+         (object-get "questions")
+         (object-get (str id))
+         unwrap-card
+         parse-card))))
+
+(defmethod parse-objects :card
+  [_object-type metadata]
+  (into {}
+        (map (fn [id]
+               [id (delay (assamble-card metadata id))]))
+        (-> #{}
+            (into (keep lib.util/legacy-string-table-id->card-id)
+                  (gobject/getKeys (object-get metadata "tables")))
+            (into (map parse-long)
+                  (gobject/getKeys (object-get metadata "questions"))))))
 
 (defmethod lib-type :metric
   [_object-type]

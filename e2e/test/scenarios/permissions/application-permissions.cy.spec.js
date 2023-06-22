@@ -10,6 +10,7 @@ import {
 
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -24,6 +25,23 @@ describeEE("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+  });
+
+  it("shows permissions help", () => {
+    cy.visit("/admin/permissions/application");
+    cy.get("main").within(() => {
+      cy.findByText("Permission help").as("permissionHelpButton").click();
+      cy.get("@permissionHelpButton").should("not.exist");
+    });
+
+    cy.findByLabelText("Permissions help reference").within(() => {
+      cy.findAllByText("Applications permissions");
+
+      cy.findByText(
+        "Application settings are useful for granting groups access to some, but not all, of Metabase’s administrative features.",
+      );
+      cy.findByLabelText("Close").click();
+    });
   });
 
   describe("subscriptions permission", () => {
@@ -50,7 +68,7 @@ describeEE("scenarios > admin > permissions > application", () => {
         visitDashboard(1);
         cy.icon("subscription").should("not.exist");
 
-        visitQuestion(1);
+        visitQuestion(ORDERS_QUESTION_ID);
         cy.icon("bell").should("not.exist");
 
         cy.visit("/account/notifications");
@@ -73,7 +91,7 @@ describeEE("scenarios > admin > permissions > application", () => {
       });
 
       it("gives ability to create question alerts", () => {
-        visitQuestion(1);
+        visitQuestion(ORDERS_QUESTION_ID);
         cy.icon("bell").click();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(

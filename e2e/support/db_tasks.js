@@ -1,6 +1,7 @@
 import Knex from "knex";
-import { WRITABLE_DB_CONFIG } from "./cypress_data";
+import { WRITABLE_DB_CONFIG, QA_DB_CONFIG } from "./cypress_data";
 import * as testTables from "./test_tables";
+import { Roles } from "./test_roles";
 
 const dbClients = {};
 
@@ -35,4 +36,14 @@ export async function resetTable({ type = "postgres", table = "testTable1" }) {
 
   // eslint-disable-next-line import/namespace
   return testTables?.[table]?.(dbClient);
+}
+
+export async function createTestRoles({ type = "postgres" }) {
+  const dbClient = getDbClient(QA_DB_CONFIG[type]);
+
+  return await Promise.all(
+    Object.values(Roles).map(async sql => {
+      await dbClient.raw(sql);
+    }),
+  );
 }

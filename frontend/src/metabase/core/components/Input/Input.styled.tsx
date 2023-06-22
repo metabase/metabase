@@ -67,6 +67,11 @@ export const InputField = styled.input<InputProps>`
     transition: border 300ms ease-in-out;
   }
 
+  &:disabled {
+    cursor: default;
+    background-color: ${color("bg-light")};
+  }
+
   ${props => focusOutlineStyle(props.colorScheme)};
 
   ${props =>
