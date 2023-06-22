@@ -240,8 +240,8 @@
    #'store/initialize-store
    #'normalize/->pMBQL
    (resolve 'metabase.query-processor-test.test-mlv2/around-middleware)
-   ;; `normalize` has to be done at the very beginning or `resolve-card-id-source-tables` and the like might not work.
-   ;; It doesn't really need to be 'around' middleware tho.
+   ;; `normalize` has to be done at the very beginning or [[fetch-source-query/resolve-card-id-source-tables]] and the
+   ;; like might not work. It doesn't really need to be 'around' middleware tho.
    #'normalize/normalize
    (resolve 'ee.audit/handle-internal-queries)])
 ;; ↑↑↑ PRE-PROCESSING ↑↑↑ happens from BOTTOM TO TOP

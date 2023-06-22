@@ -8,6 +8,7 @@
   future we can deprecate that namespace and eventually do away with it entirely."
   (:require
    [metabase.lib.schema.aggregation :as aggregation]
+   [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]
    [metabase.lib.schema.expression.conditional]
@@ -19,6 +20,7 @@
    [metabase.lib.schema.literal]
    [metabase.lib.schema.order-by :as order-by]
    [metabase.lib.schema.ref :as ref]
+   [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.util.malli.registry :as mr]))
@@ -30,11 +32,27 @@
          metabase.lib.schema.filter/keep-me
          metabase.lib.schema.literal/keep-me)
 
+
+
+;;; map of template tag name -> template tag definition
+
+
 (mr/def ::stage.native
   [:map
    [:lib/type [:= :mbql.stage/native]]
-   [:native any?]
-   [:args {:optional true} [:sequential any?]]])
+   ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
+   ;; Only restriction is that it is non-nil.
+   [:native some?]
+   ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
+   ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
+   ;; nil.
+   [:args {:optional true} [:sequential any?]]
+   ;; the Table/Collection/etc. that this query should be executed against; currently only used for MongoDB, where it
+   ;; is required.
+   [:collection {:optional true} ::common/non-blank-string]
+   ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
+   ;; `:native` key), but their definition lives under this key.
+   [:template-tags [:ref ::template-tag/template-tag-map]]])
 
 (mr/def ::breakouts
   [:sequential {:min 1} [:ref ::ref/ref]])
@@ -90,8 +108,11 @@
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
    [:fn
-    {:error/message "A query cannot have both a :source-table and a :source-card."}
+    {:error/message "A query stage cannot have both a :source-table and a :source-card."}
     (complement (every-pred :source-table :source-card))]
+   [:fn
+    {:error/message ":collection is not allowed in MBQL stages"}
+    (complement :collection)]
    [:ref ::stage.valid-refs]])
 
 ;;; Schema for an MBQL stage that includes either `:source-table` or `:source-query`.
@@ -212,8 +233,22 @@
   [:and
    [:map
     [:lib/type [:= :mbql/query]]
+    ;; TODO -- `:lib/metadata` ?
     [:database [:or
                 ::id/database
                 ::id/saved-questions-virtual-database]]
-    [:stages   [:ref ::stages]]]
+    [:stages   [:ref ::stages]]
+    ;; TODO -- these are all additional top-level keys that can be defined for an MBQL query, we need to port them
+    ;; from the legacy [[metabase.mbql.schema/Query]] schema.
+    ;;
+    ;; * `:parameters`
+    ;;
+    ;; * `:settings`
+    ;;
+    ;; * `:constraints`
+    ;;
+    ;; * `:middleware`
+    ;;
+    ;; * `:info`
+    ]
    lib.schema.util/UniqueUUIDs])
