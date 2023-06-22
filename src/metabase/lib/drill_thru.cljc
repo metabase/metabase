@@ -1,6 +1,8 @@
 (ns metabase.lib.drill-thru
   (:require
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -8,21 +10,23 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.models.query :as query]))
 
 ;; TODO: Different ways to apply drill-thru to a query.
 ;; So far:
 ;; - :filter on each :operators of :drill-thru/quick-filter applied with (lib/filter query stage filter-clause)
 
 ;;; ---------------------------------------- Internals -------------------------------------------
-(defn- structured? [query stage-number]
+(defn- structured-query? [query stage-number]
   (-> (lib.util/query-stage query stage-number)
       :lib/type
       (= :mbql.stage/mbql)))
 
-(defn- drill-thru-dispatch [_query _stage-number drill-thru]
+(defn- drill-thru-dispatch [_query _stage-number drill-thru & _more]
   (:type drill-thru))
 
 (defmulti drill-thru-method
@@ -50,7 +54,7 @@
 (defn- operator [op & args]
   (lib.options/ensure-uuid (into [op {}] args)))
 
-(mu/defn ^:private operators-for #_#_:- [:sequential [:map [:name string?] [:filter ::lib.schema.expression/boolean]]]
+(mu/defn ^:private operators-for :- [:sequential [:map [:name string?] [:filter ::lib.schema.expression/boolean]]]
   [column :- lib.metadata/ColumnMetadata
    value]
   (let [field-ref (lib.ref/ref column)]
@@ -84,7 +88,7 @@
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata
    value]
-  (when (and (structured? query stage-number)
+  (when (and (structured-query? query stage-number)
              ;(editable? query stage-number)
              column
              (some? value)
@@ -99,6 +103,16 @@
   {:type      (:type drill-thru)
    :operators (map :name (:operators drill-thru))})
 
+(defmethod drill-thru-method :drill-thru/quick-filter
+  [query stage-number drill-thru operator & _more]
+  (if-let [quick-filter (first (filter #(= (:name %) operator) (:operators drill-thru)))]
+    (lib.filter/filter query stage-number (:filter quick-filter))
+    (throw (ex-info (str "No matching filter for operator " operator)
+                    {:drill-thru   drill-thru
+                     :operator     operator
+                     :query        query
+                     :stage-number stage-number}))))
+
 ;;; ------------------------------------ Object Details ------------------------------------------
 (mu/defn ^:private object-detail-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   "When clicking a foreign key or primary key value, drill through to the details for that specific object.
@@ -108,7 +122,7 @@
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata
    value]
-  (when (and (structured? query stage-number)
+  (when (and (structured-query? query stage-number)
              column
              (some? value))
     (let [many-pks?  (> (count (lib.metadata.calculation/primary-keys query)) 1)
@@ -120,6 +134,7 @@
       (when drill-type
         {:lib/type  ::drill-thru
          :type      drill-type
+         :column    column
          :object-id value
          :many-pks? many-pks?}))))
 
@@ -135,6 +150,38 @@
   [_query _stage-number drill-thru]
   (select-keys drill-thru [:many-pks? :object-id :type]))
 
+(defmethod drill-thru-method :drill-thru/pk
+  [query stage-number {:keys [column object-id]} & _]
+  ;; This type is only used when there are multiple PKs and one was selected - [= pk x] filter.
+  (lib.filter/filter query stage-number
+                     (lib.options/ensure-uuid [:= {} (lib.ref/ref column) object-id])))
+
+(defn- field-id [x]
+  (cond
+    (int? x)                   x
+    (string? x)                x
+    (and (vector? x)
+         (= :field (first x))) (field-id (nth x 2))
+    (map? x)                   (:id x)))
+
+(defmethod drill-thru-method :drill-thru/fk
+  [query stage-number {:keys [column object-id]} & _]
+  (let [fk-column-id     (:fk-target-field-id column)
+        fk-column        (lib.metadata/field query fk-column-id)
+        fk-filter        (lib.options/ensure-uuid [:= {} (lib.ref/ref fk-column) object-id])
+        ;; Only filters which specify other PKs of the table are allowed to remain.
+        other-pk?        (fn [[op _opts lhs rhs :as old-filter]]
+                           (and lhs
+                                (not= (field-id lhs) fk-column-id)
+                                (= op :=)
+                                (when-let [filter-field (lib.metadata.calculation/metadata query stage-number lhs)]
+                                  (and (lib.types.isa/primary-key? filter-field)
+                                       (= (:table-id fk-column) (:table-id filter-field))))))
+        other-pk-filters (filter other-pk? (lib.filter/filters query stage-number))]
+    (reduce #(lib.filter/filter %1 stage-number %2)
+            (lib.util/update-query-stage query stage-number dissoc :filters)
+            (concat [fk-filter] other-pk-filters))))
+
 ;;; ------------------------------------- Foreign Key --------------------------------------------
 (mu/defn ^:private foreign-key-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   "When clicking on a foreign key value, filter this query by that column.
@@ -146,7 +193,7 @@
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata
    value]
-  (when (and (structured? query stage-number)
+  (when (and (structured-query? query stage-number)
              column
              (some? value)
              (not (lib.types.isa/primary-key? column))
@@ -155,7 +202,13 @@
      :type      :drill-thru/fk-filter
      :filter    (lib.options/ensure-uuid [:= {} (lib.ref/ref column) value])}))
 
+(defmethod drill-thru-method :drill-thru/fk-filter
+  [query stage-number drill-thru & _]
+  (lib.filter/filter query stage-number (:filter drill-thru)))
+
 ;;; ------------------------------------- Distribution -------------------------------------------
+;; TODO: The original `Question.distribution()` sets the display to `bar`, but that's out of scope for MLv2.
+;; Make sure the FE does this on the question after evolving the query.
 (mu/defn ^:private distribution-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   "Select a column and see a histogram of how many rows fall into an automatic set of bins/buckets.
   - For dates, breaks out by month by default.
@@ -165,7 +218,7 @@
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata
    value]
-  (when (and (structured? query stage-number)
+  (when (and (structured-query? query stage-number)
              column
              (nil? value)
              (not (lib.types.isa/primary-key? column))
@@ -177,6 +230,20 @@
      :type      :drill-thru/distribution
      :column    column}))
 
+(defmethod drill-thru-method :drill-thru/distribution
+  [query stage-number {:keys [column] :as _drill-thru} & _]
+  (when (structured-query? query stage-number)
+    (let [breakout (cond
+                     (lib.types.isa/date? column)    (lib.temporal-bucket/with-temporal-bucket column :month)
+                     (lib.types.isa/numeric? column) (lib.binning/with-binning column (lib.binning/default-auto-bin))
+                     :else                           (lib.ref/ref column))]
+      (-> query
+          ;; Remove most of the target stage.
+          (lib.util/update-query-stage stage-number dissoc :aggregation :breakout :limit :order-by)
+          ;; Then set a count aggregation and the breakout above.
+          (lib.aggregation/aggregate stage-number (lib.aggregation/count))
+          (lib.breakout/breakout stage-number breakout)))))
+
 ;;; -------------------------------------- Pivot Drill--------------------------------------------
 (mu/defn ^:private pivot-drill-pred :- [:sequential lib.metadata/ColumnMetadata]
   "Implementation for pivoting on various kinds of fields.
@@ -187,7 +254,7 @@
    column       :- lib.metadata/ColumnMetadata
    value
    field-pred   :- [:=> [:cat lib.metadata/ColumnMetadata] boolean?]]
-  (when (and (structured? query stage-number)
+  (when (and (structued-query? query stage-number)
              column
              (some? value)
              (= (:lib/source column) :source/aggregations))
@@ -229,7 +296,7 @@
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata
    value]
-  (when (and (structured? query stage-number)
+  (when (and (structued-query? query stage-number)
              column
              (some? value)
              (= (:lib/source column) :source/aggregations))
@@ -245,24 +312,24 @@
          :type     :drill-thru/pivot
          :pivots   pivots}))))
 
-(defmethod drill-thru-info-method :drill-thru/pivot
-  [_query _stage-number drill-thru]
-  (select-keys drill-thru [:many-pks? :object-id :type]))
-
 ;; Note that pivot drills have specific public functions for accessing the nested pivoting options.
 ;; Therefore the [[drill-thru-info-method]] is just the default `{:type :drill-thru/pivot}`.
 
+(defmethod drill-thru-method :drill-thru/pivot
+  [query stage-number _drill-thru column & _]
+  ;; TODO: Figure out when the `dimensions` input to the original version is nonempty, and integrate that here.
+  ;; TODO: The FE follows a pivot of the query with `setDefaultDisplay()`; make sure that still happens.
+  (lib.breakout/breakout query stage-number column))
+
 (mu/defn pivot-types :- [:sequential ::lib.schema.drill-thru/drill-thru-pivot-types]
   "A helper for the FE. Returns the set of pivot types (category, location, time) that apply to this drill-thru."
-  [drill-thru :- [:and ::lib.schema.drill-thru/drill-thru
-                  [:map [:type [:= :drill-thru/pivot]]]]]
+  [drill-thru :- ::lib.schema.drill-thru/drill-thru]
   (keys (:pivots drill-thru)))
 
 (mu/defn pivot-columns-for-type :- [:sequential lib.metadata/ColumnMetadata]
   "A helper for the FE. Returns all the columns of the given type which can be used to pivot the query."
-  [drill-thru :- [:and ::lib.schema.drill-thru/drill-thru
-                  [:map [:type [:= :drill-thru/pivot]]]]
-   pivot-type :- ::lib.schema.drill-thru-pivot-types]
+  [drill-thru :- ::lib.schema.drill-thru/drill-thru
+   pivot-type :- ::lib.schema.drill-thru/drill-thru-pivot-types]
   (get-in drill-thru [:pivots pivot-type]))
 
 ;;; ----------------------------------------- Sort -----------------------------------------------
@@ -272,7 +339,7 @@
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata
    value]
-  (when (and (structured? query stage-number)
+  (when (and (structued-query? query stage-number)
              column
              (nil? value)
              (not (lib.types.isa/structured? column))
@@ -307,7 +374,7 @@
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata
    value]
-  (when (and (structured? query stage-number)
+  (when (and (structued-query? query stage-number)
              column
              (nil? value)
              (not (lib.types.isa/structured? column)))
@@ -324,6 +391,15 @@
   {:type         :drill-thru/summarize-column
    :aggregations aggregations})
 
+(defmethod drill-thru-method :drill-thru/summarize-column
+  [query stage-number {:keys [column] :as _drill-thru} aggregation & _]
+  ;; TODO: The original FE code for this does `setDefaultDisplay` as well.
+  (let [aggregation-fn (case (keyword aggregation)
+                         :distinct lib.aggregation/distinct
+                         :sum      lib.aggregation/sum
+                         :avg      lib.aggregation/avg)]
+    (lib.aggregation/aggregate query stage-number (aggregation-fn column))))
+
 ;;; ----------------------------------- Automatic Insights ---------------------------------------
 #_(mu/defn ^:private automatic-insights-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   ""
@@ -331,7 +407,7 @@
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata
    value]
-  (when (and (structured? query stage-number)
+  (when (and (structued-query? query stage-number)
              (lib.metadata/setting query :enable-xrays)
              column
              (nil? value)

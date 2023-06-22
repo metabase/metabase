@@ -69,7 +69,11 @@
     x]
    (available-binning-strategies-method query stage-number x)))
 
-(defn- default-auto-bin []
+(defn default-auto-bin
+  "Returns the basic auto-binning strategy.
+
+  Public because it's used directly by some drill-thrus."
+  []
   {:display-name (i18n/tru "Auto bin")
    :default      true
    :mbql         {:strategy :default}})
