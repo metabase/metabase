@@ -5,6 +5,11 @@ import {
   modal,
   dashboardHeader,
   navigationSidebar,
+  describeWithSnowplow,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  resetSnowplow,
+  enableTracking,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 
@@ -279,6 +284,55 @@ describe("scenarios > home > custom homepage", () => {
           /Your admin has set this dashboard as your homepage/,
         ).should("have.length", 1);
       });
+    });
+  });
+});
+
+describeWithSnowplow.only("scenarios > setup", () => {
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+    enableTracking();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should send snowplow events through admin settings", () => {
+    // 1. Pageview
+    cy.visit("/admin/settings/general");
+    cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+
+    cy.findByTestId("custom-homepage-dashboard-setting")
+      .findByRole("button")
+      .click();
+
+    popover().findByText("Orders in a dashboard").click();
+
+    cy.findByRole("status").findByText("Saved");
+
+    expectGoodSnowplowEvent({
+      event: "homepage_dashboard_enabled",
+      source: "admin",
+    });
+  });
+
+  it("should send snowplow events through homepage", () => {
+    // 1. Pageview
+    cy.visit("/");
+    cy.get("main").findByText("Customize").click();
+    modal()
+      .findByText(/Select a dashboard/i)
+      .click();
+
+    popover().findByText("Orders in a dashboard").click();
+    modal().findByText("Save").click();
+    // 2. homepage_dashboard_enabled
+    expectGoodSnowplowEvent({
+      event: "homepage_dashboard_enabled",
+      source: "homepage",
     });
   });
 });

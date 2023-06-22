@@ -6,6 +6,8 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { trackSchemaEvent } from "metabase/lib/analytics";
+
 import { getIsNavbarOpen } from "metabase/redux/app";
 
 import ActionButton from "metabase/components/ActionButton";
@@ -400,7 +402,7 @@ class DashboardHeader extends Component {
         icon: "document",
         testId: "dashboard-export-pdf-button",
         action: () => {
-          this.saveAsImage();
+          this.saveAsPDF();
         },
       });
 
@@ -459,10 +461,15 @@ class DashboardHeader extends Component {
     return buttons;
   }
 
-  saveAsImage = async () => {
+  saveAsPDF = async () => {
     const { dashboard } = this.props;
     const cardNodeSelector = "#Dashboard-Cards-Container";
-    await saveDashboardPdf(cardNodeSelector, dashboard.name);
+    await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
+      trackSchemaEvent("dashboard", "1-0-2", {
+        event: "dashboard_pdf_exported",
+        dashboard_id: dashboard.id,
+      });
+    });
   };
 
   render() {

@@ -1,4 +1,8 @@
 import _ from "underscore";
+<<<<<<< HEAD
+=======
+
+>>>>>>> 55f58dd422 (Adding snowplow events for custom homepage and dashboard pdf downloads)
 const HAS_SNOWPLOW = Cypress.env("HAS_SNOWPLOW_MICRO");
 const SNOWPLOW_URL = Cypress.env("SNOWPLOW_MICRO_URL");
 const SNOWPLOW_INTERVAL = 100;
