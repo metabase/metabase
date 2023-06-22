@@ -15,7 +15,8 @@
   "Starburst driver."
   (:require [metabase.driver :as driver]
                         [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]))
-(driver/register! :starburst, :parent #{:sql-jdbc, ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :starburst, :parent #{:sql-jdbc
+                                        ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
 (prefer-method driver/supports? [:starburst :set-timezone] [:sql-jdbc :set-timezone])
 

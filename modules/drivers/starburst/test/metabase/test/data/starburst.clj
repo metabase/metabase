@@ -39,6 +39,13 @@
 ;; during unit tests don't treat Trino as having FK support
 (defmethod driver/supports? [:starburst :foreign-keys] [_ _] (not config/is-test?))
 
+(doseq [join-feature [:left-join
+                      :right-join
+                      :inner-join
+                      :full-join]]
+  (defmethod driver/supports? [:starburst join-feature]
+    [driver _] true))
+
 (doseq [[base-type db-type] {:type/BigInteger             "BIGINT"
                              :type/Boolean                "BOOLEAN"
                              :type/Date                   "DATE"
