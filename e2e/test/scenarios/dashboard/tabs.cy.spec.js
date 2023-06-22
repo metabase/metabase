@@ -115,6 +115,34 @@ describe("scenarios > dashboard > tabs", () => {
     cy.findByRole("tab", { name: "Tab 1" }).click();
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("have.been.calledOnce");
+
+    // Go to public dashboard
+    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    cy.request("POST", `/api/dashboard/1/public_link`).then(
+      ({ body: { uuid } }) => {
+        cy.intercept(
+          "GET",
+          `/api/public/dashboard/${uuid}/dashcard/1/card/1?parameters=%5B%5D`,
+          cy.spy().as("publicFirstTabQuery"),
+        );
+        cy.intercept(
+          "GET",
+          `/api/public/dashboard/${uuid}/dashcard/2/card/2?parameters=%5B%5D`,
+          cy.spy().as("publicSecondTabQuery"),
+        );
+
+        cy.visit(`public/dashboard/${uuid}`);
+      },
+    );
+
+    // Check first tab requests
+    cy.get("@publicFirstTabQuery").should("have.been.called");
+    cy.get("@publicSecondTabQuery").should("not.have.been.called");
+
+    // Visit second tab and confirm only second card was queried
+    cy.findByRole("tab", { name: "Tab 2" }).click();
+    cy.get("@publicFirstTabQuery").should("have.been.called");
+    cy.get("@publicSecondTabQuery").should("have.been.called");
   });
 });
 
