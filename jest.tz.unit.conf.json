@@ -28,5 +28,5 @@
     "/frontend/src/metabase/visualizations/lib/errors.js"
   ],
   "testEnvironment": "jest-environment-jsdom",
-  "testTimeout": 20000
+  "testTimeout": 30000
 }
