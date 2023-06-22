@@ -31,6 +31,7 @@ import {
   PreviousValue,
   PreviousValueContainer,
   PreviousValueSeparator,
+  PreviousValueWrapper,
   Separator,
   Variation,
   VariationIcon,
@@ -300,52 +301,54 @@ export default class SmartScalar extends Component {
           />
         )}
 
-        {lastChange == null || previousValue == null ? (
-          <div
-            className="text-centered text-bold mt1"
-            style={{ color: color("text-medium") }}
-          >{jt`Nothing to compare for the previous ${granularity}.`}</div>
-        ) : lastChange === 0 ? (
-          t`No change from last ${granularity}`
-        ) : (
-          <PreviousValueContainer gridSize={gridSize}>
-            <Tooltip
-              isEnabled={!canShowPreviousValue}
-              placement="bottom"
-              tooltip={
-                <VariationTooltip>
-                  <Variation>
-                    <VariationIcon name={iconName} size={TOOLTIP_ICON_SIZE} />
-                    <VariationValue showTooltip={false}>
-                      {formatChange(lastChange)}
-                    </VariationValue>
-                  </Variation>
+        <PreviousValueWrapper>
+          {lastChange == null || previousValue == null ? (
+            <div
+              className="text-centered text-bold mt1"
+              style={{ color: color("text-medium") }}
+            >{jt`Nothing to compare for the previous ${granularity}.`}</div>
+          ) : lastChange === 0 ? (
+            t`No change from last ${granularity}`
+          ) : (
+            <PreviousValueContainer gridSize={gridSize}>
+              <Tooltip
+                isEnabled={!canShowPreviousValue}
+                placement="bottom"
+                tooltip={
+                  <VariationTooltip>
+                    <Variation>
+                      <VariationIcon name={iconName} size={TOOLTIP_ICON_SIZE} />
+                      <VariationValue showTooltip={false}>
+                        {formatChange(lastChange)}
+                      </VariationValue>
+                    </Variation>
 
-                  <span>
-                    {jt`${tooltipSeparator} was ${previousValueDisplay} ${granularityDisplay}`}
-                  </span>
-                </VariationTooltip>
-              }
-            >
-              <Variation color={changeColor}>
-                <VariationIcon name={iconName} size={ICON_SIZE} />
-                <VariationValue showTooltip={false}>
-                  {changeDisplay}
-                </VariationValue>
-              </Variation>
-            </Tooltip>
+                    <span>
+                      {jt`${tooltipSeparator} was ${previousValueDisplay} ${granularityDisplay}`}
+                    </span>
+                  </VariationTooltip>
+                }
+              >
+                <Variation color={changeColor}>
+                  <VariationIcon name={iconName} size={ICON_SIZE} />
+                  <VariationValue showTooltip={false}>
+                    {changeDisplay}
+                  </VariationValue>
+                </Variation>
+              </Tooltip>
 
-            {canShowPreviousValue && (
-              <PreviousValue id="SmartScalar-PreviousValue" responsive>
-                <PreviousValueSeparator gridSize={gridSize}>
-                  •
-                </PreviousValueSeparator>
+              {canShowPreviousValue && (
+                <PreviousValue id="SmartScalar-PreviousValue" responsive>
+                  <PreviousValueSeparator gridSize={gridSize}>
+                    •
+                  </PreviousValueSeparator>
 
-                {previousValueContent}
-              </PreviousValue>
-            )}
-          </PreviousValueContainer>
-        )}
+                  {previousValueContent}
+                </PreviousValue>
+              )}
+            </PreviousValueContainer>
+          )}
+        </PreviousValueWrapper>
       </ScalarWrapper>
     );
   }

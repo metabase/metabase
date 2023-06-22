@@ -35,6 +35,10 @@ export const VariationTooltip = styled(Ellipsified)`
   gap: ${space(0)};
 `;
 
+export const PreviousValueWrapper = styled.div`
+  max-width: 100%;
+`;
+
 export const PreviousValueContainer = styled.div`
   align-items: center;
   display: flex;
