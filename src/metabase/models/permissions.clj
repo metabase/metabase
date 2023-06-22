@@ -1093,7 +1093,7 @@
 (defn revoke-application-permissions!
   "Remove all permissions entries for a Group to access a Application permisisons"
   [group-or-id perm-type]
-  (when (= perm-type :monitoring)
+  (when (and (= perm-type :monitoring) (premium-features/enable-advanced-permissions?))
     (delete-related-permissions! group-or-id (str "/db/" (default-audit-db-id) "/schema/"))
     (doseq [audit-collection-id (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-entity-ids)]})]
       (delete-related-permissions! group-or-id (str "/collection/" (:id audit-collection-id) "/read/")))
@@ -1120,7 +1120,7 @@
 (defn grant-application-permissions!
   "Grant full permissions for a group to access a Application permisisons."
   [group-or-id perm-type]
-  (when (= perm-type :monitoring)
+  (when (and (= perm-type :monitoring) (premium-features/enable-advanced-permissions?))
     (grant-permissions! group-or-id (str "/db/" (default-audit-db-id) "/schema/"))
     (doseq [audit-collection-id (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-entity-ids)]})]
       (grant-permissions! group-or-id (str "/collection/" (:id audit-collection-id) "/read/")))
