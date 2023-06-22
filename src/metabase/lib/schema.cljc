@@ -32,11 +32,6 @@
          metabase.lib.schema.filter/keep-me
          metabase.lib.schema.literal/keep-me)
 
-
-
-;;; map of template tag name -> template tag definition
-
-
 (mr/def ::stage.native
   [:map
    [:lib/type [:= :mbql.stage/native]]
