@@ -8,6 +8,7 @@ import {
   getIsEditingParameter,
   getClickBehaviorSidebarDashcard,
 } from "metabase/dashboard/selectors";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 import Field from "metabase-lib/metadata/Field";
 import { SIDEBAR_NAME } from "./constants";
 
@@ -56,6 +57,7 @@ const STATE = {
     segments: {},
     questions: {},
   },
+  settings: createMockSettingsState(),
 };
 
 describe("dashboard/selectors", () => {
