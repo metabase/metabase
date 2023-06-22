@@ -47,7 +47,7 @@
    [:collection {:optional true} ::common/non-blank-string]
    ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
    ;; `:native` key), but their definition lives under this key.
-   [:template-tags [:ref ::template-tag/template-tag-map]]])
+   [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]])
 
 (mr/def ::breakouts
   [:sequential {:min 1} [:ref ::ref/ref]])

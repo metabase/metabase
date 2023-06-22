@@ -36,7 +36,7 @@
     ;; default value for this parameter
     [:default {:optional true} any?]
     ;; whether or not a value for this parameter is required in order to run the query
-    [:required {:optional true} ::boolean]]])
+    [:required {:optional true} :boolean]]])
 
 ;; Example:
 ;;
@@ -103,7 +103,7 @@
 ;;     :required     true
 ;;     :default      "1"}
 (mr/def ::raw-value
-  [:map
+  [:merge
    [:ref ::value.common]
    ;; `:type` is used be the FE to determine which type of widget to display for the template tag, and to determine
    ;; which types of parameters are allowed to be passed in for this template tag.
@@ -113,11 +113,12 @@
 (mr/def ::template-tag
   [:and
    [:map
-    [:type :keyword]]
+    [:type [:ref ::type]]]
    [:multi {:dispatch :type}
     [:dimension   [:ref ::field-filter]]
     [:snippet     [:ref ::snippet]]
     [:card        [:ref ::source-query]]
+    ;; :number, :text, :date
     [::mc/default [:ref ::raw-value]]]])
 
 (mr/def ::template-tag-map
