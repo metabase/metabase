@@ -183,7 +183,7 @@
 
 (defmethod lib-type :field
   [_object-type]
-  :metadata/field)
+  :metadata/column)
 
 (defmethod excluded-keys :field
   [_object-type]
