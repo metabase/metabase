@@ -23,21 +23,8 @@ export const CollectionMoveModal = ({
   onMove,
   initialCollectionId,
 }: CollectionMoveModalProps) => {
-  // will eventually be the collection object representing the selected collection
-  // we store the whole object instead of just the ID so that we can use its
-  // name in the action button, and other properties
-  //
-  //  undefined = no selection
-  //  null = root collection
-  //  number = non-root collection id
-  //
   const [selectedCollectionId, setSelectedCollectionId] =
     useState(initialCollectionId);
-
-  // whether the move action has started
-  // TODO: use this loading and error state in the UI
-  // const [moving, setMoving] = useState(false);
-  // const [error, setError] = useState(null);
 
   const [creatingCollection, setCreatingCollection] = useState(false);
   const [openCollectionId, setOpenCollectionId] =
@@ -74,16 +61,7 @@ export const CollectionMoveModal = ({
             selectedCollectionId === undefined ||
             selectedCollectionId === initialCollectionId
           }
-          onClick={() => {
-            try {
-              // setMoving(true);
-              onMove({ id: selectedCollectionId });
-            } catch (e) {
-              // setError(e);
-            } finally {
-              // setMoving(false);
-            }
-          }}
+          onClick={() => onMove({ id: selectedCollectionId })}
         >
           {t`Move`}
         </Button>
