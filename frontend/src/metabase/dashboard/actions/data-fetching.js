@@ -429,7 +429,6 @@ export const fetchDashboardCardData = createThunkAction(
         if (
           isVirtualDashCard(dashcard) ||
           (selectedTabId !== undefined &&
-            dashcard.dashboard_tab_id &&
             dashcard.dashboard_tab_id !== selectedTabId)
         ) {
           return;
