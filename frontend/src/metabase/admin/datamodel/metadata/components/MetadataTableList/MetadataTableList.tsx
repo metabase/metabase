@@ -18,8 +18,12 @@ import {
   TableVisibilityType,
 } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
+import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 import Table from "metabase-lib/metadata/Table";
 import { getSchemaName } from "metabase-lib/metadata/utils/schema";
+import { AdminListItem } from "./MetadataTableList.styled";
+
+const RELOAD_INTERVAL = 2000;
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
@@ -257,22 +261,25 @@ const TableRow = ({
 
   return (
     <li className="hover-parent hover--visibility">
-      <a
+      <AdminListItem
+        disabled={!isSyncCompleted(table)}
+        onClick={handleSelect}
         className={cx(
           "AdminList-item flex align-center no-decoration text-wrap justify-between",
           { selected: isSelected },
         )}
-        onClick={handleSelect}
       >
         {table.displayName()}
-        <div className="hover-child float-right">
-          <ToggleVisibilityButton
-            tables={tables}
-            isHidden={table.visibility_type != null}
-            onUpdateTableVisibility={onUpdateTableVisibility}
-          />
-        </div>
-      </a>
+        {isSyncCompleted(table) && (
+          <div className="hover-child float-right">
+            <ToggleVisibilityButton
+              tables={tables}
+              isHidden={table.visibility_type != null}
+              onUpdateTableVisibility={onUpdateTableVisibility}
+            />
+          </div>
+        )}
+      </AdminListItem>
     </li>
   );
 };
@@ -328,6 +335,14 @@ const getToggleTooltip = (isHidden: boolean, hasMultipleTables?: boolean) => {
   }
 };
 
+const getReloadInterval = (
+  _state: State,
+  _props: TableLoaderProps,
+  tables = [],
+) => {
+  return tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
+};
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Tables.loadList({
@@ -338,6 +353,7 @@ export default _.compose(
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     }),
     selectorName: "getListUnfiltered",
+    reloadInterval: getReloadInterval,
   }),
   connect(null, mapDispatchToProps),
 )(MetadataTableList);
