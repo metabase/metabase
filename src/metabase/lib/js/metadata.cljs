@@ -183,7 +183,7 @@
 
 (defmethod lib-type :field
   [_object-type]
-  :metadata/field)
+  :metadata/column)
 
 (defmethod excluded-keys :field
   [_object-type]
@@ -290,7 +290,7 @@
         (map (fn [id]
                [id (delay (assamble-card metadata id))]))
         (-> #{}
-            (into (keep lib.util/string-table-id->card-id)
+            (into (keep lib.util/legacy-string-table-id->card-id)
                   (gobject/getKeys (object-get metadata "tables")))
             (into (map parse-long)
                   (gobject/getKeys (object-get metadata "questions"))))))
