@@ -1,30 +1,28 @@
 import { useMemo } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
-import { getDatabasesList } from "metabase/query_builder/selectors";
 
 import type { TableId } from "metabase-types/api";
 import * as Lib from "metabase-lib";
-import type { NotebookStepUiComponentProps } from "../types";
-import { NotebookCell, NotebookCellItem } from "../NotebookCell";
+import type { NotebookStepUiComponentProps } from "../../types";
+import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
 import {
   FieldPickerContentContainer,
   FieldsPickerIcon,
   FIELDS_PICKER_STYLES,
-} from "../FieldsPickerIcon";
+} from "../../FieldsPickerIcon";
 
-function DataStep({
+export const DataStep = ({
   topLevelQuery,
   query,
   step,
   color,
   updateQuery,
   readOnly,
-}: NotebookStepUiComponentProps) {
+}: NotebookStepUiComponentProps) => {
   const question = query.question();
   const table = query.table();
   const canSelectTableColumns = table && query.isRaw() && !readOnly;
@@ -66,12 +64,7 @@ function DataStep({
       </NotebookCellItem>
     </NotebookCell>
   );
-}
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(state => ({ databases: getDatabasesList(state) }))(
-  DataStep,
-);
+};
 
 interface DataFieldsPickerProps {
   query: Lib.Query;
