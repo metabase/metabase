@@ -38,7 +38,7 @@ interface OwnProps<TId> {
   onChange: (value: PickerValue<TId>) => void;
   initialOpenCollectionId?: CollectionId;
   collectionFilter?: (collection: Collection) => boolean;
-  onOpenCollectionChange?: (collectionId: PickerItem<TId>["id"]) => void;
+  onOpenCollectionChange?: (collectionId: CollectionId) => void;
 }
 
 interface StateProps {
@@ -123,8 +123,11 @@ function ItemPicker<TId>({
 
   const crumbs = useMemo(
     () =>
-      getCrumbs(openCollection, collectionsById, id => setOpenCollectionId(id)),
-    [openCollection, collectionsById],
+      getCrumbs(openCollection, collectionsById, id => {
+        setOpenCollectionId(id);
+        onOpenCollectionChange?.(id);
+      }),
+    [openCollection, collectionsById, onOpenCollectionChange],
   );
 
   const searchQuery = useMemo(() => {
