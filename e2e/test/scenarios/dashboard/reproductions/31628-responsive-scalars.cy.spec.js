@@ -25,30 +25,30 @@ const questionDetails = {
 };
 
 const cards = [
-  { width: 2, height: 2, row: 0, col: 0 },
-  { width: 2, height: 3, row: 2, col: 0 },
-  { width: 2, height: 4, row: 5, col: 0 },
-  { width: 2, height: 5, row: 9, col: 0 },
+  { size_x: 2, size_y: 2, row: 0, col: 0 },
+  { size_x: 2, size_y: 3, row: 2, col: 0 },
+  { size_x: 2, size_y: 4, row: 5, col: 0 },
+  { size_x: 2, size_y: 5, row: 9, col: 0 },
 
-  { width: 3, height: 2, row: 0, col: 2 },
-  { width: 3, height: 3, row: 2, col: 2 },
-  { width: 3, height: 4, row: 5, col: 2 },
-  { width: 3, height: 5, row: 9, col: 2 },
+  { size_x: 3, size_y: 2, row: 0, col: 2 },
+  { size_x: 3, size_y: 3, row: 2, col: 2 },
+  { size_x: 3, size_y: 4, row: 5, col: 2 },
+  { size_x: 3, size_y: 5, row: 9, col: 2 },
 
-  { width: 4, height: 2, row: 0, col: 5 },
-  { width: 4, height: 3, row: 2, col: 5 },
-  { width: 4, height: 4, row: 5, col: 5 },
-  { width: 4, height: 5, row: 9, col: 5 },
+  { size_x: 4, size_y: 2, row: 0, col: 5 },
+  { size_x: 4, size_y: 3, row: 2, col: 5 },
+  { size_x: 4, size_y: 4, row: 5, col: 5 },
+  { size_x: 4, size_y: 5, row: 9, col: 5 },
 
-  { width: 5, height: 2, row: 0, col: 9 },
-  { width: 5, height: 3, row: 2, col: 9 },
-  { width: 5, height: 4, row: 5, col: 9 },
-  { width: 5, height: 5, row: 9, col: 9 },
+  { size_x: 5, size_y: 2, row: 0, col: 9 },
+  { size_x: 5, size_y: 3, row: 2, col: 9 },
+  { size_x: 5, size_y: 4, row: 5, col: 9 },
+  { size_x: 5, size_y: 5, row: 9, col: 9 },
 
-  { width: 6, height: 2, row: 0, col: 14 },
-  { width: 6, height: 3, row: 2, col: 14 },
-  { width: 6, height: 4, row: 5, col: 14 },
-  { width: 6, height: 5, row: 9, col: 14 },
+  { size_x: 6, size_y: 2, row: 0, col: 14 },
+  { size_x: 6, size_y: 3, row: 2, col: 14 },
+  { size_x: 6, size_y: 4, row: 5, col: 14 },
+  { size_x: 6, size_y: 5, row: 9, col: 14 },
 ];
 
 describe("issue 31628", () => {
@@ -62,12 +62,7 @@ describe("issue 31628", () => {
           return cy.createQuestionAndAddToDashboard(
             questionDetails,
             dashboard.id,
-            {
-              row: card.row,
-              col: card.col,
-              size_x: card.width,
-              size_y: card.height,
-            },
+            card,
           );
         }),
       );
