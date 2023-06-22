@@ -14,6 +14,9 @@ import { InlineDatePicker } from "../InlineDatePicker";
 import { InlineOperatorSelector } from "../InlineOperatorSelector";
 
 import { getFieldPickerType } from "./utils";
+import {
+  BooleanPickerCheckboxTest
+} from "metabase/query_builder/components/filters/pickers/BooleanPicker/BooleanPickerCheckboxTest";
 
 export interface BulkFilterItemProps {
   query: StructuredQuery;
@@ -81,6 +84,10 @@ export const BulkFilterItem = ({
             operators={dimension.filterOperators(currentOperator)}
           />
           <BooleanPickerCheckbox
+            filter={filter ?? newFilter}
+            onFilterChange={handleChange}
+          />
+          <BooleanPickerCheckboxTest
             filter={filter ?? newFilter}
             onFilterChange={handleChange}
           />

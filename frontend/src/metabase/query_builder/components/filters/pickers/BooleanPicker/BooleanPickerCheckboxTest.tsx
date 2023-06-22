@@ -1,4 +1,4 @@
-import { Key } from "react";
+import { Key, useMemo, useState } from "react";
 import _ from "underscore";
 
 import CheckBox from "metabase/core/components/CheckBox";
@@ -8,6 +8,7 @@ import { CheckboxContainer } from "./BooleanPicker.styled";
 
 import { OPTIONS } from "./constants";
 import { getValue } from "./utils";
+import { Checkbox } from "@mantine/core";
 
 interface BooleanPickerProps {
   filter: Filter;
@@ -15,14 +16,15 @@ interface BooleanPickerProps {
   className?: string;
 }
 
-export function BooleanPickerCheckbox({
+export function BooleanPickerCheckboxTest({
   filter,
   onFilterChange,
   className,
 }: BooleanPickerProps) {
-  const value = getValue(filter);
+  const value = useMemo(() => getValue(filter), [filter]);
 
   const updateFilter = (value: Key | boolean) => {
+    console.log(value)
     if (getValue(filter) === value) {
       onFilterChange(filter.setArguments([]));
     } else if (_.isBoolean(value)) {
@@ -33,22 +35,16 @@ export function BooleanPickerCheckbox({
   };
 
   return (
-    <CheckboxContainer className={className}>
+    <Checkbox.Group value={[String(value)]} onChange={(opt) => updateFilter(JSON.parse(opt.at(-1)))}>
       {OPTIONS.map(({ name, value: optionValue }) => (
-        <div key={name}>
-          <CheckBox
-            key={name}
-            label={name}
-            indeterminate={["is-null", "not-null"].includes(value)}
-            checked={optionValue === getValue(filter)}
-            onChange={() => updateFilter(optionValue)}
-            checkedColor="brand"
-          />
-          <div>1 {JSON.stringify(filter)}</div>
-          <div>2 {optionValue}</div>
-          <div>3 {value}</div>
-        </div>
+        <Checkbox
+          key={name}
+          label={`${name} ${optionValue}`}
+          value={String(optionValue)}
+          checked={optionValue === value}
+          indeterminate={["is-null", "not-null"].includes(value)}
+        />
       ))}
-    </CheckboxContainer>
+    </Checkbox.Group>
   );
 }
