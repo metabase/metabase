@@ -1,4 +1,9 @@
-import { cypressWaitAll, restore, visitDashboard } from "e2e/support/helpers";
+import {
+  cypressWaitAll,
+  openNavigationSidebar,
+  restore,
+  visitDashboard,
+} from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -77,6 +82,8 @@ describe("issue 31628", () => {
       ].join(",");
 
       assertDescendantsNotOverflowDashcards(descendantsSelector);
+      openNavigationSidebar();
+      assertDescendantsNotOverflowDashcards(descendantsSelector);
     });
   });
   describe("display: smartscalar", () => {
@@ -94,6 +101,8 @@ describe("issue 31628", () => {
         "[data-testid='scalar-previous-value']",
       ].join(",");
 
+      assertDescendantsNotOverflowDashcards(descendantsSelector);
+      openNavigationSidebar();
       assertDescendantsNotOverflowDashcards(descendantsSelector);
     });
   });
