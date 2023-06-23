@@ -1,5 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  setupDatabasesEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { createMockNotebookStep } from "../../test-utils";
@@ -12,13 +17,10 @@ const createQueryWithFields = (columnNames: string[]) => {
   return Lib.withFields(query, 0, columns);
 };
 
-const getCheckbox = (label: string) => {
-  const name = new RegExp(`^((check|dash) icon )?${label}$`);
-  return screen.getByRole("checkbox", { name });
-};
-
-const setup = (step = createMockNotebookStep()) => {
+const setup = async (step = createMockNotebookStep()) => {
   const updateQuery = jest.fn();
+  setupDatabasesEndpoints([createSampleDatabase()]);
+  setupSearchEndpoints([]);
 
   renderWithProviders(
     <DataStep
@@ -37,44 +39,46 @@ const setup = (step = createMockNotebookStep()) => {
     return lastCall[0];
   };
 
+  await screen.findByText("Orders");
+
   return { getNextQuery };
 };
 
 describe("DataStep", () => {
-  it("should render with all columns selected", () => {
-    setup();
+  it("should render with all columns selected", async () => {
+    await setup();
     userEvent.click(getIcon("chevrondown"));
 
-    expect(getCheckbox("Select none")).toBeChecked();
-    expect(getCheckbox("ID")).toBeChecked();
-    expect(getCheckbox("ID")).toBeEnabled();
-    expect(getCheckbox("Tax")).toBeChecked();
-    expect(getCheckbox("Tax")).toBeEnabled();
+    expect(screen.getByLabelText("Select none")).toBeChecked();
+    expect(screen.getByLabelText("ID")).toBeChecked();
+    expect(screen.getByLabelText("ID")).toBeEnabled();
+    expect(screen.getByLabelText("Tax")).toBeChecked();
+    expect(screen.getByLabelText("Tax")).toBeEnabled();
   });
 
-  it("should render with a single column selected", () => {
+  it("should render with a single column selected", async () => {
     const query = createQueryWithFields(["ID"]);
-    setup(createMockNotebookStep({ topLevelQuery: query }));
+    await setup(createMockNotebookStep({ topLevelQuery: query }));
     userEvent.click(getIcon("chevrondown"));
 
-    expect(getCheckbox("Select all")).not.toBeChecked();
-    expect(getCheckbox("ID")).toBeChecked();
-    expect(getCheckbox("ID")).toBeDisabled();
-    expect(getCheckbox("Tax")).not.toBeChecked();
-    expect(getCheckbox("Tax")).toBeEnabled();
+    expect(screen.getByLabelText("Select all")).not.toBeChecked();
+    expect(screen.getByLabelText("ID")).toBeChecked();
+    expect(screen.getByLabelText("ID")).toBeDisabled();
+    expect(screen.getByLabelText("Tax")).not.toBeChecked();
+    expect(screen.getByLabelText("Tax")).toBeEnabled();
   });
 
-  it("should render with multiple columns selected", () => {
+  it("should render with multiple columns selected", async () => {
     const query = createQueryWithFields(["ID", "TOTAL"]);
-    setup(createMockNotebookStep({ topLevelQuery: query }));
+    await setup(createMockNotebookStep({ topLevelQuery: query }));
     userEvent.click(getIcon("chevrondown"));
 
-    expect(getCheckbox("Select all")).not.toBeChecked();
-    expect(getCheckbox("ID")).toBeChecked();
-    expect(getCheckbox("ID")).toBeEnabled();
-    expect(getCheckbox("Tax")).not.toBeChecked();
-    expect(getCheckbox("Tax")).toBeEnabled();
-    expect(getCheckbox("Total")).toBeChecked();
-    expect(getCheckbox("Total")).toBeEnabled();
+    expect(screen.getByLabelText("Select all")).not.toBeChecked();
+    expect(screen.getByLabelText("ID")).toBeChecked();
+    expect(screen.getByLabelText("ID")).toBeEnabled();
+    expect(screen.getByLabelText("Tax")).not.toBeChecked();
+    expect(screen.getByLabelText("Tax")).toBeEnabled();
+    expect(screen.getByLabelText("Total")).toBeChecked();
+    expect(screen.getByLabelText("Total")).toBeEnabled();
   });
 });
