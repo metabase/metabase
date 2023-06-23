@@ -5,7 +5,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
@@ -14,6 +13,7 @@ import {
   ScalarValueWrapper,
   ScalarTitleContainer,
   ScalarDescriptionContainer,
+  ScalarDescriptionIcon,
   ScalarDescriptionPlaceholder,
   ScalarTitleContent,
 } from "./ScalarValue.styled";
@@ -85,7 +85,7 @@ export const ScalarTitle = ({ lines = 2, title, description, onClick }) => (
           }
           maxWidth="22em"
         >
-          <Icon name="info_outline" />
+          <ScalarDescriptionIcon name="info_outline" />
         </Tooltip>
       </ScalarDescriptionContainer>
     )}

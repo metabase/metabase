@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 
+import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
@@ -60,12 +61,14 @@ export const ScalarDescriptionContainer = styled.div`
   width: 1.5rem;
   margin-top: 0.25rem;
   padding-left: 0.5rem;
-
-  &:hover {
-    color: ${color("brand")};
-  }
 `;
 
 export const ScalarDescriptionPlaceholder = styled.div`
   width: 1.5rem;
+`;
+
+export const ScalarDescriptionIcon = styled(Icon)`
+  &:hover {
+    color: ${color("brand")};
+  }
 `;
