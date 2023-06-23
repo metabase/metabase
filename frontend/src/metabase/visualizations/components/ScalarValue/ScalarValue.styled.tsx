@@ -23,11 +23,9 @@ interface ScalarValueWrapperProps {
 }
 
 export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
-  padding: 0 ${space(1)};
+  display: inline;
   font-size: ${props => props.fontSize};
   cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
 
   &:hover {
     color: ${color("brand")};
