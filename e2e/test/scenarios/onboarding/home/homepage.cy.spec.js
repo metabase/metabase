@@ -288,7 +288,7 @@ describe("scenarios > home > custom homepage", () => {
   });
 });
 
-describeWithSnowplow.only("scenarios > setup", () => {
+describeWithSnowplow("scenarios > setup", () => {
   beforeEach(() => {
     restore();
     resetSnowplow();
@@ -301,7 +301,6 @@ describeWithSnowplow.only("scenarios > setup", () => {
   });
 
   it("should send snowplow events through admin settings", () => {
-    // 1. Pageview
     cy.visit("/admin/settings/general");
     cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
 
@@ -320,7 +319,6 @@ describeWithSnowplow.only("scenarios > setup", () => {
   });
 
   it("should send snowplow events through homepage", () => {
-    // 1. Pageview
     cy.visit("/");
     cy.get("main").findByText("Customize").click();
     modal()
@@ -329,7 +327,6 @@ describeWithSnowplow.only("scenarios > setup", () => {
 
     popover().findByText("Orders in a dashboard").click();
     modal().findByText("Save").click();
-    // 2. homepage_dashboard_enabled
     expectGoodSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "homepage",

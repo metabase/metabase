@@ -6,7 +6,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { trackSchemaEvent } from "metabase/lib/analytics";
+import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 
 import { getIsNavbarOpen } from "metabase/redux/app";
 
@@ -465,10 +465,7 @@ class DashboardHeader extends Component {
     const { dashboard } = this.props;
     const cardNodeSelector = "#Dashboard-Cards-Container";
     await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
-      trackSchemaEvent("dashboard", "1-0-2", {
-        event: "dashboard_pdf_exported",
-        dashboard_id: dashboard.id,
-      });
+      trackExportDashboardToPDF(dashboard.id);
     });
   };
 
