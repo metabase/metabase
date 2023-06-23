@@ -309,28 +309,21 @@
                   (map #(assoc % :lib/type :mbql.aggregation/operator)))
             lib.schema.aggregation/aggregation-operators)))))
 
-;;; TODO -- this should probably return a plain aggregation clause rather than an external op form; people can convert
-;;; to external op as needed using [[metabase.lib.common/external-op]]. See
-;;; https://metaboat.slack.com/archives/C04CYTEL9N2/p1686941960566759
-(mu/defn aggregation-clause :- ::lib.schema.common/external-op
+(mu/defn aggregation-clause :- ::lib.schema.aggregation/aggregation
   "Returns a standalone aggregation clause for an `aggregation-operator` and
   a `column`.
   For aggregations requiring an argument `column` is mandatory, otherwise
   it is optional."
   ([aggregation-operator :- ::lib.schema.aggregation/operator]
    (if-not (:requires-column? aggregation-operator)
-     {:lib/type :lib/external-op
-      :operator (:short aggregation-operator)
-      :args     []}
+     (lib.options/ensure-uuid [(:short aggregation-operator) {}])
      (throw (ex-info (lib.util/format "aggregation operator %s requires an argument"
                                       (:short aggregation-operator))
                      {:aggregation-operator aggregation-operator}))))
 
   ([aggregation-operator :- ::lib.schema.aggregation/operator
     column]
-   {:lib/type :lib/external-op
-    :operator (:short aggregation-operator)
-    :args     [column]}))
+   (lib.options/ensure-uuid [(:short aggregation-operator) {} (lib.common/->op-arg column)])))
 
 (def ^:private SelectedOperatorWithColumns
   [:merge
