@@ -91,12 +91,8 @@ describe("issue 31628", () => {
             "[data-testid='scalar-description']",
           ].join(","),
         );
-        const visibleDescendants = descendants.filter((_index, descendant) => {
-          const descendantRect = descendant.getBoundingClientRect();
-          return descendantRect.width > 0 && descendantRect.height > 0;
-        });
 
-        visibleDescendants.each((_index, descendant) => {
+        descendants.each((_index, descendant) => {
           assertDescendantNotOverflowsContainer(descendant, dashcard[0]);
         });
       });
@@ -132,12 +128,8 @@ describe("issue 31628", () => {
             "[data-testid='scalar-previous-value']",
           ].join(","),
         );
-        const visibleDescendants = descendants.filter((_index, descendant) => {
-          const descendantRect = descendant.getBoundingClientRect();
-          return descendantRect.width > 0 && descendantRect.height > 0;
-        });
 
-        visibleDescendants.each((_index, descendant) => {
+        descendants.each((_index, descendant) => {
           assertDescendantNotOverflowsContainer(descendant, dashcard[0]);
         });
       });
