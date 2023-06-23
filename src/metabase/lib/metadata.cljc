@@ -65,7 +65,7 @@
   that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want
   to differentiate between the two versions."
   [:map
-   [:lib/type  [:= :metadata/field]] ; TODO -- should this be changed to `:metadata/column`?
+   [:lib/type  [:= :metadata/column]]
    [:name      ::lib.schema.common/non-blank-string]
    ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
    [:base-type ::lib.schema.common/base-type]

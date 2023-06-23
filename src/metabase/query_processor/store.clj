@@ -337,7 +337,7 @@
       (some-> (table table-id) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/table)))
 
     (field [_this field-id]
-      (some-> (field field-id) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/field)))
+      (some-> (field field-id) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/column)))
 
     (card [_this _card-id] nil)
     (metric [_this _metric-id] nil)

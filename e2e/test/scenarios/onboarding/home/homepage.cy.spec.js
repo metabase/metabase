@@ -206,16 +206,18 @@ describe("scenarios > home > custom homepage", () => {
     it("should give you the option to set a custom home page using home page CTA", () => {
       cy.visit("/");
       cy.get("main").findByText("Customize").click();
-      modal()
-        .findByText(/Select a dashboard/i)
-        .click();
+
+      modal().within(() => {
+        cy.findByRole("button", { name: "Save" }).should("be.disabled");
+        cy.findByText(/Select a dashboard/i).click();
+      });
 
       //Ensure that personal collections have been removed
       popover().contains("Your personal collection").should("not.exist");
       popover().contains("All personal collections").should("not.exist");
 
       popover().findByText("Orders in a dashboard").click();
-      modal().findByText("Save").click();
+      modal().findByRole("button", { name: "Save" }).click();
       cy.location("pathname").should("equal", "/dashboard/1");
     });
   });

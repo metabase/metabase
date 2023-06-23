@@ -6,6 +6,10 @@ export function popover() {
   return cy.get(POPOVER_ELEMENT);
 }
 
+export function main() {
+  return cy.get("main");
+}
+
 export function modal() {
   return cy.get(".ModalContainer .ModalContent");
 }

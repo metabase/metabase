@@ -72,12 +72,12 @@ describe("scenarios > admin > people", () => {
 
       cy.get("@groupsTab").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(GROUP).closest("tr").contains("3");
+      cy.findByText(GROUP).closest("tr").contains("4");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(GROUP).click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("3 members");
+      cy.findByText("4 members");
 
       cy.button("Add members").click();
       cy.focused().type(admin.first_name);
@@ -86,11 +86,11 @@ describe("scenarios > admin > people", () => {
       cy.button("Add").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("4 members");
+      cy.findByText("5 members");
 
       removeUserFromGroup(adminUserName);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("3 members");
+      cy.findByText("4 members");
 
       // should load the members when navigating to the group directly
       cy.visit(`/admin/people/groups/${DATA_GROUP}`);
