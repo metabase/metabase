@@ -700,16 +700,18 @@
                                                          (meta/field-metadata :categories :name)
                                                          "Categories")])))
                   lib/append-stage)
-        joined-col (last (lib/breakoutable-columns query))]
-    (is (=? {:lib/type :metadata/field
+        breakoutables (lib/breakoutable-columns query)
+        joined-col (last breakoutables)]
+    (is (=? {:lib/type :metadata/column
              :name "NAME"
              :base-type :type/Text
              :semantic-type :type/Name
-             :metabase.lib.join/join-alias "Categories",
              :lib/source :source/previous-stage
              :effective-type :type/Text
              :lib/desired-column-alias "Categories__NAME"}
             joined-col))
+    (testing "Metadata should not contain inherited join information"
+      (is (not-any? :metabase.lib.join/join-alias (lib.metadata.calculation/metadata query))))
     (testing "Reference a joined column from a previous stage w/ desired-column-alias and w/o join-alias"
       (is (=? {:lib/type :mbql.stage/mbql,
                :breakout [[:field
@@ -718,4 +720,18 @@
                             :effective-type :type/Text
                             :join-alias (symbol "nil #_\"key is not present.\"")}
                            "Categories__NAME"]]}
-              (-> (lib/breakout query joined-col) :stages peek))))))
+              (-> (lib/breakout query joined-col) :stages peek))))
+    (testing "Binning information is still displayed"
+      (is (=? {:name "PRICE",
+               :effective-type :type/Integer,
+               :semantic-type :type/Category,
+               :is-from-join false,
+               :long-display-name "Price: Auto binned",
+               :display-name "Price",
+               :is-from-previous-stage true,
+               :is-calculated false,
+               :is-implicitly-joinable false}
+              (lib/display-info
+               query
+               (lib/with-binning (m/find-first (comp #{"PRICE"} :name) breakoutables)
+                 (first (lib.binning/numeric-binning-strategies)))))))))
