@@ -541,7 +541,9 @@ export const tableColumnSettings = {
       // otherwise it will be overwritten by `getDefault` below
       card.visualization_settings["table.columns"].length !== 0 &&
       _.all(
-        card.visualization_settings["table.columns"],
+        card.visualization_settings["table.columns"].filter(
+          columnSetting => columnSetting.enabled,
+        ),
         columnSetting =>
           findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
       ),

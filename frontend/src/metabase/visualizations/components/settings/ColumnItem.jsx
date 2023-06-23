@@ -39,7 +39,7 @@ const ColumnItem = ({
       className={className}
       onClick={onClick}
       isDraggable={draggable}
-      data-testid={`draggable-item-${title}`}
+      data-testid={draggable && `draggable-item-${title}`}
     >
       <ColumnItemContainer>
         {draggable && <ColumnItemDragHandle name="grabber" />}

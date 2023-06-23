@@ -87,8 +87,8 @@ describe("scenarios > question > settings", () => {
       getSidebarColumns().eq("1").should("contain.text", "Total");
     });
 
-    it.skip("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
-      cy.viewport(2000, 1200);
+    it("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
+      cy.viewport(2000, 1600);
       // Orders join Products
       visitQuestionAdhoc({
         dataset_query: {
@@ -125,8 +125,8 @@ describe("scenarios > question > settings", () => {
       cy.get("@prod-category")
         .trigger("mousedown", 0, 0, { force: true })
         .trigger("mousemove", 5, 5, { force: true })
-        .trigger("mousemove", 0, -300, { force: true })
-        .trigger("mouseup", 0, -300, { force: true });
+        .trigger("mousemove", 0, -350, { force: true })
+        .trigger("mouseup", 0, -350, { force: true });
 
       reloadResults();
 
@@ -146,7 +146,7 @@ describe("scenarios > question > settings", () => {
 
       // This click doesn't do anything, but simply allows the array to be updated (test gives false positive without this step)
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Visible columns").click();
+      cy.findByText("More columns").click();
 
       findColumnAtIndex("Products → Category", 5);
 
@@ -155,7 +155,7 @@ describe("scenarios > question > settings", () => {
 
       // Add "Address"
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Address").siblings(".Icon-add").click();
+      cy.findByText("Address").siblings("button").find(".Icon-add").click();
 
       // The result automatically load when adding new fields but two requests are fired.
       // Please see: https://github.com/metabase/metabase/pull/21338#discussion_r842816687
@@ -165,10 +165,11 @@ describe("scenarios > question > settings", () => {
 
       // Move it one place up
       cy.get("@user-address")
+        .scrollIntoView()
         .trigger("mousedown", 0, 0, { force: true })
         .trigger("mousemove", 5, 5, { force: true })
-        .trigger("mousemove", 0, -50, { force: true })
-        .trigger("mouseup", 0, -50, { force: true });
+        .trigger("mousemove", 0, -100, { force: true })
+        .trigger("mouseup", 0, -100, { force: true });
 
       findColumnAtIndex("User → Address", -2);
 
