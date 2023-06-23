@@ -27,11 +27,6 @@ import {
 
 import LinkViz, { LinkVizProps } from "./LinkViz";
 
-// jest.mock('metabase/lib/dom', () => ({
-//   ...jest.requireActual('metabase/lib/dom'),
-//   isWithinIframe: () => true
-// }));
-
 type LinkCardVizSettings = DashboardOrderedCard["visualization_settings"] & {
   link: LinkCardSettings;
 };
