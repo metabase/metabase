@@ -609,7 +609,7 @@
             unique-name    (unique-name-fn new-name)]
         (-> stage
             (assoc-in [:joins idx :alias] unique-name)
-            (update-in [:joins idx] replace-join-alias old-name unique-name)))
+            (replace-join-alias old-name unique-name)))
       stage)))
 
 (mu/defn rename-join :- ::lib.schema/query

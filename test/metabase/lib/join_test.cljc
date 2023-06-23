@@ -520,16 +520,18 @@
                (lib/rename-join query "old-name" "new-name"))))
       (testing "by index"
         (are [idx]
-            (= query
-               (lib/rename-join query idx "new-name"))
+             (= query
+                (lib/rename-join query idx "new-name"))
           -1 0 1))))
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+  (let [joined-column (-> (meta/field-metadata :venues :id)
+                          (lib/with-join-alias "alias"))
+        query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
                   (lib/join (-> (lib/join-clause
                                  (meta/table-metadata :venues)
                                  [(lib/= (meta/field-metadata :checkins :venue-id)
-                                         (-> (meta/field-metadata :venues :id)
-                                             (lib/with-join-alias "alias")))])
-                                (lib/with-join-alias "alias"))))]
+                                         joined-column)])
+                                (lib/with-join-alias "alias")))
+                  (lib/filter (lib/> joined-column 3)))]
     (testing "Simple renaming"
       (let [renamed {:lib/type :mbql/query
                      :database (meta/id)
@@ -549,7 +551,15 @@
                                                         :effective-type :type/BigInteger
                                                         :join-alias "locale"}
                                                        (meta/id :venues :id)]]],
-                                        :alias "locale"}]}]}]
+                                        :alias "locale"}]
+                               :filters [[:>
+                                          {}
+                                          [:field
+                                           {:base-type :type/BigInteger
+                                            :effective-type :type/BigInteger
+                                            :join-alias "locale"}
+                                           (meta/id :venues :id)]
+                                          3]]}]}]
         (testing "by name"
           (is (=? renamed
                   (lib/rename-join query "alias" "locale"))))
@@ -597,7 +607,15 @@
                                                         :effective-type :type/BigInteger
                                                         :join-alias "alias_2"}
                                                        (meta/id :users :id)]]],
-                                        :alias "alias_2"}]}]}]
+                                        :alias "alias_2"}]
+                               :filters [[:>
+                                          {}
+                                          [:field
+                                           {:base-type :type/BigInteger
+                                            :effective-type :type/BigInteger
+                                            :join-alias "alias"}
+                                           (meta/id :venues :id)]
+                                          3]]}]}]
         (testing "by name"
           (is (=? renamed
                   (lib/rename-join query' "Users" "alias"))))
