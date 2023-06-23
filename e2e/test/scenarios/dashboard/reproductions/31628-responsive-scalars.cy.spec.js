@@ -91,7 +91,7 @@ const SMART_SCALAR_QUESTION_CARDS = CARDS;
 describe("issue 31628", () => {
   describe("display: scalar", () => {
     const descendantsSelector = [
-      "[data-testid='scalar-value']",
+      "[data-testid='scalar-container']",
       "[data-testid='scalar-title']",
       "[data-testid='scalar-description']",
     ].join(",");
@@ -238,7 +238,7 @@ describe("issue 31628", () => {
 
   describe("display: smartscalar", () => {
     const descendantsSelector = [
-      "[data-testid='scalar-value']",
+      "[data-testid='scalar-container']",
       "[data-testid='scalar-title']",
       "[data-testid='scalar-description']",
       "[data-testid='scalar-previous-value']",
