@@ -146,7 +146,7 @@ describe("issue 31628", () => {
           }
         });
 
-        it(`should render descendants of a 'scalar' without overflowing it (metabase#31628)`, () => {
+        it(`should render descendants of a 'smartscalar' without overflowing it (metabase#31628)`, () => {
           assertDescendantsNotOverflowDashcards(descendantsSelector);
         });
       });
@@ -167,16 +167,24 @@ const setupDashboardWithQuestionInCards = (question, cards) => {
 };
 
 const assertDescendantsNotOverflowDashcards = descendantsSelector => {
-  cy.findAllByTestId("dashcard").each(dashcard => {
+  cy.findAllByTestId("dashcard").each((dashcard, dashcardIndex) => {
     const descendants = dashcard.find(descendantsSelector);
 
-    descendants.each((_index, descendant) => {
-      assertDescendantNotOverflowsContainer(descendant, dashcard[0]);
+    descendants.each((_descendantIndex, descendant) => {
+      assertDescendantNotOverflowsContainer(
+        descendant,
+        dashcard[0],
+        `dashcard[${dashcardIndex}] [data-testid="${descendant.dataset.testid}"]`,
+      );
     });
   });
 };
 
-const assertDescendantNotOverflowsContainer = (descendant, container) => {
+const assertDescendantNotOverflowsContainer = (
+  descendant,
+  container,
+  message,
+) => {
   const containerRect = container.getBoundingClientRect();
   const descendantRect = descendant.getBoundingClientRect();
 
@@ -184,8 +192,12 @@ const assertDescendantNotOverflowsContainer = (descendant, container) => {
     return;
   }
 
-  expect(descendantRect.bottom).to.be.lte(containerRect.bottom);
-  expect(descendantRect.top).to.be.gte(containerRect.top);
-  expect(descendantRect.left).to.be.gte(containerRect.left);
-  expect(descendantRect.right).to.be.lte(containerRect.right);
+  expect(descendantRect.bottom, `${message} bottom`).to.be.lte(
+    containerRect.bottom,
+  );
+  expect(descendantRect.top, `${message} top`).to.be.gte(containerRect.top);
+  expect(descendantRect.left, `${message} left`).to.be.gte(containerRect.left);
+  expect(descendantRect.right, `${message} right`).to.be.lte(
+    containerRect.right,
+  );
 };
