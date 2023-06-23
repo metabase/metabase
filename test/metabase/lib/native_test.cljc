@@ -162,6 +162,20 @@
          (is (=         clj-tags (-> clj-tags (#'lib.native/TemplateTags->) (#'lib.native/->TemplateTags))))
          (is (test.js/= js-tags  (-> js-tags  (#'lib.native/->TemplateTags) (#'lib.native/TemplateTags->))))))))
 
+(deftest ^:parallel native-query-test
+  (is (=? {:lib/type :mbql/query
+           :database (meta/id)
+           :stages   [{:lib/type    :mbql.stage/native
+                       :lib/options {:lib/uuid string?}
+                       :native      "SELECT * FROM VENUES;"}]}
+          (lib/native-query meta/metadata-provider meta/qp-results-metadata "SELECT * FROM VENUES;"))))
+
+(deftest ^:parallel native-query-suggested-name-test
+  (let [query (lib/native-query meta/metadata-provider meta/qp-results-metadata "SELECT * FROM VENUES;")]
+    (is (= "Native query"
+           (lib.metadata.calculation/describe-query query)))
+    (is (nil? (lib.metadata.calculation/suggested-name query)))))
+
 (deftest ^:parallel native-query-building
   (let [query (lib/native-query meta/metadata-provider "select * from venues where id = {{myid}}")]
     (testing "Updating query keeps template tags in sync"

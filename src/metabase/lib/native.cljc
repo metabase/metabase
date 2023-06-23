@@ -144,7 +144,7 @@
    (native-query metadata-providerable nil inner-query))
 
   ([metadata-providerable :- lib.metadata/MetadataProviderable
-    results-metadata      :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+    results-metadata      :- [:maybe lib.metadata/StageMetadata]
     inner-query :- ::common/non-blank-string]
    (let [tags (extract-template-tags inner-query)]
      (lib.query/query-with-stages metadata-providerable
