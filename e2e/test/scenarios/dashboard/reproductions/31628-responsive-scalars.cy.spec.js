@@ -1,4 +1,5 @@
 import {
+  closeNavigationSidebar,
   cypressWaitAll,
   openNavigationSidebar,
   restore,
@@ -80,6 +81,14 @@ const CARDS_SIZE_1X = [
   { size_x: 1, size_y: 1, row: 13, col: 20 },
 ];
 
+const VIEWPORTS_NO_SIDEBAR = [[375, 667]];
+
+const VIEWPORTS_WITH_SIDEBAR = [
+  [768, 1200],
+  [1024, 1200],
+  [1440, 1200],
+];
+
 describe("issue 31628", () => {
   describe("display: scalar", () => {
     beforeEach(() => {
@@ -98,9 +107,18 @@ describe("issue 31628", () => {
         "[data-testid='scalar-description']",
       ].join(",");
 
-      assertDescendantsNotOverflowDashcards(descendantsSelector);
-      openNavigationSidebar();
-      assertDescendantsNotOverflowDashcards(descendantsSelector);
+      VIEWPORTS_NO_SIDEBAR.forEach(([width, height]) => {
+        cy.viewport(width, height);
+        assertDescendantsNotOverflowDashcards(descendantsSelector);
+      });
+
+      VIEWPORTS_WITH_SIDEBAR.forEach(([width, height]) => {
+        cy.viewport(width, height);
+        assertDescendantsNotOverflowDashcards(descendantsSelector);
+        openNavigationSidebar();
+        assertDescendantsNotOverflowDashcards(descendantsSelector);
+        closeNavigationSidebar();
+      });
     });
   });
   describe("display: smartscalar", () => {
@@ -118,9 +136,18 @@ describe("issue 31628", () => {
         "[data-testid='scalar-previous-value']",
       ].join(",");
 
-      assertDescendantsNotOverflowDashcards(descendantsSelector);
-      openNavigationSidebar();
-      assertDescendantsNotOverflowDashcards(descendantsSelector);
+      VIEWPORTS_NO_SIDEBAR.forEach(([width, height]) => {
+        cy.viewport(width, height);
+        assertDescendantsNotOverflowDashcards(descendantsSelector);
+      });
+
+      VIEWPORTS_WITH_SIDEBAR.forEach(([width, height]) => {
+        cy.viewport(width, height);
+        assertDescendantsNotOverflowDashcards(descendantsSelector);
+        openNavigationSidebar();
+        assertDescendantsNotOverflowDashcards(descendantsSelector);
+        closeNavigationSidebar();
+      });
     });
   });
 });
