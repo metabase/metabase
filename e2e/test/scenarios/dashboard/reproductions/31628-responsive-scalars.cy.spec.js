@@ -10,51 +10,45 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const CARDS = [
-  { size_x: 6, size_y: 5, row: 0, col: 0 },
-  { size_x: 6, size_y: 4, row: 5, col: 0 },
-  { size_x: 6, size_y: 3, row: 9, col: 0 },
-  { size_x: 6, size_y: 2, row: 12, col: 0 },
+  { size_x: 6, size_y: 4, row: 0, col: 0 },
+  { size_x: 6, size_y: 3, row: 4, col: 0 },
+  { size_x: 6, size_y: 2, row: 7, col: 0 },
 
-  { size_x: 5, size_y: 5, row: 0, col: 6 },
-  { size_x: 5, size_y: 4, row: 5, col: 6 },
-  { size_x: 5, size_y: 3, row: 9, col: 6 },
-  { size_x: 5, size_y: 2, row: 12, col: 6 },
+  { size_x: 5, size_y: 4, row: 0, col: 6 },
+  { size_x: 5, size_y: 3, row: 4, col: 6 },
+  { size_x: 5, size_y: 2, row: 7, col: 6 },
 
-  { size_x: 4, size_y: 5, row: 0, col: 11 },
-  { size_x: 4, size_y: 4, row: 5, col: 11 },
-  { size_x: 4, size_y: 3, row: 9, col: 11 },
-  { size_x: 4, size_y: 2, row: 12, col: 11 },
+  { size_x: 4, size_y: 4, row: 0, col: 11 },
+  { size_x: 4, size_y: 3, row: 4, col: 11 },
+  { size_x: 4, size_y: 2, row: 7, col: 11 },
 
-  { size_x: 3, size_y: 5, row: 0, col: 15 },
-  { size_x: 3, size_y: 4, row: 5, col: 15 },
-  { size_x: 3, size_y: 3, row: 9, col: 15 },
-  { size_x: 3, size_y: 2, row: 12, col: 15 },
+  { size_x: 3, size_y: 4, row: 0, col: 15 },
+  { size_x: 3, size_y: 3, row: 4, col: 15 },
+  { size_x: 3, size_y: 2, row: 7, col: 15 },
 
-  { size_x: 2, size_y: 5, row: 0, col: 18 },
-  { size_x: 2, size_y: 4, row: 5, col: 18 },
-  { size_x: 2, size_y: 3, row: 9, col: 18 },
-  { size_x: 2, size_y: 2, row: 12, col: 18 },
+  { size_x: 2, size_y: 4, row: 0, col: 18 },
+  { size_x: 2, size_y: 3, row: 4, col: 18 },
+  { size_x: 2, size_y: 2, row: 7, col: 18 },
 ];
 
 const CARDS_SIZE_1X = [
-  { size_x: 1, size_y: 5, row: 0, col: 20 },
-  { size_x: 1, size_y: 4, row: 5, col: 20 },
-  { size_x: 1, size_y: 3, row: 9, col: 20 },
-  { size_x: 1, size_y: 2, row: 12, col: 20 },
+  { size_x: 1, size_y: 4, row: 0, col: 20 },
+  { size_x: 1, size_y: 3, row: 4, col: 20 },
+  { size_x: 1, size_y: 2, row: 7, col: 20 },
 
-  { size_x: 6, size_y: 1, row: 13, col: 0 },
-  { size_x: 5, size_y: 1, row: 13, col: 6 },
-  { size_x: 4, size_y: 1, row: 13, col: 11 },
-  { size_x: 3, size_y: 1, row: 13, col: 15 },
-  { size_x: 2, size_y: 1, row: 13, col: 18 },
-  { size_x: 1, size_y: 1, row: 13, col: 20 },
+  { size_x: 6, size_y: 1, row: 9, col: 0 },
+  { size_x: 5, size_y: 1, row: 9, col: 6 },
+  { size_x: 4, size_y: 1, row: 9, col: 11 },
+  { size_x: 3, size_y: 1, row: 9, col: 15 },
+  { size_x: 2, size_y: 1, row: 9, col: 18 },
+  { size_x: 1, size_y: 1, row: 9, col: 20 },
 ];
 
 const VIEWPORTS = [
   { width: 375, height: 667, openSidebar: false },
-  { width: 820, height: 600, openSidebar: true },
-  { width: 820, height: 600, openSidebar: false },
-  { width: 1200, height: 600, openSidebar: true },
+  { width: 820, height: 800, openSidebar: true },
+  { width: 820, height: 800, openSidebar: false },
+  { width: 1200, height: 800, openSidebar: true },
   { width: 1440, height: 800, openSidebar: true },
   { width: 1440, height: 800, openSidebar: false },
 ];
