@@ -150,7 +150,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
   });
 
   it("should not preserve draft parameter values when editing the dashboard", () => {
-    createDashboard({ auto_apply_filters: false });
+    createDashboard({ dashboardDetails: { auto_apply_filters: false } });
     openDashboard();
 
     filterWidget().within(() => {
@@ -192,7 +192,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
   });
 
   it("should preserve draft parameter values when editing of the dashboard was cancelled", () => {
-    createDashboard({ auto_apply_filters: false });
+    createDashboard({ dashboardDetails: { auto_apply_filters: false } });
     openDashboard();
 
     filterWidget().within(() => {
@@ -220,7 +220,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
 
   describe("parameter with default values", () => {
     beforeEach(() => {
-      createDashboard(undefined, FILTER_WITH_DEFAULT_VALUE);
+      createDashboard({ parameter: FILTER_WITH_DEFAULT_VALUE });
       openDashboard();
     });
 
@@ -290,7 +290,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
 
     it("should not display the toast when auto applying filters is disabled", () => {
       cy.clock();
-      createDashboard({ auto_apply_filters: false });
+      createDashboard({ dashboardDetails: { auto_apply_filters: false } });
       openSlowDashboard({ [FILTER.slug]: "Gadget" });
 
       cy.tick(TOAST_TIMEOUT);
@@ -400,7 +400,7 @@ describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
   });
 
   it("should not send snowplow events when enabling auto-apply filters", () => {
-    createDashboard({ auto_apply_filters: false });
+    createDashboard({ dashboardDetails: { auto_apply_filters: false } });
     openDashboard();
     cy.wait("@cardQuery");
 
@@ -419,7 +419,10 @@ describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
   });
 });
 
-const createDashboard = (dashboardOpts = {}, parameter = FILTER) => {
+const createDashboard = ({
+  dashboardDetails: dashboardOpts = {},
+  parameter = FILTER,
+} = {}) => {
   const parameters = [parameter];
   cy.createQuestionAndDashboard({
     questionDetails: QUESTION_DETAILS,
