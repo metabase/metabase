@@ -316,6 +316,7 @@
     metabase.email-test                                             et
     metabase.email.messages                                         messages
     metabase.http-client                                            client
+    metabase.lib.util                                               lib.util
     metabase.mbql.normalize                                         mbql.normalize
     metabase.mbql.schema                                            mbql.s
     metabase.mbql.util                                              mbql.u

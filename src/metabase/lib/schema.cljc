@@ -7,7 +7,6 @@
   copied from [[metabase.mbql.schema]] so this can exist completely independently; hopefully at some point in the
   future we can deprecate that namespace and eventually do away with it entirely."
   (:require
-   [malli.core :as mc]
    [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]
@@ -46,11 +45,6 @@
 (mr/def ::filters
   [:sequential {:min 1} [:ref ::expression/boolean]])
 
-(mr/def ::source-table
-  [:or
-   [:ref ::id/table]
-   [:ref ::id/table-card-id-string]])
-
 (defn- expression-ref-error-for-stage [stage]
   (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))]
     (mbql.match/match-one (dissoc stage :joins :lib/stage-metadata)
@@ -87,26 +81,41 @@
     [:fields       {:optional true} ::fields]
     [:filters      {:optional true} ::filters]
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
-    [:source-table {:optional true} [:ref ::source-table]]]
+    [:source-table {:optional true} [:ref ::id/table]]
+    [:source-card  {:optional true} [:ref ::id/card]]]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
+   [:fn
+    {:error/message "A query cannot have both a :source-table and a :source-card."}
+    (complement (every-pred :source-table :source-card))]
    [:ref ::stage.valid-refs]])
 
 ;;; Schema for an MBQL stage that includes either `:source-table` or `:source-query`.
-(mr/def ::stage.mbql.with-source
-  [:and
+(mr/def ::stage.mbql.with-source-table
+  [:merge
    [:ref ::stage.mbql]
    [:map
-    [:source-table [:ref ::source-table]]]])
+    [:source-table [:ref ::id/table]]]])
+
+(mr/def ::stage.mbql.with-source-card
+  [:merge
+   [:ref ::stage.mbql]
+   [:map
+    [:source-card [:ref ::id/card]]]])
+
+(mr/def ::stage.mbql.with-source
+  [:or
+   [:ref ::stage.mbql.with-source-table]
+   [:ref ::stage.mbql.with-source-card]])
 
 ;;; Schema for an MBQL stage that DOES NOT include `:source-table` -- an MBQL stage that is not the initial stage.
 (mr/def ::stage.mbql.without-source
   [:and
    [:ref ::stage.mbql]
    [:fn
-    {:error/message "Only the initial stage of a query can have a :source-table."}
-    #(not (contains? % :source-table))]])
+    {:error/message "Only the initial stage of a query can have a :source-table or :source-card."}
+    (complement (some-fn :source-table :source-card))]])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type
@@ -148,7 +157,7 @@
 
     (visible-join-alias? <join-alias>) => boolean"
   [stage]
-  (if (mc/validate ::id/table-card-id-string (:source-table stage))
+  (if (:source-card stage)
     (constantly true)
     (letfn [(join-aliases-in-join [join]
               (cons

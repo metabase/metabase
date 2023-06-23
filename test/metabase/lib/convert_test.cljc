@@ -196,6 +196,17 @@
                                               :effective-type :type/Integer}
                                              ag-uuid]]}]}))))))
 
+(deftest ^:parallel source-card-test
+  (let [original {:database 1
+                  :type     :query
+                  :query    {:source-table "card__100"}}]
+    (is (=? {:lib/type :mbql/query
+             :stages   [{:lib/type    :mbql.stage/mbql
+                         :source-card 100}]}
+            (lib.convert/->pMBQL original)))
+    (is (= original
+           (lib.convert/->legacy-MBQL (lib.convert/->pMBQL original))))))
+
 (deftest ^:parallel round-trip-test
   ;; Miscellaneous queries that have caused test failures in the past, captured here for quick feedback.
   (are [query] (= query (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))
@@ -322,7 +333,12 @@
     {:database 1
      :type     :query
      :query    {:source-table 224
-                :expressions {"a" 1}}}))
+                :expressions {"a" 1}}}
+
+    ;; card__<id> source table syntax.
+    {:database 1
+     :type     :query
+     :query    {:source-table "card__1"}}))
 
 (deftest ^:parallel round-trip-options-test
   (testing "Round-tripping (p)MBQL caluses with options (#30280)"
@@ -449,53 +465,53 @@
     (is (= {:type :query
             :query {}}
            (lib.convert/->legacy-MBQL
-             (lib.convert/->pMBQL
-               {:type :query}))))
-    (is (= {:type :query
-            :database 1
-            :query {}}
-            (lib.convert/->legacy-MBQL
-              (lib.convert/->pMBQL
-                {:type :query
-                 :database 1}))))
+            (lib.convert/->pMBQL
+             {:type :query}))))
     (is (= {:type :query
             :database 1
             :query {}}
            (lib.convert/->legacy-MBQL
-             (lib.convert/->pMBQL
-               {:type :query
-                :database 1})))))
+            (lib.convert/->pMBQL
+             {:type :query
+              :database 1}))))
+    (is (= {:type :query
+            :database 1
+            :query {}}
+           (lib.convert/->legacy-MBQL
+            (lib.convert/->pMBQL
+             {:type :query
+              :database 1})))))
   (testing "recoverable queries"
     (is (nil? (->
-                {:database 1
-                 :type :query
-                 :query {:source-table 224
-                         :order-by [[:asc [:xfield 1 nil]]]}}
-                lib.convert/->pMBQL
-                lib/order-bys)))
+               {:database 1
+                :type :query
+                :query {:source-table 224
+                        :order-by [[:asc [:xfield 1 nil]]]}}
+               lib.convert/->pMBQL
+               lib/order-bys)))
     (is (nil? (->
-                {:database 1
-                 :type :query
-                 :query {:source-table 224
-                         :filter [:and [:= [:xfield 1 nil]]]}}
-                lib.convert/->pMBQL
-                lib/filters)))
+               {:database 1
+                :type :query
+                :query {:source-table 224
+                        :filter [:and [:= [:xfield 1 nil]]]}}
+               lib.convert/->pMBQL
+               lib/filters)))
     (is (nil? (->
-                {:database 5
-                 :type :query
-                 :query {:joins [{:source-table 3
-                                  ;; Invalid condition makes the join invalid
-                                  :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
-                         :source-table 4}}
-                 lib.convert/->pMBQL
-                 lib/joins)))
+               {:database 5
+                :type :query
+                :query {:joins [{:source-table 3
+                                 ;; Invalid condition makes the join invalid
+                                 :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
+                        :source-table 4}}
+               lib.convert/->pMBQL
+               lib/joins)))
     (is (nil? (->
-                {:database 5
-                 :type :query
-                 :query {:joins [{:source-table 3
-                                  :condition [:= [:field 2 nil] [:field 2 nil]]
-                                  ;; Invalid field, the join is still valid
-                                  :fields [[:xfield 2 nil]]}]
-                         :source-table 4}}
-                 lib.convert/->pMBQL
-                 (get-in [:stages 0 :joins 0 :fields]))))))
+               {:database 5
+                :type :query
+                :query {:joins [{:source-table 3
+                                 :condition [:= [:field 2 nil] [:field 2 nil]]
+                                 ;; Invalid field, the join is still valid
+                                 :fields [[:xfield 2 nil]]}]
+                        :source-table 4}}
+               lib.convert/->pMBQL
+               (get-in [:stages 0 :joins 0 :fields]))))))

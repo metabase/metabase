@@ -243,7 +243,7 @@
     (let [expr-name "ID + 1"
           query (-> (query-with-expressions)
                     (lib/breakout [:expression {:lib/uuid (str (random-uuid))} expr-name]))]
-      (is (=? [{:lib/type :metadata/field
+      (is (=? [{:lib/type :metadata/column
                 :lib/source :source/expressions}]
               (filter #(= (:name %) expr-name)
                       (lib.metadata.calculation/visible-columns query)))))))
