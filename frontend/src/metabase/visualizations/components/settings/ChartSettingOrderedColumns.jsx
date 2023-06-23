@@ -19,7 +19,7 @@ export const ChartSettingOrderedColumns = ({
   onShowWidget,
   getColumnName: _getColumnName,
 }) => {
-  const query = question && question.query();
+  const query = question?.query();
   const [enabledColumns, disabledColumns] = useMemo(
     () =>
       _.partition(

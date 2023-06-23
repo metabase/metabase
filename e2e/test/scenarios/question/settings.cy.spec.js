@@ -6,6 +6,7 @@ import {
   visitQuestionAdhoc,
   popover,
   sidebar,
+  moveColumnDown,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -70,7 +71,7 @@ describe("scenarios > question > settings", () => {
       cy.get("@table").contains("Total").should("not.exist");
     });
 
-    it("should allow you to re-order columns even when one has been removed (metabase29287)", () => {
+    it("should allow you to re-order columns even when one has been removed (metabase2#9287)", () => {
       cy.viewport(1600, 800);
 
       openOrdersTable();
@@ -81,11 +82,7 @@ describe("scenarios > question > settings", () => {
 
       getSidebarColumns().eq("3").as("total").contains("Total");
 
-      cy.get("@total")
-        .trigger("mousedown", 0, 0, { force: true })
-        .trigger("mousemove", 5, 5, { force: true })
-        .trigger("mousemove", 0, -100, { force: true })
-        .trigger("mouseup", 0, -100, { force: true });
+      moveColumnDown(cy.get("@total"), -2);
 
       getSidebarColumns().eq("1").should("contain.text", "Total");
     });
