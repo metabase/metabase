@@ -81,9 +81,9 @@ const CARDS_SIZE_1X = [
   { size_x: 1, size_y: 1, row: 13, col: 20 },
 ];
 
-const VIEWPORTS_NO_SIDEBAR = [[375, 667]];
+const VIEWPORTS_SIDEBAR_FLOATING = [[375, 667]];
 
-const VIEWPORTS_WITH_SIDEBAR = [
+const VIEWPORTS_SIDEBAR_IN_FLOW = [
   [768, 1200],
   [1024, 1200],
   [1440, 1200],
@@ -107,12 +107,12 @@ describe("issue 31628", () => {
         "[data-testid='scalar-description']",
       ].join(",");
 
-      VIEWPORTS_NO_SIDEBAR.forEach(([width, height]) => {
+      VIEWPORTS_SIDEBAR_FLOATING.forEach(([width, height]) => {
         cy.viewport(width, height);
         assertDescendantsNotOverflowDashcards(descendantsSelector);
       });
 
-      VIEWPORTS_WITH_SIDEBAR.forEach(([width, height]) => {
+      VIEWPORTS_SIDEBAR_IN_FLOW.forEach(([width, height]) => {
         cy.viewport(width, height);
         assertDescendantsNotOverflowDashcards(descendantsSelector);
         openNavigationSidebar();
@@ -136,12 +136,12 @@ describe("issue 31628", () => {
         "[data-testid='scalar-previous-value']",
       ].join(",");
 
-      VIEWPORTS_NO_SIDEBAR.forEach(([width, height]) => {
+      VIEWPORTS_SIDEBAR_FLOATING.forEach(([width, height]) => {
         cy.viewport(width, height);
         assertDescendantsNotOverflowDashcards(descendantsSelector);
       });
 
-      VIEWPORTS_WITH_SIDEBAR.forEach(([width, height]) => {
+      VIEWPORTS_SIDEBAR_IN_FLOW.forEach(([width, height]) => {
         cy.viewport(width, height);
         assertDescendantsNotOverflowDashcards(descendantsSelector);
         openNavigationSidebar();
@@ -164,9 +164,9 @@ const setupDashboardWithQuestionInCards = (question, cards) => {
   });
 };
 
-const assertDescendantsNotOverflowDashcards = selector => {
+const assertDescendantsNotOverflowDashcards = descendantsSelector => {
   cy.findAllByTestId("dashcard").each(dashcard => {
-    const descendants = dashcard.find(selector);
+    const descendants = dashcard.find(descendantsSelector);
 
     descendants.each((_index, descendant) => {
       assertDescendantNotOverflowsContainer(descendant, dashcard[0]);
