@@ -21,6 +21,7 @@ import {
 } from "metabase/dashboard/utils";
 
 import { isActionDashCard } from "metabase/actions/utils";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import Question from "metabase-lib/Question";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
@@ -220,7 +221,11 @@ export function DashCardCardParameterMapper({
         </NativeCardDefault>
       ) : (
         <>
-          {headerContent && <Header>{headerContent}</Header>}
+          {headerContent && (
+            <Header>
+              <Ellipsified>{headerContent}</Ellipsified>
+            </Header>
+          )}
           <Tooltip tooltip={buttonTooltip}>
             <TippyPopover
               visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}
@@ -253,7 +258,9 @@ export function DashCardCardParameterMapper({
                 }}
               >
                 {buttonText && (
-                  <TargetButtonText>{buttonText}</TargetButtonText>
+                  <TargetButtonText>
+                    <Ellipsified>{buttonText}</Ellipsified>
+                  </TargetButtonText>
                 )}
                 {buttonIcon}
               </TargetButton>
