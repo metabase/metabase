@@ -182,8 +182,8 @@ const assertDescendantNotOverflowsContainer = (descendant, container) => {
     return;
   }
 
-  expect(descendantRect.bottom).to.lte(containerRect.bottom);
-  expect(descendantRect.top).to.gte(containerRect.top);
-  expect(descendantRect.left).to.gte(containerRect.left);
-  expect(descendantRect.right).to.lte(containerRect.right);
+  expect(descendantRect.bottom).to.be.lte(containerRect.bottom);
+  expect(descendantRect.top).to.be.gte(containerRect.top);
+  expect(descendantRect.left).to.be.gte(containerRect.left);
+  expect(descendantRect.right).to.be.lte(containerRect.right);
 };
