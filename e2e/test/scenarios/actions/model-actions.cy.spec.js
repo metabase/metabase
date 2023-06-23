@@ -109,9 +109,8 @@ describe(
         cy.wait("@getModel");
       });
 
-      cy.findByRole("tablist").within(() => {
-        cy.findByText("Actions").click();
-      });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Actions").click();
 
       cy.findByRole("button", { name: /Create basic actions/i }).click();
       cy.findByLabelText("Action list").within(() => {
@@ -739,6 +738,66 @@ describe(
             expect(row.team_name).to.equal("Bouncy Bears");
           });
         });
+      });
+    });
+
+    // FIXME: unskip before merging
+    it.skip("should respect impersonated permission", () => {
+      cy.onlyOn(dialect === "postgres");
+
+      cy.updatePermissionsGraph(
+        {
+          [USER_GROUPS.ALL_USERS_GROUP]: {
+            [PG_DB_ID]: { data: { schemas: "all", native: "write" } },
+          },
+        },
+        [
+          {
+            db_id: PG_DB_ID,
+            group_id: USER_GROUPS.ALL_USERS_GROUP,
+            attribute: "role",
+          },
+        ],
+      );
+
+      queryWritableDB(
+        `SELECT *
+         FROM ${WRITABLE_TEST_TABLE}
+         WHERE id = 1`,
+        dialect,
+      ).then(result => {
+        const row = result.rows[0];
+        expect(row.score).to.equal(0);
+      });
+
+      cy.get("@writableModelId").then(modelId => {
+        createAction({
+          ...SAMPLE_WRITABLE_QUERY_ACTION,
+          model_id: modelId,
+        });
+        cy.signInAsImpersonatedUser();
+        cy.visit(`/model/${modelId}/detail/actions`);
+        cy.wait("@getModel");
+      });
+
+      runActionFor(SAMPLE_QUERY_ACTION.name);
+
+      modal().within(() => {
+        cy.findByLabelText(TEST_PARAMETER.name).type("1");
+        cy.button(SAMPLE_QUERY_ACTION.name).click();
+
+        // FIXME: update the error once BE restricts access
+        cy.findByText(/Error executing Action/i);
+      });
+
+      queryWritableDB(
+        `SELECT *
+         FROM ${WRITABLE_TEST_TABLE}
+         WHERE id = 1`,
+        dialect,
+      ).then(result => {
+        const row = result.rows[0];
+        expect(row.score).to.equal(0);
       });
     });
   });
