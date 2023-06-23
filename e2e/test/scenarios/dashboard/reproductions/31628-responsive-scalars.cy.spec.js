@@ -52,12 +52,11 @@ const CARDS_SIZE_1X = [
 
 const VIEWPORTS = [
   { width: 375, height: 667, openSidebar: false },
-  { width: 768, height: 1200, openSidebar: true },
-  { width: 768, height: 1200, openSidebar: false },
-  { width: 1024, height: 1200, openSidebar: true },
-  { width: 1024, height: 1200, openSidebar: false },
-  { width: 1440, height: 1200, openSidebar: true },
-  { width: 1440, height: 1200, openSidebar: false },
+  { width: 820, height: 600, openSidebar: true },
+  { width: 820, height: 600, openSidebar: false },
+  { width: 1200, height: 600, openSidebar: true },
+  { width: 1440, height: 800, openSidebar: true },
+  { width: 1440, height: 800, openSidebar: false },
 ];
 
 const SCALAR_QUESTION = {
@@ -102,18 +101,18 @@ describe("issue 31628", () => {
       "[data-testid='scalar-description']",
     ].join(",");
 
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-      setupDashboardWithQuestionInCards(SCALAR_QUESTION, SCALAR_QUESTION_CARDS);
-    });
-
     VIEWPORTS.forEach(({ width, height, openSidebar }) => {
       describe(`${width}x${height} - sidebar ${
         openSidebar ? "open" : "closed"
       }`, () => {
         beforeEach(() => {
+          restore();
           cy.viewport(width, height);
+          cy.signInAsAdmin();
+          setupDashboardWithQuestionInCards(
+            SCALAR_QUESTION,
+            SCALAR_QUESTION_CARDS,
+          );
 
           if (openSidebar) {
             openNavigationSidebar();
@@ -135,21 +134,18 @@ describe("issue 31628", () => {
       "[data-testid='scalar-previous-value']",
     ].join(",");
 
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-      setupDashboardWithQuestionInCards(
-        SMART_SCALAR_QUESTION,
-        SMART_SCALAR_QUESTION_CARDS,
-      );
-    });
-
     VIEWPORTS.forEach(({ width, height, openSidebar }) => {
       describe(`${width}x${height} - sidebar ${
         openSidebar ? "open" : "closed"
       }`, () => {
         beforeEach(() => {
+          restore();
           cy.viewport(width, height);
+          cy.signInAsAdmin();
+          setupDashboardWithQuestionInCards(
+            SMART_SCALAR_QUESTION,
+            SMART_SCALAR_QUESTION_CARDS,
+          );
 
           if (openSidebar) {
             openNavigationSidebar();
