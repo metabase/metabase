@@ -50,6 +50,9 @@
   (and (clause? clause)
        (= (first clause) clause-type)))
 
+(defn field-clause? [clause]
+  (clause-of-type? clause :field))
+
 (defn clause-uuid
   "Returns the :lib/uuid of `clause`. Returns nil if `clause` is not a clause."
   [clause]
