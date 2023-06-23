@@ -513,3 +513,11 @@ export const getEventTarget = event => {
 
   return target;
 };
+
+export function reload() {
+  window.location.reload();
+}
+
+export function redirect(url) {
+  window.location.href = url;
+}

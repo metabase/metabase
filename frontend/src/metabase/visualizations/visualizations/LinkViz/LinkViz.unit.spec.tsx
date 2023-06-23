@@ -10,6 +10,7 @@ import {
   setupSearchEndpoints,
   setupRecentViewsEndpoints,
 } from "__support__/server-mocks";
+import * as domUtils from "metabase/lib/dom";
 
 import type {
   DashboardOrderedCard,
@@ -25,6 +26,11 @@ import {
 } from "metabase-types/api/mocks";
 
 import LinkViz, { LinkVizProps } from "./LinkViz";
+
+// jest.mock('metabase/lib/dom', () => ({
+//   ...jest.requireActual('metabase/lib/dom'),
+//   isWithinIframe: () => true
+// }));
 
 type LinkCardVizSettings = DashboardOrderedCard["visualization_settings"] & {
   link: LinkCardSettings;
@@ -216,12 +222,8 @@ describe("LinkViz", () => {
     });
 
     it("sets embedded entity links to not open in new tabs", () => {
-      // here, we're mocking this appearing in an iframe by manipulating window.top !== window.self
-      const topCache = window.top;
-      // @ts-expect-error we need to delete this for it to actually update
-      delete window.top;
-      // @ts-expect-error it doesn't actually matter if this is valid
-      window.top = {};
+      // here, we're mocking this appearing in an iframe
+      jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
 
       setup({
         isEditing: false,
@@ -231,9 +233,6 @@ describe("LinkViz", () => {
       });
 
       expect(screen.getByRole("link")).not.toHaveAttribute("target");
-      // @ts-expect-error we need to delete this for it to actually update
-      delete window.top;
-      window.top = topCache;
     });
 
     it("clicking a search item should update the entity", async () => {

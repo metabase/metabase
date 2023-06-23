@@ -22,6 +22,9 @@ let clock;
 const actionStub = { type: "ANY_ACTION" };
 
 /**
+ * TODO: better solution is to provide configurable window object
+ * it will be possible after migration to more recent react-router (5+)
+ *
  * Changes the URL used by the global JSDOM instance in the current window.
  * jsdom is making more and more properties non-configurable
  * ref https://github.com/jsdom/jsdom/issues/3492
