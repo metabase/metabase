@@ -2,13 +2,12 @@ import { UrlClickAction } from "metabase/modes/types";
 import { performAction } from "./action";
 
 describe("performAction", () => {
-  it('should redirect to url using router if "forceSameOrigin" has passed', () => {
+  it('should redirect using router if a "relative" url has been passed', () => {
     const action: UrlClickAction = {
       buttonType: "horizontal",
       name: "automatic-insights",
       section: "auto",
-      url: jest.fn(() => "/some/url"),
-      forceSameOrigin: true,
+      url: jest.fn(() => "auto/dashboard/adhoc/123"),
     };
 
     const extraProps = {
@@ -26,7 +25,7 @@ describe("performAction", () => {
         args: [
           {
             hash: "",
-            pathname: "/undefined/some/url",
+            pathname: "/auto/dashboard/adhoc/123",
             query: {},
             search: "",
           },

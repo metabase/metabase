@@ -65,7 +65,6 @@ export type PopoverClickAction = ClickActionBase & {
 
 type UrlClickActionBase = {
   ignoreSiteUrl?: boolean;
-  forceSameOrigin?: boolean;
   url: () => string;
 };
 

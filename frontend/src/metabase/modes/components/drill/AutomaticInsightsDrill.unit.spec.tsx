@@ -48,25 +48,24 @@ describe("AutomaticInsightsDrill", () => {
       expect(screen.getByText("X-ray")).toBeInTheDocument();
     });
 
-    it(`should pass "forceSameOrigin" prop on action item click`, () => {
-      const { props } = setup();
+    it(`should return "url" prop with a relative link on action item click`, () => {
+      const stringStartingWithWordChar = /^\w+/;
+      const {
+        props: { onClick },
+      } = setup();
 
       userEvent.click(screen.getByText("Compare to the rest"));
+      expect(onClick).toHaveBeenCalledTimes(1);
 
-      expect(props.onClick).toHaveBeenCalledTimes(1);
-      expect(props.onClick).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          forceSameOrigin: true,
-        }),
+      expect(onClick.mock.lastCall[0].url()).toMatch(
+        stringStartingWithWordChar,
       );
 
       userEvent.click(screen.getByText("X-ray"));
+      expect(onClick).toHaveBeenCalledTimes(2);
 
-      expect(props.onClick).toHaveBeenCalledTimes(2);
-      expect(props.onClick).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          forceSameOrigin: true,
-        }),
+      expect(onClick.mock.lastCall[0].url()).toMatch(
+        stringStartingWithWordChar,
       );
     });
   });

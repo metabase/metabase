@@ -301,7 +301,6 @@ export function open(
     // custom function for opening in same app instance
     openInSameOrigin = openInSameWindow,
     ignoreSiteUrl = false,
-    forceSameOrigin = false,
     ...options
   } = {},
 ) {
@@ -311,7 +310,7 @@ export function open(
   if (shouldOpenInBlankWindow(url, options)) {
     openInBlankWindow(url);
   } else if (isSameOrigin(url)) {
-    if (isOriginalUrlAbsolute && !forceSameOrigin) {
+    if (isOriginalUrlAbsolute) {
       clickLink(url, false);
     } else {
       openInSameOrigin(url, getLocation(url));
