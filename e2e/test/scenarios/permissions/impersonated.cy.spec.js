@@ -2,6 +2,7 @@ import {
   assertPermissionTable,
   createTestRoles,
   describeEE,
+  isPermissionDisabled,
   modifyPermission,
   openNativeEditor,
   popover,
@@ -14,6 +15,7 @@ const { ALL_USERS_GROUP } = USER_GROUPS;
 
 const PG_DB_ID = 2;
 const DATA_ACCESS_PERMISSION_INDEX = 0;
+const NATIVE_QUERIES_PERMISSION_INDEX = 1;
 
 describeEE("impersonated permission", () => {
   describe("admins", () => {
@@ -38,6 +40,7 @@ describeEE("impersonated permission", () => {
       );
 
       selectImpersonatedAttribute("role");
+      saveImpersonationSettings();
       savePermissions();
 
       assertPermissionTable([
@@ -59,6 +62,62 @@ describeEE("impersonated permission", () => {
         ],
       ]);
 
+      // Checking it shows the right state on the tables level
+      cy.get("main").findByText("QA Postgres12").click();
+
+      assertPermissionTable([
+        ["Accounts", "Impersonated", "No", "1 million rows", "No", "No"],
+        ["Analytic Events", "Impersonated", "No", "1 million rows", "No", "No"],
+        ["Feedback", "Impersonated", "No", "1 million rows", "No", "No"],
+        ["Invoices", "Impersonated", "No", "1 million rows", "No", "No"],
+        ["Orders", "Impersonated", "No", "1 million rows", "No", "No"],
+        [
+          "People",
+          "Impersonated",
+          "No", // FIXME: should be "Yes"
+          "1 million rows",
+          "No",
+          "No",
+        ],
+        [
+          "Products",
+          "Impersonated",
+          "No", // FIXME: should be "Yes"
+          "1 million rows",
+          "No",
+          "No",
+        ],
+        [
+          "Reviews",
+          "Impersonated",
+          "No", // FIXME: should be "Yes"
+          "1 million rows",
+          "No",
+          "No",
+        ],
+      ]);
+
+      cy.get("main")
+        .findByText("Orders")
+        .closest("tr")
+        .within(() => {
+          isPermissionDisabled(
+            DATA_ACCESS_PERMISSION_INDEX,
+            "Impersonated",
+            true,
+          ).click();
+          isPermissionDisabled(NATIVE_QUERIES_PERMISSION_INDEX, "No", true);
+
+          cy.findAllByText("No").eq(0).realHover();
+        });
+
+      // eslint-disable-next-line no-unscoped-text-selectors
+      cy.findByText(
+        "Native query editor access requires full data access.",
+      ).should("not.exist");
+
+      cy.get("main").findByText("All Users group").click();
+
       // Edit impersonated permission
       modifyPermission(
         "QA Postgres12",
@@ -67,6 +126,7 @@ describeEE("impersonated permission", () => {
       );
 
       selectImpersonatedAttribute("attr_uid");
+      saveImpersonationSettings();
       savePermissions();
 
       assertPermissionTable([
@@ -113,6 +173,49 @@ describeEE("impersonated permission", () => {
           "No",
         ],
       ]);
+    });
+
+    it("impersonation modal should be positioned behind the page leave confirmation modal", () => {
+      // Try leaving the page
+      cy.visit("/admin/permissions/data/group/1");
+
+      modifyPermission(
+        "QA Postgres12",
+        DATA_ACCESS_PERMISSION_INDEX,
+        "Impersonated",
+      );
+
+      selectImpersonatedAttribute("role");
+      saveImpersonationSettings();
+
+      modifyPermission(
+        "QA Postgres12",
+        DATA_ACCESS_PERMISSION_INDEX,
+        "Edit Impersonated",
+      );
+
+      cy.findByRole("dialog").findByText("Edit settings").click();
+
+      // Page leave confirmation should be on top
+      cy.findAllByRole("dialog")
+        .eq(0)
+        .as("leaveConfirmation")
+        .findByText("Discard your unsaved changes?")
+        .should("be.visible");
+
+      // Cancel
+      cy.get("@leaveConfirmation").findByText("Cancel").click();
+
+      // Ensure the impersonation modal is still open
+      cy.findByRole("dialog")
+        .findByText("Map a user attribute to database roles")
+        .should("be.visible");
+
+      // Go to settings
+      cy.findByRole("dialog").findByText("Edit settings").click();
+      cy.get("@leaveConfirmation").findByText("Discard changes").click();
+
+      cy.focused().should("have.attr", "placeholder", "username");
     });
   });
 
@@ -200,5 +303,8 @@ function selectImpersonatedAttribute(attribute) {
   });
 
   popover().findByText(attribute).click();
+}
+
+function saveImpersonationSettings() {
   cy.findByRole("dialog").findByText("Save").click();
 }
