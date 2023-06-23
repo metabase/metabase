@@ -27,31 +27,24 @@
 ;; conversion for incoming args and outgoing return values. I'm imagining something like
 ;; `(mu/js-export lib.core/recognize-template-tags)` where that function has a Malli schema and it works like
 ;; `metabase.shared.util.namespaces/import-fn` plus wrapping it with conversion for all args and the return value.
-(defn ^:export recognize-template-tags
-  "Given the text of a native query, extract a possibly-empty set of template tag strings from it.
+(defn ^:export extract-template-tags
+  "Extract the template tags from a native query's text.
+
+  If the optional map of existing tags previously parsed is given, this will reuse the existing tags where
+  they match up with the new one (in particular, it will preserve the UUIDs).
+
+  Given the text of a native query, extract a possibly-empty set of template tag strings from it.
 
   These looks like mustache templates. For variables, we only allow alphanumeric characters, eg. `{{foo}}`.
   For snippets they start with `snippet:`, eg. `{{ snippet: arbitrary text here }}`.
   And for card references either `{{ #123 }}` or with the optional human label `{{ #123-card-title-slug }}`.
 
   Invalid patterns are simply ignored, so something like `{{&foo!}}` is just disregarded."
-  [query-text]
-  (-> query-text
-      lib.core/recognize-template-tags
-      clj->js))
-
-(defn ^:export template-tags
-  "Extract the template tags from a native query's text.
-
-  If the optional map of existing tags previously parsed is given, this will reuse the existing tags where
-  they match up with the new one (in particular, it will preserve the UUIDs).
-
-  See [[recognize-template-tags]] for how the tags are parsed."
-  ([query-text] (template-tags query-text {}))
+  ([query-text] (extract-template-tags query-text {}))
   ([query-text existing-tags]
    (->> existing-tags
         lib.core/->TemplateTags
-        (lib.core/template-tags query-text)
+        (lib.core/extract-template-tags query-text)
         lib.core/TemplateTags->)))
 
 (defn ^:export suggestedName
@@ -515,3 +508,31 @@
     #js {:operator operator
          :options (clj->js options)
          :args (to-array args)}))
+
+(defn ^:export native-query
+  "Create a new native query.
+
+  Native in this sense means a pMBQL query with a first stage that is a native query."
+  [database-id metadata inner-query]
+  (lib.core/native-query (metadataProvider database-id metadata) inner-query))
+
+(defn ^:export with-native-query
+  "Update the raw native query, the first stage must already be a native type.
+   Replaces templates tags"
+  [a-query inner-query]
+  (lib.core/with-native-query a-query inner-query))
+
+(defn ^:export with-template-tags
+  "Updates the native query's template tags."
+  [a-query tags]
+  (lib.core/with-template-tags a-query (lib.core/->TemplateTags tags)))
+
+(defn ^:export raw-native-query
+  "Returns the native query string"
+  [a-query]
+  (lib.core/raw-native-query a-query))
+
+(defn ^:export template-tags
+  "Returns the native query's template tags"
+  [a-query]
+  (lib.core/TemplateTags-> (lib.core/template-tags a-query)))

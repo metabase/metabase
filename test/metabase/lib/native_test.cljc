@@ -1,10 +1,13 @@
 (ns metabase.lib.native-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]
+              [metabase.test.util.js :as test.js]))
    [clojure.test :refer [are deftest is testing]]
+   [medley.core :as m]
+   [metabase.lib.core :as lib]
    [metabase.lib.native :as lib.native]
-   #?@(:clj  ([medley.core :as m]
-              [metabase.util.humanization :as u.humanization])
-       :cljs ([metabase.test.util.js :as test.js]))))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.util.humanization :as u.humanization]))
 
 (deftest ^:parallel variable-tag-test
   (are [exp input] (= exp (lib.native/recognize-template-tags input))
@@ -32,97 +35,94 @@
     #{"#123"} "SELECT * FROM table WHERE {{ #not-this }} AND {{#123}}"
     #{} "{{ #123foo }}"))
 
-#?(:clj
-   ;; TODO: This is only CLJ-only because =? from Hawk is not available in CLJS currently.
-   ;; I don't think there's any reason why it can't work there too.
-   (deftest ^:parallel template-tags-test
-     (testing "snippet tags"
-       (is (=? {"snippet:foo" {:type         :snippet
-                               :name         "snippet:foo"
-                               :snippet-name "foo"
-                               :id           uuid?}}
-               (lib.native/template-tags "SELECT * FROM table WHERE {{snippet:foo}}")))
-       (is (=? {"snippet:foo"  {:type         :snippet
-                                :name         "snippet:foo"
-                                :snippet-name "foo"
-                                :id           uuid?}
-                "snippet: foo" {:type         :snippet
-                                :name         "snippet: foo"
-                                :snippet-name "foo"
-                                :id           uuid?}}
-                 ;; TODO: This should probably be considered a bug - whitespace matters for the name.
-               (lib.native/template-tags "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}"))))
-
-     (testing "renaming a variable"
-       (let [old-tag {:type         :text
-                      :name         "foo"
-                      :display-name "Foo"
-                      :id           (m/random-uuid)}]
-         (testing "changes display-name if the original is not customized"
-           (is (=? {"bar" {:type         :text
-                           :name         "bar"
-                           :display-name "Bar"
-                           :id           (:id old-tag)}}
-                   (lib.native/template-tags "SELECT * FROM {{bar}}"
-                                             {"foo" old-tag}))))
-         (testing "keeps display-name if it's customized"
-           (is (=? {"bar" {:type         :text
-                           :name         "bar"
-                           :display-name "Custom Name"
-                           :id           (:id old-tag)}}
-                   (lib.native/template-tags "SELECT * FROM {{bar}}"
-                                             {"foo" (assoc old-tag :display-name "Custom Name")}))))
-
-         (testing "works with other variables present, if they don't change"
-           (let [other {:type         :text
-                        :name         "other"
-                        :display-name "Some Var"
-                        :id           (m/random-uuid)}]
-             (is (=? {"other" other
-                      "bar"   {:type         :text
-                               :name         "bar"
-                               :display-name "Bar"
-                               :id           (:id old-tag)}}
-                     (lib.native/template-tags "SELECT * FROM {{bar}} AND field = {{other}}"
-                                               {"foo"   old-tag
-                                                "other" other})))))))
-
-     (testing "general case, add and remove"
-       (let [mktag (fn [base]
-                     (merge {:type    :text
-                             :display-name (u.humanization/name->human-readable-name :simple (:name base))
+(deftest ^:parallel template-tags-test
+  (testing "snippet tags"
+    (is (=? {"snippet:foo" {:type         :snippet
+                            :name         "snippet:foo"
+                            :snippet-name "foo"
+                            :id           uuid?}}
+            (lib.native/extract-template-tags "SELECT * FROM table WHERE {{snippet:foo}}")))
+    (is (=? {"snippet:foo"  {:type         :snippet
+                             :name         "snippet:foo"
+                             :snippet-name "foo"
                              :id           uuid?}
-                            base))
-             v1    (mktag {:name "foo"})
-             v2    (mktag {:name "bar"})
-             v3    (mktag {:name "baz"})
-             s1    (mktag {:name         "snippet:first snippet"
-                           :snippet-name "first snippet"
-                           :type         :snippet})
-             s2    (mktag {:name         "snippet:another snippet"
-                           :snippet-name "another snippet"
-                           :type         :snippet})
+             "snippet: foo" {:type         :snippet
+                             :name         "snippet: foo"
+                             :snippet-name "foo"
+                             :id           uuid?}}
+            ;; TODO: This should probably be considered a bug - whitespace matters for the name.
+            (lib.native/extract-template-tags "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}"))))
 
-             c1    (mktag {:name    "#123-card-1"
-                           :type    :card
-                           :card-id 123})
-             c2    (mktag {:name    "#321"
-                           :type    :card
-                           :card-id 321})]
-         (is (=? {"foo"                   v1
-                  "#123-card-1"           c1
-                  "snippet:first snippet" s1}
-                 (lib.native/template-tags
-                  "SELECT * FROM {{#123-card-1}} WHERE {{foo}} AND {{  snippet:first snippet}}")))
-         (is (=? {"bar"                     v2
-                  "baz"                     v3
-                  "snippet:another snippet" s2
-                  "#321"                    c2}
-                 (lib.native/template-tags
-                  "SELECT * FROM {{#321}} WHERE {{baz}} AND {{bar}} AND {{snippet:another snippet}}"
-                  {"foo"                   (assoc v1 :id (random-uuid))
-                   "#123-card-1"           (assoc c1 :id (random-uuid))
-                   "snippet:first snippet" (assoc s1 :id (random-uuid))})))))))
+  (testing "renaming a variable"
+    (let [old-tag {:type         :text
+                   :name         "foo"
+                   :display-name "Foo"
+                   :id           (m/random-uuid)}]
+      (testing "changes display-name if the original is not customized"
+        (is (=? {"bar" {:type         :text
+                        :name         "bar"
+                        :display-name "Bar"
+                        :id           (:id old-tag)}}
+                (lib.native/extract-template-tags "SELECT * FROM {{bar}}"
+                                                  {"foo" old-tag}))))
+      (testing "keeps display-name if it's customized"
+        (is (=? {"bar" {:type         :text
+                        :name         "bar"
+                        :display-name "Custom Name"
+                        :id           (:id old-tag)}}
+                (lib.native/extract-template-tags "SELECT * FROM {{bar}}"
+                                                  {"foo" (assoc old-tag :display-name "Custom Name")}))))
+
+      (testing "works with other variables present, if they don't change"
+        (let [other {:type         :text
+                     :name         "other"
+                     :display-name "Some Var"
+                     :id           (m/random-uuid)}]
+          (is (=? {"other" other
+                   "bar"   {:type         :text
+                            :name         "bar"
+                            :display-name "Bar"
+                            :id           (:id old-tag)}}
+                  (lib.native/extract-template-tags "SELECT * FROM {{bar}} AND field = {{other}}"
+                                                    {"foo"   old-tag
+                                                     "other" other})))))))
+
+  (testing "general case, add and remove"
+    (let [mktag (fn [base]
+                  (merge {:type    :text
+                          :display-name (u.humanization/name->human-readable-name :simple (:name base))
+                          :id           uuid?}
+                         base))
+          v1    (mktag {:name "foo"})
+          v2    (mktag {:name "bar"})
+          v3    (mktag {:name "baz"})
+          s1    (mktag {:name         "snippet:first snippet"
+                        :snippet-name "first snippet"
+                        :type         :snippet})
+          s2    (mktag {:name         "snippet:another snippet"
+                        :snippet-name "another snippet"
+                        :type         :snippet})
+
+          c1    (mktag {:name    "#123-card-1"
+                        :type    :card
+                        :card-id 123})
+          c2    (mktag {:name    "#321"
+                        :type    :card
+                        :card-id 321})]
+      (is (=? {"foo"                   v1
+               "#123-card-1"           c1
+               "snippet:first snippet" s1}
+              (lib.native/extract-template-tags
+                "SELECT * FROM {{#123-card-1}} WHERE {{foo}} AND {{  snippet:first snippet}}")))
+      (is (=? {"bar"                     v2
+               "baz"                     v3
+               "snippet:another snippet" s2
+               "#321"                    c2}
+              (lib.native/extract-template-tags
+                "SELECT * FROM {{#321}} WHERE {{baz}} AND {{bar}} AND {{snippet:another snippet}}"
+                {"foo"                   (assoc v1 :id (random-uuid))
+                 "#123-card-1"           (assoc c1 :id (random-uuid))
+                 "snippet:first snippet" (assoc s1 :id (random-uuid))}))))))
 
 #?(:cljs
    (deftest converters-test
@@ -161,3 +161,46 @@
        (testing "round trips work"
          (is (=         clj-tags (-> clj-tags (#'lib.native/TemplateTags->) (#'lib.native/->TemplateTags))))
          (is (test.js/= js-tags  (-> js-tags  (#'lib.native/->TemplateTags) (#'lib.native/TemplateTags->))))))))
+
+(deftest ^:parallel native-query-building
+  (let [query (lib/native-query meta/metadata-provider "select * from venues where id = {{myid}}")]
+    (testing "Updating query keeps template tags in sync"
+      (is (=? ["select * from venues where id = {{myid}}"
+               {"myid" {:type :text,
+                        :name "myid",
+                        :id uuid?
+                        :display-name "Myid"}}]
+              ((juxt lib/raw-native-query lib/template-tags) query)))
+      (is (=? ["select * from venues where id = {{myid}} and x = {{y}}"
+               {"myid" {} "y" {}}]
+              (-> query
+                  (lib/with-native-query "select * from venues where id = {{myid}} and x = {{y}}")
+                  ((juxt lib/raw-native-query lib/template-tags)))))
+      (is (=? ["select * from venues where id = {{myrenamedid}}"
+               {"myrenamedid" {}}]
+              (-> query
+                  (lib/with-native-query "select * from venues where id = {{myrenamedid}}")
+                  ((juxt lib/raw-native-query lib/template-tags)))))
+      (is (empty?
+            (-> query
+                (lib/with-native-query "select * from venues")
+                lib/template-tags))))))
+
+(deftest ^:parallel with-template-tags-test
+  (let [query (lib/native-query meta/metadata-provider "select * from venues where id = {{myid}}")
+        original-tags (lib/template-tags query)]
+    (is (= (assoc-in original-tags ["myid" :display-name] "My ID")
+           (-> query
+               (lib/with-template-tags {"myid" {:display-name "My ID"}})
+               lib/template-tags)))
+    (testing "Changing query keeps updated template tags"
+      (is (= (assoc-in original-tags ["myid" :display-name] "My ID")
+             (-> query
+                 (lib/with-template-tags {"myid" {:display-name "My ID"}})
+                 (lib/with-native-query "select * from venues where category_id = {{myid}}")
+                 lib/template-tags))))
+    (testing "Doesn't introduce garbage"
+      (is (= original-tags
+             (-> query
+                 (lib/with-template-tags {"garbage" {:display-name "Foobar"}})
+                 lib/template-tags))))))
