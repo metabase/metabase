@@ -1,5 +1,4 @@
 import {
-  closeNavigationSidebar,
   cypressWaitAll,
   openNavigationSidebar,
   restore,
@@ -9,36 +8,6 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
-
-const SCALAR_QUESTION = {
-  name: "31628 Question - This is a rather lengthy question name",
-  description: "This is a rather lengthy question description",
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-  },
-  display: "scalar",
-};
-
-const SMART_SCALAR_QUESTION = {
-  name: "31628 Question - This is a rather lengthy question name",
-  description: "This is a rather lengthy question description",
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-    breakout: [
-      [
-        "field",
-        ORDERS.CREATED_AT,
-        {
-          "base-type": "type/DateTime",
-          "temporal-unit": "month",
-        },
-      ],
-    ],
-  },
-  display: "smartscalar",
-};
 
 const CARDS = [
   { size_x: 6, size_y: 5, row: 0, col: 0 },
@@ -81,72 +50,115 @@ const CARDS_SIZE_1X = [
   { size_x: 1, size_y: 1, row: 13, col: 20 },
 ];
 
-const VIEWPORTS_SIDEBAR_FLOATING = [[375, 667]];
-
-const VIEWPORTS_SIDEBAR_IN_FLOW = [
-  [768, 1200],
-  [1024, 1200],
-  [1440, 1200],
+const VIEWPORTS = [
+  { width: 375, height: 667, openSidebar: false },
+  { width: 768, height: 1200, openSidebar: true },
+  { width: 768, height: 1200, openSidebar: false },
+  { width: 1024, height: 1200, openSidebar: true },
+  { width: 1024, height: 1200, openSidebar: false },
+  { width: 1440, height: 1200, openSidebar: true },
+  { width: 1440, height: 1200, openSidebar: false },
 ];
+
+const SCALAR_QUESTION = {
+  name: "31628 Question - This is a rather lengthy question name",
+  description: "This is a rather lengthy question description",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
+
+const SCALAR_QUESTION_CARDS = [...CARDS, ...CARDS_SIZE_1X];
+
+const SMART_SCALAR_QUESTION = {
+  name: "31628 Question - This is a rather lengthy question name",
+  description: "This is a rather lengthy question description",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        {
+          "base-type": "type/DateTime",
+          "temporal-unit": "month",
+        },
+      ],
+    ],
+  },
+  display: "smartscalar",
+};
+
+const SMART_SCALAR_QUESTION_CARDS = CARDS;
 
 describe("issue 31628", () => {
   describe("display: scalar", () => {
+    const descendantsSelector = [
+      "[data-testid='scalar-value']",
+      "[data-testid='scalar-title']",
+      "[data-testid='scalar-description']",
+    ].join(",");
+
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      setupDashboardWithQuestionInCards(SCALAR_QUESTION, [
-        ...CARDS,
-        ...CARDS_SIZE_1X,
-      ]);
+      setupDashboardWithQuestionInCards(SCALAR_QUESTION, SCALAR_QUESTION_CARDS);
     });
 
-    it("should render descendants of a 'scalar' without overflowing it (metabase#31628)", () => {
-      const descendantsSelector = [
-        "[data-testid='scalar-value']",
-        "[data-testid='scalar-title']",
-        "[data-testid='scalar-description']",
-      ].join(",");
+    VIEWPORTS.forEach(({ width, height, openSidebar }) => {
+      describe(`${width}x${height} - sidebar ${
+        openSidebar ? "open" : "closed"
+      }`, () => {
+        beforeEach(() => {
+          cy.viewport(width, height);
 
-      VIEWPORTS_SIDEBAR_FLOATING.forEach(([width, height]) => {
-        cy.viewport(width, height);
-        assertDescendantsNotOverflowDashcards(descendantsSelector);
-      });
+          if (openSidebar) {
+            openNavigationSidebar();
+          }
+        });
 
-      VIEWPORTS_SIDEBAR_IN_FLOW.forEach(([width, height]) => {
-        cy.viewport(width, height);
-        assertDescendantsNotOverflowDashcards(descendantsSelector);
-        openNavigationSidebar();
-        assertDescendantsNotOverflowDashcards(descendantsSelector);
-        closeNavigationSidebar();
+        it(`should render descendants of a 'scalar' without overflowing it (metabase#31628)`, () => {
+          assertDescendantsNotOverflowDashcards(descendantsSelector);
+        });
       });
     });
   });
+
   describe("display: smartscalar", () => {
+    const descendantsSelector = [
+      "[data-testid='scalar-value']",
+      "[data-testid='scalar-title']",
+      "[data-testid='scalar-description']",
+      "[data-testid='scalar-previous-value']",
+    ].join(",");
+
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      setupDashboardWithQuestionInCards(SMART_SCALAR_QUESTION, CARDS);
+      setupDashboardWithQuestionInCards(
+        SMART_SCALAR_QUESTION,
+        SMART_SCALAR_QUESTION_CARDS,
+      );
     });
 
-    it("should render descendants of a 'smartscalar' without overflowing it (metabase#31628)", () => {
-      const descendantsSelector = [
-        "[data-testid='scalar-value']",
-        "[data-testid='scalar-title']",
-        "[data-testid='scalar-description']",
-        "[data-testid='scalar-previous-value']",
-      ].join(",");
+    VIEWPORTS.forEach(({ width, height, openSidebar }) => {
+      describe(`${width}x${height} - sidebar ${
+        openSidebar ? "open" : "closed"
+      }`, () => {
+        beforeEach(() => {
+          cy.viewport(width, height);
 
-      VIEWPORTS_SIDEBAR_FLOATING.forEach(([width, height]) => {
-        cy.viewport(width, height);
-        assertDescendantsNotOverflowDashcards(descendantsSelector);
-      });
+          if (openSidebar) {
+            openNavigationSidebar();
+          }
+        });
 
-      VIEWPORTS_SIDEBAR_IN_FLOW.forEach(([width, height]) => {
-        cy.viewport(width, height);
-        assertDescendantsNotOverflowDashcards(descendantsSelector);
-        openNavigationSidebar();
-        assertDescendantsNotOverflowDashcards(descendantsSelector);
-        closeNavigationSidebar();
+        it(`should render descendants of a 'scalar' without overflowing it (metabase#31628)`, () => {
+          assertDescendantsNotOverflowDashcards(descendantsSelector);
+        });
       });
     });
   });
