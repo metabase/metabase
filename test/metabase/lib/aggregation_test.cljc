@@ -301,6 +301,22 @@
     :semantic-type  :type/Name
     :lib/source     :source/implicitly-joinable}])
 
+(deftest ^:parallel aggregation-clause-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        aggregation-operators (lib/available-aggregation-operators query)
+        count-op (first aggregation-operators)
+        sum-op (second aggregation-operators)]
+    (is (=? [:sum {} [:field {} (meta/id :venues :price)]]
+            (lib/aggregation-clause sum-op (meta/field-metadata :venues :price))))
+    (is (=? [:count {}]
+            (lib/aggregation-clause count-op)))
+    (is (=? [:count {} [:field {} (meta/id :venues :price)]]
+            (lib/aggregation-clause count-op (meta/field-metadata :venues :price))))
+    (is (thrown-with-msg?
+          #?(:clj Exception :cljs :default)
+          #"aggregation operator :sum requires an argument"
+          (lib/aggregation-clause sum-op)))))
+
 (deftest ^:parallel aggregation-operator-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                   (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2))
