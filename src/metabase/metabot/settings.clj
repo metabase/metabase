@@ -38,7 +38,7 @@
 (defsetting is-metabot-enabled
   (deferred-tru "Is Metabot enabled?")
   :type :boolean
-  :visibility :internal
+  :visibility :public
   :getter  (fn []
              (boolean (setting/env-var-value :is-metabot-enabled)))
   :default false)
