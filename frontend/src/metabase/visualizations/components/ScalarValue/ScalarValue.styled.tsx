@@ -59,12 +59,14 @@ export const ScalarTitleContent = styled.h3`
 export const ScalarDescriptionContainer = styled.div`
   cursor: pointer;
   width: 1.5rem;
-  margin-top: 0.25rem;
+  margin-top: 0.2rem;
   padding-left: 0.5rem;
 `;
 
 export const ScalarDescriptionPlaceholder = styled.div`
   width: 1.5rem;
+  margin-top: 0.2rem;
+  padding-right: 0.5rem;
 `;
 
 export const ScalarDescriptionIcon = styled(Icon)`
