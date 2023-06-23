@@ -4,7 +4,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-const questionDetails = {
+const SMART_SCALAR_QUESTION = {
   name: "31628 Question - This is a rather lengthy question name",
   description: "This is a rather lengthy question description",
   query: {
@@ -22,6 +22,16 @@ const questionDetails = {
     ],
   },
   display: "smartscalar",
+};
+
+const SCALAR_QUESTION = {
+  name: "31628 Question - This is a rather lengthy question name",
+  description: "This is a rather lengthy question description",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
 };
 
 const cards = [
@@ -52,47 +62,96 @@ const cards = [
 ];
 
 describe("issue 31628", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
+  describe("display: scalar", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
 
-    cy.createDashboard().then(({ body: dashboard }) => {
-      cypressWaitAll(
-        cards.map(card => {
-          return cy.createQuestionAndAddToDashboard(
-            questionDetails,
-            dashboard.id,
-            card,
-          );
-        }),
-      );
+      cy.createDashboard().then(({ body: dashboard }) => {
+        cypressWaitAll(
+          cards.map(card => {
+            return cy.createQuestionAndAddToDashboard(
+              SCALAR_QUESTION,
+              dashboard.id,
+              card,
+            );
+          }),
+        );
 
-      visitDashboard(dashboard.id);
+        visitDashboard(dashboard.id);
+      });
+    });
+
+    it("should render children of smartscalar without overflowing it (metabase#31628)", () => {
+      cy.findAllByTestId("dashcard").each(dashcard => {
+        const dashcardRect = dashcard[0].getBoundingClientRect();
+        const descendants = dashcard.find(
+          [
+            "[data-testid='scalar-value']",
+            "[data-testid='scalar-title']",
+            "[data-testid='scalar-description']",
+          ].join(","),
+        );
+        const visibleDescendants = descendants.filter((_index, descendant) => {
+          const descendantRect = descendant.getBoundingClientRect();
+          return descendantRect.width > 0 && descendantRect.height > 0;
+        });
+
+        visibleDescendants.each((_index, descendant) => {
+          const descendantRect = descendant.getBoundingClientRect();
+
+          expect(descendantRect.bottom).to.lte(dashcardRect.bottom);
+          expect(descendantRect.top).to.gte(dashcardRect.top);
+          expect(descendantRect.left).to.gte(dashcardRect.left);
+          expect(descendantRect.right).to.lte(dashcardRect.right);
+        });
+      });
     });
   });
+  describe("display: smartscalar", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
 
-  it("should render children of smartscalar without overflowing it (metabase#31628)", () => {
-    cy.findAllByTestId("dashcard").each(dashcard => {
-      const dashcardRect = dashcard[0].getBoundingClientRect();
-      const descendants = dashcard.find(
-        [
-          "[data-testid='scalar-title']",
-          "[data-testid='scalar-value']",
-          "[data-testid='scalar-previous-value']",
-        ].join(","),
-      );
-      const visibleDescendants = descendants.filter((_index, descendant) => {
-        const descendantRect = descendant.getBoundingClientRect();
-        return descendantRect.width > 0 && descendantRect.height > 0;
+      cy.createDashboard().then(({ body: dashboard }) => {
+        cypressWaitAll(
+          cards.map(card => {
+            return cy.createQuestionAndAddToDashboard(
+              SMART_SCALAR_QUESTION,
+              dashboard.id,
+              card,
+            );
+          }),
+        );
+
+        visitDashboard(dashboard.id);
       });
+    });
 
-      visibleDescendants.each((_index, descendant) => {
-        const descendantRect = descendant.getBoundingClientRect();
+    it("should render children of smartscalar without overflowing it (metabase#31628)", () => {
+      cy.findAllByTestId("dashcard").each(dashcard => {
+        const dashcardRect = dashcard[0].getBoundingClientRect();
+        const descendants = dashcard.find(
+          [
+            "[data-testid='scalar-value']",
+            "[data-testid='scalar-title']",
+            "[data-testid='scalar-description']",
+            "[data-testid='scalar-previous-value']",
+          ].join(","),
+        );
+        const visibleDescendants = descendants.filter((_index, descendant) => {
+          const descendantRect = descendant.getBoundingClientRect();
+          return descendantRect.width > 0 && descendantRect.height > 0;
+        });
 
-        expect(descendantRect.bottom).to.lte(dashcardRect.bottom);
-        expect(descendantRect.top).to.gte(dashcardRect.top);
-        expect(descendantRect.left).to.gte(dashcardRect.left);
-        expect(descendantRect.right).to.lte(dashcardRect.right);
+        visibleDescendants.each((_index, descendant) => {
+          const descendantRect = descendant.getBoundingClientRect();
+
+          expect(descendantRect.bottom).to.lte(dashcardRect.bottom);
+          expect(descendantRect.top).to.gte(dashcardRect.top);
+          expect(descendantRect.left).to.gte(dashcardRect.left);
+          expect(descendantRect.right).to.lte(dashcardRect.right);
+        });
       });
     });
   });
