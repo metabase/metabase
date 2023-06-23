@@ -53,7 +53,7 @@ interface QueryModalsProps {
   modal: ModalType;
   modalContext: number;
   question: Question;
-  rawQuestion: Question;
+  rawQuestion: Question | undefined;
   initialCollectionId: number;
   updateQuestion: (question: Question, config?: UpdateQuestionOpts) => void;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
