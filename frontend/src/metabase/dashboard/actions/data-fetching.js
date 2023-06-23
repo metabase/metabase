@@ -423,6 +423,7 @@ export const fetchDashboardCardData = createThunkAction(
   options => (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
     const selectedTabId = getSelectedTabId(getState());
+    const dashcardIds = [];
 
     const promises = getAllDashboardCards(dashboard)
       .map(({ card, dashcard }) => {
@@ -434,6 +435,7 @@ export const fetchDashboardCardData = createThunkAction(
           return;
         }
 
+        dashcardIds.push(dashcard.id);
         return dispatch(fetchCardData(card, dashcard, options)).then(() => {
           return dispatch(updateLoadingTitle());
         });
@@ -448,7 +450,7 @@ export const fetchDashboardCardData = createThunkAction(
       dispatch(loadingComplete());
     });
 
-    return { currentTime: performance.now() };
+    return { currentTime: performance.now(), dashcardIds };
   },
 );
 

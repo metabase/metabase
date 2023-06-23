@@ -43,8 +43,9 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   tabsReducer,
+  SET_LOADING_DASHCARDS_COMPLETE,
 } from "./actions";
-import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
+import { syncParametersAndEmbeddingParams } from "./utils";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 
 const dashboardId = handleActions(
@@ -367,24 +368,13 @@ const loadingDashCards = handleActions(
         loadingStatus: "idle",
       }),
     },
-    [FETCH_DASHBOARD]: {
-      next: (state, { payload }) => {
-        const cardIds = Object.values(payload.entities.dashcard || {})
-          .filter(dc => !isVirtualDashCard(dc))
-          .map(dc => dc.id);
-        return {
-          ...state,
-          dashcardIds: cardIds,
-          loadingIds: cardIds,
-          loadingStatus: "idle",
-        };
-      },
-    },
     [FETCH_DASHBOARD_CARD_DATA]: {
-      next: (state, { payload: { currentTime } }) => ({
+      next: (state, { payload: { currentTime, dashcardIds } }) => ({
         ...state,
-        loadingStatus: state.loadingIds.length > 0 ? "running" : "idle",
-        startTime: state.loadingIds.length > 0 ? currentTime : null,
+        dashcardIds,
+        loadingIds: dashcardIds,
+        loadingStatus: dashcardIds.length > 0 ? "running" : "idle",
+        startTime: dashcardIds.length > 0 ? currentTime : null,
       }),
     },
     [FETCH_CARD_DATA]: {
@@ -406,6 +396,15 @@ const loadingDashCards = handleActions(
           ...state,
           loadingIds,
           ...(loadingIds.length === 0 ? { startTime: null } : {}),
+        };
+      },
+    },
+    [SET_LOADING_DASHCARDS_COMPLETE]: {
+      next: state => {
+        return {
+          ...state,
+          loadingIds: [],
+          loadingStatus: "complete",
         };
       },
     },
