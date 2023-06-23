@@ -129,11 +129,85 @@ describe("issue 31628", () => {
         ]);
       });
 
-      it(`should show a value tooltip on hover`, () => {
+      it("should show a value tooltip on hover", () => {
         cy.findByTestId("scalar-value").realHover();
 
         popover().within(() => {
           cy.contains("18,760").should("exist");
+        });
+      });
+
+      it("should show an ellipsis icon with question name in tooltip", () => {
+        cy.findByTestId("scalar-title-icon").realHover();
+
+        popover().within(() => {
+          cy.contains(SCALAR_QUESTION.name).should("exist");
+        });
+      });
+    });
+    describe("2x2 card", () => {
+      beforeEach(() => {
+        restore();
+        cy.signInAsAdmin();
+        setupDashboardWithQuestionInCards(SCALAR_QUESTION, [
+          { size_x: 2, size_y: 2, row: 0, col: 0 },
+        ]);
+      });
+
+      it("should not show value tooltip on hover", () => {
+        cy.findByTestId("scalar-value").realHover();
+        cy.findByRole("tooltip").should("not.exist");
+      });
+
+      it("should not show ellipsis icon for title", () => {
+        cy.findByTestId("scalar-title-icon").should("not.exist");
+      });
+
+      it("should show a title tooltip on hover", () => {
+        cy.findByTestId("scalar-title").realHover();
+
+        popover().within(() => {
+          cy.contains(SCALAR_QUESTION.name).should("exist");
+        });
+      });
+
+      it("should show a description tooltip on hover", () => {
+        cy.findByTestId("scalar-description").realHover();
+
+        popover().within(() => {
+          cy.contains(SCALAR_QUESTION.description).should("exist");
+        });
+      });
+    });
+
+    describe("5x3 card", () => {
+      beforeEach(() => {
+        restore();
+        cy.signInAsAdmin();
+        setupDashboardWithQuestionInCards(SCALAR_QUESTION, [
+          { size_x: 6, size_y: 3, row: 0, col: 0 },
+        ]);
+      });
+
+      it("should not show value tooltip on hover", () => {
+        cy.findByTestId("scalar-value").realHover();
+        cy.findByRole("tooltip").should("not.exist");
+      });
+
+      it("should not show ellipsis icon for title", () => {
+        cy.findByTestId("scalar-title-icon").should("not.exist");
+      });
+
+      it("should not show a title tooltip on hover", () => {
+        cy.findByTestId("scalar-title").realHover();
+        cy.findByRole("tooltip").should("not.exist");
+      });
+
+      it("should show a description tooltip on hover", () => {
+        cy.findByTestId("scalar-description").realHover();
+
+        popover().within(() => {
+          cy.contains(SCALAR_QUESTION.description).should("exist");
         });
       });
     });

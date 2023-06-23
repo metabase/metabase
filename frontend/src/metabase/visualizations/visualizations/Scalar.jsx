@@ -265,6 +265,7 @@ export default class Scalar extends Component {
         {isDashboard &&
           (showSmallTitle ? (
             <LabelIcon
+              data-testid="scalar-title-icon"
               name="ellipsis"
               tooltip={settings["card.title"]}
               size={TITLE_ICON_SIZE}

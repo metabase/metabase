@@ -41,6 +41,7 @@ export const ScalarTitleContainer = styled.div<ScalarTitleContainerProps>`
   height: ${props => props.lines * TITLE_LINE_HEIGHT_REM}rem;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   padding: 0 ${space(1)};
   width: 100%;
 `;
