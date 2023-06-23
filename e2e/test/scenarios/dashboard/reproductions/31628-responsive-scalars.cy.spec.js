@@ -66,20 +66,7 @@ describe("issue 31628", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-
-      cy.createDashboard().then(({ body: dashboard }) => {
-        cypressWaitAll(
-          cards.map(card => {
-            return cy.createQuestionAndAddToDashboard(
-              SCALAR_QUESTION,
-              dashboard.id,
-              card,
-            );
-          }),
-        );
-
-        visitDashboard(dashboard.id);
-      });
+      setupDashboardWithQuestionInCards(SCALAR_QUESTION, cards);
     });
 
     it("should render children of smartscalar without overflowing it (metabase#31628)", () => {
@@ -102,20 +89,7 @@ describe("issue 31628", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-
-      cy.createDashboard().then(({ body: dashboard }) => {
-        cypressWaitAll(
-          cards.map(card => {
-            return cy.createQuestionAndAddToDashboard(
-              SMART_SCALAR_QUESTION,
-              dashboard.id,
-              card,
-            );
-          }),
-        );
-
-        visitDashboard(dashboard.id);
-      });
+      setupDashboardWithQuestionInCards(SMART_SCALAR_QUESTION, cards);
     });
 
     it("should render children of smartscalar without overflowing it (metabase#31628)", () => {
@@ -136,6 +110,18 @@ describe("issue 31628", () => {
     });
   });
 });
+
+const setupDashboardWithQuestionInCards = (question, cards) => {
+  cy.createDashboard().then(({ body: dashboard }) => {
+    cypressWaitAll(
+      cards.map(card => {
+        return cy.createQuestionAndAddToDashboard(question, dashboard.id, card);
+      }),
+    );
+
+    visitDashboard(dashboard.id);
+  });
+};
 
 const assertDescendantNotOverflowsContainer = (descendant, container) => {
   const containerRect = container.getBoundingClientRect();
