@@ -10,7 +10,7 @@
    [metabase.util.humanization :as u.humanization]))
 
 (deftest ^:parallel variable-tag-test
-  (are [exp input] (= exp (lib.native/recognize-template-tags input))
+  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags input))))
     #{"foo"} "SELECT * FROM table WHERE {{foo}} AND some_field IS NOT NULL"
     #{"foo" "bar"} "SELECT * FROM table WHERE {{foo}} AND some_field = {{bar}}"
     ;; Duplicates are flattened.
@@ -19,7 +19,7 @@
     #{} "SELECT * FROM table WHERE {{&foo}}"))
 
 (deftest ^:parallel snippet-tag-test
-  (are [exp input] (= exp (lib.native/recognize-template-tags input))
+  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags input))))
     #{"snippet:   foo  "} "SELECT * FROM table WHERE {{snippet:   foo  }} AND some_field IS NOT NULL"
     #{"snippet:   foo  *#&@"} "SELECT * FROM table WHERE {{snippet:   foo  *#&@}}"
     ;; TODO: This logic should trim the whitespace and unify these two snippet names.
@@ -27,7 +27,7 @@
     #{"snippet: foo" "snippet:foo"} "SELECT * FROM table WHERE {{snippet: foo}} AND {{snippet:foo}}"))
 
 (deftest ^:parallel card-tag-test
-  (are [exp input] (= exp (lib.native/recognize-template-tags input))
+  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags input))))
     #{"#123"} "SELECT * FROM table WHERE {{ #123 }} AND some_field IS NOT NULL"
     ;; TODO: This logic should trim the whitespace and unify these two card tags.
     ;; I think this is a bug in the original code but am aiming to reproduce it exactly for now.
