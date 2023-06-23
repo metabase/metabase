@@ -14,7 +14,7 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 const FIXTURE_PATH = "../../e2e/support/assets";
 
-const testFiles = [
+const validTestFiles = [
   {
     fileName: "dog_breeds.csv",
     tableName: "dog_breeds",
@@ -29,12 +29,18 @@ const testFiles = [
   },
 ];
 
+const invalidTestFiles = [
+  {
+    fileName: "invalid.csv",
+  },
+];
+
 describeWithSnowplow(
   "CSV Uploading",
   { tags: ["@external", "@actions"] },
   () => {
     it("Can upload a CSV file to an empty postgres schema", () => {
-      const testFile = testFiles[0];
+      const testFile = validTestFiles[0];
       const EMPTY_SCHEMA_NAME = "empty_uploads";
 
       cy.intercept("PUT", "/api/setting").as("saveSettings");
@@ -111,14 +117,15 @@ describeWithSnowplow(
 
         afterEach(() => {
           expectNoBadSnowplowEvents();
-          expectGoodSnowplowEvent({
-            event: "csv_upload_successful",
-          });
         });
 
-        testFiles.forEach(testFile => {
+        validTestFiles.forEach(testFile => {
           it(`Can upload ${testFile.fileName} to a collection`, () => {
-            uploadFile(testFile, dialect);
+            uploadFile(testFile);
+
+            expectGoodSnowplowEvent({
+              event: "csv_upload_successful",
+            });
 
             const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
 
@@ -136,12 +143,28 @@ describeWithSnowplow(
             });
           });
         });
+
+        invalidTestFiles.forEach(testFile => {
+          it(`Cannot upload ${testFile.fileName} to a collection`, () => {
+            uploadFile(testFile, false);
+
+            expectGoodSnowplowEvent({
+              event: "csv_upload_failed",
+            });
+
+            const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
+
+            queryWritableDB(tableQuery, dialect).then(result => {
+              expect(result.rows.length).to.equal(0);
+            });
+          });
+        });
       });
     });
   },
 );
 
-function uploadFile(testFile, dialect) {
+function uploadFile(testFile, valid = true) {
   cy.get("@collectionId").then(collectionId =>
     cy.visit(`/collection/${collectionId}`),
   );
@@ -160,24 +183,32 @@ function uploadFile(testFile, dialect) {
   cy.findByRole("status").within(() => {
     cy.findByText(/Uploading/i);
     cy.findByText(testFile.fileName);
+  });
 
-    cy.findByText("Data added to Uploads Collection", {
-      timeout: 10 * 1000,
+  if (valid) {
+    cy.findByRole("status").within(() => {
+      cy.findByText("Data added to Uploads Collection", {
+        timeout: 10 * 1000,
+      });
     });
-  });
 
-  cy.get("main").within(() => cy.findByText("Uploads Collection"));
+    cy.get("main").within(() => cy.findByText("Uploads Collection"));
 
-  cy.findByTestId("collection-table").within(() => {
-    cy.findByText(testFile.humanName);
-  });
+    cy.findByTestId("collection-table").within(() => {
+      cy.findByText(testFile.humanName);
+    });
 
-  cy.findByRole("status").within(() => {
-    cy.findByText("Start exploring").click();
-  });
+    cy.findByRole("status").within(() => {
+      cy.findByText("Start exploring").click();
+    });
 
-  cy.url().should("include", `/model/4`);
-  cy.findByTestId("TableInteractive-root");
+    cy.url().should("include", `/model/4`);
+    cy.findByTestId("TableInteractive-root");
+  } else {
+    cy.findByRole("status").within(() => {
+      cy.findByText("Error uploading your File");
+    });
+  }
 }
 
 function enableUploads(dialect) {
