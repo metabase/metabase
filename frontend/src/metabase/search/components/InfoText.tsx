@@ -17,39 +17,51 @@ import type TableType from "metabase-lib/metadata/Table";
 import { CollectionBadge } from "./CollectionBadge";
 import type { WrappedResult } from "./types";
 
-function getInfoText(result: WrappedResult) {
+export function InfoText({ result }: { result: WrappedResult }) {
+  let textContent: string | string[] | JSX.Element;
+
   switch (result.model) {
     case "card":
-      return jt`Saved question in ${formatCollection(
+      textContent = jt`Saved question in ${formatCollection(
         result,
         result.getCollection(),
       )}`;
+      break;
     case "dataset":
-      return jt`Model in ${formatCollection(result, result.getCollection())}`;
-    case "collection":
-      return getCollectionInfoText(result.collection);
-    case "database":
-      return t`Database`;
-    case "table":
-      return <TablePath result={result} />;
-    case "segment":
-      return jt`Segment of ${(<TableLink result={result} />)}`;
-    case "metric":
-      return jt`Metric for ${(<TableLink result={result} />)}`;
-    case "action":
-      return jt`for ${result.model_name}`;
-    case "indexed-entity":
-      return jt`in ${result.model_name}`;
-    default:
-      return jt`${getTranslatedEntityName(result.model)} in ${formatCollection(
+      textContent = jt`Model in ${formatCollection(
         result,
         result.getCollection(),
       )}`;
+      break;
+    case "collection":
+      textContent = getCollectionInfoText(result.collection);
+      break;
+    case "database":
+      textContent = t`Database`;
+      break;
+    case "table":
+      textContent = <TablePath result={result} />;
+      break;
+    case "segment":
+      textContent = jt`Segment of ${(<TableLink result={result} />)}`;
+      break;
+    case "metric":
+      textContent = jt`Metric for ${(<TableLink result={result} />)}`;
+      break;
+    case "action":
+      textContent = jt`for ${result.model_name}`;
+      break;
+    case "indexed-entity":
+      textContent = jt`in ${result.model_name}`;
+      break;
+    default:
+      textContent = jt`${getTranslatedEntityName(
+        result.model,
+      )} in ${formatCollection(result, result.getCollection())}`;
+      break;
   }
-}
 
-export function InfoText({ result }: { result: WrappedResult }) {
-  return <>{getInfoText(result)}</>;
+  return <>{textContent}</>;
 }
 
 function formatCollection(
