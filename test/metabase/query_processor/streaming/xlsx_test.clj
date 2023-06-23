@@ -451,7 +451,13 @@
            (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))
     (binding [qp.xlsx/*parse-temporal-string-values* true]
       (is (= [#inst "2020-03-28T10:12:06.681"]
-             (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))))
+             (second (xlsx-export [{:id 0, :name "Col" :effective_type :type/Temporal}]
+                                  {}
+                                  [["2020-03-28T10:12:06.681"]]))))
+      (is (= ["2020-03-28T10:12:06.681"]
+             (second (xlsx-export [{:id 0, :name "Col" :effective_type :type/Text}]
+                                  {}
+                                  [["2020-03-28T10:12:06.681"]]))))))
   (mt/with-everything-store
     (binding [driver/*driver* :h2]
       (testing "OffsetDateTime"
