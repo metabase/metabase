@@ -35,14 +35,14 @@ import { QueryBuilderMode, State } from "metabase-types/store";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
 import { UpdateQuestionOpts } from "../actions/core/updateQuestion";
-import { getDirtyQuestion } from "../selectors";
+import { getRawQuestion } from "../selectors";
 
 const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,
 };
 
 const mapStateToProps = (state: State) => ({
-  dirtyQuestion: getDirtyQuestion(state),
+  rawQuestion: getRawQuestion(state),
 });
 
 type ModalType = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
@@ -53,7 +53,7 @@ interface QueryModalsProps {
   modal: ModalType;
   modalContext: number;
   question: Question;
-  dirtyQuestion: Question;
+  rawQuestion: Question;
   initialCollectionId: number;
   updateQuestion: (question: Question, config?: UpdateQuestionOpts) => void;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
@@ -100,7 +100,7 @@ class QueryModals extends Component<QueryModalsProps> {
       modal,
       modalContext,
       question,
-      dirtyQuestion,
+      rawQuestion,
       initialCollectionId,
       onCloseModal,
       onOpenModal,
@@ -284,17 +284,19 @@ class QueryModals extends Component<QueryModalsProps> {
             <EntityCopyModal
               entityType="questions"
               entityObject={{
-                ...dirtyQuestion.card(),
-                collection_id: dirtyQuestion.canWrite()
-                  ? dirtyQuestion.collectionId()
+                ...rawQuestion.card(),
+                collection_id: rawQuestion.canWrite()
+                  ? rawQuestion.collectionId()
                   : initialCollectionId,
               }}
               copy={async formValues => {
                 const object = await this.props.onCreate(
-                  dirtyQuestion
-                    .setDisplayName(formValues.name)
-                    .setCollectionId(formValues.collection_id)
-                    .setDescription(formValues.description),
+                  new Question({
+                    ...rawQuestion.card(),
+                    name: formValues.name,
+                    collection_id: formValues.collection_id,
+                    description: formValues.description || null,
+                  }),
                 );
 
                 return { payload: { object } };

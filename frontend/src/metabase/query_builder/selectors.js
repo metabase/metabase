@@ -315,7 +315,7 @@ export const getLastRunQuestion = createSelector(
     card && metadata && new Question(card, metadata, parameterValues),
 );
 
-export const getDirtyQuestion = createSelector(
+export const getRawQuestion = createSelector(
   [getMetadata, getCard, getParameterValues],
   (metadata, card, parameterValues) => {
     if (!metadata || !card) {
@@ -325,7 +325,7 @@ export const getDirtyQuestion = createSelector(
   },
 );
 export const getQuestion = createSelector(
-  [getDirtyQuestion, getQueryBuilderMode],
+  [getRawQuestion, getQueryBuilderMode],
   (question, queryBuilderMode) => {
     if (!question) {
       return;
