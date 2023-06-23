@@ -5,8 +5,9 @@ import * as Yup from "yup";
 
 import ModalContent from "metabase/components/ModalContent";
 import FormProvider from "metabase/core/components/FormProvider/FormProvider";
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import { NewCollectionButton } from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker.styled";
+import FormCollectionPicker, {
+  NewCollectionButton,
+} from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import Form from "metabase/core/components/Form";
 import FormInput from "metabase/core/components/FormInput";
@@ -230,20 +231,15 @@ export const SaveQuestionModal = ({
                     <FormCollectionPicker
                       name="collection_id"
                       title={t`Which collection should this go in?`}
-                      newCollButton={
-                        <NewCollectionButton
-                          light
-                          icon="add"
-                          disabled={!isValid}
-                          onClick={() => {
-                            setCreatingNewCollection(true);
-                            setStagedValues(values);
-                          }}
-                        >
-                          {t`New collection`}
-                        </NewCollectionButton>
-                      }
-                    />
+                    >
+                      <NewCollectionButton
+                        disabled={!isValid}
+                        onClick={() => {
+                          setCreatingNewCollection(true);
+                          setStagedValues(values);
+                        }}
+                      />
+                    </FormCollectionPicker>
                   </div>
                 </CSSTransition>
               )}

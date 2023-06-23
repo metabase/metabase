@@ -27,6 +27,7 @@ import type { CollectionId } from "metabase-types/api";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
+  PopoverItemAlignedButton,
 } from "./FormCollectionPicker.styled";
 
 export interface FormCollectionPickerProps
@@ -35,7 +36,6 @@ export interface FormCollectionPickerProps
   title?: string;
   placeholder?: string;
   type?: "collections" | "snippet-collections";
-  newCollButton?: React.ReactNode;
 }
 
 function ItemName({
@@ -52,6 +52,27 @@ function ItemName({
   );
 }
 
+interface NewCollectionButtonProps {
+  disabled?: boolean;
+  onClick?: () => void;
+}
+
+export const NewCollectionButton = ({
+  disabled,
+  onClick,
+}: NewCollectionButtonProps) => {
+  return (
+    <PopoverItemAlignedButton
+      light
+      icon="add"
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {t`New collection`}
+    </PopoverItemAlignedButton>
+  );
+};
+
 function FormCollectionPicker({
   className,
   style,
@@ -59,7 +80,7 @@ function FormCollectionPicker({
   title,
   placeholder = t`Select a collection`,
   type = "collections",
-  newCollButton,
+  children,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -116,11 +137,11 @@ function FormCollectionPicker({
             showSearch={hasSearch}
             width={width}
           />
-          {type === "collections" && newCollButton}
+          {children}
         </div>
       );
     },
-    [value, type, width, setValue, newCollButton],
+    [value, type, width, setValue, children],
   );
 
   return (

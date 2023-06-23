@@ -19,8 +19,9 @@ import * as Errors from "metabase/core/utils/errors";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
-import { NewCollectionButton } from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker.styled";
+import FormCollectionPicker, {
+  NewCollectionButton,
+} from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 
 import type { CollectionId, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -129,17 +130,12 @@ function CreateDashboardForm({
           <FormCollectionPicker
             name="collection_id"
             title={t`Which collection should this go in?`}
-            newCollButton={
-              <NewCollectionButton
-                light
-                icon="add"
-                disabled={!isValid}
-                onClick={() => saveToNewCollection?.({ values, handleCreate })}
-              >
-                {t`New collection`}
-              </NewCollectionButton>
-            }
-          />
+          >
+            <NewCollectionButton
+              disabled={!isValid}
+              onClick={() => saveToNewCollection?.({ values, handleCreate })}
+            />
+          </FormCollectionPicker>
           <FormFooter>
             <FormErrorMessage inline />
             {!!onCancel && (
