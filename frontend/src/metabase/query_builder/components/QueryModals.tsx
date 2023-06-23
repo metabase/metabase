@@ -31,14 +31,19 @@ import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQue
 import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 import { Alert, Card, Collection, User } from "metabase-types/api";
-import { QueryBuilderMode } from "metabase-types/store";
+import { QueryBuilderMode, State } from "metabase-types/store";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
 import { UpdateQuestionOpts } from "../actions/core/updateQuestion";
+import { getDirtyQuestion } from "../selectors";
 
 const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,
 };
+
+const mapStateToProps = (state: State) => ({
+  dirtyQuestion: getDirtyQuestion(state),
+});
 
 type ModalType = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
 
@@ -48,6 +53,7 @@ interface QueryModalsProps {
   modal: ModalType;
   modalContext: number;
   question: Question;
+  dirtyQuestion: Question;
   initialCollectionId: number;
   updateQuestion: (question: Question, config?: UpdateQuestionOpts) => void;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
@@ -94,6 +100,7 @@ class QueryModals extends Component<QueryModalsProps> {
       modal,
       modalContext,
       question,
+      dirtyQuestion,
       initialCollectionId,
       onCloseModal,
       onOpenModal,
@@ -277,20 +284,19 @@ class QueryModals extends Component<QueryModalsProps> {
             <EntityCopyModal
               entityType="questions"
               entityObject={{
-                ...this.props.card,
-                collection_id: question.canWrite()
-                  ? question.collectionId()
+                ...dirtyQuestion.card(),
+                collection_id: dirtyQuestion.canWrite()
+                  ? dirtyQuestion.collectionId()
                   : initialCollectionId,
               }}
               copy={async formValues => {
                 const object = await this.props.onCreate(
-                  new Question({
-                    ...this.props.card,
-                    name: formValues.name,
-                    collection_id: formValues.collection_id,
-                    description: formValues.description || null,
-                  }),
+                  dirtyQuestion
+                    .setDisplayName(formValues.name)
+                    .setCollectionId(formValues.collection_id)
+                    .setDescription(formValues.description),
                 );
+
                 return { payload: { object } };
               }}
               onClose={onCloseModal}
@@ -358,4 +364,4 @@ class QueryModals extends Component<QueryModalsProps> {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(null, mapDispatchToProps)(QueryModals);
+export default connect(mapStateToProps, mapDispatchToProps)(QueryModals);

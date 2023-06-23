@@ -315,14 +315,21 @@ export const getLastRunQuestion = createSelector(
     card && metadata && new Question(card, metadata, parameterValues),
 );
 
-export const getQuestion = createSelector(
-  [getMetadata, getCard, getParameterValues, getQueryBuilderMode],
-  (metadata, card, parameterValues, queryBuilderMode) => {
+export const getDirtyQuestion = createSelector(
+  [getMetadata, getCard, getParameterValues],
+  (metadata, card, parameterValues) => {
     if (!metadata || !card) {
       return;
     }
-    const question = new Question(card, metadata, parameterValues);
-
+    return new Question(card, metadata, parameterValues);
+  },
+);
+export const getQuestion = createSelector(
+  [getDirtyQuestion, getQueryBuilderMode],
+  (question, queryBuilderMode) => {
+    if (!question) {
+      return;
+    }
     const isEditingModel = queryBuilderMode === "dataset";
     if (isEditingModel) {
       return question.lockDisplay();
