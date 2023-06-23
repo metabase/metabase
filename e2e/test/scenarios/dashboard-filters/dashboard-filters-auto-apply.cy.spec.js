@@ -221,10 +221,10 @@ describe("scenarios > dashboards > filters > auto apply", () => {
   describe("parameter with default values", () => {
     beforeEach(() => {
       createDashboard({ parameter: FILTER_WITH_DEFAULT_VALUE });
-      openDashboard();
     });
 
     it("should handle toggling auto applying filters on and off", () => {
+      openDashboard();
       toggleDashboardInfoSidebar();
 
       getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
@@ -258,6 +258,42 @@ describe("scenarios > dashboards > filters > auto apply", () => {
 
       getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
     });
+
+    it("should display a toast when a dashboard takes longer than 15s to load even without parameter values (but has parameters with default values)", () => {
+      cy.clock();
+      openSlowDashboard();
+
+      cy.tick(TOAST_TIMEOUT);
+      cy.wait("@cardQuery");
+      undoToast().within(() => {
+        cy.findByText(TOAST_MESSAGE).should("be.visible");
+        cy.button("Turn off").click();
+        cy.wait("@updateDashboard");
+      });
+
+      toggleDashboardInfoSidebar();
+      rightSidebar().within(() => {
+        cy.findByLabelText("Auto-apply filters").should("not.be.checked");
+      });
+      // Gadget
+      const filterDefaultValue = FILTER_WITH_DEFAULT_VALUE.default[0];
+      filterWidget().within(() => {
+        cy.findByText(filterDefaultValue).should("be.visible");
+      });
+      getDashboardCard().within(() => {
+        cy.findByText("Rows 1-4 of 53").should("be.visible");
+      });
+    });
+
+    it("should not display the toast when we clear out parameter default value", () => {
+      cy.clock();
+      openSlowDashboard({ [FILTER_WITH_DEFAULT_VALUE.slug]: null });
+
+      cy.tick(TOAST_TIMEOUT);
+      cy.wait("@cardQuery");
+      undoToast().should("not.exist");
+      getDashboardCard().findByText("Rows 1-5 of 200").should("be.visible");
+    });
   });
 
   describe("auto-apply filter toast", () => {
@@ -284,6 +320,22 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       getDashboardCard().within(() => {
         cy.findByText("Rows 1-4 of 53").should("be.visible");
       });
+    });
+
+    it("should display the toast indefinitely unless dismissing manually", () => {
+      cy.clock();
+      createDashboard();
+      openSlowDashboard({ [FILTER.slug]: "Gadget" });
+
+      cy.tick(TOAST_TIMEOUT);
+      cy.wait("@cardQuery");
+      undoToast().findByText(TOAST_MESSAGE).should("be.visible");
+
+      cy.tick(100 * TOAST_TIMEOUT);
+      undoToast().findByText(TOAST_MESSAGE).should("be.visible");
+
+      undoToast().icon("close").click();
+      undoToast().should("not.exist");
     });
 
     it("should not display the toast when auto applying filters is disabled", () => {
