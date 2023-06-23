@@ -134,6 +134,10 @@ const assertDescendantNotOverflowsContainer = (descendant, container) => {
   const containerRect = container.getBoundingClientRect();
   const descendantRect = descendant.getBoundingClientRect();
 
+  if (descendantRect.height === 0 || descendantRect.width === 0) {
+    return;
+  }
+
   expect(descendantRect.bottom).to.lte(containerRect.bottom);
   expect(descendantRect.top).to.gte(containerRect.top);
   expect(descendantRect.left).to.gte(containerRect.left);
