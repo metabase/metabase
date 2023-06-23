@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { createMockSearchResult } from "metabase-types/api/mocks";
-import { getIcon } from "__support__/ui";
+import { getIcon, queryIcon } from "__support__/ui";
 
 import type { WrappedResult } from "./types";
 import { SearchResult } from "./SearchResult";
@@ -83,8 +83,8 @@ describe("SearchResult > Collections", () => {
         screen.getByText(resultInRegularCollection.name),
       ).toBeInTheDocument();
       expect(screen.getByText("Regular Collection")).toBeInTheDocument();
-      expect(screen.getByLabelText("folder icon")).toBeInTheDocument();
-      expect(screen.queryByLabelText("badge icon")).not.toBeInTheDocument();
+      expect(getIcon("folder")).toBeInTheDocument();
+      expect(queryIcon("badge")).not.toBeInTheDocument();
     });
 
     it("renders official collections as regular", () => {
@@ -93,8 +93,8 @@ describe("SearchResult > Collections", () => {
         screen.getByText(resultInOfficalCollection.name),
       ).toBeInTheDocument();
       expect(screen.getByText("Official Collection")).toBeInTheDocument();
-      expect(screen.getByLabelText("folder icon")).toBeInTheDocument();
-      expect(screen.queryByLabelText("badge icon")).not.toBeInTheDocument();
+      expect(getIcon("folder")).toBeInTheDocument();
+      expect(queryIcon("badge")).not.toBeInTheDocument();
     });
   });
 
@@ -114,8 +114,8 @@ describe("SearchResult > Collections", () => {
         screen.getByText(resultInRegularCollection.name),
       ).toBeInTheDocument();
       expect(screen.getByText("Regular Collection")).toBeInTheDocument();
-      expect(screen.getByLabelText("folder icon")).toBeInTheDocument();
-      expect(screen.queryByLabelText("badge icon")).not.toBeInTheDocument();
+      expect(getIcon("folder")).toBeInTheDocument();
+      expect(queryIcon("badge")).not.toBeInTheDocument();
     });
 
     it("renders official collections correctly", () => {
@@ -124,8 +124,8 @@ describe("SearchResult > Collections", () => {
         screen.getByText(resultInOfficalCollectionEE.name),
       ).toBeInTheDocument();
       expect(screen.getByText("Official Collection")).toBeInTheDocument();
-      expect(screen.getByLabelText("badge icon")).toBeInTheDocument();
-      expect(screen.queryByLabelText("folder icon")).not.toBeInTheDocument();
+      expect(getIcon("badge")).toBeInTheDocument();
+      expect(queryIcon("folder")).not.toBeInTheDocument();
     });
   });
 });
