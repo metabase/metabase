@@ -236,9 +236,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
         cy.findByLabelText("Auto-apply filters").should("not.be.checked");
       });
 
-      getDashboardCard().within(() => {
-        cy.findByText("Rows 1-4 of 53").should("be.visible");
-      });
+      getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
 
       // card result should be updated after manually update the filter
       filterWidget().icon("close").click();
