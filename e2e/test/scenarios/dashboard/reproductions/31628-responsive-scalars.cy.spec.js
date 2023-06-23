@@ -39,7 +39,7 @@ const SMART_SCALAR_QUESTION = {
   display: "smartscalar",
 };
 
-const cards = [
+const CARDS = [
   { size_x: 6, size_y: 5, row: 0, col: 0 },
   { size_x: 6, size_y: 4, row: 5, col: 0 },
   { size_x: 6, size_y: 3, row: 9, col: 0 },
@@ -66,12 +66,29 @@ const cards = [
   { size_x: 2, size_y: 2, row: 12, col: 18 },
 ];
 
+const CARDS_SIZE_1X = [
+  { size_x: 1, size_y: 5, row: 0, col: 20 },
+  { size_x: 1, size_y: 4, row: 5, col: 20 },
+  { size_x: 1, size_y: 3, row: 9, col: 20 },
+  { size_x: 1, size_y: 2, row: 12, col: 20 },
+
+  { size_x: 6, size_y: 1, row: 13, col: 0 },
+  { size_x: 5, size_y: 1, row: 13, col: 6 },
+  { size_x: 4, size_y: 1, row: 13, col: 11 },
+  { size_x: 3, size_y: 1, row: 13, col: 15 },
+  { size_x: 2, size_y: 1, row: 13, col: 18 },
+  { size_x: 1, size_y: 1, row: 13, col: 20 },
+];
+
 describe("issue 31628", () => {
   describe("display: scalar", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      setupDashboardWithQuestionInCards(SCALAR_QUESTION, cards);
+      setupDashboardWithQuestionInCards(SCALAR_QUESTION, [
+        ...CARDS,
+        ...CARDS_SIZE_1X,
+      ]);
     });
 
     it("should render descendants of a 'scalar' without overflowing it (metabase#31628)", () => {
@@ -90,7 +107,7 @@ describe("issue 31628", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      setupDashboardWithQuestionInCards(SMART_SCALAR_QUESTION, cards);
+      setupDashboardWithQuestionInCards(SMART_SCALAR_QUESTION, CARDS);
     });
 
     it("should render descendants of a 'smartscalar' without overflowing it (metabase#31628)", () => {
