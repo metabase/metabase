@@ -29,8 +29,25 @@ function legacyScalarSettingsToFormatOptions(settings) {
     .value();
 }
 
-const HORIZONTAL_PADDING = 32;
-const VERTICAL_PADDING = 32;
+const PADDING = 32;
+const TITLE_ICON_SIZE = 10;
+const SCALAR_TITLE_LINE_HEIGHT = 23;
+
+const TITLE_2_LINES_THRESHOLD = 120; // determined empirically
+
+const getTitleLinesCount = height => (height > TITLE_2_LINES_THRESHOLD ? 2 : 1);
+
+const getTitleHeight = ({ isDashboard, showSmallTitle, titleLinesCount }) => {
+  if (!isDashboard) {
+    return 0;
+  }
+
+  if (showSmallTitle) {
+    return TITLE_ICON_SIZE;
+  }
+
+  return titleLinesCount * SCALAR_TITLE_LINE_HEIGHT;
+};
 
 // Scalar visualization shows a single number
 // Multiseries Scalar is transformed to a Funnel
@@ -206,6 +223,13 @@ export default class Scalar extends Component {
       isDashboard &&
       (gridSize?.width < 2 || gridSize?.height < 2);
 
+    const titleLinesCount = getTitleLinesCount(height);
+    const titleHeight = getTitleHeight({
+      isDashboard,
+      showSmallTitle,
+      titleLinesCount,
+    });
+
     return (
       <ScalarWrapper>
         <div className="Card-title absolute top right p1 px2">
@@ -229,8 +253,8 @@ export default class Scalar extends Component {
           >
             <ScalarValue
               value={displayValue}
-              width={width - HORIZONTAL_PADDING}
-              height={height - VERTICAL_PADDING}
+              width={width - PADDING}
+              height={height - PADDING - titleHeight}
               gridSize={gridSize}
               totalNumGridCols={totalNumGridCols}
               fontFamily={fontFamily}
@@ -243,10 +267,11 @@ export default class Scalar extends Component {
             <LabelIcon
               name="ellipsis"
               tooltip={settings["card.title"]}
-              size={10}
+              size={TITLE_ICON_SIZE}
             />
           ) : (
             <ScalarTitle
+              lines={titleLinesCount}
               title={settings["card.title"]}
               description={settings["card.description"]}
               onClick={
