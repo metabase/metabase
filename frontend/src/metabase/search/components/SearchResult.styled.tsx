@@ -91,6 +91,7 @@ const resultStyles = ({ compact, active, isSelected }: ResultStylesProps) => `
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
   padding-left: 14px;
+  width: 100%;
   padding-right: ${compact ? "20px" : space(3)};
   cursor: ${active ? "pointer" : "default"};
 
