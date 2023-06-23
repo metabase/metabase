@@ -40,30 +40,30 @@ const SMART_SCALAR_QUESTION = {
 };
 
 const cards = [
-  { size_x: 6, size_y: 5, row: 9, col: 0 },
+  { size_x: 6, size_y: 5, row: 0, col: 0 },
   { size_x: 6, size_y: 4, row: 5, col: 0 },
-  { size_x: 6, size_y: 3, row: 2, col: 0 },
-  { size_x: 6, size_y: 2, row: 0, col: 0 },
+  { size_x: 6, size_y: 3, row: 9, col: 0 },
+  { size_x: 6, size_y: 2, row: 12, col: 0 },
 
-  { size_x: 5, size_y: 5, row: 9, col: 6 },
+  { size_x: 5, size_y: 5, row: 0, col: 6 },
   { size_x: 5, size_y: 4, row: 5, col: 6 },
-  { size_x: 5, size_y: 3, row: 2, col: 6 },
-  { size_x: 5, size_y: 2, row: 0, col: 6 },
+  { size_x: 5, size_y: 3, row: 9, col: 6 },
+  { size_x: 5, size_y: 2, row: 12, col: 6 },
 
-  { size_x: 4, size_y: 5, row: 9, col: 11 },
+  { size_x: 4, size_y: 5, row: 0, col: 11 },
   { size_x: 4, size_y: 4, row: 5, col: 11 },
-  { size_x: 4, size_y: 3, row: 2, col: 11 },
-  { size_x: 4, size_y: 2, row: 0, col: 11 },
+  { size_x: 4, size_y: 3, row: 9, col: 11 },
+  { size_x: 4, size_y: 2, row: 12, col: 11 },
 
-  { size_x: 3, size_y: 5, row: 9, col: 15 },
+  { size_x: 3, size_y: 5, row: 0, col: 15 },
   { size_x: 3, size_y: 4, row: 5, col: 15 },
-  { size_x: 3, size_y: 3, row: 2, col: 15 },
-  { size_x: 3, size_y: 2, row: 0, col: 15 },
+  { size_x: 3, size_y: 3, row: 9, col: 15 },
+  { size_x: 3, size_y: 2, row: 12, col: 15 },
 
-  { size_x: 2, size_y: 5, row: 9, col: 18 },
+  { size_x: 2, size_y: 5, row: 0, col: 18 },
   { size_x: 2, size_y: 4, row: 5, col: 18 },
-  { size_x: 2, size_y: 3, row: 2, col: 18 },
-  { size_x: 2, size_y: 2, row: 0, col: 18 },
+  { size_x: 2, size_y: 3, row: 9, col: 18 },
+  { size_x: 2, size_y: 2, row: 12, col: 18 },
 ];
 
 describe("issue 31628", () => {
