@@ -58,6 +58,5 @@
   "watchPlugins": [
     "jest-watch-typeahead/filename",
     "jest-watch-typeahead/testname"
-  ],
-  "testTimeout": 30000
+  ]
 }

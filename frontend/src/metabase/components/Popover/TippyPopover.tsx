@@ -129,6 +129,10 @@ function TippyPopover({
     [flip, sizeToFit, popperOptions],
   );
 
+  if (!shouldShowContent) {
+    return null;
+  }
+
   return (
     <TippyComponent
       className={cx("popover", className)}
@@ -144,11 +148,7 @@ function TippyPopover({
       duration={animationDuration}
       delay={delay}
       content={
-        shouldShowContent ? (
-          <EventSandbox disabled={disableContentSandbox}>
-            {content}
-          </EventSandbox>
-        ) : null
+        <EventSandbox disabled={disableContentSandbox}>{content}</EventSandbox>
       }
       onShow={handleShow}
       onHide={handleHide}
