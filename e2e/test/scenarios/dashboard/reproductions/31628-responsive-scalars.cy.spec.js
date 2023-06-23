@@ -129,7 +129,7 @@ describe("issue 31628", () => {
         ]);
       });
 
-      it("should show a value tooltip on hover", () => {
+      it("should show value tooltip on hover", () => {
         cy.findByTestId("scalar-value").realHover();
 
         popover().within(() => {
@@ -137,7 +137,7 @@ describe("issue 31628", () => {
         });
       });
 
-      it("should show an ellipsis icon with question name in tooltip", () => {
+      it("should show  ellipsis icon with question name in tooltip", () => {
         cy.findByTestId("scalar-title-icon").realHover();
 
         popover().within(() => {
@@ -156,6 +156,7 @@ describe("issue 31628", () => {
 
       it("should not show value tooltip on hover", () => {
         cy.findByTestId("scalar-value").realHover();
+
         cy.findByRole("tooltip").should("not.exist");
       });
 
@@ -163,7 +164,7 @@ describe("issue 31628", () => {
         cy.findByTestId("scalar-title-icon").should("not.exist");
       });
 
-      it("should show a title tooltip on hover", () => {
+      it("should show title tooltip on hover", () => {
         cy.findByTestId("scalar-title").realHover();
 
         popover().within(() => {
@@ -171,7 +172,7 @@ describe("issue 31628", () => {
         });
       });
 
-      it("should show a description tooltip on hover", () => {
+      it("should show description tooltip on hover", () => {
         cy.findByTestId("scalar-description").realHover();
 
         popover().within(() => {
@@ -191,6 +192,7 @@ describe("issue 31628", () => {
 
       it("should not show value tooltip on hover", () => {
         cy.findByTestId("scalar-value").realHover();
+
         cy.findByRole("tooltip").should("not.exist");
       });
 
@@ -198,12 +200,13 @@ describe("issue 31628", () => {
         cy.findByTestId("scalar-title-icon").should("not.exist");
       });
 
-      it("should not show a title tooltip on hover", () => {
+      it("should not show title tooltip on hover", () => {
         cy.findByTestId("scalar-title").realHover();
+
         cy.findByRole("tooltip").should("not.exist");
       });
 
-      it("should show a description tooltip on hover", () => {
+      it("should show description tooltip on hover", () => {
         cy.findByTestId("scalar-description").realHover();
 
         popover().within(() => {
@@ -242,6 +245,68 @@ describe("issue 31628", () => {
         it(`should render descendants of a 'smartscalar' without overflowing it (metabase#31628)`, () => {
           assertDescendantsNotOverflowDashcards(descendantsSelector);
         });
+      });
+    });
+  });
+
+  describe("2x2 card", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+      setupDashboardWithQuestionInCards(SMART_SCALAR_QUESTION, [
+        { size_x: 2, size_y: 2, row: 0, col: 0 },
+      ]);
+    });
+
+    it("should not show value tooltip on hover", () => {
+      cy.findByTestId("scalar-value").realHover();
+
+      cy.findByRole("tooltip").should("not.exist");
+    });
+
+    it("should show title tooltip on hover", () => {
+      cy.findByTestId("scalar-title").realHover();
+
+      popover().within(() => {
+        cy.contains(SMART_SCALAR_QUESTION.name).should("exist");
+      });
+    });
+
+    it("should show description tooltip on hover", () => {
+      cy.findByTestId("scalar-description").realHover();
+
+      popover().within(() => {
+        cy.contains(SMART_SCALAR_QUESTION.description).should("exist");
+      });
+    });
+
+    it("should show previous value as a percentage only", () => {
+      const previousValue = cy.findByTestId("scalar-previous-value");
+
+      previousValue.contains("34.72%").should("exist");
+      previousValue.contains("• was 527 last month").should("not.exist");
+    });
+
+    it("should show previous value as a percentage only up to 1 decimal place (1200x600)", () => {
+      cy.viewport(1200, 600);
+
+      cy.findByTestId("scalar-previous-value")
+        .contains("34.7%")
+        .should("exist");
+    });
+
+    it("should show previous value as a percentage without decimal places (1000x600)", () => {
+      cy.viewport(1000, 600);
+
+      cy.findByTestId("scalar-previous-value").contains("35%").should("exist");
+    });
+
+    it("should show previous value tooltip on hover", () => {
+      cy.findByTestId("scalar-previous-value").realHover();
+
+      popover().within(() => {
+        cy.contains("34.72%").should("exist");
+        cy.contains("• was 527 last month").should("exist");
       });
     });
   });
