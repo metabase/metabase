@@ -1,6 +1,7 @@
 import {
   cypressWaitAll,
   openNavigationSidebar,
+  popover,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -115,6 +116,24 @@ describe("issue 31628", () => {
 
         it(`should render descendants of a 'scalar' without overflowing it (metabase#31628)`, () => {
           assertDescendantsNotOverflowDashcards(descendantsSelector);
+        });
+      });
+    });
+
+    describe("1x2 card", () => {
+      beforeEach(() => {
+        restore();
+        cy.signInAsAdmin();
+        setupDashboardWithQuestionInCards(SCALAR_QUESTION, [
+          { size_x: 1, size_y: 2, row: 0, col: 0 },
+        ]);
+      });
+
+      it(`should show a value tooltip on hover`, () => {
+        cy.findByTestId("scalar-value").realHover();
+
+        popover().within(() => {
+          cy.contains("18,760").should("exist");
         });
       });
     });
