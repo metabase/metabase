@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [malli.generator :as mg]
+   [metabase.config :as config]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms :refer [Permissions]]
@@ -776,6 +777,31 @@
                (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas])
                    keys
                    first)))))))
+
+(deftest permissions-monitoring-audit-v2-test
+  (when config/ee-available?
+    (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
+      (letfn [(perms []
+                (t2/select-fn-set :object Permissions
+                                  {:where [:and [:= :group_id group-id]
+                                           [:like :object "/application/%"]]}))]
+        (is (= nil (perms)))
+        (testing "Adding monitoring adds audit db permissions"
+          (perms/grant-application-permissions! group-id :monitoring)
+          (is (= #{"/collection/25/read/"
+                   "/collection/23/"
+                   "/collection/26/read/"
+                   "/collection/28/"
+                   "/collection/21/read/"
+                   "/collection/22/"
+                   "/application/monitoring/"
+                   "/collection/24/read/"
+                   "/collection/27/"
+                   "/db/13371337/schema/"}
+                 (t2/select-fn-set :object Permissions {:where [:and [:= :group_id group-id]]}))))
+        (testing "Removing monitoring remvoes audit db permissions"
+          (perms/revoke-application-permissions! group-id :monitoring)
+          (is (nil? (perms))))))))
 
 (deftest no-op-partial-graph-updates
   (testing "Partial permission graphs with no changes to the existing graph do not error when run repeatedly (#25221)"
