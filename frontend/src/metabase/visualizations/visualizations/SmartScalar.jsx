@@ -266,6 +266,7 @@ export default class SmartScalar extends Component {
         </div>
         <ScalarContainer
           className="fullscreen-normal-text fullscreen-night-text"
+          data-testid="scalar-container"
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}
           isClickable={isClickable}

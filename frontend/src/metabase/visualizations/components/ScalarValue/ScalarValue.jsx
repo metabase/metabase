@@ -60,7 +60,7 @@ const ScalarValue = ({
 };
 
 export const ScalarTitle = ({ lines = 2, title, description, onClick }) => (
-  <ScalarTitleContainer lines={lines}>
+  <ScalarTitleContainer data-testid="scalar-title" lines={lines}>
     {/*
       This is a hacky spacer so that the h3 is centered correctly.
       It needs match the width of the tooltip icon on the other side.
@@ -68,7 +68,6 @@ export const ScalarTitle = ({ lines = 2, title, description, onClick }) => (
     {description && description.length > 0 && <ScalarDescriptionPlaceholder />}
     <ScalarTitleContent
       className="fullscreen-normal-text fullscreen-night-text"
-      data-testid="scalar-title"
       onClick={onClick}
     >
       <Ellipsified tooltip={title} lines={lines} placement="bottom">
