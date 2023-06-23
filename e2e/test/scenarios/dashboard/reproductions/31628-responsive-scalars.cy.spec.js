@@ -9,6 +9,16 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
+const SCALAR_QUESTION = {
+  name: "31628 Question - This is a rather lengthy question name",
+  description: "This is a rather lengthy question description",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
+
 const SMART_SCALAR_QUESTION = {
   name: "31628 Question - This is a rather lengthy question name",
   description: "This is a rather lengthy question description",
@@ -27,16 +37,6 @@ const SMART_SCALAR_QUESTION = {
     ],
   },
   display: "smartscalar",
-};
-
-const SCALAR_QUESTION = {
-  name: "31628 Question - This is a rather lengthy question name",
-  description: "This is a rather lengthy question description",
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-  },
-  display: "scalar",
 };
 
 const cards = [
