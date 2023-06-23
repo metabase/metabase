@@ -447,12 +447,12 @@
   (serdes/extract-query-collections Card opts))
 
 (defn- export-result-metadata [card metadata]
-  (when (and (:dataset card) metadata)
-    (for [m metadata]
-      (-> m
-          (m/update-existing :table_id  serdes/*export-table-fk*)
-          (m/update-existing :id        serdes/*export-field-fk*)
-          (m/update-existing :field_ref serdes/export-mbql)))))
+  (for [m metadata]
+    (cond-> (dissoc m :fingerprint)
+      (:dataset card) (->
+                       (m/update-existing :table_id  serdes/*export-table-fk*)
+                       (m/update-existing :id        serdes/*export-field-fk*)
+                       (m/update-existing :field_ref serdes/export-mbql)))))
 
 (defn- import-result-metadata [metadata]
   (when metadata
