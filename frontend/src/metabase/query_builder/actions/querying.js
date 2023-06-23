@@ -109,7 +109,7 @@ export const runQuestionQuery = ({
 
     const cardIsDirty = originalQuestion
       ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
-        question.card().id == null
+        question.id() == null
       : true;
 
     if (shouldUpdateUrl) {

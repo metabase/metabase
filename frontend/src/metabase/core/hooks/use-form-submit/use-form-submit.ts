@@ -25,6 +25,7 @@ const useFormSubmit = <T>({
         await onSubmit(data, helpers);
         setState({ status: "fulfilled" });
       } catch (error) {
+        console.error("Form submit error: ", { error });
         helpers.setErrors(getFormErrors(error));
         setState({ status: "rejected", message: getFormMessage(error) });
       }
