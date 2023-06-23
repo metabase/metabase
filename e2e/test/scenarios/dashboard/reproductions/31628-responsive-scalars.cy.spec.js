@@ -69,20 +69,14 @@ describe("issue 31628", () => {
       setupDashboardWithQuestionInCards(SCALAR_QUESTION, cards);
     });
 
-    it("should render children of smartscalar without overflowing it (metabase#31628)", () => {
-      cy.findAllByTestId("dashcard").each(dashcard => {
-        const descendants = dashcard.find(
-          [
-            "[data-testid='scalar-value']",
-            "[data-testid='scalar-title']",
-            "[data-testid='scalar-description']",
-          ].join(","),
-        );
+    it("should render descendants of a 'scalar' without overflowing it (metabase#31628)", () => {
+      const descendantsSelector = [
+        "[data-testid='scalar-value']",
+        "[data-testid='scalar-title']",
+        "[data-testid='scalar-description']",
+      ].join(",");
 
-        descendants.each((_index, descendant) => {
-          assertDescendantNotOverflowsContainer(descendant, dashcard[0]);
-        });
-      });
+      assertDescendantsNotOverflowDashcards(descendantsSelector);
     });
   });
   describe("display: smartscalar", () => {
@@ -92,21 +86,15 @@ describe("issue 31628", () => {
       setupDashboardWithQuestionInCards(SMART_SCALAR_QUESTION, cards);
     });
 
-    it("should render children of smartscalar without overflowing it (metabase#31628)", () => {
-      cy.findAllByTestId("dashcard").each(dashcard => {
-        const descendants = dashcard.find(
-          [
-            "[data-testid='scalar-value']",
-            "[data-testid='scalar-title']",
-            "[data-testid='scalar-description']",
-            "[data-testid='scalar-previous-value']",
-          ].join(","),
-        );
+    it("should render descendants of a 'smartscalar' without overflowing it (metabase#31628)", () => {
+      const descendantsSelector = [
+        "[data-testid='scalar-value']",
+        "[data-testid='scalar-title']",
+        "[data-testid='scalar-description']",
+        "[data-testid='scalar-previous-value']",
+      ].join(",");
 
-        descendants.each((_index, descendant) => {
-          assertDescendantNotOverflowsContainer(descendant, dashcard[0]);
-        });
-      });
+      assertDescendantsNotOverflowDashcards(descendantsSelector);
     });
   });
 });
@@ -120,6 +108,16 @@ const setupDashboardWithQuestionInCards = (question, cards) => {
     );
 
     visitDashboard(dashboard.id);
+  });
+};
+
+const assertDescendantsNotOverflowDashcards = selector => {
+  cy.findAllByTestId("dashcard").each(dashcard => {
+    const descendants = dashcard.find(selector);
+
+    descendants.each((_index, descendant) => {
+      assertDescendantNotOverflowsContainer(descendant, dashcard[0]);
+    });
   });
 };
 
