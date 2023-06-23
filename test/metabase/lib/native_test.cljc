@@ -5,6 +5,7 @@
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.native :as lib.native]
    [metabase.lib.test-metadata :as meta]
    [metabase.util.humanization :as u.humanization]))
@@ -205,16 +206,16 @@
         original-tags (lib/template-tags query)]
     (is (= (assoc-in original-tags ["myid" :display-name] "My ID")
            (-> query
-               (lib/with-template-tags {"myid" {:display-name "My ID"}})
+               (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")})
                lib/template-tags)))
     (testing "Changing query keeps updated template tags"
       (is (= (assoc-in original-tags ["myid" :display-name] "My ID")
              (-> query
-                 (lib/with-template-tags {"myid" {:display-name "My ID"}})
+                 (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")})
                  (lib/with-native-query "select * from venues where category_id = {{myid}}")
                  lib/template-tags))))
     (testing "Doesn't introduce garbage"
       (is (= original-tags
              (-> query
-                 (lib/with-template-tags {"garbage" {:display-name "Foobar"}})
+                 (lib/with-template-tags {"garbage" (assoc (get original-tags "myid") :display-name "Foobar")})
                  lib/template-tags))))))
