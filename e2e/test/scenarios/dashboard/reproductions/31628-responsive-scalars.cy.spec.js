@@ -84,7 +84,6 @@ describe("issue 31628", () => {
 
     it("should render children of smartscalar without overflowing it (metabase#31628)", () => {
       cy.findAllByTestId("dashcard").each(dashcard => {
-        const dashcardRect = dashcard[0].getBoundingClientRect();
         const descendants = dashcard.find(
           [
             "[data-testid='scalar-value']",
@@ -98,12 +97,7 @@ describe("issue 31628", () => {
         });
 
         visibleDescendants.each((_index, descendant) => {
-          const descendantRect = descendant.getBoundingClientRect();
-
-          expect(descendantRect.bottom).to.lte(dashcardRect.bottom);
-          expect(descendantRect.top).to.gte(dashcardRect.top);
-          expect(descendantRect.left).to.gte(dashcardRect.left);
-          expect(descendantRect.right).to.lte(dashcardRect.right);
+          assertDescendantNotOverflowsContainer(descendant, dashcard[0]);
         });
       });
     });
@@ -130,7 +124,6 @@ describe("issue 31628", () => {
 
     it("should render children of smartscalar without overflowing it (metabase#31628)", () => {
       cy.findAllByTestId("dashcard").each(dashcard => {
-        const dashcardRect = dashcard[0].getBoundingClientRect();
         const descendants = dashcard.find(
           [
             "[data-testid='scalar-value']",
@@ -145,14 +138,19 @@ describe("issue 31628", () => {
         });
 
         visibleDescendants.each((_index, descendant) => {
-          const descendantRect = descendant.getBoundingClientRect();
-
-          expect(descendantRect.bottom).to.lte(dashcardRect.bottom);
-          expect(descendantRect.top).to.gte(dashcardRect.top);
-          expect(descendantRect.left).to.gte(dashcardRect.left);
-          expect(descendantRect.right).to.lte(dashcardRect.right);
+          assertDescendantNotOverflowsContainer(descendant, dashcard[0]);
         });
       });
     });
   });
 });
+
+const assertDescendantNotOverflowsContainer = (descendant, container) => {
+  const containerRect = container.getBoundingClientRect();
+  const descendantRect = descendant.getBoundingClientRect();
+
+  expect(descendantRect.bottom).to.lte(containerRect.bottom);
+  expect(descendantRect.top).to.gte(containerRect.top);
+  expect(descendantRect.left).to.gte(containerRect.left);
+  expect(descendantRect.right).to.lte(containerRect.right);
+};
