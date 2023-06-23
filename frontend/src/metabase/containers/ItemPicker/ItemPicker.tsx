@@ -39,6 +39,7 @@ interface OwnProps<TId> {
   initialOpenCollectionId?: CollectionId;
   collectionFilter?: (collection: Collection) => boolean;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
+  children: React.ReactNode;
 }
 
 interface StateProps {
@@ -89,6 +90,7 @@ function ItemPicker<TId>({
   getCollectionIcon,
   initialOpenCollectionId = "root",
   onOpenCollectionChange,
+  children,
 }: Props<TId>) {
   const [openCollectionId, setOpenCollectionId] = useState<CollectionId>(
     initialOpenCollectionId,
@@ -243,7 +245,9 @@ function ItemPicker<TId>({
         style={style}
         // personal is a fake collection for admins that contains all other user's collections
         allowFetch={openCollectionId !== "personal"}
-      />
+      >
+        {children}
+      </ItemPickerView>
     </ScrollAwareLoadingAndErrorWrapper>
   );
 }

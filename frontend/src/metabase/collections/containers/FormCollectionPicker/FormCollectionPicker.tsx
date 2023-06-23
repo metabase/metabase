@@ -24,10 +24,10 @@ import { isValidCollectionId } from "metabase/collections/utils";
 
 import type { CollectionId } from "metabase-types/api";
 
+import Button from "metabase/core/components/Button";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
-  PopoverItemAlignedButton,
 } from "./FormCollectionPicker.styled";
 
 export interface FormCollectionPickerProps
@@ -62,14 +62,9 @@ export const NewCollectionButton = ({
   onClick,
 }: NewCollectionButtonProps) => {
   return (
-    <PopoverItemAlignedButton
-      light
-      icon="add"
-      disabled={disabled}
-      onClick={onClick}
-    >
+    <Button light icon="add" disabled={disabled} onClick={onClick}>
       {t`New collection`}
-    </PopoverItemAlignedButton>
+    </Button>
   );
 };
 
@@ -125,20 +120,19 @@ function FormCollectionPicker({
       const entity = type === "collections" ? Collections : SnippetCollections;
 
       return (
-        <div>
-          <PopoverItemPicker
-            value={{ id: value, model: "collection" }}
-            models={["collection"]}
-            entity={entity}
-            onChange={({ id }) => {
-              setValue(id);
-              closePopover();
-            }}
-            showSearch={hasSearch}
-            width={width}
-          />
+        <PopoverItemPicker
+          value={{ id: value, model: "collection" }}
+          models={["collection"]}
+          entity={entity}
+          onChange={({ id }) => {
+            setValue(id);
+            closePopover();
+          }}
+          showSearch={hasSearch}
+          width={width}
+        >
           {children}
-        </div>
+        </PopoverItemPicker>
       );
     },
     [value, type, width, setValue, children],
