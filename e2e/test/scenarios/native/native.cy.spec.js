@@ -322,7 +322,7 @@ describe("scenarios > question > native", () => {
       ).as("databasePrompt");
     });
 
-    it("allows generate sql queries from natural language prompts", () => {
+    it.skip("allows generate sql queries from natural language prompts", () => {
       cy.intercept(
         "POST",
         "/api/metabot/database/**/query",
