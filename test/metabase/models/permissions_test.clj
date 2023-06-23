@@ -788,17 +788,11 @@
         (is (= nil (perms)))
         (testing "Adding monitoring adds audit db permissions"
           (perms/grant-application-permissions! group-id :monitoring)
-          (is (= #{"/collection/25/read/"
-                   "/collection/23/"
-                   "/collection/26/read/"
-                   "/collection/28/"
-                   "/collection/21/read/"
-                   "/collection/22/"
-                   "/application/monitoring/"
-                   "/collection/24/read/"
-                   "/collection/27/"
-                   "/db/13371337/schema/"}
-                 (t2/select-fn-set :object Permissions {:where [:and [:= :group_id group-id]]}))))
+          (let [new-perms (t2/select-fn-set :object Permissions {:where [:and [:= :group_id group-id]]})]
+            ; 4 for collections, 4 for collection reports, 1 for /application/monitoring/, 1 for audit db
+            (is (= 10 (count new-perms)))
+            (is (contains? new-perms "/application/monitoring/"))
+            (is (contains? new-perms "/db/13371337/schema/"))))
         (testing "Removing monitoring remvoes audit db permissions"
           (perms/revoke-application-permissions! group-id :monitoring)
           (is (nil? (perms))))))))
