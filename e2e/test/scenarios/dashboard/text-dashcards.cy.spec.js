@@ -28,9 +28,6 @@ describeWithSnowplow("scenarios > dashboard > text and headings", () => {
 
     afterEach(() => {
       expectNoBadSnowplowEvents();
-      expectGoodSnowplowEvent({
-        event: "new_text_card_created",
-      });
     });
 
     it("should allow creation, editing, and saving of text boxes", () => {
@@ -38,6 +35,10 @@ describeWithSnowplow("scenarios > dashboard > text and headings", () => {
       editDashboard();
       cy.findByLabelText("Add a heading or text box").click();
       popover().findByText("Text").click();
+
+      expectGoodSnowplowEvent({
+        event: "new_text_card_created",
+      });
 
       getDashboardCard(1).within(() => {
         // textarea should:
@@ -121,6 +122,11 @@ describeWithSnowplow("scenarios > dashboard > text and headings", () => {
         "Lorem ipsum dolor sit amet,\n\nfoo\n\nbar\n\nbaz\n\nboo\n\nDonec quis enim porta.",
         { delay: 0.5 },
       );
+
+      expectGoodSnowplowEvent({
+        event: "new_text_card_created",
+      });
+
       cy.findByTestId("edit-bar").findByText("Save").click();
 
       // The test fails if there is no scroll bar
@@ -155,9 +161,6 @@ describeWithSnowplow("scenarios > dashboard > text and headings", () => {
 
     afterEach(() => {
       expectNoBadSnowplowEvents();
-      expectGoodSnowplowEvent({
-        event: "new_heading_card_created",
-      });
     });
 
     it("should allow creation, editing, and saving of heading component", () => {
@@ -165,6 +168,10 @@ describeWithSnowplow("scenarios > dashboard > text and headings", () => {
       editDashboard();
       cy.findByLabelText("Add a heading or text box").click();
       popover().findByText("Heading").click();
+
+      expectGoodSnowplowEvent({
+        event: "new_heading_card_created",
+      });
 
       getDashboardCard(1).within(() => {
         // heading input should
