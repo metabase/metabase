@@ -132,6 +132,7 @@ function getSettingWidget(
       newSettings[settingId] = null;
     }
     onChangeSettings(newSettings);
+    settingDef.onUpdate?.(value, extra);
   };
   if (settingDef.useRawSeries && object._raw) {
     extra.transformedSeries = object;
