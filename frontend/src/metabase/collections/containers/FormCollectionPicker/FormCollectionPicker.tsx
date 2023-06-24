@@ -24,7 +24,7 @@ import { isValidCollectionId } from "metabase/collections/utils";
 
 import type { CollectionId } from "metabase-types/api";
 
-import Button from "metabase/core/components/Button";
+import Button, { ButtonProps } from "metabase/core/components/Button";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
@@ -52,23 +52,9 @@ function ItemName({
   );
 }
 
-interface NewCollectionButtonProps {
-  disabled?: boolean;
-  onClick?: () => void;
-}
-
-export const NewCollectionButton = ({
-  disabled,
-  onClick,
-}: NewCollectionButtonProps) => {
+export const NewCollectionButton = (props: ButtonProps) => {
   return (
-    <Button
-      light
-      className="mt1"
-      icon="add"
-      disabled={disabled}
-      onClick={onClick}
-    >
+    <Button light className="mt1" icon="add" {...props}>
       {t`New collection`}
     </Button>
   );
