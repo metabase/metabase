@@ -8,7 +8,7 @@ name: E2E Tests (aggregate)
 on:
   # We'll record runs using Replay.io and their browser on a schedule as an experiment
   schedule:
-    - cron: "0 */8 * * *"
+    - cron: "0 */2 * * *"
   push:
     branches:
       - "master"
