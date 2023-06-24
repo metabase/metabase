@@ -39,7 +39,7 @@ interface OwnProps<TId> {
   initialOpenCollectionId?: CollectionId;
   collectionFilter?: (collection: Collection) => boolean;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 interface StateProps {
