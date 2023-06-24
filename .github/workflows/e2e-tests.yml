@@ -229,6 +229,7 @@ jobs:
           
       - name: Upload Replay.io recordings
         uses: replayio/action-upload@v0.5.0
+        if: always()
         with:
           api-key: rwk_7frgQcd87zppwAc0kq16rIG1rDG2ymaT9paTpQP3z5F
-          public: true
+          public: true      
