@@ -62,7 +62,13 @@ export const NewCollectionButton = ({
   onClick,
 }: NewCollectionButtonProps) => {
   return (
-    <Button light icon="add" disabled={disabled} onClick={onClick}>
+    <Button
+      light
+      className="mt1"
+      icon="add"
+      disabled={disabled}
+      onClick={onClick}
+    >
       {t`New collection`}
     </Button>
   );
