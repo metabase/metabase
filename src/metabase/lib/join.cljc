@@ -583,3 +583,49 @@
    (when-let [pk-col (pk-column query stage-number joinable)]
      (when-let [fk-col (fk-column-for query stage-number pk-col)]
        (lib.filter/filter-clause (equals-join-condition-operator-definition) fk-col pk-col)))))
+
+(defn- replace-join-alias
+  [a-join old-name new-name]
+  (mbql.u.match/replace a-join
+    (field :guard (fn [field-clause]
+                    (and (field-clause? field-clause)
+                         (= (current-join-alias field-clause) old-name))))
+    (with-join-alias field new-name)))
+
+(defn- rename-join-in-stage
+  [stage old-name-or-index new-name]
+  (let [the-joins (:joins stage)
+        idx       (if (integer? old-name-or-index)
+                    (when (< -1 old-name-or-index (count the-joins))
+                      old-name-or-index)
+                    (some (fn [[idx a-join]]
+                            (when (= (:alias a-join) old-name-or-index)
+                              idx))
+                          (m/indexed the-joins)))
+        old-name  (get-in the-joins [idx :alias])]
+    (if (and idx (not= old-name new-name))
+      (let [unique-name-fn (lib.util/unique-name-generator)
+            _              (run! unique-name-fn (map :alias the-joins))
+            unique-name    (unique-name-fn new-name)]
+        (-> stage
+            (assoc-in [:joins idx :alias] unique-name)
+            (replace-join-alias old-name unique-name)))
+      stage)))
+
+(mu/defn rename-join :- ::lib.schema/query
+  "Rename the join named `old-name-or-index`or at the (zero based) index
+  `old-name-or-index`in `a-query` at `stage-number` to `new-name`.
+  If `stage-number` is not provided, the last stage is used.
+  If the specified join cannot be found, then `query` is returned as is.
+  If renaming the join to `new-name` would clash with an existing join, a
+  suffix is appended to `new-name` to make it unique."
+  ([query             :- ::lib.schema/query
+    old-name-or-index :- [:or :string :int]
+    new-name          :- ::lib.schema.common/non-blank-string]
+   (rename-join query -1 old-name-or-index new-name))
+
+  ([query             :- ::lib.schema/query
+    stage-number      :- :int
+    old-name-or-index :- [:or :string :int]
+    new-name          :- ::lib.schema.common/non-blank-string]
+   (lib.util/update-query-stage query stage-number rename-join-in-stage old-name-or-index new-name)))
