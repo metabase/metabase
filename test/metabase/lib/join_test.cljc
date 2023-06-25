@@ -511,3 +511,114 @@
               [:field {} (meta/id :venues :category-id)]
               [:field {:join-alias "Cat"} (meta/id :categories :id)]]]
             (lib/join-conditions (first joins))))))
+
+(deftest ^:parallel rename-join-test
+  (testing "Missing join"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :checkins))]
+      (testing "by name"
+        (is (= query
+               (lib/rename-join query "old-name" "new-name"))))
+      (testing "by index"
+        (are [idx]
+             (= query
+                (lib/rename-join query idx "new-name"))
+          -1 0 1))))
+  (let [joined-column (-> (meta/field-metadata :venues :id)
+                          (lib/with-join-alias "alias"))
+        query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                  (lib/join (-> (lib/join-clause
+                                 (meta/table-metadata :venues)
+                                 [(lib/= (meta/field-metadata :checkins :venue-id)
+                                         joined-column)])
+                                (lib/with-join-alias "alias")))
+                  (lib/filter (lib/> joined-column 3)))]
+    (testing "Simple renaming"
+      (let [renamed {:lib/type :mbql/query
+                     :database (meta/id)
+                     :stages [{:lib/type :mbql.stage/mbql,
+                               :source-table (meta/id :checkins)
+                               :joins [{:lib/type :mbql/join
+                                        :stages [{:lib/type :mbql.stage/mbql
+                                                  :source-table (meta/id :venues)}]
+                                        :conditions [[:=
+                                                      {}
+                                                      [:field
+                                                       {:base-type :type/Integer
+                                                        :effective-type :type/Integer}
+                                                       (meta/id :checkins :venue-id)]
+                                                      [:field
+                                                       {:base-type :type/BigInteger
+                                                        :effective-type :type/BigInteger
+                                                        :join-alias "locale"}
+                                                       (meta/id :venues :id)]]],
+                                        :alias "locale"}]
+                               :filters [[:>
+                                          {}
+                                          [:field
+                                           {:base-type :type/BigInteger
+                                            :effective-type :type/BigInteger
+                                            :join-alias "locale"}
+                                           (meta/id :venues :id)]
+                                          3]]}]}]
+        (testing "by name"
+          (is (=? renamed
+                  (lib/rename-join query "alias" "locale"))))
+        (testing "by index"
+          (is (=? renamed
+                  (lib/rename-join query 0 "locale"))))))
+    (testing "Clashing renaming"
+      (let [query' (-> query
+                       (lib/join (-> (lib/join-clause
+                                      (meta/table-metadata :users)
+                                      [(lib/= (meta/field-metadata :checkins :user-id)
+                                              (-> (meta/field-metadata :users :id)
+                                                  (lib/with-join-alias "Users")))])
+                                     (lib/with-join-alias "Users"))))
+            renamed {:lib/type :mbql/query
+                     :database (meta/id)
+                     :stages [{:lib/type :mbql.stage/mbql,
+                               :source-table (meta/id :checkins)
+                               :joins [{:lib/type :mbql/join
+                                        :stages [{:lib/type :mbql.stage/mbql
+                                                  :source-table (meta/id :venues)}]
+                                        :conditions [[:=
+                                                      {}
+                                                      [:field
+                                                       {:base-type :type/Integer
+                                                        :effective-type :type/Integer}
+                                                       (meta/id :checkins :venue-id)]
+                                                      [:field
+                                                       {:base-type :type/BigInteger
+                                                        :effective-type :type/BigInteger
+                                                        :join-alias "alias"}
+                                                       (meta/id :venues :id)]]],
+                                        :alias "alias"}
+                                       {:lib/type :mbql/join
+                                        :stages [{:lib/type :mbql.stage/mbql
+                                                  :source-table (meta/id :users)}]
+                                        :conditions [[:=
+                                                      {}
+                                                      [:field
+                                                       {:base-type :type/Integer
+                                                        :effective-type :type/Integer}
+                                                       (meta/id :checkins :user-id)]
+                                                      [:field
+                                                       {:base-type :type/BigInteger
+                                                        :effective-type :type/BigInteger
+                                                        :join-alias "alias_2"}
+                                                       (meta/id :users :id)]]],
+                                        :alias "alias_2"}]
+                               :filters [[:>
+                                          {}
+                                          [:field
+                                           {:base-type :type/BigInteger
+                                            :effective-type :type/BigInteger
+                                            :join-alias "alias"}
+                                           (meta/id :venues :id)]
+                                          3]]}]}]
+        (testing "by name"
+          (is (=? renamed
+                  (lib/rename-join query' "Users" "alias"))))
+        (testing "by index"
+          (is (=? renamed
+                  (lib/rename-join query' 1 "alias"))))))))

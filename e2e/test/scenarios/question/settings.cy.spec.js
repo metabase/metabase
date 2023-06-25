@@ -6,6 +6,7 @@ import {
   visitQuestionAdhoc,
   popover,
   sidebar,
+  moveColumnDown,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -68,6 +69,22 @@ describe("scenarios > question > settings", () => {
       cy.get("@table").contains("Product → Category");
       cy.get("@table").contains("Product → Ean");
       cy.get("@table").contains("Total").should("not.exist");
+    });
+
+    it("should allow you to re-order columns even when one has been removed (metabase2#9287)", () => {
+      cy.viewport(1600, 800);
+
+      openOrdersTable();
+      cy.findByTestId("viz-settings-button").click();
+
+      cy.findByTestId("Subtotal-hide-button").click();
+      cy.findByTestId("Tax-hide-button").click();
+
+      getSidebarColumns().eq("3").as("total").contains("Total");
+
+      moveColumnDown(cy.get("@total"), -2);
+
+      getSidebarColumns().eq("1").should("contain.text", "Total");
     });
 
     it.skip("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {

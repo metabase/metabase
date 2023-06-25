@@ -508,6 +508,15 @@
   [a-query stage-number]
   (to-array (lib.core/joins a-query stage-number)))
 
+(defn ^:export rename-join
+  "Rename the join named `old-name-or-index`or at the (zero based) index
+  `old-name-or-index`in `a-query` at `stage-number` to `new-name`.
+  If the specified join cannot be found, then `a-query` is returned as is.
+  If renaming the join to `new-name` would clash with an existing join, a
+  suffix is appended to `new-name` to make it unique."
+  [a-query stage-number old-name-or-index new-name]
+  (lib.core/rename-join a-query stage-number old-name-or-index new-name))
+
 (defn ^:export external-op
   "Convert the internal operator `clause` to the external format."
   [clause]

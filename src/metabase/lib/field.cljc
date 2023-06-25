@@ -416,21 +416,20 @@
   (case source
     :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
     :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
-    (let [options          (merge
-                            {:lib/uuid       (str (random-uuid))
-                             :base-type      (:base-type metadata)
-                             :effective-type (column-metadata-effective-type metadata)}
-                            (when-let [join-alias (lib.join/current-join-alias metadata)]
-                              {:join-alias join-alias})
-                            (when-let [temporal-unit (::temporal-unit metadata)]
-                              {:temporal-unit temporal-unit})
-                            (when-let [binning (::binning metadata)]
-                              {:binning binning})
-                            (when-let [source-field-id (:fk-field-id metadata)]
-                              {:source-field source-field-id}))
-          always-use-name? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))]
-      [:field options (if always-use-name?
-                        (:name metadata)
+    (let [inherited-column? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))
+          options           (merge {:lib/uuid       (str (random-uuid))
+                                    :base-type      (:base-type metadata)
+                                    :effective-type (column-metadata-effective-type metadata)}
+                                   (when-let [join-alias (lib.join/current-join-alias metadata)]
+                                     {:join-alias join-alias})
+                                   (when-let [temporal-unit (::temporal-unit metadata)]
+                                     {:temporal-unit temporal-unit})
+                                   (when-let [binning (::binning metadata)]
+                                     {:binning binning})
+                                   (when-let [source-field-id (:fk-field-id metadata)]
+                                     {:source-field source-field-id}))]
+      [:field options (if inherited-column?
+                        (or (:lib/desired-column-alias metadata) (:name metadata))
                         (or (:id metadata) (:name metadata)))])))
 
 (defn- implicit-join-name [query {:keys [fk-field-id table-id], :as _field-metadata}]
