@@ -327,7 +327,7 @@ describe("scenarios > collection defaults", () => {
                 // Access to everything else is revoked by default - that's why we chose `Data` group
                 groups[DATA_GROUP][CHILD_COLLECTION_ID] = "write";
 
-                // We're chaining these 2 requestes in order to match shema (passing it from GET to PUT)
+                // We're chaining these 2 requestes in order to match schema (passing it from GET to PUT)
                 // Similar to what we did in `sandboxes.cy.spec.js` with the permission graph
                 cy.request("PUT", "/api/collection/graph", {
                   // Pass previously mutated `groups` object
