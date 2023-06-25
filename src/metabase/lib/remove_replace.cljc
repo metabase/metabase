@@ -196,16 +196,10 @@
     (lib.join/with-join-alias field new-name)))
 
 (defn- rename-join-in-stage
-  [stage old-name-or-index new-name]
-  (let [the-joins (:joins stage)
-        idx       (if (integer? old-name-or-index)
-                    (when (< -1 old-name-or-index (count the-joins))
-                      old-name-or-index)
-                    (some (fn [[idx a-join]]
-                            (when (= (:alias a-join) old-name-or-index)
-                              idx))
-                          (m/indexed the-joins)))
-        old-name  (get-in the-joins [idx :alias])]
+  [stage idx new-name]
+  (let [the-joins      (:joins stage)
+        [idx old-name] (when (< -1 idx (count the-joins))
+                         [idx (get-in the-joins [idx :alias])])]
     (if (and idx (not= old-name new-name))
       (let [unique-name-fn (lib.util/unique-name-generator)
             _              (run! unique-name-fn (map :alias the-joins))
@@ -216,22 +210,30 @@
       stage)))
 
 (mu/defn rename-join :- :metabase.lib.schema/query
-  "Rename the join named `old-name-or-index`or at the (zero based) index
-  `old-name-or-index`in `a-query` at `stage-number` to `new-name`.
+  "Rename the join specified by `join-spec` in `a-query` at `stage-number` to `new-name`.
+  The join can be specified either by itself (as returned by [[joins]]), by its alias
+  or by its index in the list of joins as returned by [[joins]].
   If `stage-number` is not provided, the last stage is used.
   If the specified join cannot be found, then `query` is returned as is.
   If renaming the join to `new-name` would clash with an existing join, a
   suffix is appended to `new-name` to make it unique."
-  ([query             :- :metabase.lib.schema/query
-    old-name-or-index :- [:or :string :int]
-    new-name          :- :metabase.lib.schema.common/non-blank-string]
-   (rename-join query -1 old-name-or-index new-name))
+  ([query join-spec new-name]
+   (rename-join query -1 join-spec new-name))
 
-  ([query             :- :metabase.lib.schema/query
-    stage-number      :- :int
-    old-name-or-index :- [:or :string :int]
-    new-name          :- :metabase.lib.schema.common/non-blank-string]
-   (lib.util/update-query-stage query stage-number rename-join-in-stage old-name-or-index new-name)))
+  ([query        :- :metabase.lib.schema/query
+    stage-number :- :int
+    join-spec    :- [:or :metabase.lib.schema.join/join :string :int]
+    new-name     :- :metabase.lib.schema.common/non-blank-string]
+   (if-let [idx (if (integer? join-spec)
+                  join-spec
+                  (let [pred (cond-> #{join-spec}
+                               (string? join-spec) (comp :alias))]
+                    (some (fn [[idx a-join]]
+                            (when (pred a-join)
+                              idx))
+                          (m/indexed (:joins (lib.util/query-stage query stage-number))))))]
+     (lib.util/update-query-stage query stage-number rename-join-in-stage idx new-name)
+     query)))
 
 (defn- matching-locations
   [form pred]
