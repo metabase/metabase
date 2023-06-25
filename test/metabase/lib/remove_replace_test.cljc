@@ -619,6 +619,10 @@
 (deftest ^:parallel remove-join-test
   (testing "Missing join"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :checkins))]
+      (testing "by index"
+        (are [idx] (= query
+                      (lib/remove-join query 0 idx))
+          -1 0 1))
       (testing "by name"
         (is (= query
                (lib/remove-join query 0 "old-alias"))))))
@@ -641,9 +645,15 @@
                                 :source-table (meta/id :checkins)}]
                     :joins    (symbol "nil #_\"key is not present.\"")
                     :filters  (symbol "nil #_\"key is not present.\"")}]
+        (testing "by index"
+          (is (=? result
+                  (lib/remove-join query 0 0))))
         (testing "by name"
           (is (=? result
-                  (lib/remove-join query 0 join-alias))))))
+                  (lib/remove-join query 0 join-alias))))
+        (testing "by join-clause"
+          (is (=? result
+                  (lib/remove-join query 0 (first (lib/joins query))))))))
     (testing "Removing one of the joins"
       (let [filter-field [:field {:base-type :type/DateTime} "Users__LAST_LOGIN"]
             query' (-> query
@@ -687,6 +697,12 @@
                                          3]]}
                              {:filters  (symbol "nil #_\"key is not present.\"")
                               :breakout (symbol "nil #_\"key is not present.\"")}]}]
+        (testing "by index"
+          (is (=? result
+                  (lib/remove-join query' 0 1))))
         (testing "by name"
           (is (=? result
-                  (lib/remove-join query' 0 "Users"))))))))
+                  (lib/remove-join query' 0 "Users"))))
+        (testing "by name"
+          (is (=? result
+                  (lib/remove-join query' 0 (second (lib/joins query' 0))))))))))

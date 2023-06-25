@@ -209,6 +209,17 @@
             (replace-join-alias old-name unique-name)))
       stage)))
 
+(defn- join-spec->clause
+  [query stage-number join-spec]
+  (if (integer? join-spec)
+    join-spec
+    (let [pred (cond-> #{join-spec}
+                 (string? join-spec) (comp :alias))]
+      (some (fn [[idx a-join]]
+              (when (pred a-join)
+                idx))
+            (m/indexed (:joins (lib.util/query-stage query stage-number)))))))
+
 (mu/defn rename-join :- :metabase.lib.schema/query
   "Rename the join specified by `join-spec` in `a-query` at `stage-number` to `new-name`.
   The join can be specified either by itself (as returned by [[joins]]), by its alias
@@ -224,14 +235,7 @@
     stage-number :- :int
     join-spec    :- [:or :metabase.lib.schema.join/join :string :int]
     new-name     :- :metabase.lib.schema.common/non-blank-string]
-   (if-let [idx (if (integer? join-spec)
-                  join-spec
-                  (let [pred (cond-> #{join-spec}
-                               (string? join-spec) (comp :alias))]
-                    (some (fn [[idx a-join]]
-                            (when (pred a-join)
-                              idx))
-                          (m/indexed (:joins (lib.util/query-stage query stage-number))))))]
+   (if-let [idx (join-spec->clause query stage-number join-spec)]
      (lib.util/update-query-stage query stage-number rename-join-in-stage idx new-name)
      query)))
 
@@ -288,18 +292,27 @@
             query-after
             to-remove)))
 
+(defn- join-spec->alias
+  [query stage-number join-spec]
+  (cond
+    (integer? join-spec) (get-in (lib.util/query-stage query stage-number) [:joins join-spec :alias])
+    (map? join-spec) (:alias join-spec)
+    :else join-spec))
+
 (mu/defn remove-join :- :metabase.lib.schema/query
-  [query :- :metabase.lib.schema/query
-   stage-number      :- :int
-   old-name-or-index :- [:or :string :int]]
-  (binding [mu/*enforce* false]
-    (let [query-after (lib.util/update-query-stage
-                       query
-                       stage-number
-                       (fn [stage]
-                         (u/assoc-dissoc stage :joins
-                                         (not-empty (filterv #(not= (:alias %) old-name-or-index)
-                                                             (:joins stage))))))]
-      (reduce #(remove-invalidated-refs %1 query %2)
-              query-after
-              (take-while some? (iterate #(lib.util/next-stage-number query %) stage-number))))))
+  [query        :- :metabase.lib.schema/query
+   stage-number :- :int
+   join-spec    :- [:or :metabase.lib.schema.join/join :string :int]]
+  (if-let [join-alias  (join-spec->alias query stage-number join-spec)]
+    (binding [mu/*enforce* false]
+      (let [query-after (lib.util/update-query-stage
+                         query
+                         stage-number
+                         (fn [stage]
+                           (u/assoc-dissoc stage :joins
+                                           (not-empty (filterv #(not= (:alias %) join-alias)
+                                                               (:joins stage))))))]
+        (reduce #(remove-invalidated-refs %1 query %2)
+                query-after
+                (take-while some? (iterate #(lib.util/next-stage-number query %) stage-number)))))
+    query))
