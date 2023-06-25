@@ -137,7 +137,8 @@ const mainConfig = {
     json: true,
   },
   retries: {
-    runMode: 4,
+    // NOTE: Metabase uses 4 as the default, but we set it to 0 to prevent false positives
+    runMode: 0,
     openMode: 0,
   },
   video: videoEnabled ? true : false,
